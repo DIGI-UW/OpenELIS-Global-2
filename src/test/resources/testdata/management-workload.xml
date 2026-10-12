@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sections 89701/89702, tests 89701/89702 and status 89700 are inserted
+    by WorkloadServiceIntegrationTest, so loading this file never truncates them. -->
+<dataset>
+    <sample id="89701" accession_number="MGMT-W01"
+        entered_date="2026-03-01 08:00:00" received_date="2026-03-01 08:00:00" />
+    <sample id="89702" accession_number="MGMT-W02"
+        entered_date="2026-03-01 09:00:00" received_date="2026-03-01 09:00:00" />
+    <sample id="89703" accession_number="MGMT-W03"
+        entered_date="2026-03-02 12:00:00" received_date="2026-03-02 12:00:00" />
+    <sample id="89704" accession_number="MGMT-W04"
+        entered_date="2026-03-03 23:30:00" received_date="2026-03-03 23:30:00" />
+    <sample id="89705" accession_number="MGMT-W05"
+        entered_date="2026-02-28 23:59:00" received_date="2026-02-28 23:59:00" />
+    <sample id="89706" accession_number="MGMT-W06"
+        entered_date="2026-03-04 08:00:00" received_date="2026-03-04 08:00:00" />
+
+    <sample_item id="89701" samp_id="89701" sort_order="1"
+        status_id="89700" />
+    <sample_item id="89702" samp_id="89702" sort_order="1"
+        status_id="89700" />
+    <sample_item id="89703" samp_id="89703" sort_order="1"
+        status_id="89700" />
+    <sample_item id="89704" samp_id="89704" sort_order="1"
+        status_id="89700" />
+    <sample_item id="89705" samp_id="89705" sort_order="1"
+        status_id="89700" />
+    <sample_item id="89706" samp_id="89706" sort_order="1"
+        status_id="89700" />
+
+    <analysis id="89701" sampitem_id="89701"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89700" released_date="2026-03-01 10:00:00" />
+    <analysis id="89702" sampitem_id="89701"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89700" released_date="2026-03-01 12:00:00" />
+    <analysis id="89703" sampitem_id="89701"
+        analysis_type="MANUAL" test_id="89702" status_id="89700"
+        released_date="2026-03-03 08:00:00" />
+    <analysis id="89704" sampitem_id="89702"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89700" released_date="2026-03-02 15:00:00" />
+    <analysis id="89705" sampitem_id="89703"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89700" released_date="2026-03-02 13:00:00" />
+    <analysis id="89706" sampitem_id="89704"
+        analysis_type="MANUAL" test_id="89702" test_sect_id="89702"
+        status_id="89700" />
+    <analysis id="89707" sampitem_id="89705"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89700" released_date="2026-03-01 00:30:00" />
+    <analysis id="89708" sampitem_id="89706"
+        analysis_type="MANUAL" test_id="89702" test_sect_id="89702"
+        status_id="89700" released_date="2026-03-04 09:00:00" />
+</dataset>

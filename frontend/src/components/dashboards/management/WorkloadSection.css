@@ -1,0 +1,23 @@
+.mgmt-workload {
+  margin-bottom: 1.5rem;
+}
+
+.mgmt-workload__title {
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-workload__cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+}
+
+.mgmt-workload__card h4 {
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 66rem) {
+  .mgmt-workload__cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

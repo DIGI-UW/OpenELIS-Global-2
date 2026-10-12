@@ -13534,5 +13534,14 @@
   "label.mgmt.kpi.onTime": "On-time completion",
   "label.mgmt.kpi.rejectionRate": "Rejection rate",
   "label.mgmt.kpi.qcPassRate": "QC pass rate",
-  "label.mgmt.kpi.vsPrior": "vs. prior period"
+  "label.mgmt.kpi.vsPrior": "vs. prior period",
+  "label.mgmt.workload.title": "Workload & turnaround time",
+  "label.mgmt.workload.byCard": "Workload by section (daily, {0})",
+  "label.mgmt.workload.tatTable": "TAT by section (median, {0})",
+  "label.mgmt.workload.tatTable.section": "Section",
+  "label.mgmt.workload.tatTable.samples": "Samples",
+  "label.mgmt.workload.tatTable.median": "Median",
+  "label.mgmt.workload.tatTable.p90": "P90",
+  "label.mgmt.workload.tatTable.onTime": "On-time %",
+  "label.mgmt.workload.empty": "No samples were received in this period"
 }

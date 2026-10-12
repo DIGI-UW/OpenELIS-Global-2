@@ -13,6 +13,7 @@ import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
+import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.annotation.Bean;
@@ -61,6 +62,19 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    public void workloadRefusesABenchRoleWithoutTheGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/workload").with(user("bench").roles("RESULTS", "ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void workloadWithAnUnknownScopeIsABadRequest() throws Exception {
+        mockMvc.perform(
+                get("/rest/dashboards/management/workload?scope=decade").with(user("admin").roles("GLOBAL_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
     @Configuration
     static class TestConfig {
 
@@ -82,6 +96,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                     return Map.of();
                 }
             };
+        }
+
+        @Bean
+        WorkloadService workloadService() {
+            return scope -> null;
         }
 
         @Bean

@@ -11,6 +11,7 @@ import {
 } from "../../utils/useServerData";
 import KpiStrip from "./KpiStrip";
 import { summaryUrl } from "./managementApi";
+import WorkloadSection from "./WorkloadSection";
 import "./ManagementDashboard.css";
 
 export const SCOPES = [
@@ -22,7 +23,10 @@ export const SCOPES = [
   { id: "year", labelKey: "label.dashboard.scope.year" },
 ];
 
-const SECTIONS = [{ id: "kpis", Component: KpiStrip }];
+const SECTIONS = [
+  { id: "kpis", Component: KpiStrip },
+  { id: "workload", Component: WorkloadSection },
+];
 
 const REFRESH_COOLDOWN_MS = 15000;
 const SOFT_REFRESH_MS = 5 * 60000;
