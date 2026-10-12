@@ -13625,5 +13625,17 @@
   "label.mgmt.surveillance.metric.smearPositive": "Smear positive",
   "label.mgmt.surveillance.metric.hivPositive": "HIV positive",
   "label.mgmt.surveillance.metric.vlSuppressed": "VL suppressed (< 1000)",
-  "label.mgmt.surveillance.metric.rdtPositive": "RDT positive"
+  "label.mgmt.surveillance.metric.rdtPositive": "RDT positive",
+  "label.mgmt.quality.title": "Quality rollup",
+  "label.mgmt.quality.composite": "Composite quality",
+  "label.mgmt.quality.components": "Components",
+  "label.mgmt.quality.qcPass": "QC pass rate",
+  "label.mgmt.quality.eqaPerf": "EQA performance",
+  "label.mgmt.quality.nceInverse": "NCE inverse",
+  "label.mgmt.quality.amendmentInverse": "Amendment rate inverse",
+  "label.mgmt.quality.weightsConfigurable": "Weights resolve from QI Configuration per lab.",
+  "label.mgmt.quality.editWeights": "Edit weights ↗",
+  "label.mgmt.quality.qiDashboard": "QI Dashboard ↗",
+  "label.mgmt.quality.weight": "weight {0}",
+  "label.mgmt.quality.noData": "No data in this period for {0}; the other weights are rescaled to make up the score."
 }

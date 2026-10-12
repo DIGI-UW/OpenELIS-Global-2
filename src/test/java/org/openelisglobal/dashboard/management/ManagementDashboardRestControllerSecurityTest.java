@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 import org.openelisglobal.dashboard.management.antibiogram.AntibiogramService;
@@ -13,6 +15,8 @@ import org.openelisglobal.dashboard.management.controller.rest.ManagementDashboa
 import org.openelisglobal.dashboard.management.equipment.EquipmentService;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
+import org.openelisglobal.dashboard.management.quality.QualityRollup;
+import org.openelisglobal.dashboard.management.quality.QualityRollupService;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
 import org.openelisglobal.dashboard.management.stock.StockService;
@@ -110,6 +114,27 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    public void qualityNeedsTheDashboardGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/quality")
+                .with(user("qa").authorities(new SimpleGrantedAuthority("qa.manage.qi"))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void qualityRejectsAnUnknownScope() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/quality?scope=decade")
+                .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void qualityAnswersTheDashboardGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/quality?scope=90d")
+                .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.scope.from").isString());
+    }
+
     @Configuration
     static class TestConfig {
 
@@ -129,6 +154,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 @Override
                 public Map<String, BigDecimal> onTimeByLabUnit(ScopeRange scope) {
                     return Map.of();
+                }
+
+                @Override
+                public BigDecimal qcPassRate(LocalDate from, LocalDate to) {
+                    return null;
                 }
             };
         }
@@ -151,6 +181,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
         @Bean
         StockService stockService() {
             return () -> null;
+        }
+
+        @Bean
+        QualityRollupService qualityRollupService() {
+            return scope -> new QualityRollup(null, null, List.of(), scope);
         }
 
         @Bean

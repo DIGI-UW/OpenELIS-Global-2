@@ -12,6 +12,8 @@ import org.openelisglobal.dashboard.management.equipment.AnalyzerActivity;
 import org.openelisglobal.dashboard.management.equipment.EquipmentService;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
+import org.openelisglobal.dashboard.management.quality.QualityRollup;
+import org.openelisglobal.dashboard.management.quality.QualityRollupService;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
 import org.openelisglobal.dashboard.management.stock.StockResponse;
@@ -50,6 +52,9 @@ public class ManagementDashboardRestController extends BaseRestController {
     @Autowired
     private StockService stockService;
 
+    @Autowired
+    private QualityRollupService qualityRollupService;
+
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ManagementSummary> getSummary(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, managementDashboardService::getSummary);
@@ -78,6 +83,11 @@ public class ManagementDashboardRestController extends BaseRestController {
     @GetMapping(value = "/stock", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<StockResponse> getStock() {
         return ResponseEntity.ok(stockService.getStock());
+    }
+
+    @GetMapping(value = "/quality", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<QualityRollup> getQuality(@RequestParam(defaultValue = "30d") String scope) {
+        return respond(scope, qualityRollupService::getRollup);
     }
 
     private static <T> ResponseEntity<T> respond(String scope, Function<ScopeRange, T> read) {

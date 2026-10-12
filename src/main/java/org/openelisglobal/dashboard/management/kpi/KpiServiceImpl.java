@@ -153,6 +153,12 @@ public class KpiServiceImpl implements KpiService {
                 QC_PASS_THRESHOLDS);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal qcPassRate(LocalDate from, LocalDate to) {
+        return passRate(kpiDAO.countQcRunsByPeriod(from, to, "MONTHLY").values());
+    }
+
     private static BigDecimal passRate(Iterable<long[]> runs) {
         long total = 0;
         long failed = 0;

@@ -8,3 +8,5 @@ export const equipmentUrl = (scope) => `${BASE}/equipment?scope=${scope}`;
 export const antibiogramUrl = (scope) => `${BASE}/antibiogram?scope=${scope}`;
 export const stockUrl = () => `${BASE}/stock`;
 export const qualityWeightsUrl = () => `${BASE}/quality-weights`;
+
+export const qualityUrl = (scope) => `${BASE}/quality?scope=${scope}`;

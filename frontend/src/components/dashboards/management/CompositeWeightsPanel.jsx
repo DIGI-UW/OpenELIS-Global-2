@@ -49,6 +49,14 @@ const CompositeWeightsPanel = () => {
     }
   }, [query.data]);
 
+  // The panel renders after its data loads, too late for the browser's own
+  // jump to #composite-weights from the dashboard's "Edit weights" link.
+  useEffect(() => {
+    if (weights && window.location.hash === "#composite-weights") {
+      document.getElementById("composite-weights")?.scrollIntoView();
+    }
+  }, [weights != null]);
+
   if (!weights) {
     return null;
   }
