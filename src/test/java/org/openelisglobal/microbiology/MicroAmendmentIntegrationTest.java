@@ -235,6 +235,7 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                 .forEach(ordered -> astService.recordReading(run.getId(), ordered.getAntibioticId(), MicroAstMethod.MIC,
                         new BigDecimal("4"), userId));
         astService.reviewRun(run.getId(), userId);
+        fixtures.prepareFinalCase(microCase, userId);
         reportReleaseService.releaseFinal(microCase.getId(), userId);
         return new FinalCase(microCase.getId(), isolate.getId(), referenceData.organism().getId(),
                 referenceData.panel().getId(), referenceData.organism().getDisplayName(), userId);
@@ -254,7 +255,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
             assignment.setId(Integer.valueOf(userId));
             LabUnitRoleMap mapping = new LabUnitRoleMap();
             mapping.setLabUnit(labUnitId);
-            mapping.setRoles(Set.of(roleService.getRoleByName(Constants.ROLE_VALIDATION).getId()));
+            mapping.setRoles(Set.of(roleService.getRoleByName(Constants.ROLE_VALIDATION).getId(),
+                    roleService.getRoleByName(Constants.ROLE_RESULTS).getId()));
             assignment.setLabUnitRoleMap(Set.of(mapping));
             entityManager.persist(assignment);
         });

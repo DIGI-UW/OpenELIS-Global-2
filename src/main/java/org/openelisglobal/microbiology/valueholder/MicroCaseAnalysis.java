@@ -203,4 +203,14 @@ public class MicroCaseAnalysis extends BaseObject<String> {
     @lombok.Setter
     @Column(name = "culture_id")
     private String cultureId;
+    @Column(name = "selected_for_report")
+    private Boolean selectedForReport;
+
+    public Boolean getSelectedForReport() {
+        return selectedForReport;
+    }
+
+    public void setSelectedForReport(Boolean value) {
+        selectedForReport = value;
+    }
 }

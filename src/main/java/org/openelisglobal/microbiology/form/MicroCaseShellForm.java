@@ -9,6 +9,8 @@ public class MicroCaseShellForm extends MicroCaseSummaryForm {
     public List<MicroCaseSpecimenForm> pendingSamples = new ArrayList<>();
     public List<MicroCaseSummaryForm> relatedCases = new ArrayList<>();
     public List<IdValuePair> transferLabUnits = new ArrayList<>();
+    public String finalReleaseState;
+    public boolean amendmentOpen;
     public boolean referred;
     public boolean canWrite;
     public boolean canValidate;

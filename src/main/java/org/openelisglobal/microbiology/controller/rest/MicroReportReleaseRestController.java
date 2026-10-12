@@ -66,7 +66,8 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
 
     private MicroReportProjectionForm toProjectionForm(MicroReportProjectionResult projection) {
         MicroReportProjectionForm form = new MicroReportProjectionForm();
-        form.content = projection.getContent();
+        form.content = projection.structuredContent == null ? projection.getContent() : "";
+        form.report = projection.report;
         form.reportableContent = projection.hasReportableContent();
         form.mappingConfigured = projection.isMappingConfigured();
         form.projectedResultIds.addAll(projection.getProjectedResultIds());

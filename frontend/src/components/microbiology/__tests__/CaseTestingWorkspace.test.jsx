@@ -238,7 +238,11 @@ describe("case testing workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save note" }));
     await screen.findByText("Technician");
     expect(screen.getByLabelText("New note")).toHaveValue("");
-    expect(api.addNote).toHaveBeenLastCalledWith("case-1", "Bench observation");
+    expect(api.addNote).toHaveBeenLastCalledWith(
+      "case-1",
+      "Bench observation",
+      false,
+    );
   });
   test("provenance saves preserve the result draft and refresh its version", async () => {
     const api = service();

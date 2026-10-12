@@ -89,7 +89,7 @@ public class MicroWhonetDatasetServiceTest {
     }
 
     @Test
-    public void previewIncludesEveryMappedReadingFromTheReportableReviewedRun() {
+    public void previewIncludesEverySelectedMappedReadingFromReviewedRuns() {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
@@ -100,7 +100,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
-        when(astReadingDAO.getByRunIds(List.of("run-1"))).thenReturn(List.of(cip, gen));
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1"))).thenReturn(List.of(cip, gen));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
                 .thenReturn(Optional.of(antibiotic("antibiotic-1", "CIP", "Ciprofloxacin")));
@@ -135,7 +135,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
-        when(astReadingDAO.getByRunIds(List.of("run-1")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -162,7 +162,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(mappedCase, unmappedCase));
         when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of(mappedIsolate, unmappedIsolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1", "isolate-2"))).thenReturn(List.of(mappedRun, unmappedRun));
-        when(astReadingDAO.getByRunIds(List.of("run-1", "run-2"))).thenReturn(List.of(
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1", "run-2"))).thenReturn(List.of(
                 reading("reading-1", "run-1", "antibiotic-1", "S"), reading("reading-2", "run-2", "antibiotic-1", "R"),
                 reading("reading-3", "run-2", "antibiotic-1", "I")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
@@ -194,7 +194,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
-        when(astReadingDAO.getByRunIds(List.of("run-1")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-2", "run-1", "antibiotic-2", "R")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
@@ -224,7 +224,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
-        when(astReadingDAO.getByRunIds(List.of("run-1")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "", "E. coli")));
         stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
@@ -272,7 +272,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
-        when(astReadingDAO.getByRunIds(List.of("run-1")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "NO_BREAKPOINT")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -299,7 +299,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(clinical, colonizer));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
-        when(astReadingDAO.getByRunIds(List.of("run-1")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -334,7 +334,7 @@ public class MicroWhonetDatasetServiceTest {
         when(isolateDAO.getByCaseIds(List.of("case-1", "case-2", "case-3")))
                 .thenReturn(List.of(bloodClinical, urineFlora, bloodContaminant));
         when(astRunDAO.getByIsolateIds(List.of("isolate-3"))).thenReturn(List.of(selectedRun));
-        when(astReadingDAO.getByRunIds(List.of("run-3")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-3")))
                 .thenReturn(List.of(reading("reading-3", "run-3", "antibiotic-1", "R")));
         when(organismDAO.get("organism-2")).thenReturn(Optional.of(organism("organism-2", "sau", "S. aureus")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -385,7 +385,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(isolates);
         when(astRunDAO.getByIsolateIds(List.of("isolate-clinical")))
                 .thenReturn(List.of(reviewedRun("run-clinical", "isolate-clinical")));
-        when(astReadingDAO.getByRunIds(List.of("run-clinical")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-clinical")))
                 .thenReturn(List.of(reading("reading-clinical", "run-clinical", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -422,7 +422,7 @@ public class MicroWhonetDatasetServiceTest {
         when(astRunDAO.getByIsolateIds(List.of("isolate-screening", "isolate-unspecified")))
                 .thenReturn(List.of(reviewedRun("run-screening", "isolate-screening"),
                         reviewedRun("run-unspecified", "isolate-unspecified")));
-        when(astReadingDAO.getByRunIds(List.of("run-screening", "run-unspecified")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-screening", "run-unspecified")))
                 .thenReturn(List.of(reading("reading-screening", "run-screening", "antibiotic-1", "S"),
                         reading("reading-unspecified", "run-unspecified", "antibiotic-1", "R")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
@@ -545,7 +545,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(selected, unreviewed, notReportable));
-        when(astReadingDAO.getByRunIds(List.of("run-selected")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-selected")))
                 .thenReturn(List.of(reading("reading-1", "run-selected", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -554,7 +554,7 @@ public class MicroWhonetDatasetServiceTest {
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
-        verify(astReadingDAO).getByRunIds(List.of("run-selected"));
+        verify(astReadingDAO).getSelectedByRunIds(List.of("run-selected"));
         assertEquals(1, preview.exportedRows);
         assertEquals("S", preview.rows.get(0).interpretation);
     }
@@ -571,7 +571,7 @@ public class MicroWhonetDatasetServiceTest {
                 .thenReturn(List.of(repeatCase, firstCase));
         when(isolateDAO.getByCaseIds(List.of("case-2", "case-1"))).thenReturn(List.of(repeat, first));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(firstRun));
-        when(astReadingDAO.getByRunIds(List.of("run-1")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
         when(antibioticDAO.get("antibiotic-1"))
@@ -618,7 +618,7 @@ public class MicroWhonetDatasetServiceTest {
         when(isolateDAO.getByCaseIds(List.of("case-3", "case-2", "case-1")))
                 .thenReturn(List.of(boundary, inside, first));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1", "isolate-3"))).thenReturn(List.of(firstRun, boundaryRun));
-        when(astReadingDAO.getByRunIds(List.of("run-1", "run-3")))
+        when(astReadingDAO.getSelectedByRunIds(List.of("run-1", "run-3")))
                 .thenReturn(List.of(reading("reading-1", "run-1", "antibiotic-1", "S"),
                         reading("reading-3", "run-3", "antibiotic-1", "R")));
         when(organismDAO.get("organism-1")).thenReturn(Optional.of(organism("organism-1", "eco", "E. coli")));
@@ -869,7 +869,7 @@ public class MicroWhonetDatasetServiceTest {
             List<String> isolateIds = invocation.getArgument(0);
             return runs.stream().filter(run -> isolateIds.contains(run.getIsolateId())).toList();
         });
-        when(astReadingDAO.getByRunIds(any())).thenAnswer(invocation -> {
+        when(astReadingDAO.getSelectedByRunIds(any())).thenAnswer(invocation -> {
             List<String> runIds = invocation.getArgument(0);
             return readings.stream().filter(reading -> runIds.contains(reading.getAstRunId())).toList();
         });

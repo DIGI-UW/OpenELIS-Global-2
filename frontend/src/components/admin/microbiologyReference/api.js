@@ -131,3 +131,11 @@ export const applyBreakpointImport = (previewToken) =>
     `/rest/microbiology/admin/breakpoints/imports/${encodeURIComponent(previewToken)}/apply`,
     { method: "POST" },
   );
+
+export const getDstBindings = (signal) =>
+  request("/rest/microbiology/admin/dst-bindings", { signal });
+export const saveDstBinding = (value) =>
+  request("/rest/microbiology/admin/dst-bindings", {
+    method: "POST",
+    body: JSON.stringify(value),
+  });

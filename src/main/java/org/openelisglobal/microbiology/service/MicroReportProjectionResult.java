@@ -9,6 +9,8 @@ import java.util.List;
  */
 public final class MicroReportProjectionResult {
 
+    public org.openelisglobal.microbiology.form.MicroPatientReportForm report;
+    public String structuredContent;
     private final String content;
     private final boolean mappingConfigured;
     private final List<String> projectedResultIds;

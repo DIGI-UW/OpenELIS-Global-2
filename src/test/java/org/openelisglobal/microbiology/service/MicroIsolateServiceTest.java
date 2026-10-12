@@ -59,6 +59,8 @@ public class MicroIsolateServiceTest {
         lenient().when(caseDAO.getForUpdate("case-1")).thenReturn(mutableCase());
         var access = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "access", access);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
+                org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
         lenient().when(access.hasLabUnitRole(any(), any(), any())).thenReturn(true);
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");

@@ -38,7 +38,7 @@ public class MicroAstRestControllerTest {
         request.overrideReason = "confirmed on repeat";
 
         try {
-            new MicroAstRestController(service).overrideReading("reading-1", request, requestFor("42"));
+            controller(service).overrideReading("reading-1", request, requestFor("42"));
             fail("Expected a missing override interpretation to be rejected");
         } catch (IllegalArgumentException exception) {
             assertEquals("overrideInterpretation is required", exception.getMessage());
@@ -56,7 +56,7 @@ public class MicroAstRestControllerTest {
         setup.orderedPanelVersion = 3;
         when(service.getSetup("isolate-1")).thenReturn(setup);
 
-        MicroAstSetupForm response = new MicroAstRestController(service).getSetup("isolate-1").getBody();
+        MicroAstSetupForm response = controller(service).getSetup("isolate-1").getBody();
 
         assertEquals("panel-1", response.orderedPanelId);
         assertEquals(Integer.valueOf(3), response.orderedPanelVersion);
@@ -72,7 +72,7 @@ public class MicroAstRestControllerTest {
         ordered.setReportBehavior("ALWAYS");
         when(service.getPanelAntibiotics("panel-1")).thenReturn(java.util.List.of(ordered));
 
-        org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm response = new MicroAstRestController(service)
+        org.openelisglobal.microbiology.form.MicroAstRunAntibioticForm response = controller(service)
                 .getPanelAntibiotics("panel-1").getBody().get(0);
 
         assertEquals("abx-1", response.antibioticId);
@@ -95,7 +95,7 @@ public class MicroAstRestControllerTest {
         request.attemptType = MicroAstAttemptType.REPEAT.name();
         request.reason = "Control failed";
         request.technique = MicroAstTechnique.VITEK_2.name();
-        MicroAstRestController controller = new MicroAstRestController(service);
+        MicroAstRestController controller = controller(service);
 
         ResponseEntity<MicroAstRunForm> created = controller.startRepeatRun("run-1", request, requestFor("42"));
         controller.selectReportableRun("run-2", requestFor("42"));
@@ -120,7 +120,7 @@ public class MicroAstRestControllerTest {
         when(service.startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Confirm carbapenem",
                 MicroAstTechnique.VITEK_2, java.util.List.of(), java.util.List.of("abx-2"), "42")).thenReturn(repeat);
 
-        new MicroAstRestController(service).startRepeatRun("run-1", request, requestFor("42"));
+        controller(service).startRepeatRun("run-1", request, requestFor("42"));
 
         verify(service).startRepeatRun("run-1", MicroAstAttemptType.RETEST, "Confirm carbapenem",
                 MicroAstTechnique.VITEK_2, java.util.List.of(), java.util.List.of("abx-2"), "42");
@@ -161,7 +161,7 @@ public class MicroAstRestControllerTest {
         when(service.startRun(command, "42")).thenReturn(run);
         when(service.getOrderedAntibioticsForRun("run-1")).thenReturn(java.util.List.of(ordered));
 
-        MicroAstRunForm response = new MicroAstRestController(service).startRun(request, requestFor("42")).getBody();
+        MicroAstRunForm response = controller(service).startRun(request, requestFor("42")).getBody();
 
         verify(service).startRun(command, "42");
         assertEquals("abx-1", response.orderedAntibiotics.get(0).antibioticId);
@@ -178,8 +178,7 @@ public class MicroAstRestControllerTest {
         request.rawValue = new java.math.BigDecimal("4");
         when(service.recordReading("run-1", "abx-1", new java.math.BigDecimal("4"), "42")).thenReturn(reading);
 
-        MicroAstReadingForm response = new MicroAstRestController(service)
-                .recordReading("run-1", request, requestFor("42")).getBody();
+        MicroAstReadingForm response = controller(service).recordReading("run-1", request, requestFor("42")).getBody();
 
         verify(service).recordReading("run-1", "abx-1", new java.math.BigDecimal("4"), "42");
         assertEquals("MIC", response.measurementType);
@@ -202,7 +201,7 @@ public class MicroAstRestControllerTest {
                 "42")).thenReturn(reading);
         when(service.revertOverride("reading-1", "Repeat confirmed original", "84")).thenReturn(reading);
         when(service.getOverrideHistoryForRun("run-1")).thenReturn(java.util.List.of());
-        MicroAstRestController controller = new MicroAstRestController(service);
+        MicroAstRestController controller = controller(service);
 
         controller.overrideReading("reading-1", override, requestFor("42"));
         controller.revertOverride("reading-1", revert, requestFor("84"));
@@ -219,6 +218,16 @@ public class MicroAstRestControllerTest {
                 .getAnnotation(PreAuthorize.class);
         assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", overrideGuard.value());
         assertEquals("hasAnyRole('ADMIN', 'VALIDATION')", revertGuard.value());
+    }
+
+    private MicroAstRestController controller(MicroAstService service) {
+        var responses = new org.openelisglobal.microbiology.service.MicroAstResponseService(service);
+        var antibiotics = org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroAntibioticDAO.class);
+        var antibiotic = new org.openelisglobal.microbiology.valueholder.MicroAntibiotic();
+        antibiotic.setDisplayName("Ampicillin");
+        when(antibiotics.get(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.Optional.of(antibiotic));
+        org.springframework.test.util.ReflectionTestUtils.setField(responses, "antibiotics", antibiotics);
+        return new MicroAstRestController(service, responses);
     }
 
     private MockHttpServletRequest requestFor(String userId) {

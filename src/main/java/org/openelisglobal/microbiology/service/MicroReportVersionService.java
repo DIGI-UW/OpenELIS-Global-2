@@ -10,6 +10,8 @@ public interface MicroReportVersionService {
 
     MicroReportVersion ensureFinalBaseline(MicroCase microCase);
 
+    MicroReportVersion recordPreliminary(String caseId, MicroReportProjectionResult projection, String performedBy);
+
     MicroReportVersion recordInitialFinal(String caseId, MicroReportProjectionResult projection, String performedBy);
 
     MicroReportVersion recordAmendedFinal(MicroCaseAmendment amendment, MicroReportProjectionResult projection,

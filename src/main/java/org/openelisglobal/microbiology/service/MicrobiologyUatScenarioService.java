@@ -106,6 +106,17 @@ public class MicrobiologyUatScenarioService {
     private org.openelisglobal.organization.service.OrganizationService organizations;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.referral.service.ReferralReasonService referralReasons;
+    private static final String AST_REPORTING_SCENARIO = "AST_REPORTING";
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCultureService cultures;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroPatientReportService patientReports;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseOrderDetailService orderDetails;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.program.service.ProgramService programs;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.program.service.ProgramSampleService programSamples;
     private static final String ISOLATE_WORKSPACE_SCENARIO = "ISOLATE_WORKSPACE";
     private static final String RECEIVED_ISOLATE_SCENARIO = "RECEIVED_ISOLATE";
     private static final String INITIAL_TESTING_SCENARIO = "INITIAL_TESTING";
@@ -227,7 +238,7 @@ public class MicrobiologyUatScenarioService {
     public MicrobiologyUatScenarioForm provision(MicrobiologyUatScenarioRequestForm request, String performedBy) {
         String scenario = normalizeScenario(request == null ? null : request.scenario);
         boolean isolateWorkspace = ISOLATE_WORKSPACE_SCENARIO.equals(scenario)
-                || RECEIVED_ISOLATE_SCENARIO.equals(scenario);
+                || RECEIVED_ISOLATE_SCENARIO.equals(scenario) || AST_REPORTING_SCENARIO.equals(scenario);
         Analyzer analyzer = ANALYZER_REVIEW_SCENARIO.equals(scenario)
                 ? requireConfiguredAnalyzer(request == null ? null : request.analyzerInstrumentId)
                 : null;
@@ -250,7 +261,9 @@ public class MicrobiologyUatScenarioService {
         }
         Patient patient = getOrCreateUatPatient(suffix, performedBy);
         ensurePatientLink(sample, patient, performedBy);
-        AstReferenceData astReferenceData = createAstReferenceData(performedBy);
+        AstReferenceData astReferenceData = AST_REPORTING_SCENARIO.equals(scenario)
+                ? createReportingReferenceData(suffix, performedBy)
+                : createAstReferenceData(performedBy);
         ReferenceAdminData referenceAdminData = isReferenceScenario(scenario)
                 ? createReferenceAdminData(astReferenceData, performedBy)
                 : null;
@@ -409,6 +422,13 @@ public class MicrobiologyUatScenarioService {
             astScenarioData = ensureReviewedAstScenario(microCase, astReferenceData, performedBy);
         } else if (ANALYZER_REVIEW_SCENARIO.equals(scenario)) {
             astScenarioData = ensureAnalyzerReviewScenario(microCase, astReferenceData, analyzer, suffix, performedBy);
+        }
+
+        if (AST_REPORTING_SCENARIO.equals(scenario)) {
+            provisionReportingContext(microCase, sample, sampleItem, analysis, cultureMedium, astReferenceData, suffix,
+                    performedBy);
+            astScenarioData = new AstScenarioData(
+                    ensureConfirmedAstIsolate(microCase, astReferenceData, performedBy).getId(), null, null, null);
         }
 
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
@@ -820,6 +840,80 @@ public class MicrobiologyUatScenarioService {
         }
     }
 
+    private AstReferenceData createReportingReferenceData(String suffix, String actor) {
+        var first = configurationService.getOrCreateAntibiotic("M6 agent A " + suffix, "A" + suffix.substring(0, 7),
+                "Synthetic fixture");
+        var second = configurationService.getOrCreateAntibiotic("M6 agent B " + suffix, "B" + suffix.substring(0, 7),
+                "Synthetic fixture");
+        var panel = configurationService.getOrCreateAstPanel("M6 panel " + suffix, "M6 " + suffix);
+        configurationService.getOrCreatePanelAntibiotic(panel.getId(), first.getId(), 1);
+        configurationService.getOrCreatePanelAntibiotic(panel.getId(), second.getId(), 2);
+        panel.setPublishedAt(MicroCaseServiceImpl.now());
+        panel.setPublishedBy(actor);
+        entityManager.merge(panel);
+        var organism = configurationService.getOrCreateOrganism("M6 organism " + suffix, "O" + suffix.substring(0, 7),
+                panel.getId());
+        organism.setOrganismGroup(panel.getOrganismGroup());
+        entityManager.merge(organism);
+        var standard = configurationService.getOrCreateBreakpointStandard("CLSI", "M6-" + suffix,
+                new Date(System.currentTimeMillis()));
+        for (var antibiotic : List.of(first, second)) {
+            var rule = micBreakpointRule(standard.getId(), antibiotic.getId());
+            rule.setOrganismId(organism.getId());
+            configurationService.getOrCreateBreakpointRule(rule);
+        }
+        breakpointAdminService.activate(standard.getId(), new Date(System.currentTimeMillis()), actor);
+        return new AstReferenceData(organism, first, panel, standard);
+    }
+
+    private void provisionReportingContext(MicroCase c, Sample sample, SampleItem source, Analysis analysis,
+            InventoryItem medium, AstReferenceData reference, String suffix, String actor) {
+        String programName = "M6 " + suffix;
+        if (programSamples.getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName) == null) {
+            var program = new org.openelisglobal.program.valueholder.Program();
+            program.setCode("M6_" + suffix);
+            program.setProgramName(programName);
+            program.setManuallyChanged(true);
+            program.setShowOnMicroCase(true);
+            program.setSysUserId(actor);
+            programs.insert(program);
+            var association = new org.openelisglobal.program.valueholder.ProgramSample();
+            association.setProgram(program);
+            association.setSample(sample);
+            association.setSysUserId(actor);
+            programSamples.insert(association);
+        }
+        if (orderDetails.getOrderDetail(c.getId()) == null) {
+            var origin = referenceAdminService.getPatientOrigins(new MicroReferenceAdminQueryForm()).rows.stream()
+                    .filter(candidate -> candidate.active).findFirst()
+                    .orElseThrow(() -> new IllegalStateException("An active patient origin is required"));
+            var detail = new org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm();
+            detail.patientOrigin = origin.code;
+            detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
+            detail.clinicalHistory = "Synthetic susceptibility workflow";
+            orderDetails.saveOrderDetail(c.getId(), detail, actor);
+        }
+        if (cultures.getRows(c.getId()).isEmpty()) {
+            var options = cultures.getOptions(c.getId());
+            var media = options.media.stream().filter(m -> m.id().equals(medium.getId())).findFirst().orElseThrow();
+            var inoculation = new org.openelisglobal.microbiology.form.MicroCultureRequestForm();
+            inoculation.sourceSampleItemId = source.getId();
+            inoculation.containerIdentifier = "M6-CULTURE-" + suffix;
+            inoculation.mediumItemId = medium.getId();
+            inoculation.lotId = media.lots().getFirst().id();
+            inoculation.atmosphereId = options.atmospheres.getFirst().getId();
+            inoculation.temperature = new BigDecimal("37");
+            inoculation.duration = new BigDecimal("48");
+            inoculation.durationUnit = "HOURS";
+            inoculation.inoculatedAt = MicroCaseServiceImpl.now();
+            var row = cultures.inoculate(c.getId(), inoculation, actor).getFirst();
+            var outcome = new org.openelisglobal.microbiology.form.MicroCultureRequestForm();
+            outcome.outcome = "GROWTH";
+            cultures.act(c.getId(), row.id, "outcome", outcome, actor);
+        }
+        patientReports.selectAnalysis(c.getId(), analysis.getId(), false, actor);
+    }
+
     private AstReferenceData createAstReferenceData(String performedBy) {
         MicroAntibiotic ciprofloxacin = configurationService.getOrCreateAntibiotic("Ciprofloxacin (UAT)", "CIPUAT",
                 "Fluoroquinolone");
@@ -829,8 +923,15 @@ public class MicrobiologyUatScenarioService {
                 "GRAM_NEGATIVE");
         configurationService.getOrCreatePanelAntibiotic(panel.getId(), ciprofloxacin.getId(), 1);
         configurationService.getOrCreatePanelAntibiotic(panel.getId(), gentamicin.getId(), 2);
+        if (panel.getPublishedAt() == null) {
+            panel.setPublishedAt(MicroCaseServiceImpl.now());
+            panel.setPublishedBy(performedBy);
+            entityManager.merge(panel);
+        }
         MicroOrganism organism = configurationService.getOrCreateOrganism("Escherichia coli (UAT)", "ECOUAT",
                 panel.getId());
+        organism.setOrganismGroup(panel.getOrganismGroup());
+        entityManager.merge(organism);
         configurationService.getOrCreateOrganism("Klebsiella pneumoniae (UAT)", "KPNUAT", panel.getId());
 
         MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("CLSI", "2026",
@@ -842,7 +943,18 @@ public class MicrobiologyUatScenarioService {
     }
 
     private ReferenceAdminData createReferenceAdminData(AstReferenceData astReferenceData, String performedBy) {
-        MicroAstPanelAdminForm currentPanel = currentPanel(astReferenceData.panel());
+        MicroAstPanel referencePanel = configurationService.getOrCreateAstPanel("Reference AST panel (UAT)",
+                "UAT_SYNTHETIC");
+        for (var ordered : astService.getPanelAntibiotics(astReferenceData.panel().getId())) {
+            configurationService.getOrCreatePanelAntibiotic(referencePanel.getId(), ordered.getAntibioticId(),
+                    ordered.getDisplayOrder());
+        }
+        if (referencePanel.getPublishedAt() == null) {
+            referencePanel.setPublishedAt(MicroCaseServiceImpl.now());
+            referencePanel.setPublishedBy(performedBy);
+            entityManager.merge(referencePanel);
+        }
+        MicroAstPanelAdminForm currentPanel = currentPanel(referencePanel);
         MicroOrganismAdminForm organism = getOrCreateReferenceOrganism(currentPanel.id, performedBy);
         MicroAntibioticAdminForm antibiotic = getOrCreateReferenceAntibiotic(performedBy);
 
@@ -1281,9 +1393,9 @@ public class MicrobiologyUatScenarioService {
 
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
-        if (!ISOLATE_WORKSPACE_SCENARIO.equals(normalized) && !RECEIVED_ISOLATE_SCENARIO.equals(normalized)
-                && !CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized)
-                && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
+        if (!AST_REPORTING_SCENARIO.equals(normalized) && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized)
+                && !RECEIVED_ISOLATE_SCENARIO.equals(normalized) && !CULTURE_WORKSPACE_SCENARIO.equals(normalized)
+                && !"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
                 && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
                 && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {

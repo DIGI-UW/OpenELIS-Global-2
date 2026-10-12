@@ -18,6 +18,16 @@ import org.openelisglobal.result.valueholder.Result;
 
 public final class ClinicalPatientData {
 
+    private java.util.List<org.openelisglobal.microbiology.form.MicroPatientReportRow> microbiologyRows;
+
+    public java.util.List<org.openelisglobal.microbiology.form.MicroPatientReportRow> getMicrobiologyRows() {
+        return microbiologyRows;
+    }
+
+    public void setMicrobiologyRows(java.util.List<org.openelisglobal.microbiology.form.MicroPatientReportRow> rows) {
+        microbiologyRows = rows;
+    }
+
     private String patientName = "";
     private String nationalId;
     private String gender;

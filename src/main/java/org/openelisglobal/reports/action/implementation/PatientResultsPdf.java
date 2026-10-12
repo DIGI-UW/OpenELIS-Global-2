@@ -88,7 +88,8 @@ final class PatientResultsPdf {
             ClinicalPatientData previous = i == 0 ? null : items.get(i - 1);
             boolean newOrder = previous == null
                     || !Objects.equals(item.getAccessionNumber(), previous.getAccessionNumber());
-            boolean newSection = newOrder || !Objects.equals(item.getTestSection(), previous.getTestSection());
+            boolean newSection = newOrder || previous.getMicrobiologyRows() != null
+                    || !Objects.equals(item.getTestSection(), previous.getTestSection());
             if (newOrder) {
                 if (results != null) {
                     document.add(results);
@@ -96,6 +97,14 @@ final class PatientResultsPdf {
                 }
                 addOrderNotices(document, item);
                 addOrderDetails(document, settings, item);
+            }
+            if (item.getMicrobiologyRows() != null) {
+                if (results != null) {
+                    document.add(results);
+                    results = null;
+                }
+                addMicrobiology(document, item);
+                continue;
             }
             if (newSection) {
                 if (results != null) {
@@ -130,6 +139,32 @@ final class PatientResultsPdf {
             document.add(results);
         }
         addValidation(document, writer, settings);
+    }
+
+    private static void addMicrobiology(Document document, ClinicalPatientData item) {
+        PdfPTable table = new PdfPTable(new float[] { 150, 90, 100, 170 });
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(14);
+        PdfPCell identity = cell(item.getAccessionNumber() + " — " + item.getTestSection(), SECTION_FONT,
+                Element.ALIGN_LEFT);
+        identity.setColspan(4);
+        table.addCell(identity);
+        table.setHeaderRows(1);
+        for (var row : item.getMicrobiologyRows()) {
+            if (row.isGrid()) {
+                for (String value : new String[] { row.getAgent(), row.getRaw(), row.getInterpretation(),
+                        row.getStandard() })
+                    table.addCell(cell(value, TEXT_FONT, Element.ALIGN_LEFT));
+            } else {
+                PdfPCell content = cell(row.getHeading() == null ? row.getText() : row.getHeading(),
+                        row.getHeading() == null ? TEXT_FONT : SECTION_FONT, Element.ALIGN_LEFT);
+                content.setColspan(4);
+                if (row.getHeading() != null)
+                    content.setBackgroundColor(LABEL_BACKGROUND);
+                table.addCell(content);
+            }
+        }
+        document.add(table);
     }
 
     private static void addOrderNotices(Document document, ClinicalPatientData item) {

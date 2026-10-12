@@ -100,6 +100,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             var link = links.getByCaseAndAnalysis(caseId, a.getId());
             MicroCaseTestForm f = new MicroCaseTestForm();
             f.analysisId = a.getId();
+            f.reportable = !a.getTest().isInLabOnly() && !"N".equals(a.getIsReportable());
+            f.selectedForReport = f.reportable && MicroPatientReportService.selected(link);
             f.testId = a.getTest().getId();
             f.testName = a.getTest().getName();
             f.placement = link.getCultureId() != null ? "CULTURE"

@@ -100,6 +100,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         organism.setWhonetCode(code);
         organism.setOclCode(trimToNull(request.oclCode));
         organism.setOrganismGroup(request.organismGroup.trim());
+        organism.setSusceptibilityProtocol(
+                MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         organism.setGramStain(trimToNull(request.gramStain));
         organism.setInitialSignificance(request.initialSignificance.trim().toUpperCase(Locale.ROOT));
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
@@ -167,6 +169,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         antibiotic.setDisplayName(name);
         antibiotic.setWhonetCode(code);
         antibiotic.setAntibioticClass(antibioticClass);
+        antibiotic.setResistanceRole(MicroTbResistanceClassifier.Role.valueOf(request.resistanceRole).name());
         antibiotic.setRoute(route);
         antibiotic.setNotes(trimToNull(request.notes));
         antibiotic.setIsActive(request.active ? "Y" : "N");
@@ -300,6 +303,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         }
         panel.setName(requireText(request.name, "name"));
         panel.setOrganismGroup(trimToNull(request.organismGroup));
+        panel.setSusceptibilityProtocol(
+                MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         panel.setSpecimenTypeId(trimToNull(request.specimenTypeId));
         panel.setIsActive(request.active ? "Y" : "N");
         panel.setIsCurrent("Y");
@@ -353,6 +358,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.whonetCode = organism.getWhonetCode();
         form.oclCode = organism.getOclCode();
         form.organismGroup = organism.getOrganismGroup();
+        form.susceptibilityProtocol = organism.getSusceptibilityProtocol();
         form.gramStain = organism.getGramStain();
         form.initialSignificance = organism.getInitialSignificance();
         form.defaultAstPanelId = organism.getDefaultAstPanelId();
@@ -373,6 +379,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.displayName = antibiotic.getDisplayName();
         form.whonetCode = antibiotic.getWhonetCode();
         form.antibioticClass = antibiotic.getAntibioticClass();
+        form.resistanceRole = antibiotic.getResistanceRole();
         form.route = antibiotic.getRoute();
         form.notes = antibiotic.getNotes();
         form.active = "Y".equals(antibiotic.getIsActive());
@@ -389,6 +396,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.supersedesPanelId = panel.getSupersedesPanelId();
         form.name = panel.getName();
         form.organismGroup = panel.getOrganismGroup();
+        form.susceptibilityProtocol = panel.getSusceptibilityProtocol();
         form.specimenTypeId = panel.getSpecimenTypeId();
         form.active = "Y".equals(panel.getIsActive());
         form.current = "Y".equals(panel.getIsCurrent());

@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroReportReleaseServiceImpl implements MicroReportReleaseService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseAuthorizationService authorization;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroCaseReadinessService readinessService;
@@ -41,7 +43,10 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releasePreliminary(String caseId, String performedBy) {
+        authorization.requireWrite(caseId, performedBy, org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = getCase(caseId);
+        if ("AMENDMENT_IN_PROGRESS".equals(microCase.getFinalReleaseState()))
+            throw new MicroAmendmentConflictException("AMENDED_RELEASE_REQUIRED");
         if (MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())
                 || MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())) {
             throw new IllegalStateException("Preliminary release is blocked: CASE_FINAL_RELEASED");
@@ -50,6 +55,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name());
         microCase.setStage(MicroCaseStage.PRELIM_RELEASED.name());
         MicroCase updated = caseDAO.update(microCase);
+        reportVersionService.recordPreliminary(caseId, projection, performedBy);
         recordActivity(caseId, MicroCaseActivityType.PRELIMINARY_REPORT_RELEASED, performedBy,
                 projection.isMappingConfigured() ? "Preliminary report released and projected"
                         : "Preliminary report released; standard report mapping is not configured");
@@ -59,6 +65,10 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseFinal(String caseId, String performedBy) {
+        var current = authorization.requireWrite(caseId, performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        if ("AMENDMENT_IN_PROGRESS".equals(current.getFinalReleaseState()))
+            throw new MicroAmendmentConflictException("AMENDED_RELEASE_REQUIRED");
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Final release is blocked: " + String.join(", ", readiness.blockers));
@@ -81,6 +91,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseAmended(String caseId, String performedBy) {
+        authorization.requireWrite(caseId, performedBy, org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Amended release is blocked: " + String.join(", ", readiness.blockers));
