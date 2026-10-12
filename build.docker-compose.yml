@@ -95,7 +95,10 @@ services:
       timeout: 10s
       interval: 30s
       retries: 3
-      start_period: 2m
+      # A fresh database can still be migrating after two minutes, especially
+      # while the local CI lanes build and test concurrently. Probe immediately,
+      # but let the existing bounded readiness wait cover that cold start.
+      start_period: 10m
 
   fhir.openelis.org:
     container_name: external-fhir-api

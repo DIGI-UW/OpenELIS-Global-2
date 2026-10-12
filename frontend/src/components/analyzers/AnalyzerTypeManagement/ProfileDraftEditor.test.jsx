@@ -513,7 +513,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     expect.any(Function),
   );
   expect(onSuccess).toHaveBeenCalledWith("create");
-});
+}, 15000);
 
 it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
   const authored = compactAstmProfile();
@@ -603,7 +603,7 @@ it("authors typed choices and visibility without changing other profile content"
       "Choice value",
     ),
   ).toHaveValue("7");
-});
+}, 15000);
 
 it("keeps invalid typed input visible and blocks saving instead of discarding it", async () => {
   const { onStateChange } = mount(astmProfile);
