@@ -19,5 +19,7 @@ public interface MicroReportVersionService {
 
     List<MicroReportVersion> getVersions(String caseId);
 
+    List<org.openelisglobal.microbiology.form.MicroReportVersionForm> getVersionForms(String caseId);
+
     List<MicroReportVersionSource> getSourcesForCase(String caseId);
 }

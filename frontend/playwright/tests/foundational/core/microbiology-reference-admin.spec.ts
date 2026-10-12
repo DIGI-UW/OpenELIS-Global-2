@@ -245,7 +245,7 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
   test("activates a loaded standard without changing reviewed AST history", async ({
     page,
   }) => {
-    await seedMicrobiologyReferenceAdmin(page);
+    const seeded = await seedMicrobiologyReferenceAdmin(page);
     const reviewed = await seedReviewedMicrobiologyCase(page);
 
     await page.goto(

@@ -54,7 +54,9 @@ result components are excluded.
 
 Final release locks case mutations until an official amendment is opened.
 Amendment cancellation restores the issued reading choices; already issued
-versions retain their original content.
+versions retain their original content. The bench preview and amendment history
+render the same structured snapshots as the patient report; historical text-only
+versions remain readable.
 
 ## Verification
 
@@ -68,6 +70,12 @@ output. The browser journey uses an application-owned synthetic scenario and
 exercises entry, validation, repeat selection, successive partial versions,
 final locking, and the Patient Report entry point, parsing the returned PDF to
 assert selected readings, section order, and exclusion of internal notes.
+Separate browser regressions cover a final negative culture report and an
+amended report, including their actual printed PDFs. Reporting scenarios
+provision their required clinical context through application services, and
+database tests supply their own culture vocabulary. The demonstration and
+foundational susceptibility test share the current workspace journey and its
+PDF assertions.
 
 Full local CI, GitHub checkpoints, and browser acceptance must be recorded for
 the submitted commit before this milestone is declared complete.

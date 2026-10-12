@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page, TestInfo } from "@playwright/test";
 import { seedFinalizedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
+import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
@@ -26,18 +27,14 @@ test.describe("Microbiology final-report amendments", () => {
     test.setTimeout(120_000);
     const seeded = await seedFinalizedMicrobiologyCase(page);
 
-    await test.step("Verify the original final result in Patient History", async () => {
-      await page.goto(`/PatientResults/${seeded.patientId}`, {
-        waitUntil: "domcontentloaded",
+    await test.step("Verify the original issued patient report", async () => {
+      const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
+      expect(text).toContain("ISO-1: Escherichia coli");
+      expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      await testInfo.attach("original-patient-report.pdf", {
+        body: pdf,
+        contentType: "application/pdf",
       });
-      await expect(
-        page.getByRole("heading", { name: "Patient History" }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(
-        page.getByRole("row", {
-          name: /UAT microbiology culture.*ISO-1: Escherichia coli/,
-        }),
-      ).toContainText("Ciprofloxacin (UAT) S");
     });
 
     await test.step("Open an amendment from its canonical URL", async () => {
@@ -133,20 +130,14 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Verify both patient results and the restored mutation lock", async () => {
-      await page.goto(`/PatientResults/${seeded.patientId}`, {
-        waitUntil: "domcontentloaded",
+      const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
+      expect(text).toContain("ISO-1: Klebsiella pneumoniae (UAT)");
+      expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      expect(text).not.toContain("Escherichia coli");
+      await testInfo.attach("amended-patient-report.pdf", {
+        body: pdf,
+        contentType: "application/pdf",
       });
-      await expect(
-        page.getByRole("row", {
-          name: /UAT microbiology culture.*ISO-1: Escherichia coli/,
-        }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(
-        page.getByRole("row", {
-          name: /UAT microbiology culture.*ISO-1: Klebsiella pneumoniae \(UAT\)/,
-        }),
-      ).toContainText("Ciprofloxacin (UAT) S");
-      await attachScreenshot(page, testInfo, "original-and-amended-results");
 
       await page.goto(`/Microbiology/cases/${seeded.caseId}?section=isolates`, {
         waitUntil: "domcontentloaded",
