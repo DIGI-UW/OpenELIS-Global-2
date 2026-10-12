@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="dashboards/004-surveillance-resistance-metrics.xml">
+
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-resistance-metric-table">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="surveillance_resistance_metric" schemaName="clinlims"/></not>
+        </preConditions>
+        <createSequence sequenceName="surveillance_resistance_metric_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="surveillance_resistance_metric">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_surveillance_resistance_metric"/>
+            </column>
+            <column name="program_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_srm_program"
+                    referencedTableSchemaName="clinlims" referencedTableName="surveillance_program"
+                    referencedColumnNames="id"/>
+            </column>
+            <column name="metric_key" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metric_label" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- Comma-separated WHONET codes; an organism also matches on organism_group -->
+            <column name="organism_codes" type="VARCHAR(512)"/>
+            <column name="organism_group" type="VARCHAR(100)"/>
+            <column name="antibiotic_codes" type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="surveillance_resistance_metric"
+            columnNames="program_id, metric_key" constraintName="uq_srm_program_metric"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="surveillance_resistance_metric"/>
+            <dropSequence schemaName="clinlims" sequenceName="surveillance_resistance_metric_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-resistance-metric-history">
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, lastupdated)
+            SELECT nextval('clinlims.reference_tables_seq'), 'surveillance_resistance_metric', 'Y', now()
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.reference_tables
+                              WHERE LOWER(name) = 'surveillance_resistance_metric');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.reference_tables WHERE LOWER(name) = 'surveillance_resistance_metric';</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- The WHO GLASS priority resistance indicators -->
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-resistance-metric-seed">
+        <sql>
+            INSERT INTO clinlims.surveillance_resistance_metric
+                (id, program_id, metric_key, metric_label, organism_codes, organism_group, antibiotic_codes,
+                 display_order)
+            SELECT nextval('clinlims.surveillance_resistance_metric_seq'), p.id, v.metric_key, v.metric_label,
+                   v.organism_codes, v.organism_group, v.antibiotic_codes, v.display_order
+            FROM (VALUES
+                ('CRE_ENTEROBACTERALES', 'Carbapenem-resistant Enterobacterales', 'eco,kpn', 'Enterobacterales',
+                 'MEM,IPM,ETP', 1),
+                ('MRSA', 'MRSA', 'sau', NULL, 'OXA,FOX', 2),
+                ('ECOLI_3GC_R', '3rd-gen. cephalosporin-resistant E. coli', 'eco', NULL, 'CRO,CTX,CAZ', 3)
+            ) AS v(metric_key, metric_label, organism_codes, organism_group, antibiotic_codes, display_order)
+            JOIN clinlims.surveillance_program p ON p.code = 'AMR'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.surveillance_resistance_metric m
+                              WHERE m.program_id = p.id AND m.metric_key = v.metric_key);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.surveillance_resistance_metric
+                WHERE metric_key IN ('CRE_ENTEROBACTERALES', 'MRSA', 'ECOLI_3GC_R');
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

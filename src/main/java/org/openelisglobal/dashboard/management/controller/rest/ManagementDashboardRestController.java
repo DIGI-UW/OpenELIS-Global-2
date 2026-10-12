@@ -18,6 +18,8 @@ import org.openelisglobal.dashboard.management.service.ManagementDashboardServic
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
 import org.openelisglobal.dashboard.management.stock.StockResponse;
 import org.openelisglobal.dashboard.management.stock.StockService;
+import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse;
+import org.openelisglobal.dashboard.management.surveillance.SurveillanceService;
 import org.openelisglobal.dashboard.management.workload.WorkloadResponse;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +57,9 @@ public class ManagementDashboardRestController extends BaseRestController {
     @Autowired
     private QualityRollupService qualityRollupService;
 
+    @Autowired
+    private SurveillanceService surveillanceService;
+
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ManagementSummary> getSummary(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, managementDashboardService::getSummary);
@@ -88,6 +93,11 @@ public class ManagementDashboardRestController extends BaseRestController {
     @GetMapping(value = "/quality", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<QualityRollup> getQuality(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, qualityRollupService::getRollup);
+    }
+
+    @GetMapping(value = "/surveillance", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<SurveillanceResponse> getSurveillance(@RequestParam(defaultValue = "30d") String scope) {
+        return respond(scope, surveillanceService::getSurveillance);
     }
 
     private static <T> ResponseEntity<T> respond(String scope, Function<ScopeRange, T> read) {

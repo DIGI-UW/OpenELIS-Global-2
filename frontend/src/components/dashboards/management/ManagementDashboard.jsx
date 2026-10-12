@@ -16,6 +16,7 @@ import WorkloadSection from "./WorkloadSection";
 import EquipmentSection from "./EquipmentSection";
 import AntibiogramSection from "./AntibiogramSection";
 import StockSection from "./StockSection";
+import SurveillanceSection from "./SurveillanceSection";
 import "./ManagementDashboard.css";
 
 export const SCOPES = [
@@ -34,6 +35,7 @@ const SECTIONS = [
   { id: "antibiogram", Component: AntibiogramSection },
   { id: "stock", Component: StockSection },
   { id: "quality", Component: QualitySection },
+  { id: "surveillance", Component: SurveillanceSection },
 ];
 
 const REFRESH_COOLDOWN_MS = 15000;

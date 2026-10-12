@@ -20,6 +20,8 @@ import org.openelisglobal.dashboard.management.quality.QualityRollupService;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
 import org.openelisglobal.dashboard.management.stock.StockService;
+import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse;
+import org.openelisglobal.dashboard.management.surveillance.SurveillanceService;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
@@ -122,6 +124,12 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
     }
 
     @Test
+    public void surveillanceRefusesABenchRoleWithoutTheGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/surveillance").with(user("bench").roles("RESULTS", "ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     public void qualityRejectsAnUnknownScope() throws Exception {
         mockMvc.perform(get("/rest/dashboards/management/quality?scope=decade")
                 .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
@@ -133,6 +141,13 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
         mockMvc.perform(get("/rest/dashboards/management/quality?scope=90d")
                 .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.components").isArray());
+    }
+
+    @Test
+    public void surveillanceWithAnUnknownScopeIsABadRequest() throws Exception {
+        mockMvc.perform(
+                get("/rest/dashboards/management/surveillance?scope=decade").with(user("admin").roles("GLOBAL_ADMIN")))
+                .andExpect(status().isBadRequest());
     }
 
     @Configuration
@@ -186,6 +201,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
         @Bean
         QualityRollupService qualityRollupService() {
             return scope -> new QualityRollup(null, null, List.of());
+        }
+
+        @Bean
+        SurveillanceService surveillanceService() {
+            return scope -> new SurveillanceResponse(List.of());
         }
 
         @Bean

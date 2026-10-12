@@ -1,0 +1,60 @@
+.mgmt-surveillance {
+  margin-bottom: 1.5rem;
+}
+
+.mgmt-surveillance__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-surveillance__meta {
+  font-size: 0.875rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.mgmt-surveillance__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mgmt-surveillance__metric {
+  margin-top: 0.75rem;
+}
+
+.mgmt-surveillance__metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mgmt-surveillance__value {
+  font-weight: 600;
+}
+
+.mgmt-surveillance__bar {
+  height: 0.25rem;
+  margin: 0.25rem 0;
+  background: var(--cds-layer-accent, #e0e0e0);
+}
+
+.mgmt-surveillance__bar > div {
+  height: 100%;
+  background: var(--cds-interactive, #0f62fe);
+}
+
+@media (max-width: 66rem) {
+  .mgmt-surveillance__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 42rem) {
+  .mgmt-surveillance__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

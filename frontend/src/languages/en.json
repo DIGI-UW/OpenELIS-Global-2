@@ -13637,5 +13637,18 @@
   "label.mgmt.quality.editWeights": "Edit weights ↗",
   "label.mgmt.quality.qiDashboard": "QI Dashboard ↗",
   "label.mgmt.quality.weight": "weight {0}",
-  "label.mgmt.quality.noData": "No data in this period for {0}; the other weights are rescaled to make up the score."
+  "label.mgmt.quality.noData": "No data in this period for {0}; the other weights are rescaled to make up the score.",
+  "label.mgmt.surveillance.title": "Disease surveillance",
+  "label.mgmt.surveillance.subtitle": "Positivity and resistance rates over the current scope ({0})",
+  "label.mgmt.surveillance.tb": "Tuberculosis",
+  "label.mgmt.surveillance.hiv": "HIV",
+  "label.mgmt.surveillance.malaria": "Malaria",
+  "label.mgmt.surveillance.amr": "AMR",
+  "label.mgmt.surveillance.testCount": "{0} tests · {1}",
+  "label.mgmt.surveillance.ofTested": "{0} of {1} tested",
+  "label.mgmt.surveillance.trendUp": "{0} ↑ {1}pp vs. prior period",
+  "label.mgmt.surveillance.trendDown": "{0} ↓ {1}pp vs. prior period",
+  "label.mgmt.surveillance.trendStable": "{0} stable vs. prior period",
+  "label.mgmt.surveillance.openDetail": "Open detail",
+  "label.mgmt.surveillance.setup": "Set these WHONET codes or organism groups in the microbiology reference data: {0}"
 }

@@ -10,3 +10,4 @@ export const stockUrl = () => `${BASE}/stock`;
 export const qualityWeightsUrl = () => `${BASE}/quality-weights`;
 
 export const qualityUrl = (scope) => `${BASE}/quality?scope=${scope}`;
+export const surveillanceUrl = (scope) => `${BASE}/surveillance?scope=${scope}`;
