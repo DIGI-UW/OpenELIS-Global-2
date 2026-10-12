@@ -1,0 +1,26 @@
+.mgmt-weights {
+  margin-top: 2rem;
+}
+
+.mgmt-weights__help,
+.mgmt-weights__total {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.mgmt-weights__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+}
+
+.mgmt-weights__total--invalid {
+  color: var(--cds-text-error, #da1e28);
+}
+
+.mgmt-weights__scaled {
+  margin-top: 1rem;
+  list-style: disc;
+  padding-left: 1.25rem;
+}

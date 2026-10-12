@@ -7,3 +7,4 @@ export const workloadUrl = (scope) => `${BASE}/workload?scope=${scope}`;
 export const equipmentUrl = (scope) => `${BASE}/equipment?scope=${scope}`;
 export const antibiogramUrl = (scope) => `${BASE}/antibiogram?scope=${scope}`;
 export const stockUrl = () => `${BASE}/stock`;
+export const qualityWeightsUrl = () => `${BASE}/quality-weights`;

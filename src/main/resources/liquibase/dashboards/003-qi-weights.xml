@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelisglobal" id="OGC-897-qi-weights-table">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="qi_weights" schemaName="clinlims"/></not>
+        </preConditions>
+        <comment>Single-row weights of the composite quality score</comment>
+        <createSequence sequenceName="qi_weights_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="qi_weights">
+            <!-- numeric PK: history.reference_id is numeric -->
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_qi_weights"/>
+            </column>
+            <column name="qc_weight" type="NUMERIC(3,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eqa_weight" type="NUMERIC(3,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nce_inverse_weight" type="NUMERIC(3,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amendment_inverse_weight" type="NUMERIC(3,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="qi_weights"/>
+            <dropSequence schemaName="clinlims" sequenceName="qi_weights_id_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-897-qi-weights-history">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.reference_tables WHERE LOWER(name) = 'qi_weights'</sqlCheck>
+        </preConditions>
+        <comment>Register qi_weights so its edits are kept in the audit trail</comment>
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="qi_weights"/>
+            <column name="keep_history" value="Y"/>
+            <column name="lastupdated" valueDate="now()"/>
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>LOWER(name) = 'qi_weights'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- last_updated is the @Version column; a null one makes the first update stale. -->
+    <changeSet author="openelisglobal" id="OGC-897-qi-weights-seed">
+        <comment>The FRS default weights: QC 0.30, EQA 0.25, NCE inverse 0.25, amendment inverse 0.20</comment>
+        <sql>
+            INSERT INTO clinlims.qi_weights (id, qc_weight, eqa_weight, nce_inverse_weight,
+                                             amendment_inverse_weight, lastupdated, last_updated)
+            SELECT nextval('clinlims.qi_weights_id_seq'), 0.30, 0.25, 0.25, 0.20, now(), now()
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.qi_weights);
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.qi_weights;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

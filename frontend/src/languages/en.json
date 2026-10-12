@@ -13605,5 +13605,19 @@
   "label.mgmt.stock.orderBy": "order by {0}",
   "label.mgmt.stock.noneCritical": "No reagent has a reorder threshold yet",
   "label.mgmt.stock.noneExpiring": "Nothing expires in the next 30 days",
-  "label.mgmt.stock.noneReorder": "No item needs reordering"
+  "label.mgmt.stock.noneReorder": "No item needs reordering",
+  "label.mgmt.weights.title": "Composite quality score weights",
+  "label.mgmt.weights.help": "How much each component counts toward the composite quality score on the Management Overview. The weights must add up to 1.00.",
+  "label.mgmt.weights.qc": "QC pass rate",
+  "label.mgmt.weights.eqa": "EQA performance",
+  "label.mgmt.weights.nceInverse": "NCE inverse",
+  "label.mgmt.weights.amendmentInverse": "Amendment inverse",
+  "label.mgmt.weights.total": "Total {0}",
+  "label.mgmt.weights.saved": "Weights saved",
+  "label.mgmt.weights.saveFailed": "The weights could not be saved",
+  "label.mgmt.weights.offTotal": "Total {0}. Saving scales the weights so they add up to 1.00.",
+  "label.mgmt.weights.invalid": "Enter every weight as a number from 0 to 1, with at least one above 0.",
+  "label.mgmt.weights.scaleTitle": "Scale the weights to add up to 1.00?",
+  "label.mgmt.weights.scaleBody": "The weights you entered add up to {0}. They will be saved as:",
+  "label.mgmt.weights.scaleConfirm": "Save scaled weights"
 }
