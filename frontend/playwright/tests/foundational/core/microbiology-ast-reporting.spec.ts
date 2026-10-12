@@ -149,8 +149,8 @@ test("selects one repeated agent, issues immutable partial versions, and locks t
     .locator(`[data-cy="patient-result-row-${seeded.patientId}"]`)
     .locator("label")
     .click();
-  await expect(page.getByTestId("selected-patient")).not.toContainText(
-    "None selected",
+  await expect(page.getByTestId("selected-patient")).toContainText(
+    "UAT Microbiology",
   );
   let pdf: Buffer | undefined;
   await page.context().route("**/ReportPrint?**", async (route) => {
