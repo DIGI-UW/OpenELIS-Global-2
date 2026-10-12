@@ -66,6 +66,7 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        fixtures.ensureCultureAtmosphere();
         executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/role.xml");
         em.clear();

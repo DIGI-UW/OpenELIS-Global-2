@@ -121,11 +121,37 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        fixtures.ensureCultureAtmosphere();
         fixtures.ensureSampleEnteredStatus();
         fixtures.ensureAnalysisNotStartedStatus();
         fixtures.ensureAnalysisFinalizedStatus();
         methodId = fixtures.createMethodId();
         referenceData = fixtures.createReferenceData(methodId);
+    }
+
+    @Test
+    public void reviewedScenarioCanReleaseWithoutBypassingFinalRequirements() {
+        String actor = fixtures.defaultUserId();
+        var scenario = uatScenarioService.provision(scenarioRequest("AST_REVIEWED"), actor);
+        var corrected = referenceService.getActiveOrganisms().stream().filter(o -> "KPNUAT".equals(o.getWhonetCode()))
+                .findFirst().orElseThrow();
+        var panel = referenceService.getActiveAstPanels(null).stream()
+                .filter(p -> p.getId().equals(scenario.astPanelId)).findFirst().orElseThrow();
+        org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService.requireCompatible(corrected, panel);
+        var released = reportReleaseService.releaseFinal(scenario.caseId, actor);
+        assertEquals("FINAL_RELEASED", released.getFinalReleaseState());
+        assertTrue(resultService.getResultsByAnalysis(analysisService.get(scenario.analysisId)).isEmpty());
+    }
+
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService orderDetails;
+
+    @Test
+    public void exportScenarioPreservesUnclassifiedCulturePurpose() {
+        var scenario = uatScenarioService.provision(scenarioRequest("M4"), fixtures.defaultUserId());
+        var detail = orderDetails.getOrderDetail(scenario.caseId);
+        assertNotNull(detail.getPatientOrigin());
+        assertNull(detail.getCulturePurpose());
     }
 
     @Test

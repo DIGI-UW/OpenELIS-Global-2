@@ -107,6 +107,7 @@ public class MicrobiologyUatScenarioService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.referral.service.ReferralReasonService referralReasons;
     private static final String AST_REPORTING_SCENARIO = "AST_REPORTING";
+    private static final String NO_GROWTH_REPORTING_SCENARIO = "NO_GROWTH_REPORTING";
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCultureService cultures;
     @org.springframework.beans.factory.annotation.Autowired
@@ -237,6 +238,8 @@ public class MicrobiologyUatScenarioService {
     @Transactional
     public MicrobiologyUatScenarioForm provision(MicrobiologyUatScenarioRequestForm request, String performedBy) {
         String scenario = normalizeScenario(request == null ? null : request.scenario);
+        boolean cultureWorkspace = CULTURE_WORKSPACE_SCENARIO.equals(scenario)
+                || NO_GROWTH_REPORTING_SCENARIO.equals(scenario);
         boolean isolateWorkspace = ISOLATE_WORKSPACE_SCENARIO.equals(scenario)
                 || RECEIVED_ISOLATE_SCENARIO.equals(scenario) || AST_REPORTING_SCENARIO.equals(scenario);
         Analyzer analyzer = ANALYZER_REVIEW_SCENARIO.equals(scenario)
@@ -275,7 +278,7 @@ public class MicrobiologyUatScenarioService {
 
         if (WHONET_EXPORT_SCENARIO.equals(scenario)) {
             ensureSampleType(sampleItem, getOrCreateWhonetPendingSampleType(suffix, performedBy), performedBy);
-        } else if ((CULTURE_WORKSPACE_SCENARIO.equals(scenario) || isolateWorkspace)) {
+        } else if ((cultureWorkspace || isolateWorkspace)) {
             ensureSampleType(sampleItem, getOrCreateUatSampleType("UAT culture specimen " + suffix,
                     "T" + suffix.substring(0, 9), performedBy), performedBy);
         } else {
@@ -295,7 +298,7 @@ public class MicrobiologyUatScenarioService {
             ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), followUp, performedBy);
         }
         InventoryItem cultureMedium = null;
-        if ((CULTURE_WORKSPACE_SCENARIO.equals(scenario) || isolateWorkspace)) {
+        if ((cultureWorkspace || isolateWorkspace)) {
             test = getOrCreateUatTest("UAT culture " + suffix, true, method, performedBy);
             var unit = testSectionService.getTestSectionByName("M4 " + suffix);
             if (unit == null)
@@ -425,10 +428,17 @@ public class MicrobiologyUatScenarioService {
         }
 
         if (AST_REPORTING_SCENARIO.equals(scenario)) {
-            provisionReportingContext(microCase, sample, sampleItem, analysis, cultureMedium, astReferenceData, suffix,
-                    performedBy);
+            provisionReportingContext(microCase, sample, sampleItem, analysis, cultureMedium, suffix, performedBy, true,
+                    "CLINICAL_DIAGNOSTIC");
             astScenarioData = new AstScenarioData(
                     ensureConfirmedAstIsolate(microCase, astReferenceData, performedBy).getId(), null, null, null);
+        }
+
+        if (REVIEWED_AST_SCENARIO.equals(scenario) || WHONET_EXPORT_SCENARIO.equals(scenario)
+                || WHONET_FILTER_SCENARIO.equals(scenario) || NO_GROWTH_REPORTING_SCENARIO.equals(scenario)) {
+            provisionReportingContext(microCase, sample, sampleItem, analysis, cultureMedium, suffix, performedBy,
+                    !NO_GROWTH_REPORTING_SCENARIO.equals(scenario),
+                    WHONET_EXPORT_SCENARIO.equals(scenario) ? null : "CLINICAL_DIAGNOSTIC");
         }
 
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
@@ -495,6 +505,8 @@ public class MicrobiologyUatScenarioService {
             }
             run = astService.reviewRun(run.getId(), performedBy);
         }
+        if (!"FINAL_RELEASED".equals(microCase.getFinalReleaseState()))
+            astService.selectReportableRun(run.getId(), performedBy);
         return new AstScenarioData(isolate.getId(), run.getId(), null, null);
     }
 
@@ -867,7 +879,9 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void provisionReportingContext(MicroCase c, Sample sample, SampleItem source, Analysis analysis,
-            InventoryItem medium, AstReferenceData reference, String suffix, String actor) {
+            InventoryItem medium, String suffix, String actor, boolean includeCulture, String culturePurpose) {
+        if ("FINAL_RELEASED".equals(c.getFinalReleaseState()))
+            return;
         String programName = "M6 " + suffix;
         if (programSamples.getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName) == null) {
             var program = new org.openelisglobal.program.valueholder.Program();
@@ -889,13 +903,17 @@ public class MicrobiologyUatScenarioService {
                     .orElseThrow(() -> new IllegalStateException("An active patient origin is required"));
             var detail = new org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm();
             detail.patientOrigin = origin.code;
-            detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
+            detail.culturePurpose = culturePurpose;
             detail.clinicalHistory = "Synthetic susceptibility workflow";
             orderDetails.saveOrderDetail(c.getId(), detail, actor);
         }
-        if (cultures.getRows(c.getId()).isEmpty()) {
+        if (includeCulture && cultures.getRows(c.getId()).isEmpty()) {
+            if (medium == null) {
+                medium = getOrCreateInventoryItem(UAT_MEDIA_NAME, ItemType.REAGENT, "plate", actor);
+            }
+            final Long mediumId = medium.getId();
             var options = cultures.getOptions(c.getId());
-            var media = options.media.stream().filter(m -> m.id().equals(medium.getId())).findFirst().orElseThrow();
+            var media = options.media.stream().filter(m -> m.id().equals(mediumId)).findFirst().orElseThrow();
             var inoculation = new org.openelisglobal.microbiology.form.MicroCultureRequestForm();
             inoculation.sourceSampleItemId = source.getId();
             inoculation.containerIdentifier = "M6-CULTURE-" + suffix;
@@ -932,7 +950,10 @@ public class MicrobiologyUatScenarioService {
                 panel.getId());
         organism.setOrganismGroup(panel.getOrganismGroup());
         entityManager.merge(organism);
-        configurationService.getOrCreateOrganism("Klebsiella pneumoniae (UAT)", "KPNUAT", panel.getId());
+        var correctedOrganism = configurationService.getOrCreateOrganism("Klebsiella pneumoniae (UAT)", "KPNUAT",
+                panel.getId());
+        correctedOrganism.setOrganismGroup(panel.getOrganismGroup());
+        entityManager.merge(correctedOrganism);
 
         MicroBreakpointStandard standard = configurationService.getOrCreateBreakpointStandard("CLSI", "2026",
                 new Date(System.currentTimeMillis()));
@@ -1393,9 +1414,10 @@ public class MicrobiologyUatScenarioService {
 
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
-        if (!AST_REPORTING_SCENARIO.equals(normalized) && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized)
-                && !RECEIVED_ISOLATE_SCENARIO.equals(normalized) && !CULTURE_WORKSPACE_SCENARIO.equals(normalized)
-                && !"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
+        if (!NO_GROWTH_REPORTING_SCENARIO.equals(normalized) && !AST_REPORTING_SCENARIO.equals(normalized)
+                && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized) && !RECEIVED_ISOLATE_SCENARIO.equals(normalized)
+                && !CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized)
+                && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
                 && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
                 && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {

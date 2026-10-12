@@ -96,6 +96,34 @@ public class MicrobiologyTestFixtures {
         this.patientService = patientService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionarycategory.service.DictionaryCategoryService cultureCategories;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService cultureDictionary;
+
+    @Transactional
+    public void ensureCultureAtmosphere() {
+        String name = "Culture atmosphere";
+        var category = cultureCategories.getDictionaryCategoryByName(name);
+        if (category == null) {
+            category = new org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory();
+            category.setCategoryName(name);
+            category.setDescription(name);
+            category.setLocalAbbreviation("M6" + UUID.randomUUID().toString().substring(0, 8));
+            category.setSysUserId(defaultUserId());
+            cultureCategories.insert(category);
+        }
+        if (cultureDictionary.getActiveSortedEntriesByCategoryName(name).isEmpty()) {
+            var entry = new org.openelisglobal.dictionary.valueholder.Dictionary();
+            entry.setDictionaryCategory(category);
+            entry.setDictEntry("Synthetic aerobic atmosphere");
+            entry.setIsActive("Y");
+            entry.setSortOrder(1);
+            entry.setSysUserId(defaultUserId());
+            cultureDictionary.insert(entry);
+        }
+    }
+
     public String defaultUserId() {
         return systemUserService.getAllSystemUsers().stream().filter(user -> "Y".equalsIgnoreCase(user.getIsActive()))
                 .sorted(Comparator.comparing(SystemUser::getId)).findFirst()

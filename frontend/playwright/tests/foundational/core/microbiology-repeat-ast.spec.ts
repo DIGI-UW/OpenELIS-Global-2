@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page, TestInfo } from "@playwright/test";
 import { seedReviewedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
+import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const accordionButton = (page: Page, name: string) =>
@@ -85,18 +86,13 @@ test.describe("Microbiology repeat AST attempts", () => {
       ).toContainText("Resistant", { timeout: LONG_TIMEOUT });
       await page.getByRole("button", { name: "Review AST run" }).click();
 
-      await expect(
-        page
-          .getByTestId("microbiology-ast-card")
-          .getByText("Reportable AST Run Required"),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
       const original = page
         .getByTestId("microbiology-ast-attempt-row")
         .filter({ hasText: "Original" });
       const retest = page
         .getByTestId("microbiology-ast-attempt-row")
         .filter({ hasText: "Retest" });
-      await expect(original).toContainText("Not included");
+      await expect(original).toContainText("Included in report");
       await expect(retest).toContainText("Not included");
 
       await retest
@@ -113,7 +109,7 @@ test.describe("Microbiology repeat AST attempts", () => {
       await attachScreenshot(page, testInfo, "repeat-ast-reportable-selection");
     });
 
-    await test.step("Release and verify the selected retest reaches Patient History", async () => {
+    await test.step("Release and verify the selected retest reaches the patient report", async () => {
       await accordionButton(page, "Reports").click();
       await expect(page).toHaveURL(/section=reports$/);
       await page
@@ -123,17 +119,13 @@ test.describe("Microbiology repeat AST attempts", () => {
         page.getByTestId("microbiology-release-state"),
       ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
 
-      await page.goto(`/PatientResults/${seeded.patientId}`, {
-        waitUntil: "domcontentloaded",
+      const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
+      expect(text).toContain("Ciprofloxacin (UAT) 32 ug/mL Resistant");
+      expect(text).not.toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+      await testInfo.attach("selected-retest-patient-report.pdf", {
+        body: pdf,
+        contentType: "application/pdf",
       });
-      const patientResult = page.getByRole("row", {
-        name: /UAT microbiology culture.*ISO-1: Escherichia coli/,
-      });
-      await expect(patientResult).toContainText("Ciprofloxacin (UAT) R", {
-        timeout: LONG_TIMEOUT,
-      });
-      await expect(patientResult).not.toContainText("Ciprofloxacin (UAT) S");
-      await attachScreenshot(page, testInfo, "repeat-ast-patient-result");
     });
   });
 });

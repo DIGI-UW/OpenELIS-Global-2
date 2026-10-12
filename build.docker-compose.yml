@@ -5,7 +5,9 @@ services:
     build:
       context: ./frontend
       dockerfile: ./Dockerfile.certs
-    restart: always
+    # The image seeds shared certificate volumes and then exits successfully.
+    command: ["/bin/true"]
+    restart: "no"
     environment:
         - KEYSTORE_PW="kspass"
         - TRUSTSTORE_PW="tspass"
@@ -52,7 +54,7 @@ services:
         db.openelis.org:
             condition: service_healthy
         certs:
-            condition: service_started
+            condition: service_completed_successfully
     ports:
         - "8080:8080"
         - "8443:8443"
@@ -110,7 +112,7 @@ services:
         db.openelis.org:
             condition: service_healthy
         certs:
-            condition: service_started
+            condition: service_completed_successfully
     ports:
         - "8081:8080"
         - "8444:8443"
@@ -165,7 +167,8 @@ services:
         - default  
     restart: unless-stopped
     depends_on:
-       - certs
+      certs:
+        condition: service_completed_successfully
 
 secrets:
   common.properties:
