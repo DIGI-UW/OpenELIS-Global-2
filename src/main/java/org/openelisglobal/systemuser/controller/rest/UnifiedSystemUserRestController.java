@@ -45,6 +45,7 @@ import org.openelisglobal.systemuser.validator.UnifiedSystemUserFormValidator;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.systemuser.valueholder.UnifiedSystemUser;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.userrole.service.LabUnitStaffService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
@@ -98,6 +99,8 @@ public class UnifiedSystemUserRestController extends BaseController {
     private UserService userService;
     @Autowired
     private TestSectionService testSectionService;
+    @Autowired
+    private LabUnitStaffService labUnitStaffService;
     // private static final String RESERVED_ADMIN_NAME = "admin";
 
     private static String GLOBAL_ADMIN_ID;
@@ -136,6 +139,15 @@ public class UnifiedSystemUserRestController extends BaseController {
         List<SystemUser> users = systemUserService.getAll();
         return users.stream().filter(e -> userRoleService.userInRole(e.getId(), roleName))
                 .map(e -> new IdValuePair(e.getId(), e.getDisplayName())).collect(Collectors.toList());
+    }
+
+    // staff who can be given work in a lab unit: the role on that unit or on all
+    // lab units
+    @GetMapping(value = "/users/{roleName}/labUnit/{labUnitName}")
+    @ResponseBody
+    public List<IdValuePair> getUsersWithRoleInLabUnit(@PathVariable String roleName,
+            @PathVariable String labUnitName) {
+        return labUnitStaffService.getActiveUsersWithRole(roleName, labUnitName);
     }
 
     @GetMapping(value = "/users")

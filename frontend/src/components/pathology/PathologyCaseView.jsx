@@ -438,7 +438,10 @@ function PathologyCaseView() {
       "/rest/paginatedDisplayList/PATHOLOGIST_CONCLUSIONS",
       loadConclusionData,
     );
-    getFromOpenElisServer("/rest/users", setTechnicianUsers);
+    getFromOpenElisServer(
+      "/rest/users/Results/labUnit/Pathology",
+      setTechnicianUsers,
+    );
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
     getFromOpenElisServer(caseUrl, loadCase);
 
