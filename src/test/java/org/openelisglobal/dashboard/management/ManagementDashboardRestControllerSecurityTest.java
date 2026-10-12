@@ -15,6 +15,7 @@ import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
+import org.openelisglobal.dashboard.management.stock.StockService;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
@@ -103,6 +104,12 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    public void stockRefusesABenchRoleWithoutTheGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/stock").with(user("bench").roles("RESULTS", "ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
     @Configuration
     static class TestConfig {
 
@@ -139,6 +146,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
         @Bean
         AntibiogramService antibiogramService() {
             return scope -> null;
+        }
+
+        @Bean
+        StockService stockService() {
+            return () -> null;
         }
 
         @Bean

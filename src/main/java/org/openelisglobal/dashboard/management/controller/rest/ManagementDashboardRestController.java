@@ -14,6 +14,8 @@ import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
+import org.openelisglobal.dashboard.management.stock.StockResponse;
+import org.openelisglobal.dashboard.management.stock.StockService;
 import org.openelisglobal.dashboard.management.workload.WorkloadResponse;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +47,9 @@ public class ManagementDashboardRestController extends BaseRestController {
     @Autowired
     private AntibiogramService antibiogramService;
 
+    @Autowired
+    private StockService stockService;
+
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ManagementSummary> getSummary(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, managementDashboardService::getSummary);
@@ -68,6 +73,11 @@ public class ManagementDashboardRestController extends BaseRestController {
     @GetMapping(value = "/antibiogram", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AntibiogramResponse> getAntibiogram(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, antibiogramService::getAntibiogram);
+    }
+
+    @GetMapping(value = "/stock", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<StockResponse> getStock() {
+        return ResponseEntity.ok(stockService.getStock());
     }
 
     private static <T> ResponseEntity<T> respond(String scope, Function<ScopeRange, T> read) {
