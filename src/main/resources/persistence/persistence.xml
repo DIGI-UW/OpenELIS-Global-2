@@ -192,6 +192,9 @@
         <!-- QI Configuration (OGC-709) -->
         <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
         <class>org.openelisglobal.dashboard.management.quality.QiWeights</class>
+        <!-- Management dashboard surveillance (OGC-897) -->
+        <class>org.openelisglobal.dashboard.management.surveillance.valueholder.SurveillanceProgram</class>
+        <class>org.openelisglobal.dashboard.management.surveillance.valueholder.TestSurveillanceMapping</class>
 
         <!-- Critical Callback capture (OGC-714) -->
         <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>

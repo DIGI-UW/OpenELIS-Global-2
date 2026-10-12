@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="dashboards/002-surveillance-programs.xml">
+
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-program-table">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="surveillance_program" schemaName="clinlims"/></not>
+        </preConditions>
+        <createSequence sequenceName="surveillance_program_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="surveillance_program">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_surveillance_program"/>
+            </column>
+            <column name="code" type="VARCHAR(32)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_surveillance_program_code"/>
+            </column>
+            <column name="display_name" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="surveillance_program"/>
+            <dropSequence schemaName="clinlims" sequenceName="surveillance_program_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-897-test-surveillance-mapping-table">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="test_surveillance_mapping" schemaName="clinlims"/></not>
+        </preConditions>
+        <createSequence sequenceName="test_surveillance_mapping_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="test_surveillance_mapping">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_test_surveillance_mapping"/>
+            </column>
+            <column name="test_id" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="fk_tsm_test"
+                    referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id"/>
+            </column>
+            <column name="program_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_tsm_program"
+                    referencedTableSchemaName="clinlims" referencedTableName="surveillance_program"
+                    referencedColumnNames="id"/>
+            </column>
+            <column name="metric_label" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metric_key" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="match_mode" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="positive_result_codes" type="VARCHAR(512)"/>
+            <column name="denominator_result_codes" type="VARCHAR(512)"/>
+            <column name="numeric_threshold" type="NUMERIC(15,5)"/>
+            <column name="display_order" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.test_surveillance_mapping
+            ADD CONSTRAINT tsm_match_mode_chk
+            CHECK (match_mode IN ('SPECIFIC_CODES', 'ALL_ABNORMAL', 'NUMERIC_BELOW', 'NUMERIC_ABOVE'))
+        </sql>
+        <addUniqueConstraint schemaName="clinlims" tableName="test_surveillance_mapping"
+            columnNames="program_id, test_id, metric_key" constraintName="uq_tsm_program_test_metric"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="test_surveillance_mapping"/>
+            <dropSequence schemaName="clinlims" sequenceName="test_surveillance_mapping_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-history">
+        <comment>Keep history for both tables; saveHistory rejects every write to an unregistered table</comment>
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, lastupdated)
+            SELECT nextval('clinlims.reference_tables_seq'), v.name, 'Y', now()
+            FROM (VALUES ('surveillance_program'), ('test_surveillance_mapping')) AS v(name)
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.reference_tables r WHERE LOWER(r.name) = v.name);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.reference_tables
+                WHERE LOWER(name) IN ('surveillance_program', 'test_surveillance_mapping');
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-program-seed">
+        <sql>
+            INSERT INTO clinlims.surveillance_program (id, code, display_name, display_order)
+            SELECT nextval('clinlims.surveillance_program_seq'), v.code, v.display_name, v.display_order
+            FROM (VALUES
+                ('TB',      'label.mgmt.surveillance.tb',      1),
+                ('HIV',     'label.mgmt.surveillance.hiv',     2),
+                ('MALARIA', 'label.mgmt.surveillance.malaria', 3),
+                ('AMR',     'label.mgmt.surveillance.amr',     4)
+            ) AS v(code, display_name, display_order)
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.surveillance_program p WHERE p.code = v.code);
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.surveillance_program WHERE code IN ('TB', 'HIV', 'MALARIA', 'AMR');</sql>
+        </rollback>
+    </changeSet>
+
+    <!-- Tests a site loads from its configuration CSVs arrive after Liquibase runs,
+         so this maps only what the catalog holds now; the CSV import maps the rest. -->
+    <changeSet author="openelisglobal" id="OGC-897-surveillance-mapping-seed">
+        <sqlFile path="002-surveillance-mapping-seed.sql" relativeToChangelogFile="true"
+            splitStatements="false" stripComments="true"/>
+        <rollback>
+            <sql>DELETE FROM clinlims.test_surveillance_mapping;</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
