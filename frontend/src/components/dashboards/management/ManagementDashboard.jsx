@@ -9,6 +9,7 @@ import {
   useInvalidateServerData,
   useServerData,
 } from "../../utils/useServerData";
+import KpiStrip from "./KpiStrip";
 import { summaryUrl } from "./managementApi";
 import "./ManagementDashboard.css";
 
@@ -22,8 +23,8 @@ export const SCOPES = [
 ];
 
 // Each later section appends one { id, Component } entry; a Component
-// receives the selected scope id and the summary's features map.
-const SECTIONS = [];
+// receives the scope id, its localized label and the summary's features map.
+const SECTIONS = [{ id: "kpis", Component: KpiStrip }];
 
 const REFRESH_COOLDOWN_MS = 15000;
 const SOFT_REFRESH_MS = 5 * 60000;
@@ -188,7 +189,12 @@ const ManagementDashboard = () => {
       {!data && <ServerDataState query={summary} />}
       {data &&
         SECTIONS.map(({ id, Component }) => (
-          <Component key={id} scope={scope} features={data.features} />
+          <Component
+            key={id}
+            scope={scope}
+            scopeLabel={scopeLabel}
+            features={data.features}
+          />
         ))}
     </div>
   );

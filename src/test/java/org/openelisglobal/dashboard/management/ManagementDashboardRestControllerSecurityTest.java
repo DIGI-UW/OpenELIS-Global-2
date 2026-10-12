@@ -5,9 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.Test;
 import org.openelisglobal.dashboard.management.controller.rest.ManagementDashboardRestController;
+import org.openelisglobal.dashboard.management.kpi.KpiService;
+import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
 import org.openelisglobal.dashboard.management.service.ManagementSummary;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
@@ -65,6 +68,21 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
         @Bean
         ManagementDashboardService managementDashboardService() {
             return scope -> new ManagementSummary("Test Lab", 0, Map.of(), scope);
+        }
+
+        @Bean
+        KpiService kpiService() {
+            return new KpiService() {
+                @Override
+                public ManagementKpis getKpis(ScopeRange scope) {
+                    return null;
+                }
+
+                @Override
+                public Map<String, BigDecimal> onTimeByLabUnit(ScopeRange scope) {
+                    return Map.of();
+                }
+            };
         }
 
         @Bean

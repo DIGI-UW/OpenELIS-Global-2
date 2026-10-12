@@ -13528,5 +13528,11 @@
   "label.dashboard.scope.yearToDate": "Year-to-date",
   "label.dashboard.scope.year": "Year",
   "label.mgmt.subtitle.noSiteName": "{0} · {1} samples processed",
-  "label.dashboard.scope": "Time scope"
+  "label.dashboard.scope": "Time scope",
+  "label.mgmt.kpi.totalSamples": "Total samples",
+  "label.mgmt.kpi.medianTat": "Median TAT",
+  "label.mgmt.kpi.onTime": "On-time completion",
+  "label.mgmt.kpi.rejectionRate": "Rejection rate",
+  "label.mgmt.kpi.qcPassRate": "QC pass rate",
+  "label.mgmt.kpi.vsPrior": "vs. prior period"
 }
