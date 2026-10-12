@@ -54,7 +54,8 @@ public class MicroIsolateLiquibaseRollbackTest {
                         "SELECT to_jsonb(i)::text FROM clinlims.micro_isolate i WHERE id='stored-isolate'");
                 String eventBefore = scalar(connection,
                         "SELECT to_jsonb(i)::text FROM clinlims.micro_isolate_identification_event i WHERE id='stored-event'");
-                app.update(contexts);
+                new Liquibase("liquibase/3.5.x.x/122-amr-v2-isolates-referral.xml", resources, database)
+                        .update(contexts);
                 assertTrue(column(connection, "micro_isolate", "source_culture_id"));
                 assertTrue(column(connection, "micro_isolate_identification_event", "event_sequence"));
                 assertTrue(column(connection, "type_of_sample", "microbiology_isolate"));

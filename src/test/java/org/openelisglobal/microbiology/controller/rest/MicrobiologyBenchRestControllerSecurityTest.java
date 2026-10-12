@@ -54,13 +54,13 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
     public void noteUsesSessionActorAndIgnoresSubmittedActorField() throws Exception {
         MicroCaseActivityForm activity = new MicroCaseActivityForm();
         activity.id = "activity-1";
-        when(timelineService.addNote("case-1", "Bench note", "42")).thenReturn(activity);
+        when(timelineService.addNote("case-1", "Bench note", false, "42")).thenReturn(activity);
 
         mockMvc.perform(post("/rest/microbiology/cases/case-1/notes").with(user("analyst").roles("RESULTS"))
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionFor(42)).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"Bench note\",\"performedBy\":\"999\"}")).andExpect(status().isOk());
 
-        verify(timelineService).addNote("case-1", "Bench note", "42");
+        verify(timelineService).addNote("case-1", "Bench note", false, "42");
     }
 
     @Test

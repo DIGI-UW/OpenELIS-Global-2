@@ -8,5 +8,7 @@ public interface MicroAstReadingDAO extends BaseDAO<MicroAstReading, String> {
 
     List<MicroAstReading> getByRunId(String runId);
 
+    List<MicroAstReading> getSelectedByRunIds(List<String> runIds);
+
     List<MicroAstReading> getByRunIds(List<String> runIds);
 }

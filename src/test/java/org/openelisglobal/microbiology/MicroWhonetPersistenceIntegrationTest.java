@@ -111,11 +111,13 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Reference organism (integration)",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
                 "MALDI_TOF", new BigDecimal("99.5"), performedBy);
+        fixtures.prepareAstCase(caseDAO.get(scenario.caseId).orElseThrow(), performedBy);
         MicroAstRun run = astService.startRun(isolate.getId(), scenario.astPanelId, scenario.activeBreakpointStandardId,
                 performedBy);
         astService.getPanelAntibiotics(scenario.astPanelId).forEach(ordered -> astService.recordReading(run.getId(),
                 ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), performedBy));
         astService.reviewRun(run.getId(), performedBy);
+        fixtures.prepareFinalCase(caseDAO.get(scenario.caseId).orElseThrow(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
 
         // V1 retirement left the workflow_type column readable only for this

@@ -129,6 +129,7 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario =
+  | "AST_REPORTING"
   | "CASE"
   | "MVP"
   | "WORKLIST"
@@ -1233,3 +1234,6 @@ export const seedMicrobiologyIsolateWorkspace = (
     page,
     received ? "RECEIVED_ISOLATE" : "ISOLATE_WORKSPACE",
   );
+
+export const seedMicrobiologyAstReporting = (page: Page) =>
+  provisionMicrobiologyScenario(page, "AST_REPORTING");

@@ -152,7 +152,7 @@ final class PatientResultsPdf {
         }
         document.add(card(order, first));
         document.add(samples(order));
-        document.add(results(rows));
+        addResults(document, rows);
         document.add(signOff(order, rows));
     }
 
@@ -354,6 +354,51 @@ final class PatientResultsPdf {
     }
 
     // ----- results
+
+    private void addResults(Document document, List<ClinicalPatientData> rows) {
+        List<ClinicalPatientData> ordinary = new ArrayList<>();
+        for (ClinicalPatientData row : rows) {
+            if (row.getMicrobiologyRows() == null) {
+                ordinary.add(row);
+                continue;
+            }
+            if (!ordinary.isEmpty()) {
+                document.add(results(ordinary));
+                ordinary.clear();
+            }
+            document.add(microbiologyResults(row));
+        }
+        if (!ordinary.isEmpty()) {
+            document.add(results(ordinary));
+        }
+    }
+
+    private PdfPTable microbiologyResults(ClinicalPatientData item) {
+        PdfPTable table = table(new float[] { 150, 90, 100, 170 });
+        table.setSpacingBefore(4);
+        PdfPCell identity = text(item.getAccessionNumber() + " — " + item.getTestSection(),
+                fonts.bold(8.5f, Color.BLACK), Element.ALIGN_LEFT);
+        identity.setColspan(4);
+        table.addCell(identity);
+        table.setHeaderRows(1);
+        for (var row : item.getMicrobiologyRows()) {
+            if (row.isGrid()) {
+                for (String value : new String[] { row.getAgent(), row.getRaw(), row.getInterpretation(), row.getStandard() }) {
+                    table.addCell(text(value, fonts.regular(8, Color.BLACK), Element.ALIGN_LEFT));
+                }
+            } else {
+                PdfPCell content = text(row.getHeading() == null ? row.getText() : row.getHeading(),
+                        row.getHeading() == null ? fonts.regular(8, Color.BLACK) : fonts.bold(8.5f, Color.BLACK),
+                        Element.ALIGN_LEFT);
+                content.setColspan(4);
+                if (row.getHeading() != null) {
+                    content.setBackgroundColor(CRITICAL_FILL);
+                }
+                table.addCell(content);
+            }
+        }
+        return table;
+    }
 
     private PdfPTable results(List<ClinicalPatientData> rows) {
         PdfPTable results = table(RESULT_WIDTHS);

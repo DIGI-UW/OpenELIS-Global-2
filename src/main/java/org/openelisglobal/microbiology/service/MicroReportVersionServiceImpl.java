@@ -50,11 +50,21 @@ public class MicroReportVersionServiceImpl implements MicroReportVersionService 
     public MicroReportVersion recordInitialFinal(String caseId, MicroReportProjectionResult projection,
             String performedBy) {
         MicroReportVersion existing = reportVersionDAO.getLatestByCaseId(caseId);
-        if (existing != null) {
-            return existing;
-        }
-        return append(caseId, null, 1, MicroReportVersionType.FINAL, projection, MicroCaseServiceImpl.now(),
-                performedBy, null);
+        if (existing != null && !MicroReportVersionType.PRELIMINARY.name().equals(existing.getReleaseType()))
+            throw new MicroCaseLockedException("FINAL_CASE_LOCKED");
+        return append(caseId, null, existing == null ? 1 : existing.getVersionNumber() + 1,
+                MicroReportVersionType.FINAL, projection, MicroCaseServiceImpl.now(), performedBy, null);
+    }
+
+    @Override
+    @Transactional
+    public MicroReportVersion recordPreliminary(String caseId, MicroReportProjectionResult projection,
+            String performedBy) {
+        var existing = reportVersionDAO.getLatestByCaseId(caseId);
+        if (existing != null && !MicroReportVersionType.PRELIMINARY.name().equals(existing.getReleaseType()))
+            throw new MicroCaseLockedException("FINAL_CASE_LOCKED");
+        return append(caseId, null, existing == null ? 1 : existing.getVersionNumber() + 1,
+                MicroReportVersionType.PRELIMINARY, projection, MicroCaseServiceImpl.now(), performedBy, null);
     }
 
     @Override
@@ -95,6 +105,7 @@ public class MicroReportVersionServiceImpl implements MicroReportVersionService 
         version.setVersionNumber(versionNumber);
         version.setReleaseType(releaseType.name());
         version.setContent(projection.getContent());
+        version.setStructuredContent(projection.structuredContent);
         version.setReleasedAt(releasedAt);
         version.setReleasedBy(releasedBy);
         version.setCorrectsVersionId(correctsVersionId);

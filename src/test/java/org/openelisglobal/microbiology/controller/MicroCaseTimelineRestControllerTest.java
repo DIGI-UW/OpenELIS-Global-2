@@ -23,14 +23,14 @@ public class MicroCaseTimelineRestControllerTest {
         request.text = "Plate reading remains negative";
         MicroCaseActivityForm form = new MicroCaseActivityForm();
         form.note = request.text;
-        when(service.addNote("case-1", request.text, "42")).thenReturn(form);
+        when(service.addNote("case-1", request.text, false, "42")).thenReturn(form);
 
         ResponseEntity<MicroCaseActivityForm> response = new MicroCaseTimelineRestController(service).addNote("case-1",
                 request, requestFor("42"));
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(request.text, response.getBody().note);
-        verify(service).addNote("case-1", request.text, "42");
+        verify(service).addNote("case-1", request.text, false, "42");
     }
 
     private MockHttpServletRequest requestFor(String userId) {
