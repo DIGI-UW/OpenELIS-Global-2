@@ -13543,5 +13543,12 @@
   "label.mgmt.workload.tatTable.median": "Median",
   "label.mgmt.workload.tatTable.p90": "P90",
   "label.mgmt.workload.tatTable.onTime": "On-time %",
-  "label.mgmt.workload.empty": "No samples were received in this period"
+  "label.mgmt.workload.empty": "No samples were received in this period",
+  "label.mgmt.equipment.title": "Equipment activity",
+  "label.mgmt.equipment.subtitle": "Per-analyzer recent activity · sample counts in current scope ({0}) · maintenance & service tracked in a separate roadmap epic",
+  "label.mgmt.equipment.status.active": "Active",
+  "label.mgmt.equipment.status.quiet": "Quiet",
+  "label.mgmt.equipment.status.noActivity": "No activity",
+  "label.mgmt.equipment.lastActivity": "Last activity: {0}",
+  "label.mgmt.equipment.samples": "{0} {count, plural, one {sample} other {samples}} · {1}"
 }

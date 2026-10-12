@@ -1,10 +1,13 @@
 package org.openelisglobal.dashboard.management.controller.rest;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.function.Function;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dashboard.management.DashboardPermissions;
 import org.openelisglobal.dashboard.management.ScopeRange;
+import org.openelisglobal.dashboard.management.equipment.AnalyzerActivity;
+import org.openelisglobal.dashboard.management.equipment.EquipmentService;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
@@ -34,6 +37,9 @@ public class ManagementDashboardRestController extends BaseRestController {
     @Autowired
     private WorkloadService workloadService;
 
+    @Autowired
+    private EquipmentService equipmentService;
+
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ManagementSummary> getSummary(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, managementDashboardService::getSummary);
@@ -47,6 +53,11 @@ public class ManagementDashboardRestController extends BaseRestController {
     @GetMapping(value = "/workload", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<WorkloadResponse> getWorkload(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, workloadService::getWorkload);
+    }
+
+    @GetMapping(value = "/equipment", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<AnalyzerActivity>> getEquipment(@RequestParam(defaultValue = "30d") String scope) {
+        return respond(scope, equipmentService::getEquipment);
     }
 
     private static <T> ResponseEntity<T> respond(String scope, Function<ScopeRange, T> read) {

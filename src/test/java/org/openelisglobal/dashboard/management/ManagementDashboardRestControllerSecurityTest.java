@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.Test;
 import org.openelisglobal.dashboard.management.controller.rest.ManagementDashboardRestController;
+import org.openelisglobal.dashboard.management.equipment.EquipmentService;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.service.ManagementDashboardService;
@@ -75,6 +76,19 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    public void equipmentRefusesABenchRoleWithoutTheGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/equipment").with(user("bench").roles("RESULTS", "ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void equipmentWithAnUnknownScopeIsABadRequest() throws Exception {
+        mockMvc.perform(
+                get("/rest/dashboards/management/equipment?scope=decade").with(user("admin").roles("GLOBAL_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
     @Configuration
     static class TestConfig {
 
@@ -100,6 +114,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
 
         @Bean
         WorkloadService workloadService() {
+            return scope -> null;
+        }
+
+        @Bean
+        EquipmentService equipmentService() {
             return scope -> null;
         }
 
