@@ -171,7 +171,7 @@ describe("LinkReagentModal", () => {
   });
 });
 
-it("offers tagged media of any inventory type while excluding unrelated inventory", async () => {
+it("offers culture media and other inventory under the tag-based catalog", async () => {
   getFromOpenElisServer.mockImplementation((url, cb) =>
     cb([
       {
@@ -182,7 +182,7 @@ it("offers tagged media of any inventory type while excluding unrelated inventor
       },
       {
         id: 2,
-        name: "Unrelated gloves",
+        name: "Gloves",
         itemType: "OTHER",
         microbiologyMedium: false,
       },
@@ -191,5 +191,5 @@ it("offers tagged media of any inventory type while excluding unrelated inventor
   renderModal();
   fireEvent.click(await screen.findByRole("combobox"));
   expect(await screen.findByText("Tagged agar")).toBeInTheDocument();
-  expect(screen.queryByText("Unrelated gloves")).toBeNull();
+  expect(screen.getByText("Gloves")).toBeInTheDocument();
 });
