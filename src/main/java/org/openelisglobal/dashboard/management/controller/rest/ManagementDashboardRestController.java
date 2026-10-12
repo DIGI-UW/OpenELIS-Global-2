@@ -6,6 +6,8 @@ import java.util.function.Function;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dashboard.management.DashboardPermissions;
 import org.openelisglobal.dashboard.management.ScopeRange;
+import org.openelisglobal.dashboard.management.antibiogram.AntibiogramResponse;
+import org.openelisglobal.dashboard.management.antibiogram.AntibiogramService;
 import org.openelisglobal.dashboard.management.equipment.AnalyzerActivity;
 import org.openelisglobal.dashboard.management.equipment.EquipmentService;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
@@ -40,6 +42,9 @@ public class ManagementDashboardRestController extends BaseRestController {
     @Autowired
     private EquipmentService equipmentService;
 
+    @Autowired
+    private AntibiogramService antibiogramService;
+
     @GetMapping(value = "/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ManagementSummary> getSummary(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, managementDashboardService::getSummary);
@@ -58,6 +63,11 @@ public class ManagementDashboardRestController extends BaseRestController {
     @GetMapping(value = "/equipment", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<AnalyzerActivity>> getEquipment(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, equipmentService::getEquipment);
+    }
+
+    @GetMapping(value = "/antibiogram", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AntibiogramResponse> getAntibiogram(@RequestParam(defaultValue = "30d") String scope) {
+        return respond(scope, antibiogramService::getAntibiogram);
     }
 
     private static <T> ResponseEntity<T> respond(String scope, Function<ScopeRange, T> read) {

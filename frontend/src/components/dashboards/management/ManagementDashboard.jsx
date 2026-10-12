@@ -13,6 +13,7 @@ import KpiStrip from "./KpiStrip";
 import { summaryUrl } from "./managementApi";
 import WorkloadSection from "./WorkloadSection";
 import EquipmentSection from "./EquipmentSection";
+import AntibiogramSection from "./AntibiogramSection";
 import "./ManagementDashboard.css";
 
 export const SCOPES = [
@@ -28,6 +29,7 @@ const SECTIONS = [
   { id: "kpis", Component: KpiStrip },
   { id: "workload", Component: WorkloadSection },
   { id: "equipment", Component: EquipmentSection },
+  { id: "antibiogram", Component: AntibiogramSection },
 ];
 
 const REFRESH_COOLDOWN_MS = 15000;

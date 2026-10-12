@@ -94,6 +94,127 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     @Transactional(readOnly = true)
     public MicroWhonetDataset compile(MicroWhonetExportQueryForm requestedQuery) {
         NormalizedQuery query = normalize(requestedQuery);
+        Selection selection = select(query);
+        Population population = selection.population();
+        List<Candidate> candidates = selection.candidates();
+        AstData astData = selection.astData();
+        Map<String, MicroWhonetWarningForm> warnings = selection.warnings();
+        List<Candidate> candidatesWithoutDedupDate = selection.candidatesWithoutDedupDate();
+        int afterSpecimen = selection.afterSpecimen();
+        int afterOrganism = selection.afterOrganism();
+        int afterPatientOrigin = selection.afterPatientOrigin();
+        int clinicalPurposeCases = selection.clinicalPurposeCases();
+        int screeningPurposeCases = selection.screeningPurposeCases();
+        int unspecifiedPurposeCases = selection.unspecifiedPurposeCases();
+        int afterCulturePurpose = selection.afterCulturePurpose();
+        int afterSignificance = selection.afterSignificance();
+
+        List<WHONetRow> exportRows = new ArrayList<>();
+        List<MicroWhonetPreviewRowForm> previewRows = new ArrayList<>();
+        int exportableIsolates = 0;
+        int excludedRows = candidatesWithoutDedupDate.size();
+        for (Candidate candidate : candidates) {
+            List<MicroAstReading> readings = readingsFor(candidate, astData);
+            if (!hasText(candidate.context.specimenType)) {
+                int excluded = Math.max(1, readings.size());
+                excludedRows += excluded;
+                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", candidate.context.specimenTypeId,
+                        candidate.context.specimenTypeLabel, excluded);
+                continue;
+            }
+            Optional<MicroOrganism> organism = Optional
+                    .ofNullable(mappedReference(population.organismsById, candidate.isolate.getOrganismId()));
+            if (organism.isEmpty()) {
+                organism = optionalReference(candidate.isolate.getOrganismId(), organismDAO::get);
+            }
+            if (organism.isEmpty() || !hasText(organism.get().getWhonetCode())) {
+                int excluded = Math.max(1, readings.size());
+                excludedRows += excluded;
+                addWarning(warnings, "ORGANISM_MAPPING_REQUIRED", "organisms", candidate.isolate.getOrganismId(),
+                        organism.map(MicroOrganism::getDisplayName).orElse(candidate.isolate.getIsolateLabel()),
+                        excluded);
+                continue;
+            }
+            if (readings.isEmpty()) {
+                excludedRows++;
+                addWarning(warnings, "AST_RESULT_REQUIRED", null, null, candidate.isolate.getIsolateLabel(), 1);
+                continue;
+            }
+            int rowsBefore = exportRows.size();
+            for (MicroAstReading reading : readings) {
+                Optional<MicroAntibiotic> antibiotic = optionalReference(reading.getAntibioticId(), antibioticDAO::get);
+                if (antibiotic.isEmpty() || !hasText(antibiotic.get().getWhonetCode())) {
+                    excludedRows++;
+                    addWarning(warnings, "ANTIBIOTIC_MAPPING_REQUIRED", "antibiotics", reading.getAntibioticId(),
+                            antibiotic.map(MicroAntibiotic::getDisplayName).orElse(reading.getAntibioticId()), 1);
+                    continue;
+                }
+                String interpretation = interpretationOf(reading);
+                if (!WHONET_INTERPRETATIONS.contains(interpretation)) {
+                    excludedRows++;
+                    addWarning(warnings, "AST_INTERPRETATION_REQUIRED", null, reading.getId(),
+                            antibiotic.get().getDisplayName(), 1);
+                    continue;
+                }
+                exportRows.add(toWhonetRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
+                previewRows.add(toPreviewRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
+            }
+            if (exportRows.size() > rowsBefore) {
+                exportableIsolates++;
+            }
+        }
+
+        MicroWhonetPreviewForm preview = new MicroWhonetPreviewForm();
+        preview.from = query.from.toString();
+        preview.to = query.to.toString();
+        preview.significance = significancePolicy(query.significance);
+        preview.dedup = query.dedup;
+        preview.dedupBasis = query.dedupBasis;
+        preview.dedupScope = query.dedupScope;
+        preview.excludeContaminants = query.excludeContaminants;
+        preview.profileSensitivity = query.profileSensitivity;
+        preview.totalCases = population.cases.size();
+        preview.totalIsolates = population.allIsolates.size();
+        preview.afterSpecimen = afterSpecimen;
+        preview.afterOrganism = afterOrganism;
+        preview.afterPatientOrigin = afterPatientOrigin;
+        preview.clinicalPurposeCases = clinicalPurposeCases;
+        preview.screeningPurposeCases = screeningPurposeCases;
+        preview.unspecifiedPurposeCases = unspecifiedPurposeCases;
+        preview.afterCulturePurpose = afterCulturePurpose;
+        preview.afterSignificance = afterSignificance;
+        preview.afterDeduplication = candidates.size();
+        preview.exportableIsolates = exportableIsolates;
+        preview.exportedRows = exportRows.size();
+        preview.excludedRows = excludedRows;
+        preview.canGenerate = !exportRows.isEmpty();
+        preview.warnings.addAll(warnings.values());
+        int first = Math.min((query.page - 1) * query.pageSize, previewRows.size());
+        int last = Math.min(first + query.pageSize, previewRows.size());
+        preview.rows.addAll(previewRows.subList(first, last));
+        return new MicroWhonetDataset(preview, exportRows,
+                new MicroWhonetExportSelection(query.specimen, query.organism, query.origin, query.significance,
+                        query.includeScreening, query.includeUnspecified, query.dedupBasis, query.dedupScope,
+                        query.excludeContaminants, query.profileSensitivity));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FirstIsolate> selectFirstIsolates(LocalDate from, LocalDate to) {
+        MicroWhonetExportQueryForm defaults = new MicroWhonetExportQueryForm();
+        defaults.from = from.toString();
+        defaults.to = to.toString();
+        Selection selection = select(normalize(defaults));
+        return selection.candidates().stream()
+                .map(candidate -> new FirstIsolate(candidate.isolate.getId(), candidate.isolate.getOrganismId(),
+                        readingsFor(candidate, selection.astData()).stream()
+                                .filter(reading -> hasText(reading.getAntibioticId()))
+                                .map(reading -> new AstResult(reading.getAntibioticId(), interpretationOf(reading)))
+                                .filter(result -> WHONET_INTERPRETATIONS.contains(result.interpretation())).toList()))
+                .toList();
+    }
+
+    private Selection select(NormalizedQuery query) {
         Population population = loadPopulation(query);
 
         List<Candidate> candidates = new ArrayList<>();
@@ -147,96 +268,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         if (astData == null) {
             astData = loadReportableAstData(candidates);
         }
-
-        List<WHONetRow> exportRows = new ArrayList<>();
-        List<MicroWhonetPreviewRowForm> previewRows = new ArrayList<>();
-        int exportableIsolates = 0;
-        int excludedRows = candidatesWithoutDedupDate.size();
-        for (Candidate candidate : candidates) {
-            List<MicroAstReading> readings = readingsFor(candidate, astData);
-            if (!hasText(candidate.context.specimenType)) {
-                int excluded = Math.max(1, readings.size());
-                excludedRows += excluded;
-                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", candidate.context.specimenTypeId,
-                        candidate.context.specimenTypeLabel, excluded);
-                continue;
-            }
-            Optional<MicroOrganism> organism = Optional
-                    .ofNullable(mappedReference(population.organismsById, candidate.isolate.getOrganismId()));
-            if (organism.isEmpty()) {
-                organism = optionalReference(candidate.isolate.getOrganismId(), organismDAO::get);
-            }
-            if (organism.isEmpty() || !hasText(organism.get().getWhonetCode())) {
-                int excluded = Math.max(1, readings.size());
-                excludedRows += excluded;
-                addWarning(warnings, "ORGANISM_MAPPING_REQUIRED", "organisms", candidate.isolate.getOrganismId(),
-                        organism.map(MicroOrganism::getDisplayName).orElse(candidate.isolate.getIsolateLabel()),
-                        excluded);
-                continue;
-            }
-            if (readings.isEmpty()) {
-                excludedRows++;
-                addWarning(warnings, "AST_RESULT_REQUIRED", null, null, candidate.isolate.getIsolateLabel(), 1);
-                continue;
-            }
-            int rowsBefore = exportRows.size();
-            for (MicroAstReading reading : readings) {
-                Optional<MicroAntibiotic> antibiotic = optionalReference(reading.getAntibioticId(), antibioticDAO::get);
-                if (antibiotic.isEmpty() || !hasText(antibiotic.get().getWhonetCode())) {
-                    excludedRows++;
-                    addWarning(warnings, "ANTIBIOTIC_MAPPING_REQUIRED", "antibiotics", reading.getAntibioticId(),
-                            antibiotic.map(MicroAntibiotic::getDisplayName).orElse(reading.getAntibioticId()), 1);
-                    continue;
-                }
-                String interpretation = toWhonetInterpretation(
-                        hasText(reading.getOverrideInterpretation()) ? reading.getOverrideInterpretation()
-                                : reading.getInterpretation());
-                if (!WHONET_INTERPRETATIONS.contains(interpretation)) {
-                    excludedRows++;
-                    addWarning(warnings, "AST_INTERPRETATION_REQUIRED", null, reading.getId(),
-                            antibiotic.get().getDisplayName(), 1);
-                    continue;
-                }
-                exportRows.add(toWhonetRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
-                previewRows.add(toPreviewRow(candidate, organism.get(), antibiotic.get(), reading, interpretation));
-            }
-            if (exportRows.size() > rowsBefore) {
-                exportableIsolates++;
-            }
-        }
-
-        MicroWhonetPreviewForm preview = new MicroWhonetPreviewForm();
-        preview.from = query.from.toString();
-        preview.to = query.to.toString();
-        preview.significance = significancePolicy(query.significance);
-        preview.dedup = query.dedup;
-        preview.dedupBasis = query.dedupBasis;
-        preview.dedupScope = query.dedupScope;
-        preview.excludeContaminants = query.excludeContaminants;
-        preview.profileSensitivity = query.profileSensitivity;
-        preview.totalCases = population.cases.size();
-        preview.totalIsolates = population.allIsolates.size();
-        preview.afterSpecimen = afterSpecimen;
-        preview.afterOrganism = afterOrganism;
-        preview.afterPatientOrigin = afterPatientOrigin;
-        preview.clinicalPurposeCases = clinicalPurposeCases;
-        preview.screeningPurposeCases = screeningPurposeCases;
-        preview.unspecifiedPurposeCases = unspecifiedPurposeCases;
-        preview.afterCulturePurpose = afterCulturePurpose;
-        preview.afterSignificance = afterSignificance;
-        preview.afterDeduplication = candidates.size();
-        preview.exportableIsolates = exportableIsolates;
-        preview.exportedRows = exportRows.size();
-        preview.excludedRows = excludedRows;
-        preview.canGenerate = !exportRows.isEmpty();
-        preview.warnings.addAll(warnings.values());
-        int first = Math.min((query.page - 1) * query.pageSize, previewRows.size());
-        int last = Math.min(first + query.pageSize, previewRows.size());
-        preview.rows.addAll(previewRows.subList(first, last));
-        return new MicroWhonetDataset(preview, exportRows,
-                new MicroWhonetExportSelection(query.specimen, query.organism, query.origin, query.significance,
-                        query.includeScreening, query.includeUnspecified, query.dedupBasis, query.dedupScope,
-                        query.excludeContaminants, query.profileSensitivity));
+        return new Selection(population, candidates, astData, warnings, candidatesWithoutDedupDate, afterSpecimen,
+                afterOrganism, afterPatientOrigin, clinicalPurposeCases, screeningPurposeCases, unspecifiedPurposeCases,
+                afterCulturePurpose, afterSignificance);
     }
 
     @Override
@@ -547,6 +581,11 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         return includeUnspecified;
     }
 
+    private String interpretationOf(MicroAstReading reading) {
+        return toWhonetInterpretation(hasText(reading.getOverrideInterpretation()) ? reading.getOverrideInterpretation()
+                : reading.getInterpretation());
+    }
+
     private String toWhonetInterpretation(String interpretation) {
         if (interpretation == null) {
             return "";
@@ -628,6 +667,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private record Candidate(MicroCase microCase, MicroIsolate isolate, PatientContext context) {
+    }
+
+    private record Selection(Population population, List<Candidate> candidates, AstData astData,
+            Map<String, MicroWhonetWarningForm> warnings, List<Candidate> candidatesWithoutDedupDate, int afterSpecimen,
+            int afterOrganism, int afterPatientOrigin, int clinicalPurposeCases, int screeningPurposeCases,
+            int unspecifiedPurposeCases, int afterCulturePurpose, int afterSignificance) {
     }
 
     private record AstData(Map<String, List<MicroAstRun>> reportableRunsByIsolate,

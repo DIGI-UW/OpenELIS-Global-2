@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.util.Map;
 import org.junit.Test;
+import org.openelisglobal.dashboard.management.antibiogram.AntibiogramService;
 import org.openelisglobal.dashboard.management.controller.rest.ManagementDashboardRestController;
 import org.openelisglobal.dashboard.management.equipment.EquipmentService;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
@@ -89,6 +90,19 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    public void antibiogramRefusesABenchRoleWithoutTheGrant() throws Exception {
+        mockMvc.perform(get("/rest/dashboards/management/antibiogram").with(user("bench").roles("RESULTS", "ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void antibiogramWithAnUnknownScopeIsABadRequest() throws Exception {
+        mockMvc.perform(
+                get("/rest/dashboards/management/antibiogram?scope=decade").with(user("admin").roles("GLOBAL_ADMIN")))
+                .andExpect(status().isBadRequest());
+    }
+
     @Configuration
     static class TestConfig {
 
@@ -119,6 +133,11 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
 
         @Bean
         EquipmentService equipmentService() {
+            return scope -> null;
+        }
+
+        @Bean
+        AntibiogramService antibiogramService() {
             return scope -> null;
         }
 
