@@ -117,10 +117,13 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     private String methodId;
     private ReferenceData referenceData;
 
+    private String scenarioActor;
+
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        scenarioActor = fixtures.createScenarioActor();
         fixtures.ensureCultureAtmosphere();
         fixtures.ensureSampleEnteredStatus();
         fixtures.ensureAnalysisNotStartedStatus();
@@ -131,7 +134,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
 
     @Test
     public void reviewedScenarioCanReleaseWithoutBypassingFinalRequirements() {
-        String actor = fixtures.defaultUserId();
+        String actor = scenarioActor;
         var scenario = uatScenarioService.provision(scenarioRequest("AST_REVIEWED"), actor);
         var corrected = referenceService.getActiveOrganisms().stream().filter(o -> "KPNUAT".equals(o.getWhonetCode()))
                 .findFirst().orElseThrow();
@@ -148,7 +151,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
 
     @Test
     public void exportScenarioPreservesUnclassifiedCulturePurpose() {
-        var scenario = uatScenarioService.provision(scenarioRequest("M4"), fixtures.defaultUserId());
+        var scenario = uatScenarioService.provision(scenarioRequest("M4"), scenarioActor);
         var detail = orderDetails.getOrderDetail(scenario.caseId);
         assertNotNull(detail.getPatientOrigin());
         assertNull(detail.getCulturePurpose());
@@ -185,10 +188,9 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     @Test
     public void uatScenariosReuseReferenceConfigurationAndGeneratedCaseIdentity() {
         MicrobiologyUatScenarioRequestForm firstRequest = scenarioRequest("MVP");
-        MicrobiologyUatScenarioForm first = uatScenarioService.provision(firstRequest, fixtures.defaultUserId());
-        MicrobiologyUatScenarioForm retry = uatScenarioService.provision(firstRequest, fixtures.defaultUserId());
-        MicrobiologyUatScenarioForm second = uatScenarioService.provision(scenarioRequest("CASE"),
-                fixtures.defaultUserId());
+        MicrobiologyUatScenarioForm first = uatScenarioService.provision(firstRequest, scenarioActor);
+        MicrobiologyUatScenarioForm retry = uatScenarioService.provision(firstRequest, scenarioActor);
+        MicrobiologyUatScenarioForm second = uatScenarioService.provision(scenarioRequest("CASE"), scenarioActor);
 
         assertEquals(first.caseId, retry.caseId);
         assertNotEquals(first.caseId, second.caseId);
@@ -212,7 +214,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
 
     @Test
     public void uatLotSelectionsConsumeExactLotsAndRetainBenchProvenance() {
-        String performedBy = fixtures.defaultUserId();
+        String performedBy = scenarioActor;
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(scenarioRequest("MVP"), performedBy);
         var requirements = reagentLotService.getRequirements(scenario.caseId);
         assertEquals(2, requirements.size());
@@ -254,7 +256,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
 
     @Test
     public void finalReleaseAppearsInTheStandardPatientReportWithReviewedSirResults() throws Exception {
-        String performedBy = fixtures.defaultUserId();
+        String performedBy = scenarioActor;
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(scenarioRequest("MVP"), performedBy);
         fixtures.prepareAstCase(cases.getCase(scenario.caseId), performedBy);
         MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "ISO-1", "Gram negative rods",

@@ -7,10 +7,7 @@ import { LONG_TIMEOUT } from "./timeouts";
 export async function runMicrobiologyAstReportingWorkflow(
   page: Page,
   testInfo: TestInfo,
-  checkpoint: (
-    step: number,
-    description: string,
-  ) => Promise<void> = async () => {},
+  checkpoint?: (step: number, description: string) => Promise<void>,
 ) {
   const seeded = await seedMicrobiologyAstReporting(page);
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
@@ -65,7 +62,7 @@ export async function runMicrobiologyAstReportingWorkflow(
       run.getByRole("button", { name: "Repeat", exact: true }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
   };
-  await checkpoint(
+  await checkpoint?.(
     1,
     "Record and validate the initial susceptibility readings",
   );
@@ -78,7 +75,7 @@ export async function runMicrobiologyAstReportingWorkflow(
     page.getByLabel("Report version", { exact: true }).locator("option"),
   ).toHaveCount(2, { timeout: LONG_TIMEOUT });
   await section.selectOption("AST");
-  await checkpoint(
+  await checkpoint?.(
     2,
     "Issue the first partial report, then repeat susceptibility testing",
   );
@@ -112,7 +109,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await page
     .getByRole("button", { name: "Release partial report", exact: true })
     .click();
-  await checkpoint(
+  await checkpoint?.(
     3,
     "Select the repeat for one drug while retaining the other drug result",
   );
@@ -124,7 +121,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await expect(
     reportTable.getByRole("cell", { name: "Susceptible", exact: true }),
   ).toHaveCount(2);
-  await checkpoint(
+  await checkpoint?.(
     4,
     "Verify that the earlier issued report remains unchanged",
   );
@@ -155,7 +152,10 @@ export async function runMicrobiologyAstReportingWorkflow(
     path: testInfo.outputPath("ast-final-report.png"),
     fullPage: true,
   });
-  await checkpoint(5, "Release the final report and verify the case is locked");
+  await checkpoint?.(
+    5,
+    "Release the final report and verify the case is locked",
+  );
   const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
   expect(text).toContain(seeded.accessionNumber);
   expect(text).toContain("ISO-1");
@@ -177,7 +177,7 @@ export async function runMicrobiologyAstReportingWorkflow(
     body: pdf!,
     contentType: "application/pdf",
   });
-  await checkpoint(
+  await checkpoint?.(
     6,
     "Print the issued report with selected readings and external notes",
   );

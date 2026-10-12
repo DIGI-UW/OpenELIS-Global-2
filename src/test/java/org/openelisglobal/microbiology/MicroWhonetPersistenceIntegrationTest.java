@@ -80,16 +80,20 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     @PersistenceContext
     private EntityManager entityManager;
 
+    private String scenarioActor;
+
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        scenarioActor = fixtures.createScenarioActor();
         fixtures.ensureRequiredWorkflowStatuses();
+        fixtures.ensureCultureAtmosphere();
     }
 
     @Test
     public void serviceCreatedFinalCaseIsSelectedAndExportAuditRoundTrips() throws Exception {
-        String performedBy = fixtures.defaultUserId();
+        String performedBy = scenarioActor;
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "M4";
         request.scenarioKey = "integration-m4-" + UUID.randomUUID();
@@ -172,7 +176,7 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
 
     @Test
     public void independentWhonetScenariosCreateDistinctSchemaValidSampleTypes() {
-        String performedBy = fixtures.defaultUserId();
+        String performedBy = scenarioActor;
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "M4";
         request.scenarioKey = "integration-m4-first-" + UUID.randomUUID();

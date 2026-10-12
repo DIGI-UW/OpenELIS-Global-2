@@ -132,6 +132,45 @@ public class MicrobiologyTestFixtures {
                 .getId();
     }
 
+    /**
+     * Owns the permissions needed by scenarios that create their lab unit
+     * dynamically.
+     */
+    @Transactional
+    public String createScenarioActor() {
+        var user = new SystemUser();
+        user.setLoginName("Micro" + uniqueSuffix());
+        user.setFirstName("Scenario " + uniqueSuffix());
+        user.setLastName("Operator");
+        user.setIsActive("Y");
+        user.setIsEmployee("Y");
+        user.setSysUserId(defaultUserId());
+        String id = systemUserService.insert(user);
+        var roleIds = new HashSet<String>();
+        for (String name : List.of(org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION,
+                org.openelisglobal.common.constants.Constants.ROLE_REPORTS)) {
+            var role = fixtureRoles.getRoleByName(name);
+            if ("-1".equals(role.getId())) {
+                role = new org.openelisglobal.role.valueholder.Role();
+                role.setName(name);
+                role.setDescription("Microbiology scenario " + name);
+                role.setSysUserId(id);
+                fixtureRoles.insert(role);
+            }
+            roleIds.add(role.getId());
+        }
+        var assignment = new org.openelisglobal.userrole.valueholder.UserLabUnitRoles();
+        assignment.setId(Integer.valueOf(id));
+        var mapping = new org.openelisglobal.userrole.valueholder.LabUnitRoleMap();
+        mapping.setLabUnit(org.openelisglobal.systemuser.controller.UnifiedSystemUserController.ALL_LAB_UNITS);
+        mapping.setRoles(roleIds);
+        assignment.setLabUnitRoleMap(Set.of(mapping));
+        fixtureEntityManager.persist(assignment);
+        fixtureEntityManager.flush();
+        return id;
+    }
+
     @Transactional
     public TestSection createLabUnit() {
         String name = "Micro unit " + uniqueSuffix().substring(0, 8);
