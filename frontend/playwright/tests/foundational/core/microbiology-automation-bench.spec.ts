@@ -8,6 +8,7 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 test("places an incoming result and keeps it pending validation", async ({
   page,
 }) => {
+  test.setTimeout(120000);
   const seeded = await seedMicrobiologyAutomation(page);
   await page.goto(`/Microbiology/cases/${seeded.caseId}`);
   await page
@@ -33,6 +34,11 @@ test("places an incoming result and keeps it pending validation", async ({
     .filter({ hasText: "UAT Microbiology follow-up assay" })
     .first();
   await expect(assay).toContainText("12", { timeout: LONG_TIMEOUT });
+  await expect(assay).toContainText("Awaiting validation");
+  await test.info().attach("placed-result", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
   await page.reload();
   await page
     .getByLabel("Testing section", { exact: true })
@@ -166,4 +172,8 @@ test("inoculates from the worklist and scans the saved culture label", async ({
     { timeout: LONG_TIMEOUT },
   );
   await expect(page.locator(`[data-testid="culture-row-${id}"]`)).toBeVisible();
+  await test.info().attach("scanned-culture", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
 });

@@ -97,7 +97,8 @@ public class MicroBenchCaseServiceImpl implements MicroBenchCaseService {
             for (String id : new LinkedHashSet<>(selection.cultureIds)) {
                 var row = cultures.getRows(c.getId()).stream().filter(r -> r.id.equals(id)).findFirst()
                         .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION"));
-                if (row.receivedIsolate || row.outcome != null
+                if (row.receivedIsolate
+                        || (row.outcome != null && !("EXTEND".equals(request.action) && "GROWTH".equals(row.outcome)))
                         || ("NO_GROWTH".equals(request.action) && row.positiveAt != null)) {
                     reply.skipped.add(new MicroBenchResultForm.Skip(id, row.containerIdentifier,
                             row.receivedIsolate ? "RECEIVED_ISOLATE" : row.outcome == null ? "GROWTH" : row.outcome));

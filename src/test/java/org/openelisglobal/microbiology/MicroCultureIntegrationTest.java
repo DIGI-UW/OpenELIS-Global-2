@@ -220,7 +220,7 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         q.pageSize = 1;
         q.cultureFilter = "FINAL_READ_DUE";
         var units = Set.of(microCase.getLabUnitId());
-        double now = System.currentTimeMillis() / 1000.0;
+        var now = new Timestamp(System.currentTimeMillis());
         assertEquals(2, benchSearch.benchCount(q, units, List.of("patientOrigin"), List.of(), now));
         var first = benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now);
         assertEquals(1, first.size());
@@ -243,6 +243,27 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         q.cultureFilter = "AWAITING_INOCULATION";
         assertEquals(0, benchSearch.benchCount(q, units, List.of(), List.of(), now));
         assertEquals(List.of(), benchSearch.questionnaireCases(q, units));
+    }
+
+    @Test
+    public void benchDueFilterAgreesWithCultureTimingAtTheDeadline() {
+        var input = request();
+        input.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(1800));
+        input.duration = new BigDecimal("0.1");
+        input.checkIntervalHours = new BigDecimal("0.1");
+        var row = service.inoculate(microCase.getId(), input, actor).get(0);
+        assertTrue(row.finalReadDue);
+        assertTrue(row.checkDue);
+        var query = new MicroBenchQueryForm();
+        query.page = 1;
+        query.pageSize = 20;
+        var now = new Timestamp(System.currentTimeMillis());
+        for (String filter : List.of("FINAL_READ_DUE", "CHECK_DUE")) {
+            query.cultureFilter = filter;
+            assertEquals(1, benchSearch.benchCount(query, Set.of(microCase.getLabUnitId()), List.of(), List.of(), now));
+            assertEquals(row.id, benchSearch
+                    .benchPage(query, Set.of(microCase.getLabUnitId()), List.of(), List.of(), now).get(0)[1]);
+        }
     }
 
     private List<MicroCultureForm> reload() {
@@ -319,6 +340,32 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(row.incubationEnds, restored.incubationEnds);
         assertEquals(1, restored.extensions.size());
         assertNotNull(cultures.getRows(microCase.getId()).get(0).getExtensions().get(0).getUndoneAt());
+    }
+
+    @Test
+    public void batchExtensionIncludesGrowthButSkipsCompletedNegativeCultures() throws Exception {
+        var row = create();
+        service.inoculate(microCase.getId(), request(), actor);
+        var negative = reload().get(1);
+        var outcome = new MicroCultureRequestForm();
+        outcome.outcome = "GROWTH";
+        service.act(microCase.getId(), row.id, "outcome", outcome, actor);
+        outcome.outcome = "NO_GROWTH";
+        service.act(microCase.getId(), negative.id, "outcome", outcome, actor);
+        var request = new MicroBenchRequestForm();
+        request.action = "EXTEND";
+        request.culture = new MicroCultureRequestForm();
+        request.culture.reasonId = code("Extend incubation reason", 0);
+        var reply = bench().apply(request, selection(row.id, negative.id), actor);
+        assertEquals(List.of(row.id), reply.changed);
+        assertEquals(1, reply.skipped.size());
+        assertEquals("NO_GROWTH", reply.skipped.get(0).reason());
+        var result = reload();
+        assertEquals("GROWTH", result.get(0).outcome);
+        assertEquals(row.incubationEnds.getTime() + 86400000, result.get(0).incubationEnds.getTime());
+        assertEquals(row.inoculatedAt, result.get(0).inoculatedAt);
+        assertEquals("NO_GROWTH", result.get(1).outcome);
+        assertEquals(0, result.get(1).extensions.size());
     }
 
     @Test

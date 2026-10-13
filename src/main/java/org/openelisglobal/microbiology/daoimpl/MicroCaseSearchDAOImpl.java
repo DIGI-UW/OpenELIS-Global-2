@@ -105,11 +105,13 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
                     + " where link.caseId = c.id and link.analysisId = a.id and link.cancelledAt is null"
                     + " and (link.caseRole = org.openelisglobal.microbiology.valueholder.MicroCaseRole.CULTURE or a.test.microbiologyCaseRole = 'CULTURE'))";
         } else if (cultureGrain(q)) {
-            hql += " and " + ACTIVE + " and " + ("CHECK_DUE".equals(q.cultureFilter) ? CHECK : END) + " <= :benchNow";
+            hql += " and " + ACTIVE + " and " + ("CHECK_DUE".equals(q.cultureFilter) ? CHECK : END) + " <= "
+                    + epoch("cast(:benchNow as timestamp)");
         }
         if (q.needsAttention) {
             var reasons = new java.util.ArrayList<String>();
-            reasons.add("(" + ACTIVE + " and (" + CHECK + " <= :benchNow or " + END + " <= :benchNow))");
+            reasons.add("(" + ACTIVE + " and (" + CHECK + " <= " + epoch("cast(:benchNow as timestamp)") + " or " + END
+                    + " <= " + epoch("cast(:benchNow as timestamp)") + "))");
             reasons.add(
                     "exists (select i.id from MicroIncomingItem i where i.microCase.id = c.id and i.state in ('WAITING','FAILED','NEEDS_AMENDMENT'))");
             reasons.add(
@@ -134,7 +136,7 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
     }
 
     private void bindBench(Query<?> query, org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> questionnaireIds, double now) {
+            List<String> questionnaireIds, Timestamp now) {
         bind(query, q, ids);
         if (cultureGrain(q) || q.needsAttention)
             query.setParameter("benchNow", now);
@@ -144,7 +146,7 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
 
     @Override
     public List<Object[]> benchPage(org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> fields, List<String> questionnaireIds, double now) {
+            List<String> fields, List<String> questionnaireIds, Timestamp now) {
         if (ids != null && ids.isEmpty())
             return List.of();
         String rowId = cultureGrain(q) ? "r.id" : "c.id";
@@ -159,7 +161,7 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
 
     @Override
     public long benchCount(org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> fields, List<String> questionnaireIds, double now) {
+            List<String> fields, List<String> questionnaireIds, Timestamp now) {
         if (ids != null && ids.isEmpty())
             return 0;
         var query = session().createQuery("select count(distinct " + (cultureGrain(q) ? "r.id" : "c.id") + ")" + FROM

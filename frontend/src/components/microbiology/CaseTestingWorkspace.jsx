@@ -405,6 +405,18 @@ export default function CaseTestingWorkspace({
   useEffect(() => {
     if (!detail.canWrite) setEditor(null);
   }, [detail.canWrite]);
+  const refreshTesting = () => {
+    Promise.all([service.getTests(detail.id), service.getTimeline(detail.id)])
+      .then(([data, history]) => {
+        if (!mounted.current) return;
+        setTests(data);
+        setTimeline(history);
+      })
+      .catch(() => {
+        if (mounted.current) setError(true);
+      });
+    onCaseChanged?.();
+  };
   const addTests = async () => {
     setAdding(true);
     setError(false);
@@ -629,7 +641,7 @@ export default function CaseTestingWorkspace({
         <CaseIncomingWorkspace
           detail={detail}
           service={service}
-          onChanged={onCaseChanged}
+          onChanged={refreshTesting}
         />
       )}
       {placement === "AST" && (

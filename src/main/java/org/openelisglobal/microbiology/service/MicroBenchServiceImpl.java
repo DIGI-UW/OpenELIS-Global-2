@@ -70,7 +70,8 @@ public class MicroBenchServiceImpl implements MicroBenchService {
                                 .anyMatch(reason -> reason.contains("QUESTION")))
                         .toList()
                 : List.of();
-        double now = System.currentTimeMillis() / 1000.0;
+        // Bind now through the same JDBC timestamp conversion as inoculation times.
+        var now = new java.sql.Timestamp(System.currentTimeMillis());
         result.total = search.benchCount(query, allowed, requirements.requiredFields(), questionnaireIds, now);
         var selected = search.benchPage(query, allowed, requirements.requiredFields(), questionnaireIds, now);
         var shells = new HashMap<String, MicroCaseShellForm>();

@@ -10,10 +10,10 @@ public interface MicroCaseSearchDAO {
     List<Object[]> search(MicroCaseSearchForm query, Set<String> labUnitIds);
 
     List<Object[]> benchPage(org.openelisglobal.microbiology.form.MicroBenchQueryForm query, Set<String> units,
-            List<String> requiredFields, List<String> questionnaireAttentionIds, double now);
+            List<String> requiredFields, List<String> questionnaireAttentionIds, java.sql.Timestamp now);
 
     long benchCount(org.openelisglobal.microbiology.form.MicroBenchQueryForm query, Set<String> units,
-            List<String> requiredFields, List<String> questionnaireAttentionIds, double now);
+            List<String> requiredFields, List<String> questionnaireAttentionIds, java.sql.Timestamp now);
 
     List<String> questionnaireCases(MicroCaseSearchForm query, Set<String> units);
 

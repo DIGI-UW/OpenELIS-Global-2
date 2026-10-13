@@ -191,7 +191,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
           onRequestClose={() => {
             if (!saving) setSelected(null);
           }}
-          iconDescription={t("common.close")}
+          closeButtonLabel={t("button.close")}
         >
           <Stack gap={4}>
             <h4>{selected.testName}</h4>

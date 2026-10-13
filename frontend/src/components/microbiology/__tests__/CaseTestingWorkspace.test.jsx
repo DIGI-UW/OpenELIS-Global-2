@@ -73,6 +73,46 @@ const enter = (name, value) =>
     { target: { value } },
   );
 describe("case testing workspace", () => {
+  test("incoming placement refreshes additional results without reopening the case", async () => {
+    const api = service();
+    api.getIncoming = vi.fn().mockResolvedValue([
+      {
+        id: "incoming-1",
+        testName: "Incoming assay",
+        state: "WAITING",
+        sampleItemId: "sample-1",
+        receivedAt: "2026-01-01T10:00:00Z",
+        result: { components: [{ value: "12" }] },
+      },
+    ]);
+    api.placeIncoming = vi.fn().mockResolvedValue({});
+    show(api);
+    await screen.findByText("Two-component assay");
+    fireEvent.change(screen.getByLabelText("Testing section"), {
+      target: { value: "INCOMING" },
+    });
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Review placement" }),
+    );
+    api.getTests.mockResolvedValue([
+      {
+        ...assay,
+        testName: "Placed assay",
+        placement: "ADDITIONAL",
+        status: "TechnicalAcceptance",
+        components: [{ ...component("primary", "MTB"), resultValue: "12" }],
+      },
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Place result" }));
+    await waitFor(() => expect(api.getTests).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByLabelText("Testing section"), {
+      target: { value: "ADDITIONAL" },
+    });
+    expect(await screen.findByText("Placed assay")).toBeVisible();
+    expect(screen.getByText("Awaiting validation")).toBeVisible();
+    expect(screen.getByText(/12/)).toBeVisible();
+  });
+
   test("edits components independently and submits the current version", async () => {
     const api = service();
     show(api);
