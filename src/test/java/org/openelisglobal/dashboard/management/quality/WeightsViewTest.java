@@ -1,5 +1,6 @@
 package org.openelisglobal.dashboard.management.quality;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -24,6 +25,14 @@ public class WeightsViewTest {
     public void sumOffByMoreThanOneHundredthIsRejected() {
         assertFalse(weights("0.50", "0.50", "0.50", "0.50").isValid());
         assertFalse(weights("0.30", "0.25", "0.25", "0.18").isValid());
+    }
+
+    @Test
+    public void weightsAreRoundedToTwoDecimalsBeforeTheSumCheck() {
+        WeightsView thirds = weights("0.335", "0.335", "0.335", "0");
+
+        assertEquals(new BigDecimal("0.34"), thirds.qc());
+        assertFalse(thirds.isValid());
     }
 
     @Test

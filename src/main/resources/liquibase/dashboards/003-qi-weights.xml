@@ -13,7 +13,6 @@
         <comment>Single-row weights of the composite quality score</comment>
         <createSequence sequenceName="qi_weights_id_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
         <createTable schemaName="clinlims" tableName="qi_weights">
-            <!-- numeric PK: history.reference_id is numeric -->
             <column name="id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false" primaryKeyName="pk_qi_weights"/>
             </column>
@@ -55,20 +54,6 @@
             <delete schemaName="clinlims" tableName="reference_tables">
                 <where>LOWER(name) = 'qi_weights'</where>
             </delete>
-        </rollback>
-    </changeSet>
-
-    <!-- last_updated is the @Version column; a null one makes the first update stale. -->
-    <changeSet author="openelisglobal" id="OGC-897-qi-weights-seed">
-        <comment>The FRS default weights: QC 0.30, EQA 0.25, NCE inverse 0.25, amendment inverse 0.20</comment>
-        <sql>
-            INSERT INTO clinlims.qi_weights (id, qc_weight, eqa_weight, nce_inverse_weight,
-                                             amendment_inverse_weight, lastupdated, last_updated)
-            SELECT nextval('clinlims.qi_weights_id_seq'), 0.30, 0.25, 0.25, 0.20, now(), now()
-            WHERE NOT EXISTS (SELECT 1 FROM clinlims.qi_weights);
-        </sql>
-        <rollback>
-            <sql>DELETE FROM clinlims.qi_weights;</sql>
         </rollback>
     </changeSet>
 

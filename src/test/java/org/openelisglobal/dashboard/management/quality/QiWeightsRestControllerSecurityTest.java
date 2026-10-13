@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebAppConfiguration
 @ContextConfiguration(classes = { SliceSecurityConfig.class, QiWeightsRestControllerSecurityTest.TestConfig.class })
@@ -60,7 +63,7 @@ public class QiWeightsRestControllerSecurityTest extends SecuritySliceMockMvcTes
 
     @Test
     public void dashboardViewerCannotChangeTheWeights() throws Exception {
-        mockMvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON).content(VALID)
+        mockMvc.perform(putWeights(VALID)
                 .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
                 .andExpect(status().isForbidden());
         assertTrue(service.saved.isEmpty());
@@ -68,19 +71,24 @@ public class QiWeightsRestControllerSecurityTest extends SecuritySliceMockMvcTes
 
     @Test
     public void qiManagerSavesValidWeights() throws Exception {
-        mockMvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON).content(VALID)
-                .with(user("qa").authorities(new SimpleGrantedAuthority("qa.manage.qi"))))
+        mockMvc.perform(putWeights(VALID).with(user("qa").authorities(new SimpleGrantedAuthority("qa.manage.qi"))))
                 .andExpect(status().isNoContent());
         assertEquals(1, service.saved.size());
     }
 
     @Test
     public void weightsThatDoNotSumToOneAreABadRequest() throws Exception {
-        mockMvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"qc\":0.5,\"eqa\":0.5,\"nceInverse\":0.5,\"amendmentInverse\":0.5}")
+        mockMvc.perform(putWeights("{\"qc\":0.5,\"eqa\":0.5,\"nceInverse\":0.5,\"amendmentInverse\":0.5}")
                 .with(user("qa").authorities(new SimpleGrantedAuthority("qa.manage.qi"))))
                 .andExpect(status().isBadRequest());
         assertTrue(service.saved.isEmpty());
+    }
+
+    private static MockHttpServletRequestBuilder putWeights(String body) {
+        UserSessionData session = new UserSessionData();
+        session.setSytemUserId(1);
+        return put(URL).contentType(MediaType.APPLICATION_JSON).content(body)
+                .requestAttr(IActionConstants.USER_SESSION_DATA, session);
     }
 
     static class RecordingService implements QiWeightsService {

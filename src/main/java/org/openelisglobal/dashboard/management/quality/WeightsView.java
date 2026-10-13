@@ -2,12 +2,24 @@ package org.openelisglobal.dashboard.management.quality;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public record WeightsView(BigDecimal qc, BigDecimal eqa, BigDecimal nceInverse, BigDecimal amendmentInverse) {
 
     private static final BigDecimal TOLERANCE = new BigDecimal("0.01");
 
-    /** Every weight present and between 0 and 1, summing to 1.00 within 0.01. */
+    // Rounded as NUMERIC(3,2) stores them, so the sum check sees the stored values.
+    public WeightsView {
+        qc = scaled(qc);
+        eqa = scaled(eqa);
+        nceInverse = scaled(nceInverse);
+        amendmentInverse = scaled(amendmentInverse);
+    }
+
+    private static BigDecimal scaled(BigDecimal weight) {
+        return weight == null ? null : weight.setScale(2, RoundingMode.HALF_UP);
+    }
+
     @JsonIgnore
     public boolean isValid() {
         BigDecimal sum = BigDecimal.ZERO;

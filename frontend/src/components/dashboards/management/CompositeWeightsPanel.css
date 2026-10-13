@@ -18,9 +18,3 @@
 .mgmt-weights__total--invalid {
   color: var(--cds-text-error, #da1e28);
 }
-
-.mgmt-weights__scaled {
-  margin-top: 1rem;
-  list-style: disc;
-  padding-left: 1.25rem;
-}

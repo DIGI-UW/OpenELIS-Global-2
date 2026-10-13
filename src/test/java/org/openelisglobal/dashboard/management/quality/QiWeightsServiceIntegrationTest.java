@@ -3,6 +3,8 @@ package org.openelisglobal.dashboard.management.quality;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -16,6 +18,13 @@ public class QiWeightsServiceIntegrationTest extends BaseWebContextSensitiveTest
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        tearDown();
+    }
+
+    @After
+    public void tearDown() {
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = (SELECT id"
+                + " FROM clinlims.reference_tables WHERE LOWER(name) = 'qi_weights')");
         jdbcTemplate.update("DELETE FROM clinlims.qi_weights");
     }
 
@@ -38,6 +47,11 @@ public class QiWeightsServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(second, qiWeightsService.getWeights());
         assertEquals(Integer.valueOf(1),
                 jdbcTemplate.queryForObject("SELECT count(*) FROM clinlims.qi_weights", Integer.class));
+        assertEquals(List.of("I", "U"),
+                jdbcTemplate.queryForList(
+                        "SELECT h.activity FROM clinlims.history h JOIN clinlims.reference_tables r"
+                                + " ON r.id = h.reference_table WHERE LOWER(r.name) = 'qi_weights' ORDER BY h.id",
+                        String.class));
     }
 
     @Test(expected = IllegalArgumentException.class)

@@ -1,9 +1,6 @@
 const round2 = (value) => Math.round(value * 100) / 100;
 
-/**
- * Weights scaled proportionally to sum to 1.00 at two decimals, the rounding
- * remainder going to the largest weight. Null when nothing can be scaled.
- */
+// The rounding remainder goes to the largest weight.
 export const scaleToOne = (weights) => {
   const keys = Object.keys(weights);
   const total = keys.reduce((sum, key) => sum + weights[key], 0);

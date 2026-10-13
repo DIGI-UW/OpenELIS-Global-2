@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import {
   Button,
   InlineNotification,
+  ListItem,
   Modal,
   NumberInput,
   Tile,
+  UnorderedList,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { putToOpenElisServer } from "../../utils/Utils";
@@ -170,13 +172,13 @@ const CompositeWeightsPanel = () => {
               values={{ 0: sum.toFixed(2) }}
             />
           </p>
-          <ul className="mgmt-weights__scaled">
+          <UnorderedList>
             {FIELDS.map(({ key, labelKey }) => (
-              <li key={key}>
+              <ListItem key={key}>
                 {intl.formatMessage({ id: labelKey })}: {scaled[key].toFixed(2)}
-              </li>
+              </ListItem>
             ))}
-          </ul>
+          </UnorderedList>
         </Modal>
       )}
     </Tile>
