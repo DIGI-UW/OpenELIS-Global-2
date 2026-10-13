@@ -167,4 +167,5 @@
     <include file="liquibase/3.3.x.x/encrypted-value-capacity.xml"/>
   <!-- OGC-897: management dashboard. After qa/, so its grants can follow qa.eqa.provider -->
   <include file="liquibase/dashboards/001-management-dashboard-access.xml" />
+  <include file="liquibase/dashboards/005-analyzer-activity-indexes.xml" />
 </databaseChangeLog>

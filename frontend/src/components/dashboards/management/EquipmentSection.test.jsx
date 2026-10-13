@@ -1,7 +1,7 @@
 import React from "react";
 import { screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import EquipmentSection, { timeAgo } from "./EquipmentSection";
+import EquipmentSection, { statusOf, timeAgo } from "./EquipmentSection";
 import { renderQa } from "../../qa/testUtils";
 
 vi.mock("../../utils/Utils", async (importOriginal) => ({
@@ -20,7 +20,6 @@ describe("EquipmentSection", () => {
       {
         id: "1",
         name: "Sysmex XN-550",
-        status: "ACTIVE",
         samples: 1247,
         section: "Hematology",
         lastActivityAt: minutesAgo(2),
@@ -28,7 +27,6 @@ describe("EquipmentSection", () => {
       {
         id: "2",
         name: "GeneXpert IV",
-        status: "QUIET",
         samples: 1,
         section: "Molecular Biology",
         lastActivityAt: minutesAgo(4 * 60),
@@ -36,7 +34,6 @@ describe("EquipmentSection", () => {
       {
         id: "3",
         name: "Roche cobas 4800",
-        status: "NO_ACTIVITY",
         samples: 0,
         section: null,
         lastActivityAt: minutesAgo(2 * 24 * 60),
@@ -93,5 +90,16 @@ describe("EquipmentSection", () => {
     expect(timeAgo(at(60), "en", now)).toBe("1h ago");
     expect(timeAgo(at(23 * 60 + 29), "en", now)).toBe("23h ago");
     expect(timeAgo(at(24 * 60), "en", now)).toBe("1d ago");
+  });
+
+  it("tags active within an hour, quiet within a day, then no activity", () => {
+    const now = Date.parse("2026-10-12T12:00:00Z");
+    const at = (minutes) => new Date(now - minutes * 60000).toISOString();
+
+    expect(statusOf(at(59), now)).toBe("ACTIVE");
+    expect(statusOf(at(60), now)).toBe("QUIET");
+    expect(statusOf(at(24 * 60), now)).toBe("QUIET");
+    expect(statusOf(at(24 * 60 + 1), now)).toBe("NO_ACTIVITY");
+    expect(statusOf(null, now)).toBe("NO_ACTIVITY");
   });
 });

@@ -1,15 +1,14 @@
 package org.openelisglobal.dashboard.management.equipment;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import java.sql.Timestamp;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -19,7 +18,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.dashboard.management.ScopeRange;
-import org.openelisglobal.dashboard.management.equipment.AnalyzerActivity.Status;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,7 +35,6 @@ public class EquipmentServiceIntegrationTest extends BaseWebContextSensitiveTest
 
     private JdbcTemplate jdbc;
 
-    // These JDBC writes commit, so tearDown removes them.
     @Before
     @Override
     public void setUp() throws Exception {
@@ -138,7 +135,6 @@ public class EquipmentServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals("Equip Busy", busy.name());
         assertEquals(2, busy.samples());
         assertEquals("Equip Chemistry", busy.section());
-        assertEquals(Status.ACTIVE, busy.status());
     }
 
     @Test
@@ -147,7 +143,6 @@ public class EquipmentServiceIntegrationTest extends BaseWebContextSensitiveTest
 
         assertEquals(1, slow.samples());
         assertEquals("Equip Molecular", slow.section());
-        assertEquals(Status.QUIET, slow.status());
     }
 
     @Test
@@ -157,7 +152,6 @@ public class EquipmentServiceIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(0, idle.samples());
         assertNull(idle.section());
         assertEquals(Timestamp.valueOf(NOW.minusDays(2)).toInstant().toString(), idle.lastActivityAt());
-        assertEquals(Status.NO_ACTIVITY, idle.status());
     }
 
     @Test
@@ -166,7 +160,6 @@ public class EquipmentServiceIntegrationTest extends BaseWebContextSensitiveTest
 
         assertEquals(1, bridge.samples());
         assertEquals(Timestamp.valueOf(NOW.minusMinutes(10)).toInstant().toString(), bridge.lastActivityAt());
-        assertEquals(Status.ACTIVE, bridge.status());
     }
 
     @Test
@@ -175,25 +168,13 @@ public class EquipmentServiceIntegrationTest extends BaseWebContextSensitiveTest
 
         assertEquals(0, staged.samples());
         assertEquals(Timestamp.valueOf(NOW.minusHours(3)).toInstant().toString(), staged.lastActivityAt());
-        assertEquals(Status.QUIET, staged.status());
     }
 
     @Test
     public void listsOnlyActiveAnalyzersAndOneWithNoHistoryHasNoActivity() {
         Map<String, AnalyzerActivity> analyzers = lastSevenDays();
 
-        assertEquals(List.of(), analyzers.keySet().stream().filter("89744"::equals).toList());
+        assertFalse(analyzers.containsKey("89744"));
         assertNull(analyzers.get("89745").lastActivityAt());
-        assertEquals(Status.NO_ACTIVITY, analyzers.get("89745").status());
-    }
-
-    @Test
-    public void thresholdsSplitAtOneHourAndTwentyFourHours() {
-        Instant now = Instant.now();
-
-        assertEquals(Status.ACTIVE, EquipmentServiceImpl.status(now.minus(Duration.ofMinutes(59)), now));
-        assertEquals(Status.QUIET, EquipmentServiceImpl.status(now.minus(Duration.ofHours(1)), now));
-        assertEquals(Status.QUIET, EquipmentServiceImpl.status(now.minus(Duration.ofHours(24)), now));
-        assertEquals(Status.NO_ACTIVITY, EquipmentServiceImpl.status(now.minus(Duration.ofHours(25)), now));
     }
 }

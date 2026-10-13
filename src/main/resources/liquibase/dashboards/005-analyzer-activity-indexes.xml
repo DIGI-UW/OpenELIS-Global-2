@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelisglobal" id="OGC-897-analyzer-activity-indexes">
+        <comment>Per-analyzer last-activity lookups for the Management Overview equipment grid</comment>
+        <sql>
+            CREATE INDEX IF NOT EXISTS idx_analysis_analyzer_completed
+                ON clinlims.analysis (analyzer_id, completed_date) WHERE analyzer_id IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS idx_analyzer_delivery_receipt_analyzer_accepted
+                ON clinlims.analyzer_delivery_receipt (analyzer_id, accepted_at);
+            CREATE INDEX IF NOT EXISTS idx_analyzer_event_analyzer_received
+                ON clinlims.analyzer_event (analyzer_id, received_at);
+            CREATE INDEX IF NOT EXISTS idx_analyzer_results_analyzer_updated
+                ON clinlims.analyzer_results (analyzer_id, last_updated);
+        </sql>
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.idx_analysis_analyzer_completed;
+                DROP INDEX IF EXISTS clinlims.idx_analyzer_delivery_receipt_analyzer_accepted;
+                DROP INDEX IF EXISTS clinlims.idx_analyzer_event_analyzer_received;
+                DROP INDEX IF EXISTS clinlims.idx_analyzer_results_analyzer_updated;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

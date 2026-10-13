@@ -20,6 +20,14 @@ const STATUS = {
   },
 };
 
+// Active within an hour, quiet within a day; the same clock as timeAgo.
+export const statusOf = (iso, now = Date.now()) => {
+  if (!iso) return "NO_ACTIVITY";
+  const idleMinutes = (now - new Date(iso).getTime()) / 60000;
+  if (idleMinutes < 60) return "ACTIVE";
+  return idleMinutes <= 24 * 60 ? "QUIET" : "NO_ACTIVITY";
+};
+
 export const timeAgo = (iso, locale, now = Date.now()) => {
   const minutes = Math.round((new Date(iso).getTime() - now) / 60000);
   const format = new Intl.RelativeTimeFormat(locale, { style: "narrow" });
@@ -55,13 +63,10 @@ const EquipmentSection = ({ scope, scopeLabel, features }) => {
       ) : (
         <div className="mgmt-equipment__grid">
           {query.data.map((analyzer) => {
-            const status = STATUS[analyzer.status];
+            const now = Date.now();
+            const status = STATUS[statusOf(analyzer.lastActivityAt, now)];
             return (
-              <Tile
-                key={analyzer.id}
-                className="mgmt-equipment__card"
-                data-testid="mgmt-equipment-card"
-              >
+              <Tile key={analyzer.id} data-testid="mgmt-equipment-card">
                 <div className="mgmt-equipment__card-head">
                   <h4>{analyzer.name}</h4>
                   <Tag
@@ -94,7 +99,7 @@ const EquipmentSection = ({ scope, scopeLabel, features }) => {
                     id="label.mgmt.equipment.lastActivity"
                     values={{
                       0: analyzer.lastActivityAt
-                        ? timeAgo(analyzer.lastActivityAt, intl.locale)
+                        ? timeAgo(analyzer.lastActivityAt, intl.locale, now)
                         : "—",
                     }}
                   />
