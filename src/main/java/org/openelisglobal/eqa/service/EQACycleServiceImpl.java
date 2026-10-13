@@ -45,6 +45,7 @@ import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
 import org.openelisglobal.eqa.valueholder.EQAFollowupStatus;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
@@ -156,6 +157,9 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private EQALabProgramEnrollmentService labEnrollmentService;
+
     public EQACycleServiceImpl() {
         super(EQACycle.class);
     }
@@ -206,8 +210,8 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         if (GenericValidator.isBlankOrNull(schemeName)) {
             return Optional.empty();
         }
-        EQAProgram scheme = eqaProgramService.getAllMatching("name", schemeName.trim()).stream().findFirst()
-                .orElse(null);
+        EQAProgram scheme = eqaProgramService.getAll().stream()
+                .filter(program -> sameProgramme(program.getName(), schemeName)).findFirst().orElse(null);
         if (scheme == null) {
             return Optional.empty();
         }
@@ -233,6 +237,31 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
             eqaRoundDAO.insert(round);
         }
         return Optional.of(cycle);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EQALabProgramEnrollment> getEnrollmentsOpenForCycles() {
+        List<EQAProgram> schemes = eqaProgramService.getAll();
+        return labEnrollmentService.findActiveEnrollments().stream().filter(enrollment -> schemes.stream()
+                .anyMatch(scheme -> sameProgramme(scheme.getName(), enrollment.getProgramName()))).toList();
+    }
+
+    @Override
+    @Transactional
+    public EQACycle createParticipantCycle(String schemeName, String cycleName, Date distributionDate,
+            Date submissionDeadline, String sysUserId) {
+        if (labEnrollmentService.findActiveEnrollments().stream()
+                .noneMatch(enrollment -> sameProgramme(enrollment.getProgramName(), schemeName))) {
+            throw new IllegalArgumentException("This laboratory is not enrolled in " + schemeName);
+        }
+        return ensureParticipantCycle(schemeName, null, cycleName, distributionDate, submissionDeadline, sysUserId)
+                .orElseThrow(() -> new IllegalArgumentException("No scheme named '" + schemeName
+                        + "' exists on this instance; add it under EQA Management, Schemes"));
+    }
+
+    private static boolean sameProgramme(String left, String right) {
+        return left != null && right != null && left.trim().equalsIgnoreCase(right.trim());
     }
 
     /**

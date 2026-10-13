@@ -9,6 +9,7 @@ import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
 import org.openelisglobal.eqa.valueholder.EQAStateMachine;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
@@ -98,14 +99,27 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
     /**
      * Participant side of a cycle: the local cycle that a consignment from an
      * OpenELIS provider, or a lab user filling the My Cycles form, names by scheme
-     * name. Matched to a local programme of that exact name; when
-     * {@code cycleNumber} is given and that cycle already exists it is returned
-     * unchanged, so an import poll can run repeatedly. A new cycle is PLANNED and,
-     * when a deadline is known, carries round 1 with it so the 7/3/1-day digest and
-     * the reports see it. Empty when no local programme carries the name.
+     * name. Matched to a local programme of that name, ignoring case and
+     * surrounding spaces; when {@code cycleNumber} is given and that cycle already
+     * exists it is returned unchanged, so an import poll can run repeatedly. A new
+     * cycle is PLANNED and, when a deadline is known, carries round 1 with it so
+     * the 7/3/1-day digest and the reports see it. Empty when no local programme
+     * carries the name.
      */
     Optional<EQACycle> ensureParticipantCycle(String schemeName, Integer cycleNumber, String cycleName,
             Date distributionDate, Date submissionDeadline, String sysUserId);
+
+    /**
+     * The active enrolments a lab can record a cycle for: those whose programme
+     * exists here as a scheme, matched as {@link #ensureParticipantCycle} matches.
+     */
+    List<EQALabProgramEnrollment> getEnrollmentsOpenForCycles();
+
+    /**
+     * Refuses a scheme that is not one of {@link #getEnrollmentsOpenForCycles()}.
+     */
+    EQACycle createParticipantCycle(String schemeName, String cycleName, Date distributionDate, Date submissionDeadline,
+            String sysUserId);
 
     /**
      * What the wizard collects, in step order: 1 cycle details, 2 panel samples +

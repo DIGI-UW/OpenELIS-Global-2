@@ -247,11 +247,19 @@ public class EQACycleRestController extends BaseRestController {
         return samples instanceof List<?> linked && !linked.isEmpty();
     }
 
+    @GetMapping(value = "/cycles/mine/enrollments", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> enrollmentsOpenForCycles() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQALabProgramEnrollment enrollment : cycleService.getEnrollmentsOpenForCycles()) {
+            rows.add(Map.of("id", enrollment.getId(), "programName", enrollment.getProgramName()));
+        }
+        return rows;
+    }
+
     /**
      * The participant's own way in: a cycle for a programme this lab has enrolled
      * in, for a provider that does not send consignments to an OpenELIS. The
-     * programme is named, not numbered, because that is all an enrollment carries;
-     * it must exist locally under the same name.
+     * programme is named, not numbered, because that is all an enrollment carries.
      */
     @PostMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PARTICIPANT)
@@ -261,16 +269,8 @@ public class EQACycleRestController extends BaseRestController {
         if (schemeName == null) {
             throw new IllegalArgumentException("A cycle needs a scheme");
         }
-        boolean enrolled = enrollmentService.findActiveEnrollments().stream()
-                .anyMatch(e -> e.getProgramName() != null && e.getProgramName().trim().equalsIgnoreCase(schemeName));
-        if (!enrolled) {
-            throw new IllegalArgumentException("This laboratory is not enrolled in " + schemeName);
-        }
-        EQACycle cycle = cycleService.ensureParticipantCycle(schemeName, null, stringField(body, "cycleName"),
-                dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request))
-                .orElseThrow(() -> new IllegalArgumentException("No scheme named '" + schemeName
-                        + "' exists on this instance; add it under EQA Management, Schemes"));
-        return toCycleDto(cycle);
+        return toCycleDto(cycleService.createParticipantCycle(schemeName, stringField(body, "cycleName"),
+                dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request)));
     }
 
     /**

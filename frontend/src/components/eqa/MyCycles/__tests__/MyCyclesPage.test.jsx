@@ -40,12 +40,15 @@ const chooseScheme = (name) => {
   fireEvent.click(screen.getByRole("option", { name }));
 };
 
-const renderPage = (orders = UNCYCLED_ORDERS, cycles = MOCK_CYCLES) => {
+const renderPage = (
+  orders = UNCYCLED_ORDERS,
+  cycles = MOCK_CYCLES,
+  enrollments = [{ id: 7, programName: "CPHL National HIV Viral Load EQA" }],
+) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
-    if (url.startsWith("/rest/eqa/cycles/mine")) cb(cycles);
+    if (url === "/rest/eqa/cycles/mine") cb(cycles);
     if (url.startsWith("/rest/eqa/orders")) cb(orders);
-    if (url.startsWith("/rest/eqa/my-programs"))
-      cb([{ id: 7, programName: "CPHL National HIV Viral Load EQA" }]);
+    if (url === "/rest/eqa/cycles/mine/enrollments") cb(enrollments);
   });
   return render(
     <IntlProvider locale="en" messages={messages}>
@@ -150,6 +153,15 @@ describe("MyCyclesPage", () => {
         Promise.resolve({ id: 99, cycleName: "Round 9", status: "PLANNED" }),
     });
     expect(await screen.findByText(/Cycle created/)).toBeInTheDocument();
+  });
+
+  test("New cycle says why when no enrollment can take a cycle", () => {
+    renderPage(UNCYCLED_ORDERS, MOCK_CYCLES, []);
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+
+    expect(
+      screen.getByText(/No active enrollment here matches a scheme/),
+    ).toBeInTheDocument();
   });
 
   test("New cycle shows the server's refusal instead of a false success", async () => {

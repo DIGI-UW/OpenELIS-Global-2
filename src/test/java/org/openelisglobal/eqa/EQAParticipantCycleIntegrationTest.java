@@ -240,6 +240,43 @@ public class EQAParticipantCycleIntegrationTest extends EQASpineTestBase {
                         Integer.class));
     }
 
+    @Test
+    public void theNewCycleFormOffersOnlyActiveEnrollmentsWithAMatchingScheme() {
+        insertScheme("Offered scheme J", EQASchemeType.REGIONAL_PT, "CPHL");
+        insertScheme("Suspended scheme K", EQASchemeType.REGIONAL_PT, "CPHL");
+        seedEnrollment(9955, "  offered SCHEME j ");
+        seedEnrollment(9956, "Suspended scheme K");
+        jdbc.update("UPDATE clinlims.eqa_lab_program_enrollment SET is_active = false WHERE id = 9956");
+        seedEnrollment(9957, "Scheme nobody here runs L");
+
+        Set<Long> offered = controller().enrollmentsOpenForCycles().stream()
+                .map(row -> ((Number) row.get("id")).longValue()).collect(Collectors.toSet());
+
+        assertTrue("a case or spacing difference still matches the scheme", offered.contains(9955L));
+        assertFalse("a suspended enrollment is not offered", offered.contains(9956L));
+        assertFalse("an enrollment with no scheme here is not offered", offered.contains(9957L));
+    }
+
+    @Test
+    public void anOfferedEnrollmentCreatesItsCycleAndAnUnusableOneIsRefused() {
+        EQAProgram scheme = insertScheme("Offered scheme M", EQASchemeType.REGIONAL_PT, "CPHL");
+        seedEnrollment(9958, "offered scheme m ");
+        seedEnrollment(9959, "Scheme nobody here runs N");
+
+        Map<String, Object> dto = controller().createMyCycle(requestForUser(),
+                Map.of("schemeName", "offered scheme m ", "cycleName", "Round 1", "submissionDeadline", "2026-09-30"));
+
+        assertEquals(scheme.getId(), jdbc.queryForObject("SELECT scheme_id FROM clinlims.eqa_cycle WHERE id = ?",
+                Long.class, ((Number) dto.get("id")).longValue()));
+        try {
+            controller().createMyCycle(requestForUser(), Map.of("schemeName", "Scheme nobody here runs N", "cycleName",
+                    "Round 1", "submissionDeadline", "2026-09-30"));
+            fail("an enrollment with no scheme here must be refused");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("No scheme named"));
+        }
+    }
+
     // ---- helpers ----
 
     private EQACycleRestController controller() {
