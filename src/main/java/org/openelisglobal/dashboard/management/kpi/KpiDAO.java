@@ -5,10 +5,7 @@ import java.util.Map;
 
 public interface KpiDAO {
 
-    /**
-     * Samples received per period key of the given interval (DAILY, WEEKLY,
-     * MONTHLY).
-     */
+    /** interval: DAILY, WEEKLY or MONTHLY. */
     Map<String, Long> countSamplesReceivedByPeriod(LocalDate from, LocalDate to, String interval);
 
     /**

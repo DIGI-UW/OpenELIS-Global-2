@@ -3,9 +3,7 @@ package org.openelisglobal.dashboard.management.kpi;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -55,16 +53,16 @@ public class KpiServiceImpl implements KpiService {
     public ManagementKpis getKpis(ScopeRange scope) {
         String interval = ChronoUnit.DAYS.between(scope.from(), scope.to()) > DAILY_SPARK_MAX_DAYS ? "WEEKLY" : "DAILY";
         List<String> periods = periods(scope.from(), scope.to(), interval);
-        return new ManagementKpis(periods, samples(scope, interval, periods), medianTat(scope, interval, periods),
-                onTime(scope, interval, periods), rejection(scope, interval, periods), qcPass(scope, interval, periods),
-                scope);
+        return new ManagementKpis(samples(scope, interval, periods), medianTat(scope, interval, periods),
+                onTime(scope, interval, periods), rejection(scope, interval, periods),
+                qcPass(scope, interval, periods));
     }
 
     private Kpi samples(ScopeRange scope, String interval, List<String> periods) {
         Map<String, Long> current = kpiDAO.countSamplesReceivedByPeriod(scope.from(), scope.to(), interval);
-        return new Kpi(BigDecimal.valueOf(sum(current.values())),
-                BigDecimal.valueOf(sum(
-                        kpiDAO.countSamplesReceivedByPeriod(scope.priorFrom(), scope.priorTo(), interval).values())),
+        Map<String, Long> prior = kpiDAO.countSamplesReceivedByPeriod(scope.priorFrom(), scope.priorTo(), interval);
+        return new Kpi(BigDecimal.valueOf(current.values().stream().mapToLong(Long::longValue).sum()),
+                BigDecimal.valueOf(prior.values().stream().mapToLong(Long::longValue).sum()),
                 align(periods, p -> BigDecimal.valueOf(current.getOrDefault(p, 0L))), null);
     }
 
@@ -83,10 +81,7 @@ public class KpiServiceImpl implements KpiService {
                 null, null, null, null, null, null, false, null).getMedian();
     }
 
-    /**
-     * Share of validated analyses whose receipt-to-validation time is within the QI
-     * TAT target.
-     */
+    // Validated analyses within the QI TAT target, receipt to validation.
     private Kpi onTime(ScopeRange scope, String interval, List<String> periods) {
         BigDecimal targetHours = tatTargetHours();
         if (targetHours == null) {
@@ -188,27 +183,11 @@ public class KpiServiceImpl implements KpiService {
     }
 
     private static List<String> periods(LocalDate from, LocalDate to, String interval) {
-        LinkedHashSet<String> periods = new LinkedHashSet<>();
-        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
-            periods.add(QiReportSupport.periodKey(day, interval));
-        }
-        return new ArrayList<>(periods);
+        return from.datesUntil(to.plusDays(1)).map(d -> QiReportSupport.periodKey(d, interval)).distinct().toList();
     }
 
     private static List<BigDecimal> align(List<String> periods, Function<String, BigDecimal> value) {
-        List<BigDecimal> points = new ArrayList<>(periods.size());
-        for (String period : periods) {
-            points.add(value.apply(period));
-        }
-        return points;
-    }
-
-    private static long sum(Iterable<Long> values) {
-        long total = 0;
-        for (long value : values) {
-            total += value;
-        }
-        return total;
+        return periods.stream().map(value).toList();
     }
 
     private static BigDecimal percent(long part, long whole) {

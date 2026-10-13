@@ -45,8 +45,7 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
     public void dashboardGrantIsAdmitted() throws Exception {
         mockMvc.perform(get("/rest/dashboards/management/summary?scope=7d")
                 .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.labName").value("Test Lab"))
-                .andExpect(jsonPath("$.scope.from").isString());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.labName").value("Test Lab"));
     }
 
     @Test
@@ -67,7 +66,7 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
 
         @Bean
         ManagementDashboardService managementDashboardService() {
-            return scope -> new ManagementSummary("Test Lab", 0, Map.of(), scope);
+            return scope -> new ManagementSummary("Test Lab", 0, Map.of());
         }
 
         @Bean

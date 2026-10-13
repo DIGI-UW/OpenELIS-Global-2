@@ -19,6 +19,6 @@ public class ManagementDashboardServiceImpl implements ManagementDashboardServic
     public ManagementSummary getSummary(ScopeRange scope) {
         return new ManagementSummary(ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName),
                 managementDashboardDAO.countSamplesReceived(scope.from(), scope.to()),
-                managementDashboardDAO.getFeatures(), scope);
+                managementDashboardDAO.getFeatures());
     }
 }

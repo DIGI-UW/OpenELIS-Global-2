@@ -22,8 +22,6 @@ export const SCOPES = [
   { id: "year", labelKey: "label.dashboard.scope.year" },
 ];
 
-// Each later section appends one { id, Component } entry; a Component
-// receives the scope id, its localized label and the summary's features map.
 const SECTIONS = [{ id: "kpis", Component: KpiStrip }];
 
 const REFRESH_COOLDOWN_MS = 15000;

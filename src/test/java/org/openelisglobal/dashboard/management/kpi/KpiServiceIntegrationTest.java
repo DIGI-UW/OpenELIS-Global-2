@@ -65,19 +65,16 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(0, BigDecimal.valueOf(2).compareTo(kpis.samples().value()));
         assertEquals(0, BigDecimal.ZERO.compareTo(kpis.samples().prior()));
         assertEquals(2, kpis.samples().spark().stream().mapToLong(BigDecimal::longValue).sum());
-        assertEquals(kpis.periods().size(), kpis.samples().spark().size());
+        assertEquals(31, kpis.samples().spark().size());
     }
 
     @Test
     public void medianTatIsTheTatReportsMedianAndNothingIsOnTimeAfterAYear() {
         ManagementKpis kpis = kpiService.getKpis(JUNE_2024);
 
-        assertEquals(
-                tatReportService
-                        .getSummary(JUNE_2024.from(), JUNE_2024.to(), TATSegment.RECEIPT_TO_VALIDATION,
-                                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, null)
-                        .getMedian(),
-                kpis.medianTat().value());
+        // 398 days 14 h from receipt to release of sample 2; the median of two is the
+        // lower.
+        assertEquals(0, BigDecimal.valueOf(9566).compareTo(kpis.medianTat().value()));
         assertEquals(0, BigDecimal.ZERO.compareTo(kpis.onTime().value()));
         assertNull(kpis.onTime().prior());
     }
