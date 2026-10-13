@@ -239,7 +239,7 @@ export default function CultureWorklist({ service }) {
         />
       )}
       <DataTable
-        key={`${filter}-${refresh}`}
+        key={`${filter}-${refresh}-${(data?.rows || []).map((row) => row.id).join(",")}`}
         rows={(data?.rows || []).map((r) => ({ ...r, disabled: false }))}
         headers={[
           { key: "accessionNumber", header: t("common.labNumber") },

@@ -168,6 +168,7 @@ test("batch inoculation keeps the test selection outside the culture request", a
       target: { value },
     });
   }
+  service.searchBench.mockResolvedValue({ rows: [], labUnits: [], total: 0 });
   fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
   await waitFor(() =>
     expect(service.benchAction).toHaveBeenCalledWith({
@@ -186,4 +187,10 @@ test("batch inoculation keeps the test selection outside the culture request", a
     }),
   );
   expect(await screen.findByText("OWNED-001: Action saved")).toBeVisible();
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "OWNED-001" })).toBeNull(),
+  );
+  expect(
+    screen.getByRole("button", { name: "Inoculate selected cases" }),
+  ).toBeDisabled();
 });
