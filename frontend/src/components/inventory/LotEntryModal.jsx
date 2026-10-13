@@ -135,7 +135,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
       setItems(
         validItems.map((item) => ({
           id: item.id,
-          text: `${item.name} (${item.itemType})`,
+          text: `${item.name} (${item.code})`,
           item: item,
         })),
       );
@@ -388,6 +388,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
             items={items}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={
+              // Downshift treats undefined as uncontrolled; keep it null while items load.
               formData.inventoryItem
                 ? (items.find((i) => i.id === formData.inventoryItem.id) ??
                   null)

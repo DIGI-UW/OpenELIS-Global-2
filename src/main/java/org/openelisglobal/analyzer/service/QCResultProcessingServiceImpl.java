@@ -7,6 +7,9 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
+import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -45,6 +48,9 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
     @Autowired
     private QCControlLotDAO controlLotDAO;
 
+    @Autowired
+    private TestQcTargetService testQcTargetService;
+
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
     public void processQCResult(String analyzerId, String testId, String accessionNumber, String lotNumber,
@@ -74,6 +80,30 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
                 timestamp);
         LogEvent.logInfo(CLASS_NAME, "processQCResult",
                 "QC result created for lot=" + lot.getLotNumber() + " test=" + testId + " instrument=" + analyzerId);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRED)
+    public Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId,
+            String accessionNumber, String lotNumber, String controlLevel, String answerDictionaryId,
+            LocalDateTime timestamp) {
+        QCControlLot lot = findMatchingControlLot(accessionNumber, lotNumber, controlLevel, testId, analyzerId);
+        if (lot == null) {
+            LogEvent.logError(CLASS_NAME, "processQualitativeQCResult",
+                    "No matching QC control lot for accession=" + accessionNumber + " lotNumber=" + lotNumber
+                            + " controlLevel=" + controlLevel + " testId=" + testId + " instrumentId=" + analyzerId);
+            return Outcome.NO_LOT;
+        }
+        TestQcTarget target = testQcTargetService.resolveEffectiveTarget(testId, componentId, lot.getControlLevel(),
+                lot.getId());
+        if (target == null || target.getExpectedDictResultId() == null) {
+            return Outcome.NO_TARGET;
+        }
+        QCQualitativeOutcome outcome = target.getExpectedDictResultId().equals(answerDictionaryId)
+                ? QCQualitativeOutcome.PASS
+                : QCQualitativeOutcome.FAIL;
+        qcResultService.createAnalyzerQualitativeQCResult(analyzerId, testId, lot.getId(), outcome, timestamp);
+        return Outcome.RECORDED;
     }
 
     /**

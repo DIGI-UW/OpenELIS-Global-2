@@ -75,6 +75,19 @@ public class ResultSelectListServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void addResultSelectList_WithUnreadableTests_SavesNoAnswer() {
+        ResultSelectListForm form = new ResultSelectListForm();
+        form.setNameEnglish("Tomorrow");
+        form.setNameFrench("Demain");
+        form.setLoincCode("677832");
+        form.setTestSelectListJson("{\"tests\": [");
+
+        assertFalse(resultSelectListService.addResultSelectList(form, "6702"));
+
+        assertFalse(dictionaryService.getAll().stream().anyMatch(dict -> "Tomorrow".equals(dict.getDictEntry())));
+    }
+
+    @Test
     public void getAllSelectListOptions() {
         List<Dictionary> dictionaryList = dictionaryService.getAll();
         assertEquals(3, dictionaryList.size());

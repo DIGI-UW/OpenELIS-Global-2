@@ -127,6 +127,12 @@ jobs:
           - compose_image: openelisglobal-databse.build
             dockerhub_suffix: database
             compose_service: db.openelis.org
+          - compose_image: openelis-analyzer-bridge.ci
+            dockerhub_suffix: analyzer-bridge
+            compose_service: openelis-analyzer-bridge
+          - compose_image: openelis-astm-simulator.ci
+            dockerhub_suffix: analyzer-mock
+            compose_service: astm-simulator
     steps:
       # The Trivy step below reads .trivyignore from the workspace, but this job
       # otherwise never checks the repository out (it only retags images), so
@@ -305,8 +311,9 @@ jobs:
           python3 - <<'PY'
           import json, os, pathlib
           parts = [json.loads(p.read_text()) for p in pathlib.Path('published-images').glob('*.json')]
-          services = {'oe.openelis.org', 'db.openelis.org', 'fhir.openelis.org', 'frontend.openelis.org', 'proxy'}
-          if len(parts) != 5 or {p['service'] for p in parts} != services:
+          services = {'oe.openelis.org', 'db.openelis.org', 'fhir.openelis.org', 'frontend.openelis.org', 'proxy',
+                      'openelis-analyzer-bridge', 'astm-simulator'}
+          if len(parts) != len(services) or {p['service'] for p in parts} != services:
               raise SystemExit('Incomplete or duplicate image manifest')
           if any(p['appSha'] != os.environ['APP_SHA'] or p['appBranch'] != os.environ['APP_BRANCH'] for p in parts):
               raise SystemExit('Image manifest contains a different source commit')

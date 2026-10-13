@@ -7,6 +7,7 @@
   padding-right: 2%;
 }
 
+.orderLegendBody h1.page-heading-05,
 .orderLegendBody h2 {
   margin-bottom: 1.5rem;
 }
@@ -111,4 +112,57 @@
     width: 100%;
     min-width: unset;
   }
+}
+
+.inventory-item-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.inventory-item-tags__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.inventory-item-derived {
+  font-size: 0.75rem;
+  color: #525252;
+  margin: 0;
+}
+
+.manage-tags-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.manage-tags-add .cds--form-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.inventory-item-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.inventory-item-pair > .cds--form-item {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.quick-receive-location {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 0.25rem;
 }

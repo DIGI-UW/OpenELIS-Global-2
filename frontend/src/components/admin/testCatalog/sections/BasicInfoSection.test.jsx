@@ -465,6 +465,25 @@ describe("BasicInfoSection domain-switch modal", () => {
   });
 });
 
+// OGC-1458 review: the section's loads stop when it unmounts, so a late answer
+// never updates a screen the admin has left.
+describe("BasicInfoSection unmount", () => {
+  it("aborts its loads when it unmounts", async () => {
+    const { unmount } = renderSection();
+    await screen.findByDisplayValue("GLU");
+    const signals = getFromOpenElisServer.mock.calls
+      .filter((call) => String(call[0]).includes("/rest/test-catalog/"))
+      .map((call) => call[2]);
+    expect(signals.length).toBeGreaterThanOrEqual(4);
+
+    unmount();
+
+    await waitFor(() =>
+      expect(signals.every((signal) => signal && signal.aborted)).toBe(true),
+    );
+  });
+});
+
 describe("BasicInfoSection create mode (testId=new)", () => {
   beforeEach(() => {
     // Create mode fetches the Lab Unit + Sample type reference lists only.

@@ -291,7 +291,7 @@ const EditSample = (props) => {
         <Column lg={16}>
           <DataTable
             rows={formatTestsObject(orderFormValues.existingTests)}
-            headers={OrderCurrentTestsHeaders}
+            headers={OrderCurrentTestsHeaders(intl)}
             isSortable
           >
             {({ rows, headers, getHeaderProps, getTableProps }) => (
@@ -372,7 +372,7 @@ const EditSample = (props) => {
         <Column lg={16}>
           <DataTable
             rows={formatTestsObject(orderFormValues.possibleTests)}
-            headers={OrderPossibleTestsHeaders}
+            headers={OrderPossibleTestsHeaders(intl)}
             isSortable
           >
             {({ rows, headers, getHeaderProps, getTableProps }) => (

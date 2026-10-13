@@ -1,7 +1,7 @@
 import { waitFor } from "@testing-library/dom";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
-import App, { ANALYZER_RESULTS_ROLES } from "./App";
+import App, { ANALYZER_RESULTS_ROLES, ANALYZER_SETUP_ROLES } from "./App";
 import { Roles } from "./components/utils/Utils";
 
 test("renders App component without errors", () => {
@@ -178,4 +178,8 @@ describe("session check while the server is unreachable (OGC-1442)", () => {
 
     expect(sessionCalls()).toBe(1);
   });
+});
+
+test("keeps analyzer setup to global administrators", () => {
+  expect(ANALYZER_SETUP_ROLES).toEqual([Roles.GLOBAL_ADMIN]);
 });

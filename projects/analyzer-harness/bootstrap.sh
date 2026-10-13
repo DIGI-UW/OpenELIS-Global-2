@@ -69,8 +69,8 @@ mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# Harness molecular tests and result choices are mounted read-only from
-# config-templates and loaded by OE's normal configuration service.
+# The harness dictionary is mounted read-only from dictionary/ and loaded by
+# OE's normal configuration service.
 # Local Catalog Import uploads live in the worktree-scoped configuration volume.
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---

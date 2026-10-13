@@ -45,7 +45,8 @@ public class TestCatalogNumericIdGuard implements HandlerInterceptor, WebMvcConf
      * Path-variable names that name a {@code NUMERIC(10)} entity id, and so must
      * parse as a non-negative int before any DAO sees them.
      */
-    public static final Set<String> NUMERIC_ID_PATH_VARIABLES = Set.of("testId", "sourceId", "sampleTypeId", "panelId");
+    public static final Set<String> NUMERIC_ID_PATH_VARIABLES = Set.of("testId", "sourceId", "sampleTypeId", "panelId",
+            "dictionaryId");
 
     /** {@code NUMERIC(10)} — 2147483647 is the widest id the user type can bind. */
     private static final int MAX_ID_DIGITS = 10;

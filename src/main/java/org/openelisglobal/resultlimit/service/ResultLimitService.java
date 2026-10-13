@@ -1,6 +1,7 @@
 package org.openelisglobal.resultlimit.service;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -40,6 +41,12 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * partial failure rolls the whole set back.
      */
     void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId);
+
+    /**
+     * {@link #saveRangesForTest} for several tests in one transaction: either every
+     * test gets its ranges or none does (the group editor's "set all to").
+     */
+    void saveRangesForTests(Map<String, List<ResultLimit>> desiredByTestId, String sysUserId);
 
     ResultLimit getResultLimitById(String resultLimitId) throws LIMSRuntimeException;
 

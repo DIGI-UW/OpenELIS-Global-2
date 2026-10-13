@@ -168,8 +168,13 @@ describe("PanelsSection", () => {
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
         "/rest/test-catalog/panels",
-        // OGC-1140: the inline create inherits the originating test's domain
-        JSON.stringify({ name: "Chem Panel", domain: "CLINICAL" }),
+        // OGC-1140: the inline create inherits the originating test's domain;
+        // it starts inactive until this test is its member (OGC-1456)
+        JSON.stringify({
+          name: "Chem Panel",
+          domain: "CLINICAL",
+          active: false,
+        }),
         expect.any(Function),
       ),
     );
@@ -182,6 +187,53 @@ describe("PanelsSection", () => {
     ).toEqual([{ panelId: "9", position: null }]);
     // and the rendered row comes from the SERVER response (refresh)
     expect(await screen.findByTestId("panel-membership-9")).toBeInTheDocument();
+    // with its first member in place, the new panel is switched on
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/test-catalog/panels/9/basic-info",
+        JSON.stringify({ active: true }),
+        expect.any(Function),
+      ),
+    );
+  });
+
+  it("a new panel name over 20 characters is capped and its refusal named (OGC-1456)", async () => {
+    wire([]);
+    postToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 422,
+        json: () => Promise.resolve({ refusal: "name.tooLong" }),
+      }),
+    );
+    const addNotification = vi.fn();
+    const { NotificationContext } = await import("../../../layout/Layout");
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{ addNotification, setNotificationVisible: () => {} }}
+        >
+          <PanelsSection testId="42" testDomain="CLINICAL" />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText(messages["label.testCatalog.panels.empty"]);
+    expect(document.querySelector("#new-panel-name")).toHaveAttribute(
+      "maxLength",
+      "20",
+    );
+    fireEvent.change(document.querySelector("#new-panel-name"), {
+      target: { value: "Chem Panel" },
+    });
+    fireEvent.click(screen.getByTestId("create-panel-button"));
+
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["error.panel.nameTooLong"],
+        }),
+      ),
+    );
   });
 
   it("free-text name matching an existing panel assigns it without POSTing", async () => {
@@ -244,6 +296,74 @@ describe("PanelsSection", () => {
     );
     // staged row still present for correction — not cleared, not "saved"
     expect(screen.getByTestId("panel-membership-2")).toBeInTheDocument();
+  });
+
+  it("names the active panel a removal would leave empty (OGC-1456)", async () => {
+    wire([{ panelId: "1", panelName: "Lipid Panel", position: 1 }]);
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            refusal: "panel.activeNeedsTest",
+            refusedPanels: [{ panelId: "1", panelName: "Lipid Panel" }],
+          }),
+      }),
+    );
+    const addNotification = vi.fn();
+    const { NotificationContext } = await import("../../../layout/Layout");
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{ addNotification, setNotificationVisible: () => {} }}
+        >
+          <PanelsSection testId="42" testDomain="CLINICAL" />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText("Lipid Panel");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: expect.stringContaining("Lipid Panel"),
+        }),
+      ),
+    );
+    expect(addNotification.mock.calls[0][0].message).not.toBe(
+      messages["server.error.msg"],
+    );
+  });
+
+  it("shows the stored membership again after that refusal (OGC-1456)", async () => {
+    wire([{ panelId: "1", panelName: "Lipid Panel", position: 1 }]);
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            refusal: "panel.activeNeedsTest",
+            refusedPanels: [{ panelId: "1", panelName: "Lipid Panel" }],
+          }),
+      }),
+    );
+    renderSection();
+    await screen.findByText("Lipid Panel");
+    fireEvent.click(
+      within(screen.getByTestId("panel-membership-1")).getByRole("button", {
+        name: messages["label.testCatalog.panels.remove"],
+      }),
+    );
+    fireEvent.click(
+      document.querySelector(".cds--modal-footer .cds--btn--danger"),
+    );
+    expect(screen.queryByTestId("panel-membership-1")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(await screen.findByTestId("panel-membership-1")).toBeInTheDocument();
   });
 
   it("shows an error state when the fetch fails", async () => {

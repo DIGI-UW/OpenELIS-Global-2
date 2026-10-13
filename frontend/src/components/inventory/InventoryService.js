@@ -144,6 +144,8 @@ export const InventoryItemAPI = {
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
+  getTags: () => get("/items/tags"),
+
   // Get all item types
   getItemTypes: () => get("/items/types"),
 
@@ -160,11 +162,31 @@ export const InventoryItemAPI = {
 
   // Activate item (restore from soft delete)
   activate: (id) => put(`/items/${id}/activate`, {}),
+
+  markOrdered: ({ itemIds, note, expectedDate }) =>
+    post("/items/mark-ordered", { itemIds, note, expectedDate }),
+
+  clearOrdered: (itemIds) => post("/items/clear-ordered", { itemIds }),
 };
 
 /** Items board API: one row per active item, sorted by urgency server side. */
 export const InventoryBoardAPI = {
-  get: () => get("/board"),
+  get: (includeInactive = false) =>
+    get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
+};
+
+export const InventoryCountAPI = {
+  record: (entries) => post("/count", { entries }),
+};
+
+export const InventoryTagAPI = {
+  getDirectory: () => get("/tags"),
+
+  create: (name) => post("/tags", { name }),
+
+  deactivate: (name) => post("/tags/deactivate", { name }),
+
+  activate: (name) => post("/tags/activate", { name }),
 };
 
 /**

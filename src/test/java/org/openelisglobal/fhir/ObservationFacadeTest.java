@@ -9,12 +9,14 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.fhir.providers.ObservationProvider;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -24,6 +26,7 @@ import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
@@ -65,6 +68,10 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
               "value": 85.5,
               "unit": "g/L"
             }""";
+
+    private static final String HISTORY_INSERT = "INSERT INTO clinlims.history (id, sys_user_id, reference_id,"
+            + " reference_table, timestamp, activity, changes) VALUES (nextval('clinlims.history_seq'), ?, 2,"
+            + " CAST(? AS numeric), ?, 'U', ?)";
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
@@ -140,28 +147,49 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void readObservation_withOrderingProvider_shouldCarryPractitionerPerformer() throws Exception {
+    public void readObservation_neverNamesTheOrderingProviderAsPerformer() throws Exception {
 
         MockHttpServletResponse response = serve(buildFhirRequest("GET", "/Observation/" + RESULT_WITH_PROVIDER_UUID));
 
         assertEquals(200, response.getStatus());
-
-        JsonNode performer = objectMapper.readTree(response.getContentAsString()).get("performer");
-        assertNotNull("performer should be present for a sample with an ordering provider", performer);
-        assertEquals(1, performer.size());
-        assertEquals("Practitioner/" + PROVIDER_FHIR_UUID, performer.get(0).get("reference").asText());
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertFalse("a result that is not validated has no performer, whoever ordered it",
+                jsonResponse.has("performer"));
+        assertFalse(response.getContentAsString().contains(PROVIDER_FHIR_UUID));
     }
 
     @Test
-    public void readObservation_withoutOrderingProvider_shouldOmitPerformer() throws Exception {
+    public void readObservation_validatedResult_namesTheValidator() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("UPDATE clinlims.system_user SET first_name = 'Vera', last_name = 'Validator' WHERE id = 2");
+        String analysisTable = AnalysisServiceImpl.getTableReferenceId();
+        jdbc.update(HISTORY_INSERT, 1, analysisTable, Timestamp.valueOf("2025-07-07 12:30:00"),
+                "<statusId>1</statusId>".getBytes(StandardCharsets.UTF_8));
+        jdbc.update(HISTORY_INSERT, 2, analysisTable, Timestamp.valueOf("2025-07-07 13:30:00"),
+                "<statusId>15</statusId>".getBytes(StandardCharsets.UTF_8));
+        jdbc.update(HISTORY_INSERT, 1, analysisTable, Timestamp.valueOf("2025-07-07 14:30:00"),
+                "<revision>1</revision>".getBytes(StandardCharsets.UTF_8));
 
         MockHttpServletResponse response = serve(
                 buildFhirRequest("GET", "/Observation/" + RESULT_WITHOUT_PROVIDER_UUID));
 
         assertEquals(200, response.getStatus());
+        JsonNode performer = objectMapper.readTree(response.getContentAsString()).get("performer");
+        assertNotNull("a validated result names who validated it", performer);
+        assertEquals(1, performer.size());
+        assertEquals("Vera Validator", performer.get(0).get("display").asText());
+        assertFalse(performer.get(0).has("reference"));
+    }
 
+    @Test
+    public void readObservation_validatedResultWithoutAuditTrail_omitsPerformer() throws Exception {
+
+        MockHttpServletResponse response = serve(
+                buildFhirRequest("GET", "/Observation/" + RESULT_WITHOUT_PROVIDER_UUID));
+
+        assertEquals(200, response.getStatus());
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
-        assertFalse("performer must be omitted when sample_human.provider_id is null", jsonResponse.has("performer"));
+        assertFalse("with no record of who validated it, performer is omitted", jsonResponse.has("performer"));
     }
 
     @Test

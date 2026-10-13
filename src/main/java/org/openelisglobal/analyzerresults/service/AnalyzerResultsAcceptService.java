@@ -2,6 +2,7 @@ package org.openelisglobal.analyzerresults.service;
 
 import java.util.List;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 
 /**
@@ -30,4 +31,11 @@ public interface AnalyzerResultsAcceptService {
      * gave for a value they retyped (OGC-1417).
      */
     void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
+
+    /**
+     * The decimal places a staged number is shown and saved with: its component's
+     * when it is on one, otherwise the test's first active result definition's.
+     * Null when the result has no test or no value, or the definition sets none.
+     */
+    String significantDigitsFor(AnalyzerResults staged);
 }

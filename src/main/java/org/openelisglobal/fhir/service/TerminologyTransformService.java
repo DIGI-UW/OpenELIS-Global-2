@@ -11,6 +11,12 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
  */
 public interface TerminologyTransformService {
 
+    /**
+     * The value of a coded result: every code the answer carries, SAME_AS codes
+     * first, then OpenELIS's own dictionary entry.
+     */
+    CodeableConcept transformAnswerToCodeableConcept(org.openelisglobal.dictionary.valueholder.Dictionary answer);
+
     CodeableConcept transformTestToCodeableConcept(String testId, String sampleTypeId);
 
     CodeableConcept transformTestToCodeableConcept(Test test, String sampleTypeId);

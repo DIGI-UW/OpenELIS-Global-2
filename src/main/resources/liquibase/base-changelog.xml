@@ -42,6 +42,9 @@
   <!-- OGC-1147 Manual & RDT QC persistence -->
   <include file="liquibase/qc/010-manual-rdt-qc.xml" />
 
+  <!-- Analyzer controls that report an answer, judged against the QC target -->
+  <include file="liquibase/qc/015-analyzer-qualitative-qc.xml" />
+
   <!-- QA menu tree, every row of it (OGC-688) -->
   <include file="liquibase/qa/001-add-qa-menu-items.xml" />
 

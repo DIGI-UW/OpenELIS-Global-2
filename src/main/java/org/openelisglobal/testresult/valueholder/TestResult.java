@@ -46,6 +46,9 @@ public class TestResult extends BaseObject<String> {
 
     // transient
     private Boolean isDefault = false;
+    // transient: a select-list option the admin typed rather than picked, stored
+    // as a dictionary entry with that text even when the text is a number
+    private boolean freeText = false;
 
     public TestResult() {
         super();
@@ -56,6 +59,14 @@ public class TestResult extends BaseObject<String> {
     @Override
     public String getId() {
         return this.id;
+    }
+
+    public boolean isFreeText() {
+        return freeText;
+    }
+
+    public void setFreeText(boolean freeText) {
+        this.freeText = freeText;
     }
 
     public Test getTest() {

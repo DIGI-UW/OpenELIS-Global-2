@@ -1,7 +1,9 @@
 `Publish images / Deploy testing` deploys each tested `develop` commit to the
 testing VM using that commit's own `docker-compose.yml` and
-`docker-compose.analyzers.yml`, with the five application images pinned to their
-published digests.
+`docker-compose.analyzers.yml`, with its images pinned to their published
+digests. The Bridge and mock images are the ones end-to-end testing built from
+the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` submodule
+commits, published beside the application images.
 
 ## Deploy now
 
@@ -41,14 +43,12 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
 - `.openelis-ci/`: the image override and `target.json`.
 
 After the application reports ready, the deploy creates missing default
-analyzers
-(`seed-analyzers.sh --ensure-connections --no-mock-network --activate`). It
-activates only newly created priority connections whose shipped mapping is
-already confirmed. It never selects, excludes or confirms mapping rows. Existing
-connections retain their configuration and activation state. If the stock
-mapping needs review, the first deployment stops after creating the connection.
-Complete mapping confirmation **and activate that connection** in OpenELIS, then
-retry deployment. Confirmation alone does not activate it:
+analyzers (`seed-analyzers.sh --ensure-connections --no-mock-network`) and sets
+each new one up as an operator would: its shipped defaults confirmed, applied
+and activated. An analyzer whose defaults leave a row unresolved stays in Setup
+for review in OpenELIS. The delivery check that follows replays a Cepheid HIV-1
+viral load message to the GeneXpert and waits for it in OpenELIS. Existing
+connections retain their configuration and activation state:
 `--ensure-connections` preserves existing connections, including inactive ones.
 Deployment does not guess whether a connection was intentionally disabled.
 
@@ -100,8 +100,6 @@ python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 
 The Python tests require PyYAML and use temporary localhost HTTP servers. Docker
 operations are mocked; the tests do not deploy to the testing VM.
-`test_analyzer_overlay.py` needs network access to list the Bridge and mock
-release tags.
 
 ### Reviewing a site that used the former harness catalog
 

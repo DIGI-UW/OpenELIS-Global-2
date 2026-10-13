@@ -12,9 +12,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -38,13 +42,29 @@ public class AnalyzerMappingCatalogServiceTest {
     private TypeOfSampleService sampleTypes;
     @Mock
     private TypeOfSampleTestService sampleTypeTests;
+    @Mock
+    private TestResultComponentService componentService;
+    @Mock
+    private DictionaryTerminologyMappingService answerTerminology;
 
     private AnalyzerMappingCatalogService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerMappingCatalogServiceImpl(testService, testResultService, terminologyService,
-                dictionaryService, sampleTypes, sampleTypeTests);
+                dictionaryService, sampleTypes, sampleTypeTests, componentService, answerTerminology);
+    }
+
+    @Test
+    public void componentOptionsCarryEachComponentsCodeAndLabel() {
+        TestResultComponent log = new TestResultComponent();
+        log.setId("c1");
+        log.setCode("LOG");
+        log.setLabel("Log viral load");
+        when(componentService.getActiveComponentsByTestId("1")).thenReturn(List.of(log));
+
+        assertEquals(List.of(new AnalyzerMappingCatalogService.ComponentOption("c1", "LOG", "Log viral load")),
+                service.getActiveComponents("1"));
     }
 
     @Test
@@ -104,6 +124,35 @@ public class AnalyzerMappingCatalogServiceTest {
         assertEquals("Detected", options.get(0).label());
         assertEquals("Not detected", options.get(1).value());
         assertEquals("Not detected", options.get(1).label());
+    }
+
+    @Test
+    public void anAnswerCarriesEachOfItsMappedCodesInItsSystem() {
+        org.openelisglobal.test.valueholder.Test mapped = test("1", "HIV", "HIV", null, true);
+        Dictionary positive = new Dictionary();
+        positive.setId("501");
+        positive.setDictEntry("Positive");
+        when(testService.get("1")).thenReturn(mapped);
+        when(testResultService.getActiveTestResultsByTest("1")).thenReturn(List.of(option("11", mapped, "501", true)));
+        when(dictionaryService.getDictionaryById("501")).thenReturn(positive);
+        when(answerTerminology.getActiveByDictionaryId("501")).thenReturn(List.of(answerCode("LOINC", "LA6576-8"),
+                answerCode("SNOMED", "10828004"), answerCode("CIEL", "703"), answerCode("WHONET", "POS")));
+
+        List<AnalyzerMappingCatalogService.AnswerCoding> codings = service.getActiveResultOptions("1").get(0).codings();
+
+        assertEquals(List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", "LA6576-8"),
+                new AnalyzerMappingCatalogService.AnswerCoding("http://snomed.info/sct", "10828004"),
+                new AnalyzerMappingCatalogService.AnswerCoding("https://openconceptlab.org/orgs/CIEL/sources/CIEL",
+                        "703")),
+                codings);
+    }
+
+    private static DictionaryTerminologyMapping answerCode(String source, String code) {
+        DictionaryTerminologyMapping mapping = new DictionaryTerminologyMapping();
+        mapping.setDictionaryId("501");
+        mapping.setSource(source);
+        mapping.setCode(code);
+        return mapping;
     }
 
     @Test

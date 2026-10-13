@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="122-analyzer-result-instrument-patient" author="oe">
+        <comment>Keep the patient an instrument reported, as reported, on the staged result so the reviewer can see it beside the order's patient. It never creates or changes an OpenELIS patient.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="instrument_patient_id" type="VARCHAR(255)"/>
+            <column name="instrument_patient_name" type="VARCHAR(255)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="instrument_patient_name"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="instrument_patient_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

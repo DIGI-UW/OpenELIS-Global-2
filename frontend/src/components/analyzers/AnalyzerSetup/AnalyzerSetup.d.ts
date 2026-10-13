@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-export type AnalyzerSetupStep = "instrument" | "verify" | "connect";
+export type AnalyzerSetupStep = "instrument" | "assays" | "verify" | "connect";
 
 export interface AnalyzerSetupProps {
   currentStep?: AnalyzerSetupStep;

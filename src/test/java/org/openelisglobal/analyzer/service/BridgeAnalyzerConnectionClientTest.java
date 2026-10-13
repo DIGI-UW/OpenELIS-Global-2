@@ -48,6 +48,20 @@ public class BridgeAnalyzerConnectionClientTest {
     }
 
     @Test
+    public void readsAConnectionThatCarriesFieldsANewerBridgeAdds() throws Exception {
+        ObjectNode view = fixture("analyzer-connection.json");
+        view.put("addedByANewerBridge", true);
+        ((ObjectNode) view.path("readiness")).put("addedByANewerBridge", "x");
+        ((ObjectNode) view.path("profileRef")).put("addedByANewerBridge", 1);
+        when(httpClient.get(eq(BASE_URL + "/api/connections/" + CONNECTION_ID), eq(Duration.ofSeconds(10))))
+                .thenReturn(success(view));
+
+        ObjectNode connection = client.getConnection(CONNECTION_ID);
+
+        assertEquals(4, connection.path("configRevision").asInt());
+    }
+
+    @Test
     public void createsAndUpdatesUsingOnlyGenericConnectionDocuments() throws Exception {
         ObjectNode create = fixture("connection-create.json");
         ObjectNode update = fixture("connection-update.json");

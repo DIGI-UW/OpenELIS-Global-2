@@ -5,13 +5,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingUpdate;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
@@ -32,18 +29,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/analyzer-types")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('GLOBAL_ADMIN')")
 public class AnalyzerTypeRestController extends BaseRestController {
 
     private final AnalyzerTypeCatalogService catalogService;
     private final BridgeProfileManagementService managementService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
-    private final AnalyzerTypeMappingService mappingService;
+    private final AnalyzerMappingEditorService mappingService;
 
     @Autowired
     public AnalyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
             BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService,
-            AnalyzerTypeMappingService mappingService) {
+            AnalyzerMappingEditorService mappingService) {
         this.catalogService = catalogService;
         this.managementService = managementService;
         this.mappingCatalogService = mappingCatalogService;
@@ -61,24 +58,13 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.ok(catalogService.getType(profileId, revision));
     }
 
+    /**
+     * The defaults a new analyzer on this profile revision would get. Read-only;
+     * each analyzer owns its mapping.
+     */
     @GetMapping("/{profileId}/mapping")
-    public ResponseEntity<AnalyzerTypeMappingView> getMapping(@PathVariable String profileId,
-            @RequestParam int revision) {
-        return ResponseEntity.ok(mappingService.getMapping(profileId, revision));
-    }
-
-    @PutMapping("/{profileId}/mapping")
-    public ResponseEntity<AnalyzerTypeMappingView> saveMapping(@PathVariable String profileId,
-            @RequestParam int revision, @RequestBody AnalyzerTypeMappingUpdate update, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(mappingService.saveMapping(profileId, revision, update, getSysUserId(httpRequest)));
-    }
-
-    @PostMapping("/{profileId}/mapping/confirm")
-    public ResponseEntity<AnalyzerSiteBindingConfirmationView> confirmMapping(@PathVariable String profileId,
-            @RequestParam int revision, @RequestBody AnalyzerSiteBindingConfirmationRequest request,
-            HttpServletRequest httpRequest) {
-        return ResponseEntity
-                .ok(mappingService.confirmMapping(profileId, revision, request, getSysUserId(httpRequest)));
+    public ResponseEntity<AnalyzerMappingView> getDefaults(@PathVariable String profileId, @RequestParam int revision) {
+        return ResponseEntity.ok(mappingService.getDefaults(profileId, revision));
     }
 
     @GetMapping("/mapping-catalog/tests")
@@ -91,6 +77,12 @@ public class AnalyzerTypeRestController extends BaseRestController {
     public ResponseEntity<List<AnalyzerMappingCatalogService.ResultOption>> getMappingResultOptions(
             @PathVariable String testId) {
         return ResponseEntity.ok(mappingCatalogService.getActiveResultOptions(testId));
+    }
+
+    @GetMapping("/mapping-catalog/tests/{testId}/components")
+    public ResponseEntity<List<AnalyzerMappingCatalogService.ComponentOption>> getMappingComponents(
+            @PathVariable String testId) {
+        return ResponseEntity.ok(mappingCatalogService.getActiveComponents(testId));
     }
 
     @PostMapping("/drafts")

@@ -54,7 +54,7 @@ test.describe("Order workflow — Prepare Samples storage picker", () => {
         { waitUntil: "domcontentloaded", timeout: LONG_TIMEOUT },
       );
       await expect(
-        page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
+        page.getByRole("heading", { level: 1, name: "Prepare Samples" }),
       ).toBeVisible({ timeout: UI_TIMEOUT });
     });
 
@@ -82,7 +82,7 @@ test.describe("Order workflow — Prepare Samples storage picker", () => {
       timeout: UI_TIMEOUT,
     });
     await expect(
-      page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
+      page.getByRole("heading", { level: 1, name: "Prepare Samples" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
   });
 });

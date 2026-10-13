@@ -8,18 +8,23 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
@@ -74,6 +79,8 @@ public class OclToOpenElisMapper {
             .getBean(TestTerminologyMappingService.class);
     private PanelTerminologyMappingService panelTerminologyMappingService = SpringContext
             .getBean(PanelTerminologyMappingService.class);
+    private DictionaryTerminologyMappingService answerTerminologyService = SpringContext
+            .getBean(DictionaryTerminologyMappingService.class);
 
     public OclToOpenElisMapper(String defaultTestSection, String defaultSampleType) {
         this.defaultTestSection = defaultTestSection;
@@ -611,30 +618,9 @@ public class OclToOpenElisMapper {
                     Map<String, String> names = extractNames(mapConcept);
                     String englishName = names.get("englishName");
                     String frenchName = names.get("frenchName");
-                    String loinc = getLoinc(toCoceptCode);
-
-                    Dictionary dictionary = new Dictionary();
-                    dictionary.setSortOrder(1);
-                    dictionary.setIsActive("Y");
-                    dictionary.setDictEntry(englishName);
-                    dictionary.setLocalAbbreviation(toCoceptCode);
-                    dictionary.setSysUserId(systemUserId);
-                    dictionary.setLoincCode(loinc);
-                    dictionary.setDictionaryCategory(
-                            dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
-                    if (dictionaryService.duplicateDictionaryExists(dictionary)) {
-                        if (StringUtils.isNotBlank(loinc)) {
-                            dictionary = dictionaryService.getDictionaryByDictEntry(englishName);
-                            dictionary.setLoincCode(loinc);
-                            dictionary = dictionaryService.update(dictionary);
-                        }
-                    } else {
-                        Localization localization = createLocalization(frenchName, englishName, "create Dictionary",
-                                systemUserId);
-                        localization = localizationService.save(localization);
-                        dictionary.setLocalizedDictionaryName(localization);
-                        dictionary = dictionaryService.save(dictionary);
-                    }
+                    Dictionary dictionary = resolveAnswer(englishName, frenchName, toCoceptCode,
+                            getLoinc(toCoceptCode));
+                    syncAnswerCodes(dictionary.getId(), answerCodes(rootNode, mapConcept));
                     ObjectNode dictEntry = objectMapper.createObjectNode();
                     dictEntry.put("id", String.valueOf(dictionary.getId()));
                     dictEntry.put("qualified", "N");
@@ -647,6 +633,43 @@ public class OclToOpenElisMapper {
         jsonWad.put("defaultTestResult", "");
         jsonWad.put("dictionaryReference", "");
 
+    }
+
+    /**
+     * The saved answer named {@code englishName}: the existing one, its LOINC
+     * replaced when the concept has one, or a new one. An existing answer is always
+     * the saved row, so the codes synced onto it are kept.
+     */
+    Dictionary resolveAnswer(String englishName, String frenchName, String conceptCode, String loinc) {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setSortOrder(1);
+        dictionary.setIsActive("Y");
+        dictionary.setDictEntry(englishName);
+        dictionary.setLocalAbbreviation(conceptCode);
+        dictionary.setSysUserId(systemUserId);
+        dictionary.setLoincCode(loinc);
+        dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
+        // The Test Result answers with this name or this concept code, matched as the
+        // duplicate check matches them.
+        List<Dictionary> duplicates = dictionaryService.findDuplicates(dictionary);
+        if (duplicates.isEmpty()) {
+            Localization localization = createLocalization(frenchName, englishName, "create Dictionary", systemUserId);
+            dictionary.setLocalizedDictionaryName(localizationService.save(localization));
+            return dictionaryService.save(dictionary);
+        }
+        if (duplicates.size() > 1) {
+            throw new LIMSRuntimeException("OCL answer " + conceptCode + " (" + englishName
+                    + ") matches more than one Test Result answer by name or code: "
+                    + duplicates.stream().map(d -> d.getDictEntry() + " [" + d.getLocalAbbreviation() + "]")
+                            .collect(Collectors.joining(", ")));
+        }
+        Dictionary existing = duplicates.get(0);
+        if (StringUtils.isNotBlank(loinc)) {
+            existing.setLoincCode(loinc);
+            existing.setSysUserId(systemUserId);
+            existing = dictionaryService.update(existing);
+        }
+        return existing;
     }
 
     public JsonNode getConceptById(String id) {
@@ -752,6 +775,89 @@ public class OclToOpenElisMapper {
             testTerminologyMappingService.syncLegacyLoinc(testId, loinc, systemUserId);
         } catch (Exception e) {
             log.error("Failed to sync LOINC SAME_AS mapping for test " + testId + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * An OCL answer concept's standard codes: the concept itself when it is a CIEL
+     * concept, then its LOINC and SNOMED mappings with their relationship. Codes in
+     * other systems are not recorded.
+     */
+    static List<DictionaryTerminologyMapping> answerCodes(JsonNode rootNode, JsonNode answerConcept) {
+        List<DictionaryTerminologyMapping> codes = new ArrayList<>();
+        if (answerConcept == null) {
+            return codes;
+        }
+        String conceptId = answerConcept.path("id").asText("");
+        if ("CIEL".equalsIgnoreCase(answerConcept.path("source").asText("")) && !conceptId.isBlank()) {
+            codes.add(answerCode("CIEL", conceptId, "SAME_AS"));
+        }
+        for (JsonNode mapping : rootNode.path("mappings")) {
+            if (!conceptId.equals(mapping.path("from_concept_code").asText(""))) {
+                continue;
+            }
+            String source = standardSource(mapping.path("to_source_name").asText(""));
+            String relationship = relationship(mapping.path("map_type").asText(""));
+            String code = mapping.path("to_concept_code").asText("").trim();
+            if (source != null && relationship != null && !code.isEmpty()) {
+                codes.add(answerCode(source, code, relationship));
+            }
+        }
+        return codes;
+    }
+
+    /** OCL names SNOMED CT "SNOMED-CT" or "SNOMED CT". */
+    private static String standardSource(String oclSourceName) {
+        String letters = oclSourceName.replaceAll("[^A-Za-z]", "").toUpperCase(Locale.ROOT);
+        if ("LOINC".equals(letters)) {
+            return "LOINC";
+        }
+        return "SNOMEDCT".equals(letters) || "SNOMED".equals(letters) ? "SNOMED" : null;
+    }
+
+    private static String relationship(String oclMapType) {
+        switch (oclMapType.toUpperCase(Locale.ROOT)) {
+        case "SAME-AS":
+            return "SAME_AS";
+        case "NARROWER-THAN":
+            return "NARROWER_THAN";
+        case "BROADER-THAN":
+            return "BROADER_THAN";
+        default:
+            return null;
+        }
+    }
+
+    private static DictionaryTerminologyMapping answerCode(String source, String code, String relationship) {
+        DictionaryTerminologyMapping mapping = new DictionaryTerminologyMapping();
+        mapping.setSource(source);
+        mapping.setCode(code);
+        mapping.setRelationship(relationship);
+        return mapping;
+    }
+
+    // Adds the answer's OCL codes to the mappings it already has. A mapping
+    // failure must never abort the OCL import.
+    private void syncAnswerCodes(String dictionaryId, List<DictionaryTerminologyMapping> codes) {
+        if (codes.isEmpty()) {
+            return;
+        }
+        try {
+            Map<String, DictionaryTerminologyMapping> byKey = new LinkedHashMap<>();
+            for (DictionaryTerminologyMapping existing : answerTerminologyService
+                    .getActiveByDictionaryId(dictionaryId)) {
+                byKey.put(existing.getSource() + "|" + existing.getCode(), existing);
+            }
+            for (DictionaryTerminologyMapping code : codes) {
+                byKey.merge(code.getSource() + "|" + code.getCode(), code, (existing, imported) -> {
+                    existing.setRelationship(imported.getRelationship());
+                    return existing;
+                });
+            }
+            answerTerminologyService.saveMappingsForDictionary(dictionaryId, new ArrayList<>(byKey.values()),
+                    systemUserId);
+        } catch (Exception e) {
+            log.error("Failed to sync terminology mappings for answer " + dictionaryId + ": " + e.getMessage());
         }
     }
 

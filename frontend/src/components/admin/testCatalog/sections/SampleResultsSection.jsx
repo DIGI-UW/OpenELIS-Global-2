@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Stack,
   Accordion,
@@ -28,7 +28,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 
@@ -169,6 +169,13 @@ const ResultEntryPreview = ({ component, uoms, intl }) => {
   );
 };
 
+// OGC-1458 — the rule a refused (422) save names, and what to tell the admin.
+const SAVE_REFUSALS = {
+  "components.activeNeedsComponent":
+    "error.testCatalog.sampleResults.activeNeedsComponent",
+  "resultType.unknown": "label.testCatalog.sampleResults.resultTypeRequired",
+};
+
 const SampleResultsSection = ({ testId }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -202,6 +209,10 @@ const SampleResultsSection = ({ testId }) => {
   // { ci, name, code, ucumCode, description } for the component at index ci.
   const [unitForm, setUnitForm] = useState(null);
 
+  // Aborted when the section unmounts, so a late response never updates a
+  // screen that is gone.
+  const loadAbort = useRef(null);
+
   const load = () => {
     setLoading(true);
     setError(false);
@@ -216,24 +227,36 @@ const SampleResultsSection = ({ testId }) => {
         setComponents(res.components);
         setCopiedFrom(null);
       },
+      loadAbort.current ? loadAbort.current.signal : null,
     );
   };
 
   useEffect(() => {
     if (!testId) {
-      return;
+      return undefined;
     }
+    const controller = new AbortController();
+    loadAbort.current = controller;
     load();
-    getFromOpenElisServer("/rest/test-list", (res) => {
-      if (Array.isArray(res)) {
-        setOtherTests(res.filter((t) => t.id !== testId));
-      }
-    });
-    getFromOpenElisServer("/rest/uom", (res) => {
-      if (Array.isArray(res)) {
-        setUoms(res);
-      }
-    });
+    getFromOpenElisServer(
+      "/rest/test-list",
+      (res) => {
+        if (Array.isArray(res)) {
+          setOtherTests(res.filter((t) => t.id !== testId));
+        }
+      },
+      controller.signal,
+    );
+    getFromOpenElisServer(
+      "/rest/uom",
+      (res) => {
+        if (Array.isArray(res)) {
+          setUoms(res);
+        }
+      },
+      controller.signal,
+    );
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
@@ -542,6 +565,9 @@ const SampleResultsSection = ({ testId }) => {
                 {
                   value: "",
                   valueName: null,
+                  // Typed text, never a dictionary id even when it is a number
+                  // (OGC-1458: a typed "1" is the grade 1).
+                  freeText: true,
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
@@ -719,13 +745,38 @@ const SampleResultsSection = ({ testId }) => {
         })),
       })),
     };
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/sample-results`,
       JSON.stringify(payload),
-      (status) => {
+      async (response) => {
         setSaving(false);
         setNotificationVisible(true);
-        if (status === 200) {
+        if (response && response.status === 422) {
+          let body = null;
+          try {
+            body = await response.json();
+          } catch (e) {
+            body = null;
+          }
+          const refusal = body && SAVE_REFUSALS[body.refusal];
+          if (body && body.refusal === "components.activeNeedsComponent") {
+            load();
+          }
+          if (refusal) {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({
+                id: "label.testCatalog.section.sample-results",
+              }),
+              message: intl.formatMessage(
+                { id: refusal },
+                { component: body.refusedComponent || "" },
+              ),
+            });
+            return;
+          }
+        }
+        if (response && response.status === 200) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({

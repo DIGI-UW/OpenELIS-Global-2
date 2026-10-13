@@ -388,9 +388,9 @@ const ModifyOrder = () => {
               {notificationVisible === true ? <AlertDialog /> : ""}
               {!orderNotFound && orderFormValues?.sampleOrderItems && (
                 <div className="orderWorkFlowDiv">
-                  <h2>
+                  <h1 className="page-heading-05">
                     <FormattedMessage id="order.test.request.heading" />
-                  </h2>
+                  </h1>
                   {page <= orderPageNumber && (
                     <ProgressIndicator
                       currentIndex={page}

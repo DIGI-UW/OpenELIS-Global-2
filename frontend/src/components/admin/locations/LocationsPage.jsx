@@ -184,8 +184,8 @@ const LocationsPage = () => {
         <PageBreadCrumb breadcrumbs={breadcrumbs} />
         <Grid fullWidth={true}>
           <Column lg={16} md={8} sm={4}>
-            <Section>
-              <Heading>
+            <Section level={1}>
+              <Heading className="page-heading-05">
                 <FormattedMessage id={VIEWS[viewKey].labelId} />
               </Heading>
             </Section>

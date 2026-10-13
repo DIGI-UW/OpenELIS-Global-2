@@ -13,12 +13,14 @@ import org.openelisglobal.qc.valueholder.QCSource;
 public interface QCResultDAO extends BaseDAO<QCResult, String> {
 
     /**
-     * Get all results for a specific control lot.
+     * Every measured result (one with a value) for a control lot, newest first.
+     * Feeds statistics, so a qualitative run is not part of it.
      */
     List<QCResult> findByControlLot(String controlLotId) throws LIMSRuntimeException;
 
     /**
-     * Get historical results for rule evaluation (ordered by run date).
+     * The latest measured results of a control lot for rule evaluation, newest
+     * first.
      */
     List<QCResult> findHistoricalForRule(String controlLotId, int limit) throws LIMSRuntimeException;
 
@@ -34,8 +36,8 @@ public interface QCResultDAO extends BaseDAO<QCResult, String> {
     List<QCResult> findLatestByControlLot(String controlLotId, int limit) throws LIMSRuntimeException;
 
     /**
-     * Get all results for a control lot ordered by run date ascending (oldest
-     * first). Used for Westgard rule evaluation.
+     * Every measured result of a control lot, oldest first. Used for Westgard rule
+     * evaluation.
      */
     List<QCResult> findByControlLotIdOrderByRunDateTime(String controlLotId) throws LIMSRuntimeException;
 

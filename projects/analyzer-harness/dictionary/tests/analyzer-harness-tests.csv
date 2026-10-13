@@ -1,0 +1,42 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr,localization:es,localization:id
+HIV-1 Viral Load,Molecular Biology,Plasma|Serum,20447-9,Y,Y,73,copies/mL,HIV-1 Viral Load,Charge Virale VIH-1,Carga Viral VIH-1,Viral Load HIV-1
+SARS-CoV-2 PCR,Molecular Biology,Nasopharyngeal Swab|Sputum,94500-6,Y,Y,74,,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR
+Xpert MTB/RIF,Molecular Biology,Sputum,85362-2,Y,Y,75,,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF
+Rifampin Resistance,Molecular Biology,Sputum,89372-7,Y,Y,76,,Rifampin Resistance,Résistance à la Rifampicine,Resistencia a Rifampicina,Resistensi Rifampin
+Influenza A PCR,Molecular Biology,Nasopharyngeal Swab,85477-8,Y,Y,77,,Influenza A PCR,Grippe A PCR,Influenza A PCR,Influenza A PCR
+Influenza B PCR,Molecular Biology,Nasopharyngeal Swab,85478-6,Y,Y,78,,Influenza B PCR,Grippe B PCR,Influenza B PCR,Influenza B PCR
+RSV PCR,Molecular Biology,Nasopharyngeal Swab,85479-4,Y,Y,79,,RSV PCR,VRS PCR,VSR PCR,RSV PCR
+COVIDPCR,Molecular Biology,Respiratory Swab|Sputum,,N,,,,,,,
+COVIDPCR,Molecular Biology,Fluid,94309-2,Y,,,,,,,
+White Blood Cells,Hematology,Whole Blood,6690-2,Y,Y,81,10^3/µl,White Blood Cells,,,
+Neutrophil #,Hematology,Whole Blood,751-8,Y,Y,82,10^3/µl,Neutrophil #,,,
+Neutrophil %,Hematology,Whole Blood,770-8,Y,Y,83,,Neutrophil %,,,
+Lymphocyte #,Hematology,Whole Blood,731-0,Y,Y,84,10^3/µl,Lymphocyte #,,,
+Lymphocyte %,Hematology,Whole Blood,736-9,Y,Y,85,,Lymphocyte %,,,
+Monocyte #,Hematology,Whole Blood,742-7,Y,Y,86,10^3/µl,Monocyte #,,,
+Monocyte %,Hematology,Whole Blood,5905-5,Y,Y,87,,Monocyte %,,,
+Eosinophil #,Hematology,Whole Blood,711-2,Y,Y,88,10^3/µl,Eosinophil #,,,
+Eosinophil %,Hematology,Whole Blood,713-8,Y,Y,89,,Eosinophil %,,,
+Basophil #,Hematology,Whole Blood,704-7,Y,Y,90,10^3/µl,Basophil #,,,
+Basophil %,Hematology,Whole Blood,706-2,Y,Y,91,,Basophil %,,,
+Atypical Lymphocyte #,Hematology,Whole Blood,26477-0,Y,Y,92,10^3/µl,Atypical Lymphocyte #,,,
+Atypical Lymphocyte %,Hematology,Whole Blood,13046-8,Y,Y,93,,Atypical Lymphocyte %,,,
+Red Blood Cells,Hematology,Whole Blood,789-8,Y,Y,94,10^6/µl,Red Blood Cells,,,
+Hemoglobin,Hematology,Whole Blood,718-7,Y,Y,95,g/L,Hemoglobin,,,
+Hematocrit,Hematology,Whole Blood,4544-3,Y,Y,96,,Hematocrit,,,
+Mean Corpuscular Volume,Hematology,Whole Blood,787-2,Y,Y,97,fL,Mean Corpuscular Volume,,,
+Mean Corpuscular Hemoglobin,Hematology,Whole Blood,785-6,Y,Y,98,pg,Mean Corpuscular Hemoglobin,,,
+Mean Corpuscular Hemoglobin Concentration,Hematology,Whole Blood,786-4,Y,Y,99,g/L,Mean Corpuscular Hemoglobin Concentration,,,
+RDW-CV,Hematology,Whole Blood,788-0,Y,Y,100,,RDW-CV,,,
+RDW-SD,Hematology,Whole Blood,21000-5,Y,Y,101,fL,RDW-SD,,,
+Platelets,Hematology,Whole Blood,777-3,Y,Y,102,10^3/µl,Platelets,,,
+Mean Platelet Volume,Hematology,Whole Blood,32623-1,Y,Y,103,fL,Mean Platelet Volume,,,
+Platelet Distribution Width,Hematology,Whole Blood,32207-3,Y,Y,104,,Platelet Distribution Width,,,
+Plateletcrit,Hematology,Whole Blood,51637-7,Y,Y,105,,Plateletcrit,,,
+Lymphocytes (%),Hematology,Whole Blood,,N,,,,,,,
+Lymphocytes (Abs),Hematology,Whole Blood,,N,,,,,,,
+Monocytes (%),Hematology,Whole Blood,,N,,,,,,,
+Monocytes (Abs),Hematology,Whole Blood,,N,,,,,,,
+Hémoglobine,Hematology,Whole Blood,,N,,,,,,,
+Hémotocrite,Hematology,Whole Blood,,N,,,,,,,
+Plaquette,Hematology,Whole Blood,,N,,,,,,,

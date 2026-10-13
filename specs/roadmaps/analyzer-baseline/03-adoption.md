@@ -1,0 +1,79 @@
+# Step 3: Adopt a newer profile revision
+
+Part of [analyzer-baseline-roadmap.md](../analyzer-baseline-roadmap.md). Read that file's Rules and Repo working agreements first; they apply here.
+
+Goal: an analyzer can move from revision N to N+1 of its profile through one
+review screen, keeping its identity, with every row's fate visible.
+
+### Facts
+
+- Refusal today: `AnalyzerInstanceLocalStateServiceImpl.update` (103-110)
+  throws "A configured analyzer cannot be moved to another profile revision";
+  pinned by `AnalyzerInstanceLocalStateServiceTest.cannotReplaceTheProfileOfAConfiguredAnalyzer`
+  (line 263). "Update available" is one boolean in
+  `AnalyzerTypeCatalogServiceImpl.affectedAnalyzer` (106-115), rendered by
+  `AffectedAnalyzerList.jsx:26-30` with no action.
+- Bridge re-pin: OE2 calls `BridgeAnalyzerConnectionClient.updateConnection(
+connectionId, request)` (`PUT /api/connections/{id}`) with
+  `requestId`, `connectionId`, `expectedConfigRevision`, `displayName`,
+  `profileRef{profileId, revision}`, `values`. The Bridge accepts a new
+  `profileRef` and carries existing values forward
+  (`AnalyzerConnectionCatalog.java:147-170`). An active connection keeps its
+  `activeRuntimeConfiguration` until re-activation (159-165). No Bridge change.
+- Profile lookup: `BridgeProfileCatalogService.getProfile(profileId, revision)`;
+  OE2 rejects a revision whose fingerprint changed
+  (`AnalyzerProfileBindingServiceImpl:52-57` today; keep that check on
+  `analyzer_mapping.profile_fingerprint`).
+- Row comparison inputs per (code, sub-identity) (rule 17): declared values with
+  their translations, unit, LOINC, answer codes, where the part sits (from
+  the profile); current row's `origin`, target, state (from steps 2 and
+  2b).
+- Held results: `AnalyzerResults` rows with `import_issue_reason` set and
+  `source_profile_revision` = N; recovery path
+  `AnalyzerNormalizedResultImportService.recoverHeldMappingResults(analyzerId, actor)`.
+- Activation: `AnalyzerActivationService.activate/deactivate`; blockers
+  `analyzer.activation.blocker.{profile,name,labUnit,mappings,recognition,connection,bridgeAcknowledgement}`.
+
+### Build
+
+```
+- [x] T3.1 Red: integration test, analyzer on N adopts N+1 and the operator confirms and applies it; id, activation records, lab units, bridge_connection_id unchanged; Bridge connection profileRef.revision == N+1 after Apply
+- [x] T3.2 Red: unit tests for bucketing (`AnalyzerMappingAdoption.plan`; a dropped code is RETIRED, a record no revision declares carries over UNCHANGED; derived from rule 5: a DEFAULT row compares its decision with the new default, so a catalog change surfaces as CHANGED): identical row -> UNCHANGED (both origins); changed LOINC on DEFAULT -> CHANGED with new default; changed value set on OVERRIDE -> CHANGED showing both; new code -> NEEDS_MAPPING; renamed code -> old row retired, new NEEDS_MAPPING; override == new default -> UNCHANGED, origin stays OVERRIDE, marked as now also the default
+- [x] T3.3 Red: integration tests, override on inactive test -> BLOCKED; removed code with held results -> BLOCKED; each names the row
+- [x] T3.4 Red: integration test, an active analyzer receives on N until Apply; Apply re-pins and re-activates the Bridge connection in one action, and a Bridge failure leaves OE2 on N
+- [x] T3.4b Red: integration test, a result stamped N arriving after Apply maps through N+1 when N+1 reads its record the same way (parts, result type, unit), and is held with reason "arrived under revision N" when it does not; a different profile is still refused
+- [x] T3.5 Red: integration test, held results on N recover on Apply through N+1 by the same rule (a LOINC fix or an added value recovers; a changed part or unit stays held) and keep source_profile_revision N
+- [x] T3.6 Service: AnalyzerAdoptionService (its own service over AnalyzerMappingService, which stays the revision store) prepareAdoption(analyzerId, revision) -> buckets; adopt(analyzerId, revision, decisions, actor) saves the reviewed mapping as a revision on N+1. Decided 6 Oct: adoption adds no state of its own; the existing Confirm records actor and time, and Apply puts the revision in force and re-pins the Bridge connection when the pin changed, so OE2 and the Bridge switch together and an abandoned adoption touches nothing outside OE2. Decided 6 Oct, later: for an active analyzer Apply also re-activates the connection, so there is no second step to forget
+- [x] T3.7 Endpoints: GET/POST /rest/analyzer/analyzers/{id}/adoption?revision= (POST takes the reviewed `{tests, results}` and returns the new revision's id, number and fingerprint for Confirm)
+- [x] T3.8 Catalog view: split updateAvailable into newerProfileRevision and newerMappingRevision; the affected-analyzer list links to Adopt (`/analyzers/{id}/adoption?revision=`) or Verify (`/analyzers/{id}/mapping`) respectively
+- [x] T3.9 Adoption screen: the step-2 editor in adoption mode with bucket grouping and side-by-side changed rows
+- [x] T3.10 Replace cannotReplaceTheProfileOfAConfiguredAnalyzer with tests for the new rule (a configured analyzer keeps its profile; a newer revision is reached by adoption, and the refusal says so)
+- [x] T3.11 Red then green: E2E numeric profile revision N -> N+1 (one LOINC fix, one new code), in `analyzer-adoption.spec.ts`. Decided 6 Oct: no permanent E2E for the analyzer migrated by step 2 ("this is an permanent e2e tests that's testing a one-time migration scenario?"); changeset 124's result is proven by `DatabaseUpgradeIntegrationTest`
+- [x] T3.12 Format cold; commit; stack PR on step 2
+```
+
+### Verify
+
+```bash
+mvn -Dtest='AnalyzerMappingAdoption*Test,AnalyzerInstanceLocalStateServiceTest' test
+grep -n "cannot be moved to another profile revision" src/main/java   # 0
+cd frontend && npm run pw:test -- --project=harness-foundational
+gh pr checks <PR>
+```
+
+### Done when
+
+1. T3.1 passes. (`mvn`)
+2. T3.2 passes for every bucket case. (`mvn`)
+3. T3.3 passes; nothing else blocks. (`mvn`)
+4. T3.4 and T3.4b pass; no result is refused for its revision alone. (`mvn`)
+5. T3.5 passes. (`mvn`)
+6. "Update available" is two states with two actions; the old refusal test is
+   gone. (`grep`, read)
+7. The T3.11 E2E passes. (`pw:test`)
+8. All three CI checkpoints pass. (`gh pr checks`)
+
+### Background (optional)
+
+- [M4](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#m4), [Adopting a profile: standards and edge cases](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#upgrade)
+- Decisions: [adoption](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#d-adoption), [adopting while active](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#d-adopt-active), [baseline](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#d-baseline)

@@ -53,6 +53,7 @@ import ServerPageArrows from "../common/ServerPageArrows";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 /**
  * OrderDashboard - Default landing page for "Add Order" menu (DSH-1 to DSH-9)
@@ -724,9 +725,13 @@ const OrderDashboardContent = () => {
         <p>{intl.formatMessage({ id: "order.dashboard.cancel.body" })}</p>
         <Select
           id="cancel-order-reason"
-          labelText={intl.formatMessage({
-            id: "order.dashboard.cancel.reason",
-          })}
+          labelText={
+            <>
+              {intl.formatMessage({ id: "order.dashboard.cancel.reason" })}
+              <RequiredMarker />
+            </>
+          }
+          {...requiredProps()}
           value={cancelReason}
           onChange={(e) => setCancelReason(e.target.value)}
         >
@@ -748,9 +753,15 @@ const OrderDashboardContent = () => {
         {cancelReason === "__other__" && (
           <TextInput
             id="cancel-order-reason-other"
-            labelText={intl.formatMessage({
-              id: "order.dashboard.cancel.reasonOther",
-            })}
+            labelText={
+              <>
+                {intl.formatMessage({
+                  id: "order.dashboard.cancel.reasonOther",
+                })}
+                <RequiredMarker />
+              </>
+            }
+            {...requiredProps()}
             value={cancelOther}
             onChange={(e) => setCancelOther(e.target.value)}
             maxLength={255}

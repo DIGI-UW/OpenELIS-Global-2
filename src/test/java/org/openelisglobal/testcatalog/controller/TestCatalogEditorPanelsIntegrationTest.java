@@ -200,6 +200,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
 
     private TestPanelsResponse put(MembershipItem... items) {
         PanelMembershipUpdate body = new PanelMembershipUpdate();
+        body.memberships = new java.util.ArrayList<>();
         for (MembershipItem i : items) {
             body.memberships.add(i);
         }
@@ -241,7 +242,9 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void reposition_andRemove_persists() {
         put(membership(panelAId, 5), membership(panelBId, 3));
-        // Keep only panel A, at a new position → B is removed.
+        // Keep only panel A, at a new position → B is removed. B would be left
+        // with no tests, so it is inactive first (OGC-1456).
+        jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", PANEL_B_ID);
         put(membership(panelAId, 9));
         TestPanelsResponse loaded = controller.getTestPanels(testId()).getBody();
         assertEquals(1, loaded.memberships.size());
@@ -328,6 +331,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     @org.junit.Test
     public void saveTestPanels_unknownPanelReturns422() {
         PanelMembershipUpdate body = new PanelMembershipUpdate();
+        body.memberships = new java.util.ArrayList<>();
         body.memberships.add(membership(panelAId, 1));
         body.memberships.add(membership("99999999", 2));
         ResponseEntity<TestPanelsResponse> resp = controller.saveTestPanels(testId(), body, authedRequest());
@@ -550,8 +554,10 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                     "SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?" + " AND sample_type_id = ?",
                     Integer.class, Long.parseLong(panelId), sampleTypeId));
 
-            // removing every test empties membership AND the junction; the
-            // active state is untouched (editing never auto-flips)
+            // an active panel keeps at least one test (OGC-1456); once it is
+            // deactivated, removing every test empties membership AND the junction,
+            // and the active state is untouched (editing never auto-flips)
+            jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", Long.parseLong(panelId));
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .put("/rest/test-catalog/panels/" + panelId + "/tests")
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{\"tests\":[]}")
@@ -560,7 +566,7 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
                             .jsonPath("$.panel.testCount").value(0))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
-                            .jsonPath("$.panel.active").value(true));
+                            .jsonPath("$.panel.active").value(false));
             assertEquals(Integer.valueOf(0),
                     jdbc.queryForObject("SELECT count(*) FROM clinlims.sampletype_panel WHERE panel_id = ?",
                             Integer.class, Long.parseLong(panelId)));
@@ -1060,5 +1066,160 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 "SELECT lv.value FROM clinlims.panel p JOIN clinlims.localization_value lv"
                         + " ON lv.localization_id = p.name_localization_id WHERE p.id = ? AND lv.locale = ?",
                 String.class, panelId, locale);
+    }
+
+    private org.springframework.test.web.servlet.MvcResult send(String method, String url, String body)
+            throws Exception {
+        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .request(org.springframework.http.HttpMethod.valueOf(method), url)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body)
+                .session(authedSession())).andReturn();
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode json(org.springframework.test.web.servlet.MvcResult result)
+            throws Exception {
+        String content = result.getResponse().getContentAsString();
+        return new com.fasterxml.jackson.databind.ObjectMapper().readTree(content.isEmpty() ? "{}" : content);
+    }
+
+    private String testsBody(String... testIds) {
+        StringBuilder body = new StringBuilder("{\"tests\":[");
+        for (int i = 0; i < testIds.length; i++) {
+            body.append(i == 0 ? "" : ",").append("{\"testId\":\"").append(testIds[i]).append("\",\"position\":")
+                    .append(i + 1).append("}");
+        }
+        return body.append("]}").toString();
+    }
+
+    /** OGC-1456: an active panel never ends up with zero tests. */
+    @org.junit.Test
+    public void savePanelTests_refusesToEmptyAnActivePanel() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult refused = send("PUT", url, "{\"tests\":[]}");
+
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("tests.activeNeedsTest", json(refused).path("refusal").asText());
+        assertEquals(Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    @org.junit.Test
+    public void savePanelTests_emptiesAnInactivePanel() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+        jdbc.update("UPDATE clinlims.panel SET is_active = 'N' WHERE id = ?", PANEL_A_ID);
+
+        assertEquals(200, send("PUT", url, "{\"tests\":[]}").getResponse().getStatus());
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+    }
+
+    /**
+     * OGC-1456: the picker hides inactive tests and the server agrees; a member
+     * that was deactivated after it joined stays and does not block the save.
+     */
+    @org.junit.Test
+    public void savePanelTests_refusesToAddAnInactiveTest_butKeepsAnInactiveMember() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        jdbc.update("UPDATE clinlims.test SET is_active = 'N' WHERE id = ?", TEST_ID);
+
+        org.springframework.test.web.servlet.MvcResult refused = send("PUT", url, testsBody(testId()));
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("tests.inactive", json(refused).path("refusal").asText());
+        assertEquals(testId(), json(refused).path("refusedTests").path(0).path("testId").asText());
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+
+        jdbc.update("UPDATE clinlims.test SET is_active = 'Y' WHERE id = ?", TEST_ID);
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+        jdbc.update("UPDATE clinlims.test SET is_active = 'N' WHERE id = ?", TEST_ID);
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+        assertEquals(Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    @org.junit.Test
+    public void savePanelTests_refusesMalformedMembersWithoutA500() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+
+        assertEquals(422, send("PUT", url, testsBody("abc")).getResponse().getStatus());
+        assertEquals(400, send("PUT", url, "{\"tests\":null}").getResponse().getStatus());
+        assertEquals(400, send("PUT", url, "{\"tests\":[null]}").getResponse().getStatus());
+        assertEquals(Long.valueOf(0L), membershipRowCount(panelAId));
+    }
+
+    /** OGC-1456: the test-side Panels write cannot empty an active panel either. */
+    @org.junit.Test
+    public void saveTestPanels_refusesToTakeTheLastTestOutOfAnActivePanel() throws Exception {
+        String url = "/rest/test-catalog/tests/" + testId() + "/panels";
+        assertEquals(200, send("PUT", url, "{\"memberships\":[{\"panelId\":\"" + panelAId + "\",\"position\":1}]}")
+                .getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult refused = send("PUT", url, "{\"memberships\":[]}");
+
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("panel.activeNeedsTest", json(refused).path("refusal").asText());
+        assertEquals("PanelsITAlpha", json(refused).path("refusedPanels").path(0).path("panelName").asText());
+        assertEquals(Long.valueOf(1L), membershipRowCount(panelAId));
+    }
+
+    /** OGC-1456: a create obeys the same 20-character limit as a rename. */
+    @org.junit.Test
+    public void createPanel_refusesANameOverTwentyCharacters() throws Exception {
+        String name = "PanelsIT21CharsLong!x";
+        assertEquals(21, name.length());
+
+        org.springframework.test.web.servlet.MvcResult refused = send("POST", "/rest/test-catalog/panels",
+                "{\"name\":\"" + name + "\",\"active\":false}");
+
+        assertEquals(422, refused.getResponse().getStatus());
+        assertEquals("name.tooLong", json(refused).path("refusal").asText());
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.panel WHERE name = ?", Integer.class, name));
+    }
+
+    /**
+     * OGC-1456: a code that does not fit is refused by name, and a LOINC longer
+     * than a LOINC can be leaves the panel's routing LOINC and mappings alone.
+     */
+    @org.junit.Test
+    public void panelTerminology_refusesCodesThatDoNotFit_andChangesNothing() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/terminology";
+        assertEquals(200, send("PUT", url,
+                "{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"24331-1\"," + "\"relationship\":\"SAME_AS\"}]}")
+                .getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult longLoinc = send("PUT", url,
+                "{\"mappings\":[{\"source\":\"LOINC\",\"code\":\"12345678-90\",\"relationship\":\"SAME_AS\"}]}");
+        assertEquals(422, longLoinc.getResponse().getStatus());
+        assertEquals("loinc.tooLong", json(longLoinc).path("refusal").asText());
+        assertEquals("12345678-90", json(longLoinc).path("refusedCode").asText());
+
+        String longCode = "W".repeat(81);
+        org.springframework.test.web.servlet.MvcResult tooLong = send("PUT", url,
+                "{\"mappings\":[{\"source\":\"WHONET\",\"code\":\"" + longCode + "\"}]}");
+        assertEquals(422, tooLong.getResponse().getStatus());
+        assertEquals("code.tooLong", json(tooLong).path("refusal").asText());
+
+        assertEquals("24331-1",
+                jdbc.queryForObject("SELECT loinc FROM clinlims.panel WHERE id = ?", String.class, PANEL_A_ID));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.panel_terminology_mapping WHERE panel_id = ? AND is_active = 'Y'",
+                Integer.class, PANEL_A_ID));
+    }
+
+    /**
+     * OGC-1456 review: a save that leaves its list out is refused, never read as an
+     * empty list that clears what is stored.
+     */
+    @org.junit.Test
+    public void saves_thatLeaveTheirListOutAreRefused() throws Exception {
+        String members = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        assertEquals(200, send("PUT", members, testsBody(testId())).getResponse().getStatus());
+
+        assertEquals(400, send("PUT", members, "{}").getResponse().getStatus());
+        assertEquals(400,
+                send("PUT", "/rest/test-catalog/tests/" + testId() + "/panels", "{}").getResponse().getStatus());
+        assertEquals(400,
+                send("PUT", "/rest/test-catalog/panels/" + panelAId + "/terminology", "{}").getResponse().getStatus());
+        assertEquals("the member stays", Long.valueOf(1L), membershipRowCount(panelAId));
     }
 }

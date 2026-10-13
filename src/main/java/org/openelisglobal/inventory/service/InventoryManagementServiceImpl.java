@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.service;
 
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryOrderCycle;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,9 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
     @Autowired
     private InventoryItemService inventoryItemService;
+
+    @Autowired
+    private InventoryOrderCycleService inventoryOrderCycleService;
 
     @Autowired
     private InventoryLotService inventoryLotService;
@@ -257,7 +262,33 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
         transactionService.recordTransaction(savedLot.getId(), TransactionType.RECEIPT, savedLot.getCurrentQuantity(),
                 savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT.name(), "New inventory received", sysUserId);
 
+        closeOrderCycle(managedItem, sysUserId);
+
         return savedLot;
+    }
+
+    private void closeOrderCycle(InventoryItem item, String sysUserId) {
+        Timestamp orderedAt = item.getOrderedAt();
+        if (orderedAt == null) {
+            return;
+        }
+        // Not the lot's receipt date: every receive overwrites that with the server
+        // clock.
+        Timestamp receivedAt = new Timestamp(System.currentTimeMillis());
+
+        InventoryOrderCycle cycle = new InventoryOrderCycle();
+        cycle.setInventoryItem(item);
+        cycle.setOrderedAt(orderedAt);
+        cycle.setReceivedAt(receivedAt);
+        cycle.setLeadTimeDays((int) Duration.between(orderedAt.toInstant(), receivedAt.toInstant()).toDays());
+        cycle.setSysUserId(sysUserId);
+        inventoryOrderCycleService.insert(cycle);
+
+        item.setOrderedAt(null);
+        item.setOrderNote(null);
+        item.setOrderExpectedDate(null);
+        item.setSysUserId(sysUserId);
+        inventoryItemService.update(item);
     }
 
     /**

@@ -4,31 +4,37 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
 
     private final AnalyzerInstanceLocalStateService localStateService;
     private final BridgeAnalyzerConnectionClient bridgeClient;
+    private final AnalyzerActivationService activationService;
     private final Supplier<String> requestIdSupplier;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public AnalyzerInstanceServiceImpl(AnalyzerInstanceLocalStateService localStateService,
-            BridgeAnalyzerConnectionClient bridgeClient) {
-        this(localStateService, bridgeClient, () -> UUID.randomUUID().toString());
+            BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationService activationService) {
+        this(localStateService, bridgeClient, activationService, () -> UUID.randomUUID().toString());
     }
 
     AnalyzerInstanceServiceImpl(AnalyzerInstanceLocalStateService localStateService,
-            BridgeAnalyzerConnectionClient bridgeClient, Supplier<String> requestIdSupplier) {
+            BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationService activationService,
+            Supplier<String> requestIdSupplier) {
         this.localStateService = localStateService;
         this.bridgeClient = bridgeClient;
+        this.activationService = activationService;
         this.requestIdSupplier = requestIdSupplier;
     }
 
@@ -63,11 +69,109 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     }
 
     @Override
-    public AnalyzerInstanceView selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
-            String bindingFingerprint, String actor) {
-        AnalyzerInstanceState state = localStateService.selectSiteBindingRevision(analyzerId, siteBindingId, revision,
-                bindingFingerprint, actor);
-        return compose(state);
+    @Transactional
+    public AnalyzerInstanceView applyMapping(String analyzerId, String mappingId, int revision,
+            String mappingFingerprint, String actor) {
+        AnalyzerInstanceState before = localStateService.get(analyzerId);
+        AnalyzerInstanceState state = localStateService.applyMapping(analyzerId, mappingId, revision,
+                mappingFingerprint, actor);
+        if (state.bridgeConnectionId() == null) {
+            return compose(state);
+        }
+        boolean revisionChanged = before.profileRevision() != state.profileRevision();
+        // OE2 and the Bridge switch together: any Bridge failure below rolls this
+        // transaction back, and a connection that may have moved is put back first.
+        // An active connection keeps running its old configuration until it is
+        // re-activated on the new one.
+        ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
+        boolean moving = !pinnedTo(state, current);
+        try {
+            ObjectNode connection = moving
+                    ? bridgeClient.updateConnection(state.bridgeConnectionId(),
+                            updateConnectionRequest(state, pin(state), objectMapper.createObjectNode(), current))
+                    : current;
+            requireExactConnection(state, connection);
+            if (state.status() == Analyzer.AnalyzerStatus.ACTIVE && (moving || revisionChanged)) {
+                String blocker = reactivate(state, actor);
+                if (blocker != null) {
+                    throw new BridgeAnalyzerConnectionException(blocker);
+                }
+            }
+            return new AnalyzerInstanceView(state, connection, null);
+        } catch (RuntimeException exception) {
+            if (moving) {
+                putBack(state, current, exception);
+            }
+            throw exception;
+        }
+    }
+
+    /** Null once the connection runs again, otherwise why it does not. */
+    private String reactivate(AnalyzerInstanceState state, String actor) {
+        AnalyzerActivationResult reactivated = activationService.reactivate(state.analyzerId(), actor);
+        if (reactivated.activated()) {
+            return null;
+        }
+        return reactivated.blockers().isEmpty() ? "analyzer.activation.blocker.bridgeAcknowledgement"
+                : reactivated.blockers().get(0).code();
+    }
+
+    /**
+     * Puts the connection back on {@code previous}'s pin if this request moved it.
+     * The Bridge can make a change whose answer is then lost, so the connection is
+     * read again rather than trusted. A pin that is neither this request's nor the
+     * previous one was set by someone else and is left alone. When the connection
+     * is not back on its previous pin, OE2 and the Bridge may disagree, and that is
+     * what the operator is told.
+     */
+    private void putBack(AnalyzerInstanceState state, ObjectNode previous, RuntimeException original) {
+        ObjectNode now;
+        try {
+            now = bridgeClient.getConnection(state.bridgeConnectionId());
+        } catch (RuntimeException rereadFailure) {
+            throw reconcileRequired(original, rereadFailure);
+        }
+        if (now.path("profileRef").equals(previous.path("profileRef"))) {
+            return;
+        }
+        if (!pinnedTo(state, now)) {
+            throw reconcileRequired(original, null);
+        }
+        try {
+            bridgeClient.updateConnection(state.bridgeConnectionId(),
+                    updateConnectionRequest(state, previous.path("profileRef"), objectMapper.createObjectNode(), now));
+        } catch (RuntimeException putBackFailure) {
+            throw reconcileRequired(original, putBackFailure);
+        }
+    }
+
+    private static BridgeAnalyzerConnectionException reconcileRequired(RuntimeException original,
+            RuntimeException failure) {
+        BridgeAnalyzerConnectionException reconcile = new BridgeAnalyzerConnectionException(
+                "analyzer.bridge.connection.reconcileRequired", Map.of(), original);
+        if (failure != null) {
+            reconcile.addSuppressed(failure);
+        }
+        return reconcile;
+    }
+
+    private ObjectNode connectionValues(AnalyzerInstanceRequest request) {
+        return request.getConnectionValues() == null ? objectMapper.createObjectNode()
+                : request.getConnectionValues().deepCopy();
+    }
+
+    private ObjectNode pin(AnalyzerInstanceState state) {
+        ObjectNode profileRef = objectMapper.createObjectNode();
+        profileRef.put("profileId", state.profileId()).put("revision", state.profileRevision()).put("fingerprint",
+                state.profileFingerprint());
+        return profileRef;
+    }
+
+    private static boolean pinnedTo(AnalyzerInstanceState state, ObjectNode connection) {
+        JsonNode profileRef = connection.path("profileRef");
+        return Objects.equals(state.profileId(), profileRef.path("profileId").asText(null))
+                && state.profileRevision() == profileRef.path("revision").asInt(0)
+                && Objects.equals(state.profileFingerprint(), profileRef.path("fingerprint").asText(null));
     }
 
     private AnalyzerInstanceView compose(AnalyzerInstanceState state) {
@@ -93,7 +197,7 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
             ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
             requireExactConnection(state, current);
             ObjectNode updated = bridgeClient.updateConnection(state.bridgeConnectionId(),
-                    updateConnectionRequest(state, request, current));
+                    updateConnectionRequest(state, pin(state), connectionValues(request), current));
             requireExactConnection(state, updated);
             return new AnalyzerInstanceView(state, updated, null);
         } catch (BridgeAnalyzerConnectionException exception) {
@@ -132,12 +236,11 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         bridgeRequest.put("displayName", state.name());
         bridgeRequest.putObject("profileRef").put("profileId", state.profileId())
                 .put("revision", state.profileRevision()).put("fingerprint", state.profileFingerprint());
-        ObjectNode values = request.getConnectionValues();
-        bridgeRequest.set("values", values == null ? objectMapper.createObjectNode() : values);
+        bridgeRequest.set("values", connectionValues(request));
         return bridgeRequest;
     }
 
-    private ObjectNode updateConnectionRequest(AnalyzerInstanceState state, AnalyzerInstanceRequest request,
+    private ObjectNode updateConnectionRequest(AnalyzerInstanceState state, JsonNode profileRef, ObjectNode values,
             ObjectNode current) {
         ObjectNode bridgeRequest = objectMapper.createObjectNode();
         bridgeRequest.put("schemaVersion", "1.0");
@@ -145,10 +248,8 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         bridgeRequest.put("connectionId", state.bridgeConnectionId());
         bridgeRequest.put("expectedConfigRevision", current.path("configRevision").asInt());
         bridgeRequest.put("displayName", state.name());
-        bridgeRequest.putObject("profileRef").put("profileId", state.profileId())
-                .put("revision", state.profileRevision()).put("fingerprint", state.profileFingerprint());
-        ObjectNode requestedValues = request.getConnectionValues();
-        bridgeRequest.set("values", requestedValues == null ? objectMapper.createObjectNode() : requestedValues);
+        bridgeRequest.set("profileRef", profileRef.deepCopy());
+        bridgeRequest.set("values", values);
         return bridgeRequest;
     }
 

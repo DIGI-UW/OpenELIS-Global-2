@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
+  Button,
   Tile,
   Search,
   Tag,
@@ -17,13 +18,16 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
  * order was fixed: a clinician asking for an extra test at the bedside, or a
  * test that only becomes appropriate when the specimen is in hand, meant
  * walking back to step 1. This offers the same catalogue, scoped to each
- * sample's own type, against the tests the order already holds.
+ * sample's own type, against the tests the order already holds. A type whose
+ * catalogue could not be loaded says so and offers Retry (OGC-1449), instead of
+ * offering nothing to add.
  */
 const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const fetchedTypesRef = useRef({});
   const [catalogue, setCatalogue] = useState({});
+  const [failedTypes, setFailedTypes] = useState({});
   const [searchTerms, setSearchTerms] = useState({});
 
   useEffect(() => {
@@ -33,28 +37,37 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
     };
   }, []);
 
+  const loadCatalogue = (sampleTypeId) => {
+    fetchedTypesRef.current[sampleTypeId] = true;
+    setFailedTypes((prev) => ({ ...prev, [sampleTypeId]: false }));
+    getFromOpenElisServer(
+      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
+      (response) => {
+        if (!componentMounted.current) {
+          return;
+        }
+        if (!response) {
+          setFailedTypes((prev) => ({ ...prev, [sampleTypeId]: true }));
+          return;
+        }
+        setCatalogue((prev) => ({
+          ...prev,
+          [sampleTypeId]: {
+            tests: response.tests || [],
+            panels: response.panels || [],
+          },
+        }));
+      },
+    );
+  };
+
   useEffect(() => {
     samples.forEach((sample) => {
       const sampleTypeId = sample?.sampleTypeId;
       if (!sampleTypeId || fetchedTypesRef.current[sampleTypeId]) {
         return;
       }
-      fetchedTypesRef.current[sampleTypeId] = true;
-      getFromOpenElisServer(
-        `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
-        (response) => {
-          if (!componentMounted.current || !response) {
-            return;
-          }
-          setCatalogue((prev) => ({
-            ...prev,
-            [sampleTypeId]: {
-              tests: response.tests || [],
-              panels: response.panels || [],
-            },
-          }));
-        },
-      );
+      loadCatalogue(sampleTypeId);
     });
   }, [samples]);
 
@@ -174,6 +187,25 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                 disabled={isReadOnly}
                 size="sm"
               />
+
+              {failedTypes[sample.sampleTypeId] && (
+                <div className="no-items-message" role="alert">
+                  <FormattedMessage
+                    id="sample.testsLoadFailed"
+                    defaultMessage="The tests for this sample type could not be loaded."
+                  />
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={() => loadCatalogue(sample.sampleTypeId)}
+                  >
+                    <FormattedMessage
+                      id="common.retry"
+                      defaultMessage="Retry"
+                    />
+                  </Button>
+                </div>
+              )}
 
               <div className="available-tags">
                 {matching(options.panels, term).map((panel) => (

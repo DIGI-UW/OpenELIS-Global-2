@@ -146,10 +146,12 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                       </StructuredListRow>
                       <StructuredListRow>
                         <StructuredListCell>
-                          <FormattedMessage id="catalog.item.type" />
+                          <FormattedMessage id="inventory.item.tags" />
                         </StructuredListCell>
                         <StructuredListCell>
-                          {lot.inventoryItem?.itemType}
+                          {lot.inventoryItem?.tags?.length
+                            ? lot.inventoryItem.tags.join(", ")
+                            : "—"}
                         </StructuredListCell>
                       </StructuredListRow>
                       <StructuredListRow>

@@ -8,23 +8,23 @@ set -euo pipefail
 
 # --no-mock-network: the mock sends to each connection's own Bridge listener
 #   port, so a stack without the Docker socket skips per-analyzer networks.
-# --activate: activate only newly created priority connections when their
-#   shipped mapping is already confirmed. It never edits clinical mappings.
+# --networks-only: create the mock transports and no analyzer, for a stack whose
+#   analyzers are all set up by the stories that run on it (the evidence recording).
+# A newly created analyzer is set up as an operator would in the setup screens:
+# its shipped defaults confirmed, applied and activated. An analyzer whose
+# defaults leave a row unresolved stays in Setup. This seed runs on dev, demo and
+# testing stacks only, never at a lab.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
-ACTIVATE=false
+NETWORKS_ONLY=false
 for arg in "$@"; do
   case "$arg" in
     --ensure-connections) ENSURE_CONNECTIONS=true ;;
     --no-mock-network) MOCK_NETWORK=false ;;
-    --activate) ACTIVATE=true ;;
-    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--activate]" >&2; exit 2 ;;
+    --networks-only) NETWORKS_ONLY=true ;;
+    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--networks-only]" >&2; exit 2 ;;
   esac
 done
-if [ "$ACTIVATE" = true ] && [ "$ENSURE_CONNECTIONS" = false ]; then
-  echo "--activate requires --ensure-connections" >&2
-  exit 2
-fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -50,16 +50,15 @@ if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
   CURL_TLS_FLAG=--insecure
 fi
 
-GENEXPERT_PROFILE_ID="genexpert-astm"
-FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
-QUANTSTUDIO_PROFILE_ID="quantstudio"
+GENEXPERT_PROFILE_ID="cepheid-genexpert-astm"
+FLUOROCYCLER_PROFILE_ID="hain-fluorocycler-xt-madagascar"
+QUANTSTUDIO_PROFILE_ID="thermo-quantstudio"
 
 CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
 LAB_UNITS_FILE="$(mktemp)"
 RESPONSE_FILE="$(mktemp)"
-ACTIVATION_PAYLOAD_FILE="$(mktemp)"
-trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE" "$ACTIVATION_PAYLOAD_FILE"' EXIT
+trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE"' EXIT
 
 fetch_json() {
   local url="$1"
@@ -142,51 +141,6 @@ if matches:
 PY
 }
 
-activate_confirmed_analyzer() {
-  local analyzer_id="$1"
-  local profile_id="$2"
-  local profile_revision="$3"
-  local status
-
-  fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id mapping"
-  python3 - "$RESPONSE_FILE" "$ACTIVATION_PAYLOAD_FILE" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    mapping = json.load(handle)
-if mapping.get("confirmation", {}).get("state") != "CURRENT":
-    raise SystemExit(
-        f"{mapping.get('profileId')} has no confirmed stock mapping; review it in OpenELIS before activation"
-    )
-if not mapping.get("siteBindingId") or not mapping.get("bindingFingerprint"):
-    raise SystemExit("Confirmed mapping has no persisted binding reference")
-with open(sys.argv[2], "w", encoding="utf-8") as handle:
-    json.dump({
-        "siteBindingId": mapping["siteBindingId"],
-        "revision": mapping["siteBindingRevision"],
-        "bindingFingerprint": mapping["bindingFingerprint"],
-    }, handle)
-PY
-  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" \
-    -u "$TEST_USER:$TEST_PASS" -X PUT -H "Content-Type: application/json" \
-    --data-binary "@$ACTIVATION_PAYLOAD_FILE" "$ANALYZER_API/$analyzer_id/site-binding")"
-  if [ "$status" != "200" ]; then
-    echo "ERROR: Could not adopt confirmed $profile_id binding (HTTP $status)" >&2
-    sed 's/^/  /' "$RESPONSE_FILE" >&2
-    return 1
-  fi
-  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" \
-    -u "$TEST_USER:$TEST_PASS" -X POST -H "Content-Type: application/json" \
-    -d '{}' "$ANALYZER_API/$analyzer_id/activate")"
-  if [ "$status" != "200" ]; then
-    echo "ERROR: Could not activate $profile_id analyzer $analyzer_id (HTTP $status)" >&2
-    sed 's/^/  /' "$RESPONSE_FILE" >&2
-    return 1
-  fi
-  echo "  Activated newly created $profile_id analyzer $analyzer_id"
-}
-
 reconcile_profile_analyzer() {
   local name="$1"
   local profile_id="$2"
@@ -239,9 +193,64 @@ PY
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
-  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
-    activate_confirmed_analyzer "$(find_analyzer_id "$name")" "$profile_id" "$profile_revision"
+  if [ "$action" = "create" ]; then
+    set_up_like_an_operator "$(find_analyzer_id "$name")" "$name"
   fi
+}
+
+api_send() {
+  local method="$1"
+  local url="$2"
+  local body="$3"
+  curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" \
+    -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" --data-binary "$body"
+}
+
+# Confirm every resolved row of the analyzer's own mapping, apply it and activate, as Verify,
+# Apply and "Finish and activate" do. Unresolved rows leave the analyzer in Setup.
+set_up_like_an_operator() {
+  local analyzer_id="$1"
+  local name="$2"
+  local request
+  local status
+  fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  request="$(python3 - "$RESPONSE_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    mapping = json.load(handle)
+confirmed, excluded, unresolved = [], [], []
+for test in mapping.get("tests", []):
+    sub = test.get("subIdentity") or ""
+    rows = [(test.get("mappingState"), None)] + [(r.get("mappingState"), r.get("rawValue")) for r in test.get("results", [])]
+    for state, raw in rows:
+        row = {"sourceRowKey": test["sourceRowKey"], "subIdentity": sub, "rawValue": raw}
+        {"BOUND": confirmed, "EXCLUDED": excluded}.get(state, unresolved).append(row)
+if unresolved:
+    print("")
+else:
+    print(json.dumps({
+        "baseMappingFingerprint": mapping["mappingFingerprint"],
+        "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
+        "confirmedRows": confirmed,
+        "excludedRows": excluded,
+    }))
+PY
+)"
+  if [ -z "$request" ]; then
+    echo "  Left in Setup: $name has unresolved mapping rows to review in OpenELIS"
+    return 0
+  fi
+  status="$(api_send POST "$ANALYZER_API/$analyzer_id/mapping/confirm" "$request")"
+  [ "$status" = "200" ] || { echo "ERROR: Could not confirm $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  request="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(json.dumps({"mappingId": m["mappingId"], "revision": m["mappingRevision"], "mappingFingerprint": m["mappingFingerprint"]}))' "$RESPONSE_FILE")"
+  status="$(api_send PUT "$ANALYZER_API/$analyzer_id/mapping/apply" "$request")"
+  [ "$status" = "200" ] || { echo "ERROR: Could not apply $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  status="$(api_send POST "$ANALYZER_API/$analyzer_id/activate" '{}')"
+  [ "$status" = "200" ] || { echo "ERROR: Could not activate $name (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  echo "  Confirmed, applied and activated: $name"
 }
 
 lookup_mock_network_ip() {
@@ -294,18 +303,22 @@ PY
 
 verify_profile_pins() {
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
-  python3 - "$ANALYZERS_FILE" "$GENEXPERT_REVISION" "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_REVISION" <<'PY'
+  python3 - "$ANALYZERS_FILE" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$QUANTSTUDIO_PROFILE_ID" \
+    "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     analyzers = json.load(handle).get("analyzers", [])
 
+genexpert = (sys.argv[2], int(sys.argv[3]))
+quantstudio = (sys.argv[4], int(sys.argv[5]))
+fluorocycler = (sys.argv[6], int(sys.argv[7]))
 expected = {
-    "Cepheid GeneXpert (ASTM Mode)": ("genexpert-astm", int(sys.argv[2])),
-    "QuantStudio 5": ("quantstudio", int(sys.argv[3])),
-    "QuantStudio 7": ("quantstudio", int(sys.argv[3])),
-    "FluoroCycler XT": ("fluorocycler-xt", int(sys.argv[4])),
+    "Cepheid GeneXpert (ASTM Mode)": genexpert,
+    "QuantStudio 5": quantstudio,
+    "QuantStudio 7": quantstudio,
+    "FluoroCycler XT": fluorocycler,
 }
 problems = []
 for name, pin in expected.items():
@@ -350,6 +363,11 @@ if [ "$MOCK_NETWORK" = true ]; then
     exit 1
   fi
   echo "  genexpert -> $GENEXPERT_IP:9600"
+fi
+
+if [ "$NETWORKS_ONLY" = true ]; then
+  echo "Done. Mock transports only; no analyzer instances."
+  exit 0
 fi
 
 echo "Creating profile-pinned analyzer instances..."

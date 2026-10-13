@@ -172,6 +172,9 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
     public Identifier createIdentifier(String system, String value) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "createIdentifier", "createIdentifier called");
 
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
         Identifier identifier = new Identifier();
         identifier.setValue(value);
 

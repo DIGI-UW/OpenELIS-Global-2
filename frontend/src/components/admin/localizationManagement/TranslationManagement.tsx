@@ -339,6 +339,8 @@ const TranslationManagement = () => {
                       {stat.displayName} ({code})
                     </strong>
                     <ProgressBar
+                      label={`${stat.displayName} (${code})`}
+                      hideLabel
                       value={stat.percentage}
                       max={100}
                       helperText={`${stat.translated}/${stats.totalEntries} (${stat.percentage.toFixed(1)}%)`}

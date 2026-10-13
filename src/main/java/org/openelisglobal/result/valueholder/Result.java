@@ -218,6 +218,11 @@ public class Result extends EnumValueItemImpl {
         this.significantDigits = significantDigits;
     }
 
+    /** Records that no precision applies, so the value is reported as stored. */
+    public void clearSignificantDigits() {
+        this.significantDigits = null;
+    }
+
     public Result getParentResult() {
         return (Result) parentResult.getValue();
     }
