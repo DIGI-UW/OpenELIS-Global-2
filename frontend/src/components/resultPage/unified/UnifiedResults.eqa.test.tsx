@@ -1,5 +1,11 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
@@ -69,7 +75,7 @@ import UnifiedResults from "./UnifiedResults";
 const worklistRow = (extra: Record<string, unknown> = {}) => ({
   id: null,
   analysisId: "60",
-  accessionNumber: "EQA-0001",
+  accessionNumber: "DEV0126000001",
   testName: "CD4",
   resultType: "N",
   resultValue: "",
@@ -183,5 +189,31 @@ describe("EQA rows on the Results page", () => {
 
     expect(screen.queryByText("Analyst (EQA)")).not.toBeInTheDocument();
     expect(analystSelect()).toBeNull();
+  });
+
+  it("tags an EQA sample and names its kind", () => {
+    renderPage(worklistRow());
+
+    expect(
+      within(
+        document.querySelector(".unifiedAccession") as HTMLElement,
+      ).getByText("EQA"),
+    ).toBeInTheDocument();
+    const kind = screen.getByTestId(/^sample-kind-/);
+    expect(within(kind).getByText("EQA")).toBeInTheDocument();
+    expect(within(kind).queryByText("Client sample")).not.toBeInTheDocument();
+  });
+
+  it("does not mark a blinded in-house sample as EQA", () => {
+    renderPage(worklistRow({ ...PER_ANALYST, eqaInHouse: true }));
+
+    expect(screen.queryByText(/EQA/)).not.toBeInTheDocument();
+    expect(screen.getByText("Analyst")).toBeInTheDocument();
+    expect(
+      screen.getByText(messages["label.results.analystRequired"]),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId(/^sample-kind-/)).getByText("Client sample"),
+    ).toBeInTheDocument();
   });
 });
