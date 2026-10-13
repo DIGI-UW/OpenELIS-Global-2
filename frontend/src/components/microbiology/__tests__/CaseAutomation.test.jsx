@@ -22,9 +22,9 @@ const incoming = {
   receivedAt: "2026-01-01T10:00:00Z",
   result: { components: [{ value: "Growth" }] },
 };
-function renderPage(element) {
+function renderPage(element, initialEntry = "/Microbiology/worklist") {
   const history = createMemoryHistory({
-    initialEntries: ["/Microbiology/worklist"],
+    initialEntries: [initialEntry],
   });
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -193,4 +193,24 @@ test("batch inoculation keeps the test selection outside the culture request", a
   expect(
     screen.getByRole("button", { name: "Inoculate selected cases" }),
   ).toBeDisabled();
+});
+
+test("a culture worklist deep link preserves its accession search", async () => {
+  const service = {
+    searchBench: vi
+      .fn()
+      .mockResolvedValue({ rows: [], labUnits: [], total: 0 }),
+  };
+  renderPage(
+    <CultureWorklist service={service} />,
+    "/Microbiology/worklist?grain=cultures&q=OWNED-002",
+  );
+  expect(
+    screen.getByLabelText(messages["microbiology.case.search"]),
+  ).toHaveValue("OWNED-002");
+  await waitFor(() =>
+    expect(service.searchBench).toHaveBeenCalledWith(
+      expect.stringContaining("q=OWNED-002"),
+    ),
+  );
 });
