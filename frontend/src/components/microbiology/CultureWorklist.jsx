@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
   DataTable,
@@ -29,6 +29,7 @@ import { MICROBIOLOGY_CASE_PATH } from "./MicrobiologyRoutes";
 export default function CultureWorklist({ service }) {
   const intl = useIntl(),
     history = useHistory(),
+    location = useLocation(),
     t = (id) => intl.formatMessage({ id });
   const [data, setData] = useState(null),
     [error, setError] = useState(false),
@@ -36,7 +37,9 @@ export default function CultureWorklist({ service }) {
     [filter, setFilter] = useState(""),
     [attention, setAttention] = useState(false),
     [units, setUnits] = useState([]),
-    [search, setSearch] = useState(""),
+    [search, setSearch] = useState(
+      () => new URLSearchParams(location.search).get("q") || "",
+    ),
     [page, setPage] = useState(1),
     [size, setSize] = useState(20),
     [refresh, setRefresh] = useState(0),

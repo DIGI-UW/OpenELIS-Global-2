@@ -55,9 +55,12 @@ test("inoculates from the worklist and scans the saved culture label", async ({
 }) => {
   test.setTimeout(180000);
   const seeded = await seedMicrobiologyCultureWorkspace(page);
-  await page.goto("/Microbiology/worklist");
-  await page.getByRole("button", { name: "Culture", exact: true }).click();
-  await page.locator("#bench-search").fill(seeded.accessionNumber);
+  await page.goto(
+    `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(seeded.accessionNumber)}`,
+  );
+  await expect(page.locator("#bench-search")).toHaveValue(
+    seeded.accessionNumber,
+  );
   await page.locator("#bench-filter").selectOption("AWAITING_INOCULATION");
   const row = page.getByRole("row").filter({ hasText: seeded.accessionNumber });
   await expect(row).toHaveCount(1, { timeout: LONG_TIMEOUT });
