@@ -92,6 +92,14 @@ const worklistRow = (extra: Record<string, unknown> = {}) => ({
 
 const PER_ANALYST = { eqaPerAnalyst: true, eqaSchemeId: "7" };
 
+const SAVED_CRITICAL = worklistRow({
+  resultId: "70",
+  resultValue: "5",
+  rawResultValue: "5",
+  resultFlag: "CRITICAL",
+  analysisStatusId: "15",
+});
+
 const ANALYSTS = [
   { id: "11", displayName: "Ada Bench" },
   { id: "12", displayName: "Grace Bench" },
@@ -214,6 +222,24 @@ describe("EQA rows on the Results page", () => {
     ).toBeInTheDocument();
     expect(
       within(screen.getByTestId(/^sample-kind-/)).getByText("Client sample"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not ask for a clinician callback on a critical EQA result", () => {
+    renderPage(SAVED_CRITICAL);
+
+    expect(screen.queryByTestId("critical-banner")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("unified-log-callback-button"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still asks for it on a critical patient result", () => {
+    renderPage({ ...SAVED_CRITICAL, eqaSample: false });
+
+    expect(screen.getByTestId("critical-banner")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("unified-log-callback-button"),
     ).toBeInTheDocument();
   });
 });

@@ -801,13 +801,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       {/* Critical banner (FR-C2) — the one full-width banner. The person
           entering the value acknowledges it at Save (OGC-1417); the banner's
           dashboard acknowledgement is the follow-up. */}
-      {flag === "CRITICAL" && (
+      {flag === "CRITICAL" && !row.eqaSample && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
         />
       )}
-      {flag === "CRITICAL" && !editable && (
+      {flag === "CRITICAL" && !editable && !row.eqaSample && (
         <CriticalCallbackAction
           row={{
             resultId: row.resultId as string | undefined,
