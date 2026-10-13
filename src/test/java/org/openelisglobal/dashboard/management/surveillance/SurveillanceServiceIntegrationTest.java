@@ -12,7 +12,9 @@ import org.openelisglobal.dashboard.management.ScopeRange;
 import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse.Metric;
 import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse.Program;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class SurveillanceServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final ScopeRange MARCH = new ScopeRange(LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31),
@@ -39,8 +41,6 @@ public class SurveillanceServiceIntegrationTest extends BaseWebContextSensitiveT
         executeDataSetWithStateManagement("testdata/surveillance-cards.xml");
         jdbcTemplate
                 .update("DELETE FROM clinlims.surveillance_program WHERE code NOT IN ('TB', 'HIV', 'MALARIA', 'AMR')");
-        jdbcTemplate.update("DELETE FROM clinlims.sample_item WHERE id = 8901");
-        jdbcTemplate.update("DELETE FROM clinlims.sample WHERE id = 8901");
         jdbcTemplate.update("INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date)"
                 + " VALUES (8901, 'SURV-8901', now(), now())");
         jdbcTemplate.update("INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id)"
@@ -68,9 +68,10 @@ public class SurveillanceServiceIntegrationTest extends BaseWebContextSensitiveT
         coded(RAPID, IN_SCOPE, NEGATIVE, "8901");
         numeric(VL_PLASMA, IN_SCOPE, "120", 0.0, 100.0);
         numeric(VL_PLASMA, IN_SCOPE, "50", 0.0, 100.0);
+        numeric(VL_PLASMA, IN_SCOPE, "120", 0.0, 0.0);
 
         assertEquals(new Metric("HIV_ABNORMAL", "HIV_ABNORMAL label", 25.0, 1, 4, null), metric("HIV", 0));
-        assertEquals(new Metric("VL_ABNORMAL", "VL_ABNORMAL label", 50.0, 1, 2, null), metric("HIV", 1));
+        assertEquals(new Metric("VL_ABNORMAL", "VL_ABNORMAL label", 33.3, 1, 3, null), metric("HIV", 1));
     }
 
     @Test
@@ -85,14 +86,15 @@ public class SurveillanceServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    public void numericBelowReadsMarkedAndSeparatedNumbersAndDropsTheRest() {
-        map("HIV", VL_PLASMA, "VL_SUPPRESSED", 1, "NUMERIC_BELOW", null, null, "1000");
+    public void numericBelowReadsMarkedAndSeparatedNumbersAndListedTextAndDropsTheRest() {
+        map("HIV", VL_PLASMA, "VL_SUPPRESSED", 1, "NUMERIC_BELOW", "Target not detected", null, "1000");
         numeric(VL_PLASMA, IN_SCOPE, "<40", null, null);
         numeric(VL_PLASMA, IN_SCOPE, "1,200", null, null);
         numeric(VL_PLASMA, IN_SCOPE, "500", null, null);
         numeric(VL_PLASMA, IN_SCOPE, "Target not detected", null, null);
+        numeric(VL_PLASMA, IN_SCOPE, "Invalid", null, null);
 
-        assertEquals(new Metric("VL_SUPPRESSED", "VL_SUPPRESSED label", 66.7, 2, 3, null), metric("HIV", 0));
+        assertEquals(new Metric("VL_SUPPRESSED", "VL_SUPPRESSED label", 75.0, 3, 4, null), metric("HIV", 0));
     }
 
     @Test

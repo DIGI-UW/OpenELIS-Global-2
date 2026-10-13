@@ -13649,6 +13649,5 @@
   "label.mgmt.surveillance.trendUp": "{0} ↑ {1}pp vs. prior period",
   "label.mgmt.surveillance.trendDown": "{0} ↓ {1}pp vs. prior period",
   "label.mgmt.surveillance.trendStable": "{0} stable vs. prior period",
-  "label.mgmt.surveillance.openDetail": "Open detail",
   "label.mgmt.surveillance.setup": "Set these WHONET codes or organism groups in the microbiology reference data: {0}"
 }

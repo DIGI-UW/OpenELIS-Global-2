@@ -51,18 +51,6 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="openelisglobal" id="OGC-897-surveillance-resistance-metric-history">
-        <sql>
-            INSERT INTO clinlims.reference_tables (id, name, keep_history, lastupdated)
-            SELECT nextval('clinlims.reference_tables_seq'), 'surveillance_resistance_metric', 'Y', now()
-            WHERE NOT EXISTS (SELECT 1 FROM clinlims.reference_tables
-                              WHERE LOWER(name) = 'surveillance_resistance_metric');
-        </sql>
-        <rollback>
-            <sql>DELETE FROM clinlims.reference_tables WHERE LOWER(name) = 'surveillance_resistance_metric';</sql>
-        </rollback>
-    </changeSet>
-
     <!-- The WHO GLASS priority resistance indicators -->
     <changeSet author="openelisglobal" id="OGC-897-surveillance-resistance-metric-seed">
         <sql>

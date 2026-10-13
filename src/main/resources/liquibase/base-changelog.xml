@@ -170,6 +170,5 @@
   <include file="liquibase/dashboards/005-analyzer-activity-indexes.xml" />
   <include file="liquibase/dashboards/002-surveillance-programs.xml" />
   <include file="liquibase/dashboards/003-qi-weights.xml" />
-  <!-- OGC-897: the AMR card's resistance indicators -->
   <include file="liquibase/dashboards/004-surveillance-resistance-metrics.xml" />
 </databaseChangeLog>

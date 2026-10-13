@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, SkeletonText, Tile } from "@carbon/react";
+import { ProgressBar, SkeletonText, Tile } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import ServerDataState from "../../utils/ServerDataState";
 import { useServerData } from "../../utils/useServerData";
@@ -21,10 +21,8 @@ const SurveillanceSection = ({ scope, scopeLabel }) => {
   if (!query.data) return <SkeletonText paragraph lineCount={3} />;
   if (query.data.programs.length === 0) return null;
 
-  const name = (program) =>
-    intl.messages[program.name]
-      ? intl.formatMessage({ id: program.name })
-      : program.name;
+  const text = (value) =>
+    intl.messages[value] ? intl.formatMessage({ id: value }) : value;
   const percent = (value) =>
     value == null
       ? "—"
@@ -55,7 +53,7 @@ const SurveillanceSection = ({ scope, scopeLabel }) => {
               className="mgmt-surveillance__card"
               data-testid="mgmt-surveillance-card"
             >
-              <h4>{name(program)}</h4>
+              <h4>{text(program.name)}</h4>
               <p className="mgmt-surveillance__meta">
                 <FormattedMessage
                   id="label.mgmt.surveillance.testCount"
@@ -68,14 +66,17 @@ const SurveillanceSection = ({ scope, scopeLabel }) => {
               {program.metrics.map((metric) => (
                 <div key={metric.key} className="mgmt-surveillance__metric">
                   <div className="mgmt-surveillance__metric-head">
-                    <span>{metric.label}</span>
+                    <span>{text(metric.label)}</span>
                     <span className="mgmt-surveillance__value">
                       {percent(metric.value)}
                     </span>
                   </div>
-                  <div className="mgmt-surveillance__bar">
-                    <div style={{ width: `${metric.value ?? 0}%` }} />
-                  </div>
+                  <ProgressBar
+                    value={metric.value ?? 0}
+                    label={text(metric.label)}
+                    hideLabel
+                    size="small"
+                  />
                   <p className="mgmt-surveillance__meta">
                     <FormattedMessage
                       id="label.mgmt.surveillance.ofTested"
@@ -98,23 +99,17 @@ const SurveillanceSection = ({ scope, scopeLabel }) => {
                   />
                 </p>
               )}
-              <p className="mgmt-surveillance__meta">
-                {trend && (
-                  <>
-                    <FormattedMessage
-                      id={trendKey(trend.delta)}
-                      values={{
-                        0: trend.label,
-                        1: intl.formatNumber(Math.abs(trend.delta)),
-                      }}
-                    />
-                    {" · "}
-                  </>
-                )}
-                <Link disabled>
-                  <FormattedMessage id="label.mgmt.surveillance.openDetail" />
-                </Link>
-              </p>
+              {trend && (
+                <p className="mgmt-surveillance__meta">
+                  <FormattedMessage
+                    id={trendKey(trend.delta)}
+                    values={{
+                      0: text(trend.label),
+                      1: intl.formatNumber(Math.abs(trend.delta)),
+                    }}
+                  />
+                </p>
+              )}
             </Tile>
           );
         })}

@@ -9,7 +9,8 @@ public record SurveillanceResponse(List<Program> programs) {
     public record Program(String code, String name, int testCount, List<Metric> metrics, List<String> missingCodes) {
     }
 
-    // value and delta are percentages, null when the metric has too few results.
+    // value is a percentage, delta in percentage points; both null below the
+    // minimum count.
     public record Metric(String key, String label, Double value, int numerator, int denominator, Double delta) {
     }
 }

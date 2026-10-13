@@ -18,7 +18,7 @@
 
 .mgmt-surveillance__grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1rem;
 }
 
@@ -34,27 +34,4 @@
 
 .mgmt-surveillance__value {
   font-weight: 600;
-}
-
-.mgmt-surveillance__bar {
-  height: 0.25rem;
-  margin: 0.25rem 0;
-  background: var(--cds-layer-accent, #e0e0e0);
-}
-
-.mgmt-surveillance__bar > div {
-  height: 100%;
-  background: var(--cds-interactive, #0f62fe);
-}
-
-@media (max-width: 66rem) {
-  .mgmt-surveillance__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 42rem) {
-  .mgmt-surveillance__grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }

@@ -74,9 +74,9 @@ public class SurveillanceServiceImpl implements SurveillanceService {
         for (Object[] row : surveillanceDAO.getPositivityMetrics()) {
             long programId = ((Number) row[0]).longValue();
             String key = (String) row[1];
-            cards.computeIfAbsent(programId, id -> new Card()).metrics
-                    .add(new Ranked(((Number) row[3]).intValue(), metric(key, (String) row[2],
-                            counts.get(programId + "|" + key + "|C"), counts.get(programId + "|" + key + "|P"), 1)));
+            cards.computeIfAbsent(programId, id -> new Card()).metrics.add(new Ranked(((Number) row[3]).intValue(),
+                    metric(key, (String) row[2], counts.getOrDefault(programId + "|" + key + "|C", new int[2]),
+                            counts.getOrDefault(programId + "|" + key + "|P", new int[2]), 1)));
         }
     }
 
@@ -149,16 +149,14 @@ public class SurveillanceServiceImpl implements SurveillanceService {
     }
 
     private static Metric metric(String key, String label, int[] current, int[] prior, int minimum) {
-        int[] now = current == null ? new int[2] : current;
-        Double value = percent(now, minimum);
-        Double before = percent(prior == null ? new int[2] : prior, minimum);
-        return new Metric(key, label, value, now[1], now[0],
+        Double value = percent(current, minimum);
+        Double before = percent(prior, minimum);
+        return new Metric(key, label, value, current[1], current[0],
                 value == null || before == null ? null : Math.round(10 * (value - before)) / 10.0);
     }
 
     private static Double percent(int[] testedPositive, int minimum) {
-        return testedPositive[0] == 0 || testedPositive[0] < minimum ? null
-                : Math.round(1000.0 * testedPositive[1] / testedPositive[0]) / 10.0;
+        return testedPositive[0] < minimum ? null : Math.round(1000.0 * testedPositive[1] / testedPositive[0]) / 10.0;
     }
 
     private static Set<String> codes(String commaSeparated) {

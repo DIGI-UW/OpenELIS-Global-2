@@ -49,17 +49,19 @@ public class SurveillanceDAOImpl implements SurveillanceDAO {
     @Override
     public List<Object[]> countPositivity(ScopeRange scope) {
         String entry = "lower(d.dict_entry)";
+        // Numeric modes also count listed text results; a 0/0 range is no range.
+        String listed = "lower(COALESCE(d.dict_entry, res.value))" + String.format(CODE_IN, "m.positive_result_codes");
         String sql = "WITH r AS (SELECT m.program_id, m.metric_key, a.id AS analysis_id,"
                 + " CASE WHEN a.released_date >= :from THEN 'C' ELSE 'P' END AS period,"
                 + " (m.denominator_result_codes IS NULL OR " + entry
                 + String.format(CODE_IN, "m.denominator_result_codes") + ")"
-                + " AND (m.match_mode NOT LIKE 'NUMERIC%' OR n.num IS NOT NULL) AS tested,"
-                + " COALESCE(CASE m.match_mode" //
+                + " AND (m.match_mode NOT LIKE 'NUMERIC%' OR n.num IS NOT NULL OR COALESCE(" + listed + ", false))"
+                + " AS tested," + " COALESCE(CASE m.match_mode" //
                 + " WHEN 'SPECIFIC_CODES' THEN " + entry + String.format(CODE_IN, "m.positive_result_codes")
                 + " WHEN 'ALL_ABNORMAL' THEN (" + CODED + " AND opt.abnormal)"
-                + " OR n.num < res.min_normal OR n.num > res.max_normal"
-                + " WHEN 'NUMERIC_BELOW' THEN n.num < m.numeric_threshold"
-                + " WHEN 'NUMERIC_ABOVE' THEN n.num > m.numeric_threshold END, false) AS positive"
+                + " OR (res.min_normal <> res.max_normal AND (n.num < res.min_normal OR n.num > res.max_normal))"
+                + " WHEN 'NUMERIC_BELOW' THEN n.num < m.numeric_threshold OR " + listed
+                + " WHEN 'NUMERIC_ABOVE' THEN n.num > m.numeric_threshold OR " + listed + " END, false) AS positive"
                 + " FROM clinlims.test_surveillance_mapping m"
                 + " JOIN clinlims.surveillance_program p ON p.id = m.program_id AND p.is_active"
                 + " JOIN clinlims.analysis a ON a.test_id = m.test_id"
