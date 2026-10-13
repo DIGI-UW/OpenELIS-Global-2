@@ -1,15 +1,18 @@
 package org.openelisglobal.dashboard.management.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.function.Function;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dashboard.management.DashboardPermissions;
 import org.openelisglobal.dashboard.management.ScopeRange;
 import org.openelisglobal.dashboard.management.antibiogram.AntibiogramResponse;
 import org.openelisglobal.dashboard.management.antibiogram.AntibiogramService;
 import org.openelisglobal.dashboard.management.equipment.AnalyzerActivity;
 import org.openelisglobal.dashboard.management.equipment.EquipmentService;
+import org.openelisglobal.dashboard.management.export.ExportEvent;
 import org.openelisglobal.dashboard.management.kpi.KpiService;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis;
 import org.openelisglobal.dashboard.management.quality.QualityRollup;
@@ -22,11 +25,14 @@ import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse
 import org.openelisglobal.dashboard.management.surveillance.SurveillanceService;
 import org.openelisglobal.dashboard.management.workload.WorkloadResponse;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
+import org.openelisglobal.reports.dataexport.service.ReportingAudit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -98,6 +104,28 @@ public class ManagementDashboardRestController extends BaseRestController {
     @GetMapping(value = "/surveillance", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<SurveillanceResponse> getSurveillance(@RequestParam(defaultValue = "30d") String scope) {
         return respond(scope, surveillanceService::getSurveillance);
+    }
+
+    @PostMapping(value = "/export-events", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> recordExport(@RequestBody ExportEvent event, HttpServletRequest request) {
+        if (!event.isValid()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            ScopeRange.of(event.scope(), LocalDate.now());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        String actor = ControllerUtills.getSysUserId(request);
+        if ("PDF".equals(event.kind())) {
+            ReportingAudit.managementDashboardExported(actor, event.scope(),
+                    event.sections().stream().map(ExportEvent.SectionRows::id).toList(),
+                    event.sections().stream().mapToInt(ExportEvent.SectionRows::rowCount).sum());
+        } else {
+            event.sections().forEach(section -> ReportingAudit.managementDashboardCsvDownloaded(actor, event.scope(),
+                    section.id(), section.rowCount()));
+        }
+        return ResponseEntity.noContent().build();
     }
 
     private static <T> ResponseEntity<T> respond(String scope, Function<ScopeRange, T> read) {

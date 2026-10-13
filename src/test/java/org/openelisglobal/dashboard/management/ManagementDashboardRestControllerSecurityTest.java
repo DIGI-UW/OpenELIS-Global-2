@@ -2,6 +2,7 @@ package org.openelisglobal.dashboard.management;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.dashboard.management.antibiogram.AntibiogramService;
 import org.openelisglobal.dashboard.management.controller.rest.ManagementDashboardRestController;
 import org.openelisglobal.dashboard.management.equipment.EquipmentService;
@@ -23,10 +25,12 @@ import org.openelisglobal.dashboard.management.stock.StockService;
 import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse;
 import org.openelisglobal.dashboard.management.surveillance.SurveillanceService;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -148,6 +152,36 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
         mockMvc.perform(
                 get("/rest/dashboards/management/surveillance?scope=decade").with(user("admin").roles("GLOBAL_ADMIN")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void exportEventsAreRecordedForTheDashboardGrant() throws Exception {
+        mockMvc.perform(post("/rest/dashboards/management/export-events").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"kind\":\"CSV\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, new UserSessionData())
+                .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    public void exportEventsNeedTheDashboardGrant() throws Exception {
+        mockMvc.perform(post("/rest/dashboards/management/export-events").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"kind\":\"PDF\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}")
+                .with(user("bench").roles("RESULTS", "ADMIN"))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void exportEventsRejectAnUnknownKindSectionOrScope() throws Exception {
+        for (String body : new String[] {
+                "{\"kind\":\"XLSX\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}",
+                "{\"kind\":\"PDF\",\"scope\":\"30d\",\"sections\":[{\"id\":\"patients\",\"rowCount\":5}]}",
+                "{\"kind\":\"PDF\",\"scope\":\"decade\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}",
+                "{\"kind\":\"PDF\",\"scope\":\"30d\",\"sections\":[]}" }) {
+            mockMvc.perform(post("/rest/dashboards/management/export-events").contentType(MediaType.APPLICATION_JSON)
+                    .content(body)
+                    .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
+                    .andExpect(status().isBadRequest());
+        }
     }
 
     @Configuration

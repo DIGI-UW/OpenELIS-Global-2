@@ -11,6 +11,7 @@ import {
 } from "../../utils/useServerData";
 import KpiStrip from "./KpiStrip";
 import QualitySection from "./QualitySection";
+import ExportBar from "./ExportBar";
 import { summaryUrl } from "./managementApi";
 import WorkloadSection from "./WorkloadSection";
 import EquipmentSection from "./EquipmentSection";
@@ -36,6 +37,7 @@ const SECTIONS = [
   { id: "stock", Component: StockSection },
   { id: "quality", Component: QualitySection },
   { id: "surveillance", Component: SurveillanceSection },
+  { id: "export", Component: ExportBar },
 ];
 
 const REFRESH_COOLDOWN_MS = 15000;
