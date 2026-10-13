@@ -28,7 +28,7 @@ import { useIntl } from "react-intl";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import config from "../../../config.json";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { formatDateOnly, getFromOpenElisServer } from "../../utils/Utils";
 import {
   CycleStatusTag,
   hintStyle,
@@ -846,7 +846,7 @@ const MyCyclesPage = () => {
                     <TableCell>
                       <CycleStatusTag status={c.status} />
                     </TableCell>
-                    <TableCell>{c.deadline}</TableCell>
+                    <TableCell>{formatDateOnly(c.deadline)}</TableCell>
                     <TableCell>
                       {c.progress.entered} / {c.progress.total}
                     </TableCell>
@@ -918,11 +918,7 @@ const MyCyclesPage = () => {
                       </TableCell>
                       <TableCell>{o.programName || ""}</TableCell>
                       <TableCell>{o.status || ""}</TableCell>
-                      <TableCell>
-                        {o.deadline
-                          ? new Date(o.deadline).toLocaleDateString()
-                          : ""}
-                      </TableCell>
+                      <TableCell>{formatDateOnly(o.deadline)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

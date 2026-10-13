@@ -6,13 +6,15 @@ import { MemoryRouter, Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
 import messages from "../../../../languages/en.json";
 import MyCyclesPage from "../MyCyclesPage";
+import { ConfigurationContext } from "../../../layout/Layout";
 import { MOCK_CYCLES } from "./mockCycles";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerFullResponse: vi.fn(),
 }));
@@ -52,9 +54,13 @@ const renderPage = (
   });
   return render(
     <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter>
-        <MyCyclesPage />
-      </MemoryRouter>
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter>
+          <MyCyclesPage />
+        </MemoryRouter>
+      </ConfigurationContext.Provider>
     </IntlProvider>,
   );
 };
@@ -98,6 +104,13 @@ describe("MyCyclesPage", () => {
     expect(within(row).queryByText("Cycle 2026-02")).toBeNull();
   });
 
+  test("the Deadline column reads day-first", () => {
+    renderPage();
+    const row = screen.getByTestId("cycle-row-1");
+    expect(within(row).getByText("02/05/2026")).toBeInTheDocument();
+    expect(within(row).queryByText("2026-05-02")).toBeNull();
+  });
+
   test("Receive panel deep-links to Add Order with the cycle in the query string", () => {
     const planned = {
       ...MOCK_CYCLES[0],
@@ -131,8 +144,8 @@ describe("MyCyclesPage", () => {
     fireEvent.change(screen.getByLabelText("Cycle name"), {
       target: { value: "Round 9" },
     });
-    fireEvent.change(screen.getByLabelText("Submission deadline"), {
-      target: { value: "2026-09-30" },
+    fireEvent.input(screen.getByLabelText("Submission deadline"), {
+      target: { value: "30/09/2026" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create cycle" }));
 
@@ -171,8 +184,8 @@ describe("MyCyclesPage", () => {
     fireEvent.change(screen.getByLabelText("Cycle name"), {
       target: { value: "Round 9" },
     });
-    fireEvent.change(screen.getByLabelText("Submission deadline"), {
-      target: { value: "2026-09-30" },
+    fireEvent.input(screen.getByLabelText("Submission deadline"), {
+      target: { value: "30/09/2026" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create cycle" }));
     const callback = postToOpenElisServerFullResponse.mock.calls[0][2];
@@ -387,6 +400,7 @@ describe("MyCyclesPage", () => {
       "/rest/eqa/orders",
       expect.any(Function),
     );
+    expect(within(table).getByText("02/05/2026")).toBeInTheDocument();
   });
 
   test("uncycled section hidden when no orders", () => {
