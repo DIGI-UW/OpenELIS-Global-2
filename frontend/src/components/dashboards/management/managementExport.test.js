@@ -407,6 +407,23 @@ describe("management export", () => {
     );
   });
 
+  it("hides the section's own title in the picture, under the PDF heading", async () => {
+    html2canvas.mockResolvedValue({
+      toDataURL: () => PIXEL,
+      width: 100,
+      height: 40,
+    });
+    document.body.innerHTML =
+      '<div data-testid="mgmt-kpis"><h3>Key indicators</h3><h4>Total samples</h4></div>';
+
+    await buildPdf([kpiTable()], meta);
+    const [section, { onclone }] = html2canvas.mock.calls[0];
+    onclone(document, section);
+
+    expect(section.querySelector("h3").style.display).toBe("none");
+    expect(section.querySelector("h4").style.display).toBe("");
+  });
+
   it("falls back to a placeholder when the picture cannot be taken", async () => {
     html2canvas.mockRejectedValue(new Error("tainted canvas"));
 

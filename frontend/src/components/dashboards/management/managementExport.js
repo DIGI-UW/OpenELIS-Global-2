@@ -293,7 +293,7 @@ export const csvDownload = (stem, tables) => {
   };
 };
 
-const capture = (element) =>
+const capture = (element, title) =>
   element
     ? html2canvas(element, {
         scale: 1,
@@ -306,6 +306,10 @@ const capture = (element) =>
             el.style.fontFamily = clone.defaultView
               .getComputedStyle(el)
               .fontFamily.replace(/,\s*"\.[^"]*"/g, "");
+          });
+          // The PDF prints the section title as text above the picture.
+          section.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
+            if (h.textContent.trim() === title) h.style.display = "none";
           });
         },
       })
@@ -321,6 +325,7 @@ export const buildPdf = (tables, meta) =>
     tables.map((table) =>
       capture(
         document.querySelector(`[data-testid="mgmt-${table.section.id}"]`),
+        table.title,
       ),
     ),
   ).then((images) => {
