@@ -13552,7 +13552,7 @@
   "label.mgmt.equipment.lastActivity": "Last activity: {0}",
   "label.mgmt.equipment.samples": "{0} {count, plural, one {sample} other {samples}} · {1}",
   "label.mgmt.antibiogram.title": "Antibiogram — % resistant by organism × antibiotic",
-  "label.mgmt.antibiogram.meta": "First isolate per patient, 7-day window · CLSI breakpoints",
+  "label.mgmt.antibiogram.meta": "First isolate per patient per period",
   "label.mgmt.antibiogram.organismHeader": "Organism",
   "label.mgmt.antibiogram.organism": "{0} (n={1})",
   "label.mgmt.antibiogram.tested": "n={0}",

@@ -1,7 +1,6 @@
 package org.openelisglobal.dashboard.management.antibiogram;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 import jakarta.persistence.EntityManager;
@@ -73,10 +72,9 @@ public class AntibiogramServiceIntegrationTest extends BaseWebContextSensitiveTe
         user = fixtures.defaultUserId();
     }
 
-    // One new patient per call. Readings follow the M4 panel order and null skips
-    // that antibiotic; only the read antibiotics are ordered on the run.
-    private MicrobiologyUatScenarioForm isolate(String organismId, MicroAstTechnique technique,
-            BigDecimal... readings) {
+    // New patient per call; readings map to the M4 panel, null = not tested.
+    private MicrobiologyUatScenarioForm isolate(String organismId, BigDecimal... readings) {
+        MicroAstTechnique technique = MicroAstTechnique.BROTH_MICRODILUTION;
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "M4";
         request.scenarioKey = "antibiogram-" + UUID.randomUUID();
@@ -116,10 +114,6 @@ public class AntibiogramServiceIntegrationTest extends BaseWebContextSensitiveTe
         return scenario;
     }
 
-    private MicrobiologyUatScenarioForm isolate(String organismId, BigDecimal... readings) {
-        return isolate(organismId, MicroAstTechnique.BROTH_MICRODILUTION, readings);
-    }
-
     private List<String> panel(MicrobiologyUatScenarioForm scenario) {
         return astService.getPanelAntibiotics(scenario.astPanelId).stream().map(ordered -> ordered.getAntibioticId())
                 .toList();
@@ -147,7 +141,6 @@ public class AntibiogramServiceIntegrationTest extends BaseWebContextSensitiveTe
         assertEquals(9, cell(response, panel.get(1)).n());
         assertNull(cell(response, panel.get(1)).pctR());
         assertEquals(2, response.antibiotics().size());
-        assertFalse(response.fallback());
     }
 
     @Test

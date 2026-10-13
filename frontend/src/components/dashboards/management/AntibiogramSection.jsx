@@ -16,7 +16,7 @@ import { antibiogramUrl } from "./managementApi";
 import "../../qa/common/QAStyles.css";
 import "./AntibiogramSection.css";
 
-export const band = (pctR) => {
+const band = (pctR) => {
   if (pctR < 20) return "green";
   if (pctR < 40) return "amber";
   if (pctR < 60) return "orange";
@@ -25,9 +25,11 @@ export const band = (pctR) => {
 
 const AntibiogramSection = ({ scope, features }) => {
   const intl = useIntl();
-  const query = useServerData(features?.ast ? antibiogramUrl(scope) : null);
+  const query = useServerData(
+    features?.microbiology ? antibiogramUrl(scope) : null,
+  );
 
-  if (!features?.ast) return null;
+  if (!features?.microbiology) return null;
 
   const data = query.data;
   const organismLabel = (organism) =>
@@ -46,7 +48,7 @@ const AntibiogramSection = ({ scope, features }) => {
         </p>
       );
     }
-    if (data.fallback) {
+    if (data.cells.length === 0) {
       return (
         <>
           <p className="mgmt-antibiogram__note">
@@ -107,7 +109,7 @@ const AntibiogramSection = ({ scope, features }) => {
                     <TableCell
                       key={antibiotic.id}
                       className={`mgmt-antibiogram__cell mgmt-antibiogram__cell--${band(
-                        cell.pctR,
+                        Math.round(cell.pctR),
                       )}`}
                     >
                       <div>

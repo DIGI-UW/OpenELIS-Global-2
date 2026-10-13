@@ -30,14 +30,14 @@ public class ManagementDashboardDAOImpl implements ManagementDashboardDAO {
                 .createNativeQuery("SELECT" + " EXISTS (SELECT 1 FROM clinlims.inventory_item) AS inventory,"
                         + " EXISTS (SELECT 1 FROM clinlims.eqa_lab_program_enrollment) AS eqa,"
                         + " EXISTS (SELECT 1 FROM clinlims.analyzer WHERE is_active) AS analyzers,"
-                        + " EXISTS (SELECT 1 FROM clinlims.micro_ast_reading) AS ast,"
+                        + " EXISTS (SELECT 1 FROM clinlims.micro_isolate) AS microbiology,"
                         + " EXISTS (SELECT 1 FROM clinlims.qc_result) AS qc")
                 .getSingleResult();
         Map<String, Boolean> features = new LinkedHashMap<>();
         features.put("inventory", (Boolean) row[0]);
         features.put("eqa", (Boolean) row[1]);
         features.put("analyzers", (Boolean) row[2]);
-        features.put("ast", (Boolean) row[3]);
+        features.put("microbiology", (Boolean) row[3]);
         features.put("qc", (Boolean) row[4]);
         return features;
     }

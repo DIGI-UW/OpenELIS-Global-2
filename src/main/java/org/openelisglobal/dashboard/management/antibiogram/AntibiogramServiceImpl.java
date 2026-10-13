@@ -75,8 +75,7 @@ public class AntibiogramServiceImpl implements AntibiogramService {
         }
         List<Antibiotic> antibiotics = cells.stream().map(Cell::antibioticId).distinct().map(
                 id -> new Antibiotic(id, microAntibioticDAO.get(id).map(MicroAntibiotic::getDisplayName).orElse(id)))
-                .sorted(Comparator.comparing(Antibiotic::name, Comparator.nullsLast(Comparator.naturalOrder())))
-                .toList();
-        return new AntibiogramResponse(organisms, antibiotics, cells, cells.isEmpty());
+                .sorted(Comparator.comparing(Antibiotic::name)).toList();
+        return new AntibiogramResponse(organisms, antibiotics, cells);
     }
 }

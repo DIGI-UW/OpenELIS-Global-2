@@ -94,7 +94,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     @Transactional(readOnly = true)
     public MicroWhonetDataset compile(MicroWhonetExportQueryForm requestedQuery) {
         NormalizedQuery query = normalize(requestedQuery);
-        Selection selection = select(query);
+        Selection selection = select(query, windowDays(query));
         Population population = selection.population();
         List<Candidate> candidates = selection.candidates();
         AstData astData = selection.astData();
@@ -204,7 +204,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         MicroWhonetExportQueryForm defaults = new MicroWhonetExportQueryForm();
         defaults.from = from.toString();
         defaults.to = to.toString();
-        Selection selection = select(normalize(defaults));
+        Selection selection = select(normalize(defaults), (int) ChronoUnit.DAYS.between(from, to) + 1);
         return selection.candidates().stream()
                 .map(candidate -> new FirstIsolate(candidate.isolate.getId(), candidate.isolate.getOrganismId(),
                         readingsFor(candidate, selection.astData()).stream()
@@ -214,7 +214,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 .toList();
     }
 
-    private Selection select(NormalizedQuery query) {
+    private Selection select(NormalizedQuery query, int windowDays) {
         Population population = loadPopulation(query);
 
         List<Candidate> candidates = new ArrayList<>();
@@ -264,7 +264,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         AstData astData = !NONE.equals(query.dedup) && SENSITIVE.equals(query.profileSensitivity)
                 ? loadReportableAstData(candidates)
                 : null;
-        candidates = deduplicate(candidates, query, astData);
+        candidates = deduplicate(candidates, query, astData, windowDays);
         if (astData == null) {
             astData = loadReportableAstData(candidates);
         }
@@ -431,7 +431,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         }
     }
 
-    private List<Candidate> deduplicate(List<Candidate> candidates, NormalizedQuery query, AstData astData) {
+    private static int windowDays(NormalizedQuery query) {
+        return NONE.equals(query.dedup) ? 0 : FIRST_ISOLATE_WINDOWS.get(query.dedup);
+    }
+
+    private List<Candidate> deduplicate(List<Candidate> candidates, NormalizedQuery query, AstData astData,
+            int windowDays) {
         String basis = NONE.equals(query.dedup) ? COLLECTION_DATE : query.dedupBasis;
         List<Candidate> sorted = candidates.stream()
                 .sorted(Comparator.comparing((Candidate value) -> dedupTimestamp(value, basis))
@@ -440,7 +445,6 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         if (NONE.equals(query.dedup)) {
             return sorted;
         }
-        int windowDays = FIRST_ISOLATE_WINDOWS.get(query.dedup);
         Map<String, LocalDate> firstByPatientOrganism = new HashMap<>();
         List<Candidate> included = new ArrayList<>();
         for (Candidate candidate : sorted) {
@@ -481,10 +485,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private String susceptibilityProfile(Candidate candidate, AstData astData) {
         return readingsFor(candidate, astData).stream().filter(reading -> hasText(reading.getAntibioticId()))
-                .map(reading -> Map.entry(reading.getAntibioticId(),
-                        toWhonetInterpretation(
-                                hasText(reading.getOverrideInterpretation()) ? reading.getOverrideInterpretation()
-                                        : reading.getInterpretation())))
+                .map(reading -> Map.entry(reading.getAntibioticId(), interpretationOf(reading)))
                 .filter(entry -> WHONET_INTERPRETATIONS.contains(entry.getValue()))
                 .map(entry -> entry.getKey() + "=" + entry.getValue()).distinct().sorted()
                 .collect(Collectors.joining(";"));

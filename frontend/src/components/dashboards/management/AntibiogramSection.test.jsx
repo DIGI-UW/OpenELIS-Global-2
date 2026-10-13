@@ -11,7 +11,7 @@ vi.mock("../../utils/Utils", async (importOriginal) => ({
 
 import { fetchFromOpenElisServer } from "../../utils/Utils";
 
-const render = (features = { ast: true }) =>
+const render = (features = { microbiology: true }) =>
   renderQa(<AntibiogramSection scope="year" features={features} />);
 
 describe("AntibiogramSection", () => {
@@ -29,7 +29,6 @@ describe("AntibiogramSection", () => {
         { organismId: "o1", antibioticId: "a2", n: 60, pctR: 51 },
         { organismId: "o1", antibioticId: "a3", n: 9, pctR: null },
       ],
-      fallback: false,
     });
     render();
 
@@ -45,9 +44,7 @@ describe("AntibiogramSection", () => {
     );
     expect(cells[4]).toHaveTextContent("—");
     expect(
-      screen.getByText(
-        "First isolate per patient, 7-day window · CLSI breakpoints",
-      ),
+      screen.getByText("First isolate per patient per period"),
     ).toBeInTheDocument();
   });
 
@@ -59,7 +56,6 @@ describe("AntibiogramSection", () => {
       ],
       antibiotics: [],
       cells: [],
-      fallback: true,
     });
     render();
 
@@ -69,7 +65,7 @@ describe("AntibiogramSection", () => {
 
   it("is absent without AST data and asks for nothing", () => {
     fetchFromOpenElisServer.mockClear();
-    const { container } = render({ ast: false });
+    const { container } = render({ microbiology: false });
 
     expect(container.querySelector("[data-testid='mgmt-antibiogram']")).toBe(
       null,
