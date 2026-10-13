@@ -66,6 +66,10 @@
             type="java.lang.String" />
         <property name="collectionConditions"
             column="collection_conditions" type="java.lang.String" />
+        <property name="cultureSetNumber" column="culture_set_number"
+            type="integer" />
+        <property name="bodySite" column="body_site"
+            type="java.lang.String" length="40" />
         <property name="collectionMethod" column="collection_method"
             type="java.lang.String" />
         <property name="sampleTemperature"

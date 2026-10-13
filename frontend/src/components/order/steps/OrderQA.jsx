@@ -177,6 +177,7 @@ const OrderQA = () => {
   // once the server has said one is needed.
   const [releaseNote, setReleaseNote] = useState("");
   const [releaseNoteNeeded, setReleaseNoteNeeded] = useState(false);
+  const [unacceptedSamples, setUnacceptedSamples] = useState([]);
   // Only the clinical lane has a Prepare Samples step to complete first; the
   // environmental and vector lanes release from their own steps.
   const prepareComplete =
@@ -470,6 +471,7 @@ const OrderQA = () => {
               labNumber={displayLabNumber}
               samples={samples}
               onBlockedChange={setAcceptanceBlocked}
+              onUnacceptedChange={setUnacceptedSamples}
             />
           </div>
         )}
@@ -483,6 +485,14 @@ const OrderQA = () => {
               labelText={intl.formatMessage({
                 id: "order.sampleCheck.proceedReason",
               })}
+              helperText={
+                unacceptedSamples.length > 0
+                  ? intl.formatMessage(
+                      { id: "order.sampleCheck.notAcceptedYet" },
+                      { samples: unacceptedSamples.join(", ") },
+                    )
+                  : undefined
+              }
               value={releaseNote}
               onChange={(e) => setReleaseNote(e.target.value)}
               maxLength={255}

@@ -1,13 +1,11 @@
 package org.openelisglobal.microbiology;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,13 +14,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
-import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
-import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -52,12 +44,6 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroCaseService caseService;
 
-    @Autowired
-    private MicroCaseAnalysisService caseAnalysisService;
-
-    @Autowired
-    private MicroCaseOrderDetailService orderDetailService;
-
     private String userId;
     private org.openelisglobal.test.valueholder.Test cultureTest;
     private Patient patient;
@@ -70,48 +56,39 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         userId = fixtures.defaultUserId();
         String methodId = fixtures.createMethodId();
         fixtures.createReferenceData(methodId);
-        cultureTest = fixtures.createCatalogCultureTest(methodId, MicroWorkflowType.BACTERIOLOGY);
+        cultureTest = fixtures.createCatalogCultureTest(methodId);
         patient = fixtures.createPatient("OGC782M4");
         sampleType = fixtures.getOrCreateActiveSampleType();
     }
 
     /**
-     * Covers the real transactional save orchestration; the supported browser
-     * interaction remains covered by the registered M-03 Playwright journey.
+     * Ordering a culture-flagged test persists the order but opens no microbiology
+     * case; V1 order routing is retired.
      */
     @Test
-    public void supportedOrderSaveCreatesOneCaseAndRemainsIdempotent() {
+    public void orderSaveWithCultureTestCreatesNoCase() {
         Sample sample = newSample();
-        MicroCaseOrderDetailRequestForm orderDetail = orderDetail();
 
         SamplePatientUpdateData firstSave = orderUpdate(sample, null);
-        persist(firstSave, orderDetail);
+        persist(firstSave);
 
         SampleItem savedItem = firstSave.getSampleItemsTests().getFirst().item;
         Analysis savedAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(), cultureTest.getId());
-        List<MicroCase> firstCases = caseService.getSiblingCases(savedItem.getId());
 
         assertNotNull(sample.getId());
         assertNotNull(savedItem.getId());
         assertNotNull(savedAnalysis);
-        assertEquals(1, firstCases.size());
-        assertOrderDetail(firstCases.getFirst(), orderDetail);
-        assertCaseAnalysisLink(firstCases.getFirst(), savedAnalysis);
+        assertTrue(caseService.getSiblingCases(savedItem.getId()).isEmpty());
 
         SamplePatientUpdateData repeatedSave = orderUpdate(sample, savedItem.getId());
-        persist(repeatedSave, orderDetail);
+        persist(repeatedSave);
 
         SampleItem repeatedItem = repeatedSave.getSampleItemsTests().getFirst().item;
         Analysis repeatedAnalysis = analysisService.getAnalysisBySampleItemAndTest(repeatedItem.getId(),
                 cultureTest.getId());
-        List<MicroCase> repeatedCases = caseService.getSiblingCases(repeatedItem.getId());
 
-        assertEquals(savedItem.getId(), repeatedItem.getId());
-        assertEquals(savedAnalysis.getId(), repeatedAnalysis.getId());
-        assertEquals(1, repeatedCases.size());
-        assertEquals(firstCases.getFirst().getId(), repeatedCases.getFirst().getId());
-        assertOrderDetail(repeatedCases.getFirst(), orderDetail);
-        assertCaseAnalysisLink(repeatedCases.getFirst(), repeatedAnalysis);
+        assertNotNull(repeatedAnalysis);
+        assertTrue(caseService.getSiblingCases(repeatedItem.getId()).isEmpty());
     }
 
     private Sample newSample() {
@@ -138,46 +115,14 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         return updateData;
     }
 
-    private void persist(SamplePatientUpdateData updateData, MicroCaseOrderDetailRequestForm orderDetail) {
+    private void persist(SamplePatientUpdateData updateData) {
         PatientManagementInfo patientInfo = new PatientManagementInfo();
         patientInfo.setPatientPK(patient.getId());
         SamplePatientEntryForm form = new SamplePatientEntryForm();
         form.setPatientProperties(patientInfo);
-        form.setMicrobiologyOrderDetail(orderDetail);
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         samplePatientEntryService.persistData(updateData, patientUpdate, patientInfo, form,
                 new MockHttpServletRequest());
-    }
-
-    private MicroCaseOrderDetailRequestForm orderDetail() {
-        MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
-        detail.cultureMethodId = cultureTest.getMethod().getId();
-        detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
-        detail.patientOrigin = "INPATIENT";
-        detail.admissionDate = "2026-08-17";
-        detail.numberOfSets = 2;
-        detail.clinicalHistory = "Persistent fever after antibiotics";
-        detail.antibioticExposure = true;
-        return detail;
-    }
-
-    private void assertOrderDetail(MicroCase microCase, MicroCaseOrderDetailRequestForm expected) {
-        MicroCaseOrderDetail actual = orderDetailService.getOrderDetail(microCase.getId());
-        assertNotNull(actual);
-        assertEquals(expected.cultureMethodId, actual.getCultureMethodId());
-        assertEquals(expected.patientOrigin, actual.getPatientOrigin());
-        assertEquals(expected.culturePurpose, actual.getCulturePurpose());
-        assertEquals(LocalDate.parse(expected.admissionDate), actual.getAdmissionDate());
-        assertEquals(expected.numberOfSets, actual.getNumberOfSets());
-        assertEquals(expected.clinicalHistory, actual.getClinicalHistory());
-        assertEquals(expected.antibioticExposure, actual.getAntibioticExposure());
-    }
-
-    private void assertCaseAnalysisLink(MicroCase microCase, Analysis analysis) {
-        var links = caseAnalysisService.getCaseAnalyses(microCase.getId());
-        assertEquals(1, links.size());
-        assertEquals(microCase.getId(), links.getFirst().getCaseId());
-        assertEquals(analysis.getId(), links.getFirst().getAnalysisId());
     }
 }

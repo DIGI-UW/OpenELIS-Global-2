@@ -43,8 +43,7 @@ import LabelsSection, {
 } from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
-import MicrobiologyOrderEntrySection from "../microbiology/MicrobiologyOrderEntrySection";
-import { isMicrobiologyOrder } from "../order/orderDataUtils";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -880,12 +879,6 @@ const AddOrder = (props) => {
   return (
     <>
       <Stack gap={10}>
-        <MicrobiologyOrderEntrySection
-          samples={samples}
-          orderFormValues={orderFormValues}
-          setOrderFormValues={setOrderFormValues}
-          enabled={isMicrobiologyOrder(orderFormValues, samples)}
-        />
         <div className="orderLegendBody">
           <Grid>
             <Column lg={16} md={8} sm={4}>
@@ -1029,10 +1022,11 @@ const AddOrder = (props) => {
                     onKeyPress={handleKeyPress}
                     labelText={
                       <>
-                        <FormattedMessage id="sample.label.labnumber" />{" "}
-                        <span className="requiredlabel">*</span>
+                        <FormattedMessage id="sample.label.labnumber" />
+                        <RequiredMarker />
                       </>
                     }
+                    {...requiredProps()}
                     id="labNo"
                     invalid={
                       changed["sampleOrderItems.labNo"] &&
@@ -1162,8 +1156,8 @@ const AddOrder = (props) => {
                 onSelect={handleAutoCompleteSiteName}
                 label={
                   <>
-                    <FormattedMessage id="order.search.site.name" />{" "}
-                    <span className="requiredlabel">*</span>
+                    <FormattedMessage id="order.search.site.name" />
+                    <RequiredMarker />
                   </>
                 }
                 style={{ width: "!important 100%" }}
@@ -1212,10 +1206,12 @@ const AddOrder = (props) => {
                 onChange={clearProviderId}
                 label={
                   <>
-                    <FormattedMessage id="order.search.requester.label" />{" "}
-                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
-                      <span className="requiredlabel">*</span>
-                    )}
+                    <FormattedMessage id="order.search.requester.label" />
+                    <RequiredMarker
+                      required={
+                        configurationProperties.REQUESTER_REQUIRED === "true"
+                      }
+                    />
                   </>
                 }
                 style={{ width: "!important 100%" }}
@@ -1259,12 +1255,17 @@ const AddOrder = (props) => {
                 })}
                 labelText={
                   <>
-                    <FormattedMessage id="order.requester.firstName.label" />{" "}
-                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
-                      <span className="requiredlabel">*</span>
-                    )}
+                    <FormattedMessage id="order.requester.firstName.label" />
+                    <RequiredMarker
+                      required={
+                        configurationProperties.REQUESTER_REQUIRED === "true"
+                      }
+                    />
                   </>
                 }
+                {...requiredProps(
+                  configurationProperties.REQUESTER_REQUIRED === "true",
+                )}
                 disabled={
                   configurationProperties.restrictFreeTextProviderEntry ===
                   "true"
@@ -1297,12 +1298,17 @@ const AddOrder = (props) => {
                 })}
                 labelText={
                   <>
-                    <FormattedMessage id="order.requester.lastName.label" />{" "}
-                    {configurationProperties.REQUESTER_REQUIRED === "true" && (
-                      <span className="requiredlabel">*</span>
-                    )}
+                    <FormattedMessage id="order.requester.lastName.label" />
+                    <RequiredMarker
+                      required={
+                        configurationProperties.REQUESTER_REQUIRED === "true"
+                      }
+                    />
                   </>
                 }
+                {...requiredProps(
+                  configurationProperties.REQUESTER_REQUIRED === "true",
+                )}
                 disabled={
                   configurationProperties.restrictFreeTextProviderEntry ===
                   "true"

@@ -47,16 +47,16 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToTelecom", "transformToTelecom called");
 
         List<ContactPoint> contactPoints = new ArrayList<>();
-        if (person.getPrimaryPhone() != null) {
+        if (!GenericValidator.isBlankOrNull(person.getPrimaryPhone())) {
             contactPoints.add(new ContactPoint().setSystem(ContactPointSystem.PHONE).setValue(person.getPrimaryPhone())
                     .setUse(ContactPointUse.MOBILE));
         }
 
-        if (person.getEmail() != null) {
+        if (!GenericValidator.isBlankOrNull(person.getEmail())) {
             contactPoints.add(new ContactPoint().setSystem(ContactPointSystem.EMAIL).setValue(person.getEmail()));
         }
 
-        if (person.getFax() != null) {
+        if (!GenericValidator.isBlankOrNull(person.getFax())) {
             contactPoints.add(new ContactPoint().setSystem(ContactPointSystem.FAX).setValue(person.getFax()));
         }
 
@@ -172,6 +172,9 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
     public Identifier createIdentifier(String system, String value) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "createIdentifier", "createIdentifier called");
 
+        if (GenericValidator.isBlankOrNull(value)) {
+            return null;
+        }
         Identifier identifier = new Identifier();
         identifier.setValue(value);
 

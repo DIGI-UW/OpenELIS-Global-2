@@ -105,6 +105,44 @@ describe("PanelTerminologySection", () => {
     });
   });
 
+  it("refuses a LOINC longer than 10 characters before sending it (OGC-1456)", async () => {
+    mockServer();
+    wrap();
+    await screen.findByText("24323-8");
+    fireEvent.change(document.querySelector("#panel-terminology-source"), {
+      target: { value: "LOINC" },
+    });
+    fireEvent.change(document.querySelector("#panel-terminology-code"), {
+      target: { value: "12345678-90" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/12345678-90/, {
+        selector: "[data-testid='panel-terminology-save-error'] *",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("refuses a code longer than 80 characters before sending it (OGC-1456)", async () => {
+    mockServer();
+    wrap();
+    await screen.findByText("24323-8");
+    fireEvent.change(document.querySelector("#panel-terminology-source"), {
+      target: { value: "WHONET" },
+    });
+    fireEvent.change(document.querySelector("#panel-terminology-code"), {
+      target: { value: "W".repeat(81) },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(
+      await screen.findByTestId("panel-terminology-save-error"),
+    ).toBeInTheDocument();
+  });
+
   it("shows the empty state when no mappings exist", async () => {
     mockServer([]);
     wrap();

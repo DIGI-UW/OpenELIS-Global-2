@@ -137,6 +137,7 @@ public abstract class ConfigurationProperties {
                                                                             // page
         // only if user has correct permissions
         USE_PAGE_NUMBERS_ON_REPORTS("reportPageNumbers", "text"), // If true page numbers will be used on reports
+        REPORT_PAPER_SIZE("reportPaperSize", "text"), // A4 or Letter, the paper printed reports are laid out on
         QA_SORT_EVENT_LIST("sortQaEvents", "text"), // If true QA events will be sorted by name
         ALWAYS_VALIDATE_RESULTS("validate all results", "text"), // If true all results will be validated, otherwise
                                                                  // just those

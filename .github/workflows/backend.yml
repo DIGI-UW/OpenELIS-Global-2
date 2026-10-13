@@ -24,11 +24,11 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -42,6 +42,11 @@ jobs:
 
   deployment-contract:
     uses: ./.github/workflows/deployment-checks.yml
+    permissions:
+      contents: read
+
+  analyzer-components:
+    uses: ./.github/workflows/analyzer-components.yml
     permissions:
       contents: read
 
@@ -61,7 +66,7 @@ jobs:
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # GitHub runs every pull request in a stack as if it targeted the stack's
       # base, so a 20-PR stack would run Build + Test 20 times per push. The top
       # pull request contains every commit of the stack, so its run covers them
@@ -122,20 +127,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{github.repository}}
           submodules: recursive
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       # Must follow checkout: hashFiles reads the workspace, so a key computed
       # before it hashes nothing and the cache never rotates.
       - name: Cache local Maven repository
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -216,7 +221,14 @@ jobs:
   backend-checkpoint:
     name: 01 Checkpoint - Backend
     if: always()
-    needs: [changes, formatting, deployment-contract, backend-verify]
+    needs:
+      [
+        changes,
+        formatting,
+        deployment-contract,
+        analyzer-components,
+        backend-verify,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Check backend result
@@ -224,6 +236,7 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           FORMATTING_RESULT: ${{ needs.formatting.result }}
           CONTRACT_RESULT: ${{ needs.deployment-contract.result }}
+          ANALYZER_RESULT: ${{ needs.analyzer-components.result }}
           BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
         run: |
@@ -231,8 +244,8 @@ jobs:
             echo "Change detection failed: $CHANGES_RESULT"
             exit 1
           fi
-          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" ]]; then
-            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT"
+          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" || "$ANALYZER_RESULT" != "success" ]]; then
+            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, analyzer-components=$ANALYZER_RESULT"
             exit 1
           fi
           if [[ "$BACKEND_RESULT" == "success" ]] || [[ "$BACKEND_REQUIRED" == "false" && "$BACKEND_RESULT" == "skipped" ]]; then

@@ -14,7 +14,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,9 +53,6 @@ public class MicroCaseInoculationServiceImpl implements MicroCaseInoculationServ
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
-        if (MicroWorkflowType.UNASSIGNED.name().equals(microCase.getWorkflowType())) {
-            throw new IllegalArgumentException("MICROBIOLOGY_WORKFLOW_CLASSIFICATION_REQUIRED");
-        }
 
         MicroCaseInoculation source = sourceInoculationId == null || sourceInoculationId.trim().isEmpty() ? null
                 : inoculationDAO.get(sourceInoculationId)

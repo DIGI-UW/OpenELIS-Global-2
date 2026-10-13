@@ -88,9 +88,12 @@ async function fillOrderStep(page: Page) {
   await siteListLoaded;
   await page.getByRole("link", { name: "Generate" }).click();
   await expect(
-    page.getByRole("textbox", { name: "Lab Number *" }),
+    page.getByRole("textbox", { name: "Lab Number", exact: true }),
   ).not.toHaveValue("", { timeout: UI_TIMEOUT });
-  const site = page.getByRole("textbox", { name: "Search Site Name *" });
+  const site = page.getByRole("textbox", {
+    name: "Search Site Name",
+    exact: true,
+  });
   await site.click();
   await site.pressSequentially("a");
   const suggestion = page.locator("ul.suggestions li").first();

@@ -145,6 +145,11 @@
             <version>7.0.2</version>
         </dependency>
         <dependency>
+            <groupId>org.fhir</groupId>
+            <artifactId>ucum</artifactId>
+            <version>1.0.8</version>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>2.18.11</version>
@@ -201,9 +206,17 @@
             <version>5.4.0</version>
         </dependency>
         <dependency>
-            <groupId>com.itextpdf</groupId>
-            <artifactId>itextpdf</artifactId>
-            <version>5.5.13.4</version>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>3.0.5</version>
+            <exclusions>
+                <!-- Only the BrotliDecode filter uses it, to read PDFs compressed with
+                    Brotli; it brings a native library per platform. -->
+                <exclusion>
+                    <groupId>com.aayushatharva.brotli4j</groupId>
+                    <artifactId>brotli4j</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- APACHE COMMONS DEPENDENCIES -->
         <dependency>
@@ -261,6 +274,11 @@
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>bcprov-jdk16</artifactId>
+                </exclusion>
+                <!-- Bundles 2011 copies of bcpkix classes that shadow bcpkix-jdk18on. -->
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcmail-jdk16</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -585,6 +603,14 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <version>${springsecurity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Reads generated PDFs in tests, independent of the library that wrote
+            them. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
             <scope>test</scope>
         </dependency>
         <dependency>

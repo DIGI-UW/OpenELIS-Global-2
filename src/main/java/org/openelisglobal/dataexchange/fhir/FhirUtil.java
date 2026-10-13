@@ -24,6 +24,8 @@ import org.apache.http.util.EntityUtils;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.ServiceRequest;
 import org.itech.fhir.dataexport.core.service.FhirClientFetcher;
 import org.openelisglobal.common.log.LogEvent;
@@ -186,6 +188,17 @@ public class FhirUtil implements FhirClientFetcher {
             }
         }
         return null;
+    }
+
+    /**
+     * True when the reference points at a Patient by id. The subject of an
+     * environmental or vector ServiceRequest is a Location or a contained Group,
+     * which must not be read as a Patient.
+     */
+    public static boolean refersToPatient(Reference reference) {
+        return reference != null
+                && ResourceType.Patient.name().equals(reference.getReferenceElement().getResourceType())
+                && !GenericValidator.isBlankOrNull(reference.getReferenceElement().getIdPart());
     }
 
     private void addAuthHeader(org.apache.http.HttpRequest httpRequest) {

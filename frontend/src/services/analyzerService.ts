@@ -68,6 +68,13 @@ export interface AnalyzerTypeCatalog {
     deactivated: number;
   };
   types: AnalyzerTypeSummary[];
+  /** Profile files the Bridge set aside, with why; always present, maybe empty. */
+  issues: AnalyzerCatalogIssue[];
+}
+
+export interface AnalyzerCatalogIssue {
+  source: string;
+  reason: string;
 }
 
 export interface AnalyzerLabUnit {
@@ -83,10 +90,10 @@ export interface AnalyzerInstancePayload extends JsonObject {
   connectionValues?: Record<string, unknown>;
 }
 
-export interface AnalyzerSiteBindingSelection extends JsonObject {
-  siteBindingId: string;
+export interface AnalyzerMappingSelection extends JsonObject {
+  mappingId: string;
   revision: number;
-  bindingFingerprint: string;
+  mappingFingerprint: string;
 }
 
 export interface AnalyzerConnectionProbeCheck {
@@ -140,6 +147,11 @@ export interface AnalyzerDeactivationResultView extends Omit<
 
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
 
+export type AnalyzerUnresolvedReason =
+  | "NO_MATCH"
+  | "AMBIGUOUS"
+  | "INCOMPATIBLE";
+
 export interface AnalyzerMappingTestOption {
   id: string;
   name: string;
@@ -151,13 +163,29 @@ export interface AnalyzerMappingResultOption {
   id: string;
   value: string;
   label: string;
+  /** The answer's standard codes, each in its FHIR system URI. */
+  codings?: Array<{ system: string; code: string }>;
+  componentId?: string | null;
 }
+
+export interface AnalyzerMappingComponentOption {
+  id: string;
+  code?: string | null;
+  label?: string | null;
+}
+
+export type AnalyzerMappingOrigin = "DEFAULT" | "OVERRIDE";
 
 export interface AnalyzerTypeMappingResultRow {
   rawValue: string;
   mappingState: AnalyzerMappingState;
+  origin?: AnalyzerMappingOrigin;
   resultOptionId?: string | null;
   selectedOption?: AnalyzerMappingResultOption | null;
+  suggestedOption?: AnalyzerMappingResultOption | null;
+  unresolvedReason?: AnalyzerUnresolvedReason | null;
+  /** The declared value this row's text translates, for a translation. */
+  translationOf?: string | null;
 }
 
 export interface AnalyzerTypeMappingTestRow {
@@ -174,21 +202,33 @@ export interface AnalyzerTypeMappingTestRow {
     display?: string | null;
   } | null;
   mappingState: AnalyzerMappingState;
+  origin?: AnalyzerMappingOrigin;
   testId?: string | null;
+  componentId?: string | null;
+  /** Empty for a test's main record. */
+  subIdentity?: string;
+  callComponentId?: string | null;
+  /** The component code the profile declares for this record. */
+  componentCode?: string | null;
+  /** The component code the profile declares for the main record's call. */
+  callComponentCode?: string | null;
   selectedTest?: AnalyzerMappingTestOption | null;
   suggestedTest?: AnalyzerMappingTestOption | null;
+  unresolvedReason?: AnalyzerUnresolvedReason | null;
   results: AnalyzerTypeMappingResultRow[];
 }
 
 export interface AnalyzerTypeMappingView {
+  /** Null for the read-only defaults a new analyzer on the profile would get. */
+  analyzerId?: string | null;
   profileId: string;
   profileRevision: number;
   profileFingerprint: string;
   displayName: string;
   protocol: AnalyzerProtocol;
-  siteBindingId?: string | null;
-  siteBindingRevision: number;
-  bindingFingerprint?: string | null;
+  mappingId?: string | null;
+  mappingRevision: number;
+  mappingFingerprint?: string | null;
   tests: AnalyzerTypeMappingTestRow[];
   controlRecognition: {
     recognitionFingerprint: string;
@@ -209,25 +249,35 @@ export interface AnalyzerTypeMappingView {
     state: "UNCONFIRMED" | "CURRENT" | "STALE" | string;
     profileId?: string | null;
     profileRevision: number;
-    bindingFingerprint?: string | null;
+    mappingFingerprint?: string | null;
     recognitionFingerprint?: string | null;
     confirmedBy?: string | null;
     confirmedByDisplayName?: string | null;
     confirmedAt?: string | null;
-    confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
-    excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+    confirmedRows: AnalyzerMappingSourceRow[];
+    excludedRows: AnalyzerMappingSourceRow[];
   };
 }
 
+export interface AnalyzerMappingSourceRow {
+  sourceRowKey: string;
+  subIdentity?: string;
+  rawValue?: string | null;
+}
+
 export interface AnalyzerTypeMappingUpdate {
-  baseBindingFingerprint?: string | null;
+  baseMappingFingerprint?: string | null;
   tests: Array<{
     sourceRowKey: string;
+    subIdentity: string;
     mappingState: AnalyzerMappingState;
     testId?: string | null;
+    componentId?: string | null;
+    callComponentId?: string | null;
   }>;
   results: Array<{
     sourceRowKey: string;
+    subIdentity: string;
     rawValue: string;
     mappingState: AnalyzerMappingState;
     testResultId?: string | null;
@@ -235,10 +285,10 @@ export interface AnalyzerTypeMappingUpdate {
 }
 
 export interface AnalyzerTypeMappingConfirmationRequest {
-  baseBindingFingerprint: string;
+  baseMappingFingerprint: string;
   recognitionFingerprint: string;
-  confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
-  excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+  confirmedRows: AnalyzerMappingSourceRow[];
+  excludedRows: AnalyzerMappingSourceRow[];
 }
 
 export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
@@ -323,6 +373,38 @@ export const getAnalyzerDeliveryIssues = (
   signal: AbortSignal | null = null,
 ) => {
   getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
+};
+
+export interface BridgePairingStatus {
+  bridgeUrl: string;
+  paired: boolean;
+  bridgeCertificateSha256?: string | null;
+  clientCertificateSha256?: string | null;
+  pairedAt?: string | null;
+  pairsAutomatically: boolean;
+}
+
+export type BridgePairingResponse = BridgePairingStatus & {
+  errorKey?: string;
+  status?: number;
+};
+
+export const getBridgePairing = (
+  callback: DataCallback<BridgePairingStatus | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/analyzer/bridge-pairing", callback, signal);
+};
+
+export const pairBridge = (
+  code: string,
+  callback: (response: BridgePairingResponse | undefined) => void,
+) => {
+  postToOpenElisServerJsonResponse<BridgePairingResponse>(
+    "/rest/analyzer/bridge-pairing",
+    JSON.stringify({ code }),
+    callback,
+  );
 };
 
 export const getAnalyzers = (
@@ -458,14 +540,15 @@ export const updateAnalyzer = (
     extraParams,
   );
 
-export const selectAnalyzerSiteBinding = (
+/** Puts the analyzer's reviewed mapping revision in force. */
+export const applyAnalyzerMapping = (
   id: string,
-  selection: AnalyzerSiteBindingSelection,
+  selection: AnalyzerMappingSelection,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) =>
   putAnalyzerJson(
-    `/rest/analyzer/analyzers/${id}/site-binding`,
+    `/rest/analyzer/analyzers/${id}/mapping/apply`,
     selection,
     callback,
     extraParams,
@@ -563,6 +646,30 @@ export const deactivateAnalyzer = (
   );
 };
 
+/**
+ * Returns an analyzer whose type the Bridge no longer has to the state the
+ * upgrade migration leaves one in, so it can be set up again on an available type.
+ */
+export const resetAnalyzerProfile = (
+  id: string,
+  callback: (result: { ok: boolean; messageKey?: string }) => void,
+) => {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/reset-profile`, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+    body: JSON.stringify({}),
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      callback({ ok: response.ok, messageKey: json?.messageKey });
+    })
+    .catch(() => callback({ ok: false }));
+};
+
 const postAnalyzerLifecycle = <T extends object>(
   id: string,
   action: "activate" | "deactivate" | "reactivate",
@@ -629,7 +736,8 @@ export const getAnalyzerTypeRevision = (
   );
 };
 
-export const getAnalyzerTypeMapping = (
+/** The defaults a new analyzer on this profile revision would get. Read-only. */
+export const getAnalyzerTypeDefaults = (
   profileId: string,
   revision: number,
   callback: DataCallback<AnalyzerTypeMappingView | undefined>,
@@ -652,6 +760,16 @@ export const getAnalyzerMappingResultOptions = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/result-options`,
+    callback,
+  );
+};
+
+export const getAnalyzerMappingComponents = (
+  testId: string,
+  callback: DataCallback<AnalyzerMappingComponentOption[] | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/components`,
     callback,
   );
 };
@@ -693,30 +811,116 @@ const mutateAnalyzerType = <T>(
     });
 };
 
-export const saveAnalyzerTypeMapping = (
-  profileId: string,
+/** One record's decision in an adoption plan. */
+export interface AnalyzerAdoptionDecision {
+  test: {
+    sourceRowKey: string;
+    subIdentity: string;
+    mappingState: AnalyzerMappingState;
+    testId?: string | null;
+    componentId?: string | null;
+    callComponentId?: string | null;
+    origin?: string | null;
+  };
+  results: Array<{
+    sourceRowKey: string;
+    subIdentity: string;
+    rawValue: string;
+    mappingState: AnalyzerMappingState;
+    testResultId?: string | null;
+  }>;
+}
+
+export type AnalyzerAdoptionBucket =
+  | "UNCHANGED"
+  | "CHANGED"
+  | "NEEDS_MAPPING"
+  | "BLOCKED"
+  | "RETIRED";
+
+/** What adopting a newer profile revision does to each record. */
+export interface AnalyzerAdoptionReview {
+  analyzerId: string;
+  profileId: string;
+  fromRevision: number;
+  toRevision: number;
+  rows: Array<{
+    key: { sourceRowKey: string; subIdentity: string };
+    bucket: AnalyzerAdoptionBucket;
+    current: AnalyzerAdoptionDecision | null;
+    newDefault: AnalyzerAdoptionDecision | null;
+    proposed: AnalyzerAdoptionDecision | null;
+    alsoDefault: boolean;
+    blockReason: "INACTIVE_TEST" | "HELD_RESULTS" | null;
+  }>;
+  /** The mapping adoption saves if the operator changes nothing. */
+  proposal: AnalyzerTypeMappingView;
+}
+
+export const getAnalyzerAdoption = (
+  analyzerId: string,
   revision: number,
+  callback: DataCallback<AnalyzerAdoptionReview | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/adoption?revision=${revision}`,
+    callback,
+  );
+};
+
+/** Saves the reviewed decisions as the analyzer's next revision on the newer profile revision. */
+export const adoptAnalyzerRevision = (
+  analyzerId: string,
+  revision: number,
+  update: AnalyzerTypeMappingUpdate,
+  callback: ApiCallback<
+    {
+      mappingId: string;
+      mappingRevision: number;
+      mappingFingerprint: string;
+    } & AnalyzerApiError
+  >,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/adoption?revision=${revision}`,
+    "POST",
+    update as unknown as JsonObject,
+    callback,
+  );
+};
+
+export const getAnalyzerMapping = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerTypeMappingView | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping`,
+    callback,
+  );
+};
+
+export const saveAnalyzerMapping = (
+  analyzerId: string,
   update: AnalyzerTypeMappingUpdate,
   callback: ApiCallback<AnalyzerTypeMappingView & AnalyzerApiError>,
 ) => {
   mutateAnalyzerType(
-    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping`,
     "PUT",
     update as unknown as JsonObject,
     callback,
   );
 };
 
-export const confirmAnalyzerTypeMapping = (
-  profileId: string,
-  revision: number,
+export const confirmAnalyzerMapping = (
+  analyzerId: string,
   request: AnalyzerTypeMappingConfirmationRequest,
   callback: ApiCallback<
     AnalyzerTypeMappingView["confirmation"] & AnalyzerApiError
   >,
 ) => {
   mutateAnalyzerType(
-    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping/confirm?revision=${revision}`,
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping/confirm`,
     "POST",
     request as unknown as JsonObject,
     callback,

@@ -76,7 +76,6 @@ describe("SampleTestSection — panel selection (OGC-1189)", () => {
 const cultureTest = {
   id: "42",
   name: "Blood culture",
-  cultureWorkflowType: "BACTERIOLOGY",
   methods: [
     {
       methodId: "7",
@@ -118,111 +117,6 @@ const renderSection = (
       />
     </IntlProvider>,
   );
-
-describe("SampleTestSection microbiology metadata", () => {
-  beforeEach(() => {
-    getFromOpenElisServer.mockReset();
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url === "/rest/user-sample-types") {
-        callback([{ id: "5", value: "Blood" }]);
-      }
-      if (url === "/rest/sample-type-tests?sampleType=5") {
-        callback({ tests: [cultureTest], panels: [] });
-      }
-    });
-  });
-
-  it("retains workflow and linked Method metadata when a test is selected", async () => {
-    const user = userEvent.setup();
-    const setSamples = vi.fn();
-    renderSection(setSamples);
-
-    await screen.findAllByText("Blood culture");
-    await user.click(document.querySelector('label[for="test-0-42"]'));
-
-    expect(setSamples).toHaveBeenLastCalledWith([
-      expect.objectContaining({
-        tests: [cultureTest],
-      }),
-    ]);
-  });
-
-  it("retains the same metadata when a panel selects the culture test", async () => {
-    const user = userEvent.setup();
-    const setSamples = vi.fn();
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url === "/rest/user-sample-types") {
-        callback([{ id: "5", value: "Blood" }]);
-      }
-      if (url === "/rest/sample-type-tests?sampleType=5") {
-        callback({
-          tests: [cultureTest],
-          panels: [{ id: "9", name: "Sepsis panel", testIds: "42" }],
-        });
-      }
-    });
-    renderSection(setSamples);
-
-    await user.click(
-      (await screen.findByText("Sepsis panel")).closest("label"),
-    );
-
-    expect(setSamples).toHaveBeenLastCalledWith([
-      expect.objectContaining({
-        tests: [cultureTest],
-      }),
-    ]);
-  });
-
-  it("confirms before discarding details with the final culture test", async () => {
-    const user = userEvent.setup();
-    const setSamples = vi.fn();
-    const setOrderData = vi.fn();
-    renderSection(setSamples, {
-      currentSamples: [{ ...sample, tests: [cultureTest] }],
-      orderData: {
-        microbiologyOrderDetail: {
-          cultureMethodId: "7",
-          clinicalHistory: "Fever and hypotension",
-        },
-        sampleOrderItems: {
-          programId: "8",
-          microbiologyPreviousProgramId: "1",
-        },
-      },
-      setOrderData,
-    });
-
-    await screen.findAllByText("Blood culture");
-    await user.click(document.querySelector('label[for="test-0-42"]'));
-
-    expect(
-      screen.getByRole("heading", { name: "Remove microbiology workflow?" }),
-    ).toBeInTheDocument();
-    expect(setSamples).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: /Discard details$/ }));
-
-    expect(setSamples).toHaveBeenCalledWith([
-      expect.objectContaining({ tests: [] }),
-    ]);
-    const clearOrder = setOrderData.mock.calls.at(-1)[0];
-    expect(
-      clearOrder({
-        microbiologyOrderDetail: { clinicalHistory: "Fever" },
-        sampleOrderItems: {
-          programId: "8",
-          microbiologyPreviousProgramId: "1",
-        },
-      }),
-    ).toEqual(
-      expect.objectContaining({
-        microbiologyOrderDetail: undefined,
-        sampleOrderItems: expect.objectContaining({ programId: "1" }),
-      }),
-    );
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OGC-189: search behaviour. Kept in the same file as the suites above —
@@ -467,6 +361,38 @@ describe("SampleTestSection selected-tag close buttons", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("lets an environmental sample override the order site without changing its tests", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/environmental-sample-types")
+        callback([{ id: "5", value: "Swab" }]);
+      if (url === "/rest/admin/vector/sampling-sites")
+        callback([
+          { id: 11, code: "WARD1", name: "Ward 1", active: true },
+          { id: 12, code: "WARD2", name: "Ward 2", active: true },
+        ]);
+      if (url === "/rest/vector/dictionary/sample-containers") callback([]);
+      if (url.startsWith("/rest/sample-type-tests")) callback(catalogue);
+    });
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [selected],
+      workflowType: "environmental",
+    });
+    const site = await screen.findByLabelText("Sampling site");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "Ward 2 (WARD2)" }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.change(site, { target: { value: "12" } });
+    expect(setSamples).toHaveBeenCalledWith([
+      expect.objectContaining({
+        collectionLocationId: "12",
+        tests: selected.tests,
+      }),
+    ]);
+  });
+
   it("names them the same way in the per-sample manifest picker", async () => {
     const user = userEvent.setup();
     getFromOpenElisServer.mockImplementation((url, callback) => {
@@ -498,5 +424,55 @@ describe("SampleTestSection selected-tag close buttons", () => {
     expect(
       screen.queryByRole("button", { name: "Dismiss" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("culture set assignments", () => {
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/user-sample-types") cb([{ id: "5", value: "Blood" }]);
+      if (url.startsWith("/rest/sample-type-tests"))
+        cb({
+          tests: [{ id: "42", name: "Blood culture", collectedInSets: true }],
+          panels: [],
+        });
+      if (url.endsWith("sample-containers"))
+        cb([{ id: "9", dictEntry: "B17" }]);
+    });
+  });
+  it("defaults a newly selected set culture to set 1 without changing the previous state", async () => {
+    const setSamples = vi.fn();
+    const previous = [{ ...sample, tests: [], panels: [] }];
+    renderSection(setSamples, { currentSamples: previous });
+    fireEvent.click(await screen.findByLabelText("Blood culture"));
+    expect(setSamples.mock.calls.at(-1)[0][0].cultureSetNumber).toBe(1);
+    expect(previous[0].cultureSetNumber).toBeUndefined();
+    expect(previous[0].tests).toEqual([]);
+  });
+  it("duplicates a bottle into the last assigned set with fresh collection identities", async () => {
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [
+        {
+          ...sample,
+          tests: [{ id: "42", collectedInSets: true }],
+          cultureSetNumber: 3,
+          sampleItemId: "81",
+          sampleTypeRequestId: "17",
+          clientKey: "old-key",
+        },
+      ],
+    });
+    expect(await screen.findByLabelText("Container type")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body site")).toBeInTheDocument();
+    const duplicate = await screen.findByRole("button", { name: /duplicate/i });
+    fireEvent.click(duplicate);
+    expect(setSamples.mock.calls.at(-1)[0][1]).toMatchObject({
+      cultureSetNumber: 3,
+      sampleItemId: "",
+      sampleTypeRequestId: "",
+      clientKey: "",
+    });
   });
 });

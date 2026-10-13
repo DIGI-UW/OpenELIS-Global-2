@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <localization id="9842" description="Billing number label" />
+    <localization_value id="9842" localization_id="9842"
+        locale="en" value="Billing Number" />
+    <localization_value id="9843" localization_id="9842"
+        locale="fr" value="Numéro de facturation" />
+</dataset>

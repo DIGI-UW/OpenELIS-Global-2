@@ -214,15 +214,23 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
 
     @Test
     public void getAvailableLotsByItemFEFO_shouldReturnLotsInFEFOOrder() {
-        // Lot 1001 expires 2025-06-30 (earlier), lot 1000 expires 2025-12-31 (later).
+        // The fixture's own lots have expired, so seed live ones.
+        InventoryLot later = newLot("LOT-FEFO-LATER", "LOT-BC-FEFO-LATER");
+        later.setExpirationDate(Timestamp.valueOf("2099-12-31 00:00:00"));
+        later.setQcStatus(QCStatus.PASSED);
+        inventoryLotService.insert(later);
+
+        InventoryLot sooner = newLot("LOT-FEFO-SOONER", "LOT-BC-FEFO-SOONER");
+        sooner.setExpirationDate(Timestamp.valueOf("2099-06-30 00:00:00"));
+        sooner.setQcStatus(QCStatus.PASSED);
+        inventoryLotService.insert(sooner);
+
         List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(1000L);
 
         assertNotNull("Lots should not be null", lots);
-        assertEquals("Should have 2 active lots", 2, lots.size());
-
-        // First lot should expire earliest
-        assertEquals("First lot should be earliest expiring", "LOT-2025-002", lots.get(0).getLotNumber());
-        assertEquals("Second lot should expire later", "LOT-2025-001", lots.get(1).getLotNumber());
+        assertEquals("Should have 2 available lots", 2, lots.size());
+        assertEquals("First lot should be earliest expiring", "LOT-FEFO-SOONER", lots.get(0).getLotNumber());
+        assertEquals("Second lot should expire later", "LOT-FEFO-LATER", lots.get(1).getLotNumber());
     }
 
     @Test
@@ -230,12 +238,12 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
         InventoryLot opened = newLot("LOT-2025-FEFO-OPENED", null);
         opened.setQcStatus(QCStatus.PASSED);
         opened.setExpirationDate(Timestamp.valueOf("2099-12-31 00:00:00"));
-        opened.setCalculatedExpiryAfterOpening(Timestamp.valueOf("2026-01-15 00:00:00"));
+        opened.setCalculatedExpiryAfterOpening(Timestamp.valueOf("2098-01-15 00:00:00"));
         inventoryLotService.insert(opened);
 
         InventoryLot sealed = newLot("LOT-2025-FEFO-SEALED", null);
         sealed.setQcStatus(QCStatus.PASSED);
-        sealed.setExpirationDate(Timestamp.valueOf("2026-06-30 00:00:00"));
+        sealed.setExpirationDate(Timestamp.valueOf("2098-06-30 00:00:00"));
         inventoryLotService.insert(sealed);
 
         List<String> order = inventoryLotService.getAvailableLotsByItemFEFO(1000L).stream()

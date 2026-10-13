@@ -173,3 +173,24 @@ describe("SamplesCollectionSection receipt and handling (OGC-1424, FR-B23, FR-C9
     expect(screen.queryByTestId("handling-group-0")).toBeNull();
   });
 });
+
+describe("SamplesCollectionSection help text (OGC-1443)", () => {
+  test("points at the controls the page has, never at the removed Print More Sample Labels", () => {
+    const missing = vi.spyOn(console, "error");
+    renderSection();
+
+    expect(
+      screen.getByText(messages["collect.printMoreLabels.helper"]),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Print More Sample Labels/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Sample" })).toBeVisible();
+    expect(
+      missing.mock.calls.some((call) =>
+        String(call[0]).includes("MISSING_TRANSLATION"),
+      ),
+    ).toBe(false);
+    missing.mockRestore();
+  });
+});

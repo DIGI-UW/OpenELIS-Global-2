@@ -9,7 +9,6 @@ public class MicroAstPanelAdminForm {
     public Integer versionNumber;
     public String supersedesPanelId;
     public String name;
-    public String workflowType;
     public String organismGroup;
     public String specimenTypeId;
     public boolean active = true;

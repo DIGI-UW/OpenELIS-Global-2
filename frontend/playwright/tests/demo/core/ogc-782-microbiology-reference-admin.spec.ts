@@ -108,11 +108,12 @@ test.describe("OGC-782 M3 reference administration demo", () => {
         .filter({ hasText: "Gram negative AST panel (UAT)" })
         .filter({ hasText: "Current" });
       await expect(currentRow).toBeVisible({ timeout: LONG_TIMEOUT });
+      const versionCell = currentRow
+        .getByRole("cell")
+        .filter({ hasText: /^v\d+$/ });
+      await expect(versionCell).toHaveText(/^v\d+$/);
       const originalVersion = Number(
-        (await currentRow.getByRole("cell").nth(2).innerText()).replace(
-          /^v/,
-          "",
-        ),
+        (await versionCell.innerText()).replace(/^v/, ""),
       );
       await currentRow.getByRole("button", { name: "Options" }).click();
       await page.getByRole("menuitem", { name: "Publish new version" }).click();

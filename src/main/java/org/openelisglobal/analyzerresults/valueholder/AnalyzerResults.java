@@ -91,17 +91,63 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     // types and the message carried no specimen; the review page's chooser
     // resolves it.
     public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+    public static final String IMPORT_ISSUE_AWAITING_PLACEMENT = "awaiting_placement";
     public static final String IMPORT_ISSUE_UNKNOWN_TEST = "unknown_analyzer_test";
     public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
     public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
     public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
+    /** The run produced no value (ERROR, NO RESULT); never a patient result. */
+    public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
+    /** A control that reports an answer, for a test and level with no QC target. */
+    public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
+    /**
+     * Sent under another revision of the analyzer's profile than the one in force,
+     * for a record the two revisions read differently.
+     */
+    public static final String IMPORT_ISSUE_OTHER_REVISION = "arrived_under_other_revision";
+    /** For an assay the analyzer's setup says this instrument does not run. */
+    public static final String IMPORT_ISSUE_ASSAY_NOT_ENABLED = "assay_not_enabled";
+    /** Held results that applying the analyzer's mapping retries. */
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
             IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
-            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING);
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING,
+            IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
+
+    @Column(name = "instrument_specimen_id", length = 255)
+    private String instrumentSpecimenId;
+
+    @Column(name = "instrument_patient_id", length = 255)
+    private String instrumentPatientId;
+
+    @Column(name = "instrument_patient_name", length = 255)
+    private String instrumentPatientName;
+
+    @Column(name = "instrument_note", columnDefinition = "TEXT")
+    private String instrumentNote;
+
+    /** The instrument's flags as sent, never interpreted. */
+    @Column(name = "instrument_flags", length = 255)
+    private String instrumentFlags;
+
+    /**
+     * The warnings the instrument raised about this result's sample, by the names
+     * it sent, the same on every result of the sample.
+     */
+    @Column(name = "instrument_sample_flags", length = 1024)
+    private String instrumentSampleFlags;
+
+    @Column(name = "assay_name", length = 255)
+    private String assayName;
+
+    @Column(name = "assay_version", length = 64)
+    private String assayVersion;
+
+    @Column(name = "instrument_operator", length = 255)
+    private String instrumentOperator;
 
     @Column(name = "source_message_id", length = 255)
     private String sourceMessageId;
@@ -123,6 +169,10 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "raw_test_code", length = 255)
     private String rawTestCode;
+
+    /** Empty for a test's main record. */
+    @Column(name = "raw_sub_identity", length = 255, nullable = false)
+    private String rawSubIdentity = "";
 
     @Column(name = "raw_result_value", columnDefinition = "TEXT")
     private String rawResultValue;
@@ -164,6 +214,82 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setImportIssueReason(String importIssueReason) {
         this.importIssueReason = importIssueReason;
+    }
+
+    /** The specimen ID as the instrument reported it: an accession or a tube ID. */
+    public String getInstrumentSpecimenId() {
+        return instrumentSpecimenId;
+    }
+
+    public void setInstrumentSpecimenId(String instrumentSpecimenId) {
+        this.instrumentSpecimenId = instrumentSpecimenId;
+    }
+
+    /**
+     * The patient ID the instrument reported, as reported. Not an OpenELIS patient.
+     */
+    public String getInstrumentPatientId() {
+        return instrumentPatientId;
+    }
+
+    public void setInstrumentPatientId(String instrumentPatientId) {
+        this.instrumentPatientId = instrumentPatientId;
+    }
+
+    public String getInstrumentPatientName() {
+        return instrumentPatientName;
+    }
+
+    public void setInstrumentPatientName(String instrumentPatientName) {
+        this.instrumentPatientName = instrumentPatientName;
+    }
+
+    public String getInstrumentFlags() {
+        return instrumentFlags;
+    }
+
+    public void setInstrumentFlags(String instrumentFlags) {
+        this.instrumentFlags = instrumentFlags;
+    }
+
+    public String getInstrumentSampleFlags() {
+        return instrumentSampleFlags;
+    }
+
+    public void setInstrumentSampleFlags(String instrumentSampleFlags) {
+        this.instrumentSampleFlags = instrumentSampleFlags;
+    }
+
+    public String getAssayName() {
+        return assayName;
+    }
+
+    public void setAssayName(String assayName) {
+        this.assayName = assayName;
+    }
+
+    public String getAssayVersion() {
+        return assayVersion;
+    }
+
+    public void setAssayVersion(String assayVersion) {
+        this.assayVersion = assayVersion;
+    }
+
+    public String getInstrumentOperator() {
+        return instrumentOperator;
+    }
+
+    public void setInstrumentOperator(String instrumentOperator) {
+        this.instrumentOperator = instrumentOperator;
+    }
+
+    public String getInstrumentNote() {
+        return instrumentNote;
+    }
+
+    public void setInstrumentNote(String instrumentNote) {
+        this.instrumentNote = instrumentNote;
     }
 
     public String getSourceMessageId() {
@@ -220,6 +346,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setRawTestCode(String rawTestCode) {
         this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawSubIdentity() {
+        return rawSubIdentity;
+    }
+
+    public void setRawSubIdentity(String rawSubIdentity) {
+        this.rawSubIdentity = rawSubIdentity == null ? "" : rawSubIdentity;
     }
 
     public String getRawResultValue() {

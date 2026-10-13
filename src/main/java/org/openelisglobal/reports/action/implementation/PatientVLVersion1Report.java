@@ -14,8 +14,4 @@
 package org.openelisglobal.reports.action.implementation;
 
 public class PatientVLVersion1Report extends PatientVLReport implements IReportCreator {
-    @Override
-    protected String reportFileName() {
-        return "Patient_VL_Version_Nationale";
-    }
 }

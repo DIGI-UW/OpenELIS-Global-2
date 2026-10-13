@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # GitHub runs every pull request in a stack as if it targeted the stack's
       # base, so a 20-PR stack would run Static and Image 20 times per push. The top
       # pull request contains every commit of the stack, so its run covers them
@@ -97,7 +97,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -112,7 +112,7 @@ jobs:
           images: ${{ env.DOCKER_NAME }}
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         uses: actions/setup-node@v6

@@ -25,35 +25,34 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     }
 
     @Override
+    public MicroCase getForUpdate(String caseId) {
+        return entityManager.find(MicroCase.class, caseId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Override
+    public void lockOrder(String sampleId) {
+        if (entityManager.find(org.openelisglobal.sample.valueholder.Sample.class, sampleId,
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE) == null) {
+            throw new IllegalArgumentException("Order not found");
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public MicroCase getBySampleItemAndWorkflow(String sampleItemId, String workflowType) {
-        Query<MicroCase> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroCase c where c.sampleItemId = :sampleItemId" + " and c.workflowType = :workflowType",
-                MicroCase.class);
-        query.setParameter("sampleItemId", sampleItemId);
-        query.setParameter("workflowType", workflowType);
-        return query.uniqueResultOptional().orElse(null);
+    public List<MicroCase> getByOrder(String sampleId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroCase c where c.sampleId = :sampleId order by c.createdAt, c.id",
+                        MicroCase.class)
+                .setParameter("sampleId", sampleId).list();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<MicroCase> getBySampleItem(String sampleItemId) {
         Query<MicroCase> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroCase c where c.sampleItemId = :sampleItemId" + " order by c.workflowType", MicroCase.class);
+                "from MicroCase c where c.sampleItemId = :sampleItemId" + " order by c.createdAt, c.id",
+                MicroCase.class);
         query.setParameter("sampleItemId", sampleItemId);
-        return query.list();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<MicroCase> getBySampleItemIds(List<String> sampleItemIds) {
-        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
-            return List.of();
-        }
-        Query<MicroCase> query = entityManager.unwrap(Session.class)
-                .createQuery("from MicroCase c where c.sampleItemId in (:sampleItemIds)"
-                        + " order by c.sampleItemId, c.workflowType", MicroCase.class);
-        query.setParameterList("sampleItemIds", sampleItemIds);
         return query.list();
     }
 

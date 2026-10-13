@@ -265,4 +265,33 @@ public class TestCatalogEditorStorageIntegrationTest extends BaseWebContextSensi
         assertFalse(controller.getStorage(testId()).getBody().protectFromLight);
         assertEquals("AMBIENT", controller.getStorage(String.valueOf(SIBLING_ID)).getBody().storageCondition);
     }
+
+    /**
+     * OGC-1455: a bad id anywhere in the list is refused before any test is
+     * written; the tests listed before it keep their own storage.
+     */
+    @org.junit.Test
+    public void saveGroupStorage_rejectsANonNumericTestId_andWritesNoTest() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "AMBIENT";
+        GroupStorageUpdate body = groupUpdate(form, List.of("storageCondition"));
+        body.testIds = List.of(testId(), String.valueOf(SIBLING_ID), "abc");
+
+        assertEquals(400, controller.saveGroupStorage(body, authedRequest()).getStatusCode().value());
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+        assertEquals("REFRIGERATED", controller.getStorage(String.valueOf(SIBLING_ID)).getBody().storageCondition);
+    }
+
+    @org.junit.Test
+    public void saveGroupStorage_rejectsAnUnknownTestId_andWritesNoTest() {
+        seedDifferingSiblings();
+        StorageDto form = new StorageDto();
+        form.storageCondition = "AMBIENT";
+        GroupStorageUpdate body = groupUpdate(form, List.of("storageCondition"));
+        body.testIds = List.of(testId(), "959999999");
+
+        assertEquals(404, controller.saveGroupStorage(body, authedRequest()).getStatusCode().value());
+        assertEquals("FROZEN", controller.getStorage(testId()).getBody().storageCondition);
+    }
 }

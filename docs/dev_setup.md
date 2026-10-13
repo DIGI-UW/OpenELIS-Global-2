@@ -20,14 +20,22 @@ scripts/dev-stack url
 ```
 
 `up` builds OpenELIS, the frontend development stage, Bridge, and the analyzer
-mock from the checkout and its pinned submodules. Application image names,
-containers, networks, ports, and data volumes belong to this worktree. Docker
-and Maven caches are reused. Infrastructure images may be pulled; published
-application images never replace source builds.
+mock from the checkout, including whatever is checked out in its submodules.
+Application image names, containers, networks, ports, and data volumes belong to
+this worktree. Docker and Maven caches are reused. Infrastructure images may be
+pulled; published application images never replace source builds.
 
-Frontend edits hot reload. Re-run `up` after changing backend source, pinned
-submodules, frontend dependencies, or build configuration. `--skip-build` is
-only for reusing this worktree's already-built images and WAR.
+`up` initializes an empty submodule at the commit the parent repository records.
+It never moves, resets or refuses a populated one, so Bridge and mock changes
+made in `tools/<submodule>` run on this stack before they are committed. For
+each submodule at another commit or with uncommitted changes, `up` prints a line
+such as
+`tools/openelis-analyzer-bridge: building checked-out a4a22a4 (recorded pin b20f5db), with uncommitted changes`.
+`scripts/run-ci-checks.sh` builds the recorded submodule commits instead.
+
+Frontend edits hot reload. Re-run `up` after changing backend source, submodule
+source, frontend dependencies, or build configuration. `--skip-build` is only
+for reusing this worktree's already-built images and WAR.
 
 ```bash
 scripts/dev-stack status

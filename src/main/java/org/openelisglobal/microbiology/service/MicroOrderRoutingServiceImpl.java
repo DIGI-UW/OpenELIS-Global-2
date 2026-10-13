@@ -1,212 +1,328 @@
 package org.openelisglobal.microbiology.service;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.Set;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.method.valueholder.Method;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.microbiology.valueholder.MicroCulturePurpose;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseRequestDAO;
+import org.openelisglobal.microbiology.valueholder.*;
+import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.program.service.ProgramSampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
+import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testmethod.service.TestMethodService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+    private final MicroCaseDAO cases;
+    private final MicroCaseRequestDAO requests;
+    private final MicroCaseAnalysisDAO links;
+    private final MicroCaseMembershipService membership;
+    private final MicroCaseAnalysisService caseAnalyses;
+    private final SampleTypeRequestService sampleRequests;
+    private final SampleItemService samples;
+    private final AnalysisService analyses;
+    private final TestService tests;
+    private final PanelItemService panels;
+    private final ProgramSampleService programSamples;
+    private final MicroOrderSiteService sites;
+    private final org.openelisglobal.typeofsample.service.TypeOfSampleService sampleTypes;
 
-    private final MicroCaseService caseService;
-    private final MicrobiologyReferenceService referenceService;
-    private final MicroCaseOrderDetailService orderDetailService;
-    private final MicroCaseAnalysisService caseAnalysisService;
-    private final TestMethodService testMethodService;
-    private final String defaultWorkflow;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.common.services.IStatusService statuses;
 
-    public MicroOrderRoutingServiceImpl(MicroCaseService caseService, MicrobiologyReferenceService referenceService,
-            MicroCaseOrderDetailService orderDetailService, MicroCaseAnalysisService caseAnalysisService,
-            TestMethodService testMethodService,
-            @Value("${org.openelisglobal.microbiology.defaultWorkflow:}") String defaultWorkflow) {
-        this.caseService = caseService;
-        this.referenceService = referenceService;
-        this.orderDetailService = orderDetailService;
-        this.caseAnalysisService = caseAnalysisService;
-        this.testMethodService = testMethodService;
-        this.defaultWorkflow = defaultWorkflow == null ? "" : defaultWorkflow.trim();
+    public MicroOrderRoutingServiceImpl(MicroCaseDAO cases, MicroCaseRequestDAO requests, MicroCaseAnalysisDAO links,
+            MicroCaseMembershipService membership, MicroCaseAnalysisService caseAnalyses,
+            SampleTypeRequestService sampleRequests, SampleItemService samples, AnalysisService analyses,
+            TestService tests, PanelItemService panels, ProgramSampleService programSamples,
+            MicroOrderSiteService sites, org.openelisglobal.typeofsample.service.TypeOfSampleService sampleTypes) {
+        this.cases = cases;
+        this.requests = requests;
+        this.links = links;
+        this.membership = membership;
+        this.caseAnalyses = caseAnalyses;
+        this.sampleRequests = sampleRequests;
+        this.samples = samples;
+        this.analyses = analyses;
+        this.tests = tests;
+        this.panels = panels;
+        this.programSamples = programSamples;
+        this.sites = sites;
+        this.sampleTypes = sampleTypes;
     }
 
     @Override
-    @Transactional
-    public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
-            String performedBy) {
-        return routeAnalysesForSampleItem(sampleItem, analyses, performedBy, null);
+    @Transactional(readOnly = true)
+    public List<MicroOrderDraftGrouping.Group> previewNewOrder(List<MicroOrderDraftGrouping.Selection> selections) {
+        return MicroOrderDraftGrouping.group(selections);
     }
 
     @Override
-    @Transactional
-    public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
-            String performedBy, MicroCaseOrderDetailRequestForm orderDetail) {
-        return routeAnalysesForSampleItem(sampleItem, analyses, performedBy, orderDetail, false);
+    public void routeOrder(Sample order, String actor) {
+        routeOrder(order, actor, null);
     }
 
     @Override
-    @Transactional
-    public List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses,
-            String performedBy, MicroCaseOrderDetailRequestForm orderDetail, boolean microbiologyProgramSelected) {
-        if (sampleItem == null || sampleItem.getId() == null || analyses == null || analyses.isEmpty()) {
-            return List.of();
-        }
-
-        MicroCaseOrderDetailRequestForm effectiveOrderDetail = orderDetail;
-        if (effectiveOrderDetail == null && sampleItem.getSample() != null && sampleItem.getSample().getId() != null) {
-            effectiveOrderDetail = orderDetailService.getOrderDraft(sampleItem.getSample().getId());
-        }
-
-        Map<MicroWorkflowType, List<Test>> testsByWorkflow = new LinkedHashMap<>();
-        for (Analysis analysis : analyses) {
-            Test test = analysis == null ? null : analysis.getTest();
-            MicroWorkflowType workflowType = workflowTypeFor(test);
-            if (workflowType != null) {
-                testsByWorkflow.computeIfAbsent(workflowType, ignored -> new ArrayList<>()).add(test);
+    public void routeOrder(Sample order, String actor, String cancelReason) {
+        requireOrder(order, actor);
+        cases.lockOrder(order.getId());
+        // Establish set-culture ownership before other work on the same bottles.
+        // Cancel requests that were removed from the order
+        for (MicroCase c : cases.getByOrder(order.getId())) {
+            for (org.openelisglobal.microbiology.valueholder.MicroCaseRequest req : membership
+                    .getCaseRequests(c.getId())) {
+                if (req.getCancelledAt() == null) {
+                    org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest str = sampleRequests
+                            .get(req.getSampleTypeRequestId());
+                    if (str == null || str
+                            .getStatus() == org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.CANCELLED
+                            || !ids(str.getRequestedTests()).contains(req.getTestId())) {
+                        membership.cancelRequest(req.getId(), cancelReason, actor);
+                    }
+                }
             }
         }
-        if (testsByWorkflow.isEmpty() && microbiologyProgramSelected) {
-            testsByWorkflow.put(fallbackWorkflowType(), analyses.stream().filter(java.util.Objects::nonNull)
-                    .map(Analysis::getTest).filter(java.util.Objects::nonNull).toList());
-        }
 
-        validateOrderDetail(effectiveOrderDetail, sampleItem);
-        Map<MicroWorkflowType, RoutingConfiguration> configurationsByWorkflow = new LinkedHashMap<>();
-        for (Map.Entry<MicroWorkflowType, List<Test>> entry : testsByWorkflow.entrySet()) {
-            MicroWorkflowType workflowType = entry.getKey();
-            String methodId = methodIdFor(entry.getValue());
-            MicroCultureSetup setup = workflowType == MicroWorkflowType.UNASSIGNED || methodId == null ? null
-                    : referenceService.getActiveCultureSetupForMethod(methodId, workflowType);
-            if (setup == null && workflowType != MicroWorkflowType.UNASSIGNED && methodId != null) {
-                throw new IllegalStateException("No active microbiology culture setup for method " + methodId
-                        + " and workflow " + workflowType.name());
+        List<RequestedTest> work = new ArrayList<>();
+        for (org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest request : sampleRequests
+                .getRequestsBySampleId(order.getId())) {
+            if (request
+                    .getStatus() == org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.CANCELLED)
+                continue;
+            Set<String> ids = ids(request.getRequestedTests());
+            for (String panelId : ids(request.getRequestedPanels())) {
+                for (var item : panels.getPanelItemsForPanel(panelId))
+                    ids.add(item.getTest().getId());
             }
-            configurationsByWorkflow.put(workflowType, new RoutingConfiguration(methodId, setup, entry.getValue()));
-        }
-
-        List<MicroCase> routedCases = new ArrayList<>();
-        for (Map.Entry<MicroWorkflowType, RoutingConfiguration> entry : configurationsByWorkflow.entrySet()) {
-            RoutingConfiguration configuration = entry.getValue();
-            MicroCase routedCase = caseService.createOrGetCase(sampleItem.getId(), entry.getKey(),
-                    configuration.methodId(), performedBy);
-            routedCases.add(routedCase);
-            linkPersistedAnalyses(routedCase, configuration.tests(), configuration.cultureSetup(), analyses);
-            if (effectiveOrderDetail != null) {
-                orderDetailService.saveOrderDetail(routedCase.getId(), effectiveOrderDetail, performedBy);
+            for (String testId : ids) {
+                Test test = tests.get(testId);
+                if (test == null)
+                    throw new IllegalArgumentException("Unknown requested test");
+                if (test.isOpensMicrobiologyCase())
+                    work.add(new RequestedTest(request, test));
             }
         }
-        return routedCases;
+        work.sort(Comparator.comparing(w -> !w.test.isCollectedInSets()));
+        for (RequestedTest selected : work)
+            routeRequest(selected.request, selected.test, actor);
+        List<Analysis> collected = new ArrayList<>();
+        for (SampleItem sample : samples.getSampleItemsBySampleId(order.getId())) {
+            if (!sample.isRejected())
+                collected.addAll(analyses.getAnalysesBySampleItem(sample));
+        }
+        collected.sort(Comparator.comparing(a -> !a.getTest().isCollectedInSets()));
+        for (Analysis analysis : collected)
+            routeAnalysis(analysis, actor);
     }
 
-    private MicroWorkflowType fallbackWorkflowType() {
-        if (defaultWorkflow.isEmpty()) {
-            return MicroWorkflowType.UNASSIGNED;
-        }
-        try {
-            MicroWorkflowType configured = MicroWorkflowType.valueOf(defaultWorkflow.toUpperCase());
-            if (configured == MicroWorkflowType.UNASSIGNED || configured == MicroWorkflowType.MYCOLOGY) {
-                throw new IllegalStateException("Unsupported default microbiology workflow: " + defaultWorkflow);
+    private void routeRequest(SampleTypeRequest request, Test test, String actor) {
+        MicroCaseRequest ownership = requests.getActiveByRequestAndTest(request.getId(), test.getId());
+        if (ownership == null) {
+            MicroCaseRoutingRule.requireCatalog(test);
+            if (test.isCollectedInSets() && request.getCultureSetNumber() == null) {
+                throw new IllegalArgumentException("A set number is required for a collected-in-sets test");
             }
-            return configured;
-        } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Unsupported default microbiology workflow: " + defaultWorkflow, e);
+            String key = request.getSampleItem() == null ? "request:" + request.getId()
+                    : "sample:" + request.getSampleItem().getId();
+            String siteId = sites.resolve(request.getSample(),
+                    request.getSampleItem() == null ? request.getCollectionLocationId()
+                            : request.getSampleItem().getCollectionLocationId(),
+                    test);
+            if (siteId != null && request.getCollectionLocationId() == null) {
+                request.setCollectionLocationId(siteId);
+                request.setSysUserId(actor);
+                sampleRequests.update(request);
+            }
+            MicroCase owner = owner(request.getSample(), request.getTypeOfSample().getId(), key, test, actor, siteId);
+            ownership = membership.ownRequest(owner.getId(), request.getId(), test.getId(), role(test),
+                    test.isCollectedInSets(), actor);
         }
+        if (request.getSampleItem() != null && ownership.getSampleItemId() == null) {
+            Analysis analysis = ownership.getCaseRole() == MicroCaseRole.CASE ? null
+                    : activeAnalysis(request.getSampleItem(), test.getId());
+            if (ownership.getCaseRole() != MicroCaseRole.CASE && analysis == null)
+                throw new IllegalStateException("Collected requested test has no analysis");
+            membership.fulfillRequest(ownership.getId(), request.getSampleItem().getId(),
+                    analysis == null ? null : analysis.getId(), actor);
+        }
+    }
+
+    private Analysis activeAnalysis(SampleItem sample, String testId) {
+        String cancelled = statuses
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
+        return analyses.getAnalysesBySampleItem(sample).stream().filter(
+                a -> testId.equals(a.getTest().getId()) && (cancelled == null || !cancelled.equals(a.getStatusId())))
+                .findFirst().orElse(null);
     }
 
     @Override
-    public boolean isMicrobiologyOrder(List<Test> tests, boolean microbiologyProgramSelected) {
-        if (microbiologyProgramSelected) {
-            return true;
-        }
-        if (tests == null) {
-            return false;
-        }
-        return tests.stream().anyMatch(test -> workflowTypeFor(test) != null);
-    }
-
-    private MicroWorkflowType workflowTypeFor(Test test) {
-        if (test == null || test.getCultureWorkflowType() == null || test.getCultureWorkflowType().trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return MicroWorkflowType.valueOf(test.getCultureWorkflowType());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("Unsupported microbiology workflow type: " + test.getCultureWorkflowType(),
-                    e);
-        }
-    }
-
-    private void validateOrderDetail(MicroCaseOrderDetailRequestForm orderDetail, SampleItem sampleItem) {
-        if (orderDetail == null) {
+    public void routeAnalysis(Analysis analysis, String actor) {
+        if (analysis == null || analysis.getTest() == null || analysis.getSampleItem() == null)
+            return;
+        String cancelled = statuses
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
+        if (cancelled != null && !cancelled.isBlank() && cancelled.equals(analysis.getStatusId()))
+            return;
+        Test test = tests.get(analysis.getTest().getId());
+        if (links.getActiveByAnalysisId(analysis.getId()) != null)
+            return;
+        if (test == null)
+            return;
+        if (!test.isOpensMicrobiologyCase()) {
+            if (analysis.getParentAnalysis() == null)
+                return;
+            var parent = links.getActiveByAnalysisId(analysis.getParentAnalysis().getId());
+            if (parent == null)
+                return;
+            MicroCase source = cases.getForUpdate(parent.getCaseId());
+            membership.addSample(source.getId(), analysis.getSampleItem().getId(), actor);
+            var link = caseAnalyses.linkAnalysis(source, analysis, null);
+            link.setCaseRole(MicroCaseRole.DIRECT);
+            link.setCollectedInSets(false);
+            link.setPlacement("INITIAL");
+            links.update(link);
             return;
         }
-        if (orderDetail.culturePurpose == null || orderDetail.culturePurpose.isBlank()) {
-            throw new IllegalArgumentException("Culture purpose is required for a new microbiology order");
-        }
-        try {
-            MicroCulturePurpose.valueOf(orderDetail.culturePurpose.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Unsupported culture purpose", exception);
-        }
-        if (orderDetail.numberOfSets != null && (orderDetail.numberOfSets < 1 || orderDetail.numberOfSets > 10)) {
-            throw new IllegalArgumentException("Number of culture sets must be between 1 and 10");
-        }
-        if (orderDetail.clinicalHistory != null && orderDetail.clinicalHistory.length() > 1000) {
-            throw new IllegalArgumentException("Clinical history must be 1000 characters or fewer");
-        }
-        if (orderDetail.admissionDate != null && !orderDetail.admissionDate.isBlank()
-                && !"OUTPATIENT".equalsIgnoreCase(orderDetail.patientOrigin)
-                && sampleItem.getCollectionDate() != null) {
-            LocalDate admissionDate;
-            try {
-                admissionDate = LocalDate.parse(orderDetail.admissionDate);
-            } catch (DateTimeParseException exception) {
-                throw new IllegalArgumentException("Admission date must be a valid ISO date", exception);
-            }
-            LocalDate collectionDate = sampleItem.getCollectionDate().toLocalDateTime().toLocalDate();
-            if (collectionDate.isBefore(admissionDate)) {
-                throw new IllegalArgumentException("Collection date cannot be before admission date");
-            }
-        }
+        MicroCaseRoutingRule.requireCatalog(test);
+        if (role(test) == MicroCaseRole.CASE)
+            throw new IllegalArgumentException("Case-role tests have no result analysis");
+        SampleItem sample = analysis.getSampleItem();
+        requireOrder(sample.getSample(), actor);
+        cases.lockOrder(sample.getSample().getId());
+        MicroCase owner = owner(sample.getSample(), sample.getTypeOfSampleId(), "sample:" + sample.getId(), test, actor,
+                sites.resolve(sample.getSample(), sample.getCollectionLocationId(), test));
+        membership.addSample(owner.getId(), sample.getId(), actor);
+        MicroCaseAnalysis link = caseAnalyses.linkAnalysis(owner, analysis, null);
+        link.setCaseRole(role(test));
+        link.setCollectedInSets(test.isCollectedInSets());
+        link.setPlacement("INITIAL");
+        links.update(link);
     }
 
-    private String methodIdFor(List<Test> tests) {
-        Test test = tests.get(0);
-        String defaultMethodId = testMethodService.getDefaultMethodId(test.getId());
-        if (defaultMethodId != null && !defaultMethodId.trim().isEmpty()) {
-            return defaultMethodId;
-        }
-        Method legacyMethod = test.getMethod();
-        return legacyMethod == null || legacyMethod.getId() == null || legacyMethod.getId().trim().isEmpty() ? null
-                : legacyMethod.getId();
+    @Override
+    public void routeCaseTest(SampleItem sample, Test test, String actor) {
+        routeCaseTest(sample.getSample(), sample.getTypeOfSampleId(), sample, test, actor);
     }
 
-    private void linkPersistedAnalyses(MicroCase microCase, List<Test> routedTests, MicroCultureSetup cultureSetup,
-            List<Analysis> analyses) {
-        List<String> routedTestIds = routedTests.stream().map(Test::getId).toList();
-        for (Analysis analysis : analyses) {
-            Test test = analysis == null ? null : analysis.getTest();
-            if (test == null || !routedTestIds.contains(test.getId()) || analysis.getId() == null
-                    || analysis.getId().trim().isEmpty()) {
+    @Override
+    public void routeCaseTest(Sample order, String sampleTypeId, SampleItem sample, Test test, String actor) {
+        requireOrder(order, actor);
+        if (sample != null && (!order.getId().equals(sample.getSample().getId())
+                || !sampleTypeId.equals(sample.getTypeOfSampleId())))
+            throw new IllegalArgumentException("Case work must use a sample of its requested type and order");
+        var type = sampleTypes.get(sampleTypeId);
+        if (type == null)
+            throw new IllegalArgumentException("Unknown requested sample type");
+        MicroCaseRoutingRule.requireCatalog(test);
+        if (role(test) != MicroCaseRole.CASE)
+            throw new IllegalArgumentException("A case-role test is required");
+        cases.lockOrder(order.getId());
+        SampleTypeRequest requested = sampleRequests.getRequestsBySampleId(order.getId()).stream()
+                .filter(r -> r.getStatus() != SampleTypeRequest.Status.CANCELLED
+                        && sampleTypeId.equals(r.getTypeOfSample().getId())
+                        && (sample == null ? r.getSampleItem() == null
+                                : r.getSampleItem() != null && sample.getId().equals(r.getSampleItem().getId())))
+                .findFirst().orElse(null);
+        if (requested == null) {
+            requested = new SampleTypeRequest();
+            requested.setSample(order);
+            requested.setTypeOfSample(type);
+            requested.setSampleItem(sample);
+            requested.setStatus(
+                    sample == null ? SampleTypeRequest.Status.REQUESTED : SampleTypeRequest.Status.COLLECTED);
+            requested.setCreatedDate(new java.sql.Timestamp(System.currentTimeMillis()));
+            requested.setSysUserId(actor);
+            requested.setRequestedTests(test.getId());
+            sampleRequests.insert(requested);
+        } else {
+            Set<String> selected = ids(requested.getRequestedTests());
+            selected.add(test.getId());
+            requested.setRequestedTests(String.join(",", selected));
+            requested.setSysUserId(actor);
+            sampleRequests.update(requested);
+        }
+        routeRequest(requested, test, actor);
+    }
+
+    private MicroCase owner(Sample order, String typeId, String sampleKey, Test test, String actor, String siteId) {
+        var candidates = candidates(order.getId());
+        var chosen = MicroCaseRoutingRule.choose(candidates, test.getTestSection().getId(), typeId,
+                test.isCollectedInSets() ? test.getId() : null, sampleKey, siteId);
+        if (chosen != null)
+            return cases.get(chosen.caseId).orElseThrow();
+        MicroCase created = new MicroCase();
+        created.setSampleId(order.getId());
+        created.setSampleTypeId(typeId);
+        created.setLabUnitId(test.getTestSection().getId());
+        created.setCreatedBy(actor);
+        created.setSiteId(siteId);
+        var orderProgram = programSamples.getProgrammeSampleBySample(Integer.valueOf(order.getId()), null);
+        if (orderProgram != null && orderProgram.getProgram().isShowOnMicroCase()) {
+            created.setProgramId(orderProgram.getProgram().getId());
+        }
+        cases.insert(created);
+        return created;
+    }
+
+    public List<MicroCaseRoutingRule.Candidate> candidates(String orderId) {
+        List<MicroCaseRoutingRule.Candidate> result = new ArrayList<>();
+        for (MicroCase c : cases.getByOrder(orderId)) {
+            if (c.getStatus() != MicroCaseStatus.ACTIVE)
                 continue;
+            var candidate = new MicroCaseRoutingRule.Candidate(c.getId(), c.getLabUnitId(), c.getSampleTypeId(),
+                    c.getSiteId());
+            for (var member : membership.getCaseSamples(c.getId())) {
+                if (member.getSplitOutAt() == null)
+                    candidate.samples.add("sample:" + member.getSampleItemId());
             }
-            caseAnalysisService.linkAnalysis(microCase, analysis, cultureSetup);
+            for (var request : membership.getCaseRequests(c.getId())) {
+                if (request.getCancelledAt() != null)
+                    continue;
+                candidate.samples.add("request:" + request.getSampleTypeRequestId());
+                if (request.isCollectedInSets())
+                    candidate.setsTests.add(request.getTestId());
+            }
+            for (var link : links.getByCaseId(c.getId())) {
+                if (link.getCancelledAt() == null && Boolean.TRUE.equals(link.getCollectedInSets())) {
+                    Analysis analysis = analyses.get(link.getAnalysisId());
+                    candidate.setsTests.add(analysis.getTest().getId());
+                }
+            }
+            result.add(candidate);
         }
+        return result;
     }
 
-    private record RoutingConfiguration(String methodId, MicroCultureSetup cultureSetup, List<Test> tests) {
+    private static Set<String> ids(String csv) {
+        Set<String> result = new LinkedHashSet<>();
+        if (csv != null)
+            Arrays.stream(csv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).forEach(result::add);
+        return result;
+    }
+
+    private static MicroCaseRole role(Test test) {
+        return MicroCaseRole.valueOf(test.getMicrobiologyCaseRole());
+    }
+
+    private static void requireOrder(Sample order, String actor) {
+        if (order == null || order.getId() == null)
+            throw new IllegalArgumentException("A persisted order is required");
+        MicroCaseServiceImpl.requireText(actor, "actor");
+    }
+
+    private record RequestedTest(SampleTypeRequest request, Test test) {
     }
 }

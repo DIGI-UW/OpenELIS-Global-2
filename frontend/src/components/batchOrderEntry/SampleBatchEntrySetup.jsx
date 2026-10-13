@@ -27,6 +27,7 @@ import {
 } from "../utils/Utils";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import SampleBatchEntry from "./SampleBatchEntry";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 // Each study form maps its checkbox ids to project-data flags; the study's
 // single test is ordered exactly when its own flag is ticked.
@@ -441,11 +442,12 @@ const SampleBatchEntrySetup = () => {
                   <Column lg={8}></Column>
                   <Column lg={10} md={6} sm={4}>
                     <Select
+                      {...requiredProps()}
                       id="form-dropdown"
                       labelText={
                         <>
                           <FormattedMessage id="order.form.label" />
-                          <span className="requiredlabel">*</span>
+                          <RequiredMarker />
                         </>
                       }
                       onChange={handleFormChange}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-lead-time.xml">
+
+    <!-- OGC-438: per-item lead time for the board's order-by date -->
+    <changeSet id="OGC-438-add-lead-time-to-inventory-item" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="lead_time_days" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="lead_time_days" type="INT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="lead_time_days" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

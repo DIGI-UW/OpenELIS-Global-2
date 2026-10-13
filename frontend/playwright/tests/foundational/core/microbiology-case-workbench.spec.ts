@@ -1,8 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
-import {
-  seedMicrobiologyCase,
-  seedMicrobiologyClassificationCase,
-} from "../../../helpers/seed-microbiology-data";
+import { seedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const selectConfiguredOption = async (
@@ -161,12 +158,9 @@ test.describe("Microbiology case workbench", () => {
         "Case fixture must provide an organism for identification",
       );
     }
-    await page.goto(
-      `/Microbiology/cases/${seeded.caseId}?workflow=BACTERIOLOGY&sort=newest`,
-      {
-        waitUntil: "commit",
-      },
-    );
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?sort=newest`, {
+      waitUntil: "commit",
+    });
 
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
@@ -345,73 +339,6 @@ test.describe("Microbiology case workbench", () => {
     await expect(page).toHaveURL(/section=timeline/);
     await expect(page.getByText(/Isolate Created/)).toBeVisible();
     await expect(page.getByText(/Isolate Updated/)).toBeVisible();
-  });
-
-  test("classifies unassigned work before profile-specific actions", async ({
-    page,
-  }) => {
-    const seeded = await seedMicrobiologyClassificationCase(page);
-    if (!seeded.siblingCaseId || !seeded.methodId) {
-      throw new Error(
-        "R1 classification fixture must provide a sibling case and compatible culture method",
-      );
-    }
-    await page.goto(
-      `/Microbiology/cases/${seeded.caseId}?workflow=UNASSIGNED&sort=newest&section=ast`,
-      { waitUntil: "commit" },
-    );
-
-    await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(page).toHaveURL(
-      new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?workflow=UNASSIGNED&sort=newest&section=case-info$`,
-      ),
-    );
-    await expect(
-      page.getByText("Workflow classification required"),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Inoculation", exact: true }),
-    ).toBeDisabled();
-    await expect(page.getByLabel("Bacteriology (Received)")).toHaveAttribute(
-      "href",
-      new RegExp(`/Microbiology/cases/${seeded.siblingCaseId}`),
-    );
-
-    await page
-      .getByLabel("Workflow", { exact: true })
-      .selectOption("MYCOBACTERIOLOGY_TB");
-    await expect(
-      page.getByLabel("Culture Protocol", { exact: true }),
-    ).toBeEnabled();
-    await page
-      .getByLabel("Culture Protocol", { exact: true })
-      .selectOption(seeded.methodId);
-    await page
-      .getByLabel("Reason for change")
-      .fill("Corrected during accession review");
-    await page.getByRole("button", { name: "Apply workflow" }).click();
-
-    await expect(
-      page.getByText("Workflow classification required"),
-    ).toBeHidden();
-    await expect(
-      page.locator("header").getByText("Mycobacteriology/TB"),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Inoculation", exact: true }),
-    ).toBeEnabled();
-    await page.getByRole("button", { name: "Timeline", exact: true }).click();
-    await expect(page).toHaveURL(/section=timeline/);
-    const timeline = page.getByTestId("microbiology-timeline-card");
-    await expect(
-      timeline.getByText(/Corrected during accession review/),
-    ).toBeVisible();
-    await expect(
-      timeline.getByText("Workflow Changed", { exact: true }),
-    ).toBeVisible();
   });
 
   test("reports an NCE and marks a separate specimen lost", async ({

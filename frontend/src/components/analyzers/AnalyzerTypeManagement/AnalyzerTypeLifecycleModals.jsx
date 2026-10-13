@@ -613,7 +613,10 @@ const UpdateSharedProfileModal = ({
           { count: profile.usedBy, revision: profile.revision },
         )}
       </p>
-      <AffectedAnalyzerList analyzers={profile.affectedAnalyzers} />
+      <AffectedAnalyzerList
+        analyzers={profile.affectedAnalyzers}
+        revision={profile.revision}
+      />
     </Modal>
   );
 };

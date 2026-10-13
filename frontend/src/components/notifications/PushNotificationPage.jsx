@@ -13,6 +13,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import AutoComplete from "../common/AutoComplete";
+import { RequiredMarker } from "../common/RequiredMarker";
 
 export default function PushNotificationPage() {
   const [data, setData] = useState({
@@ -126,7 +127,7 @@ export default function PushNotificationPage() {
             style={{ display: "block", marginBottom: "5px" }}
           >
             <FormattedMessage id="notify.user.by" />
-            <span style={{ color: "red", marginLeft: "5px" }}>*</span>
+            <RequiredMarker />
           </label>
           <Column lg={8} md={4} sm={4}>
             <AutoComplete

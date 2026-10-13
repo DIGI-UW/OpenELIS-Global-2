@@ -29,7 +29,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyQualificationDataServiceTest {
@@ -99,7 +98,7 @@ public class MicrobiologyQualificationDataServiceTest {
         MicroAstPanel panel = new MicroAstPanel();
         panel.setId("panel-generated");
         panel.setName("Gram negative AST panel (UAT)");
-        when(referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY)).thenReturn(List.of(panel));
+        when(referenceService.getActiveAstPanels(null)).thenReturn(List.of(panel));
         MicroBreakpointStandard standard = new MicroBreakpointStandard();
         standard.setId("standard-generated");
         standard.setAuthority("CLSI");

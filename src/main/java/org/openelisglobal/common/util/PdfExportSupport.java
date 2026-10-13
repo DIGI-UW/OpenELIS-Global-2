@@ -1,16 +1,6 @@
 package org.openelisglobal.common.util;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.ColumnText;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfPageEventHelper;
-import com.itextpdf.text.pdf.PdfWriter;
+import java.awt.Color;
 import java.io.OutputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -18,6 +8,18 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.Rectangle;
+import org.openpdf.text.pdf.ColumnText;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfPageEventHelper;
+import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * Pieces every compliance export shares: the row cap, the validated date
@@ -35,7 +37,7 @@ public final class PdfExportSupport {
     public static final int MAX_EXPORT_ROWS = 10000;
 
     private static final long MAX_EXPORT_DATE_RANGE_DAYS = 366;
-    private static final BaseColor HEADER_BACKGROUND = new BaseColor(51, 102, 179);
+    private static final Color HEADER_BACKGROUND = new Color(51, 102, 179);
 
     private PdfExportSupport() {
     }
@@ -73,11 +75,12 @@ public final class PdfExportSupport {
      * Open the document onto the stream with a page number on the footer of every
      * page, worded by the given message key.
      */
-    public static void openWithPageNumbers(Document document, OutputStream out, String pageMessageKey)
+    public static PdfWriter openWithPageNumbers(Document document, OutputStream out, String pageMessageKey)
             throws DocumentException {
         PdfWriter writer = PdfWriter.getInstance(document, out);
         writer.setPageEvent(new PageNumberFooter(pageMessageKey));
         document.open();
+        return writer;
     }
 
     /**
@@ -95,12 +98,38 @@ public final class PdfExportSupport {
     /** The blue, centred header row shared by the export tables. */
     public static void addHeaderRow(PdfPTable table, Font font, float padding, String... headers) {
         for (String header : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(header, font));
-            cell.setBackgroundColor(HEADER_BACKGROUND);
-            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(padding);
-            table.addCell(cell);
+            table.addCell(headerCell(header, font, padding));
         }
+    }
+
+    /** One cell of that header row, for headers that span rows or columns. */
+    public static PdfPCell headerCell(String header, Font font, float padding) {
+        PdfPCell cell = new PdfPCell(new Phrase(header, font));
+        cell.setBackgroundColor(HEADER_BACKGROUND);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setPadding(padding);
+        return cell;
+    }
+
+    /**
+     * The paper size reports print on: Letter when the site is configured for it,
+     * otherwise A4.
+     */
+    public static Rectangle pageSize() {
+        return isLetterPaper() ? PageSize.LETTER : PageSize.A4;
+    }
+
+    /**
+     * The next paper size up (A3 or Tabloid), for a report too wide for the site's
+     * paper.
+     */
+    public static Rectangle largePageSize() {
+        return isLetterPaper() ? PageSize.TABLOID : PageSize.A3;
+    }
+
+    private static boolean isLetterPaper() {
+        return "Letter".equalsIgnoreCase(ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.REPORT_PAPER_SIZE));
     }
 
     /** The configured site name for the report heading, never null. */
@@ -111,7 +140,7 @@ public final class PdfExportSupport {
 
     /** Footer with page number on every page of a PDF export (CAP layout). */
     private static class PageNumberFooter extends PdfPageEventHelper {
-        private static final Font FOOTER_FONT = new Font(Font.FontFamily.HELVETICA, 8);
+        private static final Font FOOTER_FONT = new Font(Font.HELVETICA, 8);
 
         private final String pageMessageKey;
 

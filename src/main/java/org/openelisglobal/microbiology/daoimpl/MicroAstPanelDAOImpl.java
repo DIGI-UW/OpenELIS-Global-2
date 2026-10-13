@@ -31,12 +31,17 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<MicroAstPanel> getActivePanelsByWorkflowType(String workflowType) {
-        Query<MicroAstPanel> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroAstPanel p where p.isActive = 'Y' and p.isCurrent = 'Y' and p.workflowType = :workflowType"
-                        + " order by p.name",
+    public List<MicroAstPanel> getActivePanelsByOrganismGroup(String organismGroup) {
+        StringBuilder hql = new StringBuilder("from MicroAstPanel p where p.isActive = 'Y' and p.isCurrent = 'Y'");
+        if (organismGroup != null && !organismGroup.isBlank()) {
+            hql.append(" and p.organismGroup = :organismGroup");
+        }
+        hql.append(" order by p.name");
+        Query<MicroAstPanel> query = entityManager.unwrap(Session.class).createQuery(hql.toString(),
                 MicroAstPanel.class);
-        query.setParameter("workflowType", workflowType);
+        if (organismGroup != null && !organismGroup.isBlank()) {
+            query.setParameter("organismGroup", organismGroup);
+        }
         return query.list();
     }
 
@@ -51,13 +56,14 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<MicroAstPanel> search(String q, String status, String workflow, String sort, int offset, int limit) {
+    public List<MicroAstPanel> search(String q, String status, String organismGroup, String sort, int offset,
+            int limit) {
         Query<MicroAstPanel> query = entityManager.unwrap(Session.class)
-                .createQuery("from MicroAstPanel p" + searchWhere(q, status, workflow)
+                .createQuery("from MicroAstPanel p" + searchWhere(q, status, organismGroup)
                         + ("name-desc".equals(sort) ? " order by lower(p.name) desc, p.versionNumber desc"
                                 : " order by lower(p.name) asc, p.versionNumber desc"),
                         MicroAstPanel.class);
-        setSearchParameters(query, q, status, workflow);
+        setSearchParameters(query, q, status, organismGroup);
         query.setFirstResult(offset);
         query.setMaxResults(limit);
         return query.list();
@@ -65,14 +71,14 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public long countSearch(String q, String status, String workflow) {
-        Query<Long> query = entityManager.unwrap(Session.class)
-                .createQuery("select count(p.id) from MicroAstPanel p" + searchWhere(q, status, workflow), Long.class);
-        setSearchParameters(query, q, status, workflow);
+    public long countSearch(String q, String status, String organismGroup) {
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(
+                "select count(p.id) from MicroAstPanel p" + searchWhere(q, status, organismGroup), Long.class);
+        setSearchParameters(query, q, status, organismGroup);
         return query.getSingleResult();
     }
 
-    private String searchWhere(String q, String status, String workflow) {
+    private String searchWhere(String q, String status, String organismGroup) {
         StringBuilder hql = new StringBuilder(" where 1 = 1");
         if (q != null && !q.isBlank()) {
             hql.append(" and lower(p.name) like :q");
@@ -80,21 +86,21 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
         if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
             hql.append(" and p.isActive = :active");
         }
-        if (workflow != null && !workflow.isBlank()) {
-            hql.append(" and p.workflowType = :workflow");
+        if (organismGroup != null && !organismGroup.isBlank()) {
+            hql.append(" and p.organismGroup = :organismGroup");
         }
         return hql.toString();
     }
 
-    private void setSearchParameters(Query<?> query, String q, String status, String workflow) {
+    private void setSearchParameters(Query<?> query, String q, String status, String organismGroup) {
         if (q != null && !q.isBlank()) {
             query.setParameter("q", "%" + q.trim().toLowerCase(java.util.Locale.ROOT) + "%");
         }
         if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
             query.setParameter("active", "ACTIVE".equalsIgnoreCase(status) ? "Y" : "N");
         }
-        if (workflow != null && !workflow.isBlank()) {
-            query.setParameter("workflow", workflow.trim().toUpperCase(java.util.Locale.ROOT));
+        if (organismGroup != null && !organismGroup.isBlank()) {
+            query.setParameter("organismGroup", organismGroup.trim());
         }
     }
 }

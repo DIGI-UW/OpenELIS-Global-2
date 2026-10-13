@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,11 +37,11 @@ public class AnalyzerConnectionProbeService {
 
     public AnalyzerConnectionProbeView probe(String analyzerId) {
         String exactAnalyzerId = requireText(analyzerId, "analyzer.testConnection.analyzerIdMissing");
-        Analyzer analyzer = analyzerService.getWithBinding(exactAnalyzerId)
+        Analyzer analyzer = analyzerService.getWithMapping(exactAnalyzerId)
                 .orElseThrow(() -> new AnalyzerConnectionProbeException("analyzer.testConnection.analyzerNotFound"));
         String connectionId = requireText(analyzer.getBridgeConnectionId(),
                 "analyzer.testConnection.bridge.connectionMissing");
-        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin profile = analyzer.getPinnedProfile();
         if (profile == null) {
             throw new AnalyzerConnectionProbeException("analyzer.testConnection.bridge.profileMissing");
         }
@@ -61,8 +61,8 @@ public class AnalyzerConnectionProbeService {
         }
     }
 
-    private static void requireMatchingConnection(String analyzerId, String connectionId,
-            AnalyzerProfileBinding profile, ObjectNode connection) {
+    private static void requireMatchingConnection(String analyzerId, String connectionId, AnalyzerProfilePin profile,
+            ObjectNode connection) {
         JsonNode profileRef = connection.path("profileRef");
         if (!connectionId.equals(connection.path("connectionId").asText())
                 || !analyzerId.equals(connection.path("clientAnalyzerId").asText())
@@ -71,7 +71,7 @@ public class AnalyzerConnectionProbeService {
         }
     }
 
-    private static void requireMatchingEvidence(String connectionId, AnalyzerProfileBinding profile, int configRevision,
+    private static void requireMatchingEvidence(String connectionId, AnalyzerProfilePin profile, int configRevision,
             String configFingerprint, String requestId, ObjectNode evidence) {
         if (!connectionId.equals(evidence.path("connectionId").asText())
                 || !requestId.equals(evidence.path("requestId").asText())
@@ -83,7 +83,7 @@ public class AnalyzerConnectionProbeService {
         }
     }
 
-    private static boolean matchesProfile(AnalyzerProfileBinding profile, JsonNode profileRef) {
+    private static boolean matchesProfile(AnalyzerProfilePin profile, JsonNode profileRef) {
         return Objects.equals(profile.getProfileId(), profileRef.path("profileId").asText(null))
                 && profile.getProfileRevision() == profileRef.path("revision").asInt(0)
                 && Objects.equals(profile.getProfileFingerprint(), profileRef.path("fingerprint").asText(null));

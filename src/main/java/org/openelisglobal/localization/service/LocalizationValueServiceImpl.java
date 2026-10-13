@@ -168,6 +168,12 @@ public class LocalizationValueServiceImpl extends BaseObjectServiceImpl<Localiza
     @Override
     @Transactional
     public LocalizationValue setTranslation(String localizationId, String locale, String value, String sysUserId) {
+        LocalizationValue saved = saveTranslation(localizationId, locale, value, sysUserId);
+        localizationDAO.syncStoredTestNames(localizationId);
+        return saved;
+    }
+
+    private LocalizationValue saveTranslation(String localizationId, String locale, String value, String sysUserId) {
         return getByLocalizationIdAndLocale(localizationId, locale).map(lv -> {
             lv.setValue(value);
             lv.setSysUserId(sysUserId);

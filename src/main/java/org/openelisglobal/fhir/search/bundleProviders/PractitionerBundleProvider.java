@@ -8,15 +8,11 @@ import java.util.Objects;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Practitioner;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.PractitionerSearchParams;
 import org.openelisglobal.provider.valueholder.Provider;
-import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
-import org.openelisglobal.search.dao.ObservationSearchDao;
 import org.openelisglobal.search.dao.PractitionerSearchDao;
 import org.openelisglobal.search.dao.ServiceRequestSearchDao;
 import org.openelisglobal.search.service.SampleHumanSearchDao;
@@ -31,14 +27,11 @@ public class PractitionerBundleProvider extends BaseFhirBundleProvider<Provider,
 
     private final ServiceRequestSearchDao serviceRequestSearchDao;
 
-    private final ObservationSearchDao observationSearchDao;
-
     private final FhirTransformService fhirTransformService;
 
     public PractitionerBundleProvider(PractitionerSearchParams searchParams,
             PractitionerSearchDao practitionerSearchDao, SampleHumanSearchDao sampleHumanSearchDao,
-            ServiceRequestSearchDao serviceRequestSearchDao, ObservationSearchDao observationSearchDao,
-            FhirTransformService fhirTransformService) {
+            ServiceRequestSearchDao serviceRequestSearchDao, FhirTransformService fhirTransformService) {
 
         this.searchParams = searchParams;
 
@@ -50,8 +43,6 @@ public class PractitionerBundleProvider extends BaseFhirBundleProvider<Provider,
 
         this.serviceRequestSearchDao = Objects.requireNonNull(serviceRequestSearchDao,
                 "ServiceRequestSearchDao must not be null");
-        this.observationSearchDao = Objects.requireNonNull(observationSearchDao,
-                "ObservationSearchDao must not be null");
 
         this.fhirTransformService = Objects.requireNonNull(fhirTransformService,
                 "FhirTransformService must not be null");
@@ -105,9 +96,7 @@ public class PractitionerBundleProvider extends BaseFhirBundleProvider<Provider,
 
         boolean wantsServiceRequests = searchParams != null
                 && searchParams.hasRevInclude(FhirConstants.SERVICE_REQUEST_REQUESTER_REV_INCLUDE);
-        boolean wantsObservations = searchParams != null
-                && searchParams.hasRevInclude(FhirConstants.OBSERVATION_PERFORMER_REV_INCLUDE);
-        if (providers.isEmpty() || !(wantsServiceRequests || wantsObservations)) {
+        if (providers.isEmpty() || !wantsServiceRequests) {
             return resources;
         }
         int matchCount = resources.size();
@@ -118,21 +107,8 @@ public class PractitionerBundleProvider extends BaseFhirBundleProvider<Provider,
         }
         List<Analysis> analyses = serviceRequestSearchDao.findBySampleHumans(sampleHumans);
 
-        if (wantsServiceRequests) {
-            analyses.stream().map(analysis -> fhirTransformService.transformToServiceRequest(analysis.getId()))
-                    .filter(Objects::nonNull).forEach(resources::add);
-        }
-        if (wantsObservations) {
-            List<String> analysisIds = analyses.stream().map(Analysis::getId).toList();
-            for (Result result : observationSearchDao.findByAnalysisIds(analysisIds)) {
-                try {
-                    resources.add(fhirTransformService.transformResultToObservation(result));
-                } catch (FhirTransformationException e) {
-                    LogEvent.logWarn(getClass().getSimpleName(), "getResources",
-                            "skipping Observation for result " + result.getId() + ": " + e.getMessage());
-                }
-            }
-        }
+        analyses.stream().map(analysis -> fhirTransformService.transformToServiceRequest(analysis.getId()))
+                .filter(Objects::nonNull).forEach(resources::add);
 
         resources.subList(matchCount, resources.size()).forEach(
                 resource -> ResourceMetadataKeyEnum.ENTRY_SEARCH_MODE.put(resource, BundleEntrySearchModeEnum.INCLUDE));

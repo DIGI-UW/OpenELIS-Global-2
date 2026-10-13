@@ -229,6 +229,46 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void recordReadingRejectsAValueWithAHugeExponent() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setTechnique(MicroAstTechnique.VITEK_2.name());
+        run.setMethod(MicroAstMethod.MIC.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+
+        try {
+            service.recordReading("run-1", "abx-1", new BigDecimal("1E+999999999"), "1");
+            fail("Expected an unbounded value to be refused");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("AST_RAW_VALUE_INVALID", expected.getMessage());
+        }
+        verify(readingDAO, never()).insert(any(MicroAstReading.class));
+    }
+
+    @Test
+    public void analyzerResultsRejectAValueWithAHugeExponentBeforeRecordingAnything() {
+        MicroAstRun run = awaitingAnalyzerRun();
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+
+        try {
+            service.applyAnalyzerResults(new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", "v9.02",
+                    "org-analyzer", "E. coli", new BigDecimal("99.5"), List.of(), "qc-1", true, new Timestamp(1000),
+                    new Timestamp(2000), List.of(),
+                    List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("4"), "ug/mL", null, "r-1"),
+                            new MicroAstAnalyzerReading("abx-2", new BigDecimal("1E-999999999"), "ug/mL", null,
+                                    "r-2"))),
+                    "1");
+            fail("Expected an unbounded value to be refused");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("AST_RAW_VALUE_INVALID", expected.getMessage());
+        }
+        verify(readingDAO, never()).insert(any(MicroAstReading.class));
+        verify(runDAO, never()).update(any(MicroAstRun.class));
+    }
+
+    @Test
     public void recordReadingRejectsARunThatIsAlreadyReviewed() {
         MicroAstRun run = reviewedRun("run-1");
         run.setTechnique(MicroAstTechnique.VITEK_2.name());

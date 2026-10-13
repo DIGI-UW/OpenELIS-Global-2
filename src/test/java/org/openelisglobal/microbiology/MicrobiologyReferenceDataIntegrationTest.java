@@ -48,7 +48,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.report.ReportingData;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
@@ -155,7 +154,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     }
 
     @Test
-    public void activeReferenceLookupsReturnOnlyTheRequestedWorkflow() {
+    public void activeReferenceLookupsReturnTheFixtureData() {
         assertEquals(referenceData.organism().getDisplayName(),
                 referenceService.getActiveOrganisms().stream()
                         .filter(organism -> organism.getId().equals(referenceData.organism().getId())).findFirst()
@@ -165,19 +164,9 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
                         .filter(antibiotic -> antibiotic.getId().equals(referenceData.antibiotic().getId())).findFirst()
                         .orElseThrow().getDisplayName());
         assertEquals(referenceData.panel().getId(),
-                referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
+                referenceService.getActiveAstPanels("Enterobacterales").stream()
                         .filter(panel -> panel.getId().equals(referenceData.panel().getId())).findFirst().orElseThrow()
                         .getId());
-        assertEquals(0, referenceService.getActiveAstPanels(MicroWorkflowType.MYCOLOGY).size());
-        assertEquals(referenceData.cultureSetup().getId(),
-                referenceService.getActiveCultureSetupForMethod(methodId, MicroWorkflowType.BACTERIOLOGY).getId());
-    }
-
-    @Test
-    public void referenceFixtureReusesCultureSetupForTheSameMethodAndWorkflow() {
-        ReferenceData repeated = fixtures.createReferenceData(methodId);
-
-        assertEquals(referenceData.cultureSetup().getId(), repeated.cultureSetup().getId());
     }
 
     @Test
@@ -216,7 +205,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
                 .filter(antibiotic -> "CIPUAT".equals(antibiotic.getWhonetCode())).count());
         assertEquals(1L, referenceService.getActiveAntibiotics().stream()
                 .filter(antibiotic -> "GENUAT".equals(antibiotic.getWhonetCode())).count());
-        assertEquals(1L, referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
+        assertEquals(1L, referenceService.getActiveAstPanels(null).stream()
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).count());
     }
 
@@ -272,7 +261,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
                 "MALDI_TOF", new BigDecimal("99.5"), performedBy);
         MicroBreakpointStandard standard = breakpointService.getActiveStandard("CLSI", "2026");
-        String panelId = referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
+        String panelId = referenceService.getActiveAstPanels(null).stream()
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).findFirst().orElseThrow()
                 .getId();
         MicroAntibiotic ciprofloxacin = uatAntibiotic("CIPUAT");

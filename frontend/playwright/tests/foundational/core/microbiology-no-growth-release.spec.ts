@@ -149,9 +149,6 @@ test.describe("Microbiology no-growth review and release", () => {
       timeout: LONG_TIMEOUT,
     });
     await expect(
-      page.getByRole("button", { name: "Change protocol" }),
-    ).toBeDisabled();
-    await expect(
       page.getByRole("button", { name: "Start inoculation" }),
     ).toBeDisabled();
     await expect(

@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,16 +15,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerTypeCatalogServiceTest {
@@ -34,44 +30,31 @@ public class AnalyzerTypeCatalogServiceTest {
     private BridgeProfileCatalogService bridgeCatalogService;
 
     @Mock
-    private AnalyzerProfileBindingDAO bindingDAO;
-
-    @Mock
-    private AnalyzerSiteBindingService siteBindingService;
+    private AnalyzerMappingDAO mappingDAO;
 
     @Mock
     private AnalyzerMappingCatalogService mappingCatalogService;
+
+    @Mock
+    private TestResultService testResultService;
 
     private AnalyzerTypeCatalogService service;
 
     @Before
     public void setUp() {
-        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest()));
-        when(mappingCatalogService.getActiveResultOptions("100"))
-                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("200", "POS", "Positive")));
-        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, bindingDAO, siteBindingService,
-                mappingCatalogService);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
+        when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(answers());
+        when(testResultService.getActiveTestResultsByTest("100")).thenReturn(List.of(numericResult()));
+        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
+                new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService);
     }
 
     @Test
     public void getCatalogComposesPortableMetadataWithLocalUsageAndHonestCompleteness() throws Exception {
-        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
-        binding.setId("41");
-        binding.setProfileId("site.mock-hematology");
-        binding.setProfileRevision(3);
-        AnalyzerProfileBinding previousBinding = new AnalyzerProfileBinding();
-        previousBinding.setId("40");
-        previousBinding.setProfileId("site.mock-hematology");
-        previousBinding.setProfileRevision(2);
-        when(bindingDAO.getAll()).thenReturn(List.of(previousBinding, binding));
-        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
-                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", binding, 2),
-                        analyzer("502", "Hematology - Night Bench", binding, 1),
-                        analyzer("503", "Hematology - Reference Lab", previousBinding, 1)));
-        when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(
+                List.of(analyzer("501", "Hematology - Main Lab", 3, 2), analyzer("502", "Hematology - Night Bench", 2, 1),
+                        analyzer("503", "Hematology - Reference Lab", 1, 1)));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
         AnalyzerTypeCatalogView result = service.getCatalog();
@@ -95,22 +78,24 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("LIS2-A2", serializedActive.path("protocolVersion").asText());
         assertEquals("BOTH", serializedActive.path("communicationMode").asText());
         assertFalse(serializedActive.has("instanceDefaults"));
+        assertFalse("A type no longer owns a mapping", serializedActive.has("mappingId"));
         assertEquals(2, active.testMappings().total());
-        assertEquals(1, active.testMappings().mapped());
-        assertEquals(1, active.testMappings().excluded());
+        assertEquals(2, active.testMappings().mapped());
         assertEquals("COMPLETE", active.testMappings().state());
         assertEquals(2, active.resultMappings().total());
-        assertEquals(1, active.resultMappings().mapped());
-        assertEquals(1, active.resultMappings().excluded());
+        assertEquals(2, active.resultMappings().mapped());
         assertEquals("COMPLETE", active.resultMappings().state());
-        assertEquals("51", active.siteBindingId());
         assertEquals(3L, active.usedBy());
         assertEquals(List.of("Hematology - Main Lab", "Hematology - Night Bench", "Hematology - Reference Lab"),
                 active.affectedAnalyzers().stream().map(AnalyzerTypeCatalogView.AffectedAnalyzer::name).toList());
         assertEquals(List.of(false, true, true), active.affectedAnalyzers().stream()
-                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::updateAvailable).toList());
-        assertEquals(List.of(3, 3, 2), active.affectedAnalyzers().stream()
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::newerProfileRevision).toList());
+        assertEquals(List.of(false, false, false), active.affectedAnalyzers().stream()
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::newerMappingRevision).toList());
+        assertEquals(List.of(3, 2, 1), active.affectedAnalyzers().stream()
                 .map(AnalyzerTypeCatalogView.AffectedAnalyzer::pinnedProfileRevision).toList());
+        assertEquals(List.of(2, 1, 1), active.affectedAnalyzers().stream()
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::pinnedMappingRevision).toList());
         assertEquals("READY", active.readiness());
 
         AnalyzerTypeCatalogView.TypeSummary inactive = result.types().get(1);
@@ -125,18 +110,11 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     @Test
-    public void getCatalogKeepsUnresolvedLatestRowsVisibleAsIncompleteAttention() throws Exception {
-        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
-        binding.setId("41");
-        binding.setProfileId("site.mock-hematology");
-        binding.setProfileRevision(3);
-        when(bindingDAO.getAll()).thenReturn(List.of(binding));
-        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
-                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
-        when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.UNRESOLVED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.UNRESOLVED))));
+    public void getCatalogKeepsRowsTheCatalogCannotResolveVisibleAsIncompleteAttention() throws Exception {
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100", "6690-2")));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 3, 1)));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
         AnalyzerTypeCatalogView result = service.getCatalog();
@@ -144,67 +122,81 @@ public class AnalyzerTypeCatalogServiceTest {
         AnalyzerTypeCatalogView.TypeSummary active = result.types().get(0);
         assertEquals(1, result.summary().needsAttention());
         assertEquals(1, active.testMappings().mapped());
-        assertEquals(0, active.testMappings().excluded());
         assertEquals(2, active.testMappings().total());
         assertEquals("INCOMPLETE", active.testMappings().state());
-        assertEquals(1, active.resultMappings().mapped());
-        assertEquals(0, active.resultMappings().excluded());
+        assertEquals(0, active.resultMappings().mapped());
         assertEquals(2, active.resultMappings().total());
-        assertEquals("INCOMPLETE", active.resultMappings().state());
+        assertEquals("NOT_STARTED", active.resultMappings().state());
         assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
     }
 
     @Test
-    public void getCatalogTreatsABoundInactiveTestAsIncomplete() throws Exception {
-        AnalyzerProfileBinding binding = activeProfileBinding();
-        when(bindingDAO.getAll()).thenReturn(List.of(binding));
-        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
-                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
-        when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+    public void getCatalogShowsTheProfilesTheBridgeSetAside() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(List.of());
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
+        BridgeProfileCatalog loaded = catalog();
+        List<BridgeProfileCatalog.CatalogIssue> issues = List
+                .of(new BridgeProfileCatalog.CatalogIssue("file [/app/analyzer-profiles/broken.json]", "Unexpected character"));
+        when(bridgeCatalogService.getCatalog()).thenReturn(new BridgeProfileCatalog(loaded.schemaVersion(),
+                loaded.catalogFingerprint(), loaded.profiles(), issues));
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
+
+        AnalyzerTypeCatalogView view = service.getCatalog();
+
+        assertEquals(2, view.types().size());
+        assertEquals(issues, view.issues());
+    }
+
+    @Test
+    public void getCatalogTreatsAProfileWithNoActiveTestsAsNotStarted() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 3, 1)));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
         AnalyzerTypeCatalogView.TypeSummary active = service.getCatalog().types().get(0);
 
-        assertEquals("INCOMPLETE", active.testMappings().state());
-        assertEquals("INCOMPLETE", active.resultMappings().state());
+        assertEquals("NOT_STARTED", active.testMappings().state());
+        assertEquals("NOT_STARTED", active.resultMappings().state());
         assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
     }
 
     @Test
-    public void getCatalogTreatsAResultOptionOwnedByAnotherTestAsIncomplete() throws Exception {
-        AnalyzerProfileBinding binding = activeProfileBinding();
-        when(bindingDAO.getAll()).thenReturn(List.of(binding));
-        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
-                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
-        when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+    public void getCatalogTreatsATestThatCannotHoldTheProfilesAnswersAsIncomplete() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 3, 1)));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
-        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest()));
         when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(List.of());
 
         AnalyzerTypeCatalogView.TypeSummary active = service.getCatalog().types().get(0);
 
-        assertEquals("COMPLETE", active.testMappings().state());
-        assertEquals("INCOMPLETE", active.resultMappings().state());
+        assertEquals("INCOMPLETE", active.testMappings().state());
+        assertEquals("NOT_STARTED", active.resultMappings().state());
+        assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
+    }
+
+    @Test
+    public void getCatalogDoesNotChooseBetweenTwoActiveTestsWithTheSameLoinc() throws Exception {
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(activeTest("100"), activeTest("101")));
+        when(mappingCatalogService.getActiveResultOptions("101")).thenReturn(answers());
+        when(testResultService.getActiveTestResultsByTest("101")).thenReturn(List.of(numericResult()));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(List.of());
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+
+        AnalyzerTypeCatalogView.TypeSummary active = service.getCatalog().types().get(0);
+
+        assertEquals("NOT_STARTED", active.testMappings().state());
         assertEquals("NEEDS_LOCAL_MAPPING", active.readiness());
     }
 
     @Test
     public void getTypeComposesTheExactRequestedRevisionInsteadOfTheLatestRevision() throws Exception {
-        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
-        binding.setId("40");
-        binding.setProfileId("site.mock-hematology");
-        binding.setProfileRevision(2);
-        when(bindingDAO.findByProfileIdAndRevision("site.mock-hematology", 2)).thenReturn(Optional.of(binding));
-        when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
-                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
-        when(siteBindingService.findCurrentByProfileBindingId("40")).thenReturn(Optional.empty());
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 2, 1)));
         BridgeProfileCatalog.ProfileRevision revision = profileRevision(2, "Mock Hematology revision 2");
         when(bridgeCatalogService.getProfile("site.mock-hematology", 2)).thenReturn(revision);
 
@@ -216,39 +208,107 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("LIS2-A2", result.protocolVersion());
         assertEquals(1L, result.usedBy());
         assertEquals("Hematology - Main Lab", result.affectedAnalyzers().get(0).name());
+        assertFalse(result.affectedAnalyzers().get(0).newerProfileRevision());
     }
 
-    private static Analyzer analyzer(String id, String name) {
-        AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-        profileBinding.setProfileRevision(1);
-        return analyzer(id, name, profileBinding, 1);
+    @Test
+    public void aSavedRevisionNewerThanTheOneInForceIsReportedForVerification() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 2, 1)));
+        when(mappingDAO.findLatestByAnalyzerId("501")).thenReturn(Optional.of(mapping(2, 2)));
+        when(bridgeCatalogService.getProfile("site.mock-hematology", 2))
+                .thenReturn(profileRevision(2, "Mock Hematology revision 2"));
+
+        AnalyzerTypeCatalogView.AffectedAnalyzer result = service.getType("site.mock-hematology", 2)
+                .affectedAnalyzers().get(0);
+
+        assertTrue(result.newerMappingRevision());
+        assertFalse(result.newerProfileRevision());
     }
 
-    private static AnalyzerProfileBinding activeProfileBinding() {
-        AnalyzerProfileBinding binding = new AnalyzerProfileBinding();
-        binding.setId("41");
-        binding.setProfileId("site.mock-hematology");
-        binding.setProfileRevision(3);
-        return binding;
+    @Test
+    public void aSavedAdoptionOfThisRevisionAwaitsVerificationInsteadOfOfferingAdoptionAgain() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 1, 1)));
+        when(mappingDAO.findLatestByAnalyzerId("501")).thenReturn(Optional.of(mapping(2, 2)));
+        when(bridgeCatalogService.getProfile("site.mock-hematology", 2))
+                .thenReturn(profileRevision(2, "Mock Hematology revision 2"));
+
+        AnalyzerTypeCatalogView.AffectedAnalyzer result = service.getType("site.mock-hematology", 2)
+                .affectedAnalyzers().get(0);
+
+        assertTrue(result.newerMappingRevision());
+        assertFalse("revision 2 is already adopted and saved", result.newerProfileRevision());
     }
 
-    private static AnalyzerMappingCatalogService.TestOption activeTest() {
-        return new AnalyzerMappingCatalogService.TestOption("100", "Mock active Test", "MOCK",
-                List.of("6690-2", "58410-2"));
+    @Test
+    public void aTestsPartsCountOnBothSidesOfTheMappedFigures() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-panel")).thenReturn(List.of());
+        JsonNode profile = objectMapper.readTree(
+                """
+                        {
+                          "schemaVersion":"1.0",
+                          "profileMeta":{"id":"site.mock-panel","version":"1.0.0","displayName":"Mock Panel","confidence":"VALIDATED"},
+                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "default_test_mappings":[
+                            {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"],
+                             "value_codes":{"POS":[{"system":"http://loinc.org","code":"LA6576-8"}],"NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]},
+                             "components":[
+                               {"code":"CALL","label":"Call","result_type":"qualitative","sub_identity":"CALL","values":["POS","NEG"],
+                                "value_codes":{"POS":[{"system":"http://loinc.org","code":"LA6576-8"}],"NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]}},
+                               {"code":"CALL Ct","label":"Call Ct","result_type":"quantitative","sub_identity":"CALL&Ct"}
+                             ]}
+                          ],
+                          "catalog":{"revision":1,"revisionFingerprint":"sha256:4444444444444444444444444444444444444444444444444444444444444444","source":"SHIPPED","status":"ACTIVE"}
+                        }
+                        """);
+        when(bridgeCatalogService.getProfile("site.mock-panel", 1)).thenReturn(new BridgeProfileCatalog.ProfileRevision(
+                profile, objectMapper.createObjectNode().put("action", "CREATED")));
+
+        AnalyzerTypeCatalogView.TypeSummary result = service.getType("site.mock-panel", 1);
+
+        assertEquals("the test and each of its parts is a record to map", 3, result.testMappings().total());
+        assertTrue(result.testMappings().mapped() <= result.testMappings().total());
+        assertEquals("the test's answers and its part's answers", 4, result.resultMappings().total());
+        assertTrue(result.resultMappings().mapped() <= result.resultMappings().total());
     }
 
-    private static Analyzer analyzer(String id, String name, AnalyzerProfileBinding profileBinding,
-            int mappingRevision) {
+    private static AnalyzerMapping mapping(int revisionNumber, int profileRevision) {
+        AnalyzerMapping mapping = new AnalyzerMapping();
+        mapping.setRevisionNumber(revisionNumber);
+        mapping.setProfileRevision(profileRevision);
+        return mapping;
+    }
+
+    private static TestResult numericResult() {
+        TestResult numeric = new TestResult();
+        numeric.setTestResultType("N");
+        return numeric;
+    }
+
+    private static AnalyzerMappingCatalogService.TestOption activeTest(String id) {
+        return activeTest(id, "6690-2", "58410-2");
+    }
+
+    private static AnalyzerMappingCatalogService.TestOption activeTest(String id, String... loincCodes) {
+        return new AnalyzerMappingCatalogService.TestOption(id, "Mock active Test " + id, "MOCK", List.of(loincCodes));
+    }
+
+    private static List<AnalyzerMappingCatalogService.ResultOption> answers() {
+        return List.of(new AnalyzerMappingCatalogService.ResultOption("200", "POS", "Positive", loinc("LA6576-8")),
+                new AnalyzerMappingCatalogService.ResultOption("201", "NEG", "Negative", loinc("LA6577-6")));
+    }
+
+    private static Analyzer analyzer(String id, String name, int profileRevision, int mappingRevision) {
+        AnalyzerMapping inForce = new AnalyzerMapping();
+        inForce.setProfileId("site.mock-hematology");
+        inForce.setProfileRevision(profileRevision);
+        inForce.setRevisionNumber(mappingRevision);
         Analyzer analyzer = new Analyzer();
         analyzer.setId(id);
         analyzer.setName(name);
         analyzer.setActive(true);
-        AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
-        siteBinding.setProfileBinding(profileBinding);
-        AnalyzerSiteBindingRevision siteBindingRevision = new AnalyzerSiteBindingRevision();
-        siteBindingRevision.setSiteBinding(siteBinding);
-        siteBindingRevision.setRevisionNumber(mappingRevision);
-        analyzer.setSiteBindingRevision(siteBindingRevision);
+        analyzer.setMapping(inForce);
         return analyzer;
     }
 
@@ -264,7 +324,7 @@ public class AnalyzerTypeCatalogServiceTest {
                           "communication":{"mode":"BOTH","supports_lis_initiated":true},
                           "default_test_mappings":[
                             {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
-                            {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"]}
+                            {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"],"value_codes":{"POS":[{"system":"http://loinc.org","code":"LA6576-8"}],"NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]}}
                           ],
                           "configDefaults":{"connectionRole":"SERVER","transport":"TCP/IP","port":9100,"aggregationMode":"PER_MESSAGE"},
                           "catalog":{
@@ -324,44 +384,7 @@ public class AnalyzerTypeCatalogServiceTest {
         return new BridgeProfileCatalog.ProfileRevision(profile, publication);
     }
 
-    private static AnalyzerSiteBindingSnapshot siteBindingSnapshot(AnalyzerProfileBinding profileBinding,
-            List<AnalyzerSiteBindingMappingState> testStates, List<AnalyzerSiteBindingMappingState> resultStates) {
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setId("51");
-        binding.setProfileBinding(profileBinding);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
-        revision.setId("61");
-        revision.setSiteBinding(binding);
-        revision.setRevisionNumber(2);
-
-        AnalyzerSiteBindingTest wbc = test(revision, "WBC", testStates.get(0));
-        AnalyzerSiteBindingTest flag = test(revision, "FLAG", testStates.get(1));
-        AnalyzerSiteBindingResult positive = result(revision, "FLAG", "POS", resultStates.get(0));
-        AnalyzerSiteBindingResult negative = result(revision, "FLAG", "NEG", resultStates.get(1));
-        return new AnalyzerSiteBindingSnapshot(binding, revision, List.of(wbc, flag), List.of(positive, negative));
-    }
-
-    private static AnalyzerSiteBindingTest test(AnalyzerSiteBindingRevision revision, String sourceRowKey,
-            AnalyzerSiteBindingMappingState state) {
-        AnalyzerSiteBindingTest row = new AnalyzerSiteBindingTest();
-        row.setId(new AnalyzerSiteBindingTestPK(revision.getId(), sourceRowKey));
-        row.setSiteBindingRevision(revision);
-        row.setMappingState(state);
-        if (state == AnalyzerSiteBindingMappingState.BOUND) {
-            row.setTestId("100");
-        }
-        return row;
-    }
-
-    private static AnalyzerSiteBindingResult result(AnalyzerSiteBindingRevision revision, String sourceRowKey,
-            String rawValue, AnalyzerSiteBindingMappingState state) {
-        AnalyzerSiteBindingResult row = new AnalyzerSiteBindingResult();
-        row.setId(new AnalyzerSiteBindingResultPK(revision.getId(), sourceRowKey, rawValue));
-        row.setSiteBindingRevision(revision);
-        row.setMappingState(state);
-        if (state == AnalyzerSiteBindingMappingState.BOUND) {
-            row.setTestResultId("200");
-        }
-        return row;
+    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
+        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
     }
 }

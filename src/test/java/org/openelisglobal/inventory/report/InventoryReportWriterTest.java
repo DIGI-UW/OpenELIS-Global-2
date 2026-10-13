@@ -3,8 +3,6 @@ package org.openelisglobal.inventory.report;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +15,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.Test;
+import org.openelisglobal.testsupport.PdfText;
 
 public class InventoryReportWriterTest {
 
@@ -103,9 +102,7 @@ public class InventoryReportWriterTest {
 
         byte[] body = out.toByteArray();
         assertEquals("%PDF", new String(body, 0, 4, StandardCharsets.US_ASCII));
-        PdfReader reader = new PdfReader(body);
-        String page = PdfTextExtractor.getTextFromPage(reader, 1);
-        reader.close();
+        String page = PdfText.ofPage(body, 1);
         assertTrue(page, page.contains("Transaction History"));
         assertTrue(page, page.contains("Quantity Change"));
         assertTrue(page, page.contains("REAGENT_A") && page.contains("-5") && page.contains("RECEIPT"));

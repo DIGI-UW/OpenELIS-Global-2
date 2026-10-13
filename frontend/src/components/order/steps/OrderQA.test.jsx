@@ -63,9 +63,20 @@ vi.mock("../api/sampleAcceptanceApi", () => ({
   getEnforcement: vi.fn().mockResolvedValue({ clinical: "ADVISORY" }),
 }));
 
-vi.mock("./sections/SampleAcceptanceReview", () => ({
-  default: () => <div data-testid="sample-acceptance-review" />,
+const { unacceptedForReview } = vi.hoisted(() => ({
+  unacceptedForReview: { current: [] },
 }));
+vi.mock("./sections/SampleAcceptanceReview", async () => {
+  const { useEffect } = await import("react");
+  return {
+    default: ({ onUnacceptedChange }) => {
+      useEffect(() => {
+        onUnacceptedChange?.(unacceptedForReview.current);
+      }, [onUnacceptedChange]);
+      return <div data-testid="sample-acceptance-review" />;
+    },
+  };
+});
 
 vi.mock("../../nonconform/common/InlineNceForm", () => ({
   default: () => null,
@@ -175,6 +186,33 @@ describe("OrderQA", () => {
       }),
       expect.any(Function),
     );
+  });
+
+  // OGC-1443: answered items on a sample that was never accepted were called
+  // "unanswered"; the prompt now names the samples not accepted yet.
+  it("names the samples not accepted yet when a reason is needed, never calling answered items unanswered", async () => {
+    unacceptedForReview.current = ["DEV01260000000000001-2 Urine"];
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (_url, _body, callback) =>
+        callback({ success: false, error: "order.release.reasonRequired" }),
+    );
+    try {
+      renderQa();
+
+      await screen.getByText("Submit Order").click();
+      const reason = await screen.findByLabelText(
+        "Reason for releasing before every sample is accepted",
+      );
+      expect(reason).toBeVisible();
+      expect(
+        screen.getByText(
+          "Not accepted yet: DEV01260000000000001-2 Urine. Answers count once you press Accept sample.",
+        ),
+      ).toBeVisible();
+      expect(screen.queryByText(/unanswered/i)).toBeNull();
+    } finally {
+      unacceptedForReview.current = [];
+    }
   });
 
   // Found in review: the environmental and vector lanes have no Prepare

@@ -15,6 +15,7 @@ import {
   postToOpenElisServer,
   putToOpenElisServer,
 } from "../../utils/Utils";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 const SPECIES_URL = "/rest/admin/vector/species";
 const GROUPS_URL = "/rest/admin/vector/sample-types";
@@ -72,6 +73,7 @@ function SpeciesForm({
         }}
       >
         <TextInput
+          {...requiredProps()}
           id={`sp-genus-${isNew ? "new" : form.genus}`}
           labelText={
             <>
@@ -79,7 +81,7 @@ function SpeciesForm({
                 id="vector.species.genus"
                 defaultMessage="Genus"
               />
-              <span style={{ color: "#da1e28" }}> *</span>
+              <RequiredMarker />
             </>
           }
           placeholder={intl.formatMessage({
@@ -90,6 +92,7 @@ function SpeciesForm({
           onChange={set("genus")}
         />
         <TextInput
+          {...requiredProps()}
           id={`sp-species-${isNew ? "new" : form.genus}`}
           labelText={
             <>
@@ -97,7 +100,7 @@ function SpeciesForm({
                 id="vector.species.species"
                 defaultMessage="Species"
               />
-              <span style={{ color: "#da1e28" }}> *</span>
+              <RequiredMarker />
             </>
           }
           placeholder={intl.formatMessage({
@@ -132,6 +135,7 @@ function SpeciesForm({
         }}
       >
         <Select
+          {...requiredProps()}
           id={`sp-group-${isNew ? "new" : form.genus}`}
           labelText={
             <>
@@ -139,7 +143,7 @@ function SpeciesForm({
                 id="vector.admin.sampleType"
                 defaultMessage="Sample type"
               />
-              <span style={{ color: "#da1e28" }}> *</span>
+              <RequiredMarker />
             </>
           }
           value={form.sampleTypeId}

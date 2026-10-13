@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
@@ -10,7 +11,12 @@ const { orderContextValue, programSectionProps, configurationValue } =
     configurationValue: { configurationProperties: {} },
     orderContextValue: {
       orderData: {
-        patientProperties: { lastName: "Ada" },
+        patientProperties: {
+          lastName: "Ada",
+          nationalId: "NID-1240",
+          gender: "F",
+          birthDateForDisplay: "01/02/1990",
+        },
         sampleOrderItems: {
           environmentalFields: { workflowType: "clinical" },
         },
@@ -22,8 +28,7 @@ const { orderContextValue, programSectionProps, configurationValue } =
           sampleTypeId: "blood",
           tests: [
             {
-              id: "culture-test",
-              cultureWorkflowType: "BACTERIOLOGY",
+              id: "test-1",
             },
           ],
         },
@@ -44,8 +49,9 @@ const { orderContextValue, programSectionProps, configurationValue } =
   }));
 
 const currentLocation = { pathname: "/order/clinical/enter", search: "" };
+const { historyPush } = vi.hoisted(() => ({ historyPush: vi.fn() }));
 vi.mock("react-router-dom", () => ({
-  useHistory: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useHistory: () => ({ push: historyPush, replace: vi.fn() }),
   useLocation: () => currentLocation,
 }));
 
@@ -190,19 +196,6 @@ describe("ClinicalOrderEnter", () => {
     orderContextValue.error = null;
     orderContextValue.fieldErrors = {};
   });
-
-  it("shares selected samples with the Program section", () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ClinicalOrderEnter />
-      </IntlProvider>,
-    );
-
-    expect(screen.getByTestId("program-section")).toBeInTheDocument();
-    expect(programSectionProps).toHaveBeenCalledWith(
-      expect.objectContaining({ samples: orderContextValue.samples }),
-    );
-  });
 });
 
 describe("ClinicalOrderEnter required-field configuration", () => {
@@ -221,7 +214,12 @@ describe("ClinicalOrderEnter required-field configuration", () => {
     orderContextValue.error = null;
     orderContextValue.fieldErrors = {};
     orderContextValue.orderData = {
-      patientProperties: { lastName: "Ada" },
+      patientProperties: {
+        lastName: "Ada",
+        nationalId: "NID-1240",
+        gender: "F",
+        birthDateForDisplay: "01/02/1990",
+      },
       sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
     };
   });
@@ -254,6 +252,52 @@ describe("ClinicalOrderEnter required-field configuration", () => {
     ).toBeDisabled();
   });
 
+  it("opens Prepare Samples on the saved order's lab number, so a reload or a language switch keeps the order (OGC-1443)", async () => {
+    configurationValue.configurationProperties = {};
+    historyPush.mockClear();
+    const contextLab = orderContextValue.labNumber;
+    orderContextValue.labNumber = null;
+    orderContextValue.orderData.sampleOrderItems.labNo = "DEV01260000000001420";
+    orderContextValue.saveOrderEntry.mockResolvedValue(undefined);
+    try {
+      renderEnter();
+      fireEvent.click(screen.getByRole("button", { name: "Save and next" }));
+
+      await waitFor(() =>
+        expect(historyPush).toHaveBeenCalledWith(
+          "/order/clinical/collect?order=DEV01260000000001420",
+        ),
+      );
+    } finally {
+      orderContextValue.labNumber = contextLab;
+      delete orderContextValue.orderData.sampleOrderItems.labNo;
+    }
+  });
+
+  it("holds Save and next, not the save, while a sample has no tests, naming the sample (OGC-1443)", () => {
+    configurationValue.configurationProperties = {};
+    const before = orderContextValue.samples;
+    orderContextValue.samples = [
+      before[0],
+      { sampleTypeId: "urine", tests: [], panels: [] },
+    ];
+    try {
+      renderEnter();
+
+      expect(
+        screen.getByRole("button", { name: "Save and exit" }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Save and next" }),
+      ).toBeDisabled();
+      expect(screen.getByTestId("to-continue")).toHaveTextContent(
+        "Sample 2: choose at least one test",
+      );
+    } finally {
+      orderContextValue.samples = before;
+    }
+  });
+
   it("leaves both saves open when the deployment requires neither", () => {
     renderEnter();
 
@@ -271,6 +315,75 @@ describe("ClinicalOrderEnter required-field configuration", () => {
 
     expect(requesterSectionProps).toHaveBeenCalledWith(
       expect.objectContaining({ siteRequired: true, providerRequired: true }),
+    );
+  });
+
+  // OGC-1240: the server refuses a patient missing a field the deployment
+  // requires, so the gate names it before the save instead of a silent 400.
+  it("holds both saves until the patient has the National ID the deployment requires, naming it", () => {
+    orderContextValue.orderData = {
+      patientProperties: {
+        lastName: "Ada",
+        gender: "F",
+        birthDateForDisplay: "01/02/1990",
+      },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+
+    expect(
+      screen.getByRole("button", { name: "Save and exit" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save and next" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("to-continue")).toHaveTextContent(
+      "Enter the patient's National ID",
+    );
+  });
+
+  it("does not ask for a National ID when the deployment turns it off", () => {
+    configurationValue.configurationProperties = {
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+    };
+    orderContextValue.orderData = {
+      patientProperties: {
+        lastName: "Ada",
+        gender: "F",
+        birthDateForDisplay: "01/02/1990",
+      },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+
+    expect(screen.getByRole("button", { name: "Save and exit" })).toBeEnabled();
+    expect(screen.getByTestId("to-continue")).toBeEmptyDOMElement();
+  });
+
+  it("names the patient's sex and date of birth when the deployment requires them", () => {
+    orderContextValue.orderData = {
+      patientProperties: { lastName: "Ada", nationalId: "NID-1240" },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+
+    const toContinue = screen.getByTestId("to-continue");
+    expect(toContinue).toHaveTextContent("Choose the patient's sex");
+    expect(toContinue).toHaveTextContent("Enter the patient's date of birth");
+  });
+
+  it("asks nothing of a patient on an order declared to have none", () => {
+    orderContextValue.orderData = {
+      patientProperties: { lastName: "Ada" },
+      sampleOrderItems: {
+        noPatientOverride: true,
+        environmentalFields: { workflowType: "clinical" },
+      },
+    };
+    renderEnter();
+
+    expect(screen.getByTestId("to-continue")).not.toHaveTextContent(
+      "National ID",
     );
   });
 

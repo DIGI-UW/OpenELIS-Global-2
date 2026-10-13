@@ -23,6 +23,7 @@ import {
 } from "../utils/Utils";
 
 import useInAppNavigation from "../common/useInAppNavigation";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 /**
  * GenericSampleOrder - Configurable sample order entry component
  *
@@ -570,9 +571,10 @@ export default function GenericSampleOrder({
                       id="sample.label.labnumber"
                       defaultMessage="Lab Number"
                     />
-                    {labNoRequired && <span style={{ color: "red" }}> *</span>}
+                    <RequiredMarker required={labNoRequired} />
                   </>
                 }
+                {...requiredProps(labNoRequired)}
                 value={defaultForm.labNo}
                 readOnly
                 placeholder={intl.formatMessage({

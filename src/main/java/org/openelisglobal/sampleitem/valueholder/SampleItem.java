@@ -57,6 +57,8 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private String sampleTemperature;
     private String specimenOrigin;
     private String container;
+    private Integer cultureSetNumber;
+    private String bodySite;
     private String locationDetails;
     private String gpsLatitude;
     private String gpsLongitude;
@@ -639,4 +641,23 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
         }
         return level;
     }
+
+    public Integer getCultureSetNumber() {
+        return cultureSetNumber;
+    }
+
+    public void setCultureSetNumber(Integer value) {
+        if (value != null && value < 1)
+            throw new IllegalArgumentException("Set number must be positive");
+        cultureSetNumber = value;
+    }
+
+    public String getBodySite() {
+        return bodySite;
+    }
+
+    public void setBodySite(String value) {
+        bodySite = value;
+    }
+
 }

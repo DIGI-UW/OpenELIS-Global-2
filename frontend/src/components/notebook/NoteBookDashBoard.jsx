@@ -319,12 +319,10 @@ function NoteBookDashBoard() {
 
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="notebook.page.title" />
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading className="page-heading-04">
+              <FormattedMessage id="notebook.page.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
@@ -372,11 +370,13 @@ function NoteBookDashBoard() {
             headers={[
               {
                 key: "title",
-                header: <FormattedMessage id="notebook.label.title" />,
+                header: intl.formatMessage({ id: "notebook.label.title" }),
               },
               {
                 key: "entriesCount",
-                header: <FormattedMessage id="notebook.table.header.entries" />,
+                header: intl.formatMessage({
+                  id: "notebook.table.header.entries",
+                }),
               },
             ]}
             isSortable

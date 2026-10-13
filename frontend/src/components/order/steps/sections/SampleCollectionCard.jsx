@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { ConfigurationContext } from "../../../layout/Layout";
@@ -23,7 +24,6 @@ import {
   formatHoldingMinutes,
   formatIsoDateForBackend,
   formatPickerDateForIso,
-  isCollectionDateBeforeAdmissionDate,
 } from "../../dateUtils";
 import {
   getHandlingRequirements,
@@ -53,6 +53,24 @@ import {
  * - Print labels button
  */
 
+const GPS_FIELDS = [
+  "gpsLatitude",
+  "gpsLongitude",
+  "gpsAccuracy",
+  "gpsCaptureMethod",
+];
+
+/**
+ * The GPS control reports its values whenever it renders them, including the
+ * ones it was handed on mount. Only a value that differs from the sample's is
+ * an edit; passing the rest on marked a just-opened step "Unsaved changes"
+ * (OGC-1443).
+ */
+const gpsChanged = (gps, sample) =>
+  GPS_FIELDS.some(
+    (field) => String(gps?.[field] ?? "") !== String(sample?.[field] ?? ""),
+  );
+
 const SampleCollectionCard = ({
   sample,
   sampleIndex,
@@ -61,12 +79,12 @@ const SampleCollectionCard = ({
   serverReceivedDate,
   serverReceivedTime,
   onUpdate,
+  onFillDefaults,
   onRemove,
   onPrintLabels,
   printDisabled = false,
   isReadOnly,
   canRemove,
-  admissionDate = "",
   workflowType = "clinical",
   labNumber = "",
   onSameForAll,
@@ -100,10 +118,6 @@ const SampleCollectionCard = ({
   const { configurationProperties = {} } =
     useContext(ConfigurationContext) || {};
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
-  const collectionDateBeforeAdmission = isCollectionDateBeforeAdmissionDate(
-    sample.collectionDate,
-    admissionDate,
-  );
 
   useEffect(() => {
     let active = true;
@@ -186,7 +200,7 @@ const SampleCollectionCard = ({
       }
     });
     if (Object.keys(updates).length > 0) {
-      onUpdate(sampleIndex, updates);
+      (onFillDefaults || onUpdate)(sampleIndex, updates);
     }
   }, [
     sample.sampleItemId,
@@ -199,6 +213,7 @@ const SampleCollectionCard = ({
     serverReceivedTime,
     sampleIndex,
     onUpdate,
+    onFillDefaults,
     isReadOnly,
   ]);
 
@@ -240,7 +255,7 @@ const SampleCollectionCard = ({
         (holdingMinutes
           ? ` · ${intl.formatMessage(
               { id: "sample.handling.processWithin" },
-              { time: formatHoldingMinutes(holdingMinutes) },
+              { time: formatHoldingMinutes(holdingMinutes, intl) },
             )}`
           : "");
   const legacyValues = isClinical
@@ -371,6 +386,15 @@ const SampleCollectionCard = ({
 
       {/* Collection Details Grid */}
       <Grid className="collection-details-grid">
+        {((sample.tests || []).some((test) => test.collectedInSets) ||
+          sample.cultureSetNumber) && (
+          <CultureBottleFields
+            sample={sample}
+            sampleIndex={sampleIndex}
+            isReadOnly={isReadOnly}
+            onChange={handleFieldChange}
+          />
+        )}
         {/* Sample Type */}
         <Column lg={4} md={4} sm={4}>
           <Select
@@ -536,7 +560,11 @@ const SampleCollectionCard = ({
               gpsAccuracy: sample.gpsAccuracy || null,
               gpsCaptureMethod: sample.gpsCaptureMethod || "",
             }}
-            onChange={(gps) => onUpdate(sampleIndex, gps)}
+            onChange={(gps) => {
+              if (gpsChanged(gps, sample)) {
+                onUpdate(sampleIndex, gps);
+              }
+            }}
             disabled={isReadOnly}
           />
         </Column>
@@ -584,10 +612,6 @@ const SampleCollectionCard = ({
             value={formatIsoDateForBackend(sample.collectionDate, dateLocale)}
             updateStateValue
             disallowFutureDate
-            invalid={collectionDateBeforeAdmission}
-            invalidText={intl.formatMessage({
-              id: "collect.sample.collectionDateBeforeAdmission",
-            })}
             onChange={(value) =>
               handleFieldChange(
                 "collectionDate",
@@ -659,9 +683,8 @@ const SampleCollectionCard = ({
           </h6>
           <p data-testid={`handling-required-${sampleIndex}`}>
             <strong>
-              <FormattedMessage id="sample.handling.required" />
-              {": "}
-            </strong>
+              <FormattedMessage id="sample.handling.requiredLabel" />
+            </strong>{" "}
             {requiredText}
           </p>
           <Grid>
@@ -735,9 +758,8 @@ const SampleCollectionCard = ({
           </Grid>
           <p data-testid={`handling-stored-at-${sampleIndex}`}>
             <strong>
-              <FormattedMessage id="sample.handling.storedAt" />
-              {": "}
-            </strong>
+              <FormattedMessage id="sample.handling.storedAtLabel" />
+            </strong>{" "}
             {storedAt ? (
               storedAt.temperatureSetting ? (
                 <FormattedMessage

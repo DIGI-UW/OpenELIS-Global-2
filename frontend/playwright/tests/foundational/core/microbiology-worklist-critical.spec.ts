@@ -79,7 +79,6 @@ test.describe("microbiology worklist and critical communication", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
-      workflow: "BACTERIOLOGY",
       q: seeded.caseId,
       sort: "newest",
       pageSize: "10",
@@ -88,7 +87,6 @@ test.describe("microbiology worklist and critical communication", () => {
     const caseUrl = `/Microbiology/cases/${seeded.caseId}?${query}&section=setup`;
 
     const initialResponse = waitForWorklistResponse(page, {
-      workflow: "BACTERIOLOGY",
       q: seeded.caseId,
       sort: "newest",
       pageSize: "10",
@@ -98,13 +96,8 @@ test.describe("microbiology worklist and critical communication", () => {
 
     const row = page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`);
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(page.getByLabel("Workflow", { exact: true })).toHaveValue(
-      "BACTERIOLOGY",
-    );
     await expect(
-      page.getByPlaceholder(
-        "Search lab number, patient, specimen, or workflow",
-      ),
+      page.getByPlaceholder("Search lab number, patient, or specimen"),
     ).toHaveValue(seeded.caseId);
     await expect(page.getByLabel("Sort", { exact: true })).toHaveValue(
       "newest",
@@ -112,7 +105,6 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(page).toHaveURL(worklistUrl);
 
     const reloadResponse = waitForWorklistResponse(page, {
-      workflow: "BACTERIOLOGY",
       q: seeded.caseId,
       sort: "newest",
       pageSize: "10",
@@ -132,15 +124,13 @@ test.describe("microbiology worklist and critical communication", () => {
     ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
-  test("critical communication raises worklist priority and sibling visibility", async ({
-    page,
-  }) => {
+  test("critical communication raises worklist priority", async ({ page }) => {
     test.setTimeout(120_000);
     const seeded = await seedMicrobiologyWorklistCase(page);
-    const scopedWorklistUrl = `/Microbiology/worklist?workflow=BACTERIOLOGY&q=${encodeURIComponent(
+    const scopedWorklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
-    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?workflow=BACTERIOLOGY&q=${encodeURIComponent(
+    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
 
@@ -171,24 +161,11 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(page.getByTestId("content-wrapper")).toHaveClass(
       /content-nav-locked/,
     );
-    const workflowResponse = waitForWorklistResponse(page, {
-      workflow: "BACTERIOLOGY",
-    });
-    await page
-      .getByLabel("Workflow", { exact: true })
-      .selectOption("BACTERIOLOGY");
-    await expect(page).toHaveURL(
-      /\/Microbiology\/worklist\?workflow=BACTERIOLOGY$/,
-    );
-    await workflowResponse;
     const sortResponse = waitForWorklistResponse(page, {
-      workflow: "BACTERIOLOGY",
       sort: "newest",
     });
     await page.getByLabel("Sort", { exact: true }).selectOption("newest");
-    await expect(page).toHaveURL(
-      /\/Microbiology\/worklist\?workflow=BACTERIOLOGY&sort=newest$/,
-    );
+    await expect(page).toHaveURL(/\/Microbiology\/worklist\?sort=newest$/);
     await sortResponse;
 
     await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
@@ -225,7 +202,6 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(row).toContainText("High");
     await expect(row).toContainText("Critical communication");
-    await expect(row).toContainText("Linked · 2 workflows");
     await expect(
       page.getByTestId("microbiology-worklist-summary-critical"),
     ).toContainText("1");
@@ -248,7 +224,6 @@ test.describe("microbiology worklist and critical communication", () => {
     await openCaseSection(page, "Isolates", "isolates");
     await expect(page.getByRole("region", { name: "Isolates" })).toBeVisible();
     const restoredWorklistResponse = waitForWorklistResponse(page, {
-      workflow: "BACTERIOLOGY",
       q: seeded.caseId,
       sort: "newest",
     });

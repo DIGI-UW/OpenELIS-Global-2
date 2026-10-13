@@ -21,8 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
@@ -80,12 +78,6 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
 
     public PatientCILNSPClinical_vreduit() {
         super();
-    }
-
-    @Override
-    protected String reportFileName() {
-        return "PatientReportCDI_vreduit";
-        // return "PatientClinicalReport";
     }
 
     @Override
@@ -426,12 +418,16 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
     }
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
-
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        byte[] signature = imageService.getImageBySiteInfoName("labDirectorSignature").map(Image::getImage)
+                .orElse(null);
+        return PatientResultsPdf.render(new PatientResultsPdf.Settings(ReportHeaderPdf.siteNameLines(),
+                getAccreditationLogos(), getAccreditationNotesLine(),
+                Boolean.TRUE.equals(reportParameters.get("useBillingNumber")),
+                (String) reportParameters.get("billingNumberLabel"),
+                Boolean.TRUE.equals(reportParameters.get("useContactTracing")), signature,
+                (String) reportParameters.get("labDirectorName"), (String) reportParameters.get("labDirectorTitle"),
+                "true".equals(reportParameters.get("usePageNumbers"))), reportItems);
     }
 
     @Override

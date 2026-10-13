@@ -53,6 +53,7 @@ import {
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -736,13 +737,14 @@ const NoteBookEntryForm = () => {
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
                 <TextInput
+                  {...requiredProps()}
                   id="entryTitle"
                   labelText={
                     <>
                       {intl.formatMessage({
                         id: "notebook.label.title",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   placeholder={intl.formatMessage({
@@ -789,6 +791,7 @@ const NoteBookEntryForm = () => {
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
                 <Select
+                  {...requiredProps()}
                   id="experimenttype"
                   name="experimenttype"
                   labelText={
@@ -796,7 +799,7 @@ const NoteBookEntryForm = () => {
                       {intl.formatMessage({
                         id: "notebook.label.experimentType",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   value={noteBookData.type || ""}
@@ -876,13 +879,14 @@ const NoteBookEntryForm = () => {
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
+                  {...requiredProps()}
                   id="objective"
                   labelText={
                     <>
                       {intl.formatMessage({
                         id: "notebook.label.objective",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   placeholder={intl.formatMessage({

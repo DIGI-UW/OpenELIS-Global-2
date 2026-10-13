@@ -50,6 +50,11 @@ export const primaryLoincIndex = (mappings) =>
       m.source === "LOINC" && (!m.relationship || m.relationship === "SAME_AS"),
   );
 
+// panel_terminology_mapping.code holds 80 characters; a LOINC is at most 10
+// and the primary one routes e-orders (OGC-1456).
+const CODE_MAX_LENGTH = 80;
+const LOINC_MAX_LENGTH = 10;
+
 const PanelTerminologySection = ({ panel, onSaved }) => {
   const intl = useIntl();
   const panelId = panel?.id;
@@ -134,6 +139,25 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
       });
     }
     const complete = all.filter((m) => m.source && m.code);
+    const misfit = complete.find(
+      (m) =>
+        m.code.trim().length > CODE_MAX_LENGTH ||
+        (m.source === "LOINC" && m.code.trim().length > LOINC_MAX_LENGTH),
+    );
+    if (misfit) {
+      setSaveError(
+        intl.formatMessage(
+          {
+            id:
+              misfit.code.trim().length > CODE_MAX_LENGTH
+                ? "label.panel.terminology.codeTooLong"
+                : "label.panel.terminology.loincTooLong",
+          },
+          { code: misfit.code.trim(), max: CODE_MAX_LENGTH },
+        ),
+      );
+      return;
+    }
     const payload = {
       panelId,
       mappings: complete.map((m) => ({
@@ -204,13 +228,17 @@ const PanelTerminologySection = ({ panel, onSaved }) => {
       )}
 
       {saveError && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          onCloseButtonClick={() => setSaveError(null)}
-          title={intl.formatMessage({ id: "label.panel.section.terminology" })}
-          subtitle={saveError}
-        />
+        <div data-testid="panel-terminology-save-error">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            onCloseButtonClick={() => setSaveError(null)}
+            title={intl.formatMessage({
+              id: "label.panel.section.terminology",
+            })}
+            subtitle={saveError}
+          />
+        </div>
       )}
 
       {mappings.length === 0 ? (

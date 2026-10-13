@@ -14,13 +14,11 @@ import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
-import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
-import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
@@ -29,10 +27,8 @@ import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,21 +45,18 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAntibioticDAO antibioticDAO;
     private final MicroAstPanelDAO panelDAO;
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
-    @SuppressWarnings("unused")
-    private final MicroCultureSetupDAO cultureSetupDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
 
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
-            MicroCultureSetupDAO cultureSetupDAO, MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
+            MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
             TypeOfSampleService typeOfSampleService) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
-        this.cultureSetupDAO = cultureSetupDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.methodService = methodService;
         this.typeOfSampleService = typeOfSampleService;
@@ -205,16 +198,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     public MicroReferenceAdminPageForm<MicroAstPanelAdminForm> getAstPanels(MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
         int offset = (normalized.page - 1) * normalized.pageSize;
-        List<MicroAstPanelAdminForm> rows = panelDAO.search(normalized.q, normalized.status, normalized.workflow,
+        List<MicroAstPanelAdminForm> rows = panelDAO.search(normalized.q, normalized.status, normalized.organismGroup,
                 normalized.sort, offset, normalized.pageSize).stream().map(this::toPanelForm).toList();
-        return page(rows, panelDAO.countSearch(normalized.q, normalized.status, normalized.workflow), normalized);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public MicroCultureSetupAdminForm getCultureSetup(String id) {
-        return toCultureSetupForm(cultureSetupDAO.get(id)
-                .orElseThrow(() -> new IllegalArgumentException("Culture setup not found: " + id)));
+        return page(rows, panelDAO.countSearch(normalized.q, normalized.status, normalized.organismGroup), normalized);
     }
 
     @Override
@@ -263,19 +249,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
 
     @Override
     @Transactional(readOnly = true)
-    public MicroReferenceAdminPageForm<MicroCultureSetupAdminForm> getCultureSetups(
-            MicroReferenceAdminQueryForm query) {
-        MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
-        int offset = (normalized.page - 1) * normalized.pageSize;
-        List<MicroCultureSetupAdminForm> rows = cultureSetupDAO.search(normalized.q, normalized.status,
-                normalized.workflow, normalized.sort, offset, normalized.pageSize).stream()
-                .map(this::toCultureSetupForm).toList();
-        return page(rows, cultureSetupDAO.countSearch(normalized.q, normalized.status, normalized.workflow),
-                normalized);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public MicroReferenceAdminPageForm<MicroPatientOriginAdminForm> getPatientOrigins(
             MicroReferenceAdminQueryForm query) {
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
@@ -284,47 +257,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 .search(normalized.q, normalized.status, normalized.sort, offset, normalized.pageSize).stream()
                 .map(this::toPatientOriginForm).toList();
         return page(rows, patientOriginDAO.countSearch(normalized.q, normalized.status), normalized);
-    }
-
-    @Override
-    @Transactional
-    public MicroCultureSetupAdminForm saveCultureSetup(String id, MicroCultureSetupAdminForm request, String actorId) {
-        requireActor(actorId);
-        if (request == null) {
-            throw new IllegalArgumentException("Culture setup is required");
-        }
-        String methodId = requireText(request.methodId, "methodId");
-        Method method = methodService.findById(methodId);
-        if (method == null) {
-            throw new IllegalArgumentException("Method not found: " + methodId);
-        }
-        String workflow = requireText(request.workflowType, "workflowType").toUpperCase(Locale.ROOT);
-        MicroWorkflowType.valueOf(workflow);
-        Optional<MicroCultureSetup> existingIdentity = cultureSetupDAO.findByMethodAndWorkflowType(methodId, workflow);
-        if (existingIdentity.isPresent() && !existingIdentity.get().getId().equals(id)) {
-            throw new MicroReferenceConflictException("A culture setup already exists for this Method and workflow");
-        }
-        MicroCultureSetup setup = id == null ? new MicroCultureSetup()
-                : cultureSetupDAO.get(id)
-                        .orElseThrow(() -> new IllegalArgumentException("Culture setup not found: " + id));
-        setup.setMethodId(methodId);
-        setup.setName(requireText(request.name, "name"));
-        setup.setWorkflowType(workflow);
-        setup.setMediaDefaults(trimToNull(request.mediaDefaults));
-        setup.setIncubationDefaults(trimToNull(request.incubationDefaults));
-        setup.setIncubationHours(optionalPositive(request.incubationHours, "incubationHours"));
-        setup.setSubcultureAtHours(optionalPositive(request.subcultureAtHours, "subcultureAtHours"));
-        setup.setMaxIncubationDays(optionalPositive(request.maxIncubationDays, "maxIncubationDays"));
-        setup.setAtmosphereDefaults(trimToNull(request.atmosphereDefaults));
-        setup.setReportableTestAnalyteId(trimToNull(request.reportableTestAnalyteId));
-        setup.setIsActive(request.active ? "Y" : "N");
-        setup.setLastUpdatedBy(actorId);
-        if (id == null) {
-            cultureSetupDAO.insert(setup);
-        } else {
-            cultureSetupDAO.update(setup);
-        }
-        return toCultureSetupForm(setup);
     }
 
     @Override
@@ -367,9 +299,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             throw new IllegalArgumentException("AST panel is required");
         }
         panel.setName(requireText(request.name, "name"));
-        String workflow = requireText(request.workflowType, "workflowType").toUpperCase(Locale.ROOT);
-        MicroWorkflowType.valueOf(workflow);
-        panel.setWorkflowType(workflow);
         panel.setOrganismGroup(trimToNull(request.organismGroup));
         panel.setSpecimenTypeId(trimToNull(request.specimenTypeId));
         panel.setIsActive(request.active ? "Y" : "N");
@@ -459,7 +388,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.versionNumber = panel.getVersionNumber();
         form.supersedesPanelId = panel.getSupersedesPanelId();
         form.name = panel.getName();
-        form.workflowType = panel.getWorkflowType();
         form.organismGroup = panel.getOrganismGroup();
         form.specimenTypeId = panel.getSpecimenTypeId();
         form.active = "Y".equals(panel.getIsActive());
@@ -483,24 +411,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         return form;
     }
 
-    private MicroCultureSetupAdminForm toCultureSetupForm(MicroCultureSetup setup) {
-        MicroCultureSetupAdminForm form = new MicroCultureSetupAdminForm();
-        form.id = setup.getId();
-        form.methodId = setup.getMethodId();
-        form.methodName = methodName(setup.getMethodId());
-        form.name = setup.getName();
-        form.workflowType = setup.getWorkflowType();
-        form.mediaDefaults = setup.getMediaDefaults();
-        form.incubationDefaults = setup.getIncubationDefaults();
-        form.incubationHours = setup.getIncubationHours();
-        form.subcultureAtHours = setup.getSubcultureAtHours();
-        form.maxIncubationDays = setup.getMaxIncubationDays();
-        form.atmosphereDefaults = setup.getAtmosphereDefaults();
-        form.reportableTestAnalyteId = setup.getReportableTestAnalyteId();
-        form.active = "Y".equals(setup.getIsActive());
-        return form;
-    }
-
     private MicroPatientOriginAdminForm toPatientOriginForm(MicroPatientOrigin origin) {
         MicroPatientOriginAdminForm form = new MicroPatientOriginAdminForm();
         form.id = origin.getId();
@@ -509,11 +419,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.whonetCode = origin.getWhonetCode();
         form.active = "Y".equals(origin.getIsActive());
         return form;
-    }
-
-    private String methodName(String methodId) {
-        Method method = methodService.findById(methodId);
-        return method == null ? null : method.getMethodName();
     }
 
     private MicroReferenceOptionForm option(String id, String label, String code) {

@@ -12,12 +12,14 @@ import CustomTextInput from "../common/CustomTextInput";
 import CustomSelect from "../common/CustomSelect";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { useIntl } from "react-intl";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 function requiredSymbol(value) {
   return (
     <>
       {" "}
-      {value} <span style={{ color: "red" }}>*</span>
+      {value}
+      <RequiredMarker />
     </>
   );
 }
@@ -124,6 +126,8 @@ const OrderReferralRequest = ({
       reason: (
         <CustomSelect
           id={"referralReasonId_" + id}
+          aria-label={intl.formatMessage({ id: "referral.label.reason" })}
+          {...requiredProps()}
           options={referralReasons}
           value={request?.reasonForReferral ? request.reasonForReferral : null}
           onChange={(e) => handleReasonForReferral(e, i)}
@@ -144,6 +148,8 @@ const OrderReferralRequest = ({
       institute: (
         <CustomSelect
           id={"referredInstituteId_" + id}
+          aria-label={intl.formatMessage({ id: "referral.label.institute" })}
+          {...requiredProps()}
           options={referralOrganizations}
           value={request?.institute ? request.institute : null}
           onChange={(e) => handleInstituteSelect(e, i)}

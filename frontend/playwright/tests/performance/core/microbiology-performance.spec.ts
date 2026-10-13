@@ -20,13 +20,13 @@ import {
 const WARMUPS = 2;
 const MEASURED = P95_MEASURED_ITERATIONS;
 const CULTURE_WORKLIST_URL =
-  "/Microbiology/worklist?workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+  "/Microbiology/worklist?sort=priority&page=1&pageSize=100";
 const AST_WORKLIST_URL =
-  "/Microbiology/worklist?grain=ast&workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+  "/Microbiology/worklist?grain=ast&sort=priority&page=1&pageSize=100";
 const CULTURE_WORKLIST_ENDPOINT =
-  "/api/OpenELIS-Global/rest/microbiology/worklist?grain=cultures&workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+  "/api/OpenELIS-Global/rest/microbiology/worklist?grain=cultures&sort=priority&page=1&pageSize=100";
 const AST_WORKLIST_ENDPOINT =
-  "/api/OpenELIS-Global/rest/microbiology/worklist?grain=ast&workflow=BACTERIOLOGY&sort=priority&page=1&pageSize=100";
+  "/api/OpenELIS-Global/rest/microbiology/worklist?grain=ast&sort=priority&page=1&pageSize=100";
 
 const waitForReadyMark = async (page: Page, markName: string) => {
   await page.waitForFunction(

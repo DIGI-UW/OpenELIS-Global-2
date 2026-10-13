@@ -60,6 +60,9 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Autowired
     private NoteService noteService;
 
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private static String TABLE_REFERENCE_ID;
     private final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
 
@@ -80,11 +83,17 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional
     public String insert(Analysis analysis) {
         if (analysis.getFhirUuid() == null) {
             analysis.setFhirUuid(UUID.randomUUID());
         }
-        return super.insert(analysis);
+        String id = super.insert(analysis);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new org.openelisglobal.analysis.valueholder.AnalysisCreatedEvent(analysis,
+                    analysis.getSysUserId()));
+        }
+        return id;
     }
 
     /**

@@ -61,6 +61,7 @@ function DictionaryManagement() {
   const [dictionaryNumber, setDictionaryNumber] = useState("");
   const [dictionaryEntry, setDictionaryEntry] = useState("");
   const [localAbbreviation, setLocalAbbreviation] = useState("");
+  const [containerPopulation, setContainerPopulation] = useState("");
   const [isActive, setIsActive] = useState("");
   const [loincCode, setLoincCode] = useState("");
 
@@ -267,6 +268,7 @@ function DictionaryManagement() {
     selectedDictionaryCategoryId: category?.id,
     dictEntry: dictionaryEntry,
     localAbbreviation: localAbbreviation,
+    containerPopulation: containerPopulation || null,
     isActive: isActive.id,
     loincCode: loincCode.trim() || null,
     dirtyFormFields: "",
@@ -328,6 +330,7 @@ function DictionaryManagement() {
       selectedDictionaryCategoryId: category.id,
       dictEntry: dictionaryEntry,
       localAbbreviation: localAbbreviation,
+      containerPopulation: containerPopulation || null,
       isActive: isActive.id,
       loincCode: loincCode.trim() || null,
       dirtyFormFields: dirtyFields,
@@ -389,6 +392,7 @@ function DictionaryManagement() {
       setDictionaryEntry(res.dictEntry);
       setIsActive(yesOrNo.find((item) => item.id === res.isActive));
       setLocalAbbreviation(res.localAbbreviation);
+      setContainerPopulation(res.containerPopulation || "");
       setLoincCode(res.loincCode || "");
     }
   };
@@ -571,6 +575,8 @@ function DictionaryManagement() {
                     itemToString={(item) => (item ? item.description : "")}
                     onChange={({ selectedItem }) => {
                       setCategory(selectedItem);
+                      if (selectedItem?.categoryName !== "Sample Container")
+                        setContainerPopulation("");
                     }}
                     selectedItem={category}
                     size="md"
@@ -578,6 +584,28 @@ function DictionaryManagement() {
                       marginBottom: "1rem",
                     }}
                   />
+                  {category?.categoryName === "Sample Container" && (
+                    <Dropdown
+                      id="container-population"
+                      titleText={intl.formatMessage({
+                        id: "dictionary.containerPopulation",
+                      })}
+                      label={intl.formatMessage({
+                        id: "dictionary.containerPopulation.unspecified",
+                      })}
+                      items={["", "ADULT", "PAEDIATRIC"]}
+                      selectedItem={containerPopulation}
+                      itemToString={(item) =>
+                        intl.formatMessage({
+                          id: `dictionary.containerPopulation.${item || "unspecified"}`,
+                        })
+                      }
+                      onChange={({ selectedItem }) => {
+                        setContainerPopulation(selectedItem || "");
+                        dirtyFieldsRef.current.add("containerPopulation");
+                      }}
+                    />
+                  )}
                   <TextInput
                     id="dictEntry"
                     labelText={intl.formatMessage({

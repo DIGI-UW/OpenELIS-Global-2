@@ -215,9 +215,8 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         lot.setStatus(LotStatus.IN_USE);
         lot.setDateOpened(openedDate);
 
-        // Calculate expiry after opening for reagents
         InventoryItem item = lot.getInventoryItem();
-        if (item != null && item.isReagent() && item.getStabilityAfterOpening() != null) {
+        if (item != null && item.getStabilityAfterOpening() != null) {
             Calendar cal = Calendar.getInstance();
             cal.setTime(openedDate);
             cal.add(Calendar.DAY_OF_MONTH, item.getStabilityAfterOpening());

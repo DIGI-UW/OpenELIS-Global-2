@@ -15,47 +15,7 @@ vi.mock("../../../addOrder/GpsCoordinatesCapture", () => ({
 
 import SampleCollectionCard from "./SampleCollectionCard";
 
-describe("SampleCollectionCard admission-date validation", () => {
-  it("shows an inline error when collection predates admission", () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ConfigurationContext.Provider
-          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
-        >
-          <SampleCollectionCard
-            sample={{
-              sampleItemId: "1",
-              sampleTypeId: "5",
-              sampleTypeName: "Blood",
-              collectionDate: "2026-08-02",
-              tests: [],
-              panels: [],
-            }}
-            sampleIndex={0}
-            sampleTypes={[]}
-            unitOfMeasures={[]}
-            serverReceivedDate="2026-08-13"
-            serverReceivedTime="10:00"
-            admissionDate="2026-08-03"
-            onUpdate={vi.fn()}
-            onRemove={vi.fn()}
-            onPrintLabels={vi.fn()}
-            isReadOnly={false}
-            canRemove={false}
-          />
-        </ConfigurationContext.Provider>
-      </IntlProvider>,
-    );
-
-    expect(screen.getByLabelText(/Collection Date/)).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
-    expect(
-      screen.getByText("Collection date cannot be before date of admission."),
-    ).toBeInTheDocument();
-  });
-
+describe("SampleCollectionCard", () => {
   it("does not restore the default after the user clears a collection date", async () => {
     const ControlledCard = () => {
       const [sample, setSample] = React.useState({
@@ -319,5 +279,51 @@ describe("SampleCollectionCard print labels while the order loads (OGC-1423)", (
         name: messages["collect.sample.printLabels"],
       }),
     ).toBeEnabled();
+  });
+
+  it("fills an unsaved sample's defaults through onFillDefaults, keeping onUpdate for the user's own edits (OGC-1443)", async () => {
+    const onUpdate = vi.fn();
+    const onFillDefaults = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <SampleCollectionCard
+            sample={{
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              collectionDate: "",
+              collectionTime: "",
+              receivedDate: "",
+              receivedTime: "",
+              tests: [],
+              panels: [],
+            }}
+            sampleIndex={1}
+            sampleTypes={[]}
+            unitOfMeasures={[]}
+            serverReceivedDate="2026-08-13"
+            serverReceivedTime="10:00"
+            onUpdate={onUpdate}
+            onFillDefaults={onFillDefaults}
+            onRemove={vi.fn()}
+            onPrintLabels={vi.fn()}
+            isReadOnly={false}
+            canRemove={false}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(onFillDefaults).toHaveBeenCalledWith(1, {
+        collectionDate: "2026-08-13",
+        collectionTime: "10:00",
+        receivedDate: "2026-08-13",
+        receivedTime: "10:00",
+      }),
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 });

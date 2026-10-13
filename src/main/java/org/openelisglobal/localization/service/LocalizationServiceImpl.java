@@ -139,6 +139,18 @@ public class LocalizationServiceImpl extends AuditableBaseObjectServiceImpl<Loca
         return super.insert(localization);
     }
 
+    /**
+     * Saves the localization and, when it names a test, the test's stored name
+     * (OGC-1442).
+     */
+    @Override
+    @Transactional
+    public Localization update(Localization localization) {
+        Localization updated = super.update(localization);
+        baseObjectDAO.syncStoredTestNames(updated.getId());
+        return updated;
+    }
+
     @Override
     @Transactional
     public void updateTestNames(Localization name, Localization reportingName) {

@@ -4,7 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
@@ -13,51 +17,29 @@ import java.util.Map;
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.sample.service.OrderProgressService;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class OrderSearchRestControllerTest {
-
-    @Test
-    public void addsPersistedMicrobiologyDraftToOrderSearchResponse() {
-        OrderSearchRestController controller = new OrderSearchRestController();
-        MicroCaseOrderDetailService service = mock(MicroCaseOrderDetailService.class);
-        MicroCaseOrderDetailRequestForm draft = new MicroCaseOrderDetailRequestForm();
-        Sample sample = new Sample();
-        sample.setId("42");
-        when(service.getOrderDraft("42")).thenReturn(draft);
-        ReflectionTestUtils.setField(controller, "microCaseOrderDetailService", service);
-        Map<String, Object> response = new HashMap<>();
-
-        controller.addMicrobiologyOrderDetail(response, sample);
-
-        assertSame(draft, response.get("microbiologyOrderDetail"));
-    }
-
-    @Test
-    public void leavesResponseUnchangedWhenMicrobiologyIsUnavailable() {
-        OrderSearchRestController controller = new OrderSearchRestController();
-        Sample sample = new Sample();
-        sample.setId("42");
-        Map<String, Object> response = new HashMap<>();
-
-        controller.addMicrobiologyOrderDetail(response, sample);
-
-        assertTrue(response.isEmpty());
-    }
 
     @Test
     public void mapsCanonicalProgramIdentityForReloadedOrders() {
@@ -76,14 +58,13 @@ public class OrderSearchRestControllerTest {
     }
 
     @Test
-    public void mapsCultureWorkflowAndMethodsForReloadedOrders() {
+    public void mapsMethodsForReloadedOrders() {
         OrderSearchRestController controller = new OrderSearchRestController();
         TestMethodService testMethodService = mock(TestMethodService.class);
         org.openelisglobal.test.valueholder.Test test = mock(org.openelisglobal.test.valueholder.Test.class);
         when(test.getId()).thenReturn("42");
         when(test.getLocalizedName()).thenReturn("Blood culture");
         when(test.getDescription()).thenReturn("Blood culture");
-        when(test.getCultureWorkflowType()).thenReturn("BACTERIOLOGY");
         TestMethodDto defaultMethod = new TestMethodDto();
         defaultMethod.methodId = "7";
         defaultMethod.methodName = "Blood Culture Standard";
@@ -94,7 +75,6 @@ public class OrderSearchRestControllerTest {
         TestSelectionDTO selectedTest = controller.buildSelectedTestData(test);
 
         assertEquals("42", selectedTest.getId());
-        assertEquals("BACTERIOLOGY", selectedTest.getCultureWorkflowType());
         assertSame(defaultMethod, selectedTest.getMethods().get(0));
     }
 
@@ -194,5 +174,63 @@ public class OrderSearchRestControllerTest {
         when(referralService.getReferralByAnalysisId("1")).thenReturn(open);
         when(orderProgressService.isOpenReferral(open)).thenReturn(true);
         assertTrue(controller.hasReferral(List.of(tube)));
+    }
+
+    // ── OGC-1398: a cancelled order is published again, so its Task reads
+    // cancelled instead of the order as it was entered ──
+
+    @Test
+    public void cancellingAnOrderPublishesItToTheFhirStoreAgain() throws Exception {
+        OrderSearchRestController controller = new OrderSearchRestController();
+        SampleService sampleService = mock(SampleService.class);
+        OrderProgressService orderProgressService = mock(OrderProgressService.class);
+        FhirTransformService fhirTransformService = mock(FhirTransformService.class);
+        ObservationHistoryService observationHistoryService = mock(ObservationHistoryService.class);
+        Sample sample = new Sample();
+        sample.setId("4501");
+        sample.setAccessionNumber("DEV01260000000001579");
+        sample.setOrderProgressStatus(OrderProgressStatus.CANCELLED.name());
+        when(sampleService.getSampleByAccessionNumber("DEV01260000000001579")).thenReturn(sample);
+        when(orderProgressService.cancel(eq("4501"), eq("Duplicate order"), any())).thenReturn(sample);
+        ReflectionTestUtils.setField(controller, "sampleService", sampleService);
+        ReflectionTestUtils.setField(controller, "orderProgressService", orderProgressService);
+        ReflectionTestUtils.setField(controller, "fhirTransformService", fhirTransformService);
+        ReflectionTestUtils.setField(controller, "observationHistoryService", observationHistoryService);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        UserSessionData user = new UserSessionData();
+        user.setSytemUserId(1);
+        request.setAttribute(IActionConstants.USER_SESSION_DATA, user);
+
+        ResponseEntity<Map<String, Object>> response = controller
+                .cancelOrder(Map.of("labNumber", "DEV01260000000001579", "reason", "Duplicate order"), request);
+
+        assertEquals(200, response.getStatusCode().value());
+        verify(fhirTransformService).transformPersistObjectsUnderSamples(List.of("4501"));
+    }
+
+    @Test
+    public void aRefusedCancellationPublishesNothing() throws Exception {
+        OrderSearchRestController controller = new OrderSearchRestController();
+        SampleService sampleService = mock(SampleService.class);
+        OrderProgressService orderProgressService = mock(OrderProgressService.class);
+        FhirTransformService fhirTransformService = mock(FhirTransformService.class);
+        Sample sample = new Sample();
+        sample.setId("4502");
+        when(sampleService.getSampleByAccessionNumber("DEV01260000000001580")).thenReturn(sample);
+        when(orderProgressService.cancel(eq("4502"), any(), any()))
+                .thenThrow(new IllegalStateException("order.cancel.complete"));
+        ReflectionTestUtils.setField(controller, "sampleService", sampleService);
+        ReflectionTestUtils.setField(controller, "orderProgressService", orderProgressService);
+        ReflectionTestUtils.setField(controller, "fhirTransformService", fhirTransformService);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        UserSessionData user = new UserSessionData();
+        user.setSytemUserId(1);
+        request.setAttribute(IActionConstants.USER_SESSION_DATA, user);
+
+        ResponseEntity<Map<String, Object>> response = controller
+                .cancelOrder(Map.of("labNumber", "DEV01260000000001580", "reason", "Too late"), request);
+
+        assertEquals(409, response.getStatusCode().value());
+        verify(fhirTransformService, never()).transformPersistObjectsUnderSamples(any());
     }
 }

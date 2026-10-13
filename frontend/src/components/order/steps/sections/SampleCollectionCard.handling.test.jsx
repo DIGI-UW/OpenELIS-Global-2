@@ -45,9 +45,11 @@ const renderCard = ({
   workflowType = "clinical",
   onUpdate = vi.fn(),
   onSameForAll,
+  locale = "en",
+  bundle = messages,
 } = {}) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
+    <IntlProvider locale={locale} messages={bundle}>
       <ConfigurationContext.Provider
         value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
       >
@@ -234,5 +236,35 @@ describe("SampleCollectionCard handling (OGC-1424, FR-C9, FR-C9a)", () => {
     expect(
       screen.getByText("Enter a temperature from -100 to 60 °C."),
     ).toBeInTheDocument();
+  });
+
+  it("takes every word of the requirement and stored-at lines from the message bundle (OGC-1443)", async () => {
+    const french = {
+      ...messages,
+      "sample.handling.title": "Manipulation",
+      "sample.handling.requiredLabel": "Requis :",
+      "sample.handling.processWithin": "à traiter sous {time}",
+      "sample.handling.holding.hours": "{hours} heures",
+      "label.testCatalog.storage.condition.REFRIGERATED": "Réfrigéré (2-8°C)",
+      "sample.handling.storedAtLabel": "Stocké à :",
+      "sample.handling.arrivedAs": "Arrivé",
+    };
+    renderCard({ locale: "fr", bundle: french });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("handling-required-0")).toHaveTextContent(
+        "Requis : Réfrigéré (2-8°C) · à traiter sous 4 heures",
+      ),
+    );
+    expect(screen.getByText("Manipulation")).toBeInTheDocument();
+    expect(screen.getByLabelText("Arrivé")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("handling-stored-at-0")).toHaveTextContent(
+        /^Stocké à :/,
+      ),
+    );
+    expect(screen.getByTestId("handling-group-0")).not.toHaveTextContent(
+      /Required|Stored at|\d h\b/,
+    );
   });
 });

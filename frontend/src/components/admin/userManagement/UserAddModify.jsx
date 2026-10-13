@@ -36,6 +36,7 @@ import {
 } from "../../utils/useServerData";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import AutoComplete from "../../common/AutoComplete";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -874,14 +875,15 @@ function UserAddModify() {
               >
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="login-name">
                       <FormattedMessage id="login.login.name" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="login-name"
+                      {...requiredProps()}
                       className="defalut"
                       type="text"
                       labelText=""
@@ -937,14 +939,15 @@ function UserAddModify() {
                 <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="login-password">
                       <FormattedMessage id="login.login.password" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <PasswordInput
                       id="login-password"
+                      {...requiredProps()}
                       className="defalut"
                       type="password"
                       labelText=""
@@ -973,14 +976,15 @@ function UserAddModify() {
                 <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="login-repeat-password">
                       <FormattedMessage id="login.login.repeat.password" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <PasswordInput
                       id="login-repeat-password"
+                      {...requiredProps()}
                       className="defalut"
                       type="password"
                       labelText=""
@@ -1016,14 +1020,15 @@ function UserAddModify() {
 
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="first-name">
                       <FormattedMessage id="login.login.first" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="first-name"
+                      {...requiredProps()}
                       className="defalut"
                       type="text"
                       labelText=""
@@ -1051,14 +1056,15 @@ function UserAddModify() {
                 <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="last-name">
                       <FormattedMessage id="login.login.last" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="last-name"
+                      {...requiredProps()}
                       className="defalut"
                       type="text"
                       labelText=""
@@ -1086,14 +1092,15 @@ function UserAddModify() {
                 <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="password-expire-date">
                       <FormattedMessage id="login.password.expired.date" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <CustomDatePicker
                       id="password-expire-date"
+                      {...requiredProps()}
                       className="defalut"
                       labelText=""
                       required={true}
@@ -1111,14 +1118,15 @@ function UserAddModify() {
                 <br />
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="login-timeout">
                       <FormattedMessage id="login.timeout" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="login-timeout"
+                      {...requiredProps()}
                       className="defalut"
                       type="number"
                       placeholder={intl.formatMessage({
@@ -1143,7 +1151,7 @@ function UserAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <>
                       <FormattedMessage id="login.account.locked" />
-                      <span className="requiredlabel">*</span> :
+                      <RequiredMarker announce /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
@@ -1175,7 +1183,7 @@ function UserAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <>
                       <FormattedMessage id="login.account.disabled" />
-                      <span className="requiredlabel">*</span> :
+                      <RequiredMarker announce /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
@@ -1207,7 +1215,7 @@ function UserAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <>
                       <FormattedMessage id="systemuser.isActive" />
-                      <span className="requiredlabel">*</span> :
+                      <RequiredMarker announce /> :
                     </>
                   </Column>
                   <Column lg={8} md={4} sm={4}>

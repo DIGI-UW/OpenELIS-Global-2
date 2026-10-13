@@ -1,6 +1,5 @@
 package org.openelisglobal.reports.controller;
 
-import com.itextpdf.text.DocumentException;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +28,7 @@ import org.openelisglobal.reports.action.implementation.IReportParameterSetter;
 import org.openelisglobal.reports.action.implementation.ReportImplementationFactory;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openpdf.text.DocumentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;

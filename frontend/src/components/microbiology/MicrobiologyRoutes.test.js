@@ -12,7 +12,6 @@ describe("MicrobiologyRoutes", () => {
     expect(
       getMicrobiologyWorklistUrl({
         urgency: "HIGH",
-        workflow: "BACTERIOLOGY",
         stage: "AST_IN_PROGRESS",
         due: "AST_REVIEW",
         q: "blood culture",
@@ -21,7 +20,7 @@ describe("MicrobiologyRoutes", () => {
         pageSize: 50,
       }),
     ).toBe(
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
+      "/Microbiology/worklist?stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
     );
   });
 
@@ -94,7 +93,6 @@ describe("MicrobiologyRoutes", () => {
       organism: [],
       origin: [],
       significance: [],
-      workflow: "BACTERIOLOGY",
       stage: "",
       urgency: "",
       due: "",
@@ -129,17 +127,12 @@ describe("MicrobiologyRoutes", () => {
   it("preserves worklist context and a valid section in a case URL", () => {
     expect(
       getMicrobiologyCaseUrl("case / 1", {
-        workflow: "BACTERIOLOGY",
         urgency: "HIGH",
         section: "isolates",
       }),
-    ).toBe(
-      "/Microbiology/cases/case%20%2F%201?workflow=BACTERIOLOGY&urgency=HIGH&section=isolates",
-    );
+    ).toBe("/Microbiology/cases/case%20%2F%201?urgency=HIGH&section=isolates");
     expect(
-      parseMicrobiologyCaseSearch(
-        "?workflow=BACTERIOLOGY&urgency=HIGH&section=isolates",
-      ),
+      parseMicrobiologyCaseSearch("?urgency=HIGH&section=isolates"),
     ).toEqual({
       grain: "cultures",
       status: "",
@@ -149,7 +142,6 @@ describe("MicrobiologyRoutes", () => {
       organism: [],
       origin: [],
       significance: [],
-      workflow: "BACTERIOLOGY",
       urgency: "HIGH",
       stage: "",
       due: "",
@@ -297,21 +289,6 @@ describe("MicrobiologyRoutes", () => {
       sort: "newest",
       section: "setup",
       action: "start-inoculation",
-    });
-  });
-
-  it("keeps the protocol-only bench action in canonical case state", () => {
-    expect(
-      getMicrobiologyCaseUrl("case-1", {
-        section: "setup",
-        action: "change-protocol",
-      }),
-    ).toBe("/Microbiology/cases/case-1?section=setup&action=change-protocol");
-    expect(
-      parseMicrobiologyCaseSearch("?section=setup&action=set-protocol"),
-    ).toMatchObject({
-      section: "setup",
-      action: "set-protocol",
     });
   });
 

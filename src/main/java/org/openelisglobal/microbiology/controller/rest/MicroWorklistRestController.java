@@ -25,9 +25,8 @@ public class MicroWorklistRestController extends BaseRestController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
     public ResponseEntity<MicroWorklistPageForm> getWorklistRows(@RequestParam(required = false) String grain,
-            @RequestParam(required = false) String status, @RequestParam(required = false) String workflow,
-            @RequestParam(required = false) String from, @RequestParam(required = false) String to,
-            @RequestParam(required = false) List<String> specimen,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to, @RequestParam(required = false) List<String> specimen,
             @RequestParam(required = false) List<String> organism, @RequestParam(required = false) List<String> origin,
             @RequestParam(required = false) List<String> significance, @RequestParam(required = false) String stage,
             @RequestParam(required = false) String urgency, @RequestParam(required = false) String due,
@@ -36,7 +35,6 @@ public class MicroWorklistRestController extends BaseRestController {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.grain = grain;
         query.status = status;
-        query.workflow = workflow;
         query.from = from;
         query.to = to;
         query.specimen = specimen;

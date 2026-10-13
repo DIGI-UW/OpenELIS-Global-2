@@ -1,0 +1,13 @@
+category,dictEntry,source,code,relationship,displayName
+Analyzer harness answers,Positive,SNOMED,10828004,SAME_AS,
+Analyzer harness answers,Positive,CIEL,703,SAME_AS,
+Analyzer harness answers,Negative,SNOMED,260385009,SAME_AS,
+Analyzer harness answers,Negative,CIEL,664,SAME_AS,
+Analyzer harness answers,Invalid,CIEL,163611,SAME_AS,
+Analyzer harness answers,Detected,SNOMED,260373001,SAME_AS,
+Analyzer harness answers,Detected,CIEL,1301,SAME_AS,
+Analyzer harness answers,Not detected,SNOMED,260415000,SAME_AS,
+Analyzer harness answers,Not detected,CIEL,1302,SAME_AS,
+Analyzer harness answers,Indeterminate,SNOMED,82334004,SAME_AS,
+Analyzer harness answers,Indeterminate,CIEL,1138,SAME_AS,
+Analyzer harness answers,Not applicable,SNOMED,385432009,SAME_AS,

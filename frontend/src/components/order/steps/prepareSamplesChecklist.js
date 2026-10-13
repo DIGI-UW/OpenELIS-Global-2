@@ -1,18 +1,17 @@
-import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
 import { isPlausibleTemperature } from "./sections/handlingRules";
 
 /**
  * The complete level of Prepare Samples (FR-A7, FR-D7): what the "To
  * continue" checklist lists before Save and next. A sample type on the order;
- * for every sample still live (typed, not rejected) a collection date and
- * time not before the admission date; and consent where the laboratory
+ * for every sample still live (typed, not rejected) at least one test or
+ * panel (the server refuses a sample without, OGC-1443) and a collection date
+ * and time not before the admission date; and consent where the laboratory
  * requires it. The collector is optional (OGC-1419): many tubes arrive with no
  * name on them, so it never holds the step.
  */
 export function prepareSamplesToContinue({
   samples = [],
   labNumber,
-  admissionDate,
   consentSatisfied,
   intl,
 }) {
@@ -31,21 +30,6 @@ export function prepareSamplesToContinue({
     .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected)
     .forEach((entry) => {
       const { sample, index } = entry;
-      if (
-        isCollectionDateBeforeAdmissionDate(
-          sample.collectionDate,
-          admissionDate,
-        )
-      ) {
-        items.push({
-          id: `collectionConflict-${index}`,
-          label: intl.formatMessage(
-            { id: "order.continue.item.collectionConflict" },
-            { sample: sampleName(entry) },
-          ),
-          targetId: `collectionDate-${index}`,
-        });
-      }
       if (!isPlausibleTemperature(sample.arrivalTemperature)) {
         items.push({
           id: `arrivalTemperature-${index}`,
@@ -54,6 +38,16 @@ export function prepareSamplesToContinue({
             { sample: sampleName(entry) },
           ),
           targetId: `arrivalTemperature-${index}`,
+        });
+      }
+      if (!sample.tests?.length && !sample.panels?.length) {
+        items.push({
+          id: `noTests-${index}`,
+          label: intl.formatMessage(
+            { id: "order.continue.item.noTestsOnSample" },
+            { sample: sampleName(entry) },
+          ),
+          targetId: `sampleType-${index}`,
         });
       }
       if (!sample.collectionDate || !sample.collectionTime) {

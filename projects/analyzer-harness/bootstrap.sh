@@ -18,10 +18,12 @@ NC='\033[0m'
 
 FORCE_RELOAD_CONFIG=false
 LOCAL_MODE=false
+SKIP_SUBMODULES=false
 for arg in "$@"; do
   case $arg in
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
     --local) LOCAL_MODE=true ;;
+    --skip-submodules) SKIP_SUBMODULES=true ;;
   esac
 done
 
@@ -48,10 +50,13 @@ fi
 export LETSENCRYPT_DOMAIN LETSENCRYPT_BRIDGE_DOMAIN
 
 # --- Submodules ---
-echo "Initializing analyzer Bridge and mock submodules..."
-cd "$REPO_ROOT"
-git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge
-echo -e "  ${GREEN}✓ Submodules initialized${NC}"
+# dev-stack has already initialized missing checkouts and preserved local edits.
+if [ "$SKIP_SUBMODULES" = false ]; then
+  echo "Initializing analyzer Bridge and mock submodules..."
+  cd "$REPO_ROOT"
+  git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge
+  echo -e "  ${GREEN}✓ Submodules initialized${NC}"
+fi
 
 # --- Volume directory tree ---
 mkdir -p "$HARNESS_VOLUME/database/dbInit"
@@ -64,8 +69,8 @@ mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# Harness molecular tests and result choices are mounted read-only from
-# config-templates and loaded by OE's normal configuration service.
+# The harness dictionary is mounted read-only from dictionary/ and loaded by
+# OE's normal configuration service.
 # Local Catalog Import uploads live in the worktree-scoped configuration volume.
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---

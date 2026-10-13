@@ -119,6 +119,8 @@ public class SampleEditServiceImpl implements SampleEditService {
     NoteService noteService;
     @Autowired
     private SampleStorageService sampleStorageService;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO microCaseAnalyses;
     private List<String> analysisList = new ArrayList<>();
 
     @Transactional
@@ -568,6 +570,10 @@ public class SampleEditServiceImpl implements SampleEditService {
 
         for (Analysis analysis : canceledAnalysis) {
             if (sampleEditItem.getTestId().equals(analysis.getTest().getId())) {
+                // A cancelled case result keeps its analysis identity, even if the
+                // catalog switch has since changed. Reordering creates new work.
+                if (analysis.getTest().isOpensMicrobiologyCase() || microCaseAnalyses.hasOwnership(analysis.getId()))
+                    return new Analysis();
                 return analysis;
             }
         }

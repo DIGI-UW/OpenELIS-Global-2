@@ -2,6 +2,7 @@ package org.openelisglobal.analyzerresults.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -174,6 +175,33 @@ public class AnalyzerResultsServiceImplTest {
         assertFalse(advanced.isReadOnly());
         assertNull(advanced.getImportIssueReason());
         assertNull(advanced.getDuplicateAnalyzerResultId());
+    }
+
+    @Test
+    public void aHeldRowFromAnotherRecordOfTheSameCodeIsNotAdvanced() {
+        AnalyzerResults held = existingRow("held-id-43", "DETECTED", new Timestamp(1_700_000_000_000L));
+        held.setReadOnly(true);
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        held.setSourceConnectionId("bridge-connection-7f3c");
+        held.setSourceProfileId("genexpert-astm");
+        held.setSourceProfileRevision(3);
+        held.setRawTestCode("HIVVL");
+        held.setRawSubIdentity("HIV-1");
+        held.setRawResultValue("DETECTED");
+
+        AnalyzerResults incoming = newIncoming("Detected", new Timestamp(1_800_000_000_000L));
+        incoming.setSourceConnectionId("bridge-connection-7f3c");
+        incoming.setSourceProfileId("genexpert-astm");
+        incoming.setSourceProfileRevision(3);
+        incoming.setRawTestCode("HIVVL");
+        incoming.setRawResultValue("DETECTED");
+        when(baseObjectDAO.getDuplicateResultByAccessionAndTest(incoming)).thenReturn(List.of(held));
+
+        service.insertAnalyzerResults(List.of(incoming), USER_ID);
+
+        ArgumentCaptor<AnalyzerResults> inserted = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(baseObjectDAO).insert(inserted.capture());
+        assertNotEquals("held-id-43", inserted.getValue().getId());
     }
 
     // ------------------------------------------------------------------

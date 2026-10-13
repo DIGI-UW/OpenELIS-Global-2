@@ -7,10 +7,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
-import org.openelisglobal.analyzer.form.AnalyzerSiteBindingSelectionRequest;
+import org.openelisglobal.analyzer.form.AnalyzerMappingSelectionRequest;
+import org.openelisglobal.analyzer.service.AnalyzerAdoptionService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingAdoption;
+import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
+import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
+import org.openelisglobal.analyzer.service.AnalyzerMappingView;
+import org.openelisglobal.analyzer.service.AnalyzerRequestException;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,14 +36,27 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/analyzer/analyzers")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('GLOBAL_ADMIN')")
 public class AnalyzerInstanceRestController extends BaseRestController {
 
     private final AnalyzerInstanceService analyzerInstanceService;
+    private final AnalyzerAdoptionService adoptionService;
+    private final AnalyzerMappingEditorService editorService;
 
     @Autowired
-    public AnalyzerInstanceRestController(AnalyzerInstanceService analyzerInstanceService) {
+    public AnalyzerInstanceRestController(AnalyzerInstanceService analyzerInstanceService,
+            AnalyzerAdoptionService adoptionService, AnalyzerMappingEditorService editorService) {
         this.analyzerInstanceService = analyzerInstanceService;
+        this.adoptionService = adoptionService;
+        this.editorService = editorService;
+    }
+
+    /**
+     * An adoption plan with the mapping it would save if the operator changes
+     * nothing, as the editor shows it.
+     */
+    public record AdoptionReview(String analyzerId, String profileId, int fromRevision, int toRevision,
+            String baseMappingFingerprint, List<AnalyzerMappingAdoption.Row> rows, AnalyzerMappingView proposal) {
     }
 
     @PostMapping
@@ -45,6 +66,8 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toMap(created));
     }
 
+    // QC and microbiology pages list analyzers for the import role too.
+    @PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String search,
             @RequestParam(required = false) String status) {
@@ -58,6 +81,7 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         return ResponseEntity.ok(Map.of("analyzers", analyzers));
     }
 
+    @PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> get(@PathVariable String id) {
         return ResponseEntity.ok(toMap(analyzerInstanceService.get(id)));
@@ -69,17 +93,60 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         return ResponseEntity.ok(toMap(analyzerInstanceService.update(id, input, getSysUserId(request))));
     }
 
-    @PutMapping("/{id}/site-binding")
-    public ResponseEntity<Map<String, Object>> selectSiteBindingRevision(@PathVariable String id,
-            @Valid @RequestBody AnalyzerSiteBindingSelectionRequest input, HttpServletRequest request) {
-        return ResponseEntity.ok(toMap(analyzerInstanceService.selectSiteBindingRevision(id, input.getSiteBindingId(),
-                input.getRevision(), input.getBindingFingerprint(), getSysUserId(request))));
+    @PutMapping("/{id}/mapping/apply")
+    public ResponseEntity<Map<String, Object>> applyMapping(@PathVariable String id,
+            @Valid @RequestBody AnalyzerMappingSelectionRequest input, HttpServletRequest request) {
+        return ResponseEntity.ok(toMap(analyzerInstanceService.applyMapping(id, input.getMappingId(),
+                input.getRevision(), input.getMappingFingerprint(), getSysUserId(request))));
+    }
+
+    /**
+     * What adopting a newer revision of the analyzer's profile does to each record.
+     */
+    @GetMapping("/{id}/adoption")
+    public ResponseEntity<AdoptionReview> prepareAdoption(@PathVariable String id, @RequestParam int revision) {
+        AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(id, revision);
+        return ResponseEntity.ok(new AdoptionReview(plan.analyzerId(), plan.profileId(), plan.fromRevision(),
+                plan.toRevision(), plan.baseMappingFingerprint(), plan.rows(),
+                editorService.preview(id, revision, plan.proposals())));
+    }
+
+    /**
+     * Saves the reviewed decisions as the analyzer's next mapping revision on the
+     * newer profile revision; the existing Confirm and Apply put it in force.
+     */
+    @PostMapping("/{id}/adoption")
+    public ResponseEntity<Map<String, Object>> adopt(@PathVariable String id, @RequestParam int revision,
+            @RequestBody AnalyzerMappingUpdate decisions, HttpServletRequest request) {
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(id, revision, decisions.baseMappingFingerprint(),
+                decisions.toDraft(), getSysUserId(request));
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("mappingId", adopted.mapping().getId());
+        response.put("mappingRevision", adopted.mapping().getRevisionNumber());
+        response.put("mappingFingerprint", adopted.mapping().getMappingFingerprint());
+        return ResponseEntity.ok(response);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(IllegalArgumentException exception) {
-        String message = exception.getMessage() == null ? "Invalid analyzer request" : exception.getMessage();
-        return ResponseEntity.badRequest().body(Map.of("error", message));
+        return ResponseEntity.badRequest().body(AnalyzerRequestException.body(exception, "Invalid analyzer request"));
+    }
+
+    /**
+     * Apply switches OE2 and the Bridge together, so a Bridge failure there means
+     * nothing was applied, unless the Bridge could not be put back.
+     */
+    @ExceptionHandler(BridgeAnalyzerConnectionException.class)
+    public ResponseEntity<Map<String, Object>> handleBridgeFailure(BridgeAnalyzerConnectionException exception) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error",
+                "analyzer.bridge.connection.reconcileRequired".equals(exception.messageKey())
+                        ? "OpenELIS kept the previous mapping, but the Analyzer Bridge may still be on the new one."
+                                + " Apply the mapping again when the Bridge is reachable."
+                        : "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
+                                + " Try again when it is reachable.");
+        body.put("messageKey", exception.messageKey());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 
     private static Map<String, Object> toMap(AnalyzerInstanceView view) {

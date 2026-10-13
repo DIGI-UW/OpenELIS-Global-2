@@ -15,7 +15,6 @@ const caseDetail = {
   patientName: "Microbiology, UAT",
   accessionNumber: "UATMICRO001",
   specimenType: "Blood",
-  workflowType: "BACTERIOLOGY",
   stage: "RECEIVED",
   activities: [
     { id: "a1", activityType: "CASE_CREATED", note: "Case created" },
@@ -44,10 +43,6 @@ const astServiceStubs = {
   getAstPanels: vi.fn().mockResolvedValue([]),
   getAntibiotics: vi.fn().mockResolvedValue([]),
   getBreakpointStandards: vi.fn().mockResolvedValue([]),
-  getCultureMethods: vi.fn().mockResolvedValue([]),
-  changeCaseWorkflow: vi.fn(),
-  getCaseProtocolOptions: vi.fn().mockResolvedValue([]),
-  changeCaseProtocol: vi.fn(),
   getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
   saveOrderDetail: vi.fn().mockResolvedValue({}),
   getCaseReadiness: vi.fn().mockResolvedValue({
@@ -237,64 +232,6 @@ describe("MicrobiologyCaseView", () => {
       expect(screen.getAllByRole("region", { name })).toHaveLength(1);
     },
   );
-
-  it("sets a bench protocol from canonical URL state and retains worklist context", async () => {
-    const user = userEvent.setup();
-    const protocolOption = {
-      id: "method-1",
-      label: "Routine blood culture",
-      active: true,
-      current: false,
-      mediaDefaults: "BAP + CHOC",
-      incubationDefaults: "48 hours at 35 C",
-      atmosphereDefaults: "aerobic + anaerobic",
-    };
-    const updatedCase = { ...caseDetail, cultureMethodId: "method-1" };
-    const service = {
-      ...astServiceStubs,
-      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
-      getCaseProtocolOptions: vi.fn().mockResolvedValue([protocolOption]),
-      changeCaseProtocol: vi.fn().mockResolvedValue(updatedCase),
-      createIsolate: vi.fn(),
-    };
-
-    renderCase(
-      service,
-      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
-    );
-
-    await user.click(
-      await screen.findByRole("button", { name: "Set protocol" }),
-    );
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "workflow=BACTERIOLOGY&section=setup&action=set-protocol",
-    );
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Culture protocol" }),
-      "method-1",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Reason for protocol change" }),
-      "Bench review requires routine media",
-    );
-    await user.click(screen.getByRole("button", { name: "Save protocol" }));
-
-    await waitFor(() =>
-      expect(service.changeCaseProtocol).toHaveBeenCalledWith("case-1", {
-        cultureMethodId: "method-1",
-        reason: "Bench review requires routine media",
-      }),
-    );
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
-    );
-    expect(
-      screen.getByTestId("microbiology-current-url"),
-    ).not.toHaveTextContent("action=");
-    expect(
-      await screen.findByText("Routine blood culture"),
-    ).toBeInTheDocument();
-  });
 
   it.each([
     {
@@ -901,17 +838,14 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(
-      service,
-      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
-    );
+    renderCase(service, "/Microbiology/cases/case-1?urgency=HIGH&sort=newest");
 
     await screen.findByRole("heading", { name: "Microbiology case" });
     await user.click(getAccordionButton("Isolates"));
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest&section=isolates",
+        "/Microbiology/cases/case-1?urgency=HIGH&sort=newest&section=isolates",
       ),
     );
 
@@ -920,45 +854,7 @@ describe("MicrobiologyCaseView", () => {
     );
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
-      ),
-    );
-  });
-
-  it("holds profile-specific actions until an unassigned case is classified", async () => {
-    const unassignedCase = {
-      ...caseDetail,
-      workflowType: "UNASSIGNED",
-      siblingCases: [
-        {
-          id: "case-tb",
-          workflowType: "MYCOBACTERIOLOGY_TB",
-          stage: "RECEIVED",
-        },
-      ],
-    };
-    const service = {
-      ...astServiceStubs,
-      getCaseDetail: vi.fn().mockResolvedValue(unassignedCase),
-      recordCaseActivity: vi.fn(),
-      createIsolate: vi.fn(),
-    };
-
-    renderCase(service, "/Microbiology/cases/case-1?section=ast");
-
-    expect(
-      await screen.findByText("Workflow classification required"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Change workflow")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Start AST" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Mycobacteriology/TB (Received)"),
-    ).toHaveAttribute("href", "/Microbiology/cases/case-tb?section=case-info");
-    await waitFor(() =>
-      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?section=case-info",
+        "/Microbiology/worklist?urgency=HIGH&sort=newest",
       ),
     );
   });

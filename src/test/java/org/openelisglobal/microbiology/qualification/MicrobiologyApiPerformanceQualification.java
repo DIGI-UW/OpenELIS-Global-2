@@ -35,10 +35,16 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.SpringVersion;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
@@ -96,22 +102,15 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
         measurements
                 .add(PerformanceEvidence
                         .measure("worklist-load", WARMUPS, MEASURED, 2000,
-                                (iteration,
-                                        warmup) -> expectOk(
-                                                authenticated(
-                                                        get("/rest/microbiology/worklist")
-                                                                .param("workflow",
-                                                                        MicroWorkflowType.BACTERIOLOGY.name())
-                                                                .param("page", "1").param("pageSize", "100"),
-                                                        session))));
+                                (iteration, warmup) -> expectOk(authenticated(
+                                        get("/rest/microbiology/worklist").param("page", "1").param("pageSize", "100"),
+                                        session))));
         measurements.add(PerformanceEvidence.measure("worklist-search", WARMUPS, MEASURED, 500,
                 (iteration, warmup) -> expectOk(authenticated(get("/rest/microbiology/worklist")
                         .param("q", dense.caseId()).param("page", "1").param("pageSize", "100"), session))));
         measurements.add(PerformanceEvidence.measure("worklist-filter-page", WARMUPS, MEASURED, 300,
-                (iteration, warmup) -> expectOk(authenticated(
-                        get("/rest/microbiology/worklist").param("workflow", MicroWorkflowType.BACTERIOLOGY.name())
-                                .param("sort", "newest").param("page", "2").param("pageSize", "50"),
-                        session))));
+                (iteration, warmup) -> expectOk(authenticated(get("/rest/microbiology/worklist").param("sort", "newest")
+                        .param("page", "2").param("pageSize", "50"), session))));
         measurements.add(PerformanceEvidence.measure("case-load", WARMUPS, MEASURED, 1000, (iteration,
                 warmup) -> expectOk(authenticated(get("/rest/microbiology/cases/{caseId}", dense.caseId()), session))));
 
@@ -120,7 +119,8 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
                         (iteration, warmup) -> expectOk(authenticated(
                                 post("/rest/microbiology/isolates").contentType(MediaType.APPLICATION_JSON)
                                         .content(mapToJson(Map.of("caseId", dense.caseId(), "isolateLabel",
-                                                operationKey("QPERF-ISO", iteration, warmup), "preliminaryOrganismText",
+                                                operationKey("QPERF-ISO", iteration, warmup), "gramStain",
+                                                "Gram negative rods", "preliminaryOrganismText",
                                                 "Qualification organism", "significance", "CLINICALLY_SIGNIFICANT"))),
                                 session))));
 
@@ -172,7 +172,7 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
     }
 
     private MicroAstPanel qualificationPanel() {
-        return referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
+        return referenceService.getActiveAstPanels(null).stream()
                 .filter(panel -> "Gram negative AST panel (UAT)".equals(panel.getName())).findFirst().orElseThrow();
     }
 
@@ -189,7 +189,15 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
 
     private MockHttpServletRequestBuilder authenticated(MockHttpServletRequestBuilder request,
             UserSessionData session) {
-        return request.sessionAttr(IActionConstants.USER_SESSION_DATA, session);
+        UserDetails userDetails = User.withUsername("admin").password("N/A").authorities("ROLE_ADMIN", "ROLE_RESULTS")
+                .build();
+        SecurityContext securityContext = new SecurityContextImpl();
+        securityContext.setAuthentication(
+                new UsernamePasswordAuthenticationToken(userDetails, "N/A", userDetails.getAuthorities()));
+        MockHttpSession httpSession = new MockHttpSession();
+        httpSession.setAttribute(IActionConstants.USER_SESSION_DATA, session);
+        httpSession.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
+        return request.session(httpSession);
     }
 
     private void expectOk(MockHttpServletRequestBuilder request) throws Exception {

@@ -245,9 +245,30 @@ class DeploymentTest(unittest.TestCase):
         self.assertTrue((self.diagnostics / "compose-status.txt").exists())
         self.assertEqual(self.previous_override, (self.diagnostics / "previous-images.json").read_text())
         log_command = next(call.args[0] for call in diagnostics.call_args_list if "logs" in call.args[0])
-        self.assertTrue(set(deployment.SERVICES).union(deployment.ANALYZER_SERVICES).issubset(log_command))
+        self.assertTrue(set(deployment.SERVICES).issubset(log_command))
         self.assertFalse(any(args[:1] == ["env"] for args in self.commands))
         self.assertIn("keep-existing-value", (self.root / ".env").read_text())
+
+    def test_a_site_without_a_pairing_code_gets_one_and_keeps_it(self):
+        self.ready_health()
+        self.deploy()
+        first = deployment.read_env_file(self.root / ".env")
+        self.ready_health()
+        self.deploy()
+        second = deployment.read_env_file(self.root / ".env")
+
+        self.assertRegex(first["ANALYZER_BRIDGE_PAIRING_CODE"], r"^[0-9a-f]{32}$")
+        self.assertEqual(first["ANALYZER_BRIDGE_PAIRING_CODE"], second["ANALYZER_BRIDGE_PAIRING_CODE"])
+        self.assertEqual("keep-existing-value", second["SERVER_SECRET"])
+
+    def test_a_configured_pairing_code_is_left_alone(self):
+        env_file = self.root / ".env"
+        env_file.write_text(env_file.read_text() + "ANALYZER_BRIDGE_PAIRING_CODE=SITE-CODE")
+        self.ready_health()
+        self.deploy()
+
+        self.assertEqual("SITE-CODE",
+                         deployment.read_env_file(self.root / ".env")["ANALYZER_BRIDGE_PAIRING_CODE"])
 
     def test_wrong_running_image_cannot_publish_ready(self):
         self.wrong_image = True
@@ -263,7 +284,7 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn("BASE_URL=http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port), seed)
         self.assertIn("MOCK_URL=" + deployment.DEFAULT_MOCK_URL, seed)
         self.assertEqual(["bash", str(release / "projects/analyzer-harness/seed-analyzers.sh"),
-                          "--ensure-connections", "--no-mock-network", "--activate"], seed[-5:])
+                          "--ensure-connections", "--no-mock-network"], seed[-4:])
         self.assertLess(self.commands.index(self.compose_calls("up")[0]), self.commands.index(seed))
         self.assertEqual([("http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port)
                            + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],
@@ -271,7 +292,7 @@ class DeploymentTest(unittest.TestCase):
         target = json.loads(self.target.read_text())
         self.assertEqual(self.sha, target["appSha"])
         self.assertEqual(str(release), target["release"])
-        self.assertEqual(5, len(target["images"]))
+        self.assertEqual(set(deployment.SERVICES), set(target["images"]))
         self.assertEqual("DEV01900361250089391", target["verification"]["analyzerDelivery"]["accession"])
 
     def test_failed_delivery_proof_withdraws_ready_identity(self):
@@ -327,15 +348,20 @@ class AnalyzerDeliveryTest(unittest.TestCase):
     def setUp(self):
         self.calls = []
         self.rows = []
+        self.on_page = "1"
 
     def http(self, method, url, body=None):
         self.calls.append((method, url, body))
-        if url.endswith("/simulate/astm/genexpert_astm"):
+        if url.endswith("/simulate/fixture/genexpert_astm/hivvl/quantified"):
             return {"status": "completed", "pushed": 1}
         if url.endswith("/analyzer/analyzers"):
             return {"analyzers": [{"id": 7, "name": "QuantStudio 5"},
                                   {"id": 2, "name": deployment.SMOKE_ANALYZER}]}
         if url.endswith("/AnalyzerResults?id=2"):
+            return {"resultList": self.rows if self.on_page == "1" else [],
+                    "paging": {"searchTermToPage": [{"id": "DEV01900000000000011", "value": self.on_page}]
+                               if self.rows else []}}
+        if url.endswith("/AnalyzerResults?id=2&page=2"):
             return {"resultList": self.rows}
         raise AssertionError(url)
 
@@ -349,11 +375,20 @@ class AnalyzerDeliveryTest(unittest.TestCase):
         report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
                                                      http=self.http, sleep=arrive_on_second_poll, timeout=5)
         push = self.calls[0]
-        self.assertEqual(("POST", "http://mock/simulate/astm/genexpert_astm",
+        self.assertEqual(("POST", "http://mock/simulate/fixture/genexpert_astm/hivvl/quantified",
                           {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
                            "sender_id": "OE2-TEST-GENEXPERT"}), push)
         self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
         self.assertEqual(1, len(polls))
+
+    def test_reads_the_page_of_the_review_list_that_holds_the_accession(self):
+        self.on_page = "2"
+        self.rows = [{"accessionNumber": "DEV01900000000000011", "rawTestCode": "HIVVL"}]
+
+        report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                     http=self.http, sleep=lambda _: None, timeout=5)
+
+        self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
 
     def test_result_that_never_arrives_fails_with_the_last_response(self):
         with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):

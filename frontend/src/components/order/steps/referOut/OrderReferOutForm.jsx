@@ -131,7 +131,7 @@ const OrderReferOutForm = ({
     if (!values.referredInstituteId) {
       next.referredInstituteId = intl.formatMessage({
         id: "error.referOut.referringLabRequired",
-        defaultMessage: "Select a referring lab.",
+        defaultMessage: "Select a reference lab.",
       });
     }
     if (values.cocContactPhone && values.cocContactPhone.length > 50) {
@@ -192,7 +192,7 @@ const OrderReferOutForm = ({
               id="referOut-referringLab"
               titleText={intl.formatMessage({
                 id: "label.referOut.field.referringLab",
-                defaultMessage: "Referring Lab",
+                defaultMessage: "Reference lab",
               })}
               items={referralOrganizations}
               itemToString={(item) => (item ? item.value : "")}

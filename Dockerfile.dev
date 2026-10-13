@@ -59,11 +59,21 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests -Dspotless.check.skip=true -Dmaven.test.skip=true
 
 ##
+# Tomcat's client certificate trust manager (see tomcat/oe_server.xml)
+#
+FROM maven:3-eclipse-temurin-21 AS tomcat-lib
+COPY ./tomcat/client-certificates /build/client-certificates
+RUN mkdir -p /build/classes \
+    && javac --release 21 -d /build/classes $(find /build/client-certificates -name '*.java') \
+    && jar cf /build/openelis-client-certificates.jar -C /build/classes .
+
+##
 # Run Stage
 #
 FROM tomcat:10-jre21 AS dev-runtime
 
 ADD install/createDefaultPassword.sh ./
+COPY --from=tomcat-lib /build/openelis-client-certificates.jar /usr/local/tomcat/lib/
 
 
 #Clean out unneccessary files from tomcat (especially pre-existing applications) 

@@ -15,10 +15,8 @@ import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
-import org.openelisglobal.microbiology.service.MicroCaseWorkflowService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -30,21 +28,19 @@ public class MicroCaseLookupRestControllerTest {
         MicrobiologyCaseAccessService accessService = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         UserModuleService userModuleService = org.mockito.Mockito.mock(UserModuleService.class);
         MockHttpServletRequest request = authenticatedRequest(7);
-        MicroCase bacteriology = caseRow("case-1", MicroWorkflowType.BACTERIOLOGY);
-        MicroCase tb = caseRow("case-2", MicroWorkflowType.MYCOBACTERIOLOGY_TB);
+        MicroCase bacteriology = caseRow("case-1");
+        MicroCase tb = caseRow("case-2");
         when(userModuleService.isUserAdmin(request)).thenReturn(false);
         when(accessService.canAccessSampleItem("1001", "7", false)).thenReturn(true);
         when(service.getSiblingCases("1001")).thenReturn(List.of(bacteriology, tb));
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
                 userModuleService, org.mockito.Mockito.mock(MicroCaseStateService.class),
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class),
-                org.mockito.Mockito.mock(MicroCaseWorkflowService.class)).getCasesForSampleItem("1001", request);
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001", request);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(2, response.getBody().size());
         assertEquals("case-1", response.getBody().get(0).id);
-        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), response.getBody().get(0).workflowType);
     }
 
     @Test
@@ -58,18 +54,16 @@ public class MicroCaseLookupRestControllerTest {
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
                 userModuleService, org.mockito.Mockito.mock(MicroCaseStateService.class),
-                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class),
-                org.mockito.Mockito.mock(MicroCaseWorkflowService.class)).getCasesForSampleItem("1001", request);
+                org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001", request);
 
         assertEquals(403, response.getStatusCode().value());
         verify(service, never()).getSiblingCases("1001");
     }
 
-    private MicroCase caseRow(String caseId, MicroWorkflowType workflowType) {
+    private MicroCase caseRow(String caseId) {
         MicroCase microCase = new MicroCase();
         microCase.setId(caseId);
         microCase.setSampleItemId("1001");
-        microCase.setWorkflowType(workflowType.name());
         return microCase;
     }
 

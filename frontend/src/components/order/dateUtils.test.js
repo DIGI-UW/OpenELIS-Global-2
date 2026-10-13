@@ -8,7 +8,6 @@ import {
   shortestHoldingMinutes,
   daysBetweenIsoDates,
   formatIsoDateForBackend,
-  isCollectionDateBeforeAdmissionDate,
   normalizeDateForState,
   todayLocalIso,
 } from "./dateUtils";
@@ -51,17 +50,7 @@ describe("order date utilities", () => {
     expect(normalizeDateForState("2026-08-13", "fr-FR")).toBe("2026-08-13");
   });
 
-  it("detects a collection date before admission without rejecting empty dates", () => {
-    expect(
-      isCollectionDateBeforeAdmissionDate("2026-08-02", "2026-08-03"),
-    ).toBe(true);
-    expect(
-      isCollectionDateBeforeAdmissionDate("2026-08-03", "2026-08-03"),
-    ).toBe(false);
-    expect(isCollectionDateBeforeAdmissionDate("", "2026-08-03")).toBe(false);
-  });
-
-  it("computes calendar days between admission and collection", () => {
+  it("computes calendar days between two ISO dates", () => {
     expect(daysBetweenIsoDates("2026-08-03", "2026-08-07")).toBe(4);
     expect(daysBetweenIsoDates("", "2026-08-07")).toBeNull();
   });
@@ -131,5 +120,19 @@ describe("test holding limits", () => {
     expect(formatHoldingMinutes(120)).toBe("2 h");
     expect(formatHoldingMinutes(150)).toBe("2 h 30 min");
     expect(formatHoldingMinutes(null)).toBe("");
+  });
+
+  it("words a holding time in the reader's language (OGC-1443)", () => {
+    const intl = {
+      formatMessage: ({ id }, values) =>
+        ({
+          "sample.handling.holding.minutes": `${values.minutes} minutes`,
+          "sample.handling.holding.hours": `${values.hours} heures`,
+          "sample.handling.holding.hoursMinutes": `${values.hours} h ${values.minutes}`,
+        })[id],
+    };
+    expect(formatHoldingMinutes(30, intl)).toBe("30 minutes");
+    expect(formatHoldingMinutes(120, intl)).toBe("2 heures");
+    expect(formatHoldingMinutes(150, intl)).toBe("2 h 30");
   });
 });

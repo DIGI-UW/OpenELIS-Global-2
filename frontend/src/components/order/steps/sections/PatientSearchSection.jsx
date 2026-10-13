@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Tile, Button, Tag, Link, InlineNotification } from "@carbon/react";
 import SearchPatientForm from "../../../patient/SearchPatientForm";
 import CreatePatientForm from "../../../patient/CreatePatientForm";
@@ -7,6 +7,8 @@ import { OrderContext, SaveStatus } from "../../OrderContext";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import usePossibleMatchCheck from "../../possibleMatches/usePossibleMatchCheck";
 import { RECORD_KIND } from "../../api/orderEntryCleanupApi";
+import { RequiredMarker } from "../../../common/RequiredMarker";
+import { localizeServerMessage } from "../../SaveFailureNotice";
 
 /**
  * PatientSearchSection - Patient search with results table and selection card
@@ -40,7 +42,9 @@ const PatientSearchSection = ({
   setPhoneValidation,
   isReadOnly,
   required = false,
+  fieldErrors = {},
 }) => {
+  const intl = useIntl();
   const [activeTab, setActiveTab] = useState("search");
   const [locallySelectedPatient, setSelectedPatient] = useState(null);
   const [searchInstance, setSearchInstance] = useState(0);
@@ -56,7 +60,7 @@ const PatientSearchSection = ({
   // The patient form compares its fields against this record to tell an
   // untouched patient from an edited one, so it must not follow the form's
   // own writes; it is taken again only for another patient or after a save.
-  const { saveStatus } = useContext(OrderContext);
+  const { saveStatus, hydrateOrderData } = useContext(OrderContext);
   const heldPatientPK = orderData?.patientProperties?.patientPK || "";
   const [held, setHeld] = useState({
     patientPK: "",
@@ -150,12 +154,12 @@ const PatientSearchSection = ({
     >
       <h4 className="section-title">
         <FormattedMessage id="banner.menu.patient" defaultMessage="Patient" />
-        {required && <span className="required-indicator"> *</span>}
+        <RequiredMarker required={required} announce />
       </h4>
       <p className="helper-text">
         <FormattedMessage
           id="patient.search.section.helper"
-          defaultMessage="Search by any combination of fields — partial matches accepted. 'External Search' queries the Client Registry and requires at minimum a name and date of birth."
+          defaultMessage="Search by any combination of fields. Names match exactly or by their first letters. 'External Search' queries the Client Registry and requires at minimum a name and date of birth."
         />
       </p>
 
@@ -216,6 +220,7 @@ const PatientSearchSection = ({
                 replaced the in-page save (OGC-1266). */}
             {!isReadOnly && (
               <Button
+                id="patient-edit-details"
                 kind="ghost"
                 size="sm"
                 onClick={() => setActiveTab("new")}
@@ -242,6 +247,7 @@ const PatientSearchSection = ({
             getSelectedPatient={handleSelectPatient}
             renderNotifications={false}
             followUrlLabNumber={false}
+            nameMatch="prefix"
           />
         </div>
       )}
@@ -254,7 +260,12 @@ const PatientSearchSection = ({
             selectedPatient={selectedPatient || NEW_PATIENT}
             orderFormValues={orderData}
             setOrderFormValues={setOrderData}
-            error={() => null}
+            hydrateOrderFormValues={hydrateOrderData}
+            error={(field) =>
+              fieldErrors?.[field]
+                ? localizeServerMessage(intl, fieldErrors[field])
+                : null
+            }
             setPhoneValidation={setPhoneValidation}
           />
           {!selectedPatient && !isReadOnly && (

@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.sql.Timestamp;
@@ -75,6 +77,9 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     @Autowired
     private TypeOfSampleService typeOfSampleService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Before
     @Override
     public void setUp() throws Exception {
@@ -112,6 +117,14 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
                 ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), performedBy));
         astService.reviewRun(run.getId(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
+
+        // V1 retirement left the workflow_type column readable only for this
+        // export selection, with no application writer left: stamp the stored
+        // V1 value directly to stand in for a legacy bacteriology row.
+        entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
+                .setParameter("id", released.getId()).executeUpdate();
+        entityManager.flush();
+        entityManager.refresh(released);
 
         assertTrue(released.getClosedAt().after(new Timestamp(collectionDate.getTime() + 1_000)));
         assertEquals(List.of(released), caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,

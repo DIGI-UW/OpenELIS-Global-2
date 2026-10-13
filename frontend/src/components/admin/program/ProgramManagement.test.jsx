@@ -145,6 +145,69 @@ describe("ProgramManagement", () => {
     );
   });
 
+  it("allows opting a Program into microbiology without changing its domain or questionnaire", async () => {
+    renderPage();
+    await screen.findByText("Cytology", { selector: "td" });
+    fireEvent.click(
+      within(rowNamed("Cytology")).getByRole("button", {
+        name: "Edit program",
+      }),
+    );
+    await screen.findByDisplayValue("Nature of Specimen");
+    const toggle = screen.getByRole("switch", {
+      name: /Show on Microbiology case/,
+    });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(lastPostedPayload()).toMatchObject({
+      showOnMicroCase: true,
+      domain: "CLINICAL",
+      active: true,
+      labUnitIds: ["165"],
+    });
+    expect(lastPostedPayload().additionalOrderEntryQuestions).toEqual(
+      cytologyQuestionnaire,
+    );
+  });
+
+  it("loads and preserves the stored microbiology switch when other fields change", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      serve(url, (response) =>
+        callback(
+          url === "/rest/program/5"
+            ? { ...response, showOnMicroCase: true }
+            : response,
+        ),
+      ),
+    );
+    renderPage();
+    await screen.findByText("Cytology", { selector: "td" });
+    fireEvent.click(
+      within(rowNamed("Cytology")).getByRole("button", {
+        name: "Edit program",
+      }),
+    );
+    await screen.findByDisplayValue("Nature of Specimen");
+    expect(
+      screen.getByRole("switch", { name: /Show on Microbiology case/ }),
+    ).toBeChecked();
+    fireEvent.change(screen.getByDisplayValue("Cytology"), {
+      target: { value: "Cytology renamed" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(lastPostedPayload()).toMatchObject({
+      showOnMicroCase: true,
+      program: { programName: "Cytology renamed" },
+    });
+  });
+
   it("lists active programs with domain, status and every lab unit, and reveals deactivated ones on demand", async () => {
     renderPage();
 

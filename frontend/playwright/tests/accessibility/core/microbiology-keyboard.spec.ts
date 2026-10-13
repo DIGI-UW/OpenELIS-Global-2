@@ -69,12 +69,6 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.press("Enter");
       await expect(page).not.toHaveURL(/status=incubating/);
 
-      const workflowFilter = page.getByLabel("Workflow", { exact: true });
-      await tabTo(page, workflowFilter);
-      await page.keyboard.press("b");
-      await page.keyboard.press("Tab");
-      await expect(page).toHaveURL(/workflow=BACTERIOLOGY/);
-
       const search = page.getByRole("searchbox", { name: "Filter table" });
       await tabTo(page, search);
       await page.keyboard.type(workingCase.accessionNumber);

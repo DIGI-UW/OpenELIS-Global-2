@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="016-environmental-microbiology-sites" author="openelisglobal">
+  <addColumn schemaName="clinlims" tableName="micro_case"><column name="site_id" type="integer"/></addColumn>
+  <addColumn schemaName="clinlims" tableName="sample_type_request"><column name="collection_location_id" type="integer"/></addColumn>
+  <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case" baseColumnNames="site_id" constraintName="fk_micro_case_site" referencedTableSchemaName="clinlims" referencedTableName="vector_sampling_site" referencedColumnNames="id"/>
+  <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="sample_type_request" baseColumnNames="collection_location_id" constraintName="fk_requested_sample_site" referencedTableSchemaName="clinlims" referencedTableName="vector_sampling_site" referencedColumnNames="id"/>
+  <rollback>
+   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_location_id"/>
+   <dropColumn schemaName="clinlims" tableName="micro_case" columnName="site_id"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

@@ -44,10 +44,9 @@ async function selectPatientOnAddOrder(page: Page, patient: SeededPatient) {
   await main.getByRole("textbox", { name: "Last Name" }).fill(patient.lastName);
   await main.getByRole("button", { name: "Search", exact: true }).click();
   await page.locator(`label[for="${patient.patientPK}"]`).click();
-  await expect(main.getByRole("textbox", { name: "National ID*" })).toHaveValue(
-    patient.nationalId,
-    { timeout: UI_TIMEOUT },
-  );
+  await expect(
+    main.getByRole("textbox", { name: "National ID", exact: true }),
+  ).toHaveValue(patient.nationalId, { timeout: UI_TIMEOUT });
   await main.getByRole("button", { name: "Next", exact: true }).click();
   await expect(main.getByRole("heading", { name: "Program" })).toBeVisible();
 }
@@ -80,11 +79,14 @@ async function chooseSuggestion(
 /** Order step: generated lab number, site and requester. Returns the lab number. */
 async function fillOrderStep(page: Page): Promise<string> {
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  const labNumber = page.getByRole("textbox", { name: "Lab Number *" });
+  const labNumber = page.getByRole("textbox", {
+    name: "Lab Number",
+    exact: true,
+  });
   await expect(labNumber).toBeVisible({ timeout: UI_TIMEOUT });
   await page.getByRole("link", { name: "Generate" }).click();
   await expect(labNumber).not.toHaveValue("", { timeout: UI_TIMEOUT });
-  await chooseSuggestion(page, "Search Site Name *", "CAMES MAN", SITE);
+  await chooseSuggestion(page, "Search Site Name", "CAMES MAN", SITE);
   await chooseSuggestion(page, "Search Requester", "Prime", REQUESTER);
   await expect(
     page.getByRole("textbox", { name: "Requester's FirstName:" }),
@@ -245,14 +247,14 @@ test.describe("Add Order program, referral and remembered requester", () => {
       await main.getByRole("button", { name: "Search", exact: true }).click();
       await page.locator(`label[for="${second.patientPK}"]`).click();
       await expect(
-        main.getByRole("textbox", { name: "National ID*" }),
+        main.getByRole("textbox", { name: "National ID", exact: true }),
       ).toHaveValue(second.nationalId, { timeout: UI_TIMEOUT });
       await main.getByRole("button", { name: "Next", exact: true }).click();
       await toSampleStep(page);
       await page.getByRole("button", { name: "Next", exact: true }).click();
 
       await expect(
-        page.getByRole("textbox", { name: "Search Site Name *" }),
+        page.getByRole("textbox", { name: "Search Site Name", exact: true }),
       ).toHaveValue(SITE, { timeout: UI_TIMEOUT });
       await expect(
         page.getByRole("textbox", { name: "Requester's FirstName:" }),

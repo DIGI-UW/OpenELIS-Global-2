@@ -5,6 +5,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "./SampleType";
 import { applySampleTypeUpdate, newSampleKey } from "./sampleTypeUpdate";
 import { FormattedMessage } from "react-intl";
+import { RequiredMarker } from "../common/RequiredMarker";
 const AddSample = (props) => {
   const { samples, setSamples, error, domain, allowReferral } = props;
   const componentMounted = useRef(false);
@@ -73,7 +74,7 @@ const AddSample = (props) => {
                 <div className="sampleType" key={sample.key ?? i}>
                   <h4>
                     <FormattedMessage id="label.button.sample" /> {i + 1}
-                    <span className="requiredlabel">*</span>
+                    <RequiredMarker announce />
                   </h4>
                   <Link href="#" onClick={(e) => handleRemoveSample(e, sample)}>
                     {<FormattedMessage id="sample.remove.action" />}

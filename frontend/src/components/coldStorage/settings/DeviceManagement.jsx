@@ -40,6 +40,7 @@ import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
 import AddDeviceModal from "../shared/AddDeviceModal";
+import { RequiredMarker } from "../../common/RequiredMarker";
 
 const getDeviceColumns = (intl, canManage) => [
   { key: "id", header: intl.formatMessage({ id: "coldStorage.device.id" }) },
@@ -684,7 +685,12 @@ function DeviceManagement() {
         <Stack gap={5}>
           <TextInput
             id="roomName"
-            labelText={intl.formatMessage({ id: "coldStorage.room.name" })}
+            labelText={
+              <>
+                {intl.formatMessage({ id: "coldStorage.room.name" })}
+                <RequiredMarker />
+              </>
+            }
             placeholder={intl.formatMessage({
               id: "coldStorage.room.namePlaceholder",
             })}

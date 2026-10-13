@@ -57,7 +57,6 @@ public class ActivityReportByPanel extends ActivityReport implements IReportCrea
         } else {
             panelName = panelSelection.getSelectionAsName();
         }
-        createReportParameters();
 
         List<Result> resultList = ResultServiceImpl.getResultsInTimePeriodInPanel(dateRange.getLowDate(),
                 dateRange.getHighDate(), panelSelection.getSelection());

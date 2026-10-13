@@ -274,16 +274,6 @@ export function seedMicrobiologyWorklistCase(
   return provisionMicrobiologyScenario(page, "WORKLIST");
 }
 
-export function seedMicrobiologyClassificationCase(
-  page: Page,
-): Promise<SeededMicrobiologyCase> {
-  return provisionMicrobiologyScenario(
-    page,
-    "R1",
-    `playwright-r1-classification-${randomUUID()}`,
-  );
-}
-
 export async function seedMicrobiologyReferenceAdmin(
   page: Page,
 ): Promise<SeededMicrobiologyReferenceAdmin> {
@@ -761,7 +751,7 @@ async function prepareMicrobiologyAstCase(
     requireJsonResponse<MicrobiologyReferenceOption[]>(
       "Load AST panels",
       await page.request.get(
-        `${API_PREFIX}/rest/microbiology/reference/ast-panels?workflowType=BACTERIOLOGY`,
+        `${API_PREFIX}/rest/microbiology/reference/ast-panels`,
       ),
     ),
     requireJsonResponse<MicrobiologyReferenceOption[]>(
@@ -1002,7 +992,7 @@ export async function seedDenseMicrobiologyCase(
     requireJsonResponse<MicrobiologyReferenceOption[]>(
       "Load AST panels",
       await page.request.get(
-        `${API_PREFIX}/rest/microbiology/reference/ast-panels?workflowType=BACTERIOLOGY`,
+        `${API_PREFIX}/rest/microbiology/reference/ast-panels`,
       ),
     ),
     requireJsonResponse<MicrobiologyReferenceOption[]>(

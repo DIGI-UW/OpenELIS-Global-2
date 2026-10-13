@@ -16,7 +16,6 @@ import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 /**
  * Test-support builder for repeatable qualification workloads through
@@ -116,7 +115,7 @@ public class MicrobiologyQualificationDataService {
     }
 
     private MicroAstPanel requireUatPanel() {
-        return referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY).stream()
+        return referenceService.getActiveAstPanels(null).stream()
                 .filter(panel -> UAT_PANEL_NAME.equals(panel.getName())).findFirst()
                 .orElseThrow(() -> new IllegalStateException("QUALIFICATION_AST_PANEL_REQUIRED"));
     }

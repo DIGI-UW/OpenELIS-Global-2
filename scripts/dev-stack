@@ -201,16 +201,8 @@ def ensure_local_env(context: StackContext) -> None:
         print(f"Created local {env_file.relative_to(context.repo_root)} from .env.example")
 
 
-def submodule_repair_mode(
-    expected: str, actual: str, status: str, has_content: bool
-) -> str | None:
-    if not has_content:
-        return "force"
-    if actual == expected:
-        return None
-    if status:
-        raise RuntimeError("Submodule has local changes at the wrong commit")
-    return "checkout"
+def has_checkout(path: Path) -> bool:
+    return path.is_dir() and any(entry.name != ".git" for entry in path.iterdir())
 
 
 def initialize_submodule(
@@ -219,14 +211,7 @@ def initialize_submodule(
     command = ["git", "submodule", "update", "--init", "--recursive", relative_path]
     try:
         run(command, cwd=context.repo_root, environment=environment)
-    except subprocess.CalledProcessError as error:
-        path = context.repo_root / relative_path
-        has_content = path.is_dir() and any(entry.name != ".git" for entry in path.iterdir())
-        if has_content:
-            raise RuntimeError(
-                f"Submodule initialization failed for populated checkout {relative_path}; "
-                "refusing to force it"
-            ) from error
+    except subprocess.CalledProcessError:
         run(
             [
                 "git",
@@ -244,52 +229,32 @@ def initialize_submodule(
 
 
 def ensure_submodules(context: StackContext, environment: dict[str, str]) -> None:
+    """Initialize empty submodules; build populated ones exactly as checked out."""
     for relative_path in required_submodules():
-        initialize_submodule(context, environment, relative_path)
         path = context.repo_root / relative_path
-        expected = output(
+        if not has_checkout(path):
+            initialize_submodule(context, environment, relative_path)
+            continue
+        recorded = output(
             ["git", "rev-parse", f"HEAD:{relative_path}"],
             cwd=context.repo_root,
             environment=environment,
         )
-        actual = output(
+        checked_out = output(
             ["git", "rev-parse", "HEAD"], cwd=path, environment=environment
         )
-        status = output(
+        changes = output(
             ["git", "status", "--porcelain"], cwd=path, environment=environment
         )
-        has_content = any(entry.name != ".git" for entry in path.iterdir())
-        repair_mode = submodule_repair_mode(expected, actual, status, has_content)
-        if repair_mode == "force":
-            run(
-                [
-                    "git",
-                    "submodule",
-                    "update",
-                    "--init",
-                    "--checkout",
-                    "--force",
-                    relative_path,
-                ],
-                cwd=context.repo_root,
-                environment=environment,
-            )
-        elif repair_mode == "checkout":
-            run(
-                ["git", "submodule", "update", "--init", "--checkout", relative_path],
-                cwd=context.repo_root,
-                environment=environment,
-            )
-        verified = output(
-            ["git", "rev-parse", "HEAD"], cwd=path, environment=environment
+        if checked_out == recorded and not changes:
+            continue
+        notice = (
+            f"{relative_path}: building checked-out {checked_out[:7]} "
+            f"(recorded pin {recorded[:7]})"
         )
-        verified_status = output(
-            ["git", "status", "--porcelain"], cwd=path, environment=environment
-        )
-        if verified != expected or verified_status:
-            raise RuntimeError(
-                f"Submodule {relative_path} is not a clean checkout of {expected[:12]}"
-            )
+        if changes:
+            notice += ", with uncommitted changes"
+        print(notice)
 
 
 def heal_war_mount(context: StackContext) -> None:
@@ -319,8 +284,12 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
         raise RuntimeError(f"Build did not produce {war}")
 
 
-def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str]) -> None:
+def bootstrap_analyzer_harness(
+    context: StackContext, environment: dict[str, str], *, skip_submodules: bool = False
+) -> None:
     arguments = [str(context.project_dir / "bootstrap.sh")]
+    if skip_submodules:
+        arguments.append("--skip-submodules")
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         arguments.append("--local")
     run(
@@ -546,7 +515,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         environment = build_environment(context)
         doctor(context, environment)
         ensure_submodules(context, environment)
-        bootstrap_analyzer_harness(context, environment)
+        bootstrap_analyzer_harness(context, environment, skip_submodules=True)
         backend_was_running = service_is_running(
             context, environment, "oe.openelis.org"
         )

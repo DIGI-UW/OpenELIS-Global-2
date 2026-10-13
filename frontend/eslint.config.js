@@ -208,12 +208,9 @@ export default [
     },
   },
 
-  // ─── Helper exemption: pacing helpers use waitForTimeout by design ──
+  // ─── Helper exemption: the pacing helper uses waitForTimeout by design ──
   {
-    files: [
-      "playwright/helpers/title-card.ts",
-      "playwright/helpers/video-pause.ts",
-    ],
+    files: ["playwright/helpers/video-pause.ts"],
     rules: {
       "playwright/no-wait-for-timeout": "off",
     },

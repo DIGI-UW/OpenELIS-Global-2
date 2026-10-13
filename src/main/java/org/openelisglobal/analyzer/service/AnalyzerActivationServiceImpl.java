@@ -13,9 +13,9 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,12 +30,13 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String MAPPINGS_BLOCKER = "analyzer.activation.blocker.mappings";
     private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
+    private static final String BRIDGE_PROFILE_UNAVAILABLE = "analyzer.connection.readiness.profileUnavailable";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
 
     private final AnalyzerService analyzerService;
     private final BridgeProfileCatalogService profileCatalogService;
-    private final AnalyzerSiteBindingService siteBindingService;
-    private final AnalyzerSiteBindingConfirmationService confirmationService;
+    private final AnalyzerMappingService mappingService;
+    private final AnalyzerMappingConfirmationService confirmationService;
     private final TestSectionService testSectionService;
     private final BridgeAnalyzerConnectionClient bridgeClient;
     private final AnalyzerActivationRecordService activationRecordService;
@@ -45,22 +46,22 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     @Autowired
     public AnalyzerActivationServiceImpl(AnalyzerService analyzerService,
-            BridgeProfileCatalogService profileCatalogService, AnalyzerSiteBindingService siteBindingService,
-            AnalyzerSiteBindingConfirmationService confirmationService, TestSectionService testSectionService,
+            BridgeProfileCatalogService profileCatalogService, AnalyzerMappingService mappingService,
+            AnalyzerMappingConfirmationService confirmationService, TestSectionService testSectionService,
             BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationRecordService activationRecordService) {
-        this(analyzerService, profileCatalogService, siteBindingService, confirmationService, testSectionService,
+        this(analyzerService, profileCatalogService, mappingService, confirmationService, testSectionService,
                 bridgeClient, activationRecordService, Clock.systemUTC(), () -> UUID.randomUUID().toString(),
                 () -> UUID.randomUUID().toString());
     }
 
     AnalyzerActivationServiceImpl(AnalyzerService analyzerService, BridgeProfileCatalogService profileCatalogService,
-            AnalyzerSiteBindingService siteBindingService, AnalyzerSiteBindingConfirmationService confirmationService,
+            AnalyzerMappingService mappingService, AnalyzerMappingConfirmationService confirmationService,
             TestSectionService testSectionService, BridgeAnalyzerConnectionClient bridgeClient,
             AnalyzerActivationRecordService activationRecordService, Clock clock,
             Supplier<String> activationCommandIdSupplier, Supplier<String> deactivationCommandIdSupplier) {
         this.analyzerService = analyzerService;
         this.profileCatalogService = profileCatalogService;
-        this.siteBindingService = siteBindingService;
+        this.mappingService = mappingService;
         this.confirmationService = confirmationService;
         this.testSectionService = testSectionService;
         this.bridgeClient = bridgeClient;
@@ -113,7 +114,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
         PreviousAnalyzerState previousState = PreviousAnalyzerState.capture(analyzer);
         try {
-            AnalyzerActivationRecord record = activationRecordService.retain(analyzer, context.snapshot().revision(),
+            AnalyzerActivationRecord record = activationRecordService.retain(analyzer, context.snapshot().mapping(),
                     context.confirmation(), acknowledgement, "ACTIVE", exactActor);
             analyzer.setLatestActivationRecord(record);
             analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
@@ -160,7 +161,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
         PreviousAnalyzerState previousState = PreviousAnalyzerState.capture(analyzer);
         try {
-            AnalyzerActivationRecord record = activationRecordService.retain(analyzer, context.snapshot().revision(),
+            AnalyzerActivationRecord record = activationRecordService.retain(analyzer, context.snapshot().mapping(),
                     context.confirmation(), acknowledgement, "INACTIVE", exactActor);
             analyzer.setLatestActivationRecord(record);
             analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
@@ -175,6 +176,29 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         }
     }
 
+    @Override
+    @Transactional
+    public void resetUnavailableProfile(String analyzerId, String actor) {
+        Analyzer analyzer = lockAnalyzer(analyzerId);
+        String exactActor = requireText(actor, "actor");
+        if (analyzer.getMapping() == null) {
+            return;
+        }
+        // Only the Bridge's own report counts: an unreachable Bridge also fails the
+        // profile lookup, and a reset must not follow a passing outage.
+        boolean unavailable = validateActivation(analyzer).blockers().stream()
+                .anyMatch(blocker -> BRIDGE_PROFILE_UNAVAILABLE.equals(blocker.code()));
+        if (!unavailable) {
+            throw new AnalyzerRequestException("analyzer.reset.error.profileAvailable",
+                    "The analyzer type is still available. Adopt a newer revision to move this analyzer to it.");
+        }
+        analyzer.setMapping(null);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setSysUserId(exactActor);
+        analyzerService.update(analyzer);
+    }
+
     private ActivationContext validateActivation(Analyzer analyzer) {
         List<AnalyzerActivationBlocker> blockers = new ArrayList<>();
         if (analyzer.getName() == null || analyzer.getName().isBlank()) {
@@ -184,7 +208,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             blockers.add(new AnalyzerActivationBlocker(LAB_UNIT_BLOCKER));
         }
 
-        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin profile = analyzer.getPinnedProfile();
         BridgeProfileCatalog.ProfileRevision profileRevision = null;
         if (profile == null) {
             blockers.add(new AnalyzerActivationBlocker(PROFILE_BLOCKER));
@@ -201,17 +225,16 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             }
         }
 
-        AnalyzerSiteBindingSnapshot snapshot = null;
-        AnalyzerSiteBindingConfirmation confirmation = null;
-        String bindingRevisionId = analyzer.getSiteBindingRevision() == null ? null
-                : analyzer.getSiteBindingRevision().getId();
+        AnalyzerMappingSnapshot snapshot = null;
+        AnalyzerMappingConfirmation confirmation = null;
+        String bindingRevisionId = analyzer.getMapping() == null ? null : analyzer.getMapping().getId();
         String recognitionFingerprint = profileRevision == null || profileRevision.controlRecognitionSummary() == null
                 ? null
                 : profileRevision.controlRecognitionSummary().recognitionFingerprint();
         if (bindingRevisionId != null && recognitionFingerprint != null) {
-            snapshot = siteBindingService.findByRevisionId(bindingRevisionId).orElse(null);
+            snapshot = mappingService.findById(bindingRevisionId).orElse(null);
             if (snapshot != null) {
-                AnalyzerSiteBindingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
+                AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
                         recognitionFingerprint);
                 if (!assessment.mappingsCurrent()) {
                     blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
@@ -257,21 +280,22 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     }
 
     private ActivationContext deactivationContext(Analyzer analyzer, ConnectionReference connection) {
-        AnalyzerSiteBindingRevision revision = analyzer.getSiteBindingRevision();
-        AnalyzerSiteBindingSnapshot snapshot = revision == null ? null
-                : siteBindingService.findByRevisionId(revision.getId()).orElse(null);
-        AnalyzerSiteBindingConfirmation confirmation = analyzer.getLatestActivationRecord() == null ? null
-                : analyzer.getLatestActivationRecord().getVerificationConfirmation();
+        AnalyzerMapping revision = analyzer.getMapping();
+        AnalyzerMappingSnapshot snapshot = revision == null ? null
+                : mappingService.findById(revision.getId()).orElse(null);
         if (snapshot == null) {
-            throw new IllegalArgumentException("Analyzer site binding is missing");
+            throw new IllegalArgumentException("Analyzer mapping is missing");
         }
+        // Applying a mapping to an active analyzer replaces it without a new
+        // activation, so the last activation's confirmation can name an older one.
+        AnalyzerMappingConfirmation confirmation = confirmationService.findForMapping(revision.getId()).orElse(null);
         return new ActivationContext(snapshot, confirmation, connection, List.of());
     }
 
     private static List<AnalyzerActivationBlocker> validateAcknowledgement(ActivationContext context,
             ObjectNode acknowledgement, String action, String state) {
         ConnectionReference connection = context.connection();
-        AnalyzerProfileBinding profile = context.snapshot().binding().getProfileBinding();
+        AnalyzerProfilePin profile = context.snapshot().mapping().getProfilePin();
         if (acknowledgement == null || !connection.connectionId().equals(acknowledgement.path("connectionId").asText())
                 || connection.configRevision() != acknowledgement.path("configRevision").asInt(0)
                 || !Objects.equals(connection.configFingerprint(),
@@ -328,13 +352,13 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         return List.copyOf(blockers);
     }
 
-    private static boolean matchesCatalogProfile(AnalyzerProfileBinding profile, BridgeAnalyzerProfile catalogProfile) {
+    private static boolean matchesCatalogProfile(AnalyzerProfilePin profile, BridgeAnalyzerProfile catalogProfile) {
         return Objects.equals(profile.getProfileId(), catalogProfile.profileId())
                 && profile.getProfileRevision() == catalogProfile.revision()
                 && Objects.equals(profile.getProfileFingerprint(), catalogProfile.revisionFingerprint());
     }
 
-    private static boolean matchesProfile(AnalyzerProfileBinding profile, JsonNode profileRef) {
+    private static boolean matchesProfile(AnalyzerProfilePin profile, JsonNode profileRef) {
         return profile != null && Objects.equals(profile.getProfileId(), profileRef.path("profileId").asText(null))
                 && profile.getProfileRevision() == profileRef.path("revision").asInt(0)
                 && Objects.equals(profile.getProfileFingerprint(), profileRef.path("fingerprint").asText(null));
@@ -364,7 +388,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private Analyzer findAnalyzer(String analyzerId) {
         String exactId = requireText(analyzerId, "analyzer ID");
-        return analyzerService.getWithBinding(exactId)
+        return analyzerService.getWithMapping(exactId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + exactId));
     }
 
@@ -384,7 +408,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             ObjectNode document) {
     }
 
-    private record ActivationContext(AnalyzerSiteBindingSnapshot snapshot, AnalyzerSiteBindingConfirmation confirmation,
+    private record ActivationContext(AnalyzerMappingSnapshot snapshot, AnalyzerMappingConfirmation confirmation,
             ConnectionReference connection, List<AnalyzerActivationBlocker> blockers) {
 
         String connectionId() {

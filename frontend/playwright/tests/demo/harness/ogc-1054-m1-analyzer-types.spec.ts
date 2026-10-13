@@ -1,9 +1,13 @@
 import { expect, test } from "../../../helpers/test-base";
-import type { Locator, Page } from "@playwright/test";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import {
+  analyzerTypeRow,
+  openAnalyzerTypes,
+  openRowAction,
+} from "../../../helpers/analyzer-types-page";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -11,114 +15,122 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function openAnalyzerTypes(page: Page) {
-  await page.goto("/analyzers/types", {
-    waitUntil: "domcontentloaded",
-  });
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
-  ).toBeVisible();
-  await expect(page.getByRole("table")).toBeVisible();
-}
-
-function analyzerTypeRow(page: Page, name: string): Locator {
-  return page.getByRole("row", {
-    name: new RegExp(escapeRegExp(name), "i"),
-  });
-}
-
-async function openRowAction(page: Page, name: string, action: string) {
-  await page
-    .getByRole("button", { name: `Actions for ${name}`, exact: true })
-    .click();
-  await page.getByRole("menuitem", { name: action, exact: true }).click();
-}
-
 test.describe("OGC-1054 M1 Analyzer Types", () => {
   test.describe.configure({ mode: "serial" });
 
-  test("shows the lab-facing catalog and restores bookmarkable filters", async ({
-    page,
-  }, testInfo) => {
-    test.setTimeout(120_000 * TIMEOUT_SCALE);
-    await openAnalyzerTypes(page);
+  test(
+    "shows the lab-facing catalog and restores bookmarkable filters",
+    { tag: ["@evidence", "@astm", "@admin"] },
+    async ({ page }, testInfo) => {
+      const demo = createDemoPresentation(page, testInfo);
+      await demo.intro(
+        "The analyzer types a lab can set up",
+        "What the Bridge ships, what this site created, and which types are in use.",
+      );
+      await openAnalyzerTypes(page);
 
-    const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
-    await expect(
-      breadcrumb.getByRole("link", { name: "Home" }),
-    ).toHaveAttribute("href", "/");
-    await expect(
-      breadcrumb.getByRole("link", { name: "Analyzers", exact: true }),
-    ).toHaveAttribute("href", "/analyzers");
-    await expect(page.locator("h1")).toHaveCount(1);
-    await expect(page.getByText("Reusable analyzer setup")).toBeVisible();
+      const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
+      await expect(
+        breadcrumb.getByRole("link", { name: "Home" }),
+      ).toHaveAttribute("href", "/");
+      await expect(
+        breadcrumb.getByRole("link", { name: "Analyzers", exact: true }),
+      ).toHaveAttribute("href", "/analyzers");
+      await expect(page.locator("h1")).toHaveCount(1);
+      await expect(page.getByText("Reusable analyzer setup")).toBeVisible();
 
-    const summary = page.getByRole("region", {
-      name: "Analyzer type summary",
-    });
-    await expect(summary).toContainText("Analyzer Types");
-    await expect(summary).toContainText("In Use");
-    await expect(summary).toContainText("Needs Attention");
-    await expect(summary).toContainText("Deactivated");
+      const summary = page.getByRole("region", {
+        name: "Analyzer type summary",
+      });
+      await expect(summary).toContainText("Analyzer Types");
+      await expect(summary).toContainText("In Use");
+      await expect(summary).toContainText("Needs Attention");
+      await expect(summary).toContainText("Deactivated");
+      await demo.caption(
+        "The summary counts the types, those in use, those needing attention, and those deactivated.",
+      );
+      await demo.highlight(summary);
 
-    const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
-    await expect(sourceRow).toBeVisible();
-    await expect(sourceRow).toContainText("Shipped");
-    await expect(sourceRow).toContainText("ASTM");
-    await expect(sourceRow).toContainText(/revision [1-9]\d*/);
-    await expect(sourceRow).toContainText("Active");
-    await expect(sourceRow.getByRole("cell").nth(2)).not.toBeEmpty();
-    await expect(sourceRow.getByRole("cell").nth(3)).not.toBeEmpty();
-    await expect(sourceRow.getByRole("cell").nth(4)).toContainText(
-      /analyzer|Not in use/,
-    );
-    await expect(page.getByText("Plugin class")).toHaveCount(0);
-    await expect(page.getByText("Identifier pattern")).toHaveCount(0);
+      const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
+      await expect(sourceRow).toBeVisible();
+      await expect(sourceRow).toContainText("Shipped");
+      await expect(sourceRow).toContainText("ASTM");
+      await expect(sourceRow).toContainText(/revision [1-9]\d*/);
+      await expect(sourceRow).toContainText("Active");
+      // Tests mapped and Results mapped read "mapped / total": never more mapped than there are.
+      for (const column of [2, 3]) {
+        const cell = sourceRow.getByRole("cell").nth(column);
+        await expect(cell).toHaveText(/\d+ \/ \d+/);
+        const [mapped, total] = ((await cell.textContent()) ?? "")
+          .match(/(\d+) \/ (\d+)/)!
+          .slice(1)
+          .map(Number);
+        expect(mapped).toBeLessThanOrEqual(total);
+      }
+      await expect(sourceRow.getByRole("cell").nth(4)).toContainText(
+        /analyzer|Not in use/,
+      );
+      await expect(page.getByText("Plugin class")).toHaveCount(0);
+      await expect(page.getByText("Identifier pattern")).toHaveCount(0);
+      await demo.caption(
+        "A shipped type shows its protocol, its current revision, and the analyzers using it. No plugin names, no patterns.",
+      );
+      await demo.highlight(sourceRow);
 
-    const search = page.getByRole("searchbox", {
-      name: "Search analyzer types",
-    });
-    await search.fill("gene");
-    await page
-      .getByRole("combobox", { name: "Created" })
-      .selectOption("SHIPPED");
-    await page.getByRole("combobox", { name: "Protocol" }).selectOption("ASTM");
-    await page.getByText("Show deactivated", { exact: true }).click();
+      await demo.caption(
+        "Filters are part of the page's address: the view is bookmarkable and survives a reload.",
+      );
+      const search = page.getByRole("searchbox", {
+        name: "Search analyzer types",
+      });
+      await search.fill("gene");
+      await page
+        .getByRole("combobox", { name: "Created" })
+        .selectOption("SHIPPED");
+      await page
+        .getByRole("combobox", { name: "Protocol" })
+        .selectOption("ASTM");
+      await page.getByText("Show deactivated", { exact: true }).click();
 
-    const filteredUrl =
-      "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&showDeactivated=true";
-    await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
-    await expect(analyzerTypeRow(page, SOURCE_PROFILE)).toBeVisible();
-    await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
+      const filteredUrl =
+        "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&showDeactivated=true";
+      await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
+      await expect(analyzerTypeRow(page, SOURCE_PROFILE)).toBeVisible();
+      await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
 
-    await page.reload({
-      waitUntil: "domcontentloaded",
-    });
-    await expect(page.getByRole("table")).toBeVisible();
-    await expect(search).toHaveValue("gene");
-    await expect(page.getByRole("combobox", { name: "Created" })).toHaveValue(
-      "SHIPPED",
-    );
-    await expect(page.getByRole("combobox", { name: "Protocol" })).toHaveValue(
-      "ASTM",
-    );
-    await expect(
-      page.getByRole("checkbox", { name: "Show deactivated" }),
-    ).toBeChecked();
+      await page.reload({
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.getByRole("table")).toBeVisible();
+      await expect(search).toHaveValue("gene");
+      await expect(page.getByRole("combobox", { name: "Created" })).toHaveValue(
+        "SHIPPED",
+      );
+      await expect(
+        page.getByRole("combobox", { name: "Protocol" }),
+      ).toHaveValue("ASTM");
+      await expect(
+        page.getByRole("checkbox", { name: "Show deactivated" }),
+      ).toBeChecked();
 
-    await page.goBack();
-    await expect(page).toHaveURL(
-      /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM$/,
-    );
-    await page.goForward();
-    await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
-    await expect(sourceRow).toBeInViewport({ ratio: 1 });
+      await page.goBack();
+      await expect(page).toHaveURL(
+        /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM$/,
+      );
+      await page.goForward();
+      await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
+      await expect(sourceRow).toBeInViewport({ ratio: 1 });
 
-    await testInfo.attach("analyzer-types-filtered", {
-      body: await page.screenshot(),
-      contentType: "image/png",
-    });
-  });
+      await testInfo.attach("analyzer-types-filtered", {
+        body: await page.screenshot(),
+        contentType: "image/png",
+      });
+      await demo.verified(
+        "The catalog shows each type's source, protocol, revision and use",
+        "Its filters restore from the address after a reload and through history.",
+      );
+    },
+  );
 
   test("keeps the Analyzer Types workflow reachable on mobile", async ({
     page,
@@ -162,7 +174,6 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("starts a Bridge-owned site profile draft from Create Profile", async ({
     page,
   }) => {
-    test.setTimeout(120_000 * TIMEOUT_SCALE);
     const draftName = `M1 Site Draft ${Date.now()}`;
     await openAnalyzerTypes(page);
     await page
@@ -204,7 +215,6 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("duplicates a profile without changing its source and retains lifecycle history", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const duplicateName = `M1 GeneXpert Type ${Date.now()}`;
     await openAnalyzerTypes(page);
     const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
@@ -251,7 +261,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(duplicateRow).toBeVisible();
     await expect(duplicateRow).toContainText("Site-created");
     await expect(duplicateRow).toContainText(
-      `Derived from genexpert-astm revision ${sourceRevision}`,
+      `Derived from cepheid-genexpert-astm revision ${sourceRevision}`,
     );
     await expect(duplicateRow).toContainText("revision 1");
     await expect(duplicateRow).toContainText("Not in use");

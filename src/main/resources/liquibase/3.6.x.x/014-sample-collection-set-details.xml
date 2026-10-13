@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="014-shared-sample-set-details" author="openelisglobal">
+  <addColumn schemaName="clinlims" tableName="sample_type_request">
+   <column name="culture_set_number" type="integer"/>
+   <column name="container" type="varchar(255)"/>
+   <column name="body_site" type="varchar(40)"/>
+   <column name="collection_date" type="date"/>
+   <column name="collection_time" type="varchar(8)"/>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="sample_item">
+   <column name="culture_set_number" type="integer"/>
+   <column name="body_site" type="varchar(40)"/>
+  </addColumn>
+  <sql>ALTER TABLE clinlims.sample_type_request ADD CONSTRAINT requested_culture_set_positive CHECK (culture_set_number &gt; 0);
+   ALTER TABLE clinlims.sample_item ADD CONSTRAINT culture_set_positive CHECK (culture_set_number &gt; 0);</sql>
+  <rollback>
+   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="culture_set_number"/>
+   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="container"/>
+   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="body_site"/>
+   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_date"/>
+   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_time"/>
+   <dropColumn schemaName="clinlims" tableName="sample_item" columnName="culture_set_number"/>
+   <dropColumn schemaName="clinlims" tableName="sample_item" columnName="body_site"/>
+  </rollback>
+ </changeSet>
+ <changeSet id="014-container-population" author="openelisglobal">
+  <addColumn schemaName="clinlims" tableName="dictionary"><column name="container_population" type="varchar(20)"/></addColumn>
+  <sql>ALTER TABLE clinlims.dictionary ADD CONSTRAINT container_population_check CHECK (container_population IN ('ADULT', 'PAEDIATRIC'));</sql>
+  <rollback><dropColumn schemaName="clinlims" tableName="dictionary" columnName="container_population"/></rollback>
+ </changeSet>
+</databaseChangeLog>

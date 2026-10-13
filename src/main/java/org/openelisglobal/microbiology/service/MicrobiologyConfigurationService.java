@@ -6,7 +6,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 
 /**
@@ -24,7 +23,7 @@ public interface MicrobiologyConfigurationService {
 
     MicroAstPanel createAstPanel(MicroAstPanel panel);
 
-    MicroAstPanel getOrCreateAstPanel(String name, String workflowType, String organismGroup);
+    MicroAstPanel getOrCreateAstPanel(String name, String organismGroup);
 
     MicroAstPanelAntibiotic addAntibioticToPanel(MicroAstPanelAntibiotic panelAntibiotic);
 
@@ -35,8 +34,4 @@ public interface MicrobiologyConfigurationService {
     MicroBreakpointRule createBreakpointRule(MicroBreakpointRule rule);
 
     MicroBreakpointRule getOrCreateBreakpointRule(MicroBreakpointRule rule);
-
-    MicroCultureSetup createCultureSetup(MicroCultureSetup setup);
-
-    MicroCultureSetup getOrCreateCultureSetup(MicroCultureSetup setup);
 }

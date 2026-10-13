@@ -28,7 +28,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,8 +70,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
         AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -95,8 +93,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void astRunStoresReadingsInterpretationOverrideAndReview() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -118,8 +115,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void repeatAttemptPersistsProvenanceAndExplicitReportableSelection() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -152,8 +148,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void reviewedWorklistFiltersCountsAndPagesAtTheDatabaseBoundary() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
+        MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -167,7 +162,6 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.grain = "ast";
         query.status = "reviewed";
-        query.workflow = MicroWorkflowType.BACTERIOLOGY.name();
         query.q = run.getId();
         query.pageSize = 1;
 

@@ -19,6 +19,7 @@ import { serverPageSizeOf } from "../utils/serverPaging";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import ImportIssuesPanel from "./ImportIssuesPanel";
+import { decisionKey, groupTestParts } from "./ResultParts";
 
 const importIssuesBreadcrumbs = [
   { label: "home.label", link: "/" },
@@ -29,13 +30,19 @@ const importIssuesBreadcrumbs = [
   },
 ];
 
-const groupActionFields = ["isAccepted", "isRejected", "isDeleted"];
+const testActionFields = ["isAccepted", "isRejected", "isDeleted"];
+
+// Held for a decision the reviewer can make on the page, not for a mapping fix.
+const reviewableHolds = ["awaiting_specimen", "awaiting_placement"];
 
 const restorableResultFields = [
   "isAccepted",
   "isRejected",
   "isDeleted",
   "typeOfSampleId",
+  "chosenAnalysisId",
+  "redirectAccession",
+  "redirectReason",
   "note",
   "result",
 ];
@@ -122,7 +129,7 @@ const Index = () => {
     const reviewPriority = (item) =>
       !item.importIssueReason
         ? 2
-        : item.importIssueReason === "awaiting_specimen"
+        : reviewableHolds.includes(item.importIssueReason)
           ? 1
           : 0;
     const groups = new Map();
@@ -141,38 +148,32 @@ const Index = () => {
     getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
   };
 
-  // A grouping's action checkboxes are shown on its representative row, which
-  // changes when a held row is recovered; a restored action moves with it.
-  const moveGroupActionsToRepresentatives = (rows, serverRows, applied) => {
-    const representatives = new Map(
-      extractUniqueGroups(rows).map((row) => [
-        row.sampleGroupingNumber,
-        String(row.id),
-      ]),
-    );
+  // A test's action checkboxes are shown on its head row, which changes when a
+  // held row is recovered; a restored action moves with it.
+  const moveTestActionsToHeads = (rows, serverRows, applied) => {
+    const { headIdByKey } = groupTestParts(rows);
     const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
-    const actionsByGrouping = new Map();
+    const actionsByTest = new Map();
     rows.forEach((row) => {
       const edits = applied[String(row.id)] ?? {};
-      groupActionFields.forEach((field) => {
+      testActionFields.forEach((field) => {
         if (!Object.prototype.hasOwnProperty.call(edits, field)) return;
-        const actions = actionsByGrouping.get(row.sampleGroupingNumber) ?? {};
+        const actions = actionsByTest.get(decisionKey(row)) ?? {};
         if (!Object.prototype.hasOwnProperty.call(actions, field)) {
           actions[field] = edits[field];
         }
-        actionsByGrouping.set(row.sampleGroupingNumber, actions);
+        actionsByTest.set(decisionKey(row), actions);
       });
     });
     return rows.map((row) => {
-      const actions = actionsByGrouping.get(row.sampleGroupingNumber);
+      const actions = actionsByTest.get(decisionKey(row));
       if (!actions) return row;
       const id = String(row.id);
-      const isRepresentative =
-        representatives.get(row.sampleGroupingNumber) === id;
+      const isHead = String(headIdByKey.get(decisionKey(row))) === id;
       const moved = { ...row };
       const edits = { ...applied[id] };
       Object.entries(actions).forEach(([field, value]) => {
-        if (isRepresentative) {
+        if (isHead) {
           moved[field] = value;
           edits[field] = value;
         } else if (Object.prototype.hasOwnProperty.call(edits, field)) {
@@ -196,7 +197,7 @@ const Index = () => {
         ? data.resultList.map((row) => {
             if (
               row.importIssueReason &&
-              row.importIssueReason !== "awaiting_specimen"
+              !reviewableHolds.includes(row.importIssueReason)
             ) {
               return row;
             }
@@ -216,11 +217,7 @@ const Index = () => {
           })
         : data.resultList;
       const resultList = restoringDraft
-        ? moveGroupActionsToRepresentatives(
-            restoredList,
-            data.resultList,
-            applied,
-          )
+        ? moveTestActionsToHeads(restoredList, data.resultList, applied)
         : restoredList;
       setRestoredEdits(applied);
       setResults({ ...data, resultList });

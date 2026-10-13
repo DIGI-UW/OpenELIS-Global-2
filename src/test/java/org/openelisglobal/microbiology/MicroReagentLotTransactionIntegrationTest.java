@@ -38,7 +38,6 @@ import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.service.MicroReagentLotService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
@@ -166,11 +165,10 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         String methodId = fixtures.createMethodId();
         ReferenceData referenceData = fixtures.createReferenceData(methodId);
         SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M8L");
-        var microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.BACTERIOLOGY, methodId,
-                userId);
+        var microCase = caseService.createOrGetCase(sampleItem.getId(), methodId, userId);
         var test = fixtures.createCatalogTest();
         Analysis analysis = createAnalysis(sampleItem, test, userId);
-        caseAnalysisService.linkAnalysis(microCase, analysis, referenceData.cultureSetup());
+        caseAnalysisService.linkAnalysis(microCase, analysis, null);
 
         InventoryItem item = getOrCreateInventoryItem(userId);
         TestReagentLink reagentLink = new TestReagentLink();

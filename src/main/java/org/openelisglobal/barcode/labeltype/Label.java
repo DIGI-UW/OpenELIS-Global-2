@@ -1,7 +1,5 @@
 package org.openelisglobal.barcode.labeltype;
 
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Font.FontFamily;
 import java.util.ArrayList;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
@@ -9,6 +7,7 @@ import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openpdf.text.Font;
 
 /**
  * Stores all the values, layout, and acts as a link to the persisted meta data
@@ -25,8 +24,8 @@ public abstract class Label {
     static int LARGE_BARCODE = 9; // most of the width
 
     // default fonts
-    private Font valueFont = new Font(FontFamily.HELVETICA, 9, Font.NORMAL);
-    private Font nameFont = new Font(FontFamily.HELVETICA, 9, Font.BOLD);
+    private Font valueFont = new Font(Font.HELVETICA, 9, Font.NORMAL);
+    private Font nameFont = new Font(Font.HELVETICA, 9, Font.BOLD);
 
     // default dimension (height width are used only as a ratio)
     // pdfWidth and pdfHeight used for actual pdfScaling

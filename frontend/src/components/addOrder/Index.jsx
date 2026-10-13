@@ -879,9 +879,9 @@ const Index = () => {
         <div className="pageContent">
           {notificationVisible === true ? <AlertDialog /> : ""}
           <div className="orderWorkFlowDiv">
-            <h2>
+            <h1 className="page-heading-05">
               <FormattedMessage id="order.test.request.heading" />
-            </h2>
+            </h1>
 
             {isLoadingReferral && (
               <div style={{ padding: "1rem" }}>

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
+import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCSource;
 
@@ -74,6 +75,19 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
      *                                  missing or not usable
      */
     QCResult createBenchQCResult(BenchQCCaptureForm capture, int sysUserId) throws IllegalArgumentException;
+
+    /**
+     * Record an analyzer control that reported an answer rather than a number,
+     * already judged PASS or FAIL against its Test Catalog QC target. It carries no
+     * value and so no z-score and no Westgard evaluation; a FAIL raises the QC-fail
+     * signal.
+     *
+     * @throws IllegalArgumentException if the outcome is not one an analyzer
+     *                                  control can have, or the lot is missing or
+     *                                  not usable
+     */
+    QCResult createAnalyzerQualitativeQCResult(String analyzerId, String testId, String controlLotId,
+            QCQualitativeOutcome outcome, LocalDateTime timestamp) throws IllegalArgumentException;
 
     /**
      * Flat list of bench control runs in a window for the accreditation export

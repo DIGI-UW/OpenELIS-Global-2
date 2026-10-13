@@ -34,7 +34,6 @@ const CaseNonconformancePanel = ({
   caseId,
   mode,
   isolates = EMPTY_ISOLATES,
-  workflowType,
   service = MicrobiologyService,
   onComplete,
   onCancel,
@@ -137,7 +136,7 @@ const CaseNonconformancePanel = ({
           ),
         ),
       ),
-      service.getAntibiotics(workflowType),
+      service.getAntibiotics(),
     ])
       .then(([runsByIsolate, antibioticRows]) => {
         if (!active) {
@@ -163,7 +162,7 @@ const CaseNonconformancePanel = ({
     return () => {
       active = false;
     };
-  }, [form.disposition, intl, isolates, lostMode, service, workflowType]);
+  }, [form.disposition, intl, isolates, lostMode, service]);
 
   const selectedCategory = useMemo(
     () =>

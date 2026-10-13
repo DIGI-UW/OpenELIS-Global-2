@@ -558,6 +558,29 @@ const AnalyzerTypeManagement = () => {
             />
           )}
 
+          {catalog?.issues?.length > 0 && (
+            <div className="analyzer-type-page__catalog-issues">
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "analyzerType.notification.catalogIssues",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "analyzerType.notification.catalogIssues.subtitle",
+                })}
+              />
+              <ul>
+                {catalog.issues.map((issue) => (
+                  <li key={issue.source}>
+                    <code>{issue.source}</code>: {issue.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {loading ? (
             <div className="analyzer-type-page__loading">
               <Loading

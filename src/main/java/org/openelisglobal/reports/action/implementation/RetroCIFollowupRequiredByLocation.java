@@ -20,8 +20,6 @@ package org.openelisglobal.reports.action.implementation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.jfree.util.Log;
 import org.openelisglobal.common.services.QAService;
@@ -73,11 +71,6 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
                 .getReferenceTableByName("SAMPLE_QAEVENT").getId();
     }
 
-    @Override
-    protected String reportFileName() {
-        return "RetroCI_FollowupRequired_ByLocation";
-    }
-
     /**
      * @see org.openelisglobal.reports.action.implementation.IReportParameterSetter#setRequestParameters(org.openelisglobal.common.action.BaseActionForm)
      */
@@ -112,8 +105,6 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
         highDateStr = form.getUpperDateRange();
         dateRange = new DateRange(lowDateStr, highDateStr);
 
-        createReportParameters();
-
         errorFound = !validateSubmitParameters();
         if (errorFound) {
             return;
@@ -123,12 +114,6 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
         if (reportItems.size() == 0) {
             add1LineErrorMessage("report.error.message.noPrintableItems");
         }
-    }
-
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("reportTitle", getReportNameForParameterPage() + "  -  " + dateRange.toString());
     }
 
     /** check everything */
@@ -147,8 +132,8 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
             if (QAService.isOrderNonConforming(sample) || isUnderInvestigation(sample)) {
                 FollowupRequiredData item = new FollowupRequiredData();
 
-                item.setCollectiondate(
-                        sample.getCollectionDateForDisplay() + " " + sample.getCollectionTimeForDisplay());
+                item.setCollectiondate(sample.getCollectionDate() == null ? null
+                        : sample.getCollectionDateForDisplay() + " " + sample.getCollectionTimeForDisplay());
                 item.setReceivedDate(sample.getReceivedDateForDisplay() + " " + sample.getReceivedTimeForDisplay());
                 item.setLabNo(sample.getAccessionNumber());
                 item.setDoctor(getOptionalObservationHistory(sample, OBSERVATION_DOCTOR_ID));
@@ -193,7 +178,8 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
             }
             allNotes.append(" : ");
 
-            if ("0".equals(qa.getObservationValue(QAObservationType.SECTION))) {
+            String section = qa.getObservationValue(QAObservationType.SECTION);
+            if (GenericValidator.isBlankOrNull(section) || "0".equals(section)) {
                 allNotes.append(MessageUtil.getMessage("report.followup.no.section"));
             } else {
                 allNotes.append(qa.getObservationForDisplay(QAObservationType.SECTION));
@@ -298,11 +284,9 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
         return dictionary.getLocalAbbreviation();
     }
 
-    /**
-     * @see org.openelisglobal.reports.action.implementation.Report#getReportDataSource()
-     */
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        return StudyNonConformityPdf.followupRequired(getReportNameForParameterPage() + " - " + dateRange.toString(),
+                reportItems);
     }
 }

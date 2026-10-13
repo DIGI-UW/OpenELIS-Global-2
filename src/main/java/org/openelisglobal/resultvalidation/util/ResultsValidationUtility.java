@@ -141,6 +141,8 @@ public class ResultsValidationUtility {
     protected org.openelisglobal.samplehuman.service.SampleHumanService sampleHumanService;
     @Autowired
     protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
+    @Autowired
+    protected org.openelisglobal.unitofmeasure.service.UnitOfMeasureService unitOfMeasureService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -561,6 +563,32 @@ public class ResultsValidationUtility {
             }
         }
         return displayTestName;
+    }
+
+    /**
+     * A part of a multi-component test carries its own unit, blank when it has
+     * none, as Results Entry shows it; every other row carries the test's unit.
+     */
+    protected String rowUnits(String testId, Result result) {
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (componentId != null) {
+            List<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent> components = testResultComponentService
+                    .getActiveComponentsByTestId(testId);
+            if (components.size() > 1) {
+                for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
+                    if (component.getId().equals(componentId)) {
+                        if (component.getUomId() == null) {
+                            return "";
+                        }
+                        org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure uom = unitOfMeasureService
+                                .getUnitOfMeasureById(component.getUomId());
+                        return uom == null || uom.getUnitOfMeasureName() == null ? "" : uom.getUnitOfMeasureName();
+                    }
+                }
+            }
+        }
+        return getUnitsByTestId(testId);
     }
 
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
@@ -1070,7 +1098,7 @@ public class ResultsValidationUtility {
 
     public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
         AnalysisItem analysisResultItem = new AnalysisItem();
-        String testUnits = getUnitsByTestId(testResultItem.getTestId());
+        String testUnits = rowUnits(testResultItem.getTestId(), testResultItem.getResult());
         String testName = testResultItem.getTestName();
         String sortOrder = testResultItem.getTestSortNumber();
         Result result = testResultItem.getResult();

@@ -228,14 +228,15 @@ const LabelQuantityCell = ({ idPrefix, cell, value, inputLabel, onChange }) => {
           />
         )}
         {sourceMeta || cell.source ? (
-          <Tag
-            type={sourceMeta ? sourceMeta.type : "gray"}
-            size="sm"
-            className="labels-section__source-tag"
-            title={sourceTitle}
-          >
-            {sourceTitle}
-          </Tag>
+          <span title={sourceTitle}>
+            <Tag
+              type={sourceMeta ? sourceMeta.type : "gray"}
+              size="sm"
+              className="labels-section__source-tag"
+            >
+              {sourceTitle}
+            </Tag>
+          </span>
         ) : null}
       </div>
     </TableCell>

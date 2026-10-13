@@ -1545,4 +1545,14 @@ public class SamplePatientUpdateData {
             sample.setConsentRecordedBy(null);
         }
     }
+
+    private String cancelReason;
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+    }
 }

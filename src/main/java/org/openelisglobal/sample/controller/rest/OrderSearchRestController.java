@@ -48,6 +48,8 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -108,6 +110,7 @@ import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorPool;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -133,6 +136,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/order")
 public class OrderSearchRestController extends BaseRestController {
 
+    @Lazy
+    @Autowired
+    private FhirTransformService fhirTransformService;
     @Autowired
     private SampleService sampleService;
 
@@ -247,7 +253,6 @@ public class OrderSearchRestController extends BaseRestController {
     private TestMethodService testMethodService;
 
     @Autowired(required = false)
-    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
@@ -849,6 +854,9 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleXML.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
                 sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
+                sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
+                sampleXML.put("bodySite", sampleItem.getBodySite() != null ? sampleItem.getBodySite() : "");
+                sampleXML.put("collectionLocationId", sampleItem.getCollectionLocationId());
                 sampleXML.put("locationDetails",
                         sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
                 sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");
@@ -992,8 +1000,6 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
             response.put("sampleOrderItems", sampleOrderItems);
 
-            addMicrobiologyOrderDetail(response, sample);
-
             // Step progress - determine based on actual data
             boolean isVectorOrder = "V".equals(sample.getDomain());
             Map<String, Boolean> stepProgress = new HashMap<>();
@@ -1132,6 +1138,7 @@ public class OrderSearchRestController extends BaseRestController {
         }
         try {
             Sample cancelled = orderProgressService.cancel(sample.getId(), body.get("reason"), getSysUserId(request));
+            republishToFhir(cancelled);
             Map<String, Object> response = new HashMap<>();
             response.put("labNumber", cancelled.getAccessionNumber());
             putProgress(response, cancelled, workflowTypeOf(cancelled),
@@ -1141,6 +1148,21 @@ public class OrderSearchRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Sends the cancelled order to the FHIR store again, so its Task reads
+     * cancelled and its ServiceRequests revoked instead of the order as it was
+     * entered. The cancellation itself has committed; a failed publish is logged
+     * and does not undo it.
+     */
+    private void republishToFhir(Sample cancelled) {
+        try {
+            fhirTransformService.transformPersistObjectsUnderSamples(List.of(cancelled.getId()));
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "republishToFhir",
+                    "could not republish cancelled order " + cancelled.getAccessionNumber() + ": " + e.getMessage());
         }
     }
 
@@ -1156,16 +1178,6 @@ public class OrderSearchRestController extends BaseRestController {
             }
         }
         return false;
-    }
-
-    void addMicrobiologyOrderDetail(Map<String, Object> response, Sample sample) {
-        if (microCaseOrderDetailService == null) {
-            return;
-        }
-        var microbiologyOrderDetail = microCaseOrderDetailService.getOrderDraft(sample.getId());
-        if (microbiologyOrderDetail != null) {
-            response.put("microbiologyOrderDetail", microbiologyOrderDetail);
-        }
     }
 
     TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
