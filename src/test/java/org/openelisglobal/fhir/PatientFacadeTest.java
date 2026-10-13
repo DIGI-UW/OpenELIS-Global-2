@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -29,11 +30,15 @@ import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.*;
 import org.springframework.test.annotation.Rollback;
 
 @Rollback
 public class PatientFacadeTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private DataSource dataSource;
 
     @Autowired
     private PatientService patientService;
@@ -353,6 +358,20 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
         return response;
+    }
+
+    @Test
+    public void readPatient_sendsOnlyMAsMaleAndFAsFemale() throws Exception {
+        String patientUuid = patientService.get("2").getFhirUuidAsString();
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        String[][] cases = { { "F", "female" }, { "M", "male" }, { "O", "other" }, { "X", "unknown" },
+                { "", "unknown" } };
+        for (String[] sexAndGender : cases) {
+            jdbc.update("UPDATE clinlims.patient SET gender = ? WHERE id = 2", sexAndGender[0]);
+
+            assertEquals("stored sex '" + sexAndGender[0] + "'", sexAndGender[1],
+                    read(patientUuid).get("gender").asText());
+        }
     }
 
     private JsonNode read(String patientUuid) throws Exception {

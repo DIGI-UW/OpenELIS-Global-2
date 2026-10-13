@@ -362,12 +362,10 @@ function PathologyDashboard() {
 
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="pathology.label.title" />
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading className="page-heading-04">
+              <FormattedMessage id="pathology.label.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
@@ -446,31 +444,35 @@ function PathologyDashboard() {
               headers={[
                 {
                   key: "requestDate",
-                  header: <FormattedMessage id="sample.requestDate" />,
+                  header: intl.formatMessage({ id: "sample.requestDate" }),
                 },
                 {
                   key: "status",
-                  header: <FormattedMessage id="pathology.label.stage" />,
+                  header: intl.formatMessage({ id: "pathology.label.stage" }),
                 },
                 {
                   key: "lastName",
-                  header: <FormattedMessage id="patient.last.name" />,
+                  header: intl.formatMessage({ id: "patient.last.name" }),
                 },
                 {
                   key: "firstName",
-                  header: <FormattedMessage id="patient.first.name" />,
+                  header: intl.formatMessage({ id: "patient.first.name" }),
                 },
                 {
                   key: "assignedTechnician",
-                  header: <FormattedMessage id="assigned.technician.label" />,
+                  header: intl.formatMessage({
+                    id: "assigned.technician.label",
+                  }),
                 },
                 {
                   key: "assignedPathologist",
-                  header: <FormattedMessage id="assigned.pathologist.label" />,
+                  header: intl.formatMessage({
+                    id: "assigned.pathologist.label",
+                  }),
                 },
                 {
                   key: "labNumber",
-                  header: <FormattedMessage id="sample.label.labnumber" />,
+                  header: intl.formatMessage({ id: "sample.label.labnumber" }),
                 },
               ]}
               isSortable

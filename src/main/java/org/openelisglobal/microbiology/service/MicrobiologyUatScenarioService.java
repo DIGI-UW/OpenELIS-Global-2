@@ -376,8 +376,8 @@ public class MicrobiologyUatScenarioService {
         if (analyzerId == null || analyzerId.isBlank()) {
             throw new IllegalArgumentException("AST_ANALYZER_REVIEW requires a configured analyzerInstrumentId");
         }
-        Analyzer analyzer = analyzerService.getWithBinding(analyzerId).orElse(null);
-        if (analyzer == null || analyzer.getPinnedProfileBinding() == null || analyzer.getBridgeConnectionId() == null
+        Analyzer analyzer = analyzerService.getWithMapping(analyzerId).orElse(null);
+        if (analyzer == null || analyzer.getPinnedProfile() == null || analyzer.getBridgeConnectionId() == null
                 || analyzer.getBridgeConnectionId().isBlank()) {
             throw new IllegalArgumentException(
                     "AST_ANALYZER_REVIEW requires an analyzer with a profile and Bridge connection");

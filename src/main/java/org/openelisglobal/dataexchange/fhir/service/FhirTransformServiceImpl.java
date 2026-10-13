@@ -59,6 +59,7 @@ import org.openelisglobal.fhir.service.ServiceRequestTransformService;
 import org.openelisglobal.fhir.service.SpecimenTransformService;
 import org.openelisglobal.fhir.service.TaskTransformService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
@@ -131,6 +132,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private PractitionerTransformService practitionerTransformService;
     @Autowired
     private OrganizationTransformService organizationTransformService;
+    @Autowired
+    private OrganizationService organizationService;
     @Autowired
     private TaskTransformService taskTransformService;
     @Autowired
@@ -347,7 +350,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             this.addToOperations(fhirOperations, tempIdGenerator, specimen);
         }
         for (ServiceRequest serviceRequest : serviceRequests.values()) {
-            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+            this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
         }
         for (Observation observation : observations.values()) {
             this.addToOperations(fhirOperations, tempIdGenerator, observation);
@@ -412,6 +415,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         org.hl7.fhir.r4.model.Organization fhirOrg = organizationTransformService
                 .transformToFhirOrganization(organization);
         this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
+        org.hl7.fhir.r4.model.Location site = organizationTransformService.transformToFhirLocation(organization);
+        if (site != null) {
+            this.addToOperations(fhirOperations, tempIdGenerator, site);
+        }
         try {
             Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
         } catch (FhirLocalPersistingException e) {
@@ -499,7 +506,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             // fhirSampleEntryObjects.collector);
 
             for (ServiceRequest serviceRequest : fhirSampleEntryObjects.serviceRequests) {
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
 
             orderEntryObjects.sampleEntryObjectsList.add(fhirSampleEntryObjects);
@@ -511,7 +518,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             this.addToOperations(fhirOperations, tempIdGenerator, updateData.getProgramQuestionnaireResponse());
         }
 
-        // TODO location?
         // TODO create encounter?
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
@@ -558,7 +564,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis.getId());
             if (serviceRequest != null) {
                 serviceRequestTransformService.preserveTerminalServiceRequestStatus(analysis, serviceRequest);
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = diagnosticReportTransformService
@@ -604,7 +610,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (Analysis analysis : analysisUpdateList) {
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis.getId());
             if (serviceRequest != null) {
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                 DiagnosticReport diagnosticReport = diagnosticReportTransformService
@@ -654,6 +660,33 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+    }
+
+    /**
+     * Adds a ServiceRequest with the Organization and site Location behind every
+     * Location it points at (referring site and department, sampling site subject),
+     * so its locationReference and subject resolve in the FHIR store.
+     */
+    private void addServiceRequestWithSites(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator,
+            ServiceRequest serviceRequest) {
+        this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+        List<Reference> places = new ArrayList<>(serviceRequest.getLocationReference());
+        places.add(serviceRequest.getSubject());
+        for (Reference place : places) {
+            String locationId = place.getReferenceElement().getIdPart();
+            if (!ResourceType.Location.name().equals(place.getReferenceElement().getResourceType())
+                    || locationId == null
+                    || fhirOperations.updateResources.containsKey(ResourceType.Location.name() + "/" + locationId)) {
+                continue;
+            }
+            Organization organization = organizationService.getOrganizationByFhirId(locationId);
+            org.hl7.fhir.r4.model.Location site = organizationTransformService.transformToFhirLocation(organization);
+            if (site != null) {
+                this.addToOperations(fhirOperations, tempIdGenerator,
+                        organizationTransformService.transformToFhirOrganization(organization));
+                this.addToOperations(fhirOperations, tempIdGenerator, site);
+            }
+        }
     }
 
     private void addToOperations(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator, Resource resource) {
@@ -742,7 +775,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             Analysis analysis = analysisService.get(analysisId);
             ServiceRequest serviceRequest = serviceRequestTransformService.transformToServiceRequest(analysis);
             if (serviceRequest != null) {
-                this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+                this.addServiceRequestWithSites(fhirOperations, tempIdGenerator, serviceRequest);
             }
 
             if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {

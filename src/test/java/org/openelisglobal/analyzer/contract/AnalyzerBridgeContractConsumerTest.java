@@ -15,6 +15,7 @@ import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -129,6 +130,28 @@ public class AnalyzerBridgeContractConsumerTest {
         assertTrue(connection.path("fields").size() > 0);
         assertFalse(connection.has("connection"));
         assertFalse(connection.has("settings"));
+    }
+
+    @Test
+    public void shippedProfilesLabelTheirConnectionFieldsWithMessagesOe2Has() throws IOException {
+        JsonNode messages = JSON.readTree(Path.of("frontend", "src", "languages", "en.json").toFile());
+        Path profiles = Path.of("tools", "openelis-analyzer-bridge", "src", "main", "resources", "analyzer-profiles");
+        Set<String> missing = new java.util.TreeSet<>();
+        try (var files = Files.list(profiles)) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
+                for (JsonNode field : JSON.readTree(file.toFile()).path("connectionFields")) {
+                    List<JsonNode> labelled = new java.util.ArrayList<>(List.of(field));
+                    field.path("choices").forEach(labelled::add);
+                    for (JsonNode node : labelled) {
+                        String key = node.path("labelKey").asText("");
+                        if (!key.isEmpty() && !messages.has(key)) {
+                            missing.add(file.getFileName() + " " + key);
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue("labels missing from en.json: " + missing, missing.isEmpty());
     }
 
     @Test

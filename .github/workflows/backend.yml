@@ -45,6 +45,11 @@ jobs:
     permissions:
       contents: read
 
+  analyzer-components:
+    uses: ./.github/workflows/analyzer-components.yml
+    permissions:
+      contents: read
+
   # Gate the expensive Maven build behind a path filter. On pull_request,
   # skip backend-verify entirely when no backend-relevant files changed.
   # On push to develop, release, and workflow_dispatch the filter step is skipped
@@ -216,7 +221,14 @@ jobs:
   backend-checkpoint:
     name: 01 Checkpoint - Backend
     if: always()
-    needs: [changes, formatting, deployment-contract, backend-verify]
+    needs:
+      [
+        changes,
+        formatting,
+        deployment-contract,
+        analyzer-components,
+        backend-verify,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Check backend result
@@ -224,6 +236,7 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           FORMATTING_RESULT: ${{ needs.formatting.result }}
           CONTRACT_RESULT: ${{ needs.deployment-contract.result }}
+          ANALYZER_RESULT: ${{ needs.analyzer-components.result }}
           BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
         run: |
@@ -231,8 +244,8 @@ jobs:
             echo "Change detection failed: $CHANGES_RESULT"
             exit 1
           fi
-          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" ]]; then
-            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT"
+          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" || "$ANALYZER_RESULT" != "success" ]]; then
+            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, analyzer-components=$ANALYZER_RESULT"
             exit 1
           fi
           if [[ "$BACKEND_RESULT" == "success" ]] || [[ "$BACKEND_REQUIRED" == "false" && "$BACKEND_RESULT" == "skipped" ]]; then

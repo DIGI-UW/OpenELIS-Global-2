@@ -175,8 +175,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest", "no matching serviceRequest");
             }
 
-            if (serviceRequest != null && serviceRequest.hasSubject()
-                    && !GenericValidator.isBlankOrNull(serviceRequest.getSubject().getReferenceElement().getIdPart())) {
+            if (serviceRequest != null && FhirUtil.refersToPatient(serviceRequest.getSubject())) {
                 patient = localFhirClient.read() //
                         .resource(Patient.class) //
                         .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()) //
@@ -228,7 +227,7 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
                             .withId(serviceRequest.getLocationReferenceFirstRep().getReferenceElement().getIdPart()) //
                             .execute();
                     LogEvent.logDebug(this.getClass().getSimpleName(), "processRequest",
-                            "found matching location " + referringOrganization.getIdElement().getIdPart());
+                            "found matching location " + location.getIdElement().getIdPart());
                 } catch (ResourceNotFoundException e) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "processRequest", "no matching location");
                 }
@@ -386,7 +385,9 @@ public class LabOrderSearchProvider extends BaseQueryProvider {
             org.openelisglobal.organization.valueholder.Organization organization = organizationService
                     .getOrganizationByFhirId(location.getIdElement().getIdPart());
             XMLUtil.appendKeyValue("fhir-id", location.getIdElement().getIdPart(), xml);
-            XMLUtil.appendKeyValue("id", organization.getId(), xml);
+            if (organization != null) {
+                XMLUtil.appendKeyValue("id", organization.getId(), xml);
+            }
         }
         xml.append("</location>");
     }

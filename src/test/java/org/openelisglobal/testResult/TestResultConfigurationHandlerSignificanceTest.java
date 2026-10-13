@@ -78,6 +78,8 @@ public class TestResultConfigurationHandlerSignificanceTest {
         ReflectionTestUtils.setField(handler, "testService", testService);
         ReflectionTestUtils.setField(handler, "testResultService", testResultService);
         ReflectionTestUtils.setField(handler, "dictionaryService", dictionaryService);
+        ReflectionTestUtils.setField(handler, "testResultComponentService",
+                mock(org.openelisglobal.testresultcomponent.service.TestResultComponentService.class));
 
         malariaTest = new org.openelisglobal.test.valueholder.Test();
         malariaTest.setId("42");

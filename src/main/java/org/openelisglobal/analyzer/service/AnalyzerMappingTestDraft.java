@@ -1,0 +1,91 @@
+package org.openelisglobal.analyzer.service;
+
+import java.util.Objects;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+
+/**
+ * One profile record's decision: a local test, optionally one component of it,
+ * or excluded or unresolved with the reason it could not be resolved. A record
+ * is its code and its sub-identity (empty for the main result); a record
+ * carrying both a number and a call sends the call to {@code callComponentId}.
+ * The main record also says whether this instrument runs the assay
+ * ({@code enabled}, null when not stated, which counts as on), as on the
+ * instrument's host test code table.
+ */
+public record AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
+        String componentId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin, String subIdentity,
+        String callComponentId, Boolean enabled) {
+
+    public AnalyzerMappingTestDraft {
+        origin = origin == null ? AnalyzerMappingOrigin.DEFAULT : origin;
+        subIdentity = subIdentity == null ? "" : subIdentity;
+    }
+
+    public AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
+            String componentId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin,
+            String subIdentity, String callComponentId) {
+        this(sourceRowKey, mappingState, testId, componentId, unresolvedReason, origin, subIdentity, callComponentId,
+                null);
+    }
+
+    public AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
+            String componentId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin) {
+        this(sourceRowKey, mappingState, testId, componentId, unresolvedReason, origin, "", null);
+    }
+
+    public AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
+            AnalyzerUnresolvedReason unresolvedReason) {
+        this(sourceRowKey, mappingState, testId, null, unresolvedReason, AnalyzerMappingOrigin.DEFAULT);
+    }
+
+    public AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId) {
+        this(sourceRowKey, mappingState, testId, null, null, AnalyzerMappingOrigin.DEFAULT);
+    }
+
+    public AnalyzerMappingRowKey rowKey() {
+        return new AnalyzerMappingRowKey(sourceRowKey, subIdentity);
+    }
+
+    /**
+     * The component a record's answers belong to: a part's own component; for a
+     * main record, its call component when it has one, else its own component. Null
+     * means the test's primary result.
+     */
+    public static String answerComponentOf(String subIdentity, String componentId, String callComponentId) {
+        if (subIdentity != null && !subIdentity.isEmpty()) {
+            return componentId;
+        }
+        return callComponentId != null ? callComponentId : componentId;
+    }
+
+    /**
+     * Whether two decisions send the record to the same place: the same state,
+     * test, component and call component. Origin and assay settings do not count.
+     */
+    public boolean sameTarget(AnalyzerMappingTestDraft other) {
+        return other != null && mappingState == other.mappingState && Objects.equals(testId, other.testId)
+                && Objects.equals(componentId, other.componentId)
+                && Objects.equals(callComponentId, other.callComponentId);
+    }
+
+    /** Whether the instrument runs this assay; not stated counts as on. */
+    public boolean isEnabled() {
+        return enabled == null || enabled;
+    }
+
+    public AnalyzerMappingTestDraft withAssay(Boolean enabled) {
+        return new AnalyzerMappingTestDraft(sourceRowKey, mappingState, testId, componentId, unresolvedReason, origin,
+                subIdentity, callComponentId, enabled);
+    }
+
+    /**
+     * This decision with the assay switch, when it does not state one, taken from
+     * the row it replaces ({@code previousState} null when there was none). Mapping
+     * a row that was not mapped is the lab choosing to run it.
+     */
+    public AnalyzerMappingTestDraft keepingAssayOf(AnalyzerMappingState previousState, boolean previouslyEnabled) {
+        boolean newlyMapped = mappingState == AnalyzerMappingState.BOUND && previousState != AnalyzerMappingState.BOUND;
+        return withAssay(enabled != null ? enabled : previousState == null || previouslyEnabled || newlyMapped);
+    }
+}

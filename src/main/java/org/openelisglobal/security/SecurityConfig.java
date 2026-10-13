@@ -22,6 +22,7 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.AES256TextEncryptor;
 import org.jasypt.util.text.TextEncryptor;
+import org.openelisglobal.analyzer.service.AnalyzerBridgePairingService;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
@@ -38,6 +39,7 @@ import org.opensaml.core.xml.schema.XSString;
 import org.opensaml.saml.saml2.core.Assertion;
 import org.opensaml.saml.saml2.core.Attribute;
 import org.opensaml.saml.saml2.core.AttributeStatement;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -47,6 +49,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
@@ -83,10 +86,13 @@ import org.springframework.security.saml2.provider.service.registration.RelyingP
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrations;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -100,12 +106,6 @@ public class SecurityConfig {
 
     // TODO should we move these to the properties files?
     // pages that have special security constraints
-    // Bridge endpoints (/analyzer/fhir, /analyzer/astm, /analyzer/hl7,
-    // /rest/analyzer/analyzers)
-    // are NOT in OPEN_PAGES — the bridge sends Basic auth for all OE calls.
-    // Analyzer event ingestion has the highest-priority Basic-auth chain. Other
-    // Bridge endpoints continue through the general Basic-auth chain immediately
-    // after it.
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
             "/rest/site-branding/**", "/rest/supportedlocales/active" };
@@ -120,7 +120,11 @@ public class SecurityConfig {
     // "/importAnalyzer", "/fhir/**" };
     public static final String[] REST_CONTROLLERS = { "/Provider/**", "/rest/**" };
     static final String[] ANALYZER_INGRESS_PATHS = { "/rest/analyzer/events/ast", "/rest/analyzer/events/culture" };
-    // public static final String[] CLIENT_CERTIFICATE_PAGES = {};
+    /**
+     * Where the paired Analyzer Bridge delivers, authenticated by its certificate
+     * alone.
+     */
+    public static final String[] BRIDGE_INGRESS_PATHS = { "/analyzer/fhir" };
 
     private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
             + " connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';"
@@ -141,6 +145,27 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
             throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    @Order(0)
+    public SecurityFilterChain analyzerBridgeSecurityFilterChain(HttpSecurity http,
+            ObjectProvider<AnalyzerBridgePairingService> pairing) throws Exception {
+        configureBridgeIngress(http, pairing);
+        http.headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    static void configureBridgeIngress(HttpSecurity http, ObjectProvider<AnalyzerBridgePairingService> pairing)
+            throws Exception {
+        http.securityMatcher(BRIDGE_INGRESS_PATHS)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+                .addFilterBefore(new AnalyzerBridgeCertificateFilter(pairing), AnonymousAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(AnalyzerBridgeAuthenticationToken.ROLE))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .csrf(csrf -> csrf.disable()).requestCache(requestCache -> requestCache.disable());
     }
 
     @Bean
@@ -420,23 +445,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(6)
-    @ConditionalOnProperty(property = "org.itech.login.certificate", havingValue = "true")
-    public SecurityFilterChain clientCertificateSecurityFilterChain(HttpSecurity http) throws Exception {
-        CharacterEncodingFilter filter = new CharacterEncodingFilter();
-        filter.setEncoding("UTF-8");
-        filter.setForceEncoding(true);
-        http.addFilterBefore(filter, CsrfFilter.class);
-
-        http.securityMatcher(new CertificateAuthRequestedMatcher())
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .x509(x509 -> x509.subjectPrincipalRegex("CN=(.*?)(?:,|$)"))
-                // CSRF disabled — certificate auth is not cookie-based, not CSRF-vulnerable
-                .userDetailsService(SpringContext.getBean(UserDetailsService.class)).csrf().disable();
-        return http.build();
-    }
-
-    @Bean
     @ConditionalOnProperty(property = "org.itech.login.form", havingValue = "true", matchIfMissing = true)
     @Order(Ordered.LOWEST_PRECEDENCE)
     public SecurityFilterChain defaultSecurityConfigurationFilterChain(HttpSecurity http) throws Exception {
@@ -574,15 +582,6 @@ public class SecurityConfig {
             String auth = request.getHeader("Authorization");
             boolean haveBasicAuth = (auth != null) && auth.startsWith("Basic");
             return haveBasicAuth;
-        }
-    }
-
-    private static class CertificateAuthRequestedMatcher implements RequestMatcher {
-        @Override
-        public boolean matches(HttpServletRequest request) {
-            String auth = request.getHeader("Authorization");
-            boolean haveCertificateAuth = (auth != null) && auth.startsWith("Cert");
-            return haveCertificateAuth;
         }
     }
 

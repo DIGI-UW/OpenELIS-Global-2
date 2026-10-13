@@ -983,7 +983,6 @@ public abstract class PatientReport extends Report {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
         UnitOfMeasureService unitOfMeasureService = SpringContext.getBean(UnitOfMeasureService.class);
-        String testUom = getUnitOfMeasure(analysisService.getTest(currentAnalysis));
 
         StringBuilder results = new StringBuilder();
         StringBuilder uoms = new StringBuilder();
@@ -1023,8 +1022,7 @@ public abstract class PatientReport extends Report {
             }
             results.append("\n");
 
-            String componentUom = componentUomName(component, unitOfMeasureService);
-            uoms.append(GenericValidator.isBlankOrNull(componentUom) ? testUom : componentUom).append("\n");
+            uoms.append(componentUomName(component, unitOfMeasureService)).append("\n");
 
             String significantDigits = first.getTestResult() == null ? "0"
                     : first.getTestResult().getSignificantDigits();

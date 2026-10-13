@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -11,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,6 +22,9 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.qc.dao.QCControlLotDAO;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
+import org.openelisglobal.qc.valueholder.QCQualitativeOutcome;
+import org.openelisglobal.testcatalog.service.TestQcTargetService;
+import org.openelisglobal.testcatalog.valueholder.TestQcTarget;
 
 /**
  * Lot-resolution behavior tests for processQCResult.
@@ -38,6 +43,9 @@ public class QCResultProcessingServiceImplTest {
 
     @Mock
     private QCResultService qcResultService;
+
+    @Mock
+    private TestQcTargetService testQcTargetService;
 
     @InjectMocks
     private QCResultProcessingServiceImpl service;
@@ -172,5 +180,60 @@ public class QCResultProcessingServiceImplTest {
 
         verify(qcResultService).createQCResult(eq(ANALYZER_ID), eq(TEST_ID), eq("100"), eq("LPC"), eq(RESULT), eq(UNIT),
                 eq(TS));
+    }
+
+    @Test
+    public void qualitativeControlThatGivesItsExpectedAnswerIsRecordedAsPass() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(target("501"));
+
+        QCResultProcessingService.Outcome outcome = service.processQualitativeQCResult(ANALYZER_ID, TEST_ID, null,
+                ACCESSION, null, "LPC", "501", TS);
+
+        assertEquals(QCResultProcessingService.Outcome.RECORDED, outcome);
+        verify(qcResultService).createAnalyzerQualitativeQCResult(ANALYZER_ID, TEST_ID, "100",
+                QCQualitativeOutcome.PASS, TS);
+    }
+
+    @Test
+    public void qualitativeControlWithAnyOtherAnswerIsRecordedAsFail() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(target("501"));
+
+        QCResultProcessingService.Outcome outcome = service.processQualitativeQCResult(ANALYZER_ID, TEST_ID, null,
+                ACCESSION, null, "LPC", "502", TS);
+
+        assertEquals(QCResultProcessingService.Outcome.RECORDED, outcome);
+        verify(qcResultService).createAnalyzerQualitativeQCResult(ANALYZER_ID, TEST_ID, "100",
+                QCQualitativeOutcome.FAIL, TS);
+    }
+
+    @Test
+    public void qualitativeControlWithNoExpectedAnswerIsNotJudged() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        TestQcTarget numericOnly = target(null);
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(numericOnly);
+
+        assertEquals(QCResultProcessingService.Outcome.NO_TARGET, service.processQualitativeQCResult(ANALYZER_ID,
+                TEST_ID, null, ACCESSION, null, "LPC", "501", TS));
+        when(testQcTargetService.resolveEffectiveTarget(TEST_ID, null, "LPC", "100")).thenReturn(null);
+        assertEquals(QCResultProcessingService.Outcome.NO_TARGET, service.processQualitativeQCResult(ANALYZER_ID,
+                TEST_ID, null, ACCESSION, null, "LPC", "501", TS));
+        verify(qcResultService, never()).createAnalyzerQualitativeQCResult(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void qualitativeControlWithNoMatchingLotIsNotRecorded() {
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of());
+
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT, service.processQualitativeQCResult(ANALYZER_ID,
+                TEST_ID, null, ACCESSION, null, "LPC", "501", TS));
+        verify(qcResultService, never()).createAnalyzerQualitativeQCResult(any(), any(), any(), any(), any());
+    }
+
+    private static TestQcTarget target(String expectedDictResultId) {
+        TestQcTarget target = new TestQcTarget();
+        target.setExpectedDictResultId(expectedDictResultId);
+        return target;
     }
 }

@@ -43,6 +43,8 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.LocationSearchParams;
+import org.openelisglobal.fhir.service.OrganizationTransformService;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.search.service.LocationSearchService;
 import org.openelisglobal.storage.fhir.StorageLocationFhirTransform;
 import org.openelisglobal.storage.service.StorageBoxService;
@@ -57,11 +59,18 @@ import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
  * FHIR R4 provider exposing the sample-storage hierarchy (room, equipment,
  * shelf, rack, box) as mCSD Location resources.
+ *
+ * <p>
+ * A read also resolves the site Location of an organization (same id as the
+ * Organization), which ServiceRequest.locationReference and the subject of an
+ * environmental or vector order point at. Those Locations are derived from the
+ * organization and are only read here; they change with the organization.
  *
  * <p>
  * Every level shares one id space, so a Location id is resolved by trying each
@@ -113,6 +122,13 @@ public class LocationProvider implements IResourceProvider {
 
     @Autowired
     private LocationSearchService locationSearchService;
+
+    @Autowired
+    private OrganizationService organizationService;
+
+    @Lazy
+    @Autowired
+    private OrganizationTransformService organizationTransformService;
 
     private final List<StorageLevel<?>> levels = new ArrayList<>();
 
@@ -184,6 +200,11 @@ public class LocationProvider implements IResourceProvider {
                 if (location != null) {
                     return location;
                 }
+            }
+            Location site = organizationTransformService
+                    .transformToFhirLocation(organizationService.getOrganizationByFhirId(uuid.toString()));
+            if (site != null) {
+                return site;
             }
             throw new ResourceNotFoundException("Location/" + theId.getIdPart());
         } catch (ResourceNotFoundException | InvalidRequestException e) {

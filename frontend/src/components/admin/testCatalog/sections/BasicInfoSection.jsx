@@ -148,6 +148,7 @@ const BasicInfoSection = ({ testId }) => {
     if (!testId || isCreate) {
       return;
     }
+    const controller = new AbortController();
     setLoading(true);
     setError(false);
     getFromOpenElisServer(
@@ -160,6 +161,7 @@ const BasicInfoSection = ({ testId }) => {
         }
         setForm(res);
       },
+      controller.signal,
     );
     // FR-58 — proactively fetch what still blocks activation so the editor can
     // show the checklist before the user tries to activate.
@@ -172,18 +174,26 @@ const BasicInfoSection = ({ testId }) => {
           setCompletenessGaps([]);
         }
       },
+      controller.signal,
     );
+    return () => controller.abort();
   }, [testId, isCreate]);
 
   // Both create and edit need the Lab Unit + Sample type reference lists (they are
   // editable in both modes).
   useEffect(() => {
-    getFromOpenElisServer("/rest/test-catalog/lab-units", (res) =>
-      setLabUnits(Array.isArray(res) ? res : []),
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      "/rest/test-catalog/lab-units",
+      (res) => setLabUnits(Array.isArray(res) ? res : []),
+      controller.signal,
     );
-    getFromOpenElisServer("/rest/test-catalog/sample-types", (res) =>
-      setSampleTypes(Array.isArray(res) ? res : []),
+    getFromOpenElisServer(
+      "/rest/test-catalog/sample-types",
+      (res) => setSampleTypes(Array.isArray(res) ? res : []),
+      controller.signal,
     );
+    return () => controller.abort();
   }, []);
 
   const update = (patch) => {

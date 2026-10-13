@@ -486,38 +486,38 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const orderHeaders = [
     {
       key: "priority",
-      header: <FormattedMessage id="eorder.priority" />,
+      header: intl.formatMessage({ id: "eorder.priority" }),
     },
     {
       key: "orderDate",
-      header: <FormattedMessage id="sample.label.orderdate" />,
+      header: intl.formatMessage({ id: "sample.label.orderdate" }),
     },
     {
       key: "patientId",
-      header: <FormattedMessage id="patient.id" />,
+      header: intl.formatMessage({ id: "patient.id" }),
     },
     {
       key: "labNumber",
-      header: <FormattedMessage id="eorder.labNumber" />,
+      header: intl.formatMessage({ id: "eorder.labNumber" }),
     },
     {
       key: "testName",
-      header: <FormattedMessage id="eorder.test.name" />,
+      header: intl.formatMessage({ id: "eorder.test.name" }),
     },
   ];
 
   const userHeaders = [
     {
       key: "userFirstName",
-      header: "First Name",
+      header: intl.formatMessage({ id: "login.login.first" }),
     },
     {
       key: "userLastName",
-      header: "Last Name",
+      header: intl.formatMessage({ id: "login.login.last" }),
     },
     {
       key: "countOfOrdersEntered",
-      header: "Orders Entered",
+      header: intl.formatMessage({ id: "dashboard.user.ordersEntered" }),
     },
   ];
 
@@ -565,7 +565,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <p className="dashboard-tile__subtitle">
                   {tile.subTitle ?? " "}
                 </p>
-                <h2 className="dashboard-tile__value">{tile.value}</h2>
+                <p className="dashboard-tile__value">{tile.value}</p>
 
                 <div className="tile-icon">
                   <div
@@ -594,9 +594,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 <p className="dashboard-tile__subtitle-view">
                   {selectedTile.subTitle ?? " "}
                 </p>
-                <h1 className="dashboard-tile__value-view">
+                <p className="dashboard-tile__value-view">
                   {selectedTile.value}
-                </h1>
+                </p>
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
@@ -620,7 +620,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                         <p className="dashboard-tile__subtitle">
                           {tile.subTitle}
                         </p>
-                        <h2 className="dashboard-tile__value">{tile.value}</h2>
+                        <p className="dashboard-tile__value">{tile.value}</p>
                       </Tile>
                     ))}
                   </div>

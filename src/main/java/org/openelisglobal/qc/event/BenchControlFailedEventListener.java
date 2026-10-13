@@ -45,6 +45,12 @@ public class BenchControlFailedEventListener {
      */
     public static final String MANUAL_FAIL_RULE_CODE = "MANUAL_FAIL";
 
+    /**
+     * Rule code for an analyzer control that reported the wrong answer for its Test
+     * Catalog QC target.
+     */
+    public static final String QUALITATIVE_FAIL_RULE_CODE = "QUALITATIVE_FAIL";
+
     @Autowired
     private QCRuleViolationService violationService;
 
@@ -66,6 +72,12 @@ public class BenchControlFailedEventListener {
                 violationService.createViolation(
                         RuleEvaluationResult.violation(MANUAL_FAIL_RULE_CODE, "REJECTION", List.of(result.getId()),
                                 "Manual control outside the expected value and uncertainty entered at capture"),
+                        result);
+            } else if (result.getSource() == QCSource.ASTM) {
+                // The wrong answer from an analyzer control is a quality failure on the
+                // instrument, so it takes the same corrective-action route as a manual Fail.
+                violationService.createViolation(RuleEvaluationResult.violation(QUALITATIVE_FAIL_RULE_CODE, "REJECTION",
+                        List.of(result.getId()), "Analyzer control did not give the answer its QC target expects"),
                         result);
             } else {
                 qcViolationNceService.createNceForFailedControl(result);

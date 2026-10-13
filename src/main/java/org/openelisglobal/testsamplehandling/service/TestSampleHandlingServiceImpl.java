@@ -44,6 +44,14 @@ public class TestSampleHandlingServiceImpl extends AuditableBaseObjectServiceImp
 
     @Override
     @Transactional
+    public void saveForTests(Map<String, TestSampleHandling> desiredByTestId, String sysUserId) {
+        for (Map.Entry<String, TestSampleHandling> entry : desiredByTestId.entrySet()) {
+            saveForTest(entry.getKey(), entry.getValue(), sysUserId);
+        }
+    }
+
+    @Override
+    @Transactional
     public TestSampleHandling saveForTest(String testId, TestSampleHandling desired, String sysUserId) {
         TestSampleHandling existing = getByTestId(testId);
         // Snapshot the prior business state BEFORE mutating (target == existing).

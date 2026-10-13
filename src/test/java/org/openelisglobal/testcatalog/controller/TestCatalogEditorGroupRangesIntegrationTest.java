@@ -2,6 +2,7 @@ package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
@@ -214,6 +215,93 @@ public class TestCatalogEditorGroupRangesIntegrationTest extends BaseWebContextS
         assertEquals("the seed test has that specimen, so the scope stands", sampleTypeId, seed.sampleTypeId);
         assertNull("the sibling does not have that specimen, so its range is shared across its own",
                 sibling.sampleTypeId);
+    }
+
+    /**
+     * OGC-1455: a bad id at the end of the list is refused before any test is
+     * written, so the tests listed before it keep their ranges.
+     */
+    @org.junit.Test
+    public void groupSave_rejectsANonNumericTestId_andWritesNoTest() {
+        GroupRangesUpdate body = new GroupRangesUpdate();
+        body.testIds = List.of(String.valueOf(SEED_TEST_ID), String.valueOf(SIBLING_TEST_ID), "abc");
+        body.ranges = List.of(sharedRange());
+
+        assertEquals(400, controller.saveGroupRanges(body, authedRequest()).getStatusCode().value());
+        assertEquals(0, rangesOf(SEED_TEST_ID).size());
+        assertEquals(0, rangesOf(SIBLING_TEST_ID).size());
+    }
+
+    @org.junit.Test
+    public void groupSave_rejectsAnUnknownTestId_andWritesNoTest() {
+        GroupRangesUpdate body = new GroupRangesUpdate();
+        body.testIds = List.of(String.valueOf(SEED_TEST_ID), "959999999");
+        body.ranges = List.of(sharedRange());
+
+        assertEquals(404, controller.saveGroupRanges(body, authedRequest()).getStatusCode().value());
+        assertEquals(0, rangesOf(SEED_TEST_ID).size());
+    }
+
+    @org.junit.Test
+    public void groupSave_rejectsMissingRanges_andKeepsTheStoredOnes() {
+        GroupRangesUpdate seed = new GroupRangesUpdate();
+        seed.testIds = List.of(String.valueOf(SEED_TEST_ID), String.valueOf(SIBLING_TEST_ID));
+        seed.ranges = List.of(sharedRange());
+        controller.saveGroupRanges(seed, authedRequest());
+
+        GroupRangesUpdate missing = new GroupRangesUpdate();
+        missing.testIds = seed.testIds;
+        missing.ranges = null;
+        assertEquals(400, controller.saveGroupRanges(missing, authedRequest()).getStatusCode().value());
+
+        GroupRangesUpdate absent;
+        try {
+            absent = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                    "{\"testIds\":[\"" + SEED_TEST_ID + "\",\"" + SIBLING_TEST_ID + "\"]}", GroupRangesUpdate.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException(e);
+        }
+        assertEquals("a body without ranges is refused, not read as clear-all", 400,
+                controller.saveGroupRanges(absent, authedRequest()).getStatusCode().value());
+
+        GroupRangesUpdate nullRow = new GroupRangesUpdate();
+        nullRow.testIds = seed.testIds;
+        nullRow.ranges = new java.util.ArrayList<>();
+        nullRow.ranges.add(null);
+        assertEquals(400, controller.saveGroupRanges(nullRow, authedRequest()).getStatusCode().value());
+
+        assertEquals(1, rangesOf(SEED_TEST_ID).size());
+        assertEquals(1, rangesOf(SIBLING_TEST_ID).size());
+    }
+
+    /**
+     * OGC-1455: the group save is one unit of work. A test that cannot be written
+     * rolls back the tests written before it in the same request.
+     */
+    @org.junit.Test
+    public void groupSave_writesEveryTestInOneTransaction() {
+        java.util.Map<String, List<org.openelisglobal.resultlimits.valueholder.ResultLimit>> byTest = new java.util.LinkedHashMap<>();
+        org.openelisglobal.resultlimits.valueholder.ResultLimit good = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
+        good.setMinAge(0d);
+        good.setMaxAge(Double.POSITIVE_INFINITY);
+        good.setLowNormal(1d);
+        good.setHighNormal(5d);
+        byTest.put(String.valueOf(SEED_TEST_ID), List.of(good));
+        org.openelisglobal.resultlimits.valueholder.ResultLimit broken = new org.openelisglobal.resultlimits.valueholder.ResultLimit();
+        broken.setMinAge(0d);
+        broken.setMaxAge(Double.POSITIVE_INFINITY);
+        broken.setComponentId("not-a-component");
+        byTest.put(String.valueOf(SIBLING_TEST_ID), List.of(broken));
+
+        boolean failed = false;
+        try {
+            resultLimitService.saveRangesForTests(byTest, "1");
+        } catch (RuntimeException expected) {
+            failed = true;
+        }
+
+        assertTrue("the second test's unknown component fails the save", failed);
+        assertEquals("the first test's write is rolled back with the second's", 0, rangesOf(SEED_TEST_ID).size());
     }
 
     /**

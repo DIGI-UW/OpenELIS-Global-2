@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,9 +12,13 @@ import org.hl7.fhir.r4.model.Coding;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
@@ -36,6 +41,8 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
     private TestTerminologyMappingService testTerminologyMappingService;
     @Autowired
     private SampleTypeTerminologyMappingService sampleTypeTerminologyMappingService;
+    @Autowired
+    private DictionaryTerminologyMappingService answerTerminologyService;
     @Autowired
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
@@ -89,7 +96,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
             if (mapping.getComponentId() != null || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
-            String system = terminologySystemUrl(mapping.getSource());
+            String system = TerminologySystems.urlOf(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
@@ -127,6 +134,40 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
      * subject thus maps to multiple terminology systems at once (LOINC + SNOMED +
      * ...).
      */
+    /**
+     * An answer's codes, grouped by system as a test's are; the legacy
+     * dictionary.loinc_code stands as a LOINC SAME_AS candidate, as test.loinc
+     * does.
+     */
+    @Override
+    public CodeableConcept transformAnswerToCodeableConcept(Dictionary answer) {
+        String display = answer.getLocalizedDictionaryName() == null ? answer.getDictEntry()
+                : answer.getLocalizedDictionaryName().getEnglish();
+        List<DictionaryTerminologyMapping> mappings = new ArrayList<>(
+                answerTerminologyService.getActiveByDictionaryId(answer.getId()));
+        mappings.sort(Comparator.comparing(mapping -> !"SAME_AS".equalsIgnoreCase(mapping.getRelationship())));
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
+        for (DictionaryTerminologyMapping mapping : mappings) {
+            String system = TerminologySystems.urlOf(mapping.getSource());
+            if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
+                continue;
+            }
+            String codingDisplay = GenericValidator.isBlankOrNull(mapping.getDisplayName()) ? display
+                    : mapping.getDisplayName();
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>()).add(new Candidate(mapping.getCode(),
+                    "SAME_AS".equalsIgnoreCase(mapping.getRelationship()), codingDisplay));
+        }
+        if (!GenericValidator.isBlankOrNull(answer.getLoincCode())) {
+            bySystem.computeIfAbsent("http://loinc.org", k -> new ArrayList<>())
+                    .add(new Candidate(answer.getLoincCode().trim(), true, display));
+        }
+        CodeableConcept codeableConcept = new CodeableConcept();
+        addPrioritizedCodings(codeableConcept, bySystem);
+        codeableConcept.addCoding(
+                new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", answer.getDictEntry(), display));
+        return codeableConcept;
+    }
+
     private void addPrioritizedCodings(CodeableConcept codeableConcept, Map<String, List<Candidate>> bySystem) {
         for (Map.Entry<String, List<Candidate>> entry : bySystem.entrySet()) {
             String system = entry.getKey();
@@ -192,7 +233,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
                     || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
-            String system = terminologySystemUrl(mapping.getSource());
+            String system = TerminologySystems.urlOf(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
@@ -208,30 +249,6 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
             codeableConcept.setText(label);
         }
         return codeableConcept;
-    }
-
-    /**
-     * Canonical FHIR system URI for a terminology mapping source. LOINC and SNOMED
-     * use the HL7-registered URIs already used elsewhere in this service; CIEL and
-     * OCL use their OpenConceptLab canonical URLs. Returns {@code null} for an
-     * unrecognized source so it is skipped rather than emitting a bogus system.
-     */
-    private String terminologySystemUrl(String source) {
-        if (source == null) {
-            return null;
-        }
-        switch (source.toUpperCase()) {
-        case "LOINC":
-            return "http://loinc.org";
-        case "SNOMED":
-            return "http://snomed.info/sct";
-        case "CIEL":
-            return "https://openconceptlab.org/orgs/CIEL/sources/CIEL";
-        case "OCL":
-            return "https://openconceptlab.org";
-        default:
-            return null;
-        }
     }
 
     @Override
@@ -255,7 +272,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
         Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
         for (SampleTypeTerminologyMapping mapping : sampleTypeTerminologyMappingService
                 .getActiveBySampleTypeId(typeOfSample.getId())) {
-            String system = terminologySystemUrl(mapping.getSource());
+            String system = TerminologySystems.urlOf(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }

@@ -10,10 +10,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -34,16 +37,21 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     private final DictionaryService dictionaryService;
     private final TypeOfSampleService sampleTypes;
     private final TypeOfSampleTestService sampleTypeTests;
+    private final TestResultComponentService componentService;
+    private final DictionaryTerminologyMappingService answerTerminology;
 
     public AnalyzerMappingCatalogServiceImpl(TestService testService, TestResultService testResultService,
             TestTerminologyMappingService terminologyService, DictionaryService dictionaryService,
-            TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests) {
+            TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests,
+            TestResultComponentService componentService, DictionaryTerminologyMappingService answerTerminology) {
         this.testService = testService;
         this.testResultService = testResultService;
         this.terminologyService = terminologyService;
         this.dictionaryService = dictionaryService;
         this.sampleTypes = sampleTypes;
         this.sampleTypeTests = sampleTypeTests;
+        this.componentService = componentService;
+        this.answerTerminology = answerTerminology;
     }
 
     @Override
@@ -94,11 +102,22 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
                 continue;
             }
             String value = option.getValue();
-            choices.add(new ResultOption(option.getId(), value, resolveLabel(value)));
+            Dictionary dictionary = findDictionary(value);
+            choices.add(new ResultOption(option.getId(), value, label(dictionary, value), codingsOf(dictionary),
+                    option.getComponentId()));
         }
         choices.sort(Comparator.comparing(ResultOption::label, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(ResultOption::id));
         return List.copyOf(choices);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComponentOption> getActiveComponents(String testId) {
+        return componentService.getActiveComponentsByTestId(testId).stream()
+                .map(component -> new ComponentOption(component.getId(), component.getCode(), component.getLabel(),
+                        component.getIsPrimary()))
+                .toList();
     }
 
     private static boolean matches(TestOption option, String query) {
@@ -116,14 +135,23 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
                 && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType());
     }
 
-    private String resolveLabel(String value) {
-        if (value.matches("\\d+")) {
-            Dictionary dictionary = dictionaryService.getDictionaryById(value);
-            if (dictionary != null && !isBlank(dictionary.getDictEntry())) {
-                return dictionary.getDictEntry();
-            }
+    private Dictionary findDictionary(String value) {
+        return value.matches("\\d+") ? dictionaryService.getDictionaryById(value) : null;
+    }
+
+    private static String label(Dictionary dictionary, String value) {
+        return dictionary != null && !isBlank(dictionary.getDictEntry()) ? dictionary.getDictEntry() : value;
+    }
+
+    private List<AnswerCoding> codingsOf(Dictionary dictionary) {
+        if (dictionary == null) {
+            return List.of();
         }
-        return value;
+        return answerTerminology.getActiveByDictionaryId(dictionary.getId()).stream()
+                .filter(mapping -> TerminologySystems.urlOf(mapping.getSource()) != null && !isBlank(mapping.getCode()))
+                .map(mapping -> new AnswerCoding(TerminologySystems.urlOf(mapping.getSource()),
+                        mapping.getCode().trim()))
+                .toList();
     }
 
     private static boolean contains(String value, String query) {

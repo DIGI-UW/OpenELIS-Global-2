@@ -1,7 +1,7 @@
 services:
   harness-catalog-init:
     volumes:
-      - ./config-templates:/templates:ro
+      - ./dictionary:/dictionary:ro
 
   certs:
     image: itechuw/certgen:main

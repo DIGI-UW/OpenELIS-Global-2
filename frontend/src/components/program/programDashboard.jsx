@@ -129,32 +129,31 @@ const ProgramDashboard = () => {
   }, [searchTerm]);
 
   const headers = [
-    { key: "avatar", header: "" }, // avatar column
-    { key: "firstName", header: <FormattedMessage id="eorder.name.first" /> },
-    { key: "lastName", header: <FormattedMessage id="eorder.name.last" /> },
+    { key: "avatar", header: "", isSortable: false }, // avatar column
+    {
+      key: "firstName",
+      header: intl.formatMessage({ id: "eorder.name.first" }),
+    },
+    { key: "lastName", header: intl.formatMessage({ id: "eorder.name.last" }) },
     {
       key: "programName",
-      header: <FormattedMessage id="program.name.label" />,
+      header: intl.formatMessage({ id: "program.name.label" }),
     },
-    { key: "programCode", header: <FormattedMessage id="storage.room.code" /> },
+    {
+      key: "programCode",
+      header: intl.formatMessage({ id: "storage.room.code" }),
+    },
     {
       key: "accession",
-      header: (
-        <FormattedMessage
-          id="barcode.label.info.labNumber"
-          defaultMessage={intl.formatMessage({
-            id: "barcode.label.info.labnumber",
-          })}
-        />
-      ),
+      header: intl.formatMessage({ id: "barcode.label.info.labnumber" }),
     },
     {
       key: "receivedDate",
-      header: <FormattedMessage id="label.audittrailreport.receiveddate" />,
+      header: intl.formatMessage({ id: "label.audittrailreport.receiveddate" }),
     },
     {
       key: "questionnaireResponseUuid",
-      header: <FormattedMessage id="notebook.label.questionnaire" />,
+      header: intl.formatMessage({ id: "notebook.label.questionnaire" }),
     },
   ];
 
@@ -172,8 +171,8 @@ const ProgramDashboard = () => {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Heading>
+          <Section level={1}>
+            <Heading className="page-heading-05">
               <FormattedMessage
                 id="banner.menu.results.order.programmes"
                 defaultMessage="Order Programmes"

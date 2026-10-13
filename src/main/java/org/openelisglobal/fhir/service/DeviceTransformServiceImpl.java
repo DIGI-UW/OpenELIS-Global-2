@@ -46,7 +46,7 @@ public class DeviceTransformServiceImpl implements DeviceTransformService {
                 List<Analyzer> analyzers = analyzerService.getAllMatching("fhirUuid", uuid);
 
                 if (!analyzers.isEmpty()) {
-                    analyzer = analyzerService.getWithBinding(analyzers.get(0).getId()).orElse(analyzers.get(0));
+                    analyzer = analyzerService.getWithMapping(analyzers.get(0).getId()).orElse(analyzers.get(0));
                 } else {
                     analyzer.setFhirUuid(uuid);
                 }
@@ -186,9 +186,9 @@ public class DeviceTransformServiceImpl implements DeviceTransformService {
                     .setType(DeviceNameType.USERFRIENDLYNAME));
         }
 
-        if (analyzer.getPinnedProfileBinding() != null
-                && !GenericValidator.isBlankOrNull(analyzer.getPinnedProfileBinding().getProfileId())) {
-            device.setType(new CodeableConcept().setText(analyzer.getPinnedProfileBinding().getProfileId()));
+        if (analyzer.getPinnedProfile() != null
+                && !GenericValidator.isBlankOrNull(analyzer.getPinnedProfile().getProfileId())) {
+            device.setType(new CodeableConcept().setText(analyzer.getPinnedProfile().getProfileId()));
         }
 
         if (analyzer.getLastActivatedDate() != null) {

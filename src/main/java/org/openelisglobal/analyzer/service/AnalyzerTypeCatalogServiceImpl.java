@@ -7,10 +7,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,38 +22,31 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     private static final String SCHEMA_VERSION = "1.0";
 
     private final BridgeProfileCatalogService bridgeCatalogService;
-    private final AnalyzerProfileBindingDAO bindingDAO;
-    private final AnalyzerSiteBindingService siteBindingService;
+    private final AnalyzerMappingDAO mappingDAO;
+    private final AnalyzerMappingDefaults mappingDefaults;
     private final AnalyzerMappingCatalogService mappingCatalogService;
 
     @Autowired
     public AnalyzerTypeCatalogServiceImpl(BridgeProfileCatalogService bridgeCatalogService,
-            AnalyzerProfileBindingDAO bindingDAO, AnalyzerSiteBindingService siteBindingService,
+            AnalyzerMappingDAO mappingDAO, AnalyzerMappingDefaults mappingDefaults,
             AnalyzerMappingCatalogService mappingCatalogService) {
         this.bridgeCatalogService = bridgeCatalogService;
-        this.bindingDAO = bindingDAO;
-        this.siteBindingService = siteBindingService;
+        this.mappingDAO = mappingDAO;
+        this.mappingDefaults = mappingDefaults;
         this.mappingCatalogService = mappingCatalogService;
     }
 
     @Override
     public AnalyzerTypeCatalogView getCatalog() {
         BridgeProfileCatalog bridgeCatalog = bridgeCatalogService.getCatalog();
-        Map<ProfileRevisionKey, AnalyzerProfileBinding> bindings = bindingDAO.getAll().stream()
-                .collect(Collectors.toMap(
-                        binding -> new ProfileRevisionKey(binding.getProfileId(), binding.getProfileRevision()),
-                        Function.identity()));
         Map<String, List<Analyzer>> analyzersByProfileId = bridgeCatalog.profiles().stream()
                 .map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
                 .collect(Collectors.toMap(Function.identity(), this::affectedAnalyzers));
-        AnalyzerSiteBindingCatalogState catalogState = AnalyzerSiteBindingCatalogState.load(mappingCatalogService);
+        List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
 
         List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream().map(revision -> {
             BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-            AnalyzerProfileBinding binding = bindings
-                    .get(new ProfileRevisionKey(profile.profileId(), profile.revision()));
-            return summarize(revision, binding, analyzersByProfileId.getOrDefault(profile.profileId(), List.of()),
-                    catalogState);
+            return summarize(revision, analyzersByProfileId.getOrDefault(profile.profileId(), List.of()), activeTests);
         }).sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
 
         int inUse = (int) types.stream().filter(type -> type.usedBy() > 0).count();
@@ -62,90 +55,68 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
                 .filter(type -> !"READY".equals(type.readiness())).count();
         AnalyzerTypeCatalogView.CatalogSummary summary = new AnalyzerTypeCatalogView.CatalogSummary(types.size(), inUse,
                 needsAttention, deactivated);
-        return new AnalyzerTypeCatalogView(SCHEMA_VERSION, bridgeCatalog.catalogFingerprint(), summary, types);
+        return new AnalyzerTypeCatalogView(SCHEMA_VERSION, bridgeCatalog.catalogFingerprint(), summary, types,
+                bridgeCatalog.issues());
     }
 
     @Override
     public AnalyzerTypeCatalogView.TypeSummary getType(String profileId, int revision) {
         BridgeProfileCatalog.ProfileRevision profileRevision = bridgeCatalogService.getProfile(profileId, revision);
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(profileRevision.profile());
-        AnalyzerProfileBinding binding = bindingDAO.findByProfileIdAndRevision(profile.profileId(), profile.revision())
-                .orElse(null);
-        return summarize(profileRevision, binding, affectedAnalyzers(profile.profileId()),
-                AnalyzerSiteBindingCatalogState.load(mappingCatalogService));
+        return summarize(profileRevision, affectedAnalyzers(profile.profileId()),
+                mappingCatalogService.searchActiveTests(null));
     }
 
+    /**
+     * What a new analyzer on this profile revision would bind by default against
+     * the catalog as it is now. It is a preview of defaults; nothing is saved, and
+     * each analyzer keeps its own mapping.
+     */
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
-            AnalyzerProfileBinding binding, List<Analyzer> analyzers, AnalyzerSiteBindingCatalogState catalogState) {
+            List<Analyzer> analyzers, List<AnalyzerMappingCatalogService.TestOption> activeTests) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        AnalyzerSiteBindingSnapshot siteBinding = binding == null ? null
-                : siteBindingService.findCurrentByProfileBindingId(binding.getId()).orElse(null);
         List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers = analyzers.stream()
-                .map(analyzer -> affectedAnalyzer(analyzer, profile, siteBinding)).toList();
-        int testTotal = profile.testDefinitions().size();
-        int resultTotal = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
+                .map(analyzer -> affectedAnalyzer(analyzer, profile)).toList();
         String status = profile.status();
-        AnalyzerSiteBindingCatalogState.Validation catalogValidation = catalogState.validate(siteBinding);
-        AnalyzerTypeCatalogView.MappingSummary testMappings = testMappingSummary(profile, catalogValidation);
-        AnalyzerTypeCatalogView.MappingSummary resultMappings = resultMappingSummary(profile, catalogValidation);
+        AnalyzerMappingDraft defaults = mappingDefaults.resolve(profile, activeTests);
+        // Both figures count rows of the defaults: a test and each of its parts, and
+        // every answer they declare.
+        AnalyzerTypeCatalogView.MappingSummary testMappings = mappingSummary(defaults.tests().size(),
+                defaults.tests().stream().filter(row -> row.mappingState() == AnalyzerMappingState.BOUND).count());
+        AnalyzerTypeCatalogView.MappingSummary resultMappings = mappingSummary(defaults.results().size(),
+                defaults.results().stream().filter(row -> row.mappingState() == AnalyzerMappingState.BOUND).count());
         String readiness = readiness(status, testMappings, resultMappings);
         return new AnalyzerTypeCatalogView.TypeSummary(profile.profileId(), profile.revision(),
                 profile.revisionFingerprint(), profile.displayName(), profile.manufacturer(), profile.model(),
                 profile.source(), status, profile.protocol(), profile.protocolVersion(), profile.communicationMode(),
-                profile.parentProfileId(), profile.parentRevision(),
-                siteBinding == null ? null : siteBinding.binding().getId(), testMappings, resultMappings,
+                profile.parentProfileId(), profile.parentRevision(), testMappings, resultMappings,
                 affectedAnalyzers.size(), readiness, nullableText(revision.publication(), "action"),
                 nullableText(revision.publication(), "actor"), nullableText(revision.publication(), "markedAt"),
                 affectedAnalyzers);
     }
 
     private List<Analyzer> affectedAnalyzers(String profileId) {
-        return bindingDAO.findAnalyzersByProfileId(profileId);
+        return mappingDAO.findAnalyzersInForceOnProfile(profileId);
     }
 
-    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer, BridgeAnalyzerProfile profile,
-            AnalyzerSiteBindingSnapshot currentSiteBinding) {
-        AnalyzerSiteBindingRevision pinnedMapping = analyzer.getSiteBindingRevision();
-        int pinnedProfileRevision = pinnedMapping.getSiteBinding().getProfileBinding().getProfileRevision();
-        int pinnedMappingRevision = pinnedMapping.getRevisionNumber();
-        boolean newerProfileRevision = pinnedProfileRevision < profile.revision();
-        boolean newerMappingRevision = pinnedProfileRevision == profile.revision() && currentSiteBinding != null
-                && pinnedMappingRevision < currentSiteBinding.revision().getRevisionNumber();
+    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer,
+            BridgeAnalyzerProfile profile) {
+        AnalyzerMapping inForce = analyzer.getMapping();
+        AnalyzerMapping latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElse(inForce);
+        // A saved adoption already targets the latest mapping's revision; it waits for
+        // Verify, not another Adopt.
+        boolean newerProfileRevision = latest.getProfileRevision() < profile.revision();
+        boolean newerMappingRevision = latest.getRevisionNumber() > inForce.getRevisionNumber();
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
-                pinnedProfileRevision, pinnedMappingRevision, newerProfileRevision || newerMappingRevision);
+                inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision);
     }
 
-    private static AnalyzerTypeCatalogView.MappingSummary testMappingSummary(BridgeAnalyzerProfile profile,
-            AnalyzerSiteBindingCatalogState.Validation catalogValidation) {
-        long mapped = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
-                .filter(catalogValidation::isCurrentBoundTest).count();
-        long excluded = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
-                .filter(catalogValidation::isCurrentExcludedTest).count();
-        return mappingSummary(profile.testDefinitions().size(), mapped, excluded);
-    }
-
-    private static AnalyzerTypeCatalogView.MappingSummary resultMappingSummary(BridgeAnalyzerProfile profile,
-            AnalyzerSiteBindingCatalogState.Validation catalogValidation) {
-        int total = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
-        long mapped = profile.testDefinitions().stream()
-                .flatMap(test -> test.resultValues().stream()
-                        .map(value -> catalogValidation.isCurrentBoundResult(test.analyzerCode(), value)))
-                .filter(Boolean::booleanValue).count();
-        long excluded = profile.testDefinitions().stream()
-                .flatMap(test -> test.resultValues().stream()
-                        .map(value -> catalogValidation.isCurrentExcludedResult(test.analyzerCode(), value)))
-                .filter(Boolean::booleanValue).count();
-        return mappingSummary(total, mapped, excluded);
-    }
-
-    private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total, long mapped, long excluded) {
+    private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total, long bound) {
         if (total == 0) {
             return new AnalyzerTypeCatalogView.MappingSummary(0, 0, 0, "NOT_APPLICABLE");
         }
-        long resolved = mapped + excluded;
-        String state = resolved == 0 ? "NOT_STARTED" : resolved == total ? "COMPLETE" : "INCOMPLETE";
-        return new AnalyzerTypeCatalogView.MappingSummary(Math.toIntExact(mapped), Math.toIntExact(excluded), total,
-                state);
+        String state = bound == 0 ? "NOT_STARTED" : bound == total ? "COMPLETE" : "INCOMPLETE";
+        return new AnalyzerTypeCatalogView.MappingSummary(Math.toIntExact(bound), 0, total, state);
     }
 
     private static String readiness(String status, AnalyzerTypeCatalogView.MappingSummary testMappings,
@@ -166,9 +137,6 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     private static String nullableText(JsonNode node, String field) {
         JsonNode value = node.path(field);
         return value.isMissingNode() || value.isNull() || value.asText().isBlank() ? null : value.asText();
-    }
-
-    private record ProfileRevisionKey(String profileId, int revision) {
     }
 
 }

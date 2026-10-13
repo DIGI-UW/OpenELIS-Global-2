@@ -889,11 +889,11 @@ const OrganizationsView = ({ view, lists }) => {
                       })
                     }
                   >
-                    <FormattedMessage id={header} />
+                    {intl.formatMessage({ id: header })}
                   </TableHeader>
                 ) : (
                   <TableHeader key={header}>
-                    <FormattedMessage id={header} />
+                    {intl.formatMessage({ id: header })}
                   </TableHeader>
                 ),
               )}

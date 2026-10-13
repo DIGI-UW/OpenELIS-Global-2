@@ -30,6 +30,7 @@ import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import { samplesFromPendingRequests } from "./pendingRequestSamples";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -148,28 +149,10 @@ const OrderCollect = () => {
         if (componentMounted.current && requests && requests.length > 0) {
           // Convert pending requests to samples array for the UI
           const samplesFromRequests = convertRequestsToSamples(requests);
-          // Merge with any existing sample data.
-          // collectionDate/Time are intentionally NOT preserved from existing:
-          // the backend stores the order entry date there, not an actual
-          // collection date. SampleCollectionCard will auto-fill them to
-          // today when they are empty. Only Step-2-specific fields (collector,
-          // conditions, receivedDate/Time) are preserved.
-          const mergedSamples = samplesFromRequests.map((reqSample, idx) => {
-            const existing = samples[idx];
-            if (existing && existing.sampleTypeId === reqSample.sampleTypeId) {
-              return {
-                ...reqSample,
-                collectorId: existing.collectorId || reqSample.collectorId,
-                collectionConditions:
-                  existing.collectionConditions ||
-                  reqSample.collectionConditions,
-                receivedDate: existing.receivedDate || reqSample.receivedDate,
-                receivedTime: existing.receivedTime || reqSample.receivedTime,
-              };
-            }
-            return reqSample;
-          });
-          seedSamples(mergedSamples);
+          const atLoad = samples;
+          seedSamples((current) =>
+            samplesFromPendingRequests(samplesFromRequests, atLoad, current),
+          );
         }
       } catch {
         // Failed to load pending requests

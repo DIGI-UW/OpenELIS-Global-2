@@ -437,6 +437,27 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(onActionDone).toHaveBeenCalledWith("modified", expect.anything());
   });
 
+  // OGC-1458 review: the server's choices start with a blank ("0", ""); the list
+  // offers one empty choice, not two.
+  it("a select-list Modify offers one empty choice and the options", () => {
+    renderPanel(
+      row({
+        resultType: "D",
+        dictionaryResults: [
+          { id: "0", value: "" },
+          { id: "1959", value: "2" },
+          { id: "1958", value: "1" },
+        ],
+      }),
+    );
+    fireEvent.click(screen.getByTestId("review-modify"));
+
+    const options = Array.from(
+      screen.getByLabelText("New result").querySelectorAll("option"),
+    ).map((option) => option.textContent);
+    expect(options).toEqual(["", "2", "1"]);
+  });
+
   it("multi-select results are not edited here — the panel points to Results Entry", () => {
     renderPanel(row({ resultType: "M", multiSelectResultValues: "{}" }));
     fireEvent.click(screen.getByTestId("review-modify"));

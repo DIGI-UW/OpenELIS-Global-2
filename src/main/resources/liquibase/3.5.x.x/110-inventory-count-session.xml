@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-count-session.xml">
+
+    <!-- OGC-438: count session numbers, the reference_id grouping one count's adjustments -->
+    <changeSet author="OGC" id="OGC-438-add-inventory-count-session">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="inventory_item" columnName="last_counted_at" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createSequence schemaName="clinlims" sequenceName="inventory_count_session_seq" startValue="1"
+            incrementBy="1"/>
+
+        <addColumn tableName="inventory_item" schemaName="clinlims">
+            <column name="last_counted_at" type="TIMESTAMP"/>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="inventory_item" columnName="last_counted_at" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_count_session_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

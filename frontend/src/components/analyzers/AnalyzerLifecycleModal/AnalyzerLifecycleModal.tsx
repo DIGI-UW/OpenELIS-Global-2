@@ -10,14 +10,16 @@ import {
 import { useIntl } from "react-intl";
 
 import {
+  activateAnalyzer,
   deactivateAnalyzer,
   reactivateAnalyzer,
   type AnalyzerActivationResultView,
   type AnalyzerDeactivationResultView,
 } from "../../../services/analyzerService";
+import { analyzerErrorText } from "../analyzerErrors";
 import type { Analyzer } from "../types";
 
-export type AnalyzerLifecycleAction = "deactivate" | "reactivate";
+export type AnalyzerLifecycleAction = "activate" | "deactivate" | "reactivate";
 
 interface AnalyzerLifecycleModalProps {
   action: AnalyzerLifecycleAction;
@@ -76,14 +78,11 @@ const AnalyzerLifecycleModal = ({
     }
     setSubmitting(false);
     setError(
-      response?.failure ||
-        response?.error ||
-        response?.message ||
-        message("error"),
+      analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
     );
   };
 
-  const handleReactivation = (
+  const handleActivation = (
     response: AnalyzerActivationResultView | undefined,
   ) => {
     if (response?.activated) {
@@ -95,7 +94,9 @@ const AnalyzerLifecycleModal = ({
       setBlockers(response.blockers);
       return;
     }
-    setError(response?.error || response?.message || message("error"));
+    setError(
+      analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
+    );
   };
 
   const handleConfirm = () => {
@@ -109,8 +110,10 @@ const AnalyzerLifecycleModal = ({
     setBlockers([]);
     if (isDeactivation) {
       deactivateAnalyzer(analyzer.id, handleDeactivation);
+    } else if (action === "activate") {
+      activateAnalyzer(analyzer.id, handleActivation);
     } else {
-      reactivateAnalyzer(analyzer.id, handleReactivation);
+      reactivateAnalyzer(analyzer.id, handleActivation);
     }
   };
 

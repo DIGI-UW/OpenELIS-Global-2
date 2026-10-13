@@ -352,12 +352,10 @@ function ImmunohistochemistryDashboard() {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="immunohistochemistry.label.title" />
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading className="page-heading-04">
+              <FormattedMessage id="immunohistochemistry.label.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
@@ -448,31 +446,35 @@ function ImmunohistochemistryDashboard() {
               headers={[
                 {
                   key: "requestDate",
-                  header: "Request Date",
+                  header: intl.formatMessage({ id: "sample.requestDate" }),
                 },
                 {
                   key: "status",
-                  header: "Stage",
+                  header: intl.formatMessage({ id: "pathology.label.stage" }),
                 },
                 {
                   key: "lastName",
-                  header: "Last Name",
+                  header: intl.formatMessage({ id: "patient.last.name" }),
                 },
                 {
                   key: "firstName",
-                  header: "First Name",
+                  header: intl.formatMessage({ id: "patient.first.name" }),
                 },
                 {
                   key: "assignedTechnician",
-                  header: "Assigned Technician",
+                  header: intl.formatMessage({
+                    id: "assigned.technician.label",
+                  }),
                 },
                 {
                   key: "assignedPathologist",
-                  header: "Assigned Pathologist",
+                  header: intl.formatMessage({
+                    id: "assigned.pathologist.label",
+                  }),
                 },
                 {
                   key: "labNumber",
-                  header: "Lab Number",
+                  header: intl.formatMessage({ id: "sample.label.labnumber" }),
                 },
               ]}
               isSortable

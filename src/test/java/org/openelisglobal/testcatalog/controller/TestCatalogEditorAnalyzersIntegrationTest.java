@@ -27,9 +27,7 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
     private static final long TEST_ID = 95411L;
     private static final long TEST_ID_NOMAP = 95412L;
     private static final long ANALYZER_ID = 95413L;
-    private static final long PROFILE_BINDING_ID = 95414L;
-    private static final long SITE_BINDING_ID = 95415L;
-    private static final long SITE_BINDING_REVISION_ID = 95416L;
+    private static final long MAPPING_ID = 95416L;
 
     @Autowired
     private TestService testService;
@@ -94,26 +92,17 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID_NOMAP, "AnalyzersIT-nomap", "no mappings", UUID.randomUUID().toString());
         jdbc.update(
-                "INSERT INTO clinlims.analyzer_profile_binding"
-                        + " (id, profile_id, profile_revision, profile_fingerprint) VALUES (?, ?, 1, ?)",
-                PROFILE_BINDING_ID, "test-catalog-fixture",
-                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding (id, profile_binding_id, created_by) VALUES (?, ?, ?)",
-                SITE_BINDING_ID, PROFILE_BINDING_ID, "1");
-        jdbc.update(
-                "INSERT INTO clinlims.analyzer_site_binding_revision"
-                        + " (id, site_binding_id, revision_number, binding_fingerprint, created_by)"
-                        + " VALUES (?, ?, 1, ?, ?)",
-                SITE_BINDING_REVISION_ID, SITE_BINDING_ID,
-                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "1");
-        jdbc.update(
-                "INSERT INTO clinlims.analyzer"
-                        + " (id, name, is_active, status, bridge_connection_id, site_binding_revision_id, last_updated)"
-                        + " VALUES (?, ?, true, 'ACTIVE', ?, ?, NOW())",
-                ANALYZER_ID, "Cobalt 9000", "bridge-test-catalog-95413", SITE_BINDING_REVISION_ID);
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding_test"
-                + " (site_binding_revision_id, source_row_key, mapping_state, test_id, last_updated)"
-                + " VALUES (?, ?, 'BOUND', ?, NOW())", SITE_BINDING_REVISION_ID, "Cobalt Glucose", TEST_ID);
+                "INSERT INTO clinlims.analyzer" + " (id, name, is_active, status, bridge_connection_id, last_updated)"
+                        + " VALUES (?, ?, true, 'ACTIVE', ?, NOW())",
+                ANALYZER_ID, "Cobalt 9000", "bridge-test-catalog-95413");
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping"
+                + " (id, analyzer_id, revision_number, profile_id, profile_revision, profile_fingerprint,"
+                + " mapping_fingerprint, created_by)" + " VALUES (?, ?, 1, 'test-catalog-fixture', 1, ?, ?, '1')",
+                MAPPING_ID, ANALYZER_ID, "sha256:" + "a".repeat(64), "sha256:" + "b".repeat(64));
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = ? WHERE id = ?", MAPPING_ID, ANALYZER_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                + " (mapping_id, source_row_key, mapping_state, test_id, last_updated)"
+                + " VALUES (?, ?, 'BOUND', ?, NOW())", MAPPING_ID, "Cobalt Glucose", TEST_ID);
     }
 
     @After
@@ -122,12 +111,10 @@ public class TestCatalogEditorAnalyzersIntegrationTest extends BaseWebContextSen
     }
 
     private void cleanup() {
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = NULL WHERE id = ?", ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping_test WHERE mapping_id = ?", MAPPING_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping WHERE id = ?", MAPPING_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding_test WHERE site_binding_revision_id = ?",
-                SITE_BINDING_REVISION_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding_revision WHERE id = ?", SITE_BINDING_REVISION_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding WHERE id = ?", SITE_BINDING_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_profile_binding WHERE id = ?", PROFILE_BINDING_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?)", TEST_ID, TEST_ID_NOMAP);
     }
 

@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import secrets
 import shutil
 import ssl
 import subprocess
@@ -30,16 +31,17 @@ SERVICES = {
     "fhir.openelis.org": "openelis-global-2-fhir",
     "frontend.openelis.org": "openelis-global-2-frontend",
     "proxy": "openelis-global-2-proxy",
+    "openelis-analyzer-bridge": "openelis-global-2-analyzer-bridge",
+    "astm-simulator": "openelis-global-2-analyzer-mock",
 }
-ANALYZER_SERVICES = ("openelis-analyzer-bridge", "astm-simulator")
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
 BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
-    "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
 )
+PAIRING_CODE = "ANALYZER_BRIDGE_PAIRING_CODE"
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
 SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
 SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:12001"
@@ -60,7 +62,7 @@ def validate_manifest(manifest, namespace="itechuw"):
         raise ValueError("Testing requires a develop image manifest")
     images = manifest.get("images")
     if not isinstance(images, dict) or set(images) != set(SERVICES):
-        raise ValueError("Manifest must include exactly the five application images")
+        raise ValueError("Manifest must include exactly the published application images")
     for service, repository in SERVICES.items():
         reference = images[service]
         if not isinstance(reference, str) or not re.fullmatch(
@@ -157,6 +159,16 @@ def read_env_file(path):
     return environment
 
 
+def ensure_pairing_code(site_dir):
+    """Give the site the code OpenELIS and the Analyzer Bridge pair with, once, kept across deploys."""
+    env_file = site_dir / ".env"
+    if read_env_file(env_file).get(PAIRING_CODE):
+        return
+    text = env_file.read_text(encoding="utf-8")
+    separator = "" if not text or text.endswith("\n") else "\n"
+    env_file.write_text(f"{text}{separator}{PAIRING_CODE}={secrets.token_hex(16)}\n", encoding="utf-8")
+
+
 def site_settings(site_dir, release):
     # Prefer Compose's own parse, which handles quoting and interpolation as it does for the stack.
     # Older Compose releases without `config --environment` fail on it, so fall back to reading the
@@ -190,7 +202,7 @@ def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, au
 
 
 def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, sleep=time.sleep, timeout=120):
-    pushed = http("POST", mock_url + "/simulate/astm/genexpert_astm",
+    pushed = http("POST", mock_url + "/simulate/fixture/genexpert_astm/hivvl/quantified",
                   {"destination": SMOKE_DESTINATION, "sample_id": accession, "sender_id": SMOKE_SENDER_ID})
     if pushed.get("pushed") != 1:
         raise RuntimeError(f"Mock did not deliver the smoke result: {pushed}")
@@ -199,6 +211,11 @@ def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, slee
     deadline = time.monotonic() + timeout
     while True:
         response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}")
+        # The review list is paged by accession; read the page that holds this one.
+        page = next((term["value"] for term in response.get("paging", {}).get("searchTermToPage", [])
+                     if term.get("id") == accession), "1")
+        if page != "1":
+            response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}&page={page}")
         rows = [row for row in response.get("resultList", []) if row.get("accessionNumber") == accession]
         if rows:
             return {"accession": accession, "rows": len(rows)}
@@ -234,6 +251,7 @@ def deploy(request, diagnostics, bundle):
         require_stack_owner(site_dir)
         state_dir.mkdir(exist_ok=True)
         release = unpack_release(bundle, site_dir, manifest["appSha"])
+        ensure_pairing_code(site_dir)
         settings = site_settings(site_dir, release)
         mock_url = request.get("mock_url", settings["MOCK_URL"])
         # Stage on the same filesystem so promotion is atomic.
@@ -269,7 +287,7 @@ def deploy(request, diagnostics, bundle):
         if not report["ready"]:
             raise RuntimeError("Application did not become ready; inspect deployment diagnostics")
         run(["env", "BASE_URL=" + origin, "MOCK_URL=" + mock_url,
-             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network", "--activate"],
+             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network"],
             release, env={**os.environ, **settings})
         authenticated_http = functools.partial(http_json, username=settings["TEST_USER"],
                                                password=settings["TEST_PASS"], auth_origin=origin)
@@ -291,8 +309,7 @@ def deploy(request, diagnostics, bundle):
         else:
             status_compose = compose_command(site_dir, release)
             for filename, args in [("compose-status.txt", ["ps", "--all"]),
-                                   ("service-logs.txt", ["logs", "--no-color", "--tail", "250",
-                                                         *SERVICES, *ANALYZER_SERVICES])]:
+                                   ("service-logs.txt", ["logs", "--no-color", "--tail", "250", *SERVICES])]:
                 with (diagnostics / filename).open("w", encoding="utf-8") as output:
                     subprocess.run(status_compose + args, cwd=site_dir, stdout=output,
                                    stderr=subprocess.STDOUT, check=False)

@@ -29,35 +29,36 @@ import "../../Style.css";
 
 const PATIENT_ENTITY_NAME = "PATIENT";
 
-const headers = [
+const headersFor = (intl) => [
   {
     key: "timestamp",
-    header: <FormattedMessage id="systemAudit.table.heading.time" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.time" }),
   },
   {
     key: "entityType",
-    header: <FormattedMessage id="systemAudit.table.heading.entityType" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.entityType" }),
   },
   {
     key: "entityId",
-    header: <FormattedMessage id="systemAudit.table.heading.entityId" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.entityId" }),
   },
   {
     key: "action",
-    header: <FormattedMessage id="systemAudit.table.heading.action" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.action" }),
   },
   {
     key: "user",
-    header: <FormattedMessage id="systemAudit.table.heading.user" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.user" }),
   },
   {
     key: "changes",
-    header: <FormattedMessage id="systemAudit.table.heading.changes" />,
+    header: intl.formatMessage({ id: "systemAudit.table.heading.changes" }),
   },
 ];
 
 const SystemAuditEvents = () => {
   const intl = useIntl();
+  const headers = headersFor(intl);
   const [events, setEvents] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -227,8 +228,8 @@ const SystemAuditEvents = () => {
       <br />
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Heading>
+          <Section level={1}>
+            <Heading className="page-heading-05">
               <FormattedMessage id="reports.systemAuditTrail" />
             </Heading>
           </Section>

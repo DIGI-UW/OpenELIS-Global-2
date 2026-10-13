@@ -355,14 +355,15 @@ const LocalizationSection = ({
               <div
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
-                <span className="cds--label">
+                <span className="cds--label" aria-hidden="true">
                   {copy(`field.${entry.field}`)}
                 </span>
                 {fallbackTag(entry)}
               </div>
               <TextInput
                 id={`localization-input-${entry.field}`}
-                labelText=""
+                labelText={copy(`field.${entry.field}`)}
+                hideLabel
                 placeholder={entry.translations[FALLBACK_LOCALE] || ""}
                 value={valueFor(entry)}
                 onChange={(e) => {

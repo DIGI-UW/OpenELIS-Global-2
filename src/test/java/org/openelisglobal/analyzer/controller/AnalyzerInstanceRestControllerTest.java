@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,15 +19,17 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
-import org.openelisglobal.analyzer.form.AnalyzerSiteBindingSelectionRequest;
+import org.openelisglobal.analyzer.form.AnalyzerMappingSelectionRequest;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,6 +43,12 @@ public class AnalyzerInstanceRestControllerTest {
     @Mock
     private AnalyzerInstanceService service;
 
+    @Mock
+    private org.openelisglobal.analyzer.service.AnalyzerAdoptionService adoptionService;
+
+    @Mock
+    private org.openelisglobal.analyzer.service.AnalyzerMappingEditorService editorService;
+
     private AnalyzerInstanceRestController controller;
     private MockMvc mockMvc;
     private AnalyzerInstanceRequest input;
@@ -47,7 +56,7 @@ public class AnalyzerInstanceRestControllerTest {
 
     @Before
     public void setUp() {
-        controller = new AnalyzerInstanceRestController(service);
+        controller = new AnalyzerInstanceRestController(service, adoptionService, editorService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ControllerSetup()).build();
         input = new AnalyzerInstanceRequest();
         input.setName("Synthetic bench 1");
@@ -103,19 +112,77 @@ public class AnalyzerInstanceRestControllerTest {
     }
 
     @Test
-    public void selectsTheExactReviewedSiteBindingRevision() {
-        AnalyzerSiteBindingSelectionRequest selection = new AnalyzerSiteBindingSelectionRequest();
-        selection.setSiteBindingId("12");
-        selection.setRevision(2);
-        selection.setBindingFingerprint("sha256:" + "3".repeat(64));
-        when(service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
-                .thenReturn(connectedView());
+    public void adoptionIsPlannedForTheRequestedRevisionWithTheMappingItWouldSave() throws Exception {
+        org.openelisglobal.analyzer.service.AnalyzerAdoptionService.AdoptionPlan plan = new org.openelisglobal.analyzer.service.AnalyzerAdoptionService.AdoptionPlan(
+                "42", "fixture.synthetic-connection", 3, 4, FINGERPRINT, List.of());
+        when(adoptionService.prepareAdoption("42", 4)).thenReturn(plan);
+        when(editorService.preview("42", 4, plan.proposals())).thenReturn(
+                new org.openelisglobal.analyzer.service.AnalyzerMappingView("42", "fixture.synthetic-connection", 4,
+                        FINGERPRINT, "Synthetic", "ASTM", null, 0, null, List.of(), null, null));
 
-        ResponseEntity<Map<String, Object>> response = controller.selectSiteBindingRevision("42", selection, request);
+        mockMvc.perform(get("/rest/analyzer/analyzers/42/adoption").param("revision", "4")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.fromRevision").value(3)).andExpect(jsonPath("$.toRevision").value(4))
+                .andExpect(jsonPath("$.baseMappingFingerprint").value(FINGERPRINT))
+                .andExpect(jsonPath("$.proposal.profileRevision").value(4));
+    }
+
+    @Test
+    public void adoptionSavesTheReviewedDecisionsAndNamesTheRevisionToConfirm() {
+        org.openelisglobal.analyzer.service.AnalyzerMappingUpdate decisions = new org.openelisglobal.analyzer.service.AnalyzerMappingUpdate(
+                "sha256:" + "1".repeat(64),
+                List.of(new org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft("RAW-A",
+                        org.openelisglobal.analyzer.valueholder.AnalyzerMappingState.BOUND, "t1")),
+                List.of());
+        org.openelisglobal.analyzer.valueholder.AnalyzerMapping adopted = new org.openelisglobal.analyzer.valueholder.AnalyzerMapping();
+        adopted.setId("13");
+        adopted.setRevisionNumber(3);
+        adopted.setMappingFingerprint("sha256:" + "4".repeat(64));
+        when(adoptionService.adopt(org.mockito.ArgumentMatchers.eq("42"), org.mockito.ArgumentMatchers.eq(4),
+                org.mockito.ArgumentMatchers.eq("sha256:" + "1".repeat(64)), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("17"))).thenReturn(
+                        new org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot(adopted, List.of(), List.of()));
+
+        ResponseEntity<Map<String, Object>> response = controller.adopt("42", 4, decisions, request);
+
+        org.mockito.ArgumentCaptor<org.openelisglobal.analyzer.service.AnalyzerMappingDraft> sent = org.mockito.ArgumentCaptor
+                .forClass(org.openelisglobal.analyzer.service.AnalyzerMappingDraft.class);
+        verify(adoptionService).adopt(org.mockito.ArgumentMatchers.eq("42"), org.mockito.ArgumentMatchers.eq(4),
+                org.mockito.ArgumentMatchers.eq("sha256:" + "1".repeat(64)), sent.capture(),
+                org.mockito.ArgumentMatchers.eq("17"));
+        assertEquals("t1", sent.getValue().tests().get(0).testId());
+        assertEquals("13", response.getBody().get("mappingId"));
+        assertEquals(3, response.getBody().get("mappingRevision"));
+        assertEquals("sha256:" + "4".repeat(64), response.getBody().get("mappingFingerprint"));
+    }
+
+    @Test
+    public void selectsTheExactReviewedMappingRevision() {
+        AnalyzerMappingSelectionRequest selection = new AnalyzerMappingSelectionRequest();
+        selection.setMappingId("12");
+        selection.setRevision(2);
+        selection.setMappingFingerprint("sha256:" + "3".repeat(64));
+        when(service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17")).thenReturn(connectedView());
+
+        ResponseEntity<Map<String, Object>> response = controller.applyMapping("42", selection, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("42", response.getBody().get("id"));
-        verify(service).selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17");
+        verify(service).applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
+    }
+
+    @Test
+    public void anApplyTheBridgeCannotFollowIsReportedAsNothingApplied() throws Exception {
+        when(service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/42/mapping/apply").session(
+                (org.springframework.mock.web.MockHttpSession) request.getSession()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappingId\":\"13\",\"revision\":3,\"mappingFingerprint\":\"sha256:" + "4".repeat(64)
+                        + "\"}"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.error").value(
+                        "The Analyzer Bridge could not switch with this mapping, so nothing was applied. Try again when it is reachable."))
+                .andExpect(jsonPath("$.messageKey").value("analyzer.bridge.connection.unreachable"));
     }
 
     @Test
@@ -143,6 +210,15 @@ public class AnalyzerInstanceRestControllerTest {
         mockMvc.perform(get("/rest/analyzer/analyzers/missing"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Analyzer not found"));
+    }
+
+    @Test
+    public void aRefusalTheOperatorCanActOnCarriesItsMessageKey() throws Exception {
+        when(service.get("42")).thenThrow(new org.openelisglobal.analyzer.service.AnalyzerRequestException(
+                "analyzer.mapping.error.confirmBeforeApply", "Confirm the analyzer's current mapping before applying it"));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/42")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.messageKey").value("analyzer.mapping.error.confirmBeforeApply"));
     }
 
     private static AnalyzerInstanceView connectedView() {

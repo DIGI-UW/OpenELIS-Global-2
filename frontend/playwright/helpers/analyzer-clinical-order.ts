@@ -4,141 +4,26 @@ import { csrfToken } from "./api-session";
 
 const API = "/api/OpenELIS-Global/rest";
 
-type MappingRow = {
-  rawCode: string;
-  loinc: string;
-  mappingState: string;
-  testId: string | null;
-  selectedTest: { name: string; loincCodes: string[] } | null;
-  results: Array<{ rawValue: string; mappingState: string }>;
-};
-
-type MappingView = { tests: MappingRow[] };
-
-export type AnalyzerClinicalOrder = {
-  accession?: string;
-  profileId: string;
-  profileRevision: number;
-  sourceCode: string;
-  expectedTestName: string;
-  expectedLoinc: string;
-  specimenName: string;
-  expectedMappedValue?: string;
-  additionalTests?: StockBindingExpectation[];
-};
-
-export type StockBindingExpectation = Omit<
-  AnalyzerClinicalOrder,
-  "accession" | "additionalTests"
->;
-
 async function jsonGet<T>(page: Page, path: string): Promise<T> {
   const response = await page.request.get(`${API}${path}`);
   expect(response.ok(), `GET ${path}: ${response.status()}`).toBeTruthy();
   return (await response.json()) as T;
 }
 
-/** Assert the shipped default, without choosing or writing any mapping row. */
-export async function stockClinicalBinding(
+/** A synthetic patient with one specimen and these catalog tests ordered. */
+export async function createClinicalOrder(
   page: Page,
-  scenario: StockBindingExpectation,
-): Promise<string> {
-  const catalog = await jsonGet<{
-    total: number;
-    rows: Array<{
-      testId: string;
-      name: string;
-      active: boolean;
-      sampleTypes: string[];
-    }>;
-  }>(
-    page,
-    `/test-catalog/tests?status=active&search=${encodeURIComponent(scenario.expectedTestName)}&pageSize=100`,
-  );
-  expect(
-    catalog.total,
-    `Catalog search for ${scenario.expectedTestName} fits one page`,
-  ).toBeLessThanOrEqual(100);
-  const clinicalTests = catalog.rows.filter(
-    (test) =>
-      test.active &&
-      (test.name === scenario.expectedTestName ||
-        test.name.startsWith(`${scenario.expectedTestName}(`) ||
-        test.name.startsWith(`${scenario.expectedTestName} (`)) &&
-      test.sampleTypes.includes(scenario.specimenName),
-  );
-  expect(
-    clinicalTests,
-    `One active ${scenario.expectedTestName} test for ${scenario.specimenName}`,
-  ).toHaveLength(1);
-  const expectedTestId = clinicalTests[0].testId;
-
-  const mapping = await jsonGet<MappingView>(
-    page,
-    `/analyzer-types/${scenario.profileId}/mapping?revision=${scenario.profileRevision}`,
-  );
-  const rows = mapping.tests.filter(
-    (row) => row.rawCode === scenario.sourceCode,
-  );
-  expect(rows, `One shipped ${scenario.sourceCode} row`).toHaveLength(1);
-  const row = rows[0];
-  expect(row.loinc).toBe(scenario.expectedLoinc);
-  expect(
-    row.mappingState,
-    `${scenario.sourceCode} must be mapped by the product`,
-  ).toBe("BOUND");
-  expect(row.testId).toBe(expectedTestId);
-  expect(row.selectedTest?.name).toBe(scenario.expectedTestName);
-  expect(row.selectedTest?.loincCodes).toContain(scenario.expectedLoinc);
-  if (scenario.expectedMappedValue) {
-    const values = row.results.filter(
-      (result) => result.rawValue === scenario.expectedMappedValue,
-    );
-    expect(
-      values,
-      `${scenario.sourceCode} ${scenario.expectedMappedValue} row`,
-    ).toHaveLength(1);
-    expect(values[0].mappingState).toBe("BOUND");
-  }
-  return expectedTestId;
-}
-
-/** Create a synthetic patient, specimen and order via the same validated API as entry. */
-export async function createAnalyzerClinicalOrder(
-  page: Page,
-  scenario: AnalyzerClinicalOrder,
+  {
+    testIds,
+    specimenName,
+    accession: existingAccession,
+  }: { testIds: string[]; specimenName: string; accession?: string },
 ): Promise<{
   accession: string;
   patientLastName: string;
   testId: string;
   specimenId: string;
-  primaryComponentId: string | null;
-  orderedTests: Array<{ testId: string; primaryComponentId: string | null }>;
 }> {
-  const scenarios = [scenario, ...(scenario.additionalTests ?? [])];
-  const orderedTests: Array<{
-    testId: string;
-    primaryComponentId: string | null;
-  }> = [];
-  for (const testScenario of scenarios) {
-    expect(testScenario.specimenName).toBe(scenario.specimenName);
-    const testId = await stockClinicalBinding(page, testScenario);
-    const definition = await jsonGet<{
-      components: Array<{ id: string; isPrimary: boolean }>;
-    }>(
-      page,
-      `/test-catalog/tests/${encodeURIComponent(testId)}/sample-results`,
-    );
-    const primary = definition.components.filter(
-      (component) => component.isPrimary,
-    );
-    expect(
-      primary,
-      "One primary component when the test defines components",
-    ).toHaveLength(definition.components.length ? 1 : 0);
-    orderedTests.push({ testId, primaryComponentId: primary[0]?.id ?? null });
-  }
-  const testIds = orderedTests.map((test) => test.testId);
   const compatibility = await jsonGet<{
     tests: Array<{
       testId: string;
@@ -155,18 +40,15 @@ export async function createAnalyzerClinicalOrder(
     );
     expect(compatible, `Compatibility for test ${testId}`).toBeDefined();
     const specimens = compatible!.compatibleSampleTypes.filter(
-      (type) => type.name === scenario.specimenName,
+      (type) => type.name === specimenName,
     );
-    expect(
-      specimens,
-      `${testId} accepts ${scenario.specimenName}`,
-    ).toHaveLength(1);
+    expect(specimens, `${testId} accepts ${specimenName}`).toHaveLength(1);
     return specimens[0].id;
   });
   expect(new Set(specimenIds).size).toBe(1);
   const specimenId = specimenIds[0];
 
-  let accession = scenario.accession;
+  let accession = existingAccession;
   if (!accession) {
     const generated = await page.request.get(
       `${API}/SampleEntryGenerateScanProvider`,
@@ -263,7 +145,5 @@ export async function createAnalyzerClinicalOrder(
     patientLastName,
     testId: testIds[0],
     specimenId,
-    primaryComponentId: orderedTests[0].primaryComponentId,
-    orderedTests,
   };
 }
