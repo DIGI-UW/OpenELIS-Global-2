@@ -159,10 +159,17 @@ test("inoculates from the worklist and scans the saved culture label", async ({
     .click();
   const printedLabels = await labelResponse;
   expect(printedLabels.ok()).toBeTruthy();
-  expect((await printedLabels.body()).subarray(0, 4).toString()).toBe("%PDF");
-  await expect(
-    culture.getByRole("link", { name: "Open printable labels" }),
-  ).toBeVisible();
+  const labelLink = culture.getByRole("link", {
+    name: "Open printable labels",
+  });
+  await expect(labelLink).toBeVisible();
+  const labelPrefix = await labelLink.evaluate(
+    async (link: HTMLAnchorElement) => {
+      const blob = await (await fetch(link.href)).blob();
+      return blob.slice(0, 4).text();
+    },
+  );
+  expect(labelPrefix).toBe("%PDF");
   await page.goto("/Microbiology/worklist");
   await page.getByRole("heading", { name: "Microbiology worklist" }).waitFor();
   await page.keyboard.type(`PLT-${seeded.caseId}-${id}`);
