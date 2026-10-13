@@ -293,9 +293,8 @@ public class MicrobiologyUatScenarioService {
                 ? getOrCreateUatTest("UAT Microbiology initial assay", true, method, performedBy)
                 : getOrCreateUatTest(method, performedBy);
         Test followUp = null;
-        if (INITIAL_TESTING_SCENARIO.equals(scenario) || AUTOMATION_SCENARIO.equals(scenario)) {
-            if (INITIAL_TESTING_SCENARIO.equals(scenario))
-                configureTestingComponents(test, true, performedBy);
+        if (INITIAL_TESTING_SCENARIO.equals(scenario)) {
+            configureTestingComponents(test, true, performedBy);
             followUp = getOrCreateUatTest("UAT Microbiology follow-up assay", true, method, performedBy);
             configureTestingComponents(followUp, false, performedBy);
             getOrCreateReportableTestAnalyte(followUp, performedBy);
@@ -481,17 +480,23 @@ public class MicrobiologyUatScenarioService {
         form.loadedBreakpointStandardId = referenceAdminData == null ? null : referenceAdminData.loadedStandardId();
         form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
         if (AUTOMATION_SCENARIO.equals(scenario)) {
+            var incomingTest = getOrCreateUatTest("UAT Microbiology follow-up assay " + suffix, true, method,
+                    performedBy);
+            incomingTest.setTestSection(test.getTestSection());
+            testService.update(incomingTest);
+            configureTestingComponents(incomingTest, false, performedBy);
+            getOrCreateReportableTestAnalyte(incomingTest, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), incomingTest, performedBy);
+            form.followUpTestId = incomingTest.getId();
             var result = new org.openelisglobal.microbiology.form.MicroCaseResultRequestForm();
             result.components = new java.util.ArrayList<>();
-            for (var component : org.openelisglobal.spring.util.SpringContext
-                    .getBean(org.openelisglobal.testresultcomponent.service.TestResultComponentService.class)
-                    .getActiveComponentsByTestId(followUp.getId())) {
+            for (var component : components.getActiveComponentsByTestId(incomingTest.getId())) {
                 var value = new org.openelisglobal.microbiology.form.MicroCaseResultRequestForm.ResultComponent();
                 value.componentId = component.getId();
                 value.value = "12";
                 result.components.add(value);
             }
-            incomingResults.receive(microCase.getId(), sampleItem.getId(), followUp.getId(), "ANALYZER",
+            incomingResults.receive(microCase.getId(), sampleItem.getId(), incomingTest.getId(), "ANALYZER",
                     "automation-" + suffix, "12", result, false, performedBy);
         }
         return form;

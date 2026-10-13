@@ -48,7 +48,8 @@ public class MicroIncomingAnalyzerAdapter {
             if (row.getIsControl() || row.isReadOnly() || row.getTestId() == null || row.getSourceMessageId() == null)
                 continue;
             var key = Arrays.asList(row.getSourceConnectionId(), row.getSourceMessageId(),
-                    row.getInstrumentSpecimenId(), row.getTestId(), row.getRawTestCode(), row.getRawSubIdentity());
+                    row.getInstrumentSpecimenId() == null ? row.getAccessionNumber() : row.getInstrumentSpecimenId(),
+                    row.getTestId());
             groups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
         }
         for (var group : groups.values()) {
@@ -82,8 +83,7 @@ public class MicroIncomingAnalyzerAdapter {
                         .getMessage("note.analyzer.sampleFlags", new String[] { flags });
             }
             String sourceKey = String.join(":", String.valueOf(first.getSourceConnectionId()),
-                    first.getSourceMessageId(), String.valueOf(tube), String.valueOf(first.getRawTestCode()),
-                    String.valueOf(first.getRawSubIdentity()));
+                    first.getSourceMessageId(), String.valueOf(tube), first.getTestId());
             var received = incoming.receive(owners.get(0).getId(), match.proposedSampleItemId(), first.getTestId(),
                     "ANALYZER", sourceKey,
                     group.stream().map(r -> String.valueOf(r.getRawResultValue()))

@@ -44,6 +44,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCaseDAO cases;
     @Autowired
+    private MicroCaseSearchDAO benchSearch;
+    @Autowired
     private MicroCaseMembershipService membership;
     @Autowired
     private MicroCaseResultService results;
@@ -197,6 +199,50 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
 
     private MicroCultureForm create() {
         return service.inoculate(microCase.getId(), request(), actor).get(0);
+    }
+
+    @Test
+    public void benchQueryPaginatesDueRowsBeforeLoadingTheirWorkspaces() {
+        var earlyRequest = request();
+        earlyRequest.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(36 * 3600));
+        earlyRequest.duration = new BigDecimal("4");
+        var early = service.inoculate(microCase.getId(), earlyRequest, actor).get(0);
+        var laterRequest = request();
+        laterRequest.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(24 * 3600));
+        laterRequest.duration = new BigDecimal("4");
+        service.inoculate(microCase.getId(), laterRequest, actor);
+        var futureRequest = request();
+        var future = service.inoculate(microCase.getId(), futureRequest, actor).stream()
+                .filter(row -> row.containerIdentifier.equals(futureRequest.containerIdentifier)).findFirst()
+                .orElseThrow();
+        var q = new MicroBenchQueryForm();
+        q.page = 1;
+        q.pageSize = 1;
+        q.cultureFilter = "FINAL_READ_DUE";
+        var units = Set.of(microCase.getLabUnitId());
+        double now = System.currentTimeMillis() / 1000.0;
+        assertEquals(2, benchSearch.benchCount(q, units, List.of("patientOrigin"), List.of(), now));
+        var first = benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now);
+        assertEquals(1, first.size());
+        assertEquals(early.id, first.get(0)[1]);
+        q.page = 2;
+        var second = benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now);
+        assertEquals(1, second.size());
+        assertNotEquals(first.get(0)[1], second.get(0)[1]);
+        assertNotEquals(future.id, second.get(0)[1]);
+        assertEquals(0, benchSearch.benchCount(q, Set.of("-999"), List.of(), List.of(), now));
+        q.cultureFilter = "CHECK_DUE";
+        assertEquals(2, benchSearch.benchCount(q, units, List.of(), List.of(), now));
+        q.cultureFilter = "";
+        q.page = 1;
+        q.needsAttention = true;
+        assertEquals(1,
+                benchSearch.benchCount(q, units, List.of("patientOrigin", "antibioticExposure"), List.of(), now));
+        assertEquals(microCase.getId(),
+                benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now).get(0)[0]);
+        q.cultureFilter = "AWAITING_INOCULATION";
+        assertEquals(0, benchSearch.benchCount(q, units, List.of(), List.of(), now));
+        assertEquals(List.of(), benchSearch.questionnaireCases(q, units));
     }
 
     private List<MicroCultureForm> reload() {

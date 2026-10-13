@@ -16,23 +16,25 @@ public class MicroBenchServiceImpl implements MicroBenchService {
     private final MicroIncomingItemDAO incoming;
     private final MicroCaseAnalysisDAO analyses;
     private final MicroCaseOrderDetailDAO details;
-    private final MicroCaseReadinessService readiness;
     private final MicrobiologyCaseAccessService access;
     private final MicroBenchCaseService writes;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.referral.dao.ReferralDAO referrals;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCaseInoculationDAO inoculations;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseSearchDAO search;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseFinalRequirementsService requirements;
 
     public MicroBenchServiceImpl(MicroCaseWorkspaceService workspace, MicroCultureService cultures,
             MicroIncomingItemDAO incoming, MicroCaseAnalysisDAO analyses, MicroCaseOrderDetailDAO details,
-            MicroCaseReadinessService readiness, MicrobiologyCaseAccessService access, MicroBenchCaseService writes) {
+            MicrobiologyCaseAccessService access, MicroBenchCaseService writes) {
         this.workspace = workspace;
         this.cultures = cultures;
         this.incoming = incoming;
         this.analyses = analyses;
         this.details = details;
-        this.readiness = readiness;
         this.access = access;
         this.writes = writes;
     }
@@ -42,69 +44,80 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         var result = new MicroBenchPageForm();
         result.page = Math.max(1, query.page);
         result.pageSize = Math.max(1, Math.min(100, query.pageSize));
-        var q = new MicroCaseSearchForm();
-        q.q = query.q;
-        q.labUnitId = query.labUnitId;
-        q.status = query.status;
-        q.from = query.from;
-        q.to = query.to;
-        q.pageSize = 100;
-        q.page = 1;
-        var rows = new ArrayList<MicroBenchPageForm.Row>();
-        while (true) {
-            var page = workspace.search(q, actor);
-            result.labUnits = page.labUnits;
-            for (var c : page.rows) {
-                if (query.labUnitIds != null && !query.labUnitIds.isEmpty() && !query.labUnitIds.contains(c.labUnitId))
-                    continue;
-                var cultureRows = cultures.getRows(c.id).stream().filter(r -> !r.receivedIsolate).toList();
-                var base = new ArrayList<String>();
-                var queued = incoming.forCase(c.id);
-                if (queued.stream().anyMatch(i -> java.util.Set.of("WAITING", "FAILED").contains(i.getState())))
-                    base.add("INCOMING");
-                if (queued.stream().anyMatch(i -> "NEEDS_AMENDMENT".equals(i.getState())))
-                    base.add("NEEDS_AMENDMENT");
-                if (queued.stream().anyMatch(i -> "REFERRAL".equals(i.getSource()) && !"PLACED".equals(i.getState())))
-                    base.add("REFERRAL_RETURNED");
-                var sourceIds = inoculations.getSources(c.id).stream().map(s -> s.getId()).toList();
-                if (!sourceIds.isEmpty()
-                        && referrals.getWorkspaceReferrals(sourceIds).stream().anyMatch(
-                                r -> r.getStatus() == org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED
-                                        && !Boolean.TRUE.equals(r.getReconciled()))
-                        && !base.contains("REFERRAL_RETURNED"))
-                    base.add("REFERRAL_RETURNED");
-                var required = readiness.getReadiness(c.id);
-                if (required.blockers.stream().anyMatch(b -> b.contains("CLINICAL_FIELD_REQUIRED")
-                        || b.contains("ORIGIN") || b.contains("PROGRAM") || b.contains("QUESTION")))
-                    base.add("REQUIRED_FIELDS");
-                if ("AWAITING_INOCULATION".equals(query.cultureFilter)) {
-                    if (cultureRows.isEmpty() && !cultureTests(c.id).isEmpty())
-                        rows.add(row(c, null, base, actor));
-                } else if ("CHECK_DUE".equals(query.cultureFilter) || "FINAL_READ_DUE".equals(query.cultureFilter)) {
-                    for (var culture : cultureRows)
-                        if ("CHECK_DUE".equals(query.cultureFilter) ? culture.checkDue : culture.finalReadDue)
-                            rows.add(row(c, culture, base, actor));
-                } else {
-                    var r = row(c, null, base, actor);
-                    for (var culture : cultureRows)
-                        attention(r, culture);
-                    rows.add(r);
-                }
-            }
-            if ((long) q.page * q.pageSize >= page.total)
-                break;
-            q.page++;
+        // Normalize filters and enforce the same unit boundary as the case worklist.
+        result.labUnits = workspace.search(query, actor).labUnits;
+        Set<String> resultsUnits = access.permittedLabUnitIds(actor, Constants.ROLE_RESULTS);
+        Set<String> validationUnits = access.permittedLabUnitIds(actor, Constants.ROLE_VALIDATION);
+        Set<String> allowed = null;
+        if (resultsUnits != null && validationUnits != null) {
+            allowed = new HashSet<>(resultsUnits);
+            allowed.addAll(validationUnits);
         }
-        rows.removeIf(r -> query.needsAttention && r.attention.isEmpty());
-        rows.sort(Comparator.comparingInt((MicroBenchPageForm.Row r) -> "STAT".equals(r.priority) ? 0 : 1)
-                .thenComparing(r -> r.dueAt, Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(r -> r.id));
-        result.total = rows.size();
-        int from = Math.min(rows.size(), (result.page - 1) * result.pageSize);
-        result.rows = rows.subList(from, Math.min(rows.size(), from + result.pageSize));
+        if (query.labUnitIds != null && !query.labUnitIds.isEmpty()) {
+            if (allowed == null)
+                allowed = new HashSet<>(query.labUnitIds);
+            else
+                allowed.retainAll(query.labUnitIds);
+        }
+        if (query.cultureFilter != null
+                && !Set.of("", "AWAITING_INOCULATION", "CHECK_DUE", "FINAL_READ_DUE").contains(query.cultureFilter))
+            throw new IllegalArgumentException("MICROBIOLOGY_BENCH_FILTER");
+        // Conditional FHIR questionnaire answers cannot be evaluated in HQL. Only
+        // the explicit attention filter needs those candidates; ordinary pages do not.
+        List<String> questionnaireIds = query.needsAttention
+                ? search.questionnaireCases(query, allowed).stream()
+                        .filter(id -> requirements.blockers(id).stream()
+                                .anyMatch(reason -> reason.contains("QUESTION")))
+                        .toList()
+                : List.of();
+        double now = System.currentTimeMillis() / 1000.0;
+        result.total = search.benchCount(query, allowed, requirements.requiredFields(), questionnaireIds, now);
+        var selected = search.benchPage(query, allowed, requirements.requiredFields(), questionnaireIds, now);
+        var shells = new HashMap<String, MicroCaseShellForm>();
+        var culturesByCase = new HashMap<String, List<MicroCultureForm>>();
+        var attentionByCase = new HashMap<String, List<String>>();
+        var rows = new ArrayList<MicroBenchPageForm.Row>();
+        boolean cultureGrain = "CHECK_DUE".equals(query.cultureFilter) || "FINAL_READ_DUE".equals(query.cultureFilter);
+        for (var selection : selected) {
+            String caseId = (String) selection[0];
+            var shell = shells.computeIfAbsent(caseId, id -> workspace.get(id, actor));
+            var cultureRows = culturesByCase.computeIfAbsent(caseId,
+                    id -> cultures.getRows(id).stream().filter(r -> !r.receivedIsolate).toList());
+            var base = attentionByCase.computeIfAbsent(caseId, this::caseAttention);
+            var culture = cultureGrain
+                    ? cultureRows.stream().filter(r -> r.id.equals(selection[1])).findFirst().orElse(null)
+                    : null;
+            var row = row(shell, culture, base, actor);
+            if (!cultureGrain)
+                for (var item : cultureRows)
+                    attention(row, item);
+            rows.add(row);
+        }
+        result.rows = rows;
         return result;
     }
 
-    private MicroBenchPageForm.Row row(MicroCaseSummaryForm c, MicroCultureForm culture, List<String> base,
+    private List<String> caseAttention(String caseId) {
+        var base = new ArrayList<String>();
+        var queued = incoming.forCase(caseId);
+        if (queued.stream().anyMatch(i -> Set.of("WAITING", "FAILED").contains(i.getState())))
+            base.add("INCOMING");
+        if (queued.stream().anyMatch(i -> "NEEDS_AMENDMENT".equals(i.getState())))
+            base.add("NEEDS_AMENDMENT");
+        if (queued.stream().anyMatch(i -> "REFERRAL".equals(i.getSource()) && !"PLACED".equals(i.getState())))
+            base.add("REFERRAL_RETURNED");
+        var sourceIds = inoculations.getSources(caseId).stream().map(s -> s.getId()).toList();
+        if (!sourceIds.isEmpty() && referrals.getWorkspaceReferrals(sourceIds).stream()
+                .anyMatch(r -> r.getStatus() == org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED
+                        && !Boolean.TRUE.equals(r.getReconciled()))
+                && !base.contains("REFERRAL_RETURNED"))
+            base.add("REFERRAL_RETURNED");
+        if (!requirements.blockers(caseId).isEmpty())
+            base.add("REQUIRED_FIELDS");
+        return base;
+    }
+
+    private MicroBenchPageForm.Row row(MicroCaseShellForm c, MicroCultureForm culture, List<String> base,
             String actor) {
         var r = new MicroBenchPageForm.Row();
         r.id = culture == null ? c.id : c.id + ":" + culture.id;
@@ -122,7 +135,7 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         r.canWrite = access.hasLabUnitRole(actor, c.labUnitId, Constants.ROLE_RESULTS);
         var orderDetail = details.getByCaseId(c.id);
         r.origin = orderDetail == null ? null : orderDetail.getPatientOrigin();
-        var shell = workspace.get(c.id, actor);
+        var shell = c;
         r.canWrite = shell.canWrite;
         r.cultureTests = cultureTests(c.id);
         if (!shell.samples.isEmpty()) {

@@ -40,6 +40,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.samplehuman.service.SampleHumanService sampleHumans;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCaseInoculationDAO cultureRows;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -86,15 +88,32 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         this.acknowledgements = acknowledgements;
     }
 
+    private List<TestResultItem> loadRows(List<Analysis> analyses, String actor) {
+        var loader = loaders.getObject();
+        loader.setSysUser(actor);
+        var rows = loader.getGroupedTestsForAnalysisList(analyses, true);
+        for (var analysis : analyses) {
+            var unassigned = rows.stream().filter(
+                    row -> analysis.getId().equals(row.getAnalysisId()) && row.getTestResultComponentId() == null)
+                    .toList();
+            if (unassigned.isEmpty())
+                continue;
+            // The shared loader omits component identity for a single-field test.
+            // Incoming mappings use the catalog identity even for that primary field.
+            var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+            if (configured.size() == 1)
+                unassigned.forEach(row -> row.setTestResultComponentId(configured.get(0).getId()));
+        }
+        return rows;
+    }
+
     @Override
     public List<MicroCaseTestForm> getTests(String caseId, String actor) {
         if (actor == null || actor.isBlank())
             throw new AccessDeniedException("Authenticated system user required");
         var c = cases.get(caseId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var list = links.getAnalyses(caseId);
-        var loader = loaders.getObject();
-        loader.setSysUser(actor);
-        var rows = loader.getGroupedTestsForAnalysisList(list, true);
+        var rows = loadRows(list, actor);
         List<MicroCaseTestForm> forms = new ArrayList<>();
         for (var a : list) {
             var link = links.getByCaseAndAnalysis(caseId, a.getId());
@@ -226,9 +245,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             bad("MICROBIOLOGY_NOTE_TOO_LONG");
         if (request.components == null || request.components.isEmpty())
             bad("MICROBIOLOGY_RESULT_REQUIRED");
-        var loader = loaders.getObject();
-        loader.setSysUser(actor);
-        var rows = loader.getGroupedTestsForAnalysisList(List.of(a), true);
+        var rows = loadRows(List.of(a), actor);
         Map<String, TestResultItem> byComponent = new HashMap<>();
         rows.forEach(row -> byComponent.put(row.getTestResultComponentId(), row));
         Set<String> supplied = new HashSet<>();

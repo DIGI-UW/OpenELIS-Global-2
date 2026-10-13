@@ -1,5 +1,8 @@
 import { expect, test } from "../../../helpers/test-base";
-import { seedMicrobiologyAutomation } from "../../../helpers/seed-microbiology-data";
+import {
+  seedMicrobiologyAutomation,
+  seedMicrobiologyCultureWorkspace,
+} from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test("places an incoming result and keeps it pending validation", async ({
@@ -45,14 +48,15 @@ test("inoculates from the worklist and scans the saved culture label", async ({
   page,
 }) => {
   test.setTimeout(180000);
-  const seeded = await seedMicrobiologyAutomation(page);
+  const seeded = await seedMicrobiologyCultureWorkspace(page);
   await page.goto("/Microbiology/worklist");
-  await page.getByRole("button", { name: "Cultures", exact: true }).click();
+  await page.getByRole("button", { name: "Culture", exact: true }).click();
   await page.locator("#bench-search").fill(seeded.accessionNumber);
   await page.locator("#bench-filter").selectOption("AWAITING_INOCULATION");
   const row = page.getByRole("row").filter({ hasText: seeded.accessionNumber });
   await expect(row).toHaveCount(1, { timeout: LONG_TIMEOUT });
-  await row.getByRole("checkbox").check();
+  await row.locator("label.cds--checkbox-label").click();
+  await expect(row.getByRole("checkbox")).toBeChecked();
   await page.getByRole("button", { name: "Inoculate selected cases" }).click();
   await page
     .locator("#bench-cultureTestId")
@@ -82,7 +86,8 @@ test("inoculates from the worklist and scans the saved culture label", async ({
   });
   await page.locator("#bench-filter").selectOption("FINAL_READ_DUE");
   await expect(row).toHaveCount(1, { timeout: LONG_TIMEOUT });
-  await row.getByRole("checkbox").check();
+  await row.locator("label.cds--checkbox-label").click();
+  await expect(row.getByRole("checkbox")).toBeChecked();
   await page
     .getByRole("button", { name: "Print bench sheet", exact: true })
     .click();
@@ -109,7 +114,8 @@ test("inoculates from the worklist and scans the saved culture label", async ({
     .getByRole("button", { name: "Undo bench action", exact: true })
     .click();
   await expect(row).toHaveCount(1, { timeout: LONG_TIMEOUT });
-  await row.getByRole("checkbox").check();
+  await row.locator("label.cds--checkbox-label").click();
+  await expect(row.getByRole("checkbox")).toBeChecked();
   await page
     .getByRole("button", { name: "Record no growth", exact: true })
     .click();
@@ -128,6 +134,29 @@ test("inoculates from the worklist and scans the saved culture label", async ({
     "culture-row-",
     "",
   );
+  await culture
+    .getByRole("button", { name: "Container labels", exact: true })
+    .click();
+  await culture
+    .getByLabel("Container label preset", { exact: true })
+    .selectOption({ label: "Culture Plate Label" });
+  await culture
+    .getByLabel("Number of container labels", { exact: true })
+    .fill("1");
+  const labelResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes("/containers/labels") &&
+      response.request().method() === "POST",
+  );
+  await culture
+    .getByRole("button", { name: "Prepare labels", exact: true })
+    .click();
+  const printedLabels = await labelResponse;
+  expect(printedLabels.ok()).toBeTruthy();
+  expect((await printedLabels.body()).subarray(0, 4).toString()).toBe("%PDF");
+  await expect(
+    culture.getByRole("link", { name: "Open printable labels" }),
+  ).toBeVisible();
   await page.goto("/Microbiology/worklist");
   await page.getByRole("heading", { name: "Microbiology worklist" }).waitFor();
   await page.keyboard.type(`PLT-${seeded.caseId}-${id}`);

@@ -30,6 +30,8 @@ public class MicroIncomingAnalyzerAdapterTest {
         r.setInstrumentSpecimenId("tube");
         r.setInstrumentPatientId("patient");
         r.setComponentId(component);
+        r.setRawTestCode("raw-" + component);
+        r.setRawSubIdentity("sub-" + component);
         r.setResult("12");
         r.setRawResultValue("12 raw");
         r.setInstrumentNote("Keep instrument evidence");
@@ -52,7 +54,7 @@ public class MicroIncomingAnalyzerAdapterTest {
         adapter.route(List.of(row("one"), row("two")), "actor");
         var payload = ArgumentCaptor.forClass(MicroCaseResultRequestForm.class);
         var order = inOrder(incoming, staging);
-        order.verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(),
+        order.verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), eq("connection:run-1:tube:12"),
                 eq("12 raw | 12 raw"), payload.capture(), eq(true), eq("actor"));
         assertEquals(2, payload.getValue().components.size());
         assertEquals("Keep instrument evidence", payload.getValue().note);

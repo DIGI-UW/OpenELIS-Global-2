@@ -119,3 +119,71 @@ test("culture filters request culture-grain rows and show due reasons", async ()
   );
   expect(screen.getByText("Culture check due")).toBeVisible();
 });
+
+test("batch inoculation keeps the test selection outside the culture request", async () => {
+  const service = {
+    searchBench: vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: "case-1",
+          caseId: "case-1",
+          sampleItemId: "tube-1",
+          sampleTypeId: "blood",
+          accessionNumber: "OWNED-001",
+          canWrite: true,
+          attention: [],
+          cultureTests: [{ id: "culture-test", value: "Blood culture" }],
+        },
+      ],
+      labUnits: [],
+      total: 1,
+    }),
+    getCultureOptions: vi.fn().mockResolvedValue({
+      media: [{ id: 1, name: "Agar", lots: [{ id: 2, lotNumber: "LOT-2" }] }],
+      atmospheres: [{ id: "air", value: "Air" }],
+    }),
+    benchAction: vi
+      .fn()
+      .mockResolvedValue([{ caseId: "case-1", actionId: "action-1" }]),
+  };
+  renderPage(<CultureWorklist service={service} />);
+  await screen.findByText("OWNED-001");
+  fireEvent.change(
+    screen.getByLabelText(messages["microbiology.culture.title"]),
+    { target: { value: "AWAITING_INOCULATION" } },
+  );
+  fireEvent.click(screen.getAllByRole("checkbox").at(-1));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Inoculate selected cases" }),
+  );
+  await screen.findByText("Blood culture");
+  for (const [id, value] of Object.entries({
+    cultureTestId: "culture-test",
+    mediumItemId: "1",
+    lotId: "2",
+    atmosphereId: "air",
+    inoculatedAt: "2026-10-10T10:00",
+  })) {
+    fireEvent.change(document.getElementById(`bench-${id}`), {
+      target: { value },
+    });
+  }
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.benchAction).toHaveBeenCalledWith({
+      action: "INOCULATE",
+      cases: [{ caseId: "case-1", sampleItemId: "tube-1", cultureIds: [] }],
+      sampleTypeId: "blood",
+      cultureTestId: "culture-test",
+      culture: {
+        mediumItemId: 1,
+        lotId: 2,
+        atmosphereId: "air",
+        duration: "24",
+        durationUnit: "HOURS",
+        inoculatedAt: new Date("2026-10-10T10:00").toISOString(),
+      },
+    }),
+  );
+  expect(await screen.findByText("OWNED-001: Action saved")).toBeVisible();
+});

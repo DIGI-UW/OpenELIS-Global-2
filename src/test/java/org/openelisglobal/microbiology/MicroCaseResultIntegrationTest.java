@@ -210,6 +210,36 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void incomingSingleComponentKeepsItsCatalogIdentityDuringPlacement() {
+        var follow = fixtures.createCatalogTest();
+        follow.setTestSection(analysis.getTestSection());
+        em.merge(follow);
+        var configured = components.saveSampleResults(follow.getId(), List.of(component("PRIMARY", "Follow-up", true)),
+                null, null, actor);
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(microCase.getSampleTypeId());
+        mapping.setTestId(follow.getId());
+        mapping.setSysUserId(actor);
+        em.persist(mapping);
+        var p = new MicroCaseResultRequestForm();
+        var value = new MicroCaseResultRequestForm.ResultComponent();
+        value.componentId = configured.get(0).getId();
+        value.value = "12";
+        p.components = List.of(value);
+        var queued = incoming.receive(microCase.getId(), microCase.getSampleItemId(), follow.getId(), "ANALYZER",
+                "single-field", "12", p, false, actor);
+        var placement = new org.openelisglobal.microbiology.form.MicroIncomingPlacementForm();
+        placement.sampleItemId = microCase.getSampleItemId();
+        var placed = incoming.place(microCase.getId(), queued.id, placement, actor, request(actor));
+        assertEquals("PLACED", placed.state);
+        var saved = workspace.getTests(microCase.getId(), actor).stream().filter(t -> follow.getId().equals(t.testId))
+                .findFirst().orElseThrow();
+        assertEquals("TechnicalAcceptance", saved.status);
+        assertEquals("12", saved.components.get(0).getResultValue());
+        assertEquals(configured.get(0).getId(), saved.components.get(0).getTestResultComponentId());
+    }
+
+    @Test
     public void analyzerArrivalAttachesComponentsOnceAndNeverFinalizes() {
         var p = payload();
         var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),

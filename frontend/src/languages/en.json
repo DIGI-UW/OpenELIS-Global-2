@@ -13136,7 +13136,7 @@
   "microbiology.incoming.sample": "Destination sample",
   "microbiology.incoming.moveReason": "Reason for moving or declining the result",
   "microbiology.incoming.place": "Place result",
-  "microbiology.incoming.confirmRelease": "I reviewed the waiting incoming results and confirm release without placing them.",
+  "microbiology.incoming.confirmRelease": "I reviewed the pending incoming results, including late arrivals, and confirm release without placing them.",
   "microbiology.bench.attentionOnly": "Needs attention",
   "microbiology.bench.due": "Due at",
   "microbiology.bench.error": "This action could not be completed. Check the selection, permissions, and culture conditions.",
