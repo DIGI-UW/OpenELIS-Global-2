@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
 import { fetchFromOpenElisServer } from "../../utils/Utils";
+import { statusOf } from "./EquipmentSection";
 import {
   antibiogramUrl,
   equipmentUrl,
@@ -95,7 +96,7 @@ export const EXPORT_SECTIONS = [
             ACTIVE: "label.mgmt.equipment.status.active",
             QUIET: "label.mgmt.equipment.status.quiet",
             NO_ACTIVITY: "label.mgmt.equipment.status.noActivity",
-          }[a.status] || "label.mgmt.equipment.status.noActivity",
+          }[statusOf(a.lastActivityAt)],
         ),
         String(a.samples),
         a.section || "—",
@@ -112,7 +113,7 @@ export const EXPORT_SECTIONS = [
       const organisms = Object.fromEntries(
         (data.organisms || []).map((o) => [o.id, o]),
       );
-      if (data.fallback) {
+      if (!data.cells || data.cells.length === 0) {
         return {
           head: [
             t(intl, "label.mgmt.antibiogram.organismHeader"),

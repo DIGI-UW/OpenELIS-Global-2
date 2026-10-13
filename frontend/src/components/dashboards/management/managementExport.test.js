@@ -80,15 +80,15 @@ describe("management export", () => {
   });
 
   it("flattens equipment to one row per analyzer", () => {
+    const fourHoursAgo = new Date(Date.now() - 4 * 3600000).toISOString();
     const { head, body } = mapper("equipment").table(
       [
         {
           id: "7",
           name: "Sysmex XN-550",
-          status: "QUIET",
           samples: 12,
           section: "Hematology",
-          lastActivityAt: "2026-10-12T08:15:00Z",
+          lastActivityAt: fourHoursAgo,
         },
       ],
       intl,
@@ -105,7 +105,7 @@ describe("management export", () => {
       "Quiet",
       "12",
       "Hematology",
-      "2026-10-12T08:15:00Z",
+      fourHoursAgo,
     ]);
   });
 
@@ -121,7 +121,6 @@ describe("management export", () => {
           { organismId: "o1", antibioticId: "a1", n: 40, pctR: 62.5 },
           { organismId: "o1", antibioticId: "a2", n: 6, pctR: null },
         ],
-        fallback: false,
       },
       intl,
     );
@@ -141,7 +140,6 @@ describe("management export", () => {
         organisms: [{ id: "o1", name: "E. coli", isolates: 3 }],
         antibiotics: [],
         cells: [],
-        fallback: true,
       },
       intl,
     );
@@ -255,8 +253,8 @@ describe("management export", () => {
         composite: 95.4,
         prior: 100,
         components: [
-          { key: "qcPass", value: 93.33, weight: 0.3, effectiveWeight: 0.4 },
-          { key: "eqa", value: null, weight: 0.25, effectiveWeight: null },
+          { key: "qcPass", value: 93.33, weight: 0.3 },
+          { key: "eqa", value: null, weight: 0.25 },
         ],
       },
       intl,
