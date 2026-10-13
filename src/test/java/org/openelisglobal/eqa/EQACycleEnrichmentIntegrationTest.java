@@ -193,7 +193,29 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         assertEquals(Map.of("entered", 2, "total", 2), row.get("progress"));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> after = (List<Map<String, Object>>) row.get("samples");
-        assertEquals("entered", after.get(0).get("entryStatus"));
+        assertEquals("validated", after.get(0).get("entryStatus"));
+    }
+
+    @Test
+    public void anExternalSampleReadsEnteredUntilEveryAnalysisIsValidated() {
+        EQAProgram scheme = insertScheme("Validation scheme " + System.nanoTime(), EQASchemeType.INTERNATIONAL_PT,
+                "WHO AFRO");
+        Long cycleId = insertCycle(scheme, 6);
+
+        int finalizedId = Integer.parseInt(statusService.getStatusID(AnalysisStatus.Finalized));
+        int technicalAcceptance = Integer.parseInt(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+        seedLinkedOrder(cycleId, finalizedId, technicalAcceptance);
+
+        assertEquals("one result still awaits validation", "entered", entryStatusOf(cycleId));
+
+        jdbc.update("UPDATE clinlims.analysis SET status_id = ? WHERE id = ?", finalizedId, ANALYSIS_NOT_STARTED_ID);
+
+        assertEquals("validated", entryStatusOf(cycleId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private String entryStatusOf(Long cycleId) {
+        return (String) ((List<Map<String, Object>>) findCycleRow(cycleId).get("samples")).get(0).get("entryStatus");
     }
 
     /**

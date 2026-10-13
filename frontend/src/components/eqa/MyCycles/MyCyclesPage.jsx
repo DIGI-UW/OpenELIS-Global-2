@@ -79,7 +79,8 @@ const SCHEME_TYPES = [
 ];
 
 const ENTRY_TAG = {
-  entered: "green",
+  validated: "green",
+  entered: "teal",
   in_progress: "blue",
   empty: "gray",
 };

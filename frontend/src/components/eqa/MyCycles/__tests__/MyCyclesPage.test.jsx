@@ -307,6 +307,22 @@ describe("MyCyclesPage", () => {
     expect(within(expanded).queryByText("Pre-submission summary")).toBeNull();
   });
 
+  test("a validated sample reads Validated, one awaiting validation reads Entered", () => {
+    const cycle = {
+      ...MOCK_CYCLES[0],
+      samples: [
+        { ...MOCK_CYCLES[0].samples[0], entryStatus: "entered" },
+        { ...MOCK_CYCLES[0].samples[1], entryStatus: "validated" },
+      ],
+    };
+    renderPage(UNCYCLED_ORDERS, [cycle]);
+    fireEvent.click(screen.getByTestId("cycle-row-1"));
+    const expanded = screen.getByTestId("cycle-expanded-1");
+
+    expect(within(expanded).getByText("Entered")).toBeInTheDocument();
+    expect(within(expanded).getByText("Validated")).toBeInTheDocument();
+  });
+
   test("review-gated cycle at ready_to_submit shows the pre-submission summary", () => {
     renderPage();
     fireEvent.click(screen.getByTestId("cycle-row-2"));

@@ -312,6 +312,10 @@ public class EQACycleRestController extends BaseRestController {
      * answered and scored panel reading <i>0 of 6</i>.
      *
      * <p>
+     * In-house samples are never validated, so a fully answered one stays at
+     * entered.
+     *
+     * <p>
      * When the scheme's review gate is on, each analyte also carries what the lab
      * is about to submit — reported value and validation timestamp — because The
      * review gate requires the officer to see the validated results before the
@@ -328,6 +332,7 @@ public class EQACycleRestController extends BaseRestController {
         IStatusService statusService = SpringContext.getBean(IStatusService.class);
         String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
         String notStartedId = statusService.getStatusID(AnalysisStatus.NotStarted);
+        String awaitingValidationId = statusService.getStatusID(AnalysisStatus.TechnicalAcceptance);
         boolean withReportedValues = Boolean.TRUE.equals(dto.get("requiresCycleReview"));
         boolean inHouse = EQASchemeType.IN_HOUSE.name().equals(dto.get("schemeType"));
 
@@ -345,6 +350,7 @@ public class EQACycleRestController extends BaseRestController {
             List<Analysis> analyses = analysisService.getAnalysesBySampleId(order.getId());
             List<Map<String, Object>> analytes = new ArrayList<>();
             boolean allFinalized = !analyses.isEmpty();
+            boolean allEntered = !analyses.isEmpty();
             boolean anyStarted = false;
             int enteredHere = 0;
             for (Analysis analysis : analyses) {
@@ -359,6 +365,7 @@ public class EQACycleRestController extends BaseRestController {
                 }
                 if (!finalized) {
                     allFinalized = false;
+                    allEntered &= awaitingValidationId.equals(analysis.getStatusId());
                 }
                 if (!notStartedId.equals(analysis.getStatusId())) {
                     anyStarted = true;
@@ -372,9 +379,11 @@ public class EQACycleRestController extends BaseRestController {
             sampleDto.put("id", link.getEqaProviderSampleId());
             sampleDto.put("labNo", order.getAccessionNumber());
             sampleDto.put("analytes", analytes);
-            sampleDto.put("entryStatus",
-                    (inHouse ? enteredHere == analyses.size() && !analyses.isEmpty() : allFinalized) ? "entered"
-                            : anyStarted ? "in_progress" : "empty");
+            String entryStatus = anyStarted ? "in_progress" : "empty";
+            if (inHouse ? enteredHere == analyses.size() && !analyses.isEmpty() : allEntered) {
+                entryStatus = allFinalized ? "validated" : "entered";
+            }
+            sampleDto.put("entryStatus", entryStatus);
             sampleDtos.add(sampleDto);
         }
         dto.put("progress", Map.of("entered", entered, "total", total));
