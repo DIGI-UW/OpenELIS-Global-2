@@ -43,9 +43,11 @@ public class ManagementDashboardServiceIntegrationTest extends BaseWebContextSen
                 managementDashboardService.getSummary(MARCH_2026).features());
 
         jdbcTemplate.update("INSERT INTO clinlims.analyzer (id, name, is_active) VALUES (89701, 'MGMT-A', true)");
+        jdbcTemplate.update("INSERT INTO clinlims.test (id, name, description, guid)"
+                + " VALUES (89701, 'MGMT-QC', 'MGMT-QC', 'mgmt-dashboard-qc-89701')");
         jdbcTemplate.update("INSERT INTO clinlims.qc_result (id, test_id, result_value, run_date_time,"
                 + " result_status, sys_user_id, last_updated, source)"
-                + " VALUES (89701, '1', 1.0, now(), 'FINAL', '1', now(), 'MANUAL')");
+                + " VALUES (89701, '89701', 1.0, now(), 'FINAL', '1', now(), 'MANUAL')");
 
         assertEquals(Map.of("inventory", false, "eqa", false, "analyzers", true, "ast", false, "qc", true),
                 managementDashboardService.getSummary(MARCH_2026).features());
