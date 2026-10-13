@@ -508,15 +508,11 @@ const CycleWizard = () => {
                               "Select a test",
                             )}
                           />
-                          {/* The catalog list carries the display name in
-                              `value` on some rows and `name` on others — the
-                              same fallback the blinding wizard uses, or the
-                              option renders blank. */}
                           {tests.map((test) => (
                             <SelectItem
                               key={test.id}
                               value={String(test.id)}
-                              text={test.name || test.value}
+                              text={test.name}
                             />
                           ))}
                         </Select>

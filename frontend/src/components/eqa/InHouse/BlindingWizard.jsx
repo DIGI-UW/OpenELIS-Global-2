@@ -282,7 +282,7 @@ const BlindingWizard = () => {
     const test = tests.find(
       (candidate) => String(candidate.id) === String(testId),
     );
-    return test ? test.name || test.value : testId;
+    return test ? test.name : testId;
   };
 
   const analystName = (systemUserId) => {
@@ -504,7 +504,7 @@ const BlindingWizard = () => {
                           <SelectItem
                             key={test.id}
                             value={test.id}
-                            text={test.name || test.value}
+                            text={test.name}
                           />
                         ))}
                       </Select>

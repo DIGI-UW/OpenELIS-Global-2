@@ -171,7 +171,12 @@ public class EQAProgramRestController extends ControllerUtills {
             programService.get(id);
 
             List<EQAProgramTest> tests = programService.getTestAssignments(id);
-            List<Map<String, Object>> dtos = tests.stream().map(this::toTestAssignmentDto).collect(Collectors.toList());
+            Map<Long, String> labels = programService.getTestLabels(id);
+            List<Map<String, Object>> dtos = tests.stream().map(pt -> {
+                Map<String, Object> dto = toTestAssignmentDto(pt);
+                dto.put("label", labels.get(pt.getTestId()));
+                return dto;
+            }).collect(Collectors.toList());
 
             return ResponseEntity.ok(dtos);
         } catch (ObjectNotFoundException e) {

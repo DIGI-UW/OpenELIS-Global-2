@@ -1,6 +1,8 @@
 package org.openelisglobal.eqa.service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
@@ -13,6 +15,10 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -154,6 +160,21 @@ public class EQAProgramServiceImpl extends BaseObjectServiceImpl<EQAProgram, Lon
     @Transactional(readOnly = true)
     public List<EQAProgramTest> getTestAssignments(Long programId) {
         return eqaProgramTestDAO.findByProgramId(programId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> getTestLabels(Long programId) {
+        TestService testService = SpringContext.getBean(TestService.class);
+        Map<Long, String> labels = new HashMap<>();
+        for (EQAProgramTest assignment : getTestAssignments(programId)) {
+            Test test = testService.get(String.valueOf(assignment.getTestId()));
+            String sampleTypes = testService.getTypeOfSamples(test).stream().map(TypeOfSample::getLocalizedName)
+                    .distinct().collect(Collectors.joining(", "));
+            labels.put(assignment.getTestId(),
+                    sampleTypes.isEmpty() ? test.getName() : test.getName() + " (" + sampleTypes + ")");
+        }
+        return labels;
     }
 
     @Override

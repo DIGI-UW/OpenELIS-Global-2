@@ -200,6 +200,22 @@ describe("CycleWizard", () => {
     ).toBeInTheDocument();
   });
 
+  test("same-named tests are told apart by their sample type", () => {
+    renderWizard([
+      { id: 1, testId: 55, isActive: true, label: "Glucose (Serum)" },
+      { id: 2, testId: 56, isActive: true, label: "Glucose (Plasma)" },
+    ]);
+    completeCycleStep();
+    next();
+
+    expect(
+      screen.getByRole("option", { name: "Glucose (Serum)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Glucose (Plasma)" }),
+    ).toBeInTheDocument();
+  });
+
   test("the panel step waits for the scheme's tests instead of saying it has none", () => {
     let lateTests;
     renderWizard((cb) => (lateTests = () => cb(SCHEME_TESTS)));

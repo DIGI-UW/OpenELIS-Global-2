@@ -19,6 +19,7 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,12 +38,19 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
 
     private static final long TEST_SERO = 9971L;
     private static final long TEST_VL = 9972L;
+    private static final long GLUCOSE_SERUM = 9983L;
+    private static final long GLUCOSE_PLASMA = 9984L;
+    private static final long SERUM = 9985L;
+    private static final long PLASMA = 9986L;
 
     @Autowired
     private EQAProgramEnrollmentService enrollmentService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
 
     private EQAProgramRestController controller;
 
@@ -209,7 +217,60 @@ public class EQASchemeAdministrationIntegrationTest extends EQASpineTestBase {
         assertEquals(2, eqaProgramService.getTestAssignments(id).size());
     }
 
+    @Test
+    public void getTestAssignments_labelsSameNamedTestsWithTheirSampleTypes() {
+        try {
+            seedSampleType(SERUM, "Serum 1251");
+            seedSampleType(PLASMA, "Plasma 1251");
+            seedNamedTest(GLUCOSE_SERUM, SERUM, "Glucose 1251");
+            seedNamedTest(GLUCOSE_PLASMA, PLASMA, "Glucose 1251");
+            typeOfSampleService.clearCache();
+            Long id = created(Map.of("name", "Glucose scheme " + System.nanoTime(), "schemeType", "REGIONAL_PT",
+                    "provider", "CPHL"));
+            controller.updateTestAssignments(id, Map.of("testIds", List.of(GLUCOSE_SERUM, GLUCOSE_PLASMA)));
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rows = (List<Map<String, Object>>) controller.getTestAssignments(id).getBody();
+
+            assertEquals(List.of("Glucose 1251 (Plasma 1251)", "Glucose 1251 (Serum 1251)"),
+                    rows.stream().map(row -> String.valueOf(row.get("label"))).sorted().toList());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.eqa_program_test WHERE test_id IN (?, ?)", GLUCOSE_SERUM, GLUCOSE_PLASMA);
+            jdbc.update("DELETE FROM clinlims.sampletype_test WHERE test_id IN (?, ?)", GLUCOSE_SERUM, GLUCOSE_PLASMA);
+            jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?)", GLUCOSE_SERUM, GLUCOSE_PLASMA);
+            jdbc.update("DELETE FROM clinlims.type_of_sample WHERE id IN (?, ?)", SERUM, PLASMA);
+            jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id BETWEEN ? AND ?", GLUCOSE_SERUM,
+                    PLASMA);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id BETWEEN ? AND ?", GLUCOSE_SERUM, PLASMA);
+            typeOfSampleService.clearCache();
+        }
+    }
+
     // ---- helpers ----
+
+    private void seedSampleType(long id, String name) {
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", id, name);
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', ?, NOW())", id, id, name);
+        jdbc.update(
+                "INSERT INTO clinlims.type_of_sample (id, description, domain, local_abbrev, is_active,"
+                        + " sort_order, name_localization_id, lastupdated) VALUES (?, ?, 'H', ?, 'true', ?, ?, NOW())",
+                id, name, "T" + id, id, id);
+    }
+
+    // test.description is unique, so a shared name has to come from the
+    // localization.
+    private void seedNamedTest(long id, long sampleTypeId, String name) {
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", id, name);
+        jdbc.update("INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)"
+                + " VALUES (?, ?, 'en', ?, NOW())", id, id, name);
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated,"
+                        + " name_localization_id) VALUES (?, ?, ?, 'Y', ?, NOW(), ?)",
+                id, name, name + " " + id, UUID.randomUUID().toString(), id);
+        jdbc.update("INSERT INTO clinlims.sampletype_test (id, sample_type_id, test_id, is_panel)"
+                + " VALUES (nextval('sample_type_test_seq'), ?, ?, 'false')", sampleTypeId, id);
+    }
 
     /**
      * Runs the call with one transaction, and so one persistence context, open

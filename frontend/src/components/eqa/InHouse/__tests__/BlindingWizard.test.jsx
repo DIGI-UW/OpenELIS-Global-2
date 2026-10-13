@@ -109,6 +109,25 @@ describe("BlindingWizard", () => {
     ]);
   });
 
+  test("same-named tests are told apart by their sample type", () => {
+    const { container } = renderWizard();
+    const reply = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      url === "/rest/eqa/programs/3/tests"
+        ? cb([
+            { id: 1, testId: 55, isActive: true, label: "Glucose (Serum)" },
+            { id: 2, testId: 56, isActive: true, label: "Glucose (Plasma)" },
+          ])
+        : reply(url, cb),
+    );
+    pickScheme("3");
+
+    expect(offeredTests(container)).toEqual([
+      "Glucose (Serum)",
+      "Glucose (Plasma)",
+    ]);
+  });
+
   test("a picked test outside a newly chosen scheme is cleared", () => {
     const { container } = renderWizard();
     pickScheme("3");
