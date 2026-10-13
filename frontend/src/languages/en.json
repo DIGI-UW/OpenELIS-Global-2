@@ -14607,5 +14607,6 @@
   "analyzer.setup.sources.retryError": "The connection was saved for setup, but the sample could not be queued. Check Undelivered results before retrying.",
   "analyzer.setup.sources.queued": "Setup sample queued. Check for setup samples to confirm it arrived; queued does not mean received.",
   "analyzer.results.setupEvidence.title": "Retained setup samples ({count})",
-  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review."
+  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review.",
+  "eqa.wizard.schemeTestsFailed": "The scheme's tests could not be loaded. Reload the page to try again."
 }

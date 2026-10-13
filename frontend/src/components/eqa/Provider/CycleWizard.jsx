@@ -33,7 +33,7 @@ import {
   resolveApiErrorMessage,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { calendarOnlyInput, hintStyle } from "../eqaCommon";
+import { calendarOnlyInput, hintStyle, SchemeTestsNotice } from "../eqaCommon";
 import { createProviderCycle } from "./Workbench/workbenchApi";
 import { asList, fetchTests } from "../eqaApi";
 
@@ -79,6 +79,7 @@ const CycleWizard = () => {
   const [step, setStep] = useState(0);
   const [scheme, setScheme] = useState(null);
   const [tests, setTests] = useState([]);
+  const [testsStatus, setTestsStatus] = useState("loading");
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
@@ -106,7 +107,10 @@ const CycleWizard = () => {
       setScheme(data || null);
       setLoading(false);
     });
-    fetchTests(schemeId, setTests);
+    fetchTests(schemeId, (schemeTests) => {
+      setTestsStatus(schemeTests === null ? "failed" : "ready");
+      setTests(schemeTests || []);
+    });
     getFromOpenElisServer(
       `/rest/eqa/programs/${schemeId}/enrollments`,
       (data) => {
@@ -440,17 +444,7 @@ const CycleWizard = () => {
                 )}
               </Grid>
 
-              {tests.length === 0 && (
-                <InlineNotification
-                  kind="warning"
-                  lowContrast
-                  hideCloseButton
-                  title={t(
-                    "eqa.wizard.noSchemeTests",
-                    "This scheme has no tests a panel can use.",
-                  )}
-                />
-              )}
+              <SchemeTestsNotice status={testsStatus} count={tests.length} />
               <Table size="sm" style={{ marginTop: "1rem" }}>
                 <TableHead>
                   <TableRow>

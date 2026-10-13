@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -43,7 +43,8 @@ const renderWizard = (schemeTests = SCHEME_TESTS) => {
     if (url === "/rest/eqa/programs/3")
       cb({ id: 3, name: "National HIV VL PT" });
     else if (url === "/rest/eqa/programs/3/enrollments") cb(ENROLLMENTS);
-    else if (url === "/rest/eqa/programs/3/tests") cb(schemeTests);
+    else if (url === "/rest/eqa/programs/3/tests")
+      typeof schemeTests === "function" ? schemeTests(cb) : cb(schemeTests);
     // fetchTests: testable-tests narrows the whole catalog to the tests a
     // participant could order.
     else if (url === "/rest/eqa/testable-tests") cb(["55", "56", "57", "58"]);
@@ -197,6 +198,34 @@ describe("CycleWizard", () => {
     expect(
       screen.getByText(/This scheme has no tests a panel can use/),
     ).toBeInTheDocument();
+  });
+
+  test("the panel step waits for the scheme's tests instead of saying it has none", () => {
+    let lateTests;
+    renderWizard((cb) => (lateTests = () => cb(SCHEME_TESTS)));
+    completeCycleStep();
+    next();
+
+    expect(
+      screen.queryByText(/This scheme has no tests a panel can use/),
+    ).toBeNull();
+    act(() => lateTests());
+    expect(
+      screen.getByRole("option", { name: "HIV Viral Load" }),
+    ).toBeInTheDocument();
+  });
+
+  test("a failed read says so instead of claiming the scheme has no tests", () => {
+    renderWizard((cb) => cb(undefined));
+    completeCycleStep();
+    next();
+
+    expect(
+      screen.getByText(/The scheme's tests could not be loaded/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/This scheme has no tests a panel can use/),
+    ).toBeNull();
   });
 
   test("the panel step cannot be left until a panel name and a full sample exist", () => {
