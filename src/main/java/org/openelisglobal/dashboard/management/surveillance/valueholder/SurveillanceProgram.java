@@ -26,7 +26,7 @@ public class SurveillanceProgram extends BaseObject<Long> {
     @Column(name = "code", nullable = false, length = 32)
     private String code;
 
-    /** A message key, such as {@code label.mgmt.surveillance.tb}. */
+    /** A message key for seeded programs, plain text for imported ones. */
     @Column(name = "display_name", nullable = false, length = 128)
     private String displayName;
 

@@ -69,12 +69,6 @@ public class SurveillanceMappingServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<SurveillanceMappingView> getAllViews() {
-        return baseObjectDAO.getAllViews();
-    }
-
-    @Override
     @Transactional
     public SurveillanceImportResult importCsv(Reader csv, String sourceFile, String sysUserId) {
         Map<String, SurveillanceProgram> programs = programDAO.getAll().stream()
@@ -137,8 +131,8 @@ public class SurveillanceMappingServiceImpl extends AuditableBaseObjectServiceIm
         MatchMode mode = matchMode(value(record, "match_mode"));
         String positive = codes(value(record, "positive_result_codes"), "positive_result_codes");
         reject(mode == MatchMode.SPECIFIC_CODES && positive == null, "SPECIFIC_CODES needs positive_result_codes");
-        reject(mode != MatchMode.SPECIFIC_CODES && positive != null,
-                "positive_result_codes apply only to SPECIFIC_CODES");
+        reject(mode == MatchMode.ALL_ABNORMAL && positive != null,
+                "positive_result_codes do not apply to ALL_ABNORMAL");
         boolean numeric = mode == MatchMode.NUMERIC_BELOW || mode == MatchMode.NUMERIC_ABOVE;
         String thresholdText = value(record, "numeric_threshold");
         reject(numeric && thresholdText.isEmpty(), mode + " needs numeric_threshold");
@@ -231,11 +225,15 @@ public class SurveillanceMappingServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     private static BigDecimal decimal(String text) {
+        BigDecimal value;
         try {
-            return new BigDecimal(text);
+            value = new BigDecimal(text);
         } catch (NumberFormatException e) {
             throw new RowRejected("numeric_threshold is not a number: " + text);
         }
+        reject(value.scale() > 5 || value.precision() - value.scale() > 10,
+                "numeric_threshold has at most 10 digits before the point and 5 after: " + text);
+        return value;
     }
 
     private static int displayOrder(String text) {

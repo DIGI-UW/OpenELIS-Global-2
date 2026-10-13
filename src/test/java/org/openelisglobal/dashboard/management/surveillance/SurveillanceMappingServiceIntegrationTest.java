@@ -22,7 +22,7 @@ public class SurveillanceMappingServiceIntegrationTest extends BaseWebContextSen
             + "TB,85362-2,MTB detected,MTB_DETECTION,ALL_ABNORMAL,,,,1\n"
             + "TB,Xpert MTB/RIF(Sputum),MTB detected or trace,MTB_CODES,SPECIFIC_CODES,\"MTB DETECTED, MTB TRACE\",,,2\n"
             + "TB,85362-2,RIF resistance,RIF_RESISTANCE,SPECIFIC_CODES,RIF DETECTED,MTB DETECTED,,3\n"
-            + "HIV,HIVVIRALLOAD(Plasma),VL suppressed,VL_SUPPRESSED,NUMERIC_BELOW,,,1000,1\n"
+            + "HIV,HIVVIRALLOAD(Plasma),VL suppressed,VL_SUPPRESSED,NUMERIC_BELOW,Target not detected,,1000,1\n"
             + "HIV,hiv rapid test,HIV positive,HIV_POSITIVE,all_abnormal,,,,2\n"
             + "HIV,HIVVIRALLOAD(Serum),VL high,VL_HIGH,NUMERIC_ABOVE,,,1000,3\n";
 
@@ -37,6 +37,8 @@ public class SurveillanceMappingServiceIntegrationTest extends BaseWebContextSen
         executeDataSetWithStateManagement("testdata/surveillance-mappings.xml");
         jdbcTemplate
                 .update("DELETE FROM clinlims.surveillance_program WHERE code NOT IN ('TB', 'HIV', 'MALARIA', 'AMR')");
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN (SELECT id"
+                + " FROM clinlims.reference_tables WHERE LOWER(name) = 'test_surveillance_mapping')");
         userId = jdbcTemplate.queryForObject("SELECT id FROM clinlims.system_user WHERE login_name = 'admin'",
                 String.class);
     }
@@ -78,6 +80,23 @@ public class SurveillanceMappingServiceIntegrationTest extends BaseWebContextSen
         assertEquals("MTB DETECTED,MTB TRACE", jdbcTemplate.queryForObject(
                 "SELECT positive_result_codes FROM clinlims.test_surveillance_mapping WHERE metric_key = 'MTB_CODES'",
                 String.class));
+        assertEquals("Target not detected",
+                jdbcTemplate.queryForObject(
+                        "SELECT positive_result_codes"
+                                + " FROM clinlims.test_surveillance_mapping WHERE metric_key = 'VL_SUPPRESSED'",
+                        String.class));
+        assertEquals(List.of("I", "I", "I", "I", "I", "I", "U"),
+                jdbcTemplate.queryForList("SELECT h.activity FROM clinlims.history h JOIN clinlims.reference_tables r"
+                        + " ON r.id = h.reference_table WHERE LOWER(r.name) = 'test_surveillance_mapping'"
+                        + " ORDER BY h.id", String.class));
+    }
+
+    @Test
+    public void aRowNeverMapsATestInAVectorSection() {
+        SurveillanceImportResult result = importCsv(
+                HEADER + "MALARIA,32700-7,Smear positive,SMEAR_POSITIVE,ALL_ABNORMAL,,,,1\n");
+
+        assertEquals(new SurveillanceImportResult(0, 0, List.of(new SkippedRow(2, "Unknown test: 32700-7"))), result);
     }
 
     @Test
@@ -105,22 +124,28 @@ public class SurveillanceMappingServiceIntegrationTest extends BaseWebContextSen
                 + "HIV,HIV Rapid Test,Stray threshold,STRAY_THRESHOLD,ALL_ABNORMAL,,,1000,1\n" // 13
                 + "HIV,HIV Rapid Test,Word threshold,WORD_THRESHOLD,NUMERIC_ABOVE,,,a lot,1\n" // 14
                 + "HIV,HIV Rapid Test,Negative order,NEGATIVE_ORDER,ALL_ABNORMAL,,,,-1\n" // 15
-                + "HIV,HIV Rapid Test,Short row\n"); // 16
+                + "HIV,HIV Rapid Test,Short row\n" // 16
+                + "HIV,HIV Rapid Test,Huge threshold,HUGE_THRESHOLD,NUMERIC_ABOVE,,,12345678901,1\n"); // 17
 
         assertEquals(1, result.rowsAdded());
-        assertEquals(List.of(new SkippedRow(3, "Repeats row 2"), new SkippedRow(4, "Unknown program: COVID"),
-                new SkippedRow(5, "Unknown test: No Such Test"), new SkippedRow(6, "Unknown test: Malaria Rapid Test"),
-                new SkippedRow(7, "metric_label is required, at most 128 characters"),
-                new SkippedRow(8,
-                        "metric_key must be upper-case letters, digits and underscores, at most 64: mtb_lower"),
-                new SkippedRow(9, "Unknown match_mode: SOME_MODE"),
-                new SkippedRow(10, "SPECIFIC_CODES needs positive_result_codes"),
-                new SkippedRow(11, "positive_result_codes apply only to SPECIFIC_CODES"),
-                new SkippedRow(12, "NUMERIC_BELOW needs numeric_threshold"),
-                new SkippedRow(13, "numeric_threshold applies only to NUMERIC_BELOW and NUMERIC_ABOVE"),
-                new SkippedRow(14, "numeric_threshold is not a number: a lot"),
-                new SkippedRow(15, "display_order must not be negative"),
-                new SkippedRow(16, "Expected 9 columns, found 3")), result.rowsSkipped());
+        assertEquals(
+                List.of(new SkippedRow(3, "Repeats row 2"), new SkippedRow(4, "Unknown program: COVID"),
+                        new SkippedRow(5, "Unknown test: No Such Test"),
+                        new SkippedRow(6, "Unknown test: Malaria Rapid Test"),
+                        new SkippedRow(7, "metric_label is required, at most 128 characters"),
+                        new SkippedRow(8,
+                                "metric_key must be upper-case letters, digits and underscores, at most 64: mtb_lower"),
+                        new SkippedRow(9, "Unknown match_mode: SOME_MODE"),
+                        new SkippedRow(10, "SPECIFIC_CODES needs positive_result_codes"),
+                        new SkippedRow(11, "positive_result_codes do not apply to ALL_ABNORMAL"),
+                        new SkippedRow(12, "NUMERIC_BELOW needs numeric_threshold"),
+                        new SkippedRow(13, "numeric_threshold applies only to NUMERIC_BELOW and NUMERIC_ABOVE"),
+                        new SkippedRow(14, "numeric_threshold is not a number: a lot"),
+                        new SkippedRow(15, "display_order must not be negative"),
+                        new SkippedRow(16, "Expected 9 columns, found 3"),
+                        new SkippedRow(17,
+                                "numeric_threshold has at most 10 digits before the point and 5 after: 12345678901")),
+                result.rowsSkipped());
         assertEquals(1, mappingCount());
     }
 

@@ -130,7 +130,12 @@
         <sqlFile path="002-surveillance-mapping-seed.sql" relativeToChangelogFile="true"
             splitStatements="false" stripComments="true"/>
         <rollback>
-            <sql>DELETE FROM clinlims.test_surveillance_mapping;</sql>
+            <sql>
+                DELETE FROM clinlims.test_surveillance_mapping m USING clinlims.surveillance_program p
+                WHERE p.id = m.program_id AND (p.code, m.metric_key) IN (('TB', 'MTB_DETECTION'),
+                    ('TB', 'MTB_RESISTANCE'), ('TB', 'SMEAR_POSITIVE'), ('HIV', 'HIV_POSITIVE'),
+                    ('HIV', 'VL_SUPPRESSED'), ('MALARIA', 'RDT_POSITIVE'), ('MALARIA', 'SMEAR_POSITIVE'));
+            </sql>
         </rollback>
     </changeSet>
 </databaseChangeLog>

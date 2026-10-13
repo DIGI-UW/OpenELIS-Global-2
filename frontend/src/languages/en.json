@@ -13619,5 +13619,11 @@
   "label.mgmt.weights.invalid": "Enter every weight as a number from 0 to 1, with at least one above 0.",
   "label.mgmt.weights.scaleTitle": "Scale the weights to add up to 1.00?",
   "label.mgmt.weights.scaleBody": "The weights you entered add up to {0}. They will be saved as:",
-  "label.mgmt.weights.scaleConfirm": "Save scaled weights"
+  "label.mgmt.weights.scaleConfirm": "Save scaled weights",
+  "label.mgmt.surveillance.metric.mtbDetected": "MTB detected",
+  "label.mgmt.surveillance.metric.rifResistance": "RIF resistance",
+  "label.mgmt.surveillance.metric.smearPositive": "Smear positive",
+  "label.mgmt.surveillance.metric.hivPositive": "HIV positive",
+  "label.mgmt.surveillance.metric.vlSuppressed": "VL suppressed (< 1000)",
+  "label.mgmt.surveillance.metric.rdtPositive": "RDT positive"
 }

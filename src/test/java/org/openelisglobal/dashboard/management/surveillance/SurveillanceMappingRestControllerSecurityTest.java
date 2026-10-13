@@ -1,19 +1,16 @@
 package org.openelisglobal.dashboard.management.surveillance;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.io.Reader;
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.dashboard.management.surveillance.controller.SurveillanceMappingRestController;
 import org.openelisglobal.dashboard.management.surveillance.service.SurveillanceImportResult;
 import org.openelisglobal.dashboard.management.surveillance.service.SurveillanceMappingService;
-import org.openelisglobal.dashboard.management.surveillance.service.SurveillanceMappingView;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
@@ -35,9 +32,8 @@ public class SurveillanceMappingRestControllerSecurityTest extends SecuritySlice
     private static final String URL = "/rest/dashboards/management/surveillance-mappings";
 
     @Test
-    public void dashboardViewerCannotListOrImport() throws Exception {
+    public void dashboardViewerCannotImport() throws Exception {
         SimpleGrantedAuthority viewer = new SimpleGrantedAuthority("dashboards.view.management");
-        mockMvc.perform(get(URL).with(user("viewer").authorities(viewer))).andExpect(status().isForbidden());
         mockMvc.perform(upload("m.csv").with(user("viewer").authorities(viewer))).andExpect(status().isForbidden());
     }
 
@@ -48,11 +44,9 @@ public class SurveillanceMappingRestControllerSecurityTest extends SecuritySlice
     }
 
     @Test
-    public void qiManagerCanListAndImport() throws Exception {
+    public void qiManagerCanImport() throws Exception {
         SimpleGrantedAuthority manager = new SimpleGrantedAuthority("qa.manage.qi");
-        mockMvc.perform(get(URL).with(user("qi").authorities(manager))).andExpect(status().isOk());
-        mockMvc.perform(upload("m.csv").with(user("qi").authorities(manager))).andExpect(status().isOk())
-                .andExpect(jsonPath("$.rowsAdded").value(1));
+        mockMvc.perform(upload("m.csv").with(user("qi").authorities(manager))).andExpect(status().isOk());
     }
 
     @Test
@@ -73,19 +67,11 @@ public class SurveillanceMappingRestControllerSecurityTest extends SecuritySlice
 
         @Bean
         SurveillanceMappingService surveillanceMappingService() {
-            return new SurveillanceMappingService() {
-                @Override
-                public List<SurveillanceMappingView> getAllViews() {
-                    return List.of();
+            return (csv, sourceFile, sysUserId) -> {
+                if (sourceFile.equals("bad.csv")) {
+                    throw new IllegalArgumentException("Missing columns: test");
                 }
-
-                @Override
-                public SurveillanceImportResult importCsv(Reader csv, String sourceFile, String sysUserId) {
-                    if (sourceFile.equals("bad.csv")) {
-                        throw new IllegalArgumentException("Missing columns: test");
-                    }
-                    return new SurveillanceImportResult(1, 0, List.of());
-                }
+                return new SurveillanceImportResult(1, 0, List.of());
             };
         }
 

@@ -168,7 +168,6 @@
   <!-- OGC-897: management dashboard. After qa/, so its grants can follow qa.eqa.provider -->
   <include file="liquibase/dashboards/001-management-dashboard-access.xml" />
   <include file="liquibase/dashboards/005-analyzer-activity-indexes.xml" />
-  <!-- OGC-897: surveillance programs and their test mappings -->
   <include file="liquibase/dashboards/002-surveillance-programs.xml" />
   <include file="liquibase/dashboards/003-qi-weights.xml" />
 </databaseChangeLog>

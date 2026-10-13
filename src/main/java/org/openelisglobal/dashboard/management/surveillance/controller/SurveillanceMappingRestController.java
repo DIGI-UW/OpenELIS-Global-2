@@ -4,17 +4,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dashboard.management.surveillance.service.SurveillanceMappingService;
-import org.openelisglobal.dashboard.management.surveillance.service.SurveillanceMappingView;
 import org.openelisglobal.qa.security.QaPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,23 +28,15 @@ public class SurveillanceMappingRestController extends BaseRestController {
     @Autowired
     private SurveillanceMappingService surveillanceMappingService;
 
-    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<SurveillanceMappingView> list() {
-        return surveillanceMappingService.getAllViews();
-    }
-
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> importCsv(@RequestParam("file") MultipartFile file, HttpServletRequest request)
             throws IOException {
         if (file.getSize() > MAX_BYTES) {
             return ResponseEntity.badRequest().body(Map.of("error", "File too large (max 1MB)"));
         }
-        String csv = new String(file.getBytes(), StandardCharsets.UTF_8);
         // Excel prefixes its UTF-8 CSVs with a byte-order mark, which would hide the
         // first header.
-        if (csv.startsWith("﻿")) {
-            csv = csv.substring(1);
-        }
+        String csv = new String(file.getBytes(), StandardCharsets.UTF_8).replaceFirst("^\\uFEFF", "");
         try {
             return ResponseEntity.ok(surveillanceMappingService.importCsv(new StringReader(csv),
                     file.getOriginalFilename(), getSysUserId(request)));
