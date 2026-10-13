@@ -23,12 +23,6 @@
   margin-bottom: 0.5rem;
 }
 
-.mgmt-quality__number {
-  font-size: 3rem;
-  font-weight: 300;
-  line-height: 1.1;
-}
-
 .mgmt-quality__note {
   margin-top: 0.75rem;
   font-size: 0.875rem;
@@ -47,23 +41,17 @@
   gap: 0.75rem;
 }
 
-.mgmt-quality__meter {
-  block-size: 0.5rem;
-  background: var(--cds-layer-accent-01, #e0e0e0);
+.mgmt-quality__components li .mgmt-quality__note {
+  margin-top: 0;
 }
 
-.mgmt-quality__meter span {
-  display: block;
-  block-size: 100%;
-  background: var(--cds-interactive, #0f62fe);
+.mgmt-quality__components li:last-child {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  font-weight: 600;
 }
 
 .mgmt-quality__value {
   text-align: end;
   font-variant-numeric: tabular-nums;
-}
-
-.mgmt-quality__weight {
-  font-size: 0.875rem;
-  color: var(--cds-text-helper, #6f6f6f);
 }

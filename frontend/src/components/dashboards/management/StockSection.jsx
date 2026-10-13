@@ -75,7 +75,7 @@ const StockSection = ({ features }) => {
                   )}
                 </div>
                 <div
-                  className={`mgmt-stock__meter mgmt-stock__meter--${
+                  className={`mgmt-meter mgmt-meter--${
                     METER_TONE[reagent.status] || "green"
                   }`}
                 >

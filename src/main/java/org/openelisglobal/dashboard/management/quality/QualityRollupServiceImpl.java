@@ -32,28 +32,25 @@ public class QualityRollupServiceImpl implements QualityRollupService {
     private AmendmentReportService amendmentReportService;
 
     @Autowired
-    private QualityDAO qualityDAO;
-
-    @Autowired
     private ManagementDashboardDAO managementDashboardDAO;
 
     @Override
     @Transactional(readOnly = true)
     public QualityRollup getRollup(ScopeRange scope) {
         WeightsView weights = qiWeightsService.getWeights();
-        QualityRollup prior = QualityRollup.of(components(scope.priorFrom(), scope.priorTo(), weights), null, scope);
-        return QualityRollup.of(components(scope.from(), scope.to(), weights), prior.composite(), scope);
+        QualityRollup prior = QualityRollup.of(components(scope.priorFrom(), scope.priorTo(), weights), null);
+        return QualityRollup.of(components(scope.from(), scope.to(), weights), prior.composite());
     }
 
     private List<Component> components(LocalDate from, LocalDate to, WeightsView weights) {
         Integer eqa = eqaLabPerformanceService.getAcceptanceRate(from, to);
         Double amendmentRate = amendmentReportService.getSummary(from, to).getRatePercent();
-        return List.of(new Component("qcPass", kpiService.qcPassRate(from, to), weights.qc(), null),
-                new Component("eqa", eqa == null ? null : BigDecimal.valueOf(eqa), weights.eqa(), null),
-                new Component("nceInverse", nceInverse(from, to), weights.nceInverse(), null),
+        return List.of(new Component("qcPass", kpiService.qcPassRate(from, to), weights.qc()),
+                new Component("eqa", eqa == null ? null : BigDecimal.valueOf(eqa), weights.eqa()),
+                new Component("nceInverse", nceInverse(from, to), weights.nceInverse()),
                 new Component("amendmentInverse",
-                        amendmentRate == null ? null : HUNDRED.subtract(BigDecimal.valueOf(amendmentRate)),
-                        weights.amendmentInverse(), null));
+                        amendmentRate == null ? null : inverse(BigDecimal.valueOf(amendmentRate)),
+                        weights.amendmentInverse()));
     }
 
     /** 100 × (1 − NCEs reported / samples received), floored at 0. */
@@ -62,8 +59,13 @@ public class QualityRollupServiceImpl implements QualityRollupService {
         if (samples == 0) {
             return null;
         }
-        BigDecimal ratio = BigDecimal.valueOf(qualityDAO.countNcesReported(from, to))
+        BigDecimal ratio = BigDecimal.valueOf(managementDashboardDAO.countNcesReported(from, to))
                 .divide(BigDecimal.valueOf(samples), 4, RoundingMode.HALF_UP);
-        return HUNDRED.multiply(BigDecimal.ONE.subtract(ratio)).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
+        return inverse(HUNDRED.multiply(ratio));
+    }
+
+    // Corrections to earlier results can outnumber a short window's releases.
+    private static BigDecimal inverse(BigDecimal ratePercent) {
+        return HUNDRED.subtract(ratePercent).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -132,7 +132,7 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
     public void qualityAnswersTheDashboardGrant() throws Exception {
         mockMvc.perform(get("/rest/dashboards/management/quality?scope=90d")
                 .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.scope.from").isString());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.components").isArray());
     }
 
     @Configuration
@@ -185,7 +185,7 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
 
         @Bean
         QualityRollupService qualityRollupService() {
-            return scope -> new QualityRollup(null, null, List.of(), scope);
+            return scope -> new QualityRollup(null, null, List.of());
         }
 
         @Bean

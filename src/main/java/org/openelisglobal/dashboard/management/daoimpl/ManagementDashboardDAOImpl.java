@@ -2,6 +2,7 @@ package org.openelisglobal.dashboard.management.daoimpl;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,6 +23,14 @@ public class ManagementDashboardDAOImpl implements ManagementDashboardDAO {
                         + " AND received_date < :to")
                 .setParameter("from", QiReportSupport.startOf(from)).setParameter("to", QiReportSupport.endOf(to))
                 .getSingleResult()).longValue();
+    }
+
+    @Override
+    public long countNcesReported(LocalDate from, LocalDate to) {
+        return ((Number) entityManager
+                .createNativeQuery("SELECT count(*) FROM clinlims.nc_event WHERE report_date BETWEEN :from AND :to")
+                .setParameter("from", Date.valueOf(from)).setParameter("to", Date.valueOf(to)).getSingleResult())
+                .longValue();
     }
 
     @Override

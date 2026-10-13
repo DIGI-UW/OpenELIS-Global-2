@@ -93,8 +93,8 @@ describe("StockSection", () => {
     expect(critical).toHaveTextContent("Lot VK-887 · exp Jul 15, 2026");
     expect(critical).toHaveTextContent("12 / 100");
     expect(critical).toHaveTextContent("12%");
-    expect(critical.querySelector(".mgmt-stock__meter--red")).not.toBe(null);
-    expect(critical.querySelector(".mgmt-stock__meter--green")).not.toBe(null);
+    expect(critical.querySelector(".mgmt-meter--red")).not.toBe(null);
+    expect(critical.querySelector(".mgmt-meter--green")).not.toBe(null);
 
     const expiring = card("Expiring in 30 days");
     expect(within(expiring).getByText("Expired")).toBeInTheDocument();
