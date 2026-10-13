@@ -42,6 +42,7 @@ import {
   submitCycleManually,
 } from "./cyclesApi";
 import { asList } from "../eqaApi";
+import { fetchLabPerformance } from "../Performance/performanceApi";
 import NewEqaCycleModal from "./NewEqaCycleModal";
 
 const breadcrumbs = [
@@ -148,6 +149,7 @@ const MyCyclesPage = () => {
 
   const [cycles, setCycles] = useState([]);
   const [uncycledOrders, setUncycledOrders] = useState([]);
+  const [openNce, setOpenNce] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [bucket, setBucket] = useState("active");
@@ -219,6 +221,7 @@ const MyCyclesPage = () => {
       // EQA order is uncycled by definition.
       setUncycledOrders(asList(data).filter((o) => !o.cycleId));
     });
+    fetchLabPerformance((data) => setOpenNce(data.kpis.eqaNceOpenCount ?? 0));
   }, []);
 
   const schemeTypeLabel = (type) =>
@@ -309,7 +312,6 @@ const MyCyclesPage = () => {
     (c) => c.status === "ready_to_submit",
   ).length;
   const awaitingCount = cycles.filter((c) => c.status === "submitted").length;
-  const openNce = cycles.filter((c) => c.hasNce).length;
 
   const filteredCycles = cycles.filter((c) => {
     if (!BUCKETS[bucket].includes(c.status)) return false;

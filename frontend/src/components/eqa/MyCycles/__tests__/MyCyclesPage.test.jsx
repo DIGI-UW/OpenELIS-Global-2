@@ -51,6 +51,8 @@ const renderPage = (
     if (url === "/rest/eqa/cycles/mine") cb(cycles);
     if (url.startsWith("/rest/eqa/orders")) cb(orders);
     if (url === "/rest/eqa/cycles/mine/enrollments") cb(enrollments);
+    if (url === "/rest/eqa/lab-performance")
+      cb({ kpis: { eqaNceOpenCount: 2 } });
   });
   return render(
     <IntlProvider locale="en" messages={messages}>
@@ -73,7 +75,7 @@ describe("MyCyclesPage", () => {
   test("KPI tiles derive counts from fixture data", () => {
     renderPage();
     // Fixtures: 4 active (planned, panel_received, testing, ready_to_submit),
-    // 1 ready_to_submit, 1 submitted, 1 with an open NCE.
+    // 1 ready_to_submit, 1 submitted. Open NCEs are Lab Performance's count.
     expect(
       within(screen.getByTestId("kpi-active")).getByText("4"),
     ).toBeTruthy();
@@ -81,7 +83,7 @@ describe("MyCyclesPage", () => {
     expect(
       within(screen.getByTestId("kpi-awaiting")).getByText("1"),
     ).toBeTruthy();
-    expect(within(screen.getByTestId("kpi-nce")).getByText("1")).toBeTruthy();
+    expect(within(screen.getByTestId("kpi-nce")).getByText("2")).toBeTruthy();
   });
 
   test("default Active bucket shows only in-flight cycles", () => {
