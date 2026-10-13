@@ -1,3 +1,4 @@
+import CaseIncomingWorkspace from "./CaseIncomingWorkspace";
 import CaseAstWorkspace from "./CaseAstWorkspace";
 import CaseReportWorkspace from "./CaseReportWorkspace";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -322,6 +323,7 @@ export default function CaseTestingWorkspace({
   detail,
   service,
   onCaseChanged,
+  scanSearch = "",
 }) {
   const mounted = useRef(true);
   useLayoutEffect(
@@ -339,7 +341,32 @@ export default function CaseTestingWorkspace({
   const [cultureId, setCultureId] = useState("");
   const [pickCultureId, setPickCultureId] = useState("");
   const [cultureSource, setCultureSource] = useState(null);
+  const scanParams = new URLSearchParams(scanSearch);
+  const scanScope = scanParams.get("scope");
+  const scanRow = scanParams.get("row");
   const [placement, setPlacement] = useState("INITIAL");
+  useEffect(() => {
+    if (["CULTURE", "ISOLATES", "AST"].includes(scanScope))
+      setPlacement(scanScope);
+  }, [scanScope, scanRow]);
+  useEffect(() => {
+    if (!scanRow) return undefined;
+    const targetId = `${scanScope === "CULTURE" ? "culture-row" : scanScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`;
+    const scroll = () => {
+      const target = document.querySelector(
+        `[data-testid="${CSS.escape(targetId)}"]`,
+      );
+      if (!target) return false;
+      target.scrollIntoView?.({ block: "center" });
+      return true;
+    };
+    if (scroll()) return undefined;
+    const observer = new MutationObserver(() => {
+      if (scroll()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [scanScope, scanRow, placement]);
   const [editor, setEditor] = useState(null);
   const [selection, setSelection] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -591,12 +618,20 @@ export default function CaseTestingWorkspace({
         <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
         <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
         <SelectItem value="AST" text={t("microbiology.m6.ast")} />
+        <SelectItem value="INCOMING" text={t("microbiology.incoming.title")} />
         <SelectItem value="REPORT" text={t("microbiology.m6.report")} />
         <SelectItem
           value="ADDITIONAL"
           text={t("microbiology.testing.additional")}
         />
       </Select>
+      {placement === "INCOMING" && (
+        <CaseIncomingWorkspace
+          detail={detail}
+          service={service}
+          onChanged={onCaseChanged}
+        />
+      )}
       {placement === "AST" && (
         <CaseAstWorkspace
           detail={detail}

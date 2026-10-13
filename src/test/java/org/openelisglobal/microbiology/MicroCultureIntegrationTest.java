@@ -214,6 +214,87 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    @Autowired
+    private MicroBenchCaseService benchProxy;
+
+    // Join the test-owned rollback transaction for persistence assertions. The
+    // browser
+    // journey exercises the proxied per-case transaction boundaries.
+    private MicroBenchCaseService bench() throws Exception {
+        return org.springframework.test.util.AopTestUtils.getTargetObject(benchProxy);
+    }
+
+    private MicroBenchRequestForm.Selection selection(String... ids) {
+        var selection = new MicroBenchRequestForm.Selection();
+        selection.caseId = microCase.getId();
+        selection.sampleItemId = specimen.getId();
+        selection.cultureIds = List.of(ids);
+        return selection;
+    }
+
+    @Test
+    public void batchNoGrowthSkipsGrowthAndUndoRestoresOnlyItsChanges() throws Exception {
+        var first = create();
+        var next = request();
+        service.inoculate(microCase.getId(), next, actor);
+        var second = reload().get(1);
+        var growth = new MicroCultureRequestForm();
+        growth.outcome = "GROWTH";
+        service.act(microCase.getId(), second.id, "outcome", growth, actor);
+        var request = new MicroBenchRequestForm();
+        request.action = "NO_GROWTH";
+        var reply = bench().apply(request, selection(first.id, second.id), actor);
+        assertEquals(List.of(first.id), reply.changed);
+        assertEquals("GROWTH", reply.skipped.get(0).reason());
+        assertEquals("NO_GROWTH", reload().get(0).outcome);
+        bench().undo(microCase.getId(), reply.actionId, actor);
+        var restored = reload();
+        assertNull(restored.get(0).outcome);
+        assertEquals("GROWTH", restored.get(1).outcome);
+        var history = em.createQuery("from MicroCaseActivity a where a.caseId=:id and a.activityType like 'BENCH_%'",
+                MicroCaseActivity.class).setParameter("id", microCase.getId()).getResultList();
+        assertEquals(2, history.size());
+        assertEquals(1, history.stream().filter(a -> "BENCH_NO_GROWTH".equals(a.getActivityType())).count());
+    }
+
+    @Test
+    public void batchExtensionKeepsOriginalClockAndUndoPreservesItsAudit() throws Exception {
+        var row = create();
+        var request = new MicroBenchRequestForm();
+        request.action = "EXTEND";
+        request.culture = new MicroCultureRequestForm();
+        request.culture.reasonId = code("Extend incubation reason", 0);
+        var reply = bench().apply(request, selection(row.id), actor);
+        var extended = reload().get(0);
+        assertEquals(row.incubationEnds.getTime() + 86400000, extended.incubationEnds.getTime());
+        assertEquals(row.inoculatedAt, extended.inoculatedAt);
+        bench().undo(microCase.getId(), reply.actionId, actor);
+        var restored = reload().get(0);
+        assertEquals(row.incubationEnds, restored.incubationEnds);
+        assertEquals(1, restored.extensions.size());
+        assertNotNull(cultures.getRows(microCase.getId()).get(0).getExtensions().get(0).getUndoneAt());
+    }
+
+    @Test
+    public void undoRefusesToEraseASubsequentReading() throws Exception {
+        var row = create();
+        var request = new MicroBenchRequestForm();
+        request.action = "EXTEND";
+        request.culture = new MicroCultureRequestForm();
+        request.culture.reasonId = code("Extend incubation reason", 0);
+        var reply = bench().apply(request, selection(row.id), actor);
+        var reading = new MicroCultureRequestForm();
+        reading.readingId = code("Culture reading", 0);
+        service.act(microCase.getId(), row.id, "reading", reading, actor);
+        try {
+            bench().undo(microCase.getId(), reply.actionId, actor);
+            fail("Later readings must survive undo");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("MICROBIOLOGY_BENCH_UNDO_CHANGED", expected.getMessage());
+        }
+        assertEquals(1, reload().get(0).readings.size());
+    }
+
     @Test
     public void persistsCultureTreeAndLotWithoutConsumingStock() {
         var parent = create();

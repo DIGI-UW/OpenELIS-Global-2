@@ -44,6 +44,8 @@ public class MicroCaseWriteAccessGuard {
 
     @Around("execution(public * org.openelisglobal.microbiology.service.*Impl.*(..))")
     public Object authorize(ProceedingJoinPoint invocation) throws Throwable {
+        if (invocation.getTarget().getClass().isAnnotationPresent(ManagesCaseLocks.class))
+            return invocation.proceed();
         var request = RequestContextHolder.getRequestAttributes();
         var scope = request instanceof ServletRequestAttributes servlet
                 ? servlet.getRequest().getAttribute(REQUEST_SCOPE)

@@ -92,6 +92,13 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
     @Override
     @Transactional(readOnly = true)
+    public List<AnalyzerResults> findBySourceDelivery(String connectionId, String messageId) {
+        return entityManager.unwrap(org.hibernate.Session.class).createQuery(
+                "from AnalyzerResults r where r.sourceConnectionId = :connection and r.sourceMessageId = :message",
+                AnalyzerResults.class).setParameter("connection", connectionId).setParameter("message", messageId)
+                .list();
+    }
+
     public List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId) {
         return entityManager.unwrap(Session.class).createQuery(
                 "FROM AnalyzerResults a WHERE a.analyzerId = :analyzerId AND a.isReadOnly = true AND a.importIssueReason IN (:reasons)",

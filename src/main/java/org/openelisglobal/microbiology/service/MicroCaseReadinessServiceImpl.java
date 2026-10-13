@@ -36,6 +36,8 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
     private org.openelisglobal.referral.dao.ReferralDAO referrals;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.common.services.IStatusService statuses;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroIncomingItemDAO incoming;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
@@ -56,10 +58,12 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = microCase.getId();
+        readiness.pendingIncomingIds = incoming.forCase(caseId).stream().filter(i -> "WAITING".equals(i.getState()))
+                .map(i -> i.getId()).toList();
         readiness.finalReleaseReady = true;
         List<MicroIsolate> isolates = isolateDAO.getWorkspace(caseId).stream().filter(i -> i.getCancelledAt() == null)
                 .toList();
-        var cultureRows = cultures.getRows(caseId);
+        var cultureRows = cultures.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null).toList();
         if (cultureRows.isEmpty()
                 || cultureRows.stream().anyMatch(row -> row.getOutcome() == null || row.getOutcomeAt() == null))
             addBlocker(readiness, "CULTURE_OUTCOME_REQUIRED");

@@ -196,9 +196,32 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     public List<MicroCaseTestForm> saveResults(String caseId, String analysisId, MicroCaseResultRequestForm request,
             String actor, HttpServletRequest httpRequest) {
         writeCase(caseId, actor, Constants.ROLE_RESULTS);
+        persistResult(caseId, analysisId, request, actor, httpRequest, true);
+        return getTests(caseId, actor);
+    }
+
+    /**
+     * Trusted ingestion keeps the normal component validation and review-pending
+     * status.
+     */
+    @Override
+    @Transactional
+    public void receiveResult(String caseId, String analysisId, MicroCaseResultRequestForm request, String actor) {
+        var c = cases.getForUpdate(caseId);
+        if (c == null || actor == null || actor.isBlank())
+            throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_REQUIRED");
+        MicroCaseMutationGuard.requireMutable(c);
+        persistResult(caseId, analysisId, request, actor, null, false);
+    }
+
+    private void persistResult(String caseId, String analysisId, MicroCaseResultRequestForm request, String actor,
+            HttpServletRequest httpRequest, boolean checkToken) {
         var a = requireAnalysis(caseId, analysisId);
-        checkVersion(a, request == null ? null : request.version);
+        if (checkToken)
+            checkVersion(a, request == null ? null : request.version);
         requireEditable(a);
+        if (!checkToken && !"NotStarted".equals(state(a)))
+            bad("MICROBIOLOGY_INCOMING_EXISTING_RESULT");
         if (request.note != null && request.note.length() > 4000)
             bad("MICROBIOLOGY_NOTE_TOO_LONG");
         if (request.components == null || request.components.isEmpty())
@@ -245,7 +268,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (alerts.stream().anyMatch(alert -> !alert.isAcknowledged()))
             throw new MicroCaseResultAcknowledgementException(
                     acknowledgements.refusalBody(alerts.stream().filter(alert -> !alert.isAcknowledged()).toList()));
-        ResultUtil.createResultsFromItems(data, false, false, true, "", httpRequest);
+        ResultUtil.createResultsFromItems(data, false, false, httpRequest != null, "", httpRequest);
         // Case entry always awaits expert review, including sites that auto-validate
         // ordinary results.
         for (var modified : data.getModifiedAnalysis())
@@ -271,7 +294,6 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         link.setSysUserId(actor);
         links.update(link);
         record(caseId, "RESULT_ENTERED", analysisId, actor);
-        return getTests(caseId, actor);
     }
 
     @Override
@@ -426,7 +448,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         return statuses.getAnalysisStatusForID(a.getStatusId()).name();
     }
 
-    private String version(Analysis a) {
+    static String version(Analysis a) {
         return a.getLastupdated() == null ? "" : a.getLastupdated().toInstant().toString();
     }
 

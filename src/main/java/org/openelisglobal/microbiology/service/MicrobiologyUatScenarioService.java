@@ -106,6 +106,9 @@ public class MicrobiologyUatScenarioService {
     private org.openelisglobal.organization.service.OrganizationService organizations;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.referral.service.ReferralReasonService referralReasons;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroIncomingResultService incomingResults;
+    private static final String AUTOMATION_SCENARIO = "AUTOMATION_BENCH";
     private static final String AST_REPORTING_SCENARIO = "AST_REPORTING";
     private static final String NO_GROWTH_REPORTING_SCENARIO = "NO_GROWTH_REPORTING";
     @org.springframework.beans.factory.annotation.Autowired
@@ -238,7 +241,7 @@ public class MicrobiologyUatScenarioService {
     @Transactional
     public MicrobiologyUatScenarioForm provision(MicrobiologyUatScenarioRequestForm request, String performedBy) {
         String scenario = normalizeScenario(request == null ? null : request.scenario);
-        boolean cultureWorkspace = CULTURE_WORKSPACE_SCENARIO.equals(scenario)
+        boolean cultureWorkspace = AUTOMATION_SCENARIO.equals(scenario) || CULTURE_WORKSPACE_SCENARIO.equals(scenario)
                 || NO_GROWTH_REPORTING_SCENARIO.equals(scenario);
         boolean isolateWorkspace = ISOLATE_WORKSPACE_SCENARIO.equals(scenario)
                 || RECEIVED_ISOLATE_SCENARIO.equals(scenario) || AST_REPORTING_SCENARIO.equals(scenario);
@@ -290,8 +293,9 @@ public class MicrobiologyUatScenarioService {
                 ? getOrCreateUatTest("UAT Microbiology initial assay", true, method, performedBy)
                 : getOrCreateUatTest(method, performedBy);
         Test followUp = null;
-        if (INITIAL_TESTING_SCENARIO.equals(scenario)) {
-            configureTestingComponents(test, true, performedBy);
+        if (INITIAL_TESTING_SCENARIO.equals(scenario) || AUTOMATION_SCENARIO.equals(scenario)) {
+            if (INITIAL_TESTING_SCENARIO.equals(scenario))
+                configureTestingComponents(test, true, performedBy);
             followUp = getOrCreateUatTest("UAT Microbiology follow-up assay", true, method, performedBy);
             configureTestingComponents(followUp, false, performedBy);
             getOrCreateReportableTestAnalyte(followUp, performedBy);
@@ -476,6 +480,20 @@ public class MicrobiologyUatScenarioService {
                 : referenceAdminData.activeStandardId();
         form.loadedBreakpointStandardId = referenceAdminData == null ? null : referenceAdminData.loadedStandardId();
         form.unmappedOrganismId = unmappedOrganism == null ? null : unmappedOrganism.getId();
+        if (AUTOMATION_SCENARIO.equals(scenario)) {
+            var result = new org.openelisglobal.microbiology.form.MicroCaseResultRequestForm();
+            result.components = new java.util.ArrayList<>();
+            for (var component : org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.testresultcomponent.service.TestResultComponentService.class)
+                    .getActiveComponentsByTestId(followUp.getId())) {
+                var value = new org.openelisglobal.microbiology.form.MicroCaseResultRequestForm.ResultComponent();
+                value.componentId = component.getId();
+                value.value = "12";
+                result.components.add(value);
+            }
+            incomingResults.receive(microCase.getId(), sampleItem.getId(), followUp.getId(), "ANALYZER",
+                    "automation-" + suffix, "12", result, false, performedBy);
+        }
         return form;
     }
 
@@ -1414,10 +1432,10 @@ public class MicrobiologyUatScenarioService {
 
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
-        if (!NO_GROWTH_REPORTING_SCENARIO.equals(normalized) && !AST_REPORTING_SCENARIO.equals(normalized)
-                && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized) && !RECEIVED_ISOLATE_SCENARIO.equals(normalized)
-                && !CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized)
-                && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
+        if (!AUTOMATION_SCENARIO.equals(normalized) && !NO_GROWTH_REPORTING_SCENARIO.equals(normalized)
+                && !AST_REPORTING_SCENARIO.equals(normalized) && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized)
+                && !RECEIVED_ISOLATE_SCENARIO.equals(normalized) && !CULTURE_WORKSPACE_SCENARIO.equals(normalized)
+                && !"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
                 && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
                 && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {

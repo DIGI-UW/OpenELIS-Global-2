@@ -69,6 +69,10 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     private ResultSelfValidationPolicy policy;
     @PersistenceContext
     private EntityManager em;
+    @Autowired
+    private MicroIncomingResultService incoming;
+    @Autowired
+    private MicroIncomingItemDAO incomingItems;
     private MicroCase microCase;
     private Analysis analysis;
     private String actor, validator, outsider, oldBlock;
@@ -203,6 +207,46 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             p.components.add(c);
         }
         return p;
+    }
+
+    @Test
+    public void analyzerArrivalAttachesComponentsOnceAndNeverFinalizes() {
+        var p = payload();
+        var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
+                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor);
+        assertEquals("PLACED", arrived.state);
+        assertEquals(analysis.getId(), arrived.placementTarget);
+        assertEquals("TechnicalAcceptance", workspace.getTests(microCase.getId(), actor).get(0).status);
+        assertEquals(Set.of("12", "34"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                .collect(java.util.stream.Collectors.toSet()));
+        var retry = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
+                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor);
+        assertEquals(arrived.id, retry.id);
+        assertEquals(1, incomingItems.forCase(microCase.getId()).size());
+        assertEquals(2, results.getResultsByAnalysis(analysis).size());
+    }
+
+    @Test
+    public void laterInstrumentRunCannotOverwriteReviewPendingValues() {
+        incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(), "ANALYZER",
+                "first-run", "12", payload(), true, actor);
+        var replacement = payload();
+        replacement.components.get(0).value = "99";
+        assertThrows(IllegalArgumentException.class,
+                () -> incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                        "ANALYZER", "second-run", "99", replacement, true, actor));
+        assertEquals("12", workspace.getTests(microCase.getId(), actor).get(0).components.get(0).getResultValue());
+    }
+
+    @Test
+    public void finalizedCaseQueuesLateEvidenceWithoutChangingResults() {
+        var p = payload();
+        microCase.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(microCase);
+        var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
+                "ANALYZER", "owned-late-run", "12 / 34", p, true, actor);
+        assertEquals("NEEDS_AMENDMENT", arrived.state);
+        assertEquals(0, results.getResultsByAnalysis(analysis).size());
     }
 
     @Test

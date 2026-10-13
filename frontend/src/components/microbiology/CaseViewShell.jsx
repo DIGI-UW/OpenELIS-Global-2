@@ -187,6 +187,7 @@ export default function CaseViewShell({
                 </Table>
               </TableContainer>
               <CaseTestingWorkspace
+                scanSearch={location.search}
                 key={id}
                 detail={detail}
                 service={service}

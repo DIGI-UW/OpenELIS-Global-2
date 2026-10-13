@@ -339,7 +339,7 @@ public class ResultUtil {
 
             Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
             analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate, analysis));
-            analysis.setSysUserId(ControllerUtills.getSysUserId(request));
+            analysis.setSysUserId(actionDataSet.getCurrentUserId());
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
             }
@@ -353,7 +353,7 @@ public class ResultUtil {
 
             actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                     noteTypeForVisibility(testResultItem), testResultItem.getNote(),
-                    noteSubjectForContext(testResultItem), ControllerUtills.getSysUserId(request)), testResultItem));
+                    noteSubjectForContext(testResultItem), actionDataSet.getCurrentUserId()), testResultItem));
 
             // OGC-1021 (R2, FR-D5): a dilution changes the reported value, so the
             // factor and the raw measured value are preserved as an internal
@@ -365,7 +365,7 @@ public class ResultUtil {
                                         GenericValidator.isBlankOrNull(testResultItem.getMeasuredValue()) ? "?"
                                                 : testResultItem.getMeasuredValue(),
                                         testResultItem.getResultValue() }),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
+                        RESULT_SUBJECT, actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             // OGC-745: persist unconditional-acceptance justification as a
@@ -374,7 +374,7 @@ public class ResultUtil {
                     && !GenericValidator.isBlankOrNull(testResultItem.getForceTechApprovalNote())) {
                 actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                         NoteType.UNCONDITIONAL_ACCEPTANCE_REASON, testResultItem.getForceTechApprovalNote(),
-                        RESULT_SUBJECT, ControllerUtills.getSysUserId(request)), testResultItem));
+                        RESULT_SUBJECT, actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             // OGC-1026 (R7, FR-G1): the clinical interpretation goes with the
@@ -382,7 +382,7 @@ public class ResultUtil {
             if (!GenericValidator.isBlankOrNull(testResultItem.getInterpretation())) {
                 actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                         testResultItem.getInterpretation().trim(), INTERPRETATION_SUBJECT,
-                        ControllerUtills.getSysUserId(request)), testResultItem));
+                        actionDataSet.getCurrentUserId()), testResultItem));
             }
 
             if (testResultItem.isShadowRejected()) {
@@ -392,17 +392,17 @@ public class ResultUtil {
                 for (IdValuePair rejectReason : SpringContext.getBean(DisplayListService.class)
                         .getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
-                        actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
-                                NoteType.REJECTION_REASON, rejectReason.getValue(), RESULT_SUBJECT,
-                                ControllerUtills.getSysUserId(request)), testResultItem));
+                        actionDataSet.addToNoteList(scopedToComponent(
+                                noteService.createSavableNote(analysis, NoteType.REJECTION_REASON,
+                                        rejectReason.getValue(), RESULT_SUBJECT, actionDataSet.getCurrentUserId()),
+                                testResultItem));
                         break;
                     }
                 }
             }
 
             ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
-            ResultSaveService resultSaveService = new ResultSaveService(analysis,
-                    ControllerUtills.getSysUserId(request));
+            ResultSaveService resultSaveService = new ResultSaveService(analysis, actionDataSet.getCurrentUserId());
             // deletable Results will be written to, not read
             List<Result> results = resultSaveService.createResultsFromTestResultItem(bean,
                     actionDataSet.getDeletableResults());
@@ -418,11 +418,11 @@ public class ResultUtil {
             if (analysisService.hasBeenCorrectedSinceLastPatientReport(analysis)) {
                 Note note = noteService.createSavableNote(analysis, NoteType.EXTERNAL,
                         MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                        ControllerUtills.getSysUserId(request));
+                        actionDataSet.getCurrentUserId());
                 if (!noteService.duplicateNoteExists(note)) {
                     actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                             NoteType.EXTERNAL, MessageUtil.getMessage("note.corrected.result"), RESULT_SUBJECT,
-                            ControllerUtills.getSysUserId(request)), testResultItem));
+                            actionDataSet.getCurrentUserId()), testResultItem));
                 }
             }
 

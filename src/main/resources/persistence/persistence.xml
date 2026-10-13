@@ -93,6 +93,9 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCultureReading</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCultureExtension</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIncomingItem</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBenchAction</class>
+        <class>org.openelisglobal.workplan.valueholder.WorkplanPrintRecord</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCultureProposal</class>
 
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>

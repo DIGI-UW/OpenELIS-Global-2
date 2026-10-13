@@ -77,7 +77,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
 
     @Override
     public List<MicroCultureForm> getRows(String caseId) {
-        return rows.getRows(caseId).stream().map(this::form).toList();
+        return rows.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null).map(this::form).toList();
     }
 
     @Override
@@ -130,6 +130,13 @@ public class MicroCultureServiceImpl implements MicroCultureService {
     @Override
     @Transactional
     public List<MicroCultureForm> inoculate(String caseId, MicroCultureRequestForm r, String actor) {
+        return benchInoculate(caseId, r, actor, null);
+    }
+
+    @Override
+    @Transactional
+    public List<MicroCultureForm> benchInoculate(String caseId, MicroCultureRequestForm r, String actor,
+            MicroCaseActivity event) {
         var c = writeCase(caseId, actor);
         if (r == null)
             bad("REQUIRED");
@@ -186,7 +193,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         row.setOccurredAt(r.inoculatedAt);
         row.setPerformedBy(actor);
         row.setSysUserId(actor);
-        row.setActivityId(audit(caseId, "CULTURE_INOCULATED", row.getId(), r, actor).getId());
+        row.setActivityId((event == null ? audit(caseId, "CULTURE_INOCULATED", row.getId(), r, actor) : event).getId());
         rows.insert(row);
         if (List.of("RECEIVED", "INITIAL_TESTING", "SETUP_RECORDED").contains(c.getStage())) {
             c.setStage(MicroCaseStage.INCUBATING.name());
@@ -200,6 +207,13 @@ public class MicroCultureServiceImpl implements MicroCultureService {
     @Transactional
     public List<MicroCultureForm> act(String caseId, String rowId, String action, MicroCultureRequestForm r,
             String actor) {
+        return benchAct(caseId, rowId, action, r, actor, null);
+    }
+
+    @Override
+    @Transactional
+    public List<MicroCultureForm> benchAct(String caseId, String rowId, String action, MicroCultureRequestForm r,
+            String actor, MicroCaseActivity event) {
         var c = writeCase(caseId, actor);
         var row = requireRow(caseId, rowId);
         // This row records receipt of an existing isolate, not an inoculated culture.
@@ -321,13 +335,14 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         }
         row.setSysUserId(actor);
         rows.update(row);
-        audit(caseId, "CULTURE_" + action.toUpperCase(Locale.ROOT).replace('-', '_'), rowId, r, actor);
+        if (event == null)
+            audit(caseId, "CULTURE_" + action.toUpperCase(Locale.ROOT).replace('-', '_'), rowId, r, actor);
         return getRows(caseId);
     }
 
     private MicroCaseInoculation requireRow(String caseId, String rowId) {
-        return rows.getRows(caseId).stream().filter(r -> r.getId().equals(rowId)).findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return rows.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null && r.getId().equals(rowId))
+                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private SampleItem requireSource(String caseId, String id) {
@@ -433,14 +448,14 @@ public class MicroCultureServiceImpl implements MicroCultureService {
                 .toList();
         f.extensions = row.getExtensions().stream()
                 .map(e -> new MicroCultureForm.Extension(e.getId(), e.getExtendBy(), e.getUnit(), e.getReasonId(),
-                        label(e.getReasonId()), e.getNote(), e.getRecordedBy(), e.getRecordedAt()))
+                        label(e.getReasonId()), e.getNote(), e.getRecordedBy(), e.getRecordedAt(), e.getUndoneAt()))
                 .toList();
         f.proposals = row.getProposals().stream().map(p -> new MicroCultureForm.Proposal(p.getId(), p.getSignal(),
                 p.getRecordedAt(), p.getConfirmedBy(), p.getConfirmedAt())).toList();
         boolean incubating = f.outcome == null || "GROWTH".equals(f.outcome);
         f.canEditInoculatedAt = f.readings.isEmpty() && incubating;
         if (f.duration != null && f.durationUnit != null) {
-            long extensionMillis = row.getExtensions().stream()
+            long extensionMillis = row.getExtensions().stream().filter(e -> e.getUndoneAt() == null)
                     .mapToLong(e -> MicroCultureTiming.milliseconds(e.getExtendBy(), e.getUnit())).sum();
             f.incubationEnds = MicroCultureTiming.ends(f.inoculatedAt, f.duration, f.durationUnit, extensionMillis);
             Timestamp last = row.getReadings().stream().map(MicroCultureReading::getRecordedAt)

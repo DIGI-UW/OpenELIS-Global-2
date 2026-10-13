@@ -63,6 +63,22 @@ public class MicroReportReleaseServiceTest {
     }
 
     @Test
+    public void staleIncomingConfirmationCannotReleaseANewArrival() {
+        var readiness = new MicroCaseReadinessForm();
+        readiness.finalReleaseReady = true;
+        readiness.pendingIncomingIds = List.of("reviewed", "new-arrival");
+        when(readinessService.getReadiness("case-1")).thenReturn(readiness);
+        try {
+            service.releaseFinal("case-1", "1", List.of("reviewed"));
+            fail("A new arrival needs confirmation");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE", expected.getMessage());
+        }
+        verify(reportProjectionService, never()).releaseFinal(anyString(), anyString());
+        verify(caseDAO, never()).update(any());
+    }
+
+    @Test
     public void finalReleaseIsBlockedUntilReadinessPasses() {
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = "case-1";
