@@ -83,6 +83,7 @@ export default function CultureWorklist({ service }) {
     setSelection(selectedRows);
     setAction(kind);
     setInput({
+      // This input represents an instant in the browser zone, converted back to UTC on save.
       inoculatedAt: new Date(
         Date.now() - new Date().getTimezoneOffset() * 60000,
       )
@@ -112,13 +113,14 @@ export default function CultureWorklist({ service }) {
       if (row.cultureId) grouped.get(row.caseId).cultureIds.push(row.cultureId);
     });
     try {
+      const { cultureTestId, ...cultureInput } = input;
       const result = await service.benchAction({
         action,
         cases: [...grouped.values()],
         sampleTypeId: selection[0].sampleTypeId,
-        cultureTestId: input.cultureTestId,
+        cultureTestId,
         culture: {
-          ...input,
+          ...cultureInput,
           mediumItemId: input.mediumItemId ? Number(input.mediumItemId) : null,
           lotId: input.lotId ? Number(input.lotId) : null,
           inoculatedAt: input.inoculatedAt

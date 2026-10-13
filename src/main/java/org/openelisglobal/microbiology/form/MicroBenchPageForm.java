@@ -7,7 +7,8 @@ import org.openelisglobal.common.util.IdValuePair;
 public class MicroBenchPageForm {
     public List<Row> rows = new ArrayList<>();
     public List<IdValuePair> labUnits = new ArrayList<>();
-    public int total, page, pageSize;
+    public long total;
+    public int page, pageSize;
 
     public static class Row {
         public String id, caseId, cultureId, accessionNumber, patientName, labUnitId, labUnit, specimenType, priority,

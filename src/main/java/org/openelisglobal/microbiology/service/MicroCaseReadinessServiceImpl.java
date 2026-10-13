@@ -58,8 +58,9 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = microCase.getId();
-        readiness.pendingIncomingIds = incoming.forCase(caseId).stream().filter(i -> "WAITING".equals(i.getState()))
-                .map(i -> i.getId()).toList();
+        readiness.pendingIncomingIds = incoming.forCase(caseId).stream()
+                .filter(i -> java.util.Set.of("WAITING", "NEEDS_AMENDMENT").contains(i.getState())).map(i -> i.getId())
+                .toList();
         readiness.finalReleaseReady = true;
         List<MicroIsolate> isolates = isolateDAO.getWorkspace(caseId).stream().filter(i -> i.getCancelledAt() == null)
                 .toList();

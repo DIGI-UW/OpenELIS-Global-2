@@ -16,13 +16,14 @@ public class MicroCaseWorkspaceRestController extends MicrobiologyRestController
         this.workspace = workspace;
     }
 
-    @InitBinder
+    @InitBinder("query")
     public void bind(org.springframework.web.bind.WebDataBinder binder) {
         binder.initDirectFieldAccess();
     }
 
     @GetMapping("/search")
-    public MicroCaseSearchPageForm search(@ModelAttribute MicroCaseSearchForm query, HttpServletRequest request) {
+    public MicroCaseSearchPageForm search(@ModelAttribute("query") MicroCaseSearchForm query,
+            HttpServletRequest request) {
         return workspace.search(query, authenticatedUserId(request));
     }
 

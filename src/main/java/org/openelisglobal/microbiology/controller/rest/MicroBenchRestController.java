@@ -19,13 +19,13 @@ public class MicroBenchRestController extends MicrobiologyRestControllerSupport 
         this.cases = cases;
     }
 
-    @InitBinder
+    @InitBinder("query")
     public void bind(org.springframework.web.bind.WebDataBinder binder) {
         binder.initDirectFieldAccess();
     }
 
     @GetMapping
-    public MicroBenchPageForm search(MicroBenchQueryForm query, HttpServletRequest request) {
+    public MicroBenchPageForm search(@ModelAttribute("query") MicroBenchQueryForm query, HttpServletRequest request) {
         return bench.search(query, authenticatedUserId(request));
     }
 

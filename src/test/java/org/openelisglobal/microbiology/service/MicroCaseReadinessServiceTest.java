@@ -41,6 +41,9 @@ public class MicroCaseReadinessServiceTest {
     @Mock
     private MicroCriticalCommunicationDAO communicationDAO;
 
+    @Mock
+    private org.openelisglobal.microbiology.dao.MicroIncomingItemDAO incoming;
+
     private MicroCaseReadinessService service;
     private org.openelisglobal.microbiology.valueholder.MicroCaseInoculation culture;
     @Mock
@@ -49,8 +52,7 @@ public class MicroCaseReadinessServiceTest {
     @Before
     public void setUp() {
         service = new MicroCaseReadinessServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO);
-        org.springframework.test.util.ReflectionTestUtils.setField(service, "incoming",
-                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroIncomingItemDAO.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "incoming", incoming);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "isolateWorkspace",
                 org.mockito.Mockito.mock(MicroIsolateWorkspaceServiceImpl.class));
         var cultures = org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO.class);
@@ -71,6 +73,22 @@ public class MicroCaseReadinessServiceTest {
                 org.mockito.Mockito.mock(org.openelisglobal.referral.dao.ReferralDAO.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "statuses",
                 org.mockito.Mockito.mock(org.openelisglobal.common.services.IStatusService.class));
+    }
+
+    @Test
+    public void lateEvidenceRequiresConfirmationWhenAmending() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
+        var evidence = new java.util.ArrayList<org.openelisglobal.microbiology.valueholder.MicroIncomingItem>();
+        for (String state : List.of("WAITING", "NEEDS_AMENDMENT", "PLACED", "FAILED")) {
+            var item = new org.openelisglobal.microbiology.valueholder.MicroIncomingItem();
+            item.setId(state);
+            item.setState(state);
+            evidence.add(item);
+        }
+        when(incoming.forCase("case-1")).thenReturn(evidence);
+        assertEquals(List.of("WAITING", "NEEDS_AMENDMENT"), service.getReadiness("case-1").pendingIncomingIds);
     }
 
     @Test
