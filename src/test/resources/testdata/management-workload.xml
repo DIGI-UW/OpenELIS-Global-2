@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Sections 89701/89702, tests 89701/89702 and status 89700 are inserted
-    by WorkloadServiceIntegrationTest, so loading this file never truncates them. -->
+<!-- Sections 89701/89702, tests 89701/89702 and statuses 89700/89709 are
+    inserted by WorkloadServiceIntegrationTest, so loading this file never truncates
+    them. Analysis 89709 is canceled and item 89708 is rejected: neither is workload. -->
 <dataset>
     <sample id="89701" accession_number="MGMT-W01"
         entered_date="2026-03-01 08:00:00" received_date="2026-03-01 08:00:00" />
@@ -14,19 +15,27 @@
         entered_date="2026-02-28 23:59:00" received_date="2026-02-28 23:59:00" />
     <sample id="89706" accession_number="MGMT-W06"
         entered_date="2026-03-04 08:00:00" received_date="2026-03-04 08:00:00" />
+    <sample id="89707" accession_number="MGMT-W07"
+        entered_date="2026-03-02 10:00:00" received_date="2026-03-02 10:00:00" />
+    <sample id="89708" accession_number="MGMT-W08"
+        entered_date="2026-03-03 10:00:00" received_date="2026-03-03 10:00:00" />
 
     <sample_item id="89701" samp_id="89701" sort_order="1"
-        status_id="89700" />
+        status_id="89700" rejected="false" />
     <sample_item id="89702" samp_id="89702" sort_order="1"
-        status_id="89700" />
+        status_id="89700" rejected="false" />
     <sample_item id="89703" samp_id="89703" sort_order="1"
-        status_id="89700" />
+        status_id="89700" rejected="false" />
     <sample_item id="89704" samp_id="89704" sort_order="1"
-        status_id="89700" />
+        status_id="89700" rejected="false" />
     <sample_item id="89705" samp_id="89705" sort_order="1"
-        status_id="89700" />
+        status_id="89700" rejected="false" />
     <sample_item id="89706" samp_id="89706" sort_order="1"
-        status_id="89700" />
+        status_id="89700" rejected="false" />
+    <sample_item id="89707" samp_id="89707" sort_order="1"
+        status_id="89700" rejected="false" />
+    <sample_item id="89708" samp_id="89708" sort_order="1"
+        status_id="89700" rejected="true" />
 
     <analysis id="89701" sampitem_id="89701"
         analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
@@ -52,4 +61,10 @@
     <analysis id="89708" sampitem_id="89706"
         analysis_type="MANUAL" test_id="89702" test_sect_id="89702"
         status_id="89700" released_date="2026-03-04 09:00:00" />
+    <analysis id="89709" sampitem_id="89707"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89709" />
+    <analysis id="89710" sampitem_id="89708"
+        analysis_type="MANUAL" test_id="89701" test_sect_id="89701"
+        status_id="89700" released_date="2026-03-03 12:00:00" />
 </dataset>

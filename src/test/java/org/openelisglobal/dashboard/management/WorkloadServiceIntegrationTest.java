@@ -31,7 +31,6 @@ public class WorkloadServiceIntegrationTest extends BaseWebContextSensitiveTest 
 
     private JdbcTemplate jdbc;
 
-    // These JDBC writes commit, so tearDown removes them.
     @Before
     @Override
     public void setUp() throws Exception {
@@ -42,6 +41,8 @@ public class WorkloadServiceIntegrationTest extends BaseWebContextSensitiveTest 
         testSectionService.refreshNames();
         jdbc.update("INSERT INTO clinlims.status_of_sample (id, code, status_type, name, description, lastupdated)"
                 + " VALUES (89700, 897, 'ANALYSIS', 'Mgmt Released', 'Mgmt Released', now()) ON CONFLICT DO NOTHING");
+        jdbc.update("INSERT INTO clinlims.status_of_sample (id, code, status_type, name, description, lastupdated)"
+                + " VALUES (89709, 898, 'ANALYSIS', 'Test Canceled', 'Test Canceled', now()) ON CONFLICT DO NOTHING");
         restoreTatDefault();
         executeDataSetWithStateManagement("testdata/management-workload.xml");
     }
@@ -49,14 +50,14 @@ public class WorkloadServiceIntegrationTest extends BaseWebContextSensitiveTest 
     @After
     public void tearDown() {
         restoreTatDefault();
-        jdbc.update("DELETE FROM clinlims.analysis WHERE id BETWEEN 89701 AND 89708");
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id BETWEEN 89701 AND 89706");
-        jdbc.update("DELETE FROM clinlims.sample WHERE id BETWEEN 89701 AND 89706");
+        jdbc.update("DELETE FROM clinlims.analysis WHERE id BETWEEN 89701 AND 89710");
+        jdbc.update("DELETE FROM clinlims.sample_item WHERE id BETWEEN 89701 AND 89708");
+        jdbc.update("DELETE FROM clinlims.sample WHERE id BETWEEN 89701 AND 89708");
         jdbc.update("DELETE FROM clinlims.test WHERE id IN (89701, 89702)");
         jdbc.update("DELETE FROM clinlims.test_section WHERE id IN (89701, 89702)");
         jdbc.update("DELETE FROM clinlims.localization_value WHERE id IN (89701, 89702)");
         jdbc.update("DELETE FROM clinlims.localization WHERE id IN (89701, 89702)");
-        jdbc.update("DELETE FROM clinlims.status_of_sample WHERE id = 89700");
+        jdbc.update("DELETE FROM clinlims.status_of_sample WHERE id IN (89700, 89709)");
     }
 
     private void seedSection(int id, String name) {

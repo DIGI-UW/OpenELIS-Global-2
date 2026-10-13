@@ -15,7 +15,6 @@ import { StackedAreaChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import QAEmptyState from "../../qa/common/QAEmptyState";
-import { rateChartOptions } from "../../qa/qi/QIReportPage";
 import { formatTat } from "../../reports/tat/tatUtils";
 import ServerDataState from "../../utils/ServerDataState";
 import { useServerData } from "../../utils/useServerData";
@@ -31,30 +30,30 @@ const COLUMNS = [
 ];
 
 // A section with no validated analyses has no TAT; keep it last either way.
-export const sortRow = (
-  a,
-  b,
-  { sortDirection, sortStates, locale, compare },
-) => {
+const sortRow = (a, b, { sortDirection, sortStates, locale, compare }) => {
   if (a == null || b == null) return (a == null) - (b == null);
   return sortDirection === sortStates.DESC
     ? compare(b, a, locale)
     : compare(a, b, locale);
 };
 
-const chartOptions = (samplesTitle) => {
-  const base = rateChartOptions(undefined, true);
-  return {
-    ...base,
-    axes: {
-      bottom: { ...base.axes.bottom, mapsTo: "date" },
-      left: { ...base.axes.left, title: samplesTitle, stacked: true },
+const chartOptions = (samplesTitle) => ({
+  height: "320px",
+  curve: "curveMonotoneX",
+  axes: {
+    bottom: { mapsTo: "date", scaleType: "time" },
+    left: {
+      mapsTo: "value",
+      title: samplesTitle,
+      scaleType: "linear",
+      includeZero: true,
+      stacked: true,
     },
-    points: { enabled: false },
-    legend: { enabled: true, position: "bottom" },
-    toolbar: { enabled: false },
-  };
-};
+  },
+  points: { enabled: false },
+  legend: { enabled: true, position: "bottom" },
+  toolbar: { enabled: false },
+});
 
 const WorkloadSection = ({ scope, scopeLabel }) => {
   const intl = useIntl();

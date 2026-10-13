@@ -13,8 +13,7 @@ public class WorkloadDAOImpl implements WorkloadDAO {
     @PersistenceContext
     private EntityManager entityManager;
 
-    // An analysis with no section of its own counts under its test's home
-    // section, as in the TAT report's lab-unit breakdown.
+    // Section fallback and the canceled/rejected filters match the TAT report.
     @Override
     @SuppressWarnings("unchecked")
     public List<Object[]> countSamplesByDayAndSection(LocalDate from, LocalDate to) {
@@ -24,6 +23,9 @@ public class WorkloadDAOImpl implements WorkloadDAO {
                 + " JOIN clinlims.sample_item si ON si.id = a.sampitem_id JOIN clinlims.sample s ON s.id = si.samp_id"
                 + " LEFT JOIN clinlims.test t ON t.id = a.test_id"
                 + " WHERE s.received_date >= :from AND s.received_date < :to"
+                + " AND COALESCE(si.rejected, false) = false"
+                + " AND a.status_id NOT IN (SELECT id FROM clinlims.status_of_sample"
+                + " WHERE status_type = 'ANALYSIS' AND name = 'Test Canceled')"
                 + " AND COALESCE(a.test_sect_id, t.test_section_id) IS NOT NULL GROUP BY 1, 2")
                 .setParameter("from", QiReportSupport.startOf(from)).setParameter("to", QiReportSupport.endOf(to))
                 .getResultList();
