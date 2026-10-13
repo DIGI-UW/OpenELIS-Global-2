@@ -1,6 +1,8 @@
 package org.openelisglobal.dashboard.management.stock;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -39,6 +41,9 @@ public class StockServiceIntegrationTest extends BaseWebContextSensitiveTest {
         insertLot(9101, 1001, "STK-RDT", 3, 45);
         insertLot(9102, 1000, "STK-A-EMPTY", 0, 10);
         insertLot(9103, 9201, "STK-B", 50, 200);
+        insertLot(9104, 9201, "STK-OPENED", 40, 180);
+        jdbc.update("UPDATE clinlims.inventory_lot SET status = 'IN_USE', date_opened = CURRENT_DATE - 8,"
+                + " calculated_expiry_after_opening = CURRENT_DATE - 1 WHERE id = 9104");
         for (int daysAgo = 1; daysAgo <= 28; daysAgo++) {
             jdbc.update(
                     "INSERT INTO clinlims.inventory_usage (id, inventory_item_id, lot_id, quantity_used,"
@@ -51,7 +56,7 @@ public class StockServiceIntegrationTest extends BaseWebContextSensitiveTest {
     @After
     public void tearDown() {
         jdbc.update("DELETE FROM clinlims.inventory_usage WHERE id BETWEEN 9301 AND 9328");
-        jdbc.update("DELETE FROM clinlims.inventory_lot WHERE id BETWEEN 9100 AND 9103");
+        jdbc.update("DELETE FROM clinlims.inventory_lot WHERE id BETWEEN 9100 AND 9104");
         jdbc.update("DELETE FROM clinlims.inventory_item WHERE id IN (9200, 9201)");
     }
 
@@ -82,14 +87,17 @@ public class StockServiceIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void expiringListsExpiredAndThirtyDayLotsThatStillHoldStock() {
+    public void expiringListsExpiredAndThirtyDayLotsThatStillHoldStockIncludingOpenedOnes() {
         List<StockResponse.ExpiringLot> expiring = stockService.getStock().expiring();
 
-        assertEquals(List.of("LOT-2025-002", "LOT-2025-001", "STK-A"),
+        assertEquals(List.of("LOT-2025-002", "LOT-2025-001", "CTRL-2025-001", "STK-OPENED", "STK-A"),
                 expiring.stream().map(StockResponse.ExpiringLot::lot).toList());
-        assertEquals(20, expiring.get(2).daysLeft());
-        assertEquals(64.0, expiring.get(2).remaining(), 0.001);
-        assertEquals("Test Reagent A", expiring.get(2).name());
+        assertEquals(-1, expiring.get(3).daysLeft());
+        assertTrue(expiring.get(3).expired());
+        assertEquals(20, expiring.get(4).daysLeft());
+        assertFalse(expiring.get(4).expired());
+        assertEquals(64.0, expiring.get(4).remaining(), 0.001);
+        assertEquals("Test Reagent A", expiring.get(4).name());
     }
 
     @Test

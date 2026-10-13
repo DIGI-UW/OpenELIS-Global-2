@@ -12,15 +12,15 @@ public record StockResponse(State state, List<Reagent> criticalReagents, List<Ex
         OK, EMPTY
     }
 
-    public record Reagent(String name, String lot,
+    public record Reagent(Long itemId, String name, String lot,
             @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd") LocalDate expiry, double onHand,
             int threshold, BoardStatus status) {
     }
 
-    public record ExpiringLot(String name, String lot, long daysLeft, double remaining) {
+    public record ExpiringLot(String name, String lot, long daysLeft, boolean expired, double remaining) {
     }
 
-    public record Reorder(String name, double onHand, Integer threshold, Kind kind,
+    public record Reorder(Long itemId, String name, double onHand, Integer threshold, Kind kind,
             @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd") LocalDate orderBy,
             @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd") LocalDate orderedOn) {
 

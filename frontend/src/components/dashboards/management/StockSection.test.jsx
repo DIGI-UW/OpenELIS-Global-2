@@ -15,6 +15,7 @@ const STOCK = {
   state: "OK",
   criticalReagents: [
     {
+      itemId: 1,
       name: "VITEK AST cards (GN)",
       lot: "VK-887",
       expiry: "2026-07-15",
@@ -23,6 +24,7 @@ const STOCK = {
       status: "REORDER_NOW",
     },
     {
+      itemId: 2,
       name: "Malaria RDT kits",
       lot: "MR-2419",
       expiry: "2026-11-30",
@@ -32,17 +34,31 @@ const STOCK = {
     },
   ],
   expiring: [
-    { name: "HIV VL cartridges", lot: "HV-099", daysLeft: -2, remaining: 8 },
-    { name: "Agar plates", lot: "AP-1", daysLeft: 1, remaining: 220 },
+    {
+      name: "HIV VL cartridges",
+      lot: "HV-099",
+      daysLeft: -2,
+      expired: true,
+      remaining: 8,
+    },
+    {
+      name: "Agar plates",
+      lot: "AP-1",
+      daysLeft: 1,
+      expired: false,
+      remaining: 220,
+    },
     {
       name: "VITEK AST cards (GN)",
       lot: "VK-887",
       daysLeft: 18,
+      expired: false,
       remaining: 12,
     },
   ],
   reorder: [
     {
+      itemId: 1,
       name: "VITEK AST cards (GN)",
       onHand: 12,
       threshold: 100,
@@ -51,6 +67,7 @@ const STOCK = {
       orderedOn: "2026-06-02",
     },
     {
+      itemId: 3,
       name: "HIV VL cartridges",
       onHand: 28,
       threshold: 20,

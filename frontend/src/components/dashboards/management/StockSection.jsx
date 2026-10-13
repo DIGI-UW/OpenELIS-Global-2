@@ -59,7 +59,7 @@ const StockSection = ({ features }) => {
           {data.criticalReagents.map((reagent) => {
             const pct = Math.round((reagent.onHand / reagent.threshold) * 100);
             return (
-              <div key={reagent.name} className="mgmt-stock__reagent">
+              <div key={reagent.itemId} className="mgmt-stock__reagent">
                 <div>
                   <div>{reagent.name}</div>
                   {reagent.lot && (
@@ -100,15 +100,14 @@ const StockSection = ({ features }) => {
           {data.expiring.map((lot) => (
             <InlineNotification
               key={`${lot.name}-${lot.lot}`}
-              kind={lot.daysLeft < 0 ? "error" : "warning"}
+              kind={lot.expired ? "error" : "warning"}
               lowContrast
               hideCloseButton
               title={intl.formatMessage(
                 {
-                  id:
-                    lot.daysLeft < 0
-                      ? "label.mgmt.stock.expired"
-                      : "label.mgmt.stock.expiresIn",
+                  id: lot.expired
+                    ? "label.mgmt.stock.expired"
+                    : "label.mgmt.stock.expiresIn",
                 },
                 { days: lot.daysLeft },
               )}
@@ -125,18 +124,18 @@ const StockSection = ({ features }) => {
         >
           {data.reorder.map((item) => {
             const below = item.kind === "BELOW";
-            const note = below
-              ? item.orderedOn && {
-                  id: "label.mgmt.stock.orderPlaced",
-                  on: item.orderedOn,
-                }
-              : item.orderBy && {
-                  id: "label.mgmt.stock.orderBy",
-                  on: item.orderBy,
-                };
+            const on = below ? item.orderedOn : item.orderBy;
+            const subtitle = intl.formatMessage(
+              { id: "label.mgmt.stock.onHandReorderAt" },
+              {
+                0: item.name,
+                1: number(item.onHand),
+                2: number(item.threshold ?? 0),
+              },
+            );
             return (
               <InlineNotification
-                key={item.name}
+                key={item.itemId}
                 kind={below ? "error" : "warning"}
                 lowContrast
                 hideCloseButton
@@ -145,20 +144,18 @@ const StockSection = ({ features }) => {
                     ? "label.mgmt.stock.belowReorder"
                     : "label.mgmt.stock.approachingReorder",
                 })}
-                subtitle={[
-                  intl.formatMessage(
-                    { id: "label.mgmt.stock.onHandReorderAt" },
-                    {
-                      0: item.name,
-                      1: number(item.onHand),
-                      2: number(item.threshold ?? 0),
-                    },
-                  ),
-                  note &&
-                    intl.formatMessage({ id: note.id }, { 0: date(note.on) }),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
+                subtitle={
+                  on
+                    ? `${subtitle} · ${intl.formatMessage(
+                        {
+                          id: below
+                            ? "label.mgmt.stock.orderPlaced"
+                            : "label.mgmt.stock.orderBy",
+                        },
+                        { 0: date(on) },
+                      )}`
+                    : subtitle
+                }
               />
             );
           })}
