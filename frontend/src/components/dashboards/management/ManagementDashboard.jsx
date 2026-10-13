@@ -208,6 +208,7 @@ const ManagementDashboard = () => {
             scope={scope}
             scopeLabel={scopeLabel}
             features={data.features}
+            labName={data.labName}
           />
         ))}
     </div>

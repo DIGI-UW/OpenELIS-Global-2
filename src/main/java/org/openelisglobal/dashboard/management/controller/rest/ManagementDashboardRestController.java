@@ -120,7 +120,7 @@ public class ManagementDashboardRestController extends BaseRestController {
         if ("PDF".equals(event.kind())) {
             ReportingAudit.managementDashboardExported(actor, event.scope(),
                     event.sections().stream().map(ExportEvent.SectionRows::id).toList(),
-                    event.sections().stream().mapToInt(ExportEvent.SectionRows::rowCount).sum());
+                    event.sections().stream().mapToLong(ExportEvent.SectionRows::rowCount).sum());
         } else {
             event.sections().forEach(section -> ReportingAudit.managementDashboardCsvDownloaded(actor, event.scope(),
                     section.id(), section.rowCount()));

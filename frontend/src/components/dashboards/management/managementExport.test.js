@@ -1,8 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createIntl } from "react-intl";
+import { QueryClient } from "@tanstack/react-query";
+import { unzipSync } from "fflate";
 import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import messages from "../../../languages/en.json";
-import { EXPORT_SECTIONS, buildPdf, toCsv } from "./managementExport";
+import { SERVER_DATA_KEY } from "../../utils/useServerData";
+import { kpisUrl } from "./managementApi";
+import {
+  EXPORT_SECTIONS,
+  buildPdf,
+  csvDownload,
+  loadTables,
+  toCsv,
+} from "./managementExport";
 
 vi.mock("html2canvas", () => ({ default: vi.fn() }));
 
@@ -10,7 +21,8 @@ const PIXEL =
   "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
 
 const intl = createIntl({ locale: "en", messages });
-const kpis = EXPORT_SECTIONS.find((s) => s.id === "kpis");
+const mapper = (id) => EXPORT_SECTIONS.find((s) => s.id === id);
+const kpis = mapper("kpis");
 const kpiData = {
   samples: { value: 65, prior: 60 },
   medianTat: { value: 20, prior: 22.5 },
@@ -28,6 +40,13 @@ const meta = {
 };
 
 const pageText = (doc) => doc.internal.pages.flat().join("\n");
+
+const bytes = (blob) =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(Buffer.from(reader.result));
+    reader.readAsArrayBuffer(blob);
+  });
 
 const kpiTable = () => ({
   section: kpis,
@@ -48,8 +67,6 @@ describe("management export", () => {
     expect(body[0]).toEqual(["Total samples", "65", "60"]);
     expect(body[2]).toEqual(["On-time completion", "60.66", "—"]);
   });
-
-  const mapper = (id) => EXPORT_SECTIONS.find((s) => s.id === id);
 
   it("flattens workload to one row per section", () => {
     const { head, body } = mapper("workload").table(
@@ -131,7 +148,7 @@ describe("management export", () => {
       "% resistant",
     ]);
     expect(table.body[0]).toEqual(["E. coli", "Ampicillin", "40", "62.5"]);
-    expect(toCsv(table).split("\r\n")[2]).toBe("E. coli,Meropenem,6,");
+    expect(toCsv(table).split("\r\n")[2]).toBe('"E. coli","Meropenem","6",""');
   });
 
   it("flattens the antibiogram fallback to organism counts", () => {
@@ -163,6 +180,13 @@ describe("management export", () => {
         ],
         expiring: [
           { name: "CBC reagent", lot: "L-02", daysLeft: 12, remaining: 3 },
+          {
+            name: "Saline",
+            lot: "L-03",
+            daysLeft: -2,
+            expired: true,
+            remaining: 1,
+          },
         ],
         reorder: [
           {
@@ -187,6 +211,7 @@ describe("management export", () => {
         "2026-12-31",
       ],
       ["Expiring in 30 days", "CBC reagent", "L-02", "3", "Expires in 12 days"],
+      ["Expiring in 30 days", "Saline", "L-03", "1", "Expired"],
       ["Reorder alerts", "Gloves", "—", "2", "Below reorder point"],
     ]);
   });
@@ -202,7 +227,7 @@ describe("management export", () => {
             metrics: [
               {
                 key: "MTB_DETECTION",
-                label: "MTB detected",
+                label: "label.mgmt.surveillance.metric.mtbDetected",
                 value: 30,
                 numerator: 3,
                 denominator: 10,
@@ -243,7 +268,7 @@ describe("management export", () => {
       ["Tuberculosis", "RIF resistance", "—", "0", "2", "—"],
     ]);
     expect(toCsv(table).split("\r\n")[2]).toBe(
-      "Tuberculosis,RIF resistance,,0,2,",
+      '"Tuberculosis","RIF resistance","","0","2",""',
     );
   });
 
@@ -270,13 +295,59 @@ describe("management export", () => {
   it("quotes CSV cells that hold commas, quotes or line breaks", () => {
     expect(
       toCsv({ head: ["Item", "Detail"], body: [['Tips, 200 "µL"', "a\nb"]] }),
-    ).toBe('\uFEFFItem,Detail\r\n"Tips, 200 ""µL""","a\nb"');
+    ).toBe('\uFEFF"Item","Detail"\r\n"Tips, 200 ""µL""","a\nb"');
   });
 
   it("leaves a missing value as an empty CSV cell", () => {
     expect(
       toCsv({ head: ["KPI", "Prior"], body: [["QC pass rate", "—"]] }),
-    ).toBe("\uFEFFKPI,Prior\r\nQC pass rate,");
+    ).toBe('\uFEFF"KPI","Prior"\r\n"QC pass rate",""');
+  });
+
+  it("keeps a name that starts like a formula as text but leaves numbers alone", () => {
+    expect(
+      toCsv({
+        head: ["Name"],
+        body: [["=HYPERLINK(1)", "@SUM(A1)", "+cmd", "-", "-2.5", "+1"]],
+      }).split("\r\n")[1],
+    ).toBe(`"'=HYPERLINK(1)","'@SUM(A1)","'+cmd","'-","-2.5","+1"`);
+  });
+
+  const quality = mapper("quality");
+  const qualityTable = {
+    section: quality,
+    ...quality.table({ composite: 90, components: [] }, intl),
+  };
+
+  it("downloads one section as a CSV file", async () => {
+    const { filename, blob } = csvDownload("stem", [kpiTable()]);
+
+    expect(filename).toBe("stem-kpis.csv");
+    expect((await bytes(blob)).toString()).toBe(toCsv(kpiTable()));
+  });
+
+  it("downloads several sections as one zip of CSV files", async () => {
+    const { filename, blob } = csvDownload("stem", [kpiTable(), qualityTable]);
+    const files = unzipSync(await bytes(blob));
+
+    expect(filename).toBe("stem.zip");
+    expect(Object.keys(files)).toEqual(["stem-kpis.csv", "stem-quality.csv"]);
+    expect(Buffer.from(files["stem-quality.csv"]).toString()).toBe(
+      toCsv(qualityTable),
+    );
+  });
+
+  it("builds tables from the data the page already shows", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData([SERVER_DATA_KEY, kpisUrl("30d")], kpiData);
+    const fetch = vi.spyOn(global, "fetch");
+
+    const [table] = await loadTables([kpis], "30d", intl, queryClient);
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(table.title).toBe("Key indicators");
+    expect(table.body[0]).toEqual(["Total samples", "65", "60"]);
+    fetch.mockRestore();
   });
 
   it("puts the captured picture, the table and page numbers in the PDF", async () => {
@@ -294,6 +365,27 @@ describe("management export", () => {
     expect(pdf).toContain("On-time completion");
     expect(pdf).toContain("Page 1 of 1");
     expect(pdf).not.toContain("[Chart image unavailable]");
+  });
+
+  it("keeps a tall section's proportions when it caps the picture height", async () => {
+    html2canvas.mockResolvedValue({
+      toDataURL: () => PIXEL,
+      width: 100,
+      height: 200,
+    });
+    const addImage = vi.spyOn(jsPDF.API, "addImage");
+
+    await buildPdf([kpiTable()], meta);
+
+    expect(addImage).toHaveBeenCalledWith(
+      PIXEL,
+      "JPEG",
+      14,
+      expect.any(Number),
+      74.25,
+      148.5,
+    );
+    addImage.mockRestore();
   });
 
   it("falls back to a placeholder when the picture cannot be taken", async () => {

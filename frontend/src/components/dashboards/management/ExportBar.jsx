@@ -9,22 +9,25 @@ import {
 } from "@carbon/react";
 import { Download, DocumentPdf } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { labNow } from "../../utils/labClock";
-import { postToOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
-import { useServerData } from "../../utils/useServerData";
-import { exportEventsUrl, summaryUrl } from "./managementApi";
+import {
+  downloadBlob,
+  postToOpenElisServer,
+  toLocalIsoDate,
+} from "../../utils/Utils";
+import { exportEventsUrl } from "./managementApi";
 import {
   buildPdf,
+  csvDownload,
   loadTables,
-  saveFile,
   sectionsOnPage,
-  toCsv,
 } from "./managementExport";
 import "./ExportBar.css";
 
-const ExportBar = ({ scope, scopeLabel }) => {
+const ExportBar = ({ scope, scopeLabel, labName }) => {
   const intl = useIntl();
-  const summary = useServerData(summaryUrl(scope));
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [choices, setChoices] = useState(null);
@@ -57,16 +60,16 @@ const ExportBar = ({ scope, scopeLabel }) => {
 
   const exportPdf = () =>
     run(() =>
-      loadTables(sectionsOnPage(), scope, intl).then((tables) =>
+      loadTables(sectionsOnPage(), scope, intl, queryClient).then((tables) =>
         audit("PDF", tables)
           .then(() =>
             buildPdf(tables, {
               title: intl.formatMessage({ id: "label.mgmt.title" }),
-              labName: summary.data?.labName || "",
+              labName: labName || "",
               cover: [
                 [
                   intl.formatMessage({ id: "label.mgmt.export.lab" }),
-                  summary.data?.labName || "—",
+                  labName || "—",
                 ],
                 [
                   intl.formatMessage({ id: "label.dashboard.scope" }),
@@ -95,16 +98,11 @@ const ExportBar = ({ scope, scopeLabel }) => {
     const chosen = sectionsOnPage().filter((s) => choices.includes(s.id));
     setChoices(null);
     run(() =>
-      loadTables(chosen, scope, intl).then((tables) =>
-        audit("CSV", tables).then(() =>
-          tables.forEach((table) =>
-            saveFile(
-              `${fileStem}-${table.section.id}.csv`,
-              toCsv(table),
-              "text/csv;charset=utf-8",
-            ),
-          ),
-        ),
+      loadTables(chosen, scope, intl, queryClient).then((tables) =>
+        audit("CSV", tables).then(() => {
+          const { blob, filename } = csvDownload(fileStem, tables);
+          downloadBlob(blob, filename);
+        }),
       ),
     );
   };
@@ -177,10 +175,7 @@ const ExportBar = ({ scope, scopeLabel }) => {
             <Checkbox
               key={section.id}
               id={`mgmt-export-${section.id}`}
-              labelText={intl.formatMessage(
-                { id: section.titleKey },
-                { 0: "" },
-              )}
+              labelText={intl.formatMessage({ id: section.titleKey })}
               checked={choices.includes(section.id)}
               onChange={(event, { checked }) =>
                 setChoices((current) =>

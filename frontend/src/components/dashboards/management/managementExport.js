@@ -1,7 +1,10 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
-import { fetchFromOpenElisServer } from "../../utils/Utils";
+import { strToU8, zipSync } from "fflate";
+import { csvCell } from "../../utils/Utils";
+import { serverQuery } from "../../utils/queryClient";
+import { SERVER_DATA_KEY } from "../../utils/useServerData";
 import { statusOf } from "./EquipmentSection";
 import {
   antibiogramUrl,
@@ -24,15 +27,12 @@ const value = (v, digits = 2) =>
 
 const t = (intl, id, values) => intl.formatMessage({ id }, values);
 
-/**
- * One entry per exportable section: where its numbers come from, the DOM
- * wrapper whose picture goes in the PDF, and how its JSON flattens to a table.
- */
+const keyOrText = (intl, text) => (intl.messages[text] ? t(intl, text) : text);
+
 export const EXPORT_SECTIONS = [
   {
     id: "kpis",
     titleKey: "label.mgmt.export.section.kpis",
-    testId: "mgmt-kpis",
     url: kpisUrl,
     table: (data, intl) => ({
       head: [
@@ -56,7 +56,6 @@ export const EXPORT_SECTIONS = [
   {
     id: "workload",
     titleKey: "label.mgmt.workload.title",
-    testId: "mgmt-workload",
     url: workloadUrl,
     table: (data, intl) => ({
       head: [
@@ -78,7 +77,6 @@ export const EXPORT_SECTIONS = [
   {
     id: "equipment",
     titleKey: "label.mgmt.equipment.title",
-    testId: "mgmt-equipment",
     url: equipmentUrl,
     table: (data, intl) => ({
       head: [
@@ -107,7 +105,6 @@ export const EXPORT_SECTIONS = [
   {
     id: "antibiogram",
     titleKey: "label.mgmt.antibiogram.title",
-    testId: "mgmt-antibiogram",
     url: antibiogramUrl,
     table: (data, intl) => {
       const organisms = Object.fromEntries(
@@ -144,7 +141,6 @@ export const EXPORT_SECTIONS = [
   {
     id: "quality",
     titleKey: "label.mgmt.quality.title",
-    testId: "mgmt-quality",
     url: qualityUrl,
     table: (data, intl) => ({
       head: [
@@ -173,7 +169,6 @@ export const EXPORT_SECTIONS = [
   {
     id: "surveillance",
     titleKey: "label.mgmt.surveillance.title",
-    testId: "mgmt-surveillance",
     url: surveillanceUrl,
     table: (data, intl) => ({
       head: [
@@ -186,8 +181,8 @@ export const EXPORT_SECTIONS = [
       ],
       body: (data.programs || []).flatMap((program) =>
         program.metrics.map((metric) => [
-          intl.messages[program.name] ? t(intl, program.name) : program.name,
-          metric.label,
+          keyOrText(intl, program.name),
+          keyOrText(intl, metric.label),
           value(metric.value, 1),
           String(metric.numerator),
           String(metric.denominator),
@@ -199,8 +194,7 @@ export const EXPORT_SECTIONS = [
   {
     id: "stock",
     titleKey: "label.mgmt.stock.title",
-    testId: "mgmt-stock",
-    url: () => stockUrl(),
+    url: stockUrl,
     table: (data, intl) => ({
       head: [
         t(intl, "label.mgmt.export.col.list"),
@@ -222,7 +216,13 @@ export const EXPORT_SECTIONS = [
           l.name,
           l.lot || "—",
           value(l.remaining, 0),
-          t(intl, "label.mgmt.stock.expiresIn", { days: l.daysLeft }),
+          t(
+            intl,
+            l.expired
+              ? "label.mgmt.stock.expired"
+              : "label.mgmt.stock.expiresIn",
+            { days: l.daysLeft },
+          ),
         ]),
         ...(data.reorder || []).map((r) => [
           t(intl, "label.mgmt.stock.reorderAlerts"),
@@ -243,38 +243,54 @@ export const EXPORT_SECTIONS = [
 
 export const sectionsOnPage = () =>
   EXPORT_SECTIONS.filter((s) =>
-    document.querySelector(`[data-testid="${s.testId}"]`),
+    document.querySelector(`[data-testid="mgmt-${s.id}"]`),
   );
 
-/** Each section's table for the scope, read fresh from the server. */
-export const loadTables = (sections, scope, intl) =>
+export const loadTables = (sections, scope, intl, queryClient) =>
   Promise.all(
-    sections.map((section) =>
-      fetchFromOpenElisServer(section.url(scope)).then((data) => ({
-        section,
-        title: t(intl, section.titleKey, { 0: "" }).trim(),
-        ...section.table(data, intl),
-      })),
-    ),
+    sections.map((section) => {
+      const url = section.url(scope);
+      return queryClient
+        .ensureQueryData(serverQuery([SERVER_DATA_KEY, url], url))
+        .then((data) => ({
+          section,
+          title: t(intl, section.titleKey),
+          ...section.table(data, intl),
+        }));
+    }),
   );
 
-const csvCell = (cell) => {
+const FORMULA_START = /^[=+\-@\t\r]/;
+
+const exportCell = (cell) => {
   const text = cell == null || cell === "—" ? "" : String(cell);
-  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  return csvCell(
+    FORMULA_START.test(text) && !Number.isFinite(Number(text))
+      ? `'${text}`
+      : text,
+  );
 };
 
 // The byte order mark is what makes Excel read the file as UTF-8.
 export const toCsv = ({ head, body }) =>
   "\uFEFF" +
-  [head, ...body].map((row) => row.map(csvCell).join(",")).join("\r\n");
+  [head, ...body].map((row) => row.map(exportCell).join(",")).join("\r\n");
 
-export const saveFile = (filename, content, type) => {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+export const csvDownload = (stem, tables) => {
+  const name = (table) => `${stem}-${table.section.id}.csv`;
+  if (tables.length === 1) {
+    return {
+      filename: name(tables[0]),
+      blob: new Blob([toCsv(tables[0])], { type: "text/csv;charset=utf-8" }),
+    };
+  }
+  const files = Object.fromEntries(
+    tables.map((table) => [name(table), strToU8(toCsv(table))]),
+  );
+  return {
+    filename: `${stem}.zip`,
+    blob: new Blob([zipSync(files)], { type: "application/zip" }),
+  };
 };
 
 const capture = (element) =>
@@ -296,7 +312,7 @@ export const buildPdf = (tables, meta) =>
   Promise.all(
     tables.map((table) =>
       capture(
-        document.querySelector(`[data-testid="${table.section.testId}"]`),
+        document.querySelector(`[data-testid="mgmt-${table.section.id}"]`),
       ),
     ),
   ).then((images) => {
@@ -329,7 +345,14 @@ export const buildPdf = (tables, meta) =>
       doc.setFont("helvetica", "normal");
       y += 4;
       if (image) {
-        doc.addImage(image.data, "JPEG", MARGIN, y, CONTENT_W, imageH);
+        doc.addImage(
+          image.data,
+          "JPEG",
+          MARGIN,
+          y,
+          imageH / image.ratio,
+          imageH,
+        );
       } else {
         doc.setFontSize(9);
         doc.setTextColor(150);

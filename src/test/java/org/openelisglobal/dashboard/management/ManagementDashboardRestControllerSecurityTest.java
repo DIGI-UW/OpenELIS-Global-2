@@ -1,5 +1,6 @@
 package org.openelisglobal.dashboard.management;
 
+import static org.junit.Assert.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,6 +27,7 @@ import org.openelisglobal.dashboard.management.surveillance.SurveillanceResponse
 import org.openelisglobal.dashboard.management.surveillance.SurveillanceService;
 import org.openelisglobal.dashboard.management.workload.WorkloadService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.reports.dataexport.ReportingAuditCapture;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.annotation.Bean;
@@ -156,11 +158,18 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
 
     @Test
     public void exportEventsAreRecordedForTheDashboardGrant() throws Exception {
-        mockMvc.perform(post("/rest/dashboards/management/export-events").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"kind\":\"CSV\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}")
-                .sessionAttr(IActionConstants.USER_SESSION_DATA, new UserSessionData())
-                .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
-                .andExpect(status().isNoContent());
+        try (var capture = new ReportingAuditCapture()) {
+            mockMvc.perform(post("/rest/dashboards/management/export-events").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"kind\":\"CSV\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}")
+                    .sessionAttr(IActionConstants.USER_SESSION_DATA, new UserSessionData())
+                    .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))
+                    .andExpect(status().isNoContent());
+
+            assertEquals(List.of("MANAGEMENT_DASHBOARD_CSV_DOWNLOADED"), capture.actions());
+            assertEquals("kpis", capture.events().get(0).path("section").asText());
+            assertEquals("30d", capture.events().get(0).path("timeScope").asText());
+            assertEquals(5, capture.events().get(0).path("rowCount").asInt());
+        }
     }
 
     @Test
@@ -176,7 +185,8 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 "{\"kind\":\"XLSX\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}",
                 "{\"kind\":\"PDF\",\"scope\":\"30d\",\"sections\":[{\"id\":\"patients\",\"rowCount\":5}]}",
                 "{\"kind\":\"PDF\",\"scope\":\"decade\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5}]}",
-                "{\"kind\":\"PDF\",\"scope\":\"30d\",\"sections\":[]}" }) {
+                "{\"kind\":\"PDF\",\"scope\":\"30d\",\"sections\":[]}",
+                "{\"kind\":\"CSV\",\"scope\":\"30d\",\"sections\":[{\"id\":\"kpis\",\"rowCount\":5},{\"id\":\"kpis\",\"rowCount\":5}]}" }) {
             mockMvc.perform(post("/rest/dashboards/management/export-events").contentType(MediaType.APPLICATION_JSON)
                     .content(body)
                     .with(user("manager").authorities(new SimpleGrantedAuthority("dashboards.view.management"))))

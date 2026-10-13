@@ -30,7 +30,7 @@ public final class ReportingAudit {
     }
 
     private record DashboardExportEntry(Action action, String actor, String timeScope, List<String> sectionsIncluded,
-            int rowCount, String timestamp) {
+            long rowCount, String timestamp) {
     }
 
     private record DashboardCsvEntry(Action action, String actor, String timeScope, String section, int rowCount,
@@ -55,7 +55,7 @@ public final class ReportingAudit {
     }
 
     public static void managementDashboardExported(String actor, String timeScope, List<String> sections,
-            int rowCount) {
+            long rowCount) {
         log(new DashboardExportEntry(Action.MANAGEMENT_DASHBOARD_EXPORTED, identifier(actor), identifier(timeScope),
                 sections.stream().map(ReportingAudit::identifier).toList(), rowCount, Instant.now().toString()));
     }
