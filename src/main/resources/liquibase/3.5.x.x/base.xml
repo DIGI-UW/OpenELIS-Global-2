@@ -693,4 +693,5 @@
   <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
     <include file="122-amr-v2-isolates-referral.xml" relativeToChangelogFile="true"/>
 <include file="123-amr-v2-ast-reporting.xml" relativeToChangelogFile="true"/>
+    <include file="124-amr-v2-automation-bench-labels.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

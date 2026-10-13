@@ -73,6 +73,10 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Override
     @Transactional(readOnly = true)
+    public List<AnalyzerResults> findBySourceDelivery(String connectionId, String messageId) {
+        return getBaseObjectDAO().findBySourceDelivery(connectionId, messageId);
+    }
+
     public List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId) {
         return getBaseObjectDAO().findHeldMappingResultsByAnalyzer(analyzerId);
     }

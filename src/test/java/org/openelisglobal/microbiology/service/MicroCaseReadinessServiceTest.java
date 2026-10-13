@@ -49,6 +49,8 @@ public class MicroCaseReadinessServiceTest {
     @Before
     public void setUp() {
         service = new MicroCaseReadinessServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "incoming",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroIncomingItemDAO.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "isolateWorkspace",
                 org.mockito.Mockito.mock(MicroIsolateWorkspaceServiceImpl.class));
         var cultures = org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO.class);

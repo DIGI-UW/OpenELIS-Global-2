@@ -155,6 +155,9 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
         copy.setHeightMm(source.getHeightMm());
         copy.setWidthMm(source.getWidthMm());
         copy.setBarcodeType(source.getBarcodeType());
+        copy.setPrintsPerContainer(source.getPrintsPerContainer());
+        copy.setDefaultPerContainer(source.getDefaultPerContainer());
+        copy.setMaxPerContainer(source.getMaxPerContainer());
         copy.setPrintsPerOrder(source.getPrintsPerOrder());
         copy.setPrintsPerSample(source.getPrintsPerSample());
         copy.setDefaultPerOrder(source.getDefaultPerOrder());
@@ -244,6 +247,11 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
      * and the stored ones stay as they are; an empty list clears them.
      */
     private void applyForm(LabelPreset preset, LabelPresetForm form) {
+        if (!form.isAtLeastOneScopeSelected() || !form.isMaxPerContainerGteDefault())
+            throw new IllegalArgumentException("error.labelpreset.maxPerContainer.lte");
+        preset.setPrintsPerContainer(Boolean.TRUE.equals(form.getPrintsPerContainer()));
+        preset.setDefaultPerContainer(form.getDefaultPerContainer());
+        preset.setMaxPerContainer(form.getMaxPerContainer());
         preset.setHeightMm(form.getHeightMm());
         preset.setWidthMm(form.getWidthMm());
         preset.setBarcodeType(form.getBarcodeType());

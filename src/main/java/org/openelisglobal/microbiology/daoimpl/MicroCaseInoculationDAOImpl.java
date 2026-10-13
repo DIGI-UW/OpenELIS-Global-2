@@ -22,7 +22,7 @@ public class MicroCaseInoculationDAOImpl extends BaseDAOImpl<MicroCaseInoculatio
     @Transactional(readOnly = true)
     public List<MicroCaseInoculation> getByCaseId(String caseId) {
         Query<MicroCaseInoculation> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroCaseInoculation i where i.caseId = :caseId order by i.occurredAt, i.id",
+                "from MicroCaseInoculation i where i.caseId = :caseId and i.cancelledAt is null order by i.occurredAt, i.id",
                 MicroCaseInoculation.class);
         query.setParameter("caseId", caseId);
         return query.list();
@@ -44,7 +44,7 @@ public class MicroCaseInoculationDAOImpl extends BaseDAOImpl<MicroCaseInoculatio
         // Separate collection fetches avoid a Cartesian product and multiple-bag fetch
         // errors.
         var rows = entityManager.createQuery(
-                "select distinct i from MicroCaseInoculation i left join fetch i.readings where i.caseId = :caseId order by i.occurredAt, i.id",
+                "select distinct i from MicroCaseInoculation i left join fetch i.readings where i.caseId = :caseId and i.cancelledAt is null order by i.occurredAt, i.id",
                 MicroCaseInoculation.class).setParameter("caseId", caseId).getResultList();
         entityManager.createQuery(
                 "select distinct i from MicroCaseInoculation i left join fetch i.extensions where i.caseId = :caseId",

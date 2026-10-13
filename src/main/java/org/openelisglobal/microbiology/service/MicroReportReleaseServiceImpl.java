@@ -65,11 +65,19 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseFinal(String caseId, String performedBy) {
+        return releaseFinal(caseId, performedBy, java.util.List.of());
+    }
+
+    @Override
+    @Transactional
+    public MicroCase releaseFinal(String caseId, String performedBy, java.util.List<String> confirmedIncomingIds) {
         var current = authorization.requireWrite(caseId, performedBy,
                 org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         if ("AMENDMENT_IN_PROGRESS".equals(current.getFinalReleaseState()))
             throw new MicroAmendmentConflictException("AMENDED_RELEASE_REQUIRED");
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
+        if (confirmedIncomingIds == null || !confirmedIncomingIds.containsAll(readiness.pendingIncomingIds))
+            throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE");
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Final release is blocked: " + String.join(", ", readiness.blockers));
         }
@@ -91,8 +99,16 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseAmended(String caseId, String performedBy) {
+        return releaseAmended(caseId, performedBy, java.util.List.of());
+    }
+
+    @Override
+    @Transactional
+    public MicroCase releaseAmended(String caseId, String performedBy, java.util.List<String> confirmedIncomingIds) {
         authorization.requireWrite(caseId, performedBy, org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
+        if (confirmedIncomingIds == null || !confirmedIncomingIds.containsAll(readiness.pendingIncomingIds))
+            throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE");
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Amended release is blocked: " + String.join(", ", readiness.blockers));
         }

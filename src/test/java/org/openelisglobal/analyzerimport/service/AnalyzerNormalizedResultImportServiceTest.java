@@ -85,6 +85,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
                 testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
                 mappingCatalogService, placementService);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "events",
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         when(confirmationService.hasMatchingConfirmation(any())).thenReturn(true);

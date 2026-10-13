@@ -104,7 +104,7 @@ it("allows partial release by a results technician without final-release rights"
     await screen.findByRole("button", { name: t("partialRelease") }),
   );
   await waitFor(() =>
-    expect(service.releaseReport).toHaveBeenCalledWith("c1", "preliminary"),
+    expect(service.releaseReport).toHaveBeenCalledWith("c1", "preliminary", []),
   );
   expect(
     screen.queryByRole("button", { name: t("finalRelease") }),
@@ -136,4 +136,30 @@ it("identifies the program and missing question when final release is blocked", 
   expect(
     screen.getByRole("button", { name: t("finalRelease") }),
   ).toBeDisabled();
+});
+
+it("requires confirmation of the exact waiting incoming results before final release", async () => {
+  const service = show(
+    { canWrite: true, canValidate: true },
+    {
+      finalReleaseReady: true,
+      blockers: [],
+      pendingIncomingIds: ["incoming-1"],
+    },
+  );
+  await screen.findByText("Microbiology unit");
+  const button = screen.getByRole("button", { name: t("finalRelease") });
+  expect(button).toBeDisabled();
+  fireEvent.click(
+    screen.getByRole("checkbox", {
+      name: messages["microbiology.incoming.confirmRelease"],
+    }),
+  );
+  expect(button).toBeEnabled();
+  fireEvent.click(button);
+  await waitFor(() =>
+    expect(service.releaseReport).toHaveBeenCalledWith("c1", "final", [
+      "incoming-1",
+    ]),
+  );
 });
