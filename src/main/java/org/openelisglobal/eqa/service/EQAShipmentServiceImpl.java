@@ -12,6 +12,7 @@ import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQACycleParticipantDAO;
@@ -440,6 +441,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Override
     public Map<String, Object> markDelivered(Long cycleId, Long organizationId, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
+        if (cycle.getStatus() == EQACycleStatus.CLOSED) {
+            throw new IllegalStateException(
+                    "Cycle " + displayName(cycle) + " is closed, so no receipt can be recorded for it");
+        }
         requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
         ShippingBox box = latestBoxes(cycleId).get(organizationId);
         if (box == null || box.getShipment() == null) {
@@ -500,6 +505,12 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
             return;
         }
         if (box.getState() != BoxState.SENT && box.getState() != BoxState.IN_TRANSIT) {
+            return;
+        }
+        EQACycle cycle = cycle(box.getEqaCycleId());
+        if (cycle.getStatus() == EQACycleStatus.CLOSED) {
+            LogEvent.logWarn(getClass().getSimpleName(), "applyRemoteDelivery", "Ignoring a delivery notice for box "
+                    + box.getBoxId() + ": cycle " + displayName(cycle) + " is closed");
             return;
         }
         Long organizationId = Long.valueOf(box.getDestinationFacility().getId());

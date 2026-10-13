@@ -57,7 +57,8 @@ public interface EQAShipmentService {
      * SupplyDelivery reads completed), so record the delivery here. When the box is
      * the participant's current shipment this is exactly the Receipt Monitor's
      * "Mark delivered" — cycle auto-advance and audit included; an outdated box (a
-     * repeat superseded it) is closed off quietly without touching the cycle.
+     * repeat superseded it) is closed off quietly without touching the cycle. A
+     * notice for a closed cycle is logged and ignored.
      *
      * @param shippingBoxId the delivered box
      * @param sysUserId     the automated user the delivery is attributed to
@@ -97,6 +98,8 @@ public interface EQAShipmentService {
      * out of band, so the provider records the delivery. When the last active
      * participant's box is delivered, the cycle advances shipped → delivered →
      * submissions_open automatically. Idempotent on a delivered box.
+     *
+     * @throws IllegalStateException when the cycle is closed
      */
     Map<String, Object> markDelivered(Long cycleId, Long organizationId, String sysUserId);
 

@@ -179,6 +179,20 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         }
     }
 
+    @Test
+    public void aClosedCycleRecordsNoReceipt() {
+        dispatchBoth(null);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        try {
+            shipmentService.markDelivered(cycle.getId(), ORG_A, USER);
+            fail("a closed cycle is final");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("closed"));
+        }
+        assertEquals("IN_TRANSIT", receiptRow(ORG_A).get("receiptStatus"));
+    }
+
     // ---: reprovisioning ----
 
     @Test

@@ -724,6 +724,22 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void aRemoteReceiptForAClosedCycleIsSkipped() {
+        addToRoster(ORG_A);
+        clearTheGate();
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
+        shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
+        Integer boxDbId = (Integer) shipmentService.getShipmentRows(cycle.getId()).get(0).get("boxId");
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        shipmentService.applyRemoteDelivery(boxDbId, USER);
+
+        assertEquals("SENT",
+                jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class, boxDbId));
+        assertEquals(EQACycleStatus.CLOSED, readBack(cycle.getId()).getStatus());
+    }
+
+    @Test
     public void aRemoteReceiptForASupersededBoxDoesNotTouchTheCycle() {
         addToRoster(ORG_A);
         // Reserve covers the repeat, so the original can be superseded in-flight.

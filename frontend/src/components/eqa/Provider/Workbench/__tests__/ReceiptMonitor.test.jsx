@@ -165,6 +165,13 @@ describe("ReceiptMonitor", () => {
     );
   });
 
+  it("offers no receipt on a closed cycle", async () => {
+    renderTab("CLOSED");
+
+    await screen.findByText("Mbeya Regional Lab");
+    expect(screen.queryByRole("button", { name: "Mark received" })).toBeNull();
+  });
+
   it("shows no score and offers no score action before the cycle is scored", async () => {
     renderTab("SUBMISSIONS_OPEN");
 
