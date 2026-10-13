@@ -388,6 +388,25 @@ describe("management export", () => {
     addImage.mockRestore();
   });
 
+  it("drops the font name the canvas rejects from the captured section", async () => {
+    html2canvas.mockResolvedValue({
+      toDataURL: () => PIXEL,
+      width: 100,
+      height: 40,
+    });
+    document.body.innerHTML =
+      '<style>.plex { font-family: "IBM Plex Sans", system-ui, ".SFNSText-Regular", sans-serif; }</style>' +
+      '<div data-testid="mgmt-kpis" class="plex"><p class="plex">3,610</p></div>';
+
+    await buildPdf([kpiTable()], meta);
+    const [section, { onclone }] = html2canvas.mock.calls[0];
+    onclone(document, section);
+
+    expect(section.querySelector("p").style.fontFamily).toBe(
+      '"IBM Plex Sans", system-ui, sans-serif',
+    );
+  });
+
   it("falls back to a placeholder when the picture cannot be taken", async () => {
     html2canvas.mockRejectedValue(new Error("tainted canvas"));
 

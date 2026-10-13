@@ -300,6 +300,14 @@ const capture = (element) =>
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
+        onclone: (clone, section) => {
+          // html2canvas leaves Carbon's ".SFNSText-Regular" unquoted, and the canvas rejects the whole font.
+          [section, ...section.querySelectorAll("*")].forEach((el) => {
+            el.style.fontFamily = clone.defaultView
+              .getComputedStyle(el)
+              .fontFamily.replace(/,\s*"\.[^"]*"/g, "");
+          });
+        },
       })
         .then((canvas) => ({
           data: canvas.toDataURL("image/jpeg", 0.85),
