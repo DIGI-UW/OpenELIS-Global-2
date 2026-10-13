@@ -73,6 +73,10 @@ interface NotificationContextValue {
 }
 
 function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
+  return <ConfigMenuWorkspace key={props.menuType} {...props} />;
+}
+
+function ConfigMenuWorkspace(props: ConfigMenuDisplayProps) {
   const { notificationVisible } = useContext(
     NotificationContext,
   ) as NotificationContextValue;
