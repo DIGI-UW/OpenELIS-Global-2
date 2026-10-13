@@ -243,27 +243,25 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                 continue;
             }
             String value = EqaReportedValue.of(resultService, pipelineResult);
-            recorded |= recordAnalyst(cycle, roundId, enrollmentId, analysis, analyteId, value, analystId, sysUserId);
+            recorded |= recordAnalyst(cycle, roundId, enrollmentId, analysis, analyteId, providerSampleCode(sample),
+                    value, analystId, sysUserId);
         }
         return recorded;
     }
 
     /**
-     * Finds the draft row this analyte already has, or opens one. A scored row is
+     * Finds the draft row this analysis already has, or opens one. A scored row is
      * left alone: re-attributing a result the provider has already judged would
      * move an ISO 15189 record after the fact.
      */
     private boolean recordAnalyst(EQACycle cycle, Long roundId, Long enrollmentId, Analysis analysis, Long analyteId,
-            String value, Long analystId, String sysUserId) {
-        List<EQAParticipantResult> existing = participantResultDAO
-                .getAllMatching(Map.of("round.id", roundId, "labEnrollmentId", enrollmentId, "analyteId", analyteId));
-        // An in-house panel holds several samples of one analyte, one per analyst, so
-        // this key can name several rows and the analysis says which one is being
-        // entered. Only when the key names a single row (an external scheme's one
-        // result per analyte, or a draft entered by hand) is that row the answer.
+            String providerSampleCode, String value, Long analystId, String sysUserId) {
         Long analysisId = Long.valueOf(analysis.getId());
-        EQAParticipantResult row = existing.stream().filter(result -> analysisId.equals(result.getAnalysisId()))
-                .findFirst().orElse(existing.size() == 1 ? existing.get(0) : null);
+        EQAParticipantResult row = rowFor(roundId, enrollmentId, analysis, analyteId, providerSampleCode);
+        // A row bound to another analysis belongs to another sample.
+        if (row != null && row.getAnalysisId() != null && !analysisId.equals(row.getAnalysisId())) {
+            row = null;
+        }
 
         if (row == null) {
             row = new EQAParticipantResult();
@@ -274,6 +272,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             row.setLabEnrollmentId(enrollmentId);
             row.setAnalyteId(analyteId);
             row.setAnalysisId(analysisId);
+            row.setProviderSampleCode(providerSampleCode);
             row.setResultValue(GenericValidator.isBlankOrNull(value) ? null : value.trim());
         } else if (row.getSubmissionStatus() != EQASubmissionStatus.DRAFT) {
             // Refusing is the point, but say so: whoever picked the analyst gets no

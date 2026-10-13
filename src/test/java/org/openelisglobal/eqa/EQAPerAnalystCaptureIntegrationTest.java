@@ -4,15 +4,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.EQAParticipantResultService;
@@ -24,7 +30,12 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQARound;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
+import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.RequestBuilder;
 
 /**
  * OGC-611 — per-analyst capture: what the Analyst column on standard result
@@ -53,6 +64,7 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
     private static final long SAMPLE = 9931L;
     private static final long SAMPLE_ITEM = 9931L;
     private static final long SAMPLE_EQA = 9931L;
+    private static final long SECOND_SAMPLE = 9932L;
     private static final long OTHER_ANALYST = 2L;
 
     private long nextAnalysisId = 9941L;
@@ -278,7 +290,96 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
                 participantResultService.findAssignedAnalystId(secondAnalysisId + 1));
     }
 
+    @Test
+    public void theResultsPageRefusesAPerAnalystSampleSavedWithNoAnalyst() throws Exception {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", "")).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value(MessageUtil.getMessage("eqa.result.analystRequired")));
+
+        assertEquals(0, allResults().size());
+    }
+
+    @Test
+    public void theResultsPageRecordsTheAnalystChosenOnSave() throws Exception {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", String.valueOf(OTHER_ANALYST)))
+                .andExpect(status().isOk());
+
+        assertEquals(Long.valueOf(OTHER_ANALYST), onlyResult().getAssignedAnalystId());
+    }
+
+    @Test
+    public void theResultsPageSavesWithNoAnalystWhenTheSchemeDoesNotCaptureOne() throws Exception {
+        Fixture fixture = order(insertScheme("Capture off", EQASchemeType.INTERNATIONAL_PT, "NHLS"));
+
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", "")).andExpect(status().isOk());
+    }
+
+    @Test
+    public void twoSamplesOfOneTestEachKeepTheirOwnAnalyst() throws Exception {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+        jdbc.update("UPDATE clinlims.sample_eqa SET eqa_provider_sample_id = 'PS-A' WHERE sample_id = ?", SAMPLE);
+        long secondAnalysisId = secondOrder(fixture);
+
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", String.valueOf(ADMIN_USER_ID)))
+                .andExpect(status().isOk());
+        mockMvc.perform(saveResult(secondAnalysisId, "EQAT19002", String.valueOf(OTHER_ANALYST)))
+                .andExpect(status().isOk());
+
+        assertEquals(Optional.of(ADMIN_USER_ID), participantResultService.findAssignedAnalystId(fixture.analysisId));
+        assertEquals(Optional.of(OTHER_ANALYST), participantResultService.findAssignedAnalystId(secondAnalysisId));
+        assertEquals(2, allResults().size());
+    }
+
     // ---- fixtures ----
+
+    private long secondOrder(Fixture fixture) {
+        jdbc.update(
+                "INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date,"
+                        + " collection_date, lastupdated) VALUES (?, 'EQAT19002', now(), now(), now(), now())",
+                SECOND_SAMPLE);
+        jdbc.update(
+                "INSERT INTO clinlims.sample_item (id, sort_order, status_id, samp_id, typeosamp_id,"
+                        + " collection_date, lastupdated) VALUES (?, 1, ?::numeric, ?, 9931, now(), now())",
+                SECOND_SAMPLE, statusService.getStatusID(AnalysisStatus.NotStarted), SECOND_SAMPLE);
+        jdbc.update(
+                "INSERT INTO clinlims.sample_eqa (id, sample_id, is_eqa_sample, eqa_enrollment_id, cycle_id,"
+                        + " round_id, eqa_provider_sample_id, sys_user_id, last_updated)"
+                        + " VALUES (?, ?, true, ?, ?, ?, 'PS-B', ?, now())",
+                SECOND_SAMPLE, SECOND_SAMPLE, ENROLLMENT, fixture.cycle.getId(), fixture.round.getId(), USER);
+        long analysisId = nextAnalysisId++;
+        jdbc.update(
+                "INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision, analysis_type,"
+                        + " entry_date, status_id, lastupdated, fhir_uuid)"
+                        + " VALUES (?, ?, 9931, ?, 1, 'ROUTINE', now(), ?::numeric, now(), gen_random_uuid())",
+                analysisId, SECOND_SAMPLE, TEST, statusService.getStatusID(AnalysisStatus.Finalized));
+        jdbc.update(
+                "INSERT INTO clinlims.result (id, analysis_id, analyte_id, result_type, value, sort_order,"
+                        + " significant_digits, is_reportable, lastupdated, fhir_uuid)"
+                        + " VALUES (?, ?, ?, 'N', '1200', 1, 0, 'Y', now(), gen_random_uuid())",
+                analysisId + 500, analysisId, ANALYTE);
+        return analysisId;
+    }
+
+    private RequestBuilder saveResult(long analysisId, String accessionNumber, String analystId) {
+        // A null @Version makes Hibernate treat the row as transient when the save
+        // cascades through the analysis.
+        jdbc.update("UPDATE clinlims.test_section SET lastupdated = now() WHERE id = 9931 AND lastupdated IS NULL");
+        UserSessionData user = new UserSessionData();
+        user.setSytemUserId((int) ADMIN_USER_ID);
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(IActionConstants.USER_SESSION_DATA, user);
+        String testDate = DateUtil.formatDateAsText(new Date());
+        String body = "{\"testResult\":{\"analysisId\":\"" + analysisId + "\",\"accessionNumber\":\"" + accessionNumber
+                + "\",\"resultId\":\"" + (analysisId + 500) + "\",\"testId\":\"" + TEST
+                + "\",\"resultType\":\"N\",\"resultValue\":\"1300\"," + "\"testDate\":\"" + testDate
+                + "\",\"isModified\":true,\"valid\":true,\"reportable\":true," + "\"eqaAnalystId\":\"" + analystId
+                + "\"}}";
+        return post("/rest/results-entry/analysis/" + analysisId + "/result").contentType(MediaType.APPLICATION_JSON)
+                .content(body).session(session);
+    }
 
     private static final class Fixture {
         EQACycle cycle;
@@ -404,12 +505,12 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
     private void cleanOrders() {
         jdbc.update("DELETE FROM clinlims.eqa_analyst_competency_event");
         jdbc.update("DELETE FROM clinlims.eqa_participant_result");
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         jdbc.update("DELETE FROM clinlims.eqa_lab_enrollment_test_map WHERE enrollment_id = ?", ENROLLMENT);
         jdbc.update("DELETE FROM clinlims.result WHERE analysis_id BETWEEN 9941 AND 9960");
-        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id = ?", SAMPLE_ITEM);
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", SAMPLE_ITEM);
-        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id IN (?, ?)", SAMPLE_ITEM, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_item WHERE id IN (?, ?)", SAMPLE_ITEM, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample WHERE id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
     }
 
     private List<EQAParticipantResult> allResults() {

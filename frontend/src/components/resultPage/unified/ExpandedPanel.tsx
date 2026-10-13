@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -41,6 +41,7 @@ import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
 import { resultFlagFor } from "./resultFlagFor";
 import SampleKindTag from "../SampleKindTag";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
@@ -139,7 +140,10 @@ interface ExpandedPanelProps {
   dilutionDraft: DilutionDraft;
   sectionLayout: SectionLayout;
   onSectionLayoutChange: (layout: SectionLayout) => void;
-  onFieldChange: (field: "testMethod" | "analyzerId", value: string) => void;
+  onFieldChange: (
+    field: "testMethod" | "analyzerId" | "eqaAnalystId",
+    value: string,
+  ) => void;
   onValueChange: (
     field: "resultValue" | "multiSelectResultValues",
     value: string,
@@ -260,6 +264,31 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       onValueChange("resultValue", computed);
     }
   };
+
+  const eqaSchemeId = row.eqaPerAnalyst
+    ? (row.eqaSchemeId as string | undefined)
+    : undefined;
+  const [eqaAnalysts, setEqaAnalysts] = useState<
+    { id: string; displayName: string }[]
+  >([]);
+  useEffect(() => {
+    if (!eqaSchemeId) {
+      return undefined;
+    }
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/eqa/schemes/${eqaSchemeId}/eligible-analysts`,
+      (list: { id: string; displayName: string }[]) => {
+        if (active) {
+          setEqaAnalysts(list || []);
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [eqaSchemeId]);
+  const eqaAnalystId = (row.eqaAnalystId as string | undefined) || "";
 
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
@@ -413,6 +442,55 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="unifiedFieldHint">
               <FormattedMessage id="label.results.methodAnalyzerHint" />
             </div>
+
+            {eqaSchemeId && (
+              <>
+                <div className="cds--label unifiedFieldSpacer">
+                  <FormattedMessage
+                    id={
+                      row.eqaInHouse
+                        ? "eqa.inhouse.analyst"
+                        : "eqa.result.analyst"
+                    }
+                  />
+                </div>
+                {editable ? (
+                  <Select
+                    id={`eqaAnalyst-${rowKey}`}
+                    noLabel
+                    value={eqaAnalystId}
+                    invalid={!eqaAnalystId}
+                    invalidText={intl.formatMessage({
+                      id: row.eqaInHouse
+                        ? "label.results.analystRequired"
+                        : "eqa.result.analystRequired",
+                    })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      onFieldChange("eqaAnalystId", e.target.value)
+                    }
+                  >
+                    <SelectItem
+                      text={intl.formatMessage({
+                        id: "eqa.result.analystChoose",
+                      })}
+                      value=""
+                    />
+                    {eqaAnalysts.map((analyst) => (
+                      <SelectItem
+                        text={analyst.displayName}
+                        value={analyst.id}
+                        key={analyst.id}
+                      />
+                    ))}
+                  </Select>
+                ) : (
+                  <span>
+                    {eqaAnalysts.find((a) => a.id === eqaAnalystId)
+                      ?.displayName || "—"}
+                  </span>
+                )}
+              </>
+            )}
           </div>
         </div>
 
