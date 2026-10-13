@@ -187,7 +187,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                 SCHEDULER_USER);
 
         if (target == READY_TO_SUBMIT) {
-            changed |= submitIfDue(cycleDAO.get(cycleId).orElseThrow(), scheme);
+            changed |= submitIfDue(cycleDAO.get(cycleId).orElseThrow());
         }
         return changed;
     }
@@ -495,36 +495,57 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
 
     // ---- submission ----
 
+    @Override
+    @Transactional(readOnly = true)
+    public AutoSubmission autoSubmission(Long cycleId) {
+        return cycleDAO.get(cycleId).map(this::autoSubmission)
+                .orElse(new AutoSubmission(AutoSubmitReason.NOT_APPLICABLE, null));
+    }
+
     /**
      * Submit automatically only when the scheme delegates it, an endpoint exists,
      * the review window has elapsed and the retry budget allows another try.
      */
-    private boolean submitIfDue(EQACycle cycle, EQAProgram scheme) {
-        if (cycle.getStatus() != READY_TO_SUBMIT || Boolean.TRUE.equals(scheme.getRequiresCycleReview())) {
-            return false;
+    private AutoSubmission autoSubmission(EQACycle cycle) {
+        EQAProgram scheme = cycle.getScheme();
+        if (cycle.getStatus() != READY_TO_SUBMIT || scheme == null
+                || scheme.getSchemeType() == EQASchemeType.IN_HOUSE) {
+            return new AutoSubmission(AutoSubmitReason.NOT_APPLICABLE, null);
+        }
+        if (Boolean.TRUE.equals(scheme.getRequiresCycleReview())) {
+            return new AutoSubmission(AutoSubmitReason.HELD_FOR_REVIEW, null);
         }
         // No FHIR store configured is the manual-fallback deployment,
         // not a failure: attempting a post would burn the retry budget on a
         // submission channel this lab never had.
         if (StringUtils.isBlank(fhirConfig.getLocalFhirStorePath())) {
-            return false;
+            return new AutoSubmission(AutoSubmitReason.NO_CHANNEL, null);
         }
 
         Timestamp readyAt = readyToSubmitAt(cycle.getId());
         Instant now = clock.instant();
-        if (readyAt == null || now.isBefore(readyAt.toInstant().plus(windowHours, ChronoUnit.HOURS))) {
-            return false;
+        Instant windowEnd = readyAt == null ? null : readyAt.toInstant().plus(windowHours, ChronoUnit.HOURS);
+        if (windowEnd == null || now.isBefore(windowEnd)) {
+            return new AutoSubmission(AutoSubmitReason.WAITING, windowEnd);
         }
 
         int attempts = cycle.getSubmissionAttempts() == null ? 0 : cycle.getSubmissionAttempts();
         if (attempts >= MAX_ATTEMPTS) {
-            return false;
+            return new AutoSubmission(AutoSubmitReason.RETRIES_SPENT, null);
         }
-        if (cycle.getLastSubmissionAttemptAt() != null && now.isBefore(
-                cycle.getLastSubmissionAttemptAt().toInstant().plus(backoffMinutes(attempts), ChronoUnit.MINUTES))) {
-            return false;
+        Instant retryAt = cycle.getLastSubmissionAttemptAt() == null ? null
+                : cycle.getLastSubmissionAttemptAt().toInstant().plus(backoffMinutes(attempts), ChronoUnit.MINUTES);
+        if (retryAt != null && now.isBefore(retryAt)) {
+            return new AutoSubmission(AutoSubmitReason.WAITING, retryAt);
         }
+        return new AutoSubmission(AutoSubmitReason.DUE, null);
+    }
 
+    private boolean submitIfDue(EQACycle cycle) {
+        if (autoSubmission(cycle).reason() != AutoSubmitReason.DUE) {
+            return false;
+        }
+        int attempts = cycle.getSubmissionAttempts() == null ? 0 : cycle.getSubmissionAttempts();
         List<Long> enrollments = submittingEnrollments(cycle.getId());
         if (enrollments.isEmpty()) {
             return false;

@@ -2,6 +2,7 @@ package org.openelisglobal.eqa.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -17,6 +18,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.eqa.service.EQACycleService;
 import org.openelisglobal.eqa.service.EQACycleService.PanelSampleRequest;
 import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
@@ -219,6 +221,7 @@ public class EQACycleRestController extends BaseRestController {
                 enrolledNames.add(enrollment.getProgramName().trim().toLowerCase());
             }
         }
+        EQACycleSubmissionService submissionService = SpringContext.getBean(EQACycleSubmissionService.class);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQACycle cycle : cycleService.getAll()) {
             Map<String, Object> dto = toCycleDto(cycle);
@@ -226,6 +229,9 @@ public class EQACycleRestController extends BaseRestController {
             if (!participatesIn(cycle, enrolledNames, dto)) {
                 continue;
             }
+            EQACycleSubmissionService.AutoSubmission auto = submissionService.autoSubmission(cycle.getId());
+            dto.put("autoSubmitReason", auto.reason().name());
+            dto.put("autoSubmitDueAt", auto.dueAt() == null ? null : Timestamp.from(auto.dueAt()).toString());
             if (labEnrollmentId != null) {
                 dto.put("participantState", cycleService.deriveParticipantState(cycle, labEnrollmentId).name());
             }

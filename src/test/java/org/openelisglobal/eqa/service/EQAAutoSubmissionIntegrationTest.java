@@ -34,6 +34,8 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.eqa.EQASpineTestBase;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService.AutoSubmission;
+import org.openelisglobal.eqa.service.EQACycleSubmissionService.AutoSubmitReason;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
@@ -562,6 +564,59 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void withNoStoreConfigured_theCycleWaitsForAHandSubmissionAndSaysSo() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 41));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75");
+        when(fhirConfig.getLocalFhirStorePath()).thenReturn("  ");
+        windowElapsed();
+
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        assertEquals(EQACycleStatus.READY_TO_SUBMIT, readBack(cycle.getId()).getStatus());
+        assertEquals(AutoSubmitReason.NO_CHANNEL, cycleSubmissionService.autoSubmission(cycle.getId()).reason());
+        verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
+    }
+
+    @Test
+    public void insideTheWindow_theReasonIsWaitingUntilAnHourAfterTheCycleWasReady() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 42));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75");
+
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        AutoSubmission auto = cycleSubmissionService.autoSubmission(cycle.getId());
+        Timestamp readyAt = jdbc.queryForObject("SELECT occurred_at FROM clinlims.eqa_cycle_state_transition"
+                + " WHERE cycle_id = ? AND new_state = 'READY_TO_SUBMIT'", Timestamp.class, cycle.getId());
+        assertEquals(AutoSubmitReason.WAITING, auto.reason());
+        assertEquals(readyAt.toInstant().plus(Duration.ofHours(1)), auto.dueAt());
+    }
+
+    @Test
+    public void afterTheWindow_theReasonIsDueAndTheNextSweepSubmits() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 43));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75");
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        cycleSubmissionService.advanceCycle(cycle.getId());
+        windowElapsed();
+
+        assertEquals(AutoSubmitReason.DUE, cycleSubmissionService.autoSubmission(cycle.getId()).reason());
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
+        verify(fhirStub).submitCycleViaFhir(cycle.getId(), ENROLLMENT);
+        assertEquals(AutoSubmitReason.NOT_APPLICABLE, cycleSubmissionService.autoSubmission(cycle.getId()).reason());
+    }
+
+    @Test
     public void aSchemeThatRequiresReview_isNeverSubmittedAutomatically() {
         EQAProgram scheme = externalScheme(true);
         EQACycle cycle = readBack(insertCycle(scheme, 4));
@@ -573,6 +628,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         cycleSubmissionService.advanceCycle(cycle.getId());
 
         assertEquals(EQACycleStatus.READY_TO_SUBMIT, readBack(cycle.getId()).getStatus());
+        assertEquals(AutoSubmitReason.HELD_FOR_REVIEW, cycleSubmissionService.autoSubmission(cycle.getId()).reason());
         verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
     }
 
@@ -746,6 +802,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         cycleSubmissionService.advanceCycle(cycle.getId());
         assertEquals(5, attempts(cycle.getId()));
         assertEquals(1, failureAlerts(cycle.getId()));
+        assertEquals(AutoSubmitReason.RETRIES_SPENT, cycleSubmissionService.autoSubmission(cycle.getId()).reason());
     }
 
     /**

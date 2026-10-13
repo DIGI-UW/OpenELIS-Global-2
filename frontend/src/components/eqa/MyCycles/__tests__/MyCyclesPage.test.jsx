@@ -252,6 +252,7 @@ describe("MyCyclesPage", () => {
       participantState: "READY_TO_SUBMIT",
       requiresCycleReview: false,
       submissionAttempts: 5,
+      autoSubmitReason: "RETRIES_SPENT",
       samples: [],
     };
     renderPage(UNCYCLED_ORDERS, [stuck]);
@@ -303,6 +304,7 @@ describe("MyCyclesPage", () => {
       participantState: "READY_TO_SUBMIT",
       requiresCycleReview: false,
       submissionAttempts: 2,
+      autoSubmitReason: "WAITING",
       samples: [],
     };
     renderPage(UNCYCLED_ORDERS, [trying]);
@@ -316,6 +318,37 @@ describe("MyCyclesPage", () => {
       screen.getByRole("button", { name: "Submit by hand" }),
     ).toBeInTheDocument();
   });
+
+  test.each([
+    [
+      "NO_CHANNEL",
+      null,
+      "This site has no automatic channel to the provider, so submit by hand.",
+    ],
+    [
+      "WAITING",
+      "2026-10-13 14:05:00.0",
+      "Sends automatically at 13/10/2026 14:05 unless you submit by hand now.",
+    ],
+  ])(
+    "a ready cycle says why it is not sent automatically (%s)",
+    (reason, dueAt, line) => {
+      const ready = {
+        ...MOCK_CYCLES[0],
+        id: 33,
+        status: "READY_TO_SUBMIT",
+        participantState: "READY_TO_SUBMIT",
+        requiresCycleReview: false,
+        autoSubmitReason: reason,
+        autoSubmitDueAt: dueAt,
+        samples: [],
+      };
+      renderPage(UNCYCLED_ORDERS, [ready]);
+      fireEvent.click(screen.getByTestId("cycle-row-33"));
+
+      expect(screen.getByTestId("auto-submit-33")).toHaveTextContent(line);
+    },
+  );
 
   test("row expansion reveals sample progress with result-entry deep links", () => {
     renderPage();

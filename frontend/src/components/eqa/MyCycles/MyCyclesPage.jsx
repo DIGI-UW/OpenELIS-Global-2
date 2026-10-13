@@ -94,13 +94,11 @@ const resultEntryUrl = (labNo) =>
 const reviewGateOpen = (cycle) =>
   cycle.requiresCycleReview && cycle.status === "ready_to_submit";
 
-// The automatic channel gives up after five attempts and never tries again, so
-// from here on the only way out is a submission recorded by hand. The alert the
-// sweep raises says exactly that; this is where it can now be acted on.
-const MAX_SUBMISSION_ATTEMPTS = 5;
-const retriesSpent = (cycle) =>
-  cycle.status === "ready_to_submit" &&
-  (cycle.submissionAttempts || 0) >= MAX_SUBMISSION_ATTEMPTS;
+const retriesSpent = (cycle) => cycle.autoSubmitReason === "RETRIES_SPENT";
+
+// Server time as "yyyy-MM-dd HH:mm:ss.f", the lab's own clock.
+const formatDueAt = (value) =>
+  `${formatDateOnly(value.substring(0, 10))} ${value.substring(11, 16)}`;
 
 // A validation is a real instant, so it renders in the viewer's timezone —
 // unlike deadlines, which are end-of-day values read as UTC (formatDateOnly).
@@ -336,6 +334,31 @@ const MyCyclesPage = () => {
     setSearch("");
   };
 
+  const autoSubmitLine = (cycle) => {
+    switch (cycle.autoSubmitReason) {
+      case "NO_CHANNEL":
+        return t(
+          "eqa.cycle.autoSubmit.noChannel",
+          "This site has no automatic channel to the provider, so submit by hand.",
+        );
+      case "WAITING":
+        return cycle.autoSubmitDueAt
+          ? t(
+              "eqa.cycle.autoSubmit.waiting",
+              "Sends automatically at {time} unless you submit by hand now.",
+              { time: formatDueAt(cycle.autoSubmitDueAt) },
+            )
+          : null;
+      case "DUE":
+        return t(
+          "eqa.cycle.autoSubmit.due",
+          "Sends automatically within a few minutes unless you submit by hand now.",
+        );
+      default:
+        return null;
+    }
+  };
+
   const renderExpanded = (cycle) => (
     <div style={{ padding: "0.5rem 0" }}>
       <div
@@ -370,6 +393,14 @@ const MyCyclesPage = () => {
           {t("eqa.report.download", "Download performance report")}
         </Button>
       </div>
+      {autoSubmitLine(cycle) && (
+        <p
+          data-testid={`auto-submit-${cycle.id}`}
+          style={{ ...hintStyle, textAlign: "right", margin: "0.25rem 0" }}
+        >
+          {autoSubmitLine(cycle)}
+        </p>
+      )}
       {retriesSpent(cycle) && (
         <ActionableNotification
           kind="error"

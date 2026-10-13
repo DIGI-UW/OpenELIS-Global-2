@@ -14608,5 +14608,8 @@
   "analyzer.results.setupEvidence.title": "Retained setup samples ({count})",
   "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review.",
   "eqa.entry.validated": "Validated",
-  "eqa.cycle.new.noUsableEnrollments": "No active enrollment here matches a scheme on this instance. Enrollments are managed under My EQA Schemes, schemes under EQA Management, Schemes."
+  "eqa.cycle.new.noUsableEnrollments": "No active enrollment here matches a scheme on this instance. Enrollments are managed under My EQA Schemes, schemes under EQA Management, Schemes.",
+  "eqa.cycle.autoSubmit.noChannel": "This site has no automatic channel to the provider, so submit by hand.",
+  "eqa.cycle.autoSubmit.waiting": "Sends automatically at {time} unless you submit by hand now.",
+  "eqa.cycle.autoSubmit.due": "Sends automatically within a few minutes unless you submit by hand now."
 }

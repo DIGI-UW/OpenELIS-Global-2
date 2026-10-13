@@ -128,6 +128,17 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         assertTrue("a cycle with no linked orders has no sample rows", ((List<?>) row.get("samples")).isEmpty());
     }
 
+    @Test
+    public void aReadyCycleSaysWhyItIsNotSentAutomatically() {
+        EQAProgram scheme = insertScheme("Unsent scheme " + System.nanoTime(), EQASchemeType.REGIONAL_PT, "NHRL");
+        seedEnrollment(9960, scheme.getName());
+        Long cycleId = insertCycle(scheme, 7);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'READY_TO_SUBMIT' WHERE id = ?", cycleId);
+
+        assertEquals("the test context configures no FHIR store", "NO_CHANNEL",
+                findCycleRow(cycleId).get("autoSubmitReason"));
+    }
+
     /**
      * With the gate on, each analyte carries what would be submitted — the value
      * validated in the standard pipeline and when it was released. With the gate
