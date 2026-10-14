@@ -36,17 +36,25 @@ const selectConfiguredOption = async (
 };
 
 test.describe("Microbiology case workbench", () => {
-  test("drives a received culture through positive signal in the retained workbench", async ({
+  test("drives a received culture through positive signal from the worklist", async ({
     page,
   }) => {
     const seeded = await seedMicrobiologyCase(page);
-    await page.goto(
-      `/Microbiology/cases/${seeded.caseId}?view=workbench&sort=newest`,
-      {
-        waitUntil: "domcontentloaded",
-      },
+    const worklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
+      seeded.accessionNumber,
+    )}&sort=newest`;
+    await page.goto(worklistUrl, { waitUntil: "domcontentloaded" });
+
+    const row = page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`);
+    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(row).toContainText(seeded.accessionNumber);
+    await row.getByRole("link", { name: seeded.accessionNumber }).click();
+
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
+      ),
     );
-    await expect(page).toHaveURL(/section=setup$/);
     await expect(
       page.getByTestId("microbiology-current-step-action"),
     ).toContainText("Inoculation");

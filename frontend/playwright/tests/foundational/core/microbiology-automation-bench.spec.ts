@@ -56,7 +56,7 @@ test("inoculates from the worklist and scans the saved culture label", async ({
   test.setTimeout(180000);
   const seeded = await seedMicrobiologyCultureWorkspace(page);
   await page.goto(
-    `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(seeded.accessionNumber)}`,
+    `/Microbiology/worklist?grain=bench&q=${encodeURIComponent(seeded.accessionNumber)}`,
   );
   await expect(page.locator("#bench-search")).toHaveValue(
     seeded.accessionNumber,
@@ -186,4 +186,29 @@ test("inoculates from the worklist and scans the saved culture label", async ({
     body: await page.screenshot(),
     contentType: "image/png",
   });
+});
+
+test("bench actions remain reachable on a narrow viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/Microbiology/worklist?grain=bench");
+  await expect(
+    page.getByRole("heading", { name: "Microbiology worklist" }),
+  ).toBeVisible();
+  const closeMenu = page.getByRole("button", { name: "Close menu" });
+  if (await closeMenu.isVisible()) await closeMenu.click();
+  for (const name of [
+    "Record no growth",
+    "Inoculate selected cases",
+    "Extend incubation by 24 hours",
+    "Print bench sheet",
+  ]) {
+    const button = page.getByRole("button", { name, exact: true });
+    await button.scrollIntoViewIfNeeded();
+    await expect(button).toBeInViewport();
+  }
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(391);
 });

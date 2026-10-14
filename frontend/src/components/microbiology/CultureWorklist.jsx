@@ -3,6 +3,9 @@ import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
+  Grid,
+  Column,
+  TableContainer,
   DataTable,
   Table,
   TableHead,
@@ -259,95 +262,106 @@ export default function CultureWorklist({ service }) {
           getSelectionProps,
           selectedRows,
         }) => (
-          <Stack gap={3}>
-            <Stack orientation="horizontal" gap={3}>
-              {["NO_GROWTH", "INOCULATE", "EXTEND"].map((kind) => (
-                <Button
-                  key={kind}
-                  size="sm"
-                  disabled={
-                    !selectedRows.length ||
-                    selectedRows.some(
-                      (r) =>
-                        !data.rows.find((item) => item.id === r.id)?.canWrite,
-                    ) ||
-                    navigator.onLine === false ||
-                    (kind === "INOCULATE"
-                      ? filter !== "AWAITING_INOCULATION"
-                      : !filter || filter === "AWAITING_INOCULATION")
-                  }
-                  onClick={() => begin(kind, selectedRows)}
-                >
-                  {t(`microbiology.bench.action.${kind}`)}
-                </Button>
-              ))}
-              <Button
-                kind="tertiary"
-                disabled={
-                  !selectedRows.length ||
-                  new Set(
-                    selectedRows.map(
-                      (r) =>
-                        data.rows.find((item) => item.id === r.id)?.labUnitId,
-                    ),
-                  ).size > 1
-                }
-                onClick={() => print(selectedRows)}
-              >
-                {t("microbiology.bench.print")}
-              </Button>
+          <TableContainer>
+            <Stack gap={3}>
+              <Grid fullWidth condensed>
+                {["NO_GROWTH", "INOCULATE", "EXTEND"].map((kind) => (
+                  <Column key={kind} lg={4} md={4} sm={4}>
+                    <Button
+                      size="sm"
+                      disabled={
+                        !selectedRows.length ||
+                        selectedRows.some(
+                          (r) =>
+                            !data.rows.find((item) => item.id === r.id)
+                              ?.canWrite,
+                        ) ||
+                        navigator.onLine === false ||
+                        (kind === "INOCULATE"
+                          ? filter !== "AWAITING_INOCULATION"
+                          : !filter || filter === "AWAITING_INOCULATION")
+                      }
+                      onClick={() => begin(kind, selectedRows)}
+                    >
+                      {t(`microbiology.bench.action.${kind}`)}
+                    </Button>
+                  </Column>
+                ))}
+                <Column lg={4} md={4} sm={4}>
+                  <Button
+                    kind="tertiary"
+                    disabled={
+                      !selectedRows.length ||
+                      new Set(
+                        selectedRows.map(
+                          (r) =>
+                            data.rows.find((item) => item.id === r.id)
+                              ?.labUnitId,
+                        ),
+                      ).size > 1
+                    }
+                    onClick={() => print(selectedRows)}
+                  >
+                    {t("microbiology.bench.print")}
+                  </Button>
+                </Column>
+              </Grid>
+              <Table aria-label={t("microbiology.worklist.title")}>
+                <TableHead>
+                  <TableRow>
+                    <TableSelectAll {...getSelectionProps()} />
+                    {headers.map((h) => (
+                      <TableHeader
+                        {...getHeaderProps({ header: h })}
+                        key={h.key}
+                      >
+                        {h.header}
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.map((row) => {
+                    const item = data.rows.find((r) => r.id === row.id);
+                    return (
+                      <TableRow key={row.id}>
+                        <TableSelectRow {...getSelectionProps({ row })} />
+                        <TableCell>
+                          <Button
+                            kind="ghost"
+                            onClick={() =>
+                              history.push(
+                                `${MICROBIOLOGY_CASE_PATH}/${item.caseId}?scope=CULTURE${item.cultureId ? `&row=${item.cultureId}` : ""}`,
+                              )
+                            }
+                          >
+                            {item.accessionNumber}
+                          </Button>
+                        </TableCell>
+                        <TableCell>{item.patientName}</TableCell>
+                        <TableCell>
+                          {item.culture?.containerIdentifier ||
+                            item.specimenType}
+                        </TableCell>
+                        <TableCell>
+                          {item.attention.map((a) => (
+                            <Tag key={a}>
+                              {t(`microbiology.bench.attention.${a}`)}
+                            </Tag>
+                          ))}
+                        </TableCell>
+                        <TableCell>
+                          {item.dueAt
+                            ? `${intl.formatDate(new Date(item.dueAt))} ${intl.formatTime(new Date(item.dueAt))}`
+                            : ""}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </Stack>
-            <Table aria-label={t("microbiology.worklist.title")}>
-              <TableHead>
-                <TableRow>
-                  <TableSelectAll {...getSelectionProps()} />
-                  {headers.map((h) => (
-                    <TableHeader {...getHeaderProps({ header: h })} key={h.key}>
-                      {h.header}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const item = data.rows.find((r) => r.id === row.id);
-                  return (
-                    <TableRow key={row.id}>
-                      <TableSelectRow {...getSelectionProps({ row })} />
-                      <TableCell>
-                        <Button
-                          kind="ghost"
-                          onClick={() =>
-                            history.push(
-                              `${MICROBIOLOGY_CASE_PATH}/${item.caseId}?scope=CULTURE${item.cultureId ? `&row=${item.cultureId}` : ""}`,
-                            )
-                          }
-                        >
-                          {item.accessionNumber}
-                        </Button>
-                      </TableCell>
-                      <TableCell>{item.patientName}</TableCell>
-                      <TableCell>
-                        {item.culture?.containerIdentifier || item.specimenType}
-                      </TableCell>
-                      <TableCell>
-                        {item.attention.map((a) => (
-                          <Tag key={a}>
-                            {t(`microbiology.bench.attention.${a}`)}
-                          </Tag>
-                        ))}
-                      </TableCell>
-                      <TableCell>
-                        {item.dueAt
-                          ? `${intl.formatDate(new Date(item.dueAt))} ${intl.formatTime(new Date(item.dueAt))}`
-                          : ""}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Stack>
+          </TableContainer>
         )}
       </DataTable>
       <Pagination

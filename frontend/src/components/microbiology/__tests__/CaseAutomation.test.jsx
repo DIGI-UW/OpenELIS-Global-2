@@ -203,7 +203,7 @@ test("a culture worklist deep link preserves its accession search", async () => 
   };
   renderPage(
     <CultureWorklist service={service} />,
-    "/Microbiology/worklist?grain=cultures&q=OWNED-002",
+    "/Microbiology/worklist?grain=bench&q=OWNED-002",
   );
   expect(
     screen.getByLabelText(messages["microbiology.case.search"]),
