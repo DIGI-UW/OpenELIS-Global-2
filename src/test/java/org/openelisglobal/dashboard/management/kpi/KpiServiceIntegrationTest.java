@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.Before;
@@ -80,6 +82,25 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void tatFiguresKeepEachAnalysisInThePeriodItWasReceived() {
+        // Both analyses were released on 2025-07-07, at 13:00 and 14:00.
+        // Sample 2 arrives at the midnight between the two periods.
+        jdbcTemplate.update("UPDATE clinlims.sample SET received_date = '2025-07-06 10:00' WHERE id = 1");
+        jdbcTemplate.update("UPDATE clinlims.sample SET received_date = '2025-07-07 00:00' WHERE id = 2");
+        ScopeRange scope = new ScopeRange(LocalDate.of(2025, 7, 7), LocalDate.of(2025, 7, 8), LocalDate.of(2025, 7, 5),
+                LocalDate.of(2025, 7, 6));
+
+        ManagementKpis kpis = kpiService.getKpis(scope);
+
+        assertEquals(0, BigDecimal.valueOf(14).compareTo(kpis.medianTat().value()));
+        assertEquals(0, BigDecimal.valueOf(27).compareTo(kpis.medianTat().prior()));
+        assertEquals(Arrays.asList(14.0, null), doubles(kpis.medianTat().spark()));
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(kpis.onTime().value()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(kpis.onTime().prior()));
+        assertEquals(Arrays.asList(100.0, null), doubles(kpis.onTime().spark()));
+    }
+
+    @Test
     public void onTimeByLabUnitKeysLikeTheTatBreakdown() {
         Map<String, BigDecimal> byUnit = kpiService.onTimeByLabUnit(JUNE_2024);
 
@@ -119,6 +140,10 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
         assertEquals(0, BigDecimal.valueOf(40.0).compareTo(kpis.qcPass().value()));
         assertEquals(0, BigDecimal.valueOf(100.0).compareTo(kpis.qcPass().prior()));
+    }
+
+    private static List<Double> doubles(List<BigDecimal> values) {
+        return values.stream().map(v -> v == null ? null : v.doubleValue()).toList();
     }
 
     private static QiConfigView config(int target, int action) {

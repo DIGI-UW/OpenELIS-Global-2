@@ -1,12 +1,15 @@
 package org.openelisglobal.dashboard.management.kpi;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openelisglobal.dashboard.management.ScopeRange;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis.Kpi;
 import org.openelisglobal.dashboard.management.kpi.ManagementKpis.Thresholds;
@@ -18,7 +21,6 @@ import org.openelisglobal.reports.rejection.service.RejectionReportService;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATResult;
 import org.openelisglobal.reports.tat.bean.TATSegment;
-import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.service.TATReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -53,8 +55,14 @@ public class KpiServiceImpl implements KpiService {
     public ManagementKpis getKpis(ScopeRange scope) {
         String interval = ChronoUnit.DAYS.between(scope.from(), scope.to()) > DAILY_SPARK_MAX_DAYS ? "WEEKLY" : "DAILY";
         List<String> periods = periods(scope.from(), scope.to(), interval);
-        return new ManagementKpis(samples(scope, interval, periods), medianTat(scope, interval, periods),
-                onTime(scope, interval, periods), rejection(scope, interval, periods),
+        Timestamp scopeStart = QiReportSupport.startOf(scope.from());
+        // The midnight between the two periods belongs to the current one.
+        Map<Boolean, List<TATResult>> inPrior = tatResults(scope.priorFrom(), scope.to()).stream()
+                .collect(Collectors.partitioningBy(r -> r.getReceived().before(scopeStart)));
+        List<TATResult> current = inPrior.get(false);
+        List<TATResult> prior = inPrior.get(true);
+        return new ManagementKpis(samples(scope, interval, periods), medianTat(current, prior, interval, periods),
+                onTime(current, prior, interval, periods), rejection(scope, interval, periods),
                 qcPass(scope, interval, periods));
     }
 
@@ -66,34 +74,34 @@ public class KpiServiceImpl implements KpiService {
                 align(periods, p -> BigDecimal.valueOf(current.getOrDefault(p, 0L))), null);
     }
 
-    private Kpi medianTat(ScopeRange scope, String interval, List<String> periods) {
-        Map<String, BigDecimal> medians = new HashMap<>();
-        TATTrendResponse trend = tatReportService.getTrend(scope.from(), scope.to(), TATSegment.RECEIPT_TO_VALIDATION,
-                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, interval, null);
-        trend.getSeries()
-                .forEach(series -> series.getDataPoints().forEach(p -> medians.put(p.getPeriod(), p.getMedian())));
-        return new Kpi(tatMedian(scope.from(), scope.to()), tatMedian(scope.priorFrom(), scope.priorTo()),
-                align(periods, medians::get), null);
+    private Kpi medianTat(List<TATResult> current, List<TATResult> prior, String interval, List<String> periods) {
+        Map<String, List<TATResult>> byPeriod = current.stream()
+                .collect(Collectors.groupingBy(r -> periodKey(r, interval)));
+        return new Kpi(median(current), median(prior), align(periods, p -> median(byPeriod.getOrDefault(p, List.of()))),
+                null);
     }
 
-    private BigDecimal tatMedian(LocalDate from, LocalDate to) {
-        return tatReportService.getSummary(from, to, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR,
-                null, null, null, null, null, null, false, null).getMedian();
+    // The TAT report's median: the lower middle value.
+    private static BigDecimal median(List<TATResult> results) {
+        List<BigDecimal> tats = results.stream().map(TATResult::getSelectedSegmentTat).filter(Objects::nonNull).sorted()
+                .toList();
+        return tats.isEmpty() ? null : tats.get((tats.size() - 1) / 2);
     }
 
     // Validated analyses within the QI TAT target, receipt to validation.
-    private Kpi onTime(ScopeRange scope, String interval, List<String> periods) {
+    private Kpi onTime(List<TATResult> current, List<TATResult> prior, String interval, List<String> periods) {
         BigDecimal targetHours = tatTargetHours();
         if (targetHours == null) {
             return new Kpi(null, null, align(periods, p -> null), ON_TIME_THRESHOLDS);
         }
-        List<TATResult> current = tatResults(scope.from(), scope.to());
-        Map<String, long[]> byPeriod = onTimeCounts(current, targetHours,
-                r -> QiReportSupport.periodKey(r.getReceived().toLocalDateTime().toLocalDate(), interval));
+        Map<String, long[]> byPeriod = onTimeCounts(current, targetHours, r -> periodKey(r, interval));
         return new Kpi(onTimePercent(onTimeCounts(current, targetHours, r -> "").get("")),
-                onTimePercent(
-                        onTimeCounts(tatResults(scope.priorFrom(), scope.priorTo()), targetHours, r -> "").get("")),
+                onTimePercent(onTimeCounts(prior, targetHours, r -> "").get("")),
                 align(periods, p -> onTimePercent(byPeriod.get(p))), ON_TIME_THRESHOLDS);
+    }
+
+    private static String periodKey(TATResult result, String interval) {
+        return QiReportSupport.periodKey(result.getReceived().toLocalDateTime().toLocalDate(), interval);
     }
 
     @Override
