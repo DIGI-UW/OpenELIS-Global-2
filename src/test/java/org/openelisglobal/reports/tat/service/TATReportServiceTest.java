@@ -35,6 +35,7 @@ import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendDataPoint;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.test.valueholder.TestSection;
 
 /**
@@ -55,6 +56,9 @@ public class TATReportServiceTest {
 
     @Mock
     private AnalysisService analysisService;
+
+    @Mock
+    private SampleOrganizationService sampleOrganizationService;
 
     @Mock
     private EntityManager entityManager;

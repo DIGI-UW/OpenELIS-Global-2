@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -29,10 +30,7 @@ import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendDataPoint;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendSeries;
 import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
-import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.test.valueholder.TestSection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,8 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class TATReportServiceImpl implements TATReportService {
-
-    private static final Logger logger = LoggerFactory.getLogger(TATReportServiceImpl.class);
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -229,6 +225,9 @@ public class TATReportServiceImpl implements TATReportService {
         }
 
         List<Object[]> rows = query.list();
+        Map<String, String> orderingSites = sampleOrganizationService.getOrganizationNamesBySampleIds(
+                rows.stream().map(row -> ((org.openelisglobal.sample.valueholder.Sample) row[1]).getId())
+                        .filter(Objects::nonNull).collect(Collectors.toSet()));
         List<TATResult> results = new ArrayList<>();
 
         for (Object[] row : rows) {
@@ -244,15 +243,7 @@ public class TATReportServiceImpl implements TATReportService {
                     ? analysis.getSampleItem().getTypeOfSample().getLocalizedName()
                     : "");
 
-            // Ordering site via SampleOrganization lookup
-            try {
-                SampleOrganization sampleOrg = sampleOrganizationService.getDataBySample(sample);
-                if (sampleOrg != null && sampleOrg.getOrganization() != null) {
-                    result.setOrderingSite(sampleOrg.getOrganization().getOrganizationName());
-                }
-            } catch (Exception e) {
-                logger.debug("No organization found for sample {}: {}", sample.getId(), e.getMessage());
-            }
+            result.setOrderingSite(orderingSites.get(sample.getId()));
 
             // Timestamps
             result.setOrderCreated(
