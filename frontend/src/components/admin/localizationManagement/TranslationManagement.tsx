@@ -135,9 +135,15 @@ const TranslationManagement = () => {
   const handleSave = () => {
     if (!editingItem) return;
 
+    const stored = editingItem.translations || {};
+    const changed = Object.fromEntries(
+      Object.entries(editValues).filter(
+        ([locale, value]) => value !== (stored[locale] || ""),
+      ),
+    );
     putToOpenElisServerFullResponse(
       `/rest/localizations/${editingItem.id}/translations`,
-      JSON.stringify(editValues),
+      JSON.stringify(changed),
       (response: Response) => {
         if (response.ok) {
           addNotification({

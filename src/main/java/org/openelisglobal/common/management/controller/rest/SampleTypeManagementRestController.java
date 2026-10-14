@@ -12,6 +12,7 @@ import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
@@ -91,6 +92,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
             this.disposalInstructions = typeOfSample.getDisposalInstructions();
             this.isActive = typeOfSample.getIsActive();
             this.sortOrder = typeOfSample.getSortOrder();
+            this.lastUpdated = StaleSaveGuard.token(typeOfSample.getLastupdated());
         }
 
         // Getters and Setters
@@ -310,6 +312,10 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
+            if (StaleSaveGuard.isStale(sampleTypeDTO.getLastUpdated(), existingTypeOfSample.getLastupdated())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                        ApiResponse.refusedOn("stale", "Someone else changed this sample type after it was opened."));
+            }
             ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refusal = refuseUpdate(existingTypeOfSample,
                     sampleTypeDTO);
             if (refusal != null) {
@@ -677,12 +683,29 @@ public class SampleTypeManagementRestController extends BaseRestController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Test linked to sample type", null));
     }
 
-    /** Unlink a test from this sample type. */
+    /**
+     * Unlink a test from this sample type. An active or orderable test keeps at
+     * least one sample type, the same rule its Basic Info save applies: with none
+     * it can be placed on no sample in order entry (OGC-1460).
+     */
     @org.springframework.web.bind.annotation.DeleteMapping(value = "/sample-types/{sampleTypeId}/tests/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<Void>> removeTestFromSampleType(HttpServletRequest request,
             @PathVariable String sampleTypeId, @PathVariable String testId) {
-        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null) {
+        if (typeOfSampleService.getTypeOfSampleById(sampleTypeId) == null
+                || !org.openelisglobal.testcatalog.controller.rest.TestCatalogNumericIdGuard.isNumericId(testId)) {
             return ResponseEntity.notFound().build();
+        }
+        org.openelisglobal.test.valueholder.Test test = testService.getTestById(testId.trim());
+        if (test != null && (test.isActive() || Boolean.TRUE.equals(test.getOrderable()))) {
+            boolean otherType = typeOfSampleTestService.getTypeOfSampleTestsForTest(testId).stream()
+                    .anyMatch(link -> !sampleTypeId.equals(link.getTypeOfSampleId()));
+            if (!otherType) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(new ApiResponse<>(false,
+                                "this is the only sample type of an active test; deactivate the test or give it another"
+                                        + " sample type first",
+                                null));
+            }
         }
         String userId = getSysUserId(request);
         boolean removed = false;

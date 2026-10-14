@@ -35,11 +35,16 @@ const LinkReagentModal = ({
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (open) {
+      setSelected([]);
+      setError(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (!open || !testId) {
       return;
     }
-    setSelected([]);
-    setError(null);
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
     getFromOpenElisServer("/rest/inventory/items", (res) => {
       const items = Array.isArray(res) ? res : [];
@@ -73,11 +78,17 @@ const LinkReagentModal = ({
     setError(null);
     const statuses = await Promise.all(selected.map((s) => linkOne(s.id)));
     setSaving(false);
-    if (statuses.every((s) => s >= 200 && s < 300)) {
-      setSelected([]);
+    const linked = (status) =>
+      (status >= 200 && status < 300) || status === 409;
+    const failed = selected.filter((_, i) => !linked(statuses[i]));
+    if (failed.length < selected.length) {
       onLinked();
+    }
+    if (failed.length === 0) {
+      setSelected([]);
       onClose();
     } else {
+      setSelected(failed);
       setError(
         intl.formatMessage({ id: "label.testCatalog.reagents.linkError" }),
       );

@@ -191,7 +191,7 @@ public class TestAlertRuleRestControllerIntegrationTest extends BaseWebContextSe
     public void update_changesFields() {
         AlertRuleDto created = controller.create(testId(), req("R1", "ALL", null), authedRequest()).getBody();
         AlertRuleRequest upd = req("R1 renamed", "SPECIFIC_VALUE", "Positive");
-        AlertRuleDto updated = controller.update(testId(), created.id, upd, authedRequest());
+        AlertRuleDto updated = (AlertRuleDto) controller.update(testId(), created.id, upd, authedRequest()).getBody();
         assertEquals("R1 renamed", updated.name);
         assertEquals("SPECIFIC_VALUE", updated.triggerType);
         assertEquals("Positive", updated.triggerValue);
@@ -207,7 +207,7 @@ public class TestAlertRuleRestControllerIntegrationTest extends BaseWebContextSe
     @Test
     public void delete_removesRule() {
         AlertRuleDto created = controller.create(testId(), req("R1", "ALL", null), authedRequest()).getBody();
-        assertEquals(204, controller.delete(testId(), created.id, authedRequest()).getStatusCode().value());
+        assertEquals(204, controller.delete(testId(), created.id, null, authedRequest()).getStatusCode().value());
         assertTrue(controller.list(testId()).isEmpty());
     }
 
@@ -309,8 +309,11 @@ public class TestAlertRuleRestControllerIntegrationTest extends BaseWebContextSe
         String id = rule.get("id").asText();
 
         rule.put("enabled", false);
-        mockMvc.perform(put(alertsPath() + "/" + id).contentType(MediaType.APPLICATION_JSON).content(rule.toString())
-                .session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        MvcResult off = mockMvc
+                .perform(put(alertsPath() + "/" + id).contentType(MediaType.APPLICATION_JSON).content(rule.toString())
+                        .session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false)).andReturn();
+        rule.put("version", json.readTree(off.getResponse().getContentAsString()).get("version").asText());
         rule.put("enabled", true);
         mockMvc.perform(put(alertsPath() + "/" + id).contentType(MediaType.APPLICATION_JSON).content(rule.toString())
                 .session(session)).andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
@@ -389,5 +392,60 @@ public class TestAlertRuleRestControllerIntegrationTest extends BaseWebContextSe
 
         mockMvc.perform(delete(alertsPath() + "/" + id).session(session)).andExpect(status().isNoContent());
         mockMvc.perform(get(alertsPath()).session(session)).andExpect(jsonPath("$.length()").value(0));
+    }
+
+    /**
+     * OGC-1463: an edit from a page loaded before another admin switched the rule
+     * off.
+     */
+    @Test
+    public void http_anEditFromAnOldPageIsRefusedAsStale_andTheRuleStaysOff() throws Exception {
+        mockMvc.perform(post(alertsPath()).contentType(MediaType.APPLICATION_JSON)
+                .content(jsonRule("Two Editors", "ALL").toString()).session(session)).andExpect(status().isCreated());
+        ObjectNode pageA = (ObjectNode) json.readTree(
+                mockMvc.perform(get(alertsPath()).session(session)).andReturn().getResponse().getContentAsString())
+                .get(0);
+        String path = alertsPath() + "/" + pageA.get("id").asText();
+        ObjectNode pageB = pageA.deepCopy();
+        pageB.put("enabled", false);
+        mockMvc.perform(put(path).contentType(MediaType.APPLICATION_JSON).content(pageB.toString()).session(session))
+                .andExpect(status().isOk());
+
+        pageA.put("name", "Two Editors renamed");
+        mockMvc.perform(put(path).contentType(MediaType.APPLICATION_JSON).content(pageA.toString()).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.conflict").value("stale"));
+
+        mockMvc.perform(get(alertsPath()).session(session)).andExpect(jsonPath("$[0].enabled").value(false))
+                .andExpect(jsonPath("$[0].name").value("Two Editors"));
+    }
+
+    /**
+     * OGC-1463 review: a delete from a page loaded before another admin edited the
+     * rule is refused as stale and the rule stays; one with the current version
+     * deletes.
+     */
+    @Test
+    public void http_aDeleteFromAnOldPageIsRefusedAsStale() throws Exception {
+        mockMvc.perform(post(alertsPath()).contentType(MediaType.APPLICATION_JSON)
+                .content(jsonRule("Delete Race", "ALL").toString()).session(session)).andExpect(status().isCreated());
+        ObjectNode pageA = (ObjectNode) json.readTree(
+                mockMvc.perform(get(alertsPath()).session(session)).andReturn().getResponse().getContentAsString())
+                .get(0);
+        String path = alertsPath() + "/" + pageA.get("id").asText();
+        ObjectNode pageB = pageA.deepCopy();
+        pageB.put("name", "Delete Race edited");
+        String current = json.readTree(mockMvc
+                .perform(put(path).contentType(MediaType.APPLICATION_JSON).content(pageB.toString()).session(session))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("version").asText();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(path)
+                .param("version", pageA.get("version").asText()).session(session)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.conflict").value("stale"));
+        mockMvc.perform(get(alertsPath()).session(session))
+                .andExpect(jsonPath("$[0].name").value("Delete Race edited"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(path)
+                .param("version", current).session(session)).andExpect(status().isNoContent());
+        assertTrue(controller.list(testId()).isEmpty());
     }
 }

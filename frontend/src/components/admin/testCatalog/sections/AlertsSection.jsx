@@ -20,10 +20,13 @@ import { Add, Edit, TrashCan } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
   deleteFromOpenElisServer,
 } from "../../../utils/Utils";
 import AlertRuleModal from "./AlertRuleModal";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-949 / OGC-994 (epic OGC-763) — Alerts section: per-test alert rules.
@@ -45,6 +48,7 @@ const AlertsSection = ({ testId }) => {
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [stale, setStale] = useState(false);
 
   const load = useCallback(() => {
     if (!testId) {
@@ -114,7 +118,7 @@ const AlertsSection = ({ testId }) => {
   };
 
   const toggleEnabled = (rule, checked) => {
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/${testId}/alerts/${rule.id}`,
       // explicit whitelist — rule comes from GET and carries server-managed
       // fields; only the editable contract fields ride the PUT
@@ -134,14 +138,21 @@ const AlertsSection = ({ testId }) => {
         notifyRoleId: rule.notifyRoleId,
         acknowledgmentRequired: rule.acknowledgmentRequired,
         enabled: checked,
+        version: rule.version,
       }),
-      (status) => {
+      async (response) => {
+        const status = response ? response.status : 0;
+        const body = response ? await response.json().catch(() => null) : null;
         if (status >= 200 && status < 300) {
           setRules((prev) =>
             prev.map((r) =>
-              r.id === rule.id ? { ...r, enabled: checked } : r,
+              r.id === rule.id
+                ? { ...r, ...(body || {}), enabled: checked }
+                : r,
             ),
           );
+        } else if (isStaleConflict(status, body)) {
+          setStale(true);
         } else {
           setNotification({
             kind: "error",
@@ -161,10 +172,15 @@ const AlertsSection = ({ testId }) => {
     if (!target) {
       return;
     }
+    const version = target.version
+      ? `?version=${encodeURIComponent(target.version)}`
+      : "";
     deleteFromOpenElisServer(
-      `/rest/test-catalog/${testId}/alerts/${target.id}`,
+      `/rest/test-catalog/${testId}/alerts/${target.id}${version}`,
       (status) => {
-        if (status >= 200 && status < 300) {
+        if (status === 409) {
+          setStale(true);
+        } else if (status >= 200 && status < 300) {
           setNotification({
             kind: "success",
             text: intl.formatMessage({
@@ -261,6 +277,15 @@ const AlertsSection = ({ testId }) => {
 
   return (
     <Stack gap={6} data-testid="alerts-section">
+      {stale && (
+        <StaleSaveNotice
+          testId="alerts-stale-save"
+          onRefresh={() => {
+            setStale(false);
+            load();
+          }}
+        />
+      )}
       {notification && (
         <InlineNotification
           kind={notification.kind}

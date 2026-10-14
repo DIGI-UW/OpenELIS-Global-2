@@ -196,5 +196,35 @@ describe("LabelsSection", () => {
         screen.getByText(messages["label.testCatalog.labels.maxLtDefault"]),
       ).toBeInTheDocument();
     });
+
+    /** OGC-1461: a failed save says so and keeps what was typed for a retry. */
+    it("keeps the typed values when the save fails", async () => {
+      mockGets(CONFIG_ONE);
+      renderSection();
+      await waitFor(() =>
+        expect(document.getElementById("max-1")).not.toBeNull(),
+      );
+
+      fireEvent.change(document.getElementById("max-1"), {
+        target: { value: "7" },
+      });
+      putToOpenElisServer.mockImplementation((url, body, cb) => cb(500));
+      fireEvent.click(screen.getByTestId("labels-save"));
+
+      expect(
+        await screen.findByText(messages["label.testCatalog.labels.saveError"]),
+      ).toBeInTheDocument();
+      expect(document.getElementById("max-1")).toHaveValue(7);
+      expect(screen.getByTestId("labels-save")).toBeEnabled();
+
+      putToOpenElisServer.mockImplementation((url, body, cb) => cb(200));
+      fireEvent.click(screen.getByTestId("labels-save"));
+      expect(putToOpenElisServer).toHaveBeenCalledTimes(2);
+      expect(
+        Number(
+          JSON.parse(putToOpenElisServer.mock.calls[1][1]).links[0].maxQty,
+        ),
+      ).toBe(7);
+    });
   });
 });

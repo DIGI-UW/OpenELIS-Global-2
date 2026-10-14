@@ -107,6 +107,15 @@ describe("PanelEditor shell (OGC-224 C2)", () => {
     );
   });
 
+  it("a panel that does not exist says so instead of offering an empty form (OGC-1461)", async () => {
+    mockParams = { panelId: "99999999", section: "basic-info" };
+    wrap();
+    expect(await screen.findByTestId("panel-not-found")).toHaveTextContent(
+      messages["label.panel.notFound"],
+    );
+    expect(screen.queryByRole("button", { name: /^save$/i })).toBeNull();
+  });
+
   it("create mode titles New panel and skips the envelope fetch", async () => {
     mockParams = { panelId: "new", section: "basic-info" };
     wrap();

@@ -10,7 +10,7 @@
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -22,6 +22,7 @@ import AlertRuleModal from "./AlertRuleModal";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -140,5 +141,37 @@ describe("AlertRuleModal scope", () => {
 
     expect(await screen.findByText("Ct Value")).toBeInTheDocument();
     expect(screen.getByText("Saliva")).toBeInTheDocument();
+  });
+
+  /** OGC-1463: an edit carries the rule's version; a stale one is refused in words. */
+  it("sends the rule's version on edit and shows a stale refusal", async () => {
+    serve({ components: [{ id: "c-only", value: "Result" }], sampleTypes: [] });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    renderModal({
+      id: "r1",
+      name: "Critical",
+      triggerType: "CRITICAL",
+      notifyEmail: true,
+      notifyCustomEmail: "lab@example.org",
+      enabled: true,
+      version: "v1",
+    });
+    await screen.findByDisplayValue("Critical");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["button.save"] }),
+    );
+
+    expect(
+      await screen.findByTestId("alert-rule-stale-save"),
+    ).toBeInTheDocument();
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).version,
+    ).toBe("v1");
   });
 });

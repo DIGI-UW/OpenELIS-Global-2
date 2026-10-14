@@ -192,7 +192,9 @@ const LocalizationSection = ({
 
   /**
    * Collapse the drafts into one PUT per localization record, dropping any that
-   * match what is already stored.
+   * match what is already stored. Only the locales the admin changed are sent,
+   * so a translation another admin saved after this page loaded stands
+   * (OGC-1463).
    */
   const pendingSaves = () => {
     const byId = new Map();
@@ -206,7 +208,7 @@ const LocalizationSection = ({
       }
       const batched = byId.get(entry.localizationId) || {
         entry,
-        translations: { ...entry.translations },
+        translations: {},
       };
       batched.translations[localeCode] = drafts[key];
       byId.set(entry.localizationId, batched);

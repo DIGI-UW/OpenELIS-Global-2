@@ -179,6 +179,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             }
         }
         ensureSinglePrimary(testId, sysUserId);
+        retireQcTargetsThatNoLongerFit(testId, sysUserId);
         return baseObjectDAO.getActiveComponentsByTestId(testId);
     }
 
@@ -611,6 +612,19 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             }
         }
         ensureSinglePrimary(testId, sysUserId);
+        retireQcTargetsThatNoLongerFit(testId, sysUserId);
+    }
+
+    /**
+     * A change of the primary component's result type between numeric and coded
+     * retires the QC targets of the old shape, so Results Entry stops prefilling
+     * them and the QC Targets section can save again (OGC-1462).
+     */
+    private void retireQcTargetsThatNoLongerFit(String testId, String sysUserId) {
+        TestResultComponent primary = findPrimaryComponent(testId);
+        boolean quantitative = primary == null
+                || !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType());
+        qcTargetService.retireTargetsNotFitting(testId, quantitative, sysUserId);
     }
 
     private TestResultComponent findPrimaryComponent(String testId) {
