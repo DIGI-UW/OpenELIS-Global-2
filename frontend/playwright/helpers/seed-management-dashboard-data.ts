@@ -1,6 +1,5 @@
-import { execFileSync } from "child_process";
 import { expect, type Page } from "@playwright/test";
-import { resolveDbContainer } from "./db-container";
+import { asInt, psql } from "./db-container";
 import {
   getCsrfToken,
   seedReviewedMicrobiologyCase,
@@ -10,29 +9,7 @@ import { completeAnalysisChain } from "./seed-tat-data";
 
 const PREFIX = "MGMTPERF";
 
-function psql(sql: string): string[] {
-  return execFileSync(
-    "docker",
-    [
-      "exec",
-      "-i",
-      resolveDbContainer(),
-      "psql",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-U",
-      "clinlims",
-      "-d",
-      "clinlims",
-      "-tAc",
-      sql,
-    ],
-    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
-  )
-    .trim()
-    .split("\n")
-    .filter(Boolean);
-}
+const rows = (sql: string) => psql(sql).split("\n").filter(Boolean);
 
 const TEMPLATE_TESTS = `
   SELECT test_id || ',' || sample_type_id FROM (
@@ -55,13 +32,10 @@ const TEMPLATE_TESTS = `
   ORDER BY mapped DESC, test_id
   LIMIT 8`;
 
-const asId = (value: string) => {
-  if (!/^\d+$/.test(value)) throw new Error(`Expected an id, got ${value}`);
-  return value;
-};
-
 async function seedTemplateSamples(page: Page): Promise<string[]> {
-  const tests = psql(TEMPLATE_TESTS).map((row) => row.split(",").map(asId));
+  const tests = rows(TEMPLATE_TESTS).map((row) =>
+    row.split(",").map((id) => asInt(id, "template test")),
+  );
   if (tests.length === 0) throw new Error("No orderable test to seed from");
   const patient = await seedPatient(page);
   const sampleIds: string[] = [];
@@ -72,10 +46,11 @@ async function seedTemplateSamples(page: Page): Promise<string[]> {
     });
     await completeAnalysisChain(page, labNo);
     sampleIds.push(
-      asId(
+      asInt(
         psql(
           `SELECT id FROM clinlims.sample WHERE accession_number = '${labNo.replace(/[^A-Za-z0-9-]/g, "")}'`,
-        )[0],
+        ),
+        "template sample",
       ),
     );
   }
@@ -160,41 +135,37 @@ END
 $seed$;
 ANALYZE clinlims.sample; ANALYZE clinlims.sample_item; ANALYZE clinlims.analysis; ANALYZE clinlims.result;`;
 
-export interface ManagementDashboardVolume {
-  samplesLast30Days: number;
-  analysesLast30Days: number;
-  sectionsLast30Days: number;
-  seededSamples: number;
-}
-
 // Disposable stacks only: the SQL clones of product-made orders are never removed.
 export async function seedManagementDashboardVolume(
   page: Page,
   samples = 5000,
   days = 30,
-): Promise<ManagementDashboardVolume> {
-  const existing = Number(
+) {
+  const [seeded, inWindow] = psql(
+    `SELECT count(*) || ',' || count(*) FILTER (WHERE received_date >= current_date - ${days})
+     FROM clinlims.sample WHERE accession_number LIKE '${PREFIX}%'`,
+  )
+    .split(",")
+    .map(Number);
+  if (inWindow < samples) {
     psql(
-      `SELECT count(*) FROM clinlims.sample WHERE accession_number LIKE '${PREFIX}%'`,
-    )[0],
-  );
-  if (existing < samples) {
-    psql(cloneSql(await seedTemplateSamples(page), existing, samples, days));
+      cloneSql(
+        await seedTemplateSamples(page),
+        seeded,
+        seeded + samples - inWindow,
+        days,
+      ),
+    );
   }
-  const [inScope, analyses, sections] = psql(`
+  const [samplesLast30Days, analysesLast30Days, sectionsLast30Days] = psql(`
     SELECT count(DISTINCT s.id) || ',' || count(a.id) || ',' || count(DISTINCT a.test_sect_id)
     FROM clinlims.sample s
     JOIN clinlims.sample_item si ON si.samp_id = s.id
     JOIN clinlims.analysis a ON a.sampitem_id = si.id
-    WHERE s.received_date >= current_date - ${days}`)[0]
+    WHERE s.received_date >= current_date - ${days}`)
     .split(",")
     .map(Number);
-  return {
-    samplesLast30Days: inScope,
-    analysesLast30Days: analyses,
-    sectionsLast30Days: sections,
-    seededSamples: Math.max(existing, samples),
-  };
+  return { samplesLast30Days, analysesLast30Days, sectionsLast30Days };
 }
 
 // The antibiogram leaves out cases with no culture purpose.
@@ -204,7 +175,13 @@ export async function seedManagementDashboardMicrobiology(
 ): Promise<number> {
   const api = "/api/OpenELIS-Global/rest/microbiology/cases";
   const count = () =>
-    Number(psql("SELECT count(*) FROM clinlims.micro_isolate")[0]);
+    Number(
+      psql(`SELECT count(*) FROM clinlims.micro_isolate i
+        JOIN clinlims.micro_case c ON c.id = i.case_id
+        JOIN clinlims.micro_case_order_detail d ON d.case_id = c.id
+        JOIN clinlims.sample_item si ON si.id = c.sample_item_id
+        WHERE d.culture_purpose = 'CLINICAL_DIAGNOSTIC' AND si.collection_date >= current_date - 30`),
+    );
   for (let missing = isolates - count(); missing > 0; missing -= 1) {
     const seeded = await seedReviewedMicrobiologyCase(page);
     const headers = { "X-CSRF-Token": await getCsrfToken(page) };

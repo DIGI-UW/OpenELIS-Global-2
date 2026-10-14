@@ -1,6 +1,5 @@
-import { writeFile } from "fs/promises";
 import { expect, test } from "../../../helpers/test-base";
-import type { Page, TestInfo } from "@playwright/test";
+import { errors, type Page, type TestInfo } from "@playwright/test";
 import {
   measureBrowserOperation,
   nearestRankPercentile,
@@ -24,10 +23,17 @@ const FAST_ENDPOINTS = [
 const TAT_ENDPOINTS = ["kpis", "workload"];
 const SCOPES = ["30d", "year"];
 const CALLS_PER_ENDPOINT = 3;
+const SAMPLES = 5000;
 const FIRST_MEANINGFUL_PAINT_BUDGET_MS = 2500;
-// Each section loads on its own request; one slower than a second leaves its
-// card blank well after the first paint budget.
 const ENDPOINT_BUDGET_MS = 1000;
+
+type EndpointRow = {
+  endpoint: string;
+  scope: string;
+  status: number;
+  samplesMs: number[];
+  medianMs: number;
+};
 
 const seed = async (page: Page) => {
   expect(
@@ -35,10 +41,12 @@ const seed = async (page: Page) => {
     "Set MANAGEMENT_DASHBOARD_QUALIFICATION_DISPOSABLE=true only for a throwaway stack",
   ).toBe("true");
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  return {
-    ...(await seedManagementDashboardVolume(page)),
+  const volume = {
+    ...(await seedManagementDashboardVolume(page, SAMPLES)),
     isolates: await seedManagementDashboardMicrobiology(page),
   };
+  expect(volume.samplesLast30Days).toBeGreaterThanOrEqual(SAMPLES);
+  return volume;
 };
 
 const timeEndpoint = (page: Page, url: string) =>
@@ -52,7 +60,7 @@ const timeEndpoint = (page: Page, url: string) =>
 // A request the proxy times out keeps running on the server, so an endpoint
 // that fails is not called again.
 const measureEndpoints = async (page: Page, endpoints: string[]) => {
-  const rows = [];
+  const rows: EndpointRow[] = [];
   for (const scope of SCOPES) {
     for (const endpoint of endpoints) {
       const samplesMs: number[] = [];
@@ -77,49 +85,55 @@ const measureEndpoints = async (page: Page, endpoints: string[]) => {
   return rows;
 };
 
+const slowEndpoints = (rows: EndpointRow[], budgetMs: number) =>
+  rows
+    .filter((row) => row.status !== 200 || row.medianMs > budgetMs)
+    .map((row) => `/${row.endpoint}?scope=${row.scope}`);
+
 // First meaningful paint is the KPI strip showing values.
-const measureFirstMeaningfulPaint = async (page: Page) => {
+const paintKpiStrip = async (
+  page: Page,
+): Promise<{ ms?: number; error?: string }> => {
   await page.goto(PAGE, { waitUntil: "commit" });
-  const paint = await (
-    await page.waitForFunction(
-      () => {
-        const strip = document.querySelector('[data-testid="mgmt-kpis"]');
-        if (strip && !strip.querySelector(".cds--skeleton__text")) {
-          return performance.now();
-        }
-        return document.querySelector(
-          '[data-testid="mgmt-dashboard"] .cds--actionable-notification',
-        )
-          ? -1
-          : null;
-      },
-      null,
-      { timeout: 120_000, polling: "raf" },
-    )
-  ).jsonValue();
-  if (paint === -1) throw new Error("The KPI strip failed to load");
-  return paint as number;
+  try {
+    return await (
+      await page.waitForFunction(
+        () => {
+          const strip = document.querySelector('[data-testid="mgmt-kpis"]');
+          if (strip && !strip.querySelector(".cds--skeleton__text")) {
+            return { ms: performance.now() };
+          }
+          const failed = document.querySelector(
+            '[data-testid="mgmt-dashboard"] .cds--actionable-notification',
+          );
+          return failed
+            ? {
+                error: `${failed.closest("[data-testid]:not([data-testid='mgmt-dashboard'])")?.getAttribute("data-testid") ?? "a section"} shows a server error`,
+              }
+            : null;
+        },
+        null,
+        { timeout: 120_000, polling: "raf" },
+      )
+    ).jsonValue();
+  } catch (error) {
+    if (!(error instanceof errors.TimeoutError)) throw error;
+    return { error: "the KPI strip did not paint within 120 s" };
+  }
 };
 
-const attachEvidence = async (
-  testInfo: TestInfo,
-  name: string,
-  evidence: object,
-) => {
-  const path = testInfo.outputPath(`${name}.json`);
-  await writeFile(
-    path,
-    `${JSON.stringify(
+const attachEvidence = (testInfo: TestInfo, name: string, evidence: object) =>
+  testInfo.attach(name, {
+    body: JSON.stringify(
       {
         commit: process.env.APP_SHA || process.env.GITHUB_SHA || "local",
         ...evidence,
       },
       null,
       2,
-    )}\n`,
-  );
-  await testInfo.attach(name, { path, contentType: "application/json" });
-};
+    ),
+    contentType: "application/json",
+  });
 
 test.describe("Management Overview performance at about 5,000 samples over 30 days", () => {
   test("section endpoints answer within a second", async ({
@@ -132,13 +146,7 @@ test.describe("Management Overview performance at about 5,000 samples over 30 da
       volume,
       endpoints,
     });
-    expect(
-      endpoints
-        .filter(
-          (row) => row.status !== 200 || row.medianMs > ENDPOINT_BUDGET_MS,
-        )
-        .map((row) => `/${row.endpoint}?scope=${row.scope}`),
-    ).toEqual([]);
+    expect(slowEndpoints(endpoints, ENDPOINT_BUDGET_MS)).toEqual([]);
   });
 
   test("the KPI strip paints within 2.5 seconds and the TAT endpoints answer within a second", async ({
@@ -150,26 +158,31 @@ test.describe("Management Overview performance at about 5,000 samples over 30 da
     );
     test.setTimeout(30 * 60_000);
     const volume = await seed(page);
-    const firstMeaningfulPaint = await measureBrowserOperation(
-      "first-meaningful-paint-30d",
-      1,
-      P95_MEASURED_ITERATIONS,
-      FIRST_MEANINGFUL_PAINT_BUDGET_MS,
-      () => measureFirstMeaningfulPaint(page),
-    );
-    const endpoints = await measureEndpoints(page, TAT_ENDPOINTS);
+    const probe = await paintKpiStrip(page);
+    const firstMeaningfulPaint = probe.error
+      ? null
+      : await measureBrowserOperation(
+          "first-meaningful-paint-30d",
+          1,
+          P95_MEASURED_ITERATIONS,
+          FIRST_MEANINGFUL_PAINT_BUDGET_MS,
+          async () => {
+            const paint = await paintKpiStrip(page);
+            if (paint.error) throw new Error(paint.error);
+            return paint.ms!;
+          },
+        );
+    const endpoints = probe.error
+      ? []
+      : await measureEndpoints(page, TAT_ENDPOINTS);
     await attachEvidence(testInfo, "management-dashboard-first-paint", {
       volume,
+      probe,
       firstMeaningfulPaint,
       endpoints,
     });
-    expect(firstMeaningfulPaint.passed).toBe(true);
-    expect(
-      endpoints
-        .filter(
-          (row) => row.status !== 200 || row.medianMs > ENDPOINT_BUDGET_MS,
-        )
-        .map((row) => `/${row.endpoint}?scope=${row.scope}`),
-    ).toEqual([]);
+    expect(probe.error).toBeUndefined();
+    expect(firstMeaningfulPaint!.passed).toBe(true);
+    expect(slowEndpoints(endpoints, ENDPOINT_BUDGET_MS)).toEqual([]);
   });
 });

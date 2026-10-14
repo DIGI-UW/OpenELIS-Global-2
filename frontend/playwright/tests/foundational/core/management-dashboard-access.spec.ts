@@ -10,32 +10,29 @@ const PAGE = "/dashboards/management";
 const API = "/api/OpenELIS-Global/rest/dashboards/management";
 const MENU_LINK = 'a[id="menu_reports_management_overview_nav"]';
 
-const forgetStoredScope = (page: Page) =>
-  page.addInitScript(() => {
-    Object.keys(localStorage)
-      .filter((key) => key.startsWith("mgmtDashboard.scope."))
-      .forEach((key) => localStorage.removeItem(key));
-  });
+const openReports = async (page: Page) => {
+  await page.goto("/", { timeout: NAV_TIMEOUT });
+  const nav = page.getByRole("navigation", { name: "Side navigation" });
+  const reports = nav.locator('button[id="menu_reports"]');
+  await expect(reports).toBeVisible({ timeout: NAV_TIMEOUT });
+  if ((await reports.getAttribute("aria-expanded")) !== "true") {
+    await reports.click();
+  }
+  return {
+    nav,
+    firstReport: nav
+      .locator('li:has(> button[id="menu_reports"]) > ul > li')
+      .first(),
+  };
+};
 
 test.describe("Management Overview access", () => {
   test("an administrator finds it first under Reports and sees every section with data", async ({
     page,
   }) => {
     test.setTimeout(120_000);
-    await forgetStoredScope(page);
     await page.clock.install();
-
-    await page.goto("/", { timeout: NAV_TIMEOUT });
-    const nav = page.getByRole("navigation", { name: "Side navigation" });
-    const reports = nav.locator('button[id="menu_reports"]');
-    await expect(reports).toBeVisible({ timeout: NAV_TIMEOUT });
-    if ((await reports.getAttribute("aria-expanded")) !== "true") {
-      await reports.click();
-    }
-    const firstReport = nav
-      .locator('li:has(> button[id="menu_reports"]) > ul > li')
-      .first()
-      .locator("a");
+    const firstReport = (await openReports(page)).firstReport.locator("a");
     await expect(firstReport).toHaveAttribute(
       "id",
       "menu_reports_management_overview_nav",
@@ -73,6 +70,11 @@ test.describe("Management Overview access", () => {
         timeout: LONG_TIMEOUT,
       });
     }
+    await expect(
+      dashboard.locator(
+        ".cds--actionable-notification, .cds--skeleton__text, .cds--skeleton, .cds--loading",
+      ),
+    ).toHaveCount(0, { timeout: LONG_TIMEOUT });
 
     await test.step("Changing the scope refreshes the Updated stamp", async () => {
       const updated = page.getByTestId("mgmt-updated");
@@ -107,16 +109,8 @@ test.describe("Management Overview access", () => {
     test("the menu item is absent, the page is denied and the API refuses", async ({
       page,
     }) => {
-      await page.goto("/", { timeout: NAV_TIMEOUT });
-      const nav = page.getByRole("navigation", { name: "Side navigation" });
-      const reports = nav.locator('button[id="menu_reports"]');
-      await expect(reports).toBeVisible({ timeout: NAV_TIMEOUT });
-      if ((await reports.getAttribute("aria-expanded")) !== "true") {
-        await reports.click();
-      }
-      await expect(
-        nav.locator('li:has(> button[id="menu_reports"]) > ul > li').first(),
-      ).toBeVisible();
+      const { nav, firstReport } = await openReports(page);
+      await expect(firstReport).toBeVisible();
       await expect(nav.locator(MENU_LINK)).toHaveCount(0);
 
       await page.goto(PAGE, { timeout: NAV_TIMEOUT });

@@ -1,25 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
-import type { Locator, Page } from "@playwright/test";
+import { tabTo } from "../../../helpers/accessibility";
 import { LONG_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
-
-async function tabTo(page: Page, target: Locator, maxTabs = 150) {
-  await expect(target).toBeVisible({ timeout: LONG_TIMEOUT });
-  for (let index = 0; index < maxTabs; index += 1) {
-    await page.keyboard.press("Tab");
-    const reached = await target.evaluate(
-      (element) =>
-        element === document.activeElement ||
-        element.contains(document.activeElement),
-    );
-    if (reached) {
-      await expect(target).toBeFocused();
-      return;
-    }
-  }
-  throw new Error(
-    `Keyboard focus did not reach ${await target.evaluate((element) => element.outerHTML.slice(0, 300))}`,
-  );
-}
 
 test.describe("Management Overview keyboard-only workflow", () => {
   test("changes scope, refreshes and opens the CSV picker without a mouse", async ({
@@ -30,11 +11,6 @@ test.describe("Management Overview keyboard-only workflow", () => {
       "The phone layout swaps the scope tabs for a dropdown",
     );
     test.setTimeout(120_000);
-    await page.addInitScript(() => {
-      Object.keys(localStorage)
-        .filter((key) => key.startsWith("mgmtDashboard.scope."))
-        .forEach((key) => localStorage.removeItem(key));
-    });
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/dashboards/management", { timeout: NAV_TIMEOUT });
     const subtitle = page.getByTestId("mgmt-subtitle");

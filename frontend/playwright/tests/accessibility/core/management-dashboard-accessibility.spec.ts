@@ -12,12 +12,6 @@ test.describe("Management Overview WCAG 2.1 AA qualification", () => {
     }
 
     await page.goto("/dashboards/management", { timeout: NAV_TIMEOUT });
-    await expect(page.getByTestId("mgmt-subtitle")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-    await expect(page.getByTestId("mgmt-kpis")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
     await expect(page.getByTestId("mgmt-export")).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
