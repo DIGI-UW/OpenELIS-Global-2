@@ -1,5 +1,6 @@
 import {
   getFromOpenElisServer,
+  postToOpenElisServerForBlob,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 const read = (url) =>
@@ -90,9 +91,52 @@ export const selectReportResult = (id, analysisId, selected) =>
     `${caseUrl(id)}/analyses/${encodeURIComponent(analysisId)}/report-selection`,
     { selected },
   );
-export const releaseReport = (id, type) =>
-  mutate(`${caseUrl(id)}/release/${encodeURIComponent(type)}`, {});
+export const releaseReport = (id, type, confirmedIncomingIds = []) =>
+  mutate(`${caseUrl(id)}/release/${encodeURIComponent(type)}`, {
+    confirmedIncomingIds,
+  });
+export const getIncoming = (id) => read(`${caseUrl(id)}/incoming`);
+export const placeIncoming = (id, item, body) =>
+  mutate(`${caseUrl(id)}/incoming/${encodeURIComponent(item)}/place`, body);
+export const resolveContainer = (code) =>
+  read(
+    `/rest/microbiology/containers/resolve?code=${encodeURIComponent(code)}`,
+  );
+export const failIncoming = (id, item, reason) =>
+  mutate(`${caseUrl(id)}/incoming/${encodeURIComponent(item)}/fail`, {
+    reason,
+  });
+export const searchBench = (query) => read(`/rest/microbiology/bench?${query}`);
+export const benchAction = (body) => mutate(`/rest/microbiology/bench`, body);
+export const undoBench = (id, action) =>
+  mutate(
+    `/rest/microbiology/bench/${encodeURIComponent(id)}/${encodeURIComponent(action)}/undo`,
+    {},
+  );
+export const printBench = (body) =>
+  mutate(`/rest/microbiology/bench/sheets`, body);
+export const getContainerPresets = () =>
+  read("/rest/microbiology/containers/presets");
+export const printContainer = (body) =>
+  new Promise((resolve, reject) =>
+    postToOpenElisServerForBlob(
+      "/rest/microbiology/containers/labels",
+      JSON.stringify(body),
+      resolve,
+      reject,
+    ),
+  );
 export default {
+  getContainerPresets,
+  printContainer,
+  getIncoming,
+  placeIncoming,
+  resolveContainer,
+  searchBench,
+  failIncoming,
+  benchAction,
+  undoBench,
+  printBench,
   getAstWorkspace,
   astAction,
   resolveDst,

@@ -1,3 +1,4 @@
+import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -438,6 +439,12 @@ export default function CaseIsolateWorkspace({
           {!data.isolates.length && <p>{t("empty")}</p>}
           {data.isolates.map((isolate) => (
             <Tile key={isolate.id} data-testid={`isolate-${isolate.id}`}>
+              <ContainerLabelButton
+                detail={detail}
+                kind="ISO"
+                rowId={isolate.id}
+                service={service}
+              />
               <Stack gap={4} style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
                 <h3>
                   {isolate.label} —{" "}

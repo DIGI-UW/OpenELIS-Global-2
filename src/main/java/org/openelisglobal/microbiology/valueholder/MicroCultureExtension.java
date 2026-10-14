@@ -31,6 +31,8 @@ public class MicroCultureExtension extends BaseObject<String> {
     @Column(name = "reason_id")
     @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String reasonId;
+    @Column(name = "undone_at")
+    private Timestamp undoneAt;
     @Column(name = "note")
     private String note;
 }

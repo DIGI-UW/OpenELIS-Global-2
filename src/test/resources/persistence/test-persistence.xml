@@ -55,6 +55,9 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroPatientOrigin</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroPatientOriginDefault</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIncomingItem</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBenchAction</class>
+        <class>org.openelisglobal.workplan.valueholder.WorkplanPrintRecord</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseSample</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseRequest</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseSplit</class>

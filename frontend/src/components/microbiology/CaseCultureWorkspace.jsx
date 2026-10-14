@@ -1,3 +1,4 @@
+import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -474,6 +475,7 @@ export default function CaseCultureWorkspace({
               <TableRow key={e.id}>
                 <TableCell>
                   {numeric(e.extendBy)} {t(`unit.${e.unit}`)}
+                  {e.undoneAt && <Tag>{t("extensionUndone")}</Tag>}
                 </TableCell>
                 <TableCell>{e.reasonName}</TableCell>
                 <TableCell>{e.note}</TableCell>
@@ -492,6 +494,12 @@ export default function CaseCultureWorkspace({
       .map((row) => (
         <AccordionItem key={row.id} title={row.containerIdentifier} open>
           <Tile data-testid={`culture-row-${row.id}`}>
+            <ContainerLabelButton
+              detail={detail}
+              kind="PLT"
+              rowId={row.id}
+              service={service}
+            />
             <Stack gap={4}>
               <h3>
                 {row.containerIdentifier} —{" "}

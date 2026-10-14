@@ -48,6 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormalizedResultImportService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.context.ApplicationEventPublisher events;
+
     private static final String CLASS_NAME = "AnalyzerNormalizedResultImportServiceImpl";
 
     private final AnalyzerService analyzerService;
@@ -98,6 +101,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 contract.messageId());
         if (accepted.isPresent()) {
             AnalyzerDeliveryReceipt receipt = accepted.orElseThrow();
+            events.publishEvent(new org.openelisglobal.microbiology.service.MicroIncomingDelivery(
+                    analyzerResultsService.findBySourceDelivery(contract.bridgeConnectionId(), contract.messageId()),
+                    effectiveActor));
             // The same receipt the first acceptance returned, so a sender that
             // retried because it never saw the first answer gets an identical
             // response rather than a second acceptance.
@@ -126,6 +132,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         receipt.setAcceptedAt(new Timestamp(System.currentTimeMillis()));
         receipt.setBundleJson(fhirContext.newJsonParser().encodeResourceToString(bundle));
         receiptDAO.insert(receipt);
+        events.publishEvent(new org.openelisglobal.microbiology.service.MicroIncomingDelivery(staged, effectiveActor));
         return new AnalyzerNormalizedResultImportSummary(receipt.getId(), analyzer.getId(), staged.size(), held,
                 controlsProcessed);
     }
@@ -143,6 +150,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
         AnalyzerProfilePin pin = analyzer.getPinnedProfile();
         int recoveredCount = 0;
+        java.util.Set<String> recoveredMessages = new java.util.HashSet<>();
         // A row held under another revision of this profile is retried like a new
         // delivery from that revision: it maps only where both revisions read it alike.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
@@ -205,8 +213,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             recovered.setSysUserId(effectiveActor);
             analyzerResultsService.update(recovered);
             if (!recovered.isReadOnly()) {
+                recoveredMessages.add(recovered.getSourceMessageId());
                 recoveredCount++;
             }
+        }
+        for (String message : recoveredMessages) {
+            events.publishEvent(new org.openelisglobal.microbiology.service.MicroIncomingDelivery(
+                    analyzerResultsService.findBySourceDelivery(analyzer.getBridgeConnectionId(), message),
+                    effectiveActor));
         }
         return recoveredCount;
     }
