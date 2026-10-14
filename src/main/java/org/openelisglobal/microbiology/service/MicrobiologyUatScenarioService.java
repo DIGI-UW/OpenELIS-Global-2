@@ -100,6 +100,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrobiologyUatScenarioService {
 
+    private static final String INITIAL_TESTING_SCENARIO = "INITIAL_TESTING";
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
     private static final String WORKLIST_SCENARIO = "WORKLIST";
     private static final String REFERENCE_ADMIN_SCENARIO = "M3";
     private static final String WHONET_EXPORT_SCENARIO = "M4";
@@ -253,11 +256,22 @@ public class MicrobiologyUatScenarioService {
         }
         ensureCollectionDate(sampleItem, performedBy);
         Method method = getOrCreateUatMethod(performedBy);
-        Test test = getOrCreateUatTest(method, performedBy);
+        Test test = INITIAL_TESTING_SCENARIO.equals(scenario)
+                ? getOrCreateUatTest("UAT Microbiology initial assay", true, method, performedBy)
+                : getOrCreateUatTest(method, performedBy);
+        Test followUp = null;
+        if (INITIAL_TESTING_SCENARIO.equals(scenario)) {
+            configureTestingComponents(test, true, performedBy);
+            followUp = getOrCreateUatTest("UAT Microbiology follow-up assay", true, method, performedBy);
+            configureTestingComponents(followUp, false, performedBy);
+            getOrCreateReportableTestAnalyte(followUp, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), followUp, performedBy);
+        }
         ensureInventoryTraceability(test, performedBy);
         ensureSpecimenLostVocabulary(performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
-        ensureRemarkTestResult(test, performedBy);
+        if (!INITIAL_TESTING_SCENARIO.equals(scenario))
+            ensureRemarkTestResult(test, performedBy);
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
         MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), method.getId(), performedBy);
@@ -307,6 +321,7 @@ public class MicrobiologyUatScenarioService {
         form.methodId = method.getId();
         form.sampleTypeId = sampleItem.getTypeOfSample().getId();
         form.cultureTestId = test.getId();
+        form.followUpTestId = followUp == null ? null : followUp.getId();
         form.organismId = referenceAdminData == null ? astReferenceData.organism().getId()
                 : referenceAdminData.organismId();
         form.antibioticId = referenceAdminData == null ? astReferenceData.antibiotic().getId()
@@ -1001,6 +1016,31 @@ public class MicrobiologyUatScenarioService {
         return testAnalyte;
     }
 
+    private void configureTestingComponents(Test test, boolean multiple, String actor) {
+        if (!components.getActiveComponentsByTestId(test.getId()).isEmpty())
+            return;
+        var primary = new org.openelisglobal.testresultcomponent.valueholder.TestResultComponent();
+        primary.setCode("PRIMARY");
+        primary.setLabel("Initial value");
+        primary.setIsPrimary(true);
+        primary.setResultType("N");
+        primary.setSignificantDigits(0);
+        primary.setDisplayOrder(0);
+        var desired = new java.util.ArrayList<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent>();
+        desired.add(primary);
+        if (multiple) {
+            var secondary = new org.openelisglobal.testresultcomponent.valueholder.TestResultComponent();
+            secondary.setCode("SECONDARY");
+            secondary.setLabel("Second value");
+            secondary.setIsPrimary(false);
+            secondary.setResultType("N");
+            secondary.setSignificantDigits(0);
+            secondary.setDisplayOrder(1);
+            desired.add(secondary);
+        }
+        components.saveSampleResults(test.getId(), desired, null, null, actor);
+    }
+
     private void ensureRemarkTestResult(Test test, String performedBy) {
         boolean configured = testResultService.getAllActiveTestResultsPerTest(test).stream()
                 .anyMatch(testResult -> ResultType.REMARK.matches(testResult.getTestResultType()));
@@ -1122,9 +1162,9 @@ public class MicrobiologyUatScenarioService {
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
-                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
-                && !REVIEWED_AST_SCENARIO.equals(normalized) && !WHONET_FILTER_SCENARIO.equals(normalized)
-                && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
+                && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
+                && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
+                && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
             throw new IllegalArgumentException(
                     "scenario must be CASE, MVP, WORKLIST, M3, M4, AST_REVIEWED, WHONET_FILTERS, or AST_ANALYZER_REVIEW");
         }

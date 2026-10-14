@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+  <changeSet id="014-microbiology-case-result-entry" author="openelis">
+    <addColumn tableName="micro_case_analysis" schemaName="clinlims">
+      <column name="entered_by" type="varchar(36)"/>
+      <column name="tested_elsewhere" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="performing_lab_id" type="varchar(36)"/>
+      <column name="performing_user_id" type="varchar(36)"/>
+      <column name="performed_at" type="timestamp"/>
+    </addColumn>
+    <rollback>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="entered_by"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="tested_elsewhere"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performing_lab_id"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performing_user_id"/>
+      <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performed_at"/>
+    </rollback>
+  </changeSet>
+  <changeSet id="014-block-self-validation-site-setting" author="openelis">
+    <preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'blockSelfValidation'</sqlCheck></preConditions>
+    <insert tableName="site_information" schemaName="clinlims">
+      <column name="id" valueSequenceNext="site_information_seq"/>
+      <column name="name" value="blockSelfValidation"/>
+      <column name="lastupdated" valueComputed="${now}"/>
+      <column name="description" value="Block self-validation"/>
+      <column name="value" value="false"/>
+      <column name="encrypted" value="false"/>
+      <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')"/>
+      <column name="value_type" value="boolean"/>
+      <column name="instruction_key" value="instructions.blockSelfValidation"/>
+      <column name="group" value="0"/>
+    </insert>
+    <rollback><delete tableName="site_information" schemaName="clinlims"><where>name = 'blockSelfValidation'</where></delete></rollback>
+  </changeSet>
+</databaseChangeLog>
