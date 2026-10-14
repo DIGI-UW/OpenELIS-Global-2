@@ -338,6 +338,7 @@ describe("LabUnitManagement deactivation into another unit (OGC-1459)", () => {
               isActive: true,
               sortOrder: 1,
               testCount: 4,
+              lastupdated: "1791800000000",
             },
             {
               id: "11",
