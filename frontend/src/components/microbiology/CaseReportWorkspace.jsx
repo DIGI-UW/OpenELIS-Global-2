@@ -196,6 +196,27 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
   return (
     <Stack gap={5}>
       <h3>{t("report")}</h3>
+      {detail.domain === "ENVIRONMENTAL" &&
+        detail.finalReleaseState === "FINAL_RELEASED" && (
+          <Button
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await service.downloadEnvironmentalCertificate(detail.orderId);
+              } catch {
+                setError(true);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {intl.formatMessage({
+              id: "microbiology.environmental.certificate",
+            })}
+          </Button>
+        )}
+
       {error && (
         <InlineNotification
           kind="error"

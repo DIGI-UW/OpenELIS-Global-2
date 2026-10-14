@@ -32,6 +32,8 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
     private org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO cultureRows;
     private final TypeOfSampleService sampleTypes;
     private final MicroCaseActivityDAO activities;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseContextService context;
 
     public MicroCaseWorkspaceServiceImpl(MicroCaseSearchDAO searchDAO, MicroCaseDAO cases, MicroCaseRequestDAO requests,
             MicroCaseMembershipService membership, MicrobiologyCaseAccessService access, TestSectionService units,
@@ -94,6 +96,7 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         f.finalReleaseState = c.getFinalReleaseState();
         f.amendmentOpen = "AMENDMENT_IN_PROGRESS".equals(c.getFinalReleaseState());
         f.canValidate = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
+        context.compile(c, f);
         f.referred = referrals
                 .getWorkspaceReferrals(cultureRows.getSources(id).stream().map(si -> si.getId()).distinct().toList())
                 .stream().anyMatch(r -> r.getStatus() != null && !r.getStatus().isTerminal());
@@ -108,6 +111,7 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
                 s.label = si.getSample().getAccessionNumber() + "-" + si.getSortOrder();
             s.specimenType = si.getTypeOfSample() == null ? null : si.getTypeOfSample().getDescription();
             s.collectionDate = si.getCollectionDate();
+            s.samplingPoint = si.getLocationDetails();
             s.cultureSetNumber = si.getCultureSetNumber();
             f.samples.add(s);
         }
@@ -186,6 +190,9 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         f.birthDate = (Timestamp) v[6];
         f.gender = (String) v[7];
         f.specimenType = (String) v[8];
+        f.domain = org.openelisglobal.common.domain.Domain.normalize((String) v[9]);
+        f.siteName = (String) v[10];
+        f.siteCode = (String) v[11];
         f.labUnitId = c.getLabUnitId();
         f.status = c.getStatus().name();
         f.stage = c.getStage();

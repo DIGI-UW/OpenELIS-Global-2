@@ -11,9 +11,12 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseWorkspaceRestController extends MicrobiologyRestControllerSupport {
     private final MicroCaseWorkspaceService workspace;
+    private final org.openelisglobal.microbiology.service.MicroCaseContextService context;
 
-    public MicroCaseWorkspaceRestController(MicroCaseWorkspaceService workspace) {
+    public MicroCaseWorkspaceRestController(MicroCaseWorkspaceService workspace,
+            org.openelisglobal.microbiology.service.MicroCaseContextService context) {
         this.workspace = workspace;
+        this.context = context;
     }
 
     @InitBinder("query")
@@ -44,6 +47,14 @@ public class MicroCaseWorkspaceRestController extends MicrobiologyRestController
     @GetMapping("/{caseId}/shell")
     public MicroCaseShellForm get(@PathVariable String caseId, HttpServletRequest request) {
         return workspace.get(caseId, authenticatedUserId(request));
+    }
+
+    @PostMapping("/{caseId}/context")
+    public MicroCaseShellForm context(@PathVariable String caseId, @RequestBody MicroCaseContextRequestForm body,
+            HttpServletRequest request) {
+        String actor = authenticatedUserId(request);
+        context.update(caseId, body, actor);
+        return workspace.get(caseId, actor);
     }
 
     @PostMapping("/{caseId}/transfer")

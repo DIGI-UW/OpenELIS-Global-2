@@ -43,4 +43,6 @@
   <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
 
   <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
+  <!-- M8 consumes the case structure and site routing above, including on fresh installs. -->
+  <include file="liquibase/3.5.x.x/125-amr-v2-environmental-migration.xml"/>
 </databaseChangeLog>

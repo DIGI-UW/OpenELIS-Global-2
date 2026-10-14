@@ -65,6 +65,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
             FIRST_ISOLATE_14_DAY, 14, FIRST_ISOLATE_30_DAY, 30);
     private static final Set<String> WHONET_INTERPRETATIONS = Set.of("S", "I", "R");
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroSurveillanceDAO surveillance;
+    @org.springframework.beans.factory.annotation.Value("${org.openelisglobal.microbiology.whonet.reportingTracks:Bacterial}")
+    private String reportingTracks = "Bacterial";
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.program.service.ProgramService programs;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseOrderDetailDAO caseOrderDetailDAO;
     private final MicroIsolateDAO isolateDAO;
@@ -96,15 +102,28 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         NormalizedQuery query = normalize(requestedQuery);
         Population population = loadPopulation(query);
 
+        var originalSpecimens = surveillance.originalSpecimens(population.cases.stream().map(MicroCase::getId).toList())
+                .stream().collect(Collectors.toMap(v -> (String) v[0], Function.identity()));
+        var externalSamples = Set
+                .copyOf(surveillance.externalSampleIds(population.cases.stream().map(MicroCase::getId).toList()));
         List<Candidate> candidates = new ArrayList<>();
         for (MicroCase microCase : population.cases) {
             PatientContext context = population.contextsByCase.getOrDefault(microCase.getId(), new PatientContext());
+            if (context.negative)
+                continue;
             for (MicroIsolate isolate : valuesFor(population.isolatesByCase, microCase.getId())) {
-                candidates.add(new Candidate(microCase, isolate, context));
+                var original = originalSpecimens.get(isolate.getId());
+                boolean received = isolate.getReceivedFromOrganizationId() != null;
+                candidates.add(new Candidate(microCase, isolate, context,
+                        received ? original == null ? "" : safe((String) original[1]) : context.specimenTypeId,
+                        received ? original == null ? "" : safe((String) original[2]) : context.specimenType,
+                        received ? original == null ? "" : safe((String) original[3]) : context.specimenTypeLabel,
+                        externalSamples.contains(safe(isolate.getSampleItemId()))
+                                || externalSamples.contains(safe(isolate.getSourceSampleItemId()))));
             }
         }
-        candidates = candidates.stream().filter(
-                candidate -> query.specimen.isEmpty() || query.specimen.contains(candidate.context.specimenTypeId))
+        candidates = candidates.stream()
+                .filter(candidate -> query.specimen.isEmpty() || query.specimen.contains(candidate.specimenTypeId()))
                 .toList();
         int afterSpecimen = candidates.size();
         candidates = candidates.stream().filter(
@@ -116,12 +135,15 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 .toList();
         int afterPatientOrigin = candidates.size();
         int clinicalPurposeCases = countCasesWithPurpose(population.cases, population.contextsByCase,
-                MicroCulturePurpose.CLINICAL_DIAGNOSTIC.name());
+                MicroCulturePurpose.DIAGNOSTIC.name());
         int screeningPurposeCases = countCasesWithPurpose(population.cases, population.contextsByCase,
-                MicroCulturePurpose.ACTIVE_SCREENING.name());
+                MicroCulturePurpose.SCREENING.name());
         int unspecifiedPurposeCases = population.cases.size() - clinicalPurposeCases - screeningPurposeCases;
-        candidates = candidates.stream().filter(candidate -> isPurposeIncluded(candidate.context.culturePurpose,
-                query.includeScreening, query.includeUnspecified)).toList();
+        candidates = candidates.stream()
+                .filter(candidate -> MicroSurveillancePopulation.whonetPurpose(candidate.context.culturePurpose,
+                        candidate.context.environmental, query.includeEnvironmentalIsolates, query.includeScreening,
+                        query.surveyProgramIds.contains(candidate.microCase.getProgramId())))
+                .toList();
         int afterCulturePurpose = candidates.size();
         candidates = candidates.stream()
                 .filter(candidate -> query.significance.contains(candidate.isolate.getSignificance())).toList();
@@ -150,15 +172,58 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
         List<WHONetRow> exportRows = new ArrayList<>();
         List<MicroWhonetPreviewRowForm> previewRows = new ArrayList<>();
+        var originMappings = indexBy(patientOriginDAO.getByCodes(population.contextsByCase.values().stream()
+                .map(c -> c.patientOrigin).filter(this::hasText).distinct().toList()), MicroPatientOrigin::getCode);
+        for (var context : population.contextsByCase.values()) {
+            var origin = originMappings.get(context.patientOrigin);
+            context.originCode = origin == null ? "" : safe(origin.getWhonetCode());
+        }
+        for (var c : population.cases) {
+            var context = population.contextsByCase.get(c.getId());
+            if (!context.negative || !query.organism.isEmpty()
+                    || !query.specimen.isEmpty() && !query.specimen.contains(context.specimenTypeId)
+                    || !query.origin.isEmpty() && !query.origin.contains(context.patientOrigin)
+                    || !MicroSurveillancePopulation.whonetPurpose(c.getCulturePurpose(), context.environmental,
+                            query.includeEnvironmentalIsolates, query.includeScreening,
+                            query.surveyProgramIds.contains(c.getProgramId())))
+                continue;
+            if (context.environmental && !hasText(context.originCode)) {
+                addWarning(warnings, "ORIGIN_MAPPING_REQUIRED", "patient-origins", "ENVIRONMENTAL", context.siteName,
+                        1);
+                continue;
+            }
+            if (!hasText(context.specimenType)) {
+                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", context.specimenTypeId,
+                        context.specimenTypeLabel, 1);
+                continue;
+            }
+            exportRows.add(new WHONetRow(context.nationalId, context.firstName, context.lastName, context.gender,
+                    context.birthDate, context.enteredDate, context.accessionNumber, context.collectionDate,
+                    context.specimenType, "", "", "NEGATIVE", "", context.latitude, context.longitude)
+                    .microbiologyContext(context.originCode, context.culturePurpose, "LOCAL", context.siteCode,
+                            context.siteName));
+            var previewRow = new MicroWhonetPreviewRowForm();
+            previewRow.caseId = c.getId();
+            previewRow.accessionNumber = context.accessionNumber;
+            previewRow.specimenType = context.specimenType;
+            previewRow.interpretation = "NEGATIVE";
+            previewRows.add(previewRow);
+        }
         int exportableIsolates = 0;
         int excludedRows = candidatesWithoutDedupDate.size();
         for (Candidate candidate : candidates) {
             List<MicroAstReading> readings = readingsFor(candidate, astData);
-            if (!hasText(candidate.context.specimenType)) {
+            if (candidate.context.environmental && !hasText(candidate.context.originCode)) {
+                excludedRows += Math.max(1, readings.size());
+                addWarning(warnings, "ORIGIN_MAPPING_REQUIRED", "patient-origins", "ENVIRONMENTAL",
+                        candidate.context.siteName, Math.max(1, readings.size()));
+                continue;
+            }
+            if (!hasText(candidate.specimenType())) {
                 int excluded = Math.max(1, readings.size());
                 excludedRows += excluded;
-                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", candidate.context.specimenTypeId,
-                        candidate.context.specimenTypeLabel, excluded);
+                addWarning(warnings, "SPECIMEN_MAPPING_REQUIRED", "specimen-types", candidate.specimenTypeId(),
+                        candidate.specimenTypeLabel(), excluded);
                 continue;
             }
             Optional<MicroOrganism> organism = Optional
@@ -172,6 +237,25 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 addWarning(warnings, "ORGANISM_MAPPING_REQUIRED", "organisms", candidate.isolate.getOrganismId(),
                         organism.map(MicroOrganism::getDisplayName).orElse(candidate.isolate.getIsolateLabel()),
                         excluded);
+                continue;
+            }
+            if (readings.isEmpty() && "NTM".equals(organism.get().getSusceptibilityProtocol())) {
+                var context = candidate.context;
+                exportRows.add(new WHONetRow(context.nationalId, context.firstName, context.lastName, context.gender,
+                        context.birthDate, context.enteredDate, context.accessionNumber, context.collectionDate,
+                        candidate.specimenType(), "", organism.get().getWhonetCode(), "NTM", "", context.latitude,
+                        context.longitude)
+                        .microbiologyContext(context.originCode, context.culturePurpose, candidate.external ? "EXTERNAL"
+                                : candidate.isolate.getReceivedFromOrganizationId() == null ? "LOCAL" : "REFERRED_IN",
+                                context.siteCode, context.siteName));
+                var row = new MicroWhonetPreviewRowForm();
+                row.caseId = candidate.microCase.getId();
+                row.isolateId = candidate.isolate.getId();
+                row.accessionNumber = context.accessionNumber;
+                row.organismCode = organism.get().getWhonetCode();
+                row.interpretation = "NTM";
+                previewRows.add(row);
+                exportableIsolates++;
                 continue;
             }
             if (readings.isEmpty()) {
@@ -233,10 +317,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         int first = Math.min((query.page - 1) * query.pageSize, previewRows.size());
         int last = Math.min(first + query.pageSize, previewRows.size());
         preview.rows.addAll(previewRows.subList(first, last));
-        return new MicroWhonetDataset(preview, exportRows,
-                new MicroWhonetExportSelection(query.specimen, query.organism, query.origin, query.significance,
-                        query.includeScreening, query.includeUnspecified, query.dedupBasis, query.dedupScope,
-                        query.excludeContaminants, query.profileSensitivity));
+        var selection = new MicroWhonetExportSelection(query.specimen, query.organism, query.origin, query.significance,
+                query.includeScreening, query.includeUnspecified, query.dedupBasis, query.dedupScope,
+                query.excludeContaminants, query.profileSensitivity);
+        selection.setIncludeEnvironmentalIsolates(query.includeEnvironmentalIsolates);
+        selection.setSurveyProgramIds(query.surveyProgramIds);
+        return new MicroWhonetDataset(preview, exportRows, selection);
     }
 
     @Override
@@ -244,6 +330,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     public MicroWhonetFilterOptionsForm getFilterOptions(MicroWhonetExportQueryForm requestedQuery) {
         Population population = loadPopulation(normalize(requestedQuery));
         MicroWhonetFilterOptionsForm options = new MicroWhonetFilterOptionsForm();
+        options.surveyPrograms = programs.getAll().stream()
+                .filter(p -> p.isShowOnMicroCase() && "Y".equals(p.getIsActive()))
+                .map(p -> new MicroWhonetFilterOptionForm(p.getId(), p.getProgramName())).toList();
 
         Map<String, String> specimenLabels = new HashMap<>();
         for (PatientContext context : population.contextsByCase.values()) {
@@ -281,11 +370,19 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private Population loadPopulation(NormalizedQuery query) {
-        List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByCollectionDateRange(query.fromInclusive,
-                query.toExclusive);
+        List<MicroCase> cases = caseDAO.getFinalizedByCollectionDateRange(query.fromInclusive, query.toExclusive);
         if (cases.isEmpty()) {
             return new Population(List.of(), Map.of(), List.of(), Map.of(), Map.of());
         }
+        var metadata = surveillance.contexts(cases.stream().map(MicroCase::getId).toList()).stream()
+                .collect(Collectors.toMap(v -> (String) v[0], Function.identity()));
+        Set<String> tracks = java.util.Arrays.stream(reportingTracks.split(",")).map(String::trim)
+                .collect(Collectors.toSet());
+        cases = cases.stream()
+                .filter(c -> metadata.containsKey(c.getId()) && tracks.contains(metadata.get(c.getId())[2]))
+                .filter(c -> query.includeEnvironmentalIsolates || org.openelisglobal.common.domain.Domain.fromRaw(
+                        (String) metadata.get(c.getId())[1]) != org.openelisglobal.common.domain.Domain.ENVIRONMENTAL)
+                .toList();
         List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
         List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).filter(this::hasText).distinct()
                 .toList();
@@ -295,12 +392,44 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 MicroCaseOrderDetail::getCaseId);
         Map<String, PatientContext> contextsByCase = new LinkedHashMap<>();
         for (MicroCase microCase : cases) {
-            contextsByCase.put(microCase.getId(),
-                    patientContext(patientContextsBySampleItem.get(microCase.getSampleItemId()),
-                            detailsByCase.get(microCase.getId())));
+            var context = patientContext(patientContextsBySampleItem.get(microCase.getSampleItemId()),
+                    detailsByCase.get(microCase.getId()));
+            context.culturePurpose = microCase.getCulturePurpose();
+            var meta = metadata.get(microCase.getId());
+            context.track = (String) meta[2];
+            context.environmental = org.openelisglobal.common.domain.Domain
+                    .fromRaw((String) meta[1]) == org.openelisglobal.common.domain.Domain.ENVIRONMENTAL;
+            if (context.environmental) {
+                context.patientId = "";
+                context.nationalId = "";
+                context.firstName = "";
+                context.lastName = "";
+                context.gender = "";
+                context.birthDate = "";
+                context.siteCode = safe((String) meta[3]);
+                context.siteName = safe((String) meta[4]);
+                context.latitude = safe((String) meta[5]);
+                context.longitude = safe((String) meta[6]);
+                context.patientOrigin = "ENVIRONMENTAL";
+            }
+            contextsByCase.put(microCase.getId(), context);
         }
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
                 MicroIsolate::getCaseId);
+        var outcomes = surveillance.outcomes(caseIds).stream().collect(
+                Collectors.groupingBy(v -> (String) v[0], Collectors.mapping(v -> (String) v[1], Collectors.toList())));
+        for (var c : cases) {
+            var cultureOutcomes = outcomes.getOrDefault(c.getId(), List.of());
+            var caseIsolates = valuesFor(isolatesByCase, c.getId());
+            contextsByCase.get(c.getId()).negative = !cultureOutcomes.isEmpty() && ((caseIsolates.isEmpty()
+                    && cultureOutcomes.stream().allMatch(o -> "NO_GROWTH".equals(o) || "CONTAMINATED".equals(o)))
+                    || (!caseIsolates.isEmpty()
+                            && caseIsolates.stream().allMatch(i -> "CONTAMINANT".equals(i.getSignificance()))));
+        }
+        cases = cases.stream().filter(c -> !MicroSurveillancePopulation.excludedCulture(
+                contextsByCase.get(c.getId()).track, outcomes.getOrDefault(c.getId(), List.of()),
+                valuesFor(isolatesByCase, c.getId()).stream().anyMatch(i -> i.getReceivedFromOrganizationId() != null)))
+                .toList();
         List<MicroIsolate> allIsolates = cases.stream()
                 .flatMap(value -> valuesFor(isolatesByCase, value.getId()).stream()).toList();
         List<String> organismIds = allIsolates.stream().map(MicroIsolate::getOrganismId).filter(this::hasText)
@@ -343,8 +472,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         int pageSize = List.of(20, 50, 100).contains(query.pageSize) ? query.pageSize : 20;
         ZoneId zone = ZoneId.systemDefault();
         return new NormalizedQuery(from, to, specimen, organism, origin, significance, query.includeScreening,
-                query.includeUnspecified, dedup, dedupBasis, dedupScope, query.excludeContaminants, profileSensitivity,
-                page, pageSize, Timestamp.from(from.atStartOfDay(zone).toInstant()),
+                query.includeUnspecified, query.includeEnvironmentalIsolates, normalizeValues(query.surveyProgramIds),
+                dedup, dedupBasis, dedupScope, query.excludeContaminants, profileSensitivity, page, pageSize,
+                Timestamp.from(from.atStartOfDay(zone).toInstant()),
                 Timestamp.from(to.plusDays(1).atStartOfDay(zone).toInstant()));
     }
 
@@ -410,13 +540,17 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         Map<String, LocalDate> firstByPatientOrganism = new HashMap<>();
         List<Candidate> included = new ArrayList<>();
         for (Candidate candidate : sorted) {
+            if (candidate.context.environmental) {
+                included.add(candidate);
+                continue;
+            }
             String patientKey = hasText(candidate.context.patientId) ? candidate.context.patientId
                     : "UNKNOWN:" + candidate.isolate.getId();
             String organismKey = hasText(candidate.isolate.getOrganismId()) ? candidate.isolate.getOrganismId()
                     : "UNKNOWN:" + candidate.isolate.getId();
             String key = patientKey + "|" + organismKey;
             if (SAME_SOURCE.equals(query.dedupScope)) {
-                String sourceKey = hasText(candidate.context.specimenTypeId) ? candidate.context.specimenTypeId
+                String sourceKey = hasText(candidate.specimenTypeId()) ? candidate.specimenTypeId()
                         : "UNKNOWN:" + candidate.isolate.getId();
                 key += "|SOURCE:" + sourceKey;
             }
@@ -506,9 +640,13 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
             MicroAstReading reading, String interpretation) {
         PatientContext context = candidate.context;
         return new WHONetRow(context.nationalId, context.firstName, context.lastName, context.gender, context.birthDate,
-                context.enteredDate, context.accessionNumber, context.collectionDate, context.specimenType,
+                context.enteredDate, context.accessionNumber, context.collectionDate, candidate.specimenType(),
                 antibiotic.getWhonetCode(), organism.getWhonetCode(), interpretation, safe(reading.getMethod()),
-                context.latitude, context.longitude);
+                context.latitude, context.longitude)
+                .microbiologyContext(context.originCode, context.culturePurpose,
+                        candidate.external ? "EXTERNAL"
+                                : candidate.isolate.getReceivedFromOrganizationId() != null ? "REFERRED_IN" : "LOCAL",
+                        context.siteCode, context.siteName);
     }
 
     private MicroWhonetPreviewRowForm toPreviewRow(Candidate candidate, MicroOrganism organism,
@@ -517,7 +655,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         row.caseId = candidate.microCase.getId();
         row.isolateId = candidate.isolate.getId();
         row.accessionNumber = candidate.context.accessionNumber;
-        row.specimenType = candidate.context.specimenType;
+        row.specimenType = candidate.specimenType();
         row.organismCode = organism.getWhonetCode();
         row.antibioticCode = antibiotic.getWhonetCode();
         row.interpretation = interpretation;
@@ -535,16 +673,6 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
             PatientContext context = contextsByCase.get(microCase.getId());
             return context != null && purpose.equals(context.culturePurpose);
         }).count();
-    }
-
-    private boolean isPurposeIncluded(String purpose, boolean includeScreening, boolean includeUnspecified) {
-        if (MicroCulturePurpose.CLINICAL_DIAGNOSTIC.name().equals(purpose)) {
-            return true;
-        }
-        if (MicroCulturePurpose.ACTIVE_SCREENING.name().equals(purpose)) {
-            return includeScreening;
-        }
-        return includeUnspecified;
     }
 
     private String toWhonetInterpretation(String interpretation) {
@@ -618,8 +746,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private record NormalizedQuery(LocalDate from, LocalDate to, List<String> specimen, List<String> organism,
             List<String> origin, List<String> significance, boolean includeScreening, boolean includeUnspecified,
-            String dedup, String dedupBasis, String dedupScope, boolean excludeContaminants, String profileSensitivity,
-            int page, int pageSize, Timestamp fromInclusive, Timestamp toExclusive) {
+            boolean includeEnvironmentalIsolates, List<String> surveyProgramIds, String dedup, String dedupBasis,
+            String dedupScope, boolean excludeContaminants, String profileSensitivity, int page, int pageSize,
+            Timestamp fromInclusive, Timestamp toExclusive) {
     }
 
     private record Population(List<MicroCase> cases, Map<String, List<MicroIsolate>> isolatesByCase,
@@ -627,7 +756,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
             Map<String, MicroOrganism> organismsById) {
     }
 
-    private record Candidate(MicroCase microCase, MicroIsolate isolate, PatientContext context) {
+    private record Candidate(MicroCase microCase, MicroIsolate isolate, PatientContext context, String specimenTypeId,
+            String specimenType, String specimenTypeLabel, boolean external) {
     }
 
     private record AstData(Map<String, List<MicroAstRun>> reportableRunsByIsolate,
@@ -635,6 +765,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private static class PatientContext {
+        private boolean environmental;
+        private boolean negative;
+        private String originCode;
+        private String track;
+        private String siteCode = "";
+        private String siteName = "";
         private String patientId;
         private String nationalId;
         private String firstName;

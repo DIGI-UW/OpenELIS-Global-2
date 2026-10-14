@@ -94,6 +94,7 @@ function IsolateAction({
     purpose: "LABEL",
     sampleTypeId:
       options.sampleTypes.length === 1 ? options.sampleTypes[0].id : "",
+    originalSpecimenTypeId: isolate?.originalSpecimenTypeId || "",
     sendingOrganizationId: isolate?.sendingOrganizationId || "",
     reportedOrganismId: isolate?.reportedOrganismId || "",
     reportedOrganismText: isolate?.reportedOrganismText || "",
@@ -175,7 +176,8 @@ function IsolateAction({
               Number(draft.confidence) <= 100)) &&
           (action.kind !== "reidentify" || !!draft.reason.trim())
         : action.kind === "received-origin"
-          ? !!draft.sendingOrganizationId &&
+          ? !!draft.originalSpecimenTypeId &&
+            !!draft.sendingOrganizationId &&
             (!!draft.reportedOrganismId || !!draft.reportedOrganismText.trim())
           : action.kind === "acknowledge"
             ? !!draft.reason.trim()
@@ -275,6 +277,10 @@ function IsolateAction({
         )}
         {action.kind === "received-origin" && (
           <>
+            {combo(
+              "originalSpecimenTypeId",
+              options.originalSpecimenTypes || [],
+            )}
             {combo("sendingOrganizationId", options.organizations)}
             {combo("reportedOrganismId", options.organisms)}
             {input("reportedOrganismText")}
@@ -492,6 +498,12 @@ export default function CaseIsolateWorkspace({
                   <>
                     <Tag type="teal">{t("receivedGrowth")}</Tag>
                     <dl>
+                      <dt>{t("originalSpecimenTypeId")}</dt>
+                      <dd>
+                        {(options.originalSpecimenTypes || []).find(
+                          (o) => o.id === isolate.originalSpecimenTypeId,
+                        )?.value || t("notAvailable")}
+                      </dd>
                       <dt>{t("sendingOrganizationId")}</dt>
                       <dd>
                         {isolate.sendingOrganizationName || t("notAvailable")}

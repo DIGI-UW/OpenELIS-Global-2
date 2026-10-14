@@ -16,20 +16,4 @@
       <dropColumn tableName="micro_case_analysis" schemaName="clinlims" columnName="performed_at"/>
     </rollback>
   </changeSet>
-  <changeSet id="014-block-self-validation-site-setting" author="openelis">
-    <preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'blockSelfValidation'</sqlCheck></preConditions>
-    <insert tableName="site_information" schemaName="clinlims">
-      <column name="id" valueSequenceNext="site_information_seq"/>
-      <column name="name" value="blockSelfValidation"/>
-      <column name="lastupdated" valueComputed="${now}"/>
-      <column name="description" value="Block self-validation"/>
-      <column name="value" value="false"/>
-      <column name="encrypted" value="false"/>
-      <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')"/>
-      <column name="value_type" value="boolean"/>
-      <column name="instruction_key" value="instructions.blockSelfValidation"/>
-      <column name="group" value="0"/>
-    </insert>
-    <rollback><delete tableName="site_information" schemaName="clinlims"><where>name = 'blockSelfValidation'</where></delete></rollback>
-  </changeSet>
 </databaseChangeLog>

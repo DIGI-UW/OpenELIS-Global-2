@@ -17,5 +17,5 @@ public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
     List<MicroCase> getOpenCases();
 
-    List<MicroCase> getFinalizedBacteriologyByCollectionDateRange(Timestamp fromInclusive, Timestamp toExclusive);
+    List<MicroCase> getFinalizedByCollectionDateRange(Timestamp fromInclusive, Timestamp toExclusive);
 }

@@ -44,6 +44,8 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
     private final MicroIsolateDAO isolateDAO;
     private final ResultService resultService;
     private final AlertService alertService;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.observationhistory.service.ObservationHistoryService observations;
 
     public MicroCriticalCommunicationServiceImpl(MicroCriticalCommunicationDAO communicationDAO, MicroCaseDAO caseDAO,
             MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO, ResultService resultService,
@@ -70,11 +72,20 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
             String targetId, String recipient, String recipientContact, String communicationMethod, String message,
             boolean followUpNeeded, String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
-        MicroCaseServiceImpl.requireText(recipient, "recipient");
         MicroCaseServiceImpl.requireText(communicationMethod, "communicationMethod");
         MicroCaseServiceImpl.requireText(message, "message");
         MicroCase microCase = caseDAO.get(caseId)
                 .orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
+        if (microCase.getSiteId() != null) {
+            recipient = observations.getRawValueForSample(
+                    org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType.ENV_CONTACT_PERSON,
+                    microCase.getSampleId());
+            recipientContact = observations.getRawValueForSample(
+                    org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType.ENV_CONTACT_PHONE,
+                    microCase.getSampleId());
+            MicroCaseServiceImpl.requireText(recipientContact, "MICROBIOLOGY_REQUESTER_CONTACT_REQUIRED");
+        }
+        MicroCaseServiceImpl.requireText(recipient, "recipient");
         MicroCriticalCommunicationTargetType resolvedTargetType = targetType == null
                 ? MicroCriticalCommunicationTargetType.CASE
                 : targetType;

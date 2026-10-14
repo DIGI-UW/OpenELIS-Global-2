@@ -133,7 +133,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.1) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.12.1) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -348,7 +348,7 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (v1.8.1)
+> **Full Document:** `.specify/memory/constitution.md` (v1.12.1)
 
 The constitution defines 9 core principles that ALL code changes MUST follow:
 
@@ -508,8 +508,25 @@ complex logic.
 
 ### VI. Database Schema Management
 
-**Rule:** All database changes MUST go through Liquibase. NO direct DDL/DML in
-production.
+**Rule:** Database schema changes and conversions of existing historical records
+MUST go through Liquibase. Concepts, catalogs, and configuration defaults MUST
+use configuration files and application configuration loaders.
+
+**Choose the correct path before writing a migration:**
+
+- Tables, columns, indexes, and constraints: Liquibase.
+- Converting existing records to a new schema: Liquibase, with explicit
+  preservation and rollback rules. This does not permit seeding new vocabulary.
+- Dictionary categories and entries, test catalogs, reporting tracks, label
+  presets, and settings defaults: configuration loaders. Inspect the existing
+  handlers and [configuration guide](docs/configuration/README.md) first; extend
+  the loader when a domain is missing.
+- Do not seed or manage concepts through Liquibase `insert`, SQL inserts,
+  `loadData`, or `loadUpdateData`. Existing seed migrations are legacy code, not
+  examples to copy.
+- Configuration imports must be repeatable, preserve referenced IDs and local
+  customizations, and test fresh installation, reload, and upgrade behavior.
+  Moving an existing catalog must not delete or recreate referenced concepts.
 
 **How:**
 
@@ -2347,6 +2364,8 @@ Before creating PR, verify ALL items:
 
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
+    - No concept, catalog, or configuration-default seeds in Liquibase;
+      configuration loaders cover fresh installation, reload, and upgrades
 
 13. **FHIR Resources Validated:**
 
@@ -2501,6 +2520,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-09-29 **Constitution Version:** 1.12.0 **Maintained By:**
+**Last Updated:** 2026-10-14 **Constitution Version:** 1.12.1 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

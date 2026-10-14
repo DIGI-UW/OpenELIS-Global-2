@@ -320,7 +320,9 @@ describe("case testing workspace", () => {
     await screen.findByText(messages["microbiology.testing.saveError"]);
     expect(screen.getByLabelText("New note")).toHaveValue("Bench observation");
     fireEvent.click(screen.getByRole("button", { name: "Save note" }));
-    await screen.findByText("Technician");
+    await within(screen.getByRole("table", { name: "Case notes" })).findByText(
+      "Technician",
+    );
     expect(screen.getByLabelText("New note")).toHaveValue("");
     expect(api.addNote).toHaveBeenLastCalledWith(
       "case-1",
