@@ -19,5 +19,10 @@ public interface MicroIsolateService {
             MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
             String identificationMethod, BigDecimal identificationConfidence, String reason, String performedBy);
 
+    MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
+            String identificationMethod, BigDecimal identificationConfidence, String reason,
+            java.sql.Timestamp identifiedAt, String performedBy);
+
     List<MicroIsolate> getIsolatesForCase(String caseId);
 }

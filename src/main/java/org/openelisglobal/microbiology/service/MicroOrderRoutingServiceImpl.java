@@ -27,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroReceivedIsolateService receivedIsolates;
     private final MicroCaseDAO cases;
     private final MicroCaseRequestDAO requests;
     private final MicroCaseAnalysisDAO links;
@@ -157,6 +159,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
                 throw new IllegalStateException("Collected requested test has no analysis");
             membership.fulfillRequest(ownership.getId(), request.getSampleItem().getId(),
                     analysis == null ? null : analysis.getId(), actor);
+            receivedIsolates.receive(ownership.getCaseId(), request.getSampleItem(), actor);
         }
     }
 
@@ -205,6 +208,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         MicroCase owner = owner(sample.getSample(), sample.getTypeOfSampleId(), "sample:" + sample.getId(), test, actor,
                 sites.resolve(sample.getSample(), sample.getCollectionLocationId(), test));
         membership.addSample(owner.getId(), sample.getId(), actor);
+        receivedIsolates.receive(owner.getId(), sample, actor);
         MicroCaseAnalysis link = caseAnalyses.linkAnalysis(owner, analysis, null);
         link.setCaseRole(role(test));
         link.setCollectedInSets(test.isCollectedInSets());

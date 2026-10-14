@@ -139,7 +139,7 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Create a clinically significant isolate", async () => {
       await demo.step(3, "Add a clinically significant isolate");
-      await createMicrobiologyIsolate(page);
+      await createMicrobiologyIsolate(page, seeded);
       await expect(page).toHaveURL(/section=isolates/);
       await captureCard(
         page,
@@ -149,11 +149,22 @@ test.describe("OGC-782 microbiology MVP", () => {
       );
       await identifyMicrobiologyIsolate(page, organismId);
       await expect(
-        page.getByText(/ISO-1: Escherichia coli \(UAT\)/),
+        page.getByText(/ISO-1 — Escherichia coli \(UAT\)/),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+      const isolate = page
+        .getByTestId("microbiology-isolates-card")
+        .locator('[data-testid^="isolate-"]');
       await expect(
-        page.getByTestId("microbiology-isolates-card"),
-      ).toContainText("MALDI-TOF · 99.5% · Clinically significant");
+        isolate
+          .getByRole("definition")
+          .filter({ hasText: /^UAT micro culture$/ }),
+      ).toBeVisible();
+      await expect(
+        isolate.getByRole("definition").filter({ hasText: /^99\.5$/ }),
+      ).toBeVisible();
+      await expect(
+        isolate.getByTitle("Clinically significant", { exact: true }),
+      ).toBeVisible();
     });
 
     await test.step("Start an AST run and record a MIC reading", async () => {
@@ -345,11 +356,11 @@ test.describe("OGC-782 microbiology MVP", () => {
       await accordionButton(page, "Isolates").click();
       await expect(page).toHaveURL(/section=isolates/);
       await expect(
-        page.getByRole("button", { name: "Edit isolate" }),
-      ).toBeDisabled();
+        page.getByRole("button", { name: "Reidentify", exact: true }),
+      ).toHaveCount(0);
       await expect(
-        page.getByRole("button", { name: "Create isolate" }),
-      ).toBeDisabled();
+        page.getByRole("button", { name: "Pick isolate", exact: true }),
+      ).toHaveCount(0);
 
       await demo.step(
         9,

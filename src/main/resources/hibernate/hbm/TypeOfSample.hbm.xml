@@ -40,6 +40,8 @@
         <property name="active" type="java.lang.Boolean">
             <column name="is_active" length="1" />
         </property>
+        <property name="microbiologyIsolate"
+            column="microbiology_isolate" type="boolean" />
         <property name="sortOrder" column="sort_order" type="integer" />
         <many-to-one name="localization"
             class="org.openelisglobal.localization.valueholder.Localization"

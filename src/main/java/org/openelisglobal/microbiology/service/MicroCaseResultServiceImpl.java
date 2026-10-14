@@ -162,6 +162,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var existing = links.getAnalyses(caseId);
         for (var t : selected) {
             if (existing.stream().anyMatch(a -> t.getId().equals(a.getTest().getId())
+                    && specimen.getId().equals(a.getSampleItem().getId())
                     && Objects.equals(request.cultureId, links.getByCaseAndAnalysis(caseId, a.getId()).getCultureId())))
                 continue;
             Analysis a = new Analysis();

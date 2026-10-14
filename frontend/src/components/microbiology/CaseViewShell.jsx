@@ -134,6 +134,11 @@ export default function CaseViewShell({
                     <h2>{t("microbiology.case.labUnit")}</h2>
                     <p>{detail.labUnit}</p>
                     <p>{detail.specimenType}</p>
+                    {detail.referred && (
+                      <Tag type="purple">
+                        {t("label.results.history.event.REFERRAL")}
+                      </Tag>
+                    )}
                     {!detail.canWrite && (
                       <p>{t("microbiology.case.readOnly")}</p>
                     )}
@@ -185,6 +190,14 @@ export default function CaseViewShell({
                 key={id}
                 detail={detail}
                 service={service}
+                onCaseChanged={() =>
+                  service
+                    .getCase(id)
+                    .then((next) => {
+                      if (currentCase.current === id) setDetail(next);
+                    })
+                    .catch(() => setError(true))
+                }
               />
               <h2>{t("microbiology.case.relatedCases")}</h2>
               {(detail.relatedCases || []).length === 0 ? (

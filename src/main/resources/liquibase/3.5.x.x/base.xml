@@ -676,4 +676,5 @@
   <!-- Terminology codes are stored trimmed (OGC-1465). -->
   <include relativeToChangelogFile="true" file="138-terminology-codes-trimmed.xml"/>
   <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
+    <include file="122-amr-v2-isolates-referral.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
