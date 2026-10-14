@@ -672,4 +672,8 @@
 
   <!-- QC targets that no longer fit their test's result type are retired once (OGC-1462). -->
   <include relativeToChangelogFile="true" file="137-qc-targets-retire-stale.xml"/>
+
+  <!-- Future changelogs are placed in changes/ and named by UTC timestamp.
+       Liquibase executes them in alphabetical order, avoiding base.xml merge conflicts. -->
+  <includeAll path="changes/" relativeToChangelogFile="true" errorIfMissingOrEmpty="false"/>
 </databaseChangeLog>
