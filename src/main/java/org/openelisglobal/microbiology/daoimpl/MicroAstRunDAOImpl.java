@@ -97,7 +97,8 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     @Transactional(readOnly = true)
     public List<MicroReviewedAstWorklistRow> getReviewedWorklistPage(MicroReviewedAstWorklistQuery worklistQuery) {
         Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(
-                REVIEWED_WORKLIST_SELECT_HQL + reviewedWorklistOrder(worklistQuery.sort()), Object[].class);
+                REVIEWED_WORKLIST_SELECT_HQL + unitScope(worklistQuery) + reviewedWorklistOrder(worklistQuery.sort()),
+                Object[].class);
         setReviewedWorklistParameters(query, worklistQuery);
         query.setFirstResult(worklistQuery.offset());
         query.setMaxResults(worklistQuery.limit());
@@ -108,7 +109,8 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     @Override
     @Transactional(readOnly = true)
     public long countReviewedWorklist(MicroReviewedAstWorklistQuery worklistQuery) {
-        Query<Long> query = entityManager.unwrap(Session.class).createQuery(REVIEWED_WORKLIST_COUNT_HQL, Long.class);
+        Query<Long> query = entityManager.unwrap(Session.class)
+                .createQuery(REVIEWED_WORKLIST_COUNT_HQL + unitScope(worklistQuery), Long.class);
         setReviewedWorklistParameters(query, worklistQuery);
         return query.uniqueResult();
     }
@@ -144,7 +146,14 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
         return " order by " + priorityOrder + ", run.startedAt, run.id";
     }
 
+    private String unitScope(MicroReviewedAstWorklistQuery q) {
+        return q.permittedLabUnitIds() == null ? ""
+                : q.permittedLabUnitIds().isEmpty() ? " and 1 = 0" : " and microCase.labUnitId in (:permittedUnits)";
+    }
+
     private void setReviewedWorklistParameters(Query<?> query, MicroReviewedAstWorklistQuery worklistQuery) {
+        if (worklistQuery.permittedLabUnitIds() != null && !worklistQuery.permittedLabUnitIds().isEmpty())
+            query.setParameterList("permittedUnits", worklistQuery.permittedLabUnitIds());
         String search = worklistQuery.search() == null ? "" : worklistQuery.search().trim().toLowerCase(Locale.ROOT);
         query.setParameter("reviewedStatus", MicroAstRunStatus.REVIEWED.name());
         query.setParameter("stage", text(worklistQuery.stage()));

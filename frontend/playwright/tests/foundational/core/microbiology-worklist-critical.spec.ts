@@ -41,7 +41,7 @@ test.describe("microbiology worklist and critical communication", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/Microbiology/worklist", {
+    await page.goto("/Microbiology/worklist?grain=cultures", {
       waitUntil: "domcontentloaded",
     });
     await expect(
@@ -79,6 +79,7 @@ test.describe("microbiology worklist and critical communication", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
+      grain: "cultures",
       q: seeded.caseId,
       sort: "newest",
       pageSize: "10",
@@ -127,10 +128,10 @@ test.describe("microbiology worklist and critical communication", () => {
   test("critical communication raises worklist priority", async ({ page }) => {
     test.setTimeout(120_000);
     const seeded = await seedMicrobiologyWorklistCase(page);
-    const scopedWorklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+    const scopedWorklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
-    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?q=${encodeURIComponent(
+    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?grain=cultures&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
 
@@ -152,6 +153,9 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology worklist" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await page.goto("/Microbiology/worklist?grain=cultures", {
+      waitUntil: "domcontentloaded",
+    });
     await expect(
       page.getByTestId("microbiology-worklist-summary-total"),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
@@ -165,10 +169,12 @@ test.describe("microbiology worklist and critical communication", () => {
       sort: "newest",
     });
     await page.getByLabel("Sort", { exact: true }).selectOption("newest");
-    await expect(page).toHaveURL(/\/Microbiology\/worklist\?sort=newest$/);
+    await expect(page).toHaveURL(
+      /\/Microbiology\/worklist\?grain=cultures&sort=newest$/,
+    );
     await sortResponse;
 
-    await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
     await expect(

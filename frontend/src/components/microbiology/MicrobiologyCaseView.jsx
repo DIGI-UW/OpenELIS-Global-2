@@ -1,4 +1,5 @@
 import React, { forwardRef, useEffect, useRef, useState } from "react";
+import CaseViewShell from "./CaseViewShell";
 import {
   Accordion,
   AccordionItem,
@@ -542,6 +543,10 @@ const MicrobiologyCaseView = ({
         hideCloseButton
       />
     );
+  }
+
+  if (caseDetail.readOnlyAccess) {
+    return <CaseViewShell caseId={caseId} />;
   }
 
   const finalReleased =

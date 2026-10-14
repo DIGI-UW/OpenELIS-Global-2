@@ -46,7 +46,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
     const workingCase = await seedMicrobiologyMvpCase(page);
 
     await test.step("Filter the worklist and open the case with the keyboard", async () => {
-      await page.goto("/Microbiology/worklist", {
+      await page.goto("/Microbiology/worklist?grain=cultures", {
         waitUntil: "domcontentloaded",
       });
       await expect(
