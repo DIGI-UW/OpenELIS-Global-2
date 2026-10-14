@@ -190,7 +190,7 @@ public class MicroPatientReportService {
         if (link == null)
             return null;
         var c = cases.get(link.getCaseId()).orElseThrow();
-        return access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_REPORTS);
+        return c.getSiteId() == null && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_REPORTS);
     }
 
     public MicroPatientReportForm issuedForAnalysis(String analysisId) {

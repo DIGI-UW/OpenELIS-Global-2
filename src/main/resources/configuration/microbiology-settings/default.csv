@@ -1,0 +1,2 @@
+name,value,domainName,valueType,description,instructionKey,group,encrypted,createOnly
+blockSelfValidation,false,resultConfiguration,boolean,Block self-validation,instructions.blockSelfValidation,0,false,true

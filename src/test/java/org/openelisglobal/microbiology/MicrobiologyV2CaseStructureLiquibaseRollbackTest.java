@@ -66,7 +66,7 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 assertEquals("2", scalar(connection,
                         "SELECT COUNT(*) FROM clinlims.micro_case_analysis WHERE analysis_id=888802"));
                 try {
-                    app.update(contexts);
+                    updateCaseStructure(resources, database, contexts);
                     fail("Historical ownership must be reviewed, never chosen by the migration");
                 } catch (LiquibaseException expected) {
                     assertFalse(columnExists(connection, "micro_case", "lab_unit_id"));
@@ -79,7 +79,7 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 execute(connection, "DELETE FROM clinlims.micro_case WHERE id='ambiguous-case'");
                 if (!connection.getAutoCommit())
                     connection.commit();
-                app.update(contexts);
+                updateCaseStructure(resources, database, contexts);
                 assertTrue(columnExists(connection, "micro_case_request", "sample_type_request_id"));
                 assertTrue(columnExists(connection, "micro_case_split", "source_case_id"));
                 assertEquals(originalCase, scalar(connection,
@@ -109,7 +109,7 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 siteRouting.rollback(1, "test");
                 assertFalse(columnExists(connection, "micro_case", "site_id"));
                 assertFalse(columnExists(connection, "sample_type_request", "collection_location_id"));
-                app.update(contexts);
+                updateCaseStructure(resources, database, contexts);
                 assertTrue(columnExists(connection, "sample_type_request", "collection_location_id"));
                 assertTrue(columnExists(connection, "program", "show_on_micro_case"));
                 assertEquals("0", scalar(connection,
@@ -118,7 +118,7 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                         resources, database);
                 programVisibility.rollback(1, "test");
                 assertFalse(columnExists(connection, "program", "show_on_micro_case"));
-                app.update(contexts);
+                updateCaseStructure(resources, database, contexts);
                 assertTrue(columnExists(connection, "program", "show_on_micro_case"));
                 assertNull(scalar(connection, "SELECT culture_set_number FROM clinlims.sample_item WHERE id=888802"));
                 assertNull(scalar(connection, "SELECT body_site FROM clinlims.sample_item WHERE id=888802"));
@@ -133,7 +133,7 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 assertFalse(columnExists(connection, "test", "opens_microbiology_case"));
                 assertPreservedFields(originalResult,
                         scalar(connection, "SELECT row_to_json(r)::text FROM clinlims.result r WHERE id=888803"));
-                app.update(contexts);
+                updateCaseStructure(resources, database, contexts);
                 assertTrue(columnExists(connection, "sample_item", "culture_set_number"));
 
                 Liquibase feature = new Liquibase("liquibase/3.6.x.x/012-microbiology-v2-case-structure.xml", resources,
@@ -142,10 +142,19 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 assertFalse(columnExists(connection, "micro_case", "lab_unit_id"));
                 assertPreservedFields(originalCase, scalar(connection,
                         "SELECT to_jsonb(c)::text FROM clinlims.micro_case c WHERE id='stored-case'"));
-                app.update(contexts);
+                updateCaseStructure(resources, database, contexts);
                 assertTrue(columnExists(connection, "micro_case", "lab_unit_id"));
             }
         }
+    }
+
+    private void updateCaseStructure(ClassLoaderResourceAccessor resources, Database database, Contexts contexts)
+            throws Exception {
+        // Exercise the original case-structure contract before M8 retires V1 columns.
+        for (String file : List.of("012-microbiology-v2-case-structure.xml", "013-microbiology-v2-routing.xml",
+                "014-sample-collection-set-details.xml", "015-microbiology-program-visibility.xml",
+                "016-microbiology-environmental-site-routing.xml", "014-microbiology-case-result-entry.xml"))
+            new Liquibase("liquibase/3.6.x.x/" + file, resources, database).update(contexts);
     }
 
     private void assertPreservedFields(String before, String after) throws Exception {

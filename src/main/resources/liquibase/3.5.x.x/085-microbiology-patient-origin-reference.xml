@@ -6,6 +6,7 @@
                       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <changeSet id="OGC-782-microbiology-patient-origin-reference" author="OpenELIS">
+    <validCheckSum>8:f0808f24d6306b697fdf5cb79f4caa24</validCheckSum>
     <createTable schemaName="clinlims" tableName="micro_patient_origin">
       <column name="id" type="varchar(36)" defaultValueComputed="gen_random_uuid()::varchar">
         <constraints primaryKey="true" nullable="false"/>
@@ -61,43 +62,6 @@
       referencedTableSchemaName="clinlims"
       referencedTableName="micro_patient_origin"
       referencedColumnNames="id"/>
-
-    <insert schemaName="clinlims" tableName="micro_patient_origin">
-      <column name="code" value="INPATIENT"/>
-      <column name="display_name" value="Inpatient"/>
-      <column name="whonet_code" value="INP"/>
-      <column name="sort_order" valueNumeric="10"/>
-    </insert>
-    <insert schemaName="clinlims" tableName="micro_patient_origin">
-      <column name="code" value="OUTPATIENT"/>
-      <column name="display_name" value="Outpatient"/>
-      <column name="whonet_code" value="OUT"/>
-      <column name="sort_order" valueNumeric="20"/>
-    </insert>
-    <insert schemaName="clinlims" tableName="micro_patient_origin">
-      <column name="code" value="INTENSIVE_CARE"/>
-      <column name="display_name" value="ICU"/>
-      <column name="whonet_code" value="ICU"/>
-      <column name="sort_order" valueNumeric="30"/>
-    </insert>
-    <insert schemaName="clinlims" tableName="micro_patient_origin">
-      <column name="code" value="EMERGENCY"/>
-      <column name="display_name" value="Emergency"/>
-      <column name="whonet_code" value="EME"/>
-      <column name="sort_order" valueNumeric="40"/>
-    </insert>
-    <insert schemaName="clinlims" tableName="micro_patient_origin">
-      <column name="code" value="LONG_TERM_CARE"/>
-      <column name="display_name" value="Long-term Care"/>
-      <column name="whonet_code" value="LTC"/>
-      <column name="sort_order" valueNumeric="50"/>
-    </insert>
-    <insert schemaName="clinlims" tableName="micro_patient_origin">
-      <column name="code" value="UNKNOWN"/>
-      <column name="display_name" value="Unknown"/>
-      <column name="whonet_code" value="UNK"/>
-      <column name="sort_order" valueNumeric="60"/>
-    </insert>
 
     <rollback>
       <dropTable schemaName="clinlims" tableName="micro_patient_origin_default"/>

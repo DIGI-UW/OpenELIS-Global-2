@@ -21,6 +21,7 @@ import {
   TableContainer,
 } from "@carbon/react";
 import "./CaseWorkspace.scss";
+import CaseContextEditor from "./CaseContextEditor";
 import CaseTestingWorkspace from "./CaseTestingWorkspace";
 import serviceDefault from "./CaseWorkspaceService";
 import {
@@ -115,18 +116,47 @@ export default function CaseViewShell({
               <Grid>
                 <Column lg={8} md={4} sm={4}>
                   <Tile>
-                    <h2>{t("common.patient")}</h2>
-                    <p>{detail.patientName || t("not.available")}</p>
-                    <p>
-                      {t("microbiology.case.birthDate")}:{" "}
-                      {detail.birthDate
-                        ? intl.formatDate(new Date(detail.birthDate))
-                        : t("not.available")}
-                    </p>
-                    <p>
-                      {t("microbiology.case.sex")}:{" "}
-                      {detail.gender || t("not.available")}
-                    </p>
+                    {detail.domain === "ENVIRONMENTAL" ? (
+                      <>
+                        <Tag type="teal">
+                          {t("microbiology.case.environmental")}
+                        </Tag>
+                        <p>{t("microbiology.case.patientRulesSkipped")}</p>
+                        <h2>{t("microbiology.case.site")}</h2>
+                        <p>
+                          {detail.siteName} · {detail.siteCode}
+                        </p>
+                        <p>{detail.siteLocation}</p>
+                        {detail.latitude && detail.longitude && (
+                          <p>
+                            {t("microbiology.case.coordinates", {
+                              latitude: detail.latitude,
+                              longitude: detail.longitude,
+                            })}
+                          </p>
+                        )}
+                        <p>
+                          {t("microbiology.case.requester")}:{" "}
+                          {detail.requesterName || t("not.available")}{" "}
+                          {detail.requesterPhone}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h2>{t("common.patient")}</h2>
+                        <p>{detail.patientName || t("not.available")}</p>
+                        <p>
+                          {t("microbiology.case.birthDate")}:{" "}
+                          {detail.birthDate
+                            ? intl.formatDate(new Date(detail.birthDate))
+                            : t("not.available")}
+                        </p>
+                        <p>
+                          {t("microbiology.case.sex")}:{" "}
+                          {detail.gender || t("not.available")}
+                        </p>
+                      </>
+                    )}
                   </Tile>
                 </Column>
                 <Column lg={8} md={4} sm={4}>
@@ -145,6 +175,16 @@ export default function CaseViewShell({
                   </Tile>
                 </Column>
               </Grid>
+              {detail.culturePurpose && (
+                <CaseContextEditor
+                  key={`${id}-${detail.culturePurpose}-${detail.replicateCount}-${detail.programId}`}
+                  detail={detail}
+                  service={service}
+                  onSaved={(next) => {
+                    if (currentCase.current === id) setDetail(next);
+                  }}
+                />
+              )}
               <h2>{t("common.samples")}</h2>
               <TableContainer>
                 <Table>
@@ -154,6 +194,11 @@ export default function CaseViewShell({
                       <TableHeader>
                         {t("microbiology.worklist.column.specimen")}
                       </TableHeader>
+                      {detail.domain === "ENVIRONMENTAL" && (
+                        <TableHeader>
+                          {t("microbiology.case.samplingPoint")}
+                        </TableHeader>
+                      )}
                       <TableHeader>{t("common.status")}</TableHeader>
                       <TableHeader>
                         {t("microbiology.case.collectionDate")}
@@ -165,6 +210,11 @@ export default function CaseViewShell({
                       <TableRow key={s.id}>
                         <TableCell>{s.label}</TableCell>
                         <TableCell>{s.specimenType}</TableCell>
+                        {detail.domain === "ENVIRONMENTAL" && (
+                          <TableCell>
+                            {s.samplingPoint || t("not.available")}
+                          </TableCell>
+                        )}
                         <TableCell>{t("common.collected")}</TableCell>
                         <TableCell>
                           {s.collectionDate
@@ -177,6 +227,9 @@ export default function CaseViewShell({
                       <TableRow key={`pending-${s.id}`}>
                         <TableCell>{t("not.available")}</TableCell>
                         <TableCell>{s.specimenType}</TableCell>
+                        {detail.domain === "ENVIRONMENTAL" && (
+                          <TableCell>{t("not.available")}</TableCell>
+                        )}
                         <TableCell>
                           {t("microbiology.case.awaitingCollection")}
                         </TableCell>

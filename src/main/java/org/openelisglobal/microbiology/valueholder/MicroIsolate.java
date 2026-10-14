@@ -73,6 +73,18 @@ public class MicroIsolate extends BaseObject<String> {
     @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String receivedFromOrganizationId;
 
+    @Column(name = "original_specimen_type_id", precision = 10, scale = 0)
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String originalSpecimenTypeId;
+
+    public String getOriginalSpecimenTypeId() {
+        return originalSpecimenTypeId;
+    }
+
+    public void setOriginalSpecimenTypeId(String value) {
+        originalSpecimenTypeId = value;
+    }
+
     @Column(name = "reported_organism_id", length = 36)
     private String reportedOrganismId;
 

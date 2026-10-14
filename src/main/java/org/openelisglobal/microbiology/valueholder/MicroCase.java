@@ -25,12 +25,6 @@ public class MicroCase extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sampleItemId;
 
-    // Retired V1 classification, still read by the WHONET export query so stored
-    // rows keep their bacteriology scope until step 15 replaces it with track
-    // populations. Never written.
-    @Column(name = "workflow_type", insertable = false, updatable = false, length = 40)
-    private String workflowType;
-
     @Column(name = "stage", nullable = false, length = 40)
     private String stage = MicroCaseStage.RECEIVED.name();
 
@@ -76,6 +70,23 @@ public class MicroCase extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String siteId;
 
+    @Column(name = "culture_purpose", nullable = false, length = 32)
+    private String culturePurpose;
+
+    public String getCulturePurpose() {
+        return culturePurpose == null ? MicroCulturePurpose.defaultFor(siteId != null) : culturePurpose;
+    }
+
+    public void setCulturePurpose(String culturePurpose) {
+        this.culturePurpose = culturePurpose;
+    }
+
+    @jakarta.persistence.PrePersist
+    public void initializePurpose() {
+        if (culturePurpose == null)
+            culturePurpose = MicroCulturePurpose.defaultFor(siteId != null);
+    }
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
     private MicroCaseStatus status = MicroCaseStatus.ACTIVE;
@@ -104,10 +115,6 @@ public class MicroCase extends BaseObject<String> {
 
     public void setSampleItemId(String sampleItemId) {
         this.sampleItemId = sampleItemId;
-    }
-
-    public String getWorkflowType() {
-        return workflowType;
     }
 
     public String getStage() {

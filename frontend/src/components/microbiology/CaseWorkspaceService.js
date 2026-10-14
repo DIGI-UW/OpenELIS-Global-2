@@ -37,6 +37,7 @@ const mutate = (url, body) =>
           ),
     ),
   );
+export const saveContext = (id, body) => mutate(`${caseUrl(id)}/context`, body);
 export const getTests = (id) => read(`${caseUrl(id)}/analyses`);
 export const addTests = (id, body) => mutate(`${caseUrl(id)}/analyses`, body);
 export const saveResults = (id, analysisId, body) =>
@@ -83,6 +84,25 @@ export const astAction = (id, body, validation = false) =>
   mutate(`${caseUrl(id)}/ast/${validation ? "validation" : "entry"}`, body);
 export const resolveDst = (id, body) =>
   mutate(`${caseUrl(id)}/dst/resolve`, body);
+export const downloadEnvironmentalCertificate = (orderId) =>
+  new Promise((resolve, reject) =>
+    postToOpenElisServerForBlob(
+      "/rest/complianceReport/exportPdf",
+      JSON.stringify({ sampleId: Number(orderId) }),
+      (blob) => {
+        if (!blob || blob.type?.includes("json"))
+          return reject(new Error("certificate unavailable"));
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `LHU-${orderId}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+        resolve();
+      },
+      reject,
+    ),
+  );
 export const getReport = (id) => read(`${caseUrl(id)}/report`);
 export const getReportVersions = (id) => read(`${caseUrl(id)}/report/versions`);
 export const getReadiness = (id) => read(`${caseUrl(id)}/readiness`);
@@ -127,6 +147,8 @@ export const printContainer = (body) =>
     ),
   );
 export default {
+  downloadEnvironmentalCertificate,
+  saveContext,
   getContainerPresets,
   printContainer,
   getIncoming,

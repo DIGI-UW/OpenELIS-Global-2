@@ -4,6 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
 import {
   Stack,
+  Checkbox,
   Grid,
   Column,
   DataTable,
@@ -67,7 +68,7 @@ export default function CaseWorklist({ service = serviceDefault }) {
   };
   const headers = [
     { key: "accessionNumber", header: t("common.labNumber") },
-    { key: "patientName", header: t("common.patient") },
+    { key: "subject", header: t("microbiology.case.subject") },
     { key: "labUnit", header: t("microbiology.case.labUnit") },
     { key: "specimenType", header: t("microbiology.worklist.column.specimen") },
     { key: "status", header: t("common.status") },
@@ -103,6 +104,14 @@ export default function CaseWorklist({ service = serviceDefault }) {
                 placeholder={t("microbiology.case.search")}
                 value={params.get("q") || ""}
                 onChange={(e) => change("q", e.target.value)}
+              />
+              <Checkbox
+                id="case-migration-review"
+                labelText={t("microbiology.case.migrationReview")}
+                checked={params.get("migrationReview") === "true"}
+                onChange={(_, { checked }) =>
+                  change("migrationReview", checked ? "true" : "")
+                }
               />
               <Grid condensed>
                 <Column lg={4} md={4} sm={4}>
@@ -184,7 +193,18 @@ export default function CaseWorklist({ service = serviceDefault }) {
               )}
               {!loading && !error && data && (
                 <>
-                  <DataTable rows={data.rows} headers={headers}>
+                  <DataTable
+                    rows={data.rows.map((row) => ({
+                      ...row,
+                      subject:
+                        row.domain === "ENVIRONMENTAL"
+                          ? [row.siteName, row.siteCode]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : row.patientName,
+                    }))}
+                    headers={headers}
+                  >
                     {({
                       rows,
                       headers,
