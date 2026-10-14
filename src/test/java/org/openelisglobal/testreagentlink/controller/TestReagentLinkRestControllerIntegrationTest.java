@@ -145,6 +145,17 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     }
 
     @Test
+    public void list_exposesCurrentCultureMediaClassification() {
+        controller.link(testId(), req(reagentId, "PRIMARY", "1", "mL"), authedRequest());
+        assertEquals(false, controller.list(testId()).get(0).microbiologyMedium);
+        InventoryItem item = inventoryItemService.get(reagentId);
+        item.setMicrobiologyMedium(true);
+        item.setSysUserId("1");
+        inventoryItemService.update(item);
+        assertTrue(controller.list(testId()).get(0).microbiologyMedium);
+    }
+
+    @Test
     public void link_duplicateReagent_throwsConflict() {
         controller.link(testId(), req(reagentId, "PRIMARY", "1", "mL"), authedRequest());
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,

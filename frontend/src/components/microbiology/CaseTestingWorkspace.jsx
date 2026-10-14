@@ -203,7 +203,7 @@ function ResultEditor({ test, service, caseId, onSaved, onCancel }) {
         onChange={(event) => setResultNote(event.target.value)}
       />
       {rows.map((row) => (
-        <div key={row.testResultComponentId || row.id}>
+        <div key={row.testResultComponentId || row.analysisId}>
           <p>{row.testName}</p>
           <PolymorphicResultCell
             row={row}
@@ -313,6 +313,8 @@ function ResultEditor({ test, service, caseId, onSaved, onCancel }) {
   );
 }
 
+import CaseCultureWorkspace from "./CaseCultureWorkspace";
+
 export default function CaseTestingWorkspace({ detail, service }) {
   const mounted = useRef(true);
   useLayoutEffect(
@@ -327,6 +329,8 @@ export default function CaseTestingWorkspace({ detail, service }) {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [cultureId, setCultureId] = useState("");
+  const [cultureSource, setCultureSource] = useState(null);
   const [placement, setPlacement] = useState("INITIAL");
   const [editor, setEditor] = useState(null);
   const [selection, setSelection] = useState([]);
@@ -369,24 +373,31 @@ export default function CaseTestingWorkspace({ detail, service }) {
     setAdding(true);
     setError(false);
     try {
-      for (const s of selection.filter(
-        (s) => s.tests.length || s.panels.length,
-      )) {
+      for (const s of (placement === "CULTURE"
+        ? [cultureSource].filter(Boolean)
+        : selection
+      ).filter((s) => s.tests.length || s.panels.length)) {
         const data = await service.addTests(detail.id, {
           placement,
+          cultureId: placement === "CULTURE" ? cultureId : undefined,
           sampleItemId: s.sampleItemId,
           testIds: s.tests.map((t) => String(t.id)),
           panelIds: s.panels.map((p) => String(p.id)),
         });
         if (!mounted.current) return;
         setTests(data);
-        setSelection((previous) =>
-          previous.map((sample) =>
-            sample.sampleItemId === s.sampleItemId
-              ? { ...sample, tests: [], panels: [] }
-              : sample,
-          ),
-        );
+        if (placement === "CULTURE")
+          setCultureSource((previous) =>
+            previous ? { ...previous, tests: [], panels: [] } : null,
+          );
+        else
+          setSelection((previous) =>
+            previous.map((sample) =>
+              sample.sampleItemId === s.sampleItemId
+                ? { ...sample, tests: [], panels: [] }
+                : sample,
+            ),
+          );
       }
     } catch {
       if (mounted.current) setError(true);
@@ -421,6 +432,139 @@ export default function CaseTestingWorkspace({ detail, service }) {
       if (mounted.current) setError(true);
     }
   };
+  const renderTests = (targetCultureId) => (
+    <TableContainer>
+      <Table aria-label={t("microbiology.testing.title")}>
+        <TableHead>
+          <TableRow>
+            {["test", "result", "flag", "performedBy", "status", "actions"].map(
+              (key) => (
+                <TableHeader key={key}>
+                  {t(`microbiology.testing.${key}`)}
+                </TableHeader>
+              ),
+            )}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {tests
+            .filter(
+              (test) =>
+                test.placement === placement &&
+                (placement !== "CULTURE" || test.cultureId === targetCultureId),
+            )
+            .map((test) => (
+              <React.Fragment key={test.analysisId}>
+                <TableRow>
+                  <TableCell>
+                    {test.testName}
+                    {test.testedElsewhere && (
+                      <Tag type="purple">
+                        {t("microbiology.testing.external")}
+                      </Tag>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Stack gap={2}>
+                      {test.components.map((row) => (
+                        <div key={row.testResultComponentId || row.analysisId}>
+                          <span>{row.testName}: </span>
+                          <PolymorphicResultCell
+                            row={row}
+                            editable={false}
+                            onValueChange={() => {}}
+                          />
+                        </div>
+                      ))}
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    {test.components.map((row) => (
+                      <FlagChip
+                        key={row.testResultComponentId || row.analysisId}
+                        flag={row.resultFlag}
+                      />
+                    ))}
+                  </TableCell>
+                  <TableCell>
+                    {test.performedByDisplay || t("not.available")}
+                    {test.performedAt && (
+                      <p>
+                        {intl.formatDate(
+                          new Date(`${test.performedAt}T12:00:00`),
+                        )}
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Tag>{t(`microbiology.testing.status.${test.status}`)}</Tag>
+                  </TableCell>
+                  <TableCell>
+                    {detail.canWrite && test.canEdit && (
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={() => setEditor(test.analysisId)}
+                      >
+                        {t("microbiology.testing.enterEdit")}
+                      </Button>
+                    )}
+                    {detail.canValidate &&
+                      (test.canValidate ||
+                        (test.selfValidationBlocked &&
+                          test.status === "TechnicalAcceptance")) && (
+                        <ESignatureButton
+                          size="sm"
+                          kind="ghost"
+                          meaning="VALIDATED_AND_RELEASED"
+                          recordType="VALIDATION_BATCH"
+                          recordId={Number(test.analysisId)}
+                          context={t("microbiology.testing.validateContext", {
+                            test: test.testName,
+                          })}
+                          disabled={
+                            test.selfValidationBlocked || !test.canValidate
+                          }
+                          ariaDescribedBy={
+                            test.selfValidationBlocked
+                              ? `self-validation-${test.analysisId}`
+                              : undefined
+                          }
+                          onSign={() => validate(test)}
+                          label={t("microbiology.testing.validate")}
+                        />
+                      )}
+                    {test.selfValidationBlocked && (
+                      <p id={`self-validation-${test.analysisId}`}>
+                        {t("microbiology.testing.selfValidationBlocked")}
+                      </p>
+                    )}
+                  </TableCell>
+                </TableRow>
+                {editor === test.analysisId &&
+                  detail.canWrite &&
+                  test.canEdit && (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <ResultEditor
+                          test={test}
+                          caseId={detail.id}
+                          service={service}
+                          onCancel={() => setEditor(null)}
+                          onSaved={(data, close) => {
+                            setTests(data);
+                            if (close) setEditor(null);
+                          }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+              </React.Fragment>
+            ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
   // i18n-keys: microbiology.testing.status.*
   return (
     <Stack gap={5}>
@@ -435,11 +579,45 @@ export default function CaseTestingWorkspace({ detail, service }) {
         }}
       >
         <SelectItem value="INITIAL" text={t("microbiology.testing.initial")} />
+        <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
         <SelectItem
           value="ADDITIONAL"
           text={t("microbiology.testing.additional")}
         />
       </Select>
+      {placement === "CULTURE" && (
+        <CaseCultureWorkspace
+          detail={detail}
+          service={service}
+          selectedId={cultureId}
+          renderTests={renderTests}
+          onSelect={(row) => {
+            setCultureId(row.id);
+            setCultureSource({
+              ...row.source,
+              sampleTypeName: row.source?.specimenType,
+              tests: [],
+              panels: [],
+            });
+            setEditor(null);
+          }}
+          onChooseTests={(row, gramTest) => {
+            setCultureId(row.id);
+            setEditor(null);
+            setCultureSource({
+              ...row.source,
+              sampleTypeName: row.source?.specimenType,
+              tests: gramTest
+                ? [{ id: gramTest.id, name: gramTest.value }]
+                : [],
+              panels: [],
+            });
+            document
+              .getElementById("culture-test-chooser")
+              ?.scrollIntoView?.({ block: "center" });
+          }}
+        />
+      )}
       {loading && <InlineLoading description={t("common.loading")} />}
       {error && (
         <InlineNotification
@@ -448,166 +626,60 @@ export default function CaseTestingWorkspace({ detail, service }) {
           hideCloseButton
         />
       )}
-      <TableContainer>
-        <Table aria-label={t("microbiology.testing.title")}>
-          <TableHead>
-            <TableRow>
-              {[
-                "test",
-                "result",
-                "flag",
-                "performedBy",
-                "status",
-                "actions",
-              ].map((key) => (
-                <TableHeader key={key}>
-                  {t(`microbiology.testing.${key}`)}
-                </TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {tests
-              .filter((test) => test.placement === placement)
-              .map((test) => (
-                <React.Fragment key={test.analysisId}>
-                  <TableRow>
-                    <TableCell>
-                      {test.testName}
-                      {test.testedElsewhere && (
-                        <Tag type="purple">
-                          {t("microbiology.testing.external")}
-                        </Tag>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Stack gap={2}>
-                        {test.components.map((row) => (
-                          <div
-                            key={row.testResultComponentId || row.analysisId}
-                          >
-                            <span>{row.testName}: </span>
-                            <PolymorphicResultCell
-                              row={row}
-                              editable={false}
-                              onValueChange={() => {}}
-                            />
-                          </div>
-                        ))}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      {test.components.map((row) => (
-                        <FlagChip
-                          key={row.testResultComponentId || row.analysisId}
-                          flag={row.resultFlag}
-                        />
-                      ))}
-                    </TableCell>
-                    <TableCell>
-                      {test.performedByDisplay || t("not.available")}
-                      {test.performedAt && (
-                        <p>
-                          {intl.formatDate(
-                            new Date(`${test.performedAt}T12:00:00`),
-                          )}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Tag>
-                        {t(`microbiology.testing.status.${test.status}`)}
-                      </Tag>
-                    </TableCell>
-                    <TableCell>
-                      {detail.canWrite && test.canEdit && (
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          onClick={() => setEditor(test.analysisId)}
-                        >
-                          {t("microbiology.testing.enterEdit")}
-                        </Button>
-                      )}
-                      {detail.canValidate &&
-                        (test.canValidate ||
-                          (test.selfValidationBlocked &&
-                            test.status === "TechnicalAcceptance")) && (
-                          <ESignatureButton
-                            size="sm"
-                            kind="ghost"
-                            meaning="VALIDATED_AND_RELEASED"
-                            recordType="VALIDATION_BATCH"
-                            recordId={Number(test.analysisId)}
-                            context={t("microbiology.testing.validateContext", {
-                              test: test.testName,
-                            })}
-                            disabled={
-                              test.selfValidationBlocked || !test.canValidate
-                            }
-                            ariaDescribedBy={
-                              test.selfValidationBlocked
-                                ? `self-validation-${test.analysisId}`
-                                : undefined
-                            }
-                            onSign={() => validate(test)}
-                            label={t("microbiology.testing.validate")}
-                          />
-                        )}
-                      {test.selfValidationBlocked && (
-                        <p id={`self-validation-${test.analysisId}`}>
-                          {t("microbiology.testing.selfValidationBlocked")}
-                        </p>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                  {editor === test.analysisId &&
-                    detail.canWrite &&
-                    test.canEdit && (
-                      <TableRow>
-                        <TableCell colSpan={6}>
-                          <ResultEditor
-                            test={test}
-                            caseId={detail.id}
-                            service={service}
-                            onCancel={() => setEditor(null)}
-                            onSaved={(data, close) => {
-                              setTests(data);
-                              if (close) setEditor(null);
-                            }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                </React.Fragment>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {placement !== "CULTURE" && renderTests(null)}
       {!loading && !tests.some((test) => test.placement === placement) && (
         <p>{t("microbiology.testing.noTests")}</p>
       )}
-      {detail.canWrite && selection.length > 0 && (
-        <>
-          <CollectTestPickerSection
-            samples={selection}
-            setSamples={setSelection}
-            isReadOnly={adding}
-            titleId="microbiology.testing.addTests"
-            helperId="microbiology.testing.chooserHelp"
-            excludedTestIds={tests.map((test) => test.testId)}
-          />
-          <Button
-            onClick={addTests}
-            disabled={
-              adding ||
-              !selection.some((s) => s.tests.length || s.panels.length)
-            }
-          >
-            {t("microbiology.testing.addSelected")}
-          </Button>
-        </>
-      )}
+      {detail.canWrite &&
+        selection.length > 0 &&
+        (placement !== "CULTURE" || cultureId) && (
+          <>
+            <section id="culture-test-chooser">
+              <CollectTestPickerSection
+                samples={
+                  placement === "CULTURE"
+                    ? [cultureSource].filter(Boolean)
+                    : selection
+                }
+                setSamples={
+                  placement === "CULTURE"
+                    ? (update) => {
+                        const current = [cultureSource].filter(Boolean);
+                        const next =
+                          typeof update === "function"
+                            ? update(current)
+                            : update;
+                        setCultureSource(next[0] || null);
+                      }
+                    : setSelection
+                }
+                isReadOnly={adding}
+                titleId="microbiology.testing.addTests"
+                helperId="microbiology.testing.chooserHelp"
+                excludedTestIds={tests
+                  .filter(
+                    (test) =>
+                      (test.cultureId || "") ===
+                      (placement === "CULTURE" ? cultureId : ""),
+                  )
+                  .map((test) => test.testId)}
+              />
+              <Button
+                onClick={addTests}
+                disabled={
+                  adding ||
+                  !(
+                    placement === "CULTURE"
+                      ? [cultureSource].filter(Boolean)
+                      : selection
+                  ).some((s) => s.tests.length || s.panels.length)
+                }
+              >
+                {t("microbiology.testing.addSelected")}
+              </Button>
+            </section>
+          </>
+        )}
       <Tile>
         <Stack gap={4}>
           <h2>{t("microbiology.testing.notes")}</h2>
