@@ -20,11 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
     @PersistenceContext
     private EntityManager entityManager;
-    private static final String SELECT = "select c, s.accessionNumber, u.testSectionName, p.id, person.lastName, person.firstName, p.birthDate, p.gender, t.description";
+    private static final String SELECT = "select c, s.accessionNumber, u.testSectionName, p.id, person.lastName, person.firstName, p.birthDate, p.gender, t.description, s.domain, site.name, site.code";
     private static final String FROM = " from MicroCase c left join SampleItem original on original.id = c.sampleItemId"
             + " left join Sample s on s.id = coalesce(c.sampleId, original.sample.id)"
             + " left join TestSection u on u.id = c.labUnitId" + " left join TypeOfSample t on t.id = c.sampleTypeId"
-            + " left join SampleHuman h on h.sampleId = s.id left join Patient p on p.id = h.patientId left join p.person person";
+            + " left join VectorSamplingSite site on site.id = c.siteId"
+            + " left join SampleHuman h on h.sampleId = s.id and (s.domain is null or upper(s.domain) not in ('ENVIRONMENTAL','E')) left join Patient p on p.id = h.patientId left join p.person person";
 
     private Session session() {
         return entityManager.unwrap(Session.class);
@@ -34,6 +35,8 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
         String hql = " where c.labUnitId is not null";
         if (ids != null)
             hql += " and c.labUnitId in (:units)";
+        if (q.migrationReview)
+            hql += " and exists (select a.id from MicroCaseActivity a where a.caseId = c.id and a.activityType = 'MIGRATION_REVIEW')";
         if (q.labUnitId != null)
             hql += " and c.labUnitId = :unit";
         if (q.status != null)
@@ -47,7 +50,10 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
         if (q.accessionNumber != null)
             hql += " and s.accessionNumber = :accession";
         if (q.q != null)
-            hql += " and (lower(s.accessionNumber) like :search or lower(person.lastName) like :search or lower(person.firstName) like :search)";
+            hql += " and (lower(s.accessionNumber) like :search or lower(person.lastName) like :search or lower(person.firstName) like :search"
+                    + " or lower(site.name) like :search or lower(site.code) like :search"
+                    + " or exists (select ms.id from MicroCaseSample ms join SampleItem si on si.id = ms.sampleItemId"
+                    + " where ms.caseId = c.id and ms.splitOutAt is null and lower(si.locationDetails) like :search))";
         return hql;
     }
 
@@ -118,15 +124,19 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
                     "exists (select proposal.id from MicroCultureProposal proposal where proposal.inoculation.id = r.id and proposal.confirmedAt is null)");
             reasons.add(
                     "exists (select ref.id from Referral ref, MicroCaseSample ms where ms.caseId = c.id and ms.splitOutAt is null and ref.analysis.sampleItem.id = ms.sampleItemId and ref.status = org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED and (ref.reconciled is null or ref.reconciled = false))");
-            reasons.add(
-                    "not exists (select ps.id from ProgramSample ps where ps.sample.id = s.id and ps.program.showOnMicroCase = true)");
+            reasons.add("c.programId is null");
             for (String field : fields) {
+                if ("culturePurpose".equals(field)) {
+                    reasons.add("c.culturePurpose is null");
+                    continue;
+                }
                 // Names come only from the final-requirements service's validated allowlist.
                 String missing = java.util.Set.of("admissionDate", "numberOfSets", "antibioticExposure").contains(field)
                         ? "d." + field + " is null"
                         : "(d." + field + " is null or trim(d." + field + ") = '')";
-                reasons.add("not exists (select d.id from MicroCaseOrderDetail d where d.caseId = c.id and not "
-                        + missing + ")");
+                reasons.add(
+                        "(c.siteId is null and not exists (select d.id from MicroCaseOrderDetail d where d.caseId = c.id and not "
+                                + missing + "))");
             }
             if (!questionnaireIds.isEmpty())
                 reasons.add("c.id in (:questionnaireIds)");
@@ -175,7 +185,7 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
         if (ids != null && ids.isEmpty())
             return List.of();
         var query = session().createQuery("select distinct c.id" + FROM + where(q, ids)
-                + " and exists (select ps.id from ProgramSample ps where ps.sample.id = s.id and ps.program.showOnMicroCase = true and ps.program.questionnaireUUID is not null)",
+                + " and c.siteId is null and exists (select program.id from Program program where program.id = c.programId and program.showOnMicroCase = true and program.questionnaireUUID is not null)",
                 String.class);
         bind(query, q, ids);
         return query.list();

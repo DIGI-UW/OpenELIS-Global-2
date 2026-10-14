@@ -10,7 +10,7 @@ public class MicroIsolateWorkspaceRequestForm {
     public String organismId, identificationStatus, identificationMethod, reason, version;
     public BigDecimal confidence;
     public Timestamp identifiedAt;
-    public String sendingOrganizationId, reportedOrganismId, reportedOrganismText;
+    public String originalSpecimenTypeId, sendingOrganizationId, reportedOrganismId, reportedOrganismText;
     public String testId;
     public ReferralItem referral;
 }

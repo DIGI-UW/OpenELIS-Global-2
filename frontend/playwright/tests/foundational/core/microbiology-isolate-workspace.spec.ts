@@ -206,6 +206,14 @@ test("received isolate preserves sender identification and requires validator ac
     dialog.getByRole("combobox", { name: "Sending organization", exact: true }),
     `UAT reference ${seeded.accessionNumber.slice("UATMICRO".length)}`,
   );
+  const original = dialog.getByRole("combobox", {
+    name: "Original specimen type",
+    exact: true,
+  });
+  await choose(
+    original,
+    `UAT culture specimen ${seeded.accessionNumber.slice("UATMICRO".length)}`,
+  );
   await dialog
     .getByLabel("Sender-reported identification text", { exact: true })
     .fill("Sender preliminary organism");

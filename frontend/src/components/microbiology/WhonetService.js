@@ -3,17 +3,31 @@ import config from "../../config.json";
 const requestSearch = (query) => {
   const params = new URLSearchParams();
   ["from", "to"].forEach((key) => params.set(key, String(query[key])));
-  ["specimen", "organism", "origin", "significance"].forEach((key) =>
+  [
+    "specimen",
+    "organism",
+    "origin",
+    "significance",
+    "surveyProgramIds",
+  ].forEach((key) =>
     [...(query[key] || [])]
       .sort()
       .forEach((value) => params.append(key, String(value))),
   );
-  ["includeScreening", "includeUnspecified"].forEach((key) =>
-    params.set(key, String(Boolean(query[key]))),
-  );
-  ["dedup", "page", "pageSize"].forEach((key) =>
-    params.set(key, String(query[key])),
-  );
+  [
+    "includeScreening",
+    "includeUnspecified",
+    "includeEnvironmentalIsolates",
+  ].forEach((key) => params.set(key, String(Boolean(query[key]))));
+  [
+    "dedup",
+    "dedupBasis",
+    "dedupScope",
+    "profileSensitivity",
+    "excludeContaminants",
+    "page",
+    "pageSize",
+  ].forEach((key) => params.set(key, String(query[key])));
   return params.toString();
 };
 
@@ -53,7 +67,7 @@ export const getWhonetPreview = async (query) => {
 };
 
 export const getWhonetFilterOptions = async (query) => {
-  const params = new URLSearchParams({ from: query.from, to: query.to });
+  const params = requestSearch(query);
   const response = await request(
     `/rest/microbiology/whonet/filter-options?${params.toString()}`,
   );
