@@ -12,7 +12,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -29,7 +28,6 @@ import org.openelisglobal.reports.tat.bean.TATSummaryResponse.HistogramBin;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendDataPoint;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendSeries;
-import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,9 +42,6 @@ public class TATReportServiceImpl implements TATReportService {
 
     @Autowired
     private TATCalculationService tatCalculationService;
-
-    @Autowired
-    private SampleOrganizationService sampleOrganizationService;
 
     @Autowired
     private AnalysisService analysisService;
@@ -170,7 +165,8 @@ public class TATReportServiceImpl implements TATReportService {
             String sampleTypeId, String orderingSiteId, boolean includeCancelled) {
 
         StringBuilder hql = new StringBuilder();
-        hql.append("SELECT a, s, si FROM Analysis a ");
+        hql.append("SELECT a, s, si, (SELECT min(o.organizationName) FROM SampleOrganization ordering");
+        hql.append(" JOIN ordering.organization o WHERE ordering.sample = s) FROM Analysis a ");
         hql.append("JOIN a.sampleItem si ");
         hql.append("JOIN si.sample s ");
         hql.append("WHERE s.receivedTimestamp BETWEEN :fromDate AND :toDate ");
@@ -225,9 +221,6 @@ public class TATReportServiceImpl implements TATReportService {
         }
 
         List<Object[]> rows = query.list();
-        Map<String, String> orderingSites = sampleOrganizationService.getOrganizationNamesBySampleIds(
-                rows.stream().map(row -> ((org.openelisglobal.sample.valueholder.Sample) row[1]).getId())
-                        .filter(Objects::nonNull).collect(Collectors.toSet()));
         List<TATResult> results = new ArrayList<>();
 
         for (Object[] row : rows) {
@@ -243,7 +236,7 @@ public class TATReportServiceImpl implements TATReportService {
                     ? analysis.getSampleItem().getTypeOfSample().getLocalizedName()
                     : "");
 
-            result.setOrderingSite(orderingSites.get(sample.getId()));
+            result.setOrderingSite((String) row[3]);
 
             // Timestamps
             result.setOrderCreated(

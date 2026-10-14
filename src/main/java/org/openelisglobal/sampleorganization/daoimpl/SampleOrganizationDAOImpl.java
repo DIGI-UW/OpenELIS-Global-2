@@ -14,10 +14,7 @@
 package org.openelisglobal.sampleorganization.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -42,8 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SampleOrganizationDAOImpl extends BaseDAOImpl<SampleOrganization, String>
         implements SampleOrganizationDAO {
-
-    private static final int IN_LIST_LIMIT = 1000;
 
     public SampleOrganizationDAOImpl() {
         super(SampleOrganization.class);
@@ -119,20 +114,5 @@ public class SampleOrganizationDAOImpl extends BaseDAOImpl<SampleOrganization, S
             handleException(e, "getDataBySample");
         }
         return null;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Map<String, String> getOrganizationNamesBySampleIds(Collection<String> sampleIds) {
-        List<String> ids = List.copyOf(sampleIds);
-        Map<String, String> names = new HashMap<>();
-        for (int from = 0; from < ids.size(); from += IN_LIST_LIMIT) {
-            entityManager.unwrap(Session.class)
-                    .createQuery("select so.sample.id, so.organization.organizationName from SampleOrganization so"
-                            + " where so.sample.id in (:ids)", Object[].class)
-                    .setParameterList("ids", ids.subList(from, Math.min(from + IN_LIST_LIMIT, ids.size()))).list()
-                    .forEach(row -> names.putIfAbsent((String) row[0], (String) row[1]));
-        }
-        return names;
     }
 }

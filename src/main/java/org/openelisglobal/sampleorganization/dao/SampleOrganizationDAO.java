@@ -13,8 +13,6 @@
  */
 package org.openelisglobal.sampleorganization.dao;
 
-import java.util.Collection;
-import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -42,6 +40,4 @@ public interface SampleOrganizationDAO extends BaseDAO<SampleOrganization, Strin
     public void getDataBySample(SampleOrganization sampleOrg) throws LIMSRuntimeException;
 
     public SampleOrganization getDataBySample(Sample sample) throws LIMSRuntimeException;
-
-    Map<String, String> getOrganizationNamesBySampleIds(Collection<String> sampleIds);
 }

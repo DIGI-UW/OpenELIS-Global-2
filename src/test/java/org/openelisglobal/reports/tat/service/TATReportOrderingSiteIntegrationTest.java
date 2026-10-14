@@ -2,16 +2,20 @@ package org.openelisglobal.reports.tat.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.EntityManagerFactory;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
+import org.openelisglobal.reports.tat.bean.TATResult;
 import org.openelisglobal.reports.tat.bean.TATSegment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,9 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
 
     @Autowired
     private TATReportService tatReportService;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Test
     public void eachRowCarriesItsOwnSamplesOrderingSite() {
@@ -36,17 +43,45 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
         sample("D" + run, north, east);
 
         Map<String, String> sites = new HashMap<>();
-        tatReportService
-                .getAllResults(DAY, DAY, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, null,
-                        null, null, null, null, false)
-                .stream().filter(r -> r.getLabNumber().endsWith(run))
+        allResults().stream().filter(r -> r.getLabNumber().endsWith(run))
                 .forEach(r -> sites.put(r.getLabNumber(), r.getOrderingSite()));
 
         assertEquals(Set.of("N" + run, "S" + run, "O" + run, "D" + run), sites.keySet());
         assertEquals("North clinic " + run, sites.get("N" + run));
         assertEquals("South clinic " + run, sites.get("S" + run));
         assertNull(sites.get("O" + run));
-        assertTrue(Set.of("North clinic " + run, "East clinic " + run).contains(sites.get("D" + run)));
+        assertEquals("East clinic " + run, sites.get("D" + run));
+    }
+
+    @Test
+    public void moreRowsRunNoMoreQueries() {
+        String run = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        long site = organization("Clinic " + run);
+        sample("A" + run, site);
+        sample("B" + run, site);
+        long twoRows = queriesForOneDay();
+        for (int i = 0; i < 6; i++) {
+            sample("C" + i + run, site);
+        }
+        assertEquals(twoRows, queriesForOneDay());
+    }
+
+    private long queriesForOneDay() {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        boolean wasEnabled = statistics.isStatisticsEnabled();
+        statistics.clear();
+        statistics.setStatisticsEnabled(true);
+        try {
+            allResults();
+            return statistics.getQueryExecutionCount();
+        } finally {
+            statistics.setStatisticsEnabled(wasEnabled);
+        }
+    }
+
+    private List<TATResult> allResults() {
+        return tatReportService.getAllResults(DAY, DAY, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR,
+                null, null, null, null, null, null, false);
     }
 
     private long organization(String name) {

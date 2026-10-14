@@ -1,7 +1,5 @@
 package org.openelisglobal.sampleorganization.service;
 
-import java.util.Collection;
-import java.util.Map;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleorganization.dao.SampleOrganizationDAO;
@@ -42,11 +40,5 @@ public class SampleOrganizationServiceImpl extends AuditableBaseObjectServiceImp
     @Transactional(readOnly = true)
     public SampleOrganization getDataBySample(Sample sample) {
         return getBaseObjectDAO().getDataBySample(sample);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Map<String, String> getOrganizationNamesBySampleIds(Collection<String> sampleIds) {
-        return getBaseObjectDAO().getOrganizationNamesBySampleIds(sampleIds);
     }
 }
