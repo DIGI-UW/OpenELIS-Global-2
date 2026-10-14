@@ -34,7 +34,7 @@ export default function CaseWorklist({ service = serviceDefault }) {
   const location = useLocation();
   const t = (id, values) => intl.formatMessage({ id }, values);
   const params = new URLSearchParams(location.search);
-  const cultures = params.get("grain") === "cultures";
+  const cultures = params.get("grain") === "bench";
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -82,7 +82,7 @@ export default function CaseWorklist({ service = serviceDefault }) {
           <h1>{t("microbiology.worklist.title")}</h1>
           <Button
             kind="tertiary"
-            onClick={() => change("grain", cultures ? "" : "cultures")}
+            onClick={() => change("grain", cultures ? "" : "bench")}
           >
             {t(
               cultures
