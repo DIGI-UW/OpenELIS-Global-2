@@ -672,4 +672,7 @@
 
   <!-- QC targets that no longer fit their test's result type are retired once (OGC-1462). -->
   <include relativeToChangelogFile="true" file="137-qc-targets-retire-stale.xml"/>
+
+  <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
+  <include relativeToChangelogFile="true" file="138-analyzer-delivery-action.xml"/>
 </databaseChangeLog>

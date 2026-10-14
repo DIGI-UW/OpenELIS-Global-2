@@ -61,6 +61,14 @@ public class BridgeOutboxClient {
         return rows;
     }
 
+    /**
+     * Reads one entry, including its connectionId. The Bridge keeps an entry after
+     * a retry or dismiss, whatever its state.
+     */
+    public JsonNode get(String outboxEntryId) {
+        return send("GET", entryUrl(outboxEntryId));
+    }
+
     public void retry(String outboxEntryId) {
         send("POST", entryUrl(outboxEntryId) + "/retry");
     }
