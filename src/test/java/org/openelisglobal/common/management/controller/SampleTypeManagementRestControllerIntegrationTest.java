@@ -95,4 +95,41 @@ public class SampleTypeManagementRestControllerIntegrationTest extends BaseWebCo
                 .session(session)).andExpect(status().isConflict()).andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").exists());
     }
+
+    /**
+     * OGC-1463: a save from a page loaded before another admin deactivated the
+     * type.
+     */
+    @Test
+    public void update_fromAnOldPageIsRefusedAsStale_andTheTypeStaysInactive() throws Exception {
+        String loaded = com.jayway.jsonpath.JsonPath
+                .read(mockMvc.perform(get("/rest/sample-types/95601").session(session)).andReturn().getResponse()
+                        .getContentAsString(), "$.data.lastUpdated");
+        mockMvc.perform(put("/rest/sample-types/95601").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"95601\",\"name\":\"STMgmtIT Alpha\",\"description\":\"STMgmtIT Alpha\","
+                        + "\"domain\":\"CLINICAL\",\"abbreviation\":\"\",\"isActive\":false,\"sortOrder\":901}")
+                .session(session)).andExpect(status().isOk());
+
+        mockMvc.perform(put("/rest/sample-types/95601").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"95601\",\"name\":\"STMgmtIT Alpha A\",\"description\":\"STMgmtIT Alpha\","
+                        + "\"domain\":\"CLINICAL\",\"abbreviation\":\"\",\"isActive\":true,\"sortOrder\":901,"
+                        + "\"lastUpdated\":\"" + loaded + "\"}")
+                .session(session)).andExpect(status().isConflict()).andExpect(jsonPath("$.field").value("stale"));
+
+        mockMvc.perform(get("/rest/sample-types/95601").session(session))
+                .andExpect(jsonPath("$.data.isActive").value(false));
+    }
+
+    /**
+     * A type with no abbreviation could not be saved at all (500 in the duplicate
+     * check).
+     */
+    @Test
+    public void update_aTypeWithoutAnAbbreviation_saves() throws Exception {
+        mockMvc.perform(put("/rest/sample-types/95601").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"id\":\"95601\",\"name\":\"STMgmtIT Alpha\",\"description\":\"STMgmtIT Alpha v3\","
+                        + "\"domain\":\"CLINICAL\",\"abbreviation\":\"\",\"isActive\":true,\"sortOrder\":901}")
+                .session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.description").value("STMgmtIT Alpha v3"));
+    }
 }

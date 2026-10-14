@@ -669,6 +669,10 @@
 
   <!-- Result component codes are unique among a test's active components (OGC-1458). -->
   <include relativeToChangelogFile="true" file="136-result-component-active-code-unique.xml"/>
+
+  <!-- QC targets that no longer fit their test's result type are retired once (OGC-1462). -->
+  <include relativeToChangelogFile="true" file="137-qc-targets-retire-stale.xml"/>
+
   <!-- Configurable sample type used for RetroCI DBS referral orders. -->
   <include relativeToChangelogFile="true" file="138-retroci-dbs-sample-type-config.xml"/>
 </databaseChangeLog>

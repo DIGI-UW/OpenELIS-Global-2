@@ -13,13 +13,13 @@
 vi.mock("../../../utils/Utils", async (importOriginal) => ({
   ...(await importOriginal()),
   getFromOpenElisServer: vi.fn(),
-  postToOpenElisServer: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
   deleteFromOpenElisServer: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -29,7 +29,7 @@ import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
-  postToOpenElisServer,
+  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -185,14 +185,19 @@ describe("AccreditationSection", () => {
     await user.click(screen.getByText("SANAS — SANAS General"));
     fireEvent.click(within(openModal()).getByText("Save"));
 
-    expect(postToOpenElisServer).toHaveBeenCalledWith(
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
       "/rest/accreditation/enrollments",
       JSON.stringify({ testId: "42", accreditingBodyId: 2 }),
       expect.any(Function),
     );
 
     const fetchesBefore = getFromOpenElisServer.mock.calls.length;
-    postToOpenElisServer.mock.calls[0][2](201);
+    await act(() =>
+      postToOpenElisServerFullResponse.mock.calls[0][2]({
+        ok: true,
+        status: 201,
+      }),
+    );
     expect(getFromOpenElisServer.mock.calls.length).toBeGreaterThan(
       fetchesBefore,
     );
@@ -208,11 +213,50 @@ describe("AccreditationSection", () => {
     await user.click(within(openModal()).getByRole("combobox"));
     await user.click(screen.getByText("SANAS — SANAS General"));
     fireEvent.click(within(openModal()).getByText("Save"));
-    postToOpenElisServer.mock.calls[0][2](400);
+    const fetchesBefore = getFromOpenElisServer.mock.calls.length;
+    await act(() =>
+      postToOpenElisServerFullResponse.mock.calls[0][2]({
+        ok: false,
+        status: 400,
+        json: () =>
+          Promise.resolve({
+            error: "This test is already accredited by that body",
+          }),
+      }),
+    );
 
     expect(
       screen.getByText("The accreditation could not be added."),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("This test is already accredited by that body"),
+    ).toBeInTheDocument();
+    expect(getFromOpenElisServer.mock.calls.length).toBeGreaterThan(
+      fetchesBefore,
+    );
+  });
+
+  test("a server error is not shown as raw text", async () => {
+    const user = userEvent.setup();
+    mockEndpoints();
+    renderSection();
+
+    await user.click(screen.getByTestId("add-accreditation-button"));
+    await user.click(within(openModal()).getByRole("combobox"));
+    await user.click(screen.getByText("SANAS — SANAS General"));
+    fireEvent.click(within(openModal()).getByText("Save"));
+    await act(() =>
+      postToOpenElisServerFullResponse.mock.calls[0][2]({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "Internal Server Error" }),
+      }),
+    );
+
+    expect(
+      screen.getByText("The accreditation could not be added."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Internal Server Error")).not.toBeInTheDocument();
   });
 
   test("removing asks first, then deletes", () => {

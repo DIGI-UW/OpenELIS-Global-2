@@ -332,4 +332,24 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
 
         assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
     }
+
+    /** OGC-1463: a save from a page loaded before another editor's save. */
+    @org.junit.Test
+    public void aSaveFromAnOldPageIsRefusedAsStale_andKeepsTheOtherEditorsMapping() {
+        TerminologyResponse pageA = controller.getTerminology(testId()).getBody();
+        put(mapping("LOINC", "3333-3", "SAME_AS"));
+
+        pageA.mappings.add(mapping("SNOMED", "123456", "SAME_AS"));
+        ResponseEntity<TerminologyResponse> stale = controller.saveTerminology(testId(), pageA, authedRequest());
+
+        assertEquals(409, stale.getStatusCode().value());
+        assertEquals("stale", stale.getBody().conflict);
+        assertEquals(Long.valueOf(1), rowCount("LOINC", "3333-3"));
+        assertEquals(Long.valueOf(0), rowCount("SNOMED", "123456"));
+
+        TerminologyResponse reloaded = controller.getTerminology(testId()).getBody();
+        reloaded.mappings.add(mapping("SNOMED", "123456", "SAME_AS"));
+        assertEquals(200, controller.saveTerminology(testId(), reloaded, authedRequest()).getStatusCode().value());
+        assertEquals(Long.valueOf(1), rowCount("SNOMED", "123456"));
+    }
 }

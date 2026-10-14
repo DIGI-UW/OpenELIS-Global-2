@@ -31,6 +31,9 @@ import {
   putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-1234: the source test's components as unsaved rows of this test. Copy
@@ -212,6 +215,8 @@ const SampleResultsSection = ({ testId }) => {
   // Aborted when the section unmounts, so a late response never updates a
   // screen that is gone.
   const loadAbort = useRef(null);
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -225,6 +230,8 @@ const SampleResultsSection = ({ testId }) => {
           return;
         }
         setComponents(res.components);
+        setVersion(res.version || null);
+        setStale(false);
         setCopiedFrom(null);
       },
       loadAbort.current ? loadAbort.current.signal : null,
@@ -728,6 +735,7 @@ const SampleResultsSection = ({ testId }) => {
     setSaving(true);
     const payload = {
       testId,
+      version,
       components: normalized.map((c) => ({
         ...c,
         defaultResult: offeredDefault(c),
@@ -750,6 +758,13 @@ const SampleResultsSection = ({ testId }) => {
       JSON.stringify(payload),
       async (response) => {
         setSaving(false);
+        if (response && response.status === 409) {
+          const conflict = await response.json().catch(() => null);
+          if (isStaleConflict(409, conflict)) {
+            setStale(true);
+            return;
+          }
+        }
         setNotificationVisible(true);
         if (response && response.status === 422) {
           let body = null;
@@ -1632,6 +1647,9 @@ const SampleResultsSection = ({ testId }) => {
         </p>
       </Modal>
 
+      {stale && (
+        <StaleSaveNotice testId="sample-results-stale-save" onRefresh={load} />
+      )}
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <Button
           kind="tertiary"
@@ -1641,7 +1659,7 @@ const SampleResultsSection = ({ testId }) => {
         >
           <FormattedMessage id="label.testCatalog.sampleResults.addComponent" />
         </Button>
-        <Button kind="primary" disabled={saving} onClick={handleSave}>
+        <Button kind="primary" disabled={saving || stale} onClick={handleSave}>
           <FormattedMessage id="label.button.save" />
         </Button>
       </div>

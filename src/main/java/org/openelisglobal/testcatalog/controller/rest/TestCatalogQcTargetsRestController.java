@@ -157,6 +157,9 @@ public class TestCatalogQcTargetsRestController {
         Map<String, QcTargetDto> activeByKey = new HashMap<>();
         List<TestQcTarget> desired = new ArrayList<>();
         for (QcTargetDto dto : body.targets) {
+            if (isUnsavedBlankInactive(dto)) {
+                continue;
+            }
             String problem = validate(dto, quantitative, componentIds, lotIds);
             if (problem != null) {
                 return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
@@ -228,6 +231,9 @@ public class TestCatalogQcTargetsRestController {
         if (dto.uncertainty != null && dto.uncertainty.signum() < 0) {
             return "uncertainty must be a non-negative number";
         }
+        if (!dto.active) {
+            return null;
+        }
         if (quantitative) {
             if (dto.expectedValue == null || dto.uncertainty == null) {
                 return "expectedValue and uncertainty are required for a quantitative target";
@@ -236,6 +242,15 @@ public class TestCatalogQcTargetsRestController {
             return "expectedDictResultId is required for a qualitative target";
         }
         return null;
+    }
+
+    /**
+     * A row added and switched off before anything was entered: there is nothing to
+     * keep, so it is not stored (OGC-1462).
+     */
+    private static boolean isUnsavedBlankInactive(QcTargetDto dto) {
+        return dto != null && !dto.active && GenericValidator.isBlankOrNull(dto.id) && dto.expectedValue == null
+                && dto.uncertainty == null && GenericValidator.isBlankOrNull(dto.expectedDictResultId);
     }
 
     private static String key(String componentId, String level, String lotId) {

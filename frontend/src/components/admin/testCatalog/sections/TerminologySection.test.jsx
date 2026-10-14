@@ -18,7 +18,7 @@ vi.mock("../../../layout/Layout", async () => {
 
 vi.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
-  putToOpenElisServer: vi.fn(),
+  putToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
@@ -30,7 +30,7 @@ import { IntlProvider } from "react-intl";
 import TerminologySection from "./TerminologySection";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import messages from "../../../../languages/en.json";
 
@@ -43,7 +43,9 @@ const renderSection = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
-  putToOpenElisServer.mockImplementation((url, payload, cb) => cb(200));
+  putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+    cb({ status: 200, ok: true }),
+  );
 });
 
 describe("TerminologySection", () => {
@@ -81,8 +83,12 @@ describe("TerminologySection", () => {
     fireEvent.click(
       screen.getByRole("button", { name: messages["label.button.save"] }),
     );
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    const payload = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const payload = JSON.parse(
+      putToOpenElisServerFullResponse.mock.calls[0][1],
+    );
     expect(payload.mappings[0].sampleTypeId).toBe("9");
   });
 
@@ -138,8 +144,12 @@ describe("TerminologySection", () => {
     expect(screen.getByText("1558-6")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    const mappings = JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings;
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const mappings = JSON.parse(
+      putToOpenElisServerFullResponse.mock.calls[0][1],
+    ).mappings;
     expect(mappings).toEqual([
       {
         id: null,
@@ -170,8 +180,12 @@ describe("TerminologySection", () => {
     );
     // Straight to Save — no "Add mapping" click first.
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).mappings,
+    ).toEqual([
       {
         id: null,
         source: "SNOMED",
@@ -202,8 +216,12 @@ describe("TerminologySection", () => {
       target: { value: "9999-9" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual([
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).mappings,
+    ).toEqual([
       {
         id: "a",
         source: "LOINC",
@@ -239,7 +257,7 @@ describe("TerminologySection", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     // The duplicate is caught client-side with a specific warning — no PUT.
-    expect(putToOpenElisServer).not.toHaveBeenCalled();
+    expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
   });
 
   it("removes a mapping so it drops out of the saved payload", async () => {
@@ -259,10 +277,12 @@ describe("TerminologySection", () => {
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
-    expect(JSON.parse(putToOpenElisServer.mock.calls[0][1]).mappings).toEqual(
-      [],
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
     );
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).mappings,
+    ).toEqual([]);
   });
 
   it("shows an error state when the fetch fails", async () => {
@@ -291,5 +311,42 @@ describe("TerminologySection", () => {
     renderSection();
     expect(await screen.findByTestId("no-loinc-warning")).toBeInTheDocument();
     expect(screen.getByTestId("duplicate-loinc-warning")).toBeInTheDocument();
+  });
+
+  /** OGC-1463: a save refused as stale says so and writes nothing. */
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({
+        testId: "42",
+        version: "v1",
+        mappings: [
+          { id: "a", source: "LOINC", code: "2345-7", relationship: "SAME_AS" },
+        ],
+        sampleTypes: [],
+      }),
+    );
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    renderSection();
+    await screen.findByTestId("mapping-row-a");
+
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    expect(
+      await screen.findByTestId("terminology-stale-save"),
+    ).toHaveTextContent(messages["error.staleSave.section"]);
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).version,
+    ).toBe("v1");
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
+    );
+    expect(screen.queryByTestId("terminology-stale-save")).toBeNull();
   });
 });

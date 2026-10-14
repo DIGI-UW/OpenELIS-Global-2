@@ -247,6 +247,24 @@ describe("LocalizationSection", () => {
       expect(saveButton()).toBeDisabled();
     });
 
+    /** OGC-1463: another admin's French, saved after this page loaded, stands. */
+    it("sends only the locales that changed", async () => {
+      await renderLoaded();
+      putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+        cb({ ok: true }),
+      );
+
+      type(
+        document.getElementById("localization-input-reportingName"),
+        "Glucose Report EN",
+      );
+      fireEvent.click(saveButton());
+
+      const [url, body] = putToOpenElisServerFullResponse.mock.calls[0];
+      expect(url).toBe("/rest/localizations/101/translations");
+      expect(JSON.parse(body)).toEqual({ en: "Glucose Report EN" });
+    });
+
     it("keeps the draft so nothing is retyped when the save fails", async () => {
       await renderLoaded();
       putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>

@@ -22,7 +22,7 @@ import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
   hasPermissionOrGlobalAdmin,
-  postToOpenElisServer,
+  postToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import AccreditationStatusTag from "../../../qa/common/AccreditationStatusTag";
 
@@ -90,6 +90,19 @@ const AccreditationSection = ({ testId }) => {
     (b) => !enrolledBodyIds.includes(String(b.id)) && b.active,
   );
 
+  /** The reason a 4xx refusal gives in its {@code error} field, if any. */
+  const refusalReason = async (response) => {
+    if (!response || response.status < 400 || response.status >= 500) {
+      return null;
+    }
+    try {
+      const body = await response.json();
+      return typeof body?.error === "string" ? body.error : null;
+    } catch {
+      return null;
+    }
+  };
+
   const submitAdd = () => {
     const bodyId = selectedBodyId;
     setAddOpen(false);
@@ -97,26 +110,27 @@ const AccreditationSection = ({ testId }) => {
     if (!bodyId) {
       return;
     }
-    postToOpenElisServer(
+    postToOpenElisServerFullResponse(
       "/rest/accreditation/enrollments",
       JSON.stringify({ testId, accreditingBodyId: Number(bodyId) }),
-      (status) => {
-        if (status >= 200 && status < 300) {
+      async (response) => {
+        if (response && response.ok) {
           setNotification({
             kind: "success",
             text: intl.formatMessage({
               id: "label.testCatalog.accreditation.added",
             }),
           });
-          load();
         } else {
           setNotification({
             kind: "error",
             text: intl.formatMessage({
               id: "label.testCatalog.accreditation.saveError",
             }),
+            detail: await refusalReason(response),
           });
         }
+        load();
       },
     );
   };
@@ -183,6 +197,7 @@ const AccreditationSection = ({ testId }) => {
           kind={notification.kind}
           lowContrast
           title={notification.text}
+          subtitle={notification.detail || undefined}
           onCloseButtonClick={() => setNotification(null)}
         />
       )}

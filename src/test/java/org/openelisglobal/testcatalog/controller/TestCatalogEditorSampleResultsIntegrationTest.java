@@ -662,6 +662,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
 
         SampleResults staged = controller.getSampleResults(String.valueOf(SOURCE_ID)).getBody();
         staged.testId = String.valueOf(TEST_ID);
+        staged.version = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().version;
         for (ResultComponentDto c : staged.components) {
             c.id = null;
             c.options.forEach(o -> o.id = null);

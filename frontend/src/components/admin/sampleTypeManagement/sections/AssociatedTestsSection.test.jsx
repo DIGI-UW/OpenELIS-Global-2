@@ -99,4 +99,30 @@ describe("AssociatedTestsSection", () => {
       expect.any(Function),
     );
   });
+
+  it("explains why the last sample type of an active test stays (OGC-1460)", async () => {
+    deleteFromOpenElisServer.mockImplementation((_url, cb) => cb(422));
+    renderSection();
+    await screen.findByText("Glucose (Serum)");
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove test/i }));
+
+    expect(
+      await screen.findByText(
+        messages["label.sampleType.tests.removeLastOfActive"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the generic message for any other failure", async () => {
+    deleteFromOpenElisServer.mockImplementation((_url, cb) => cb(500));
+    renderSection();
+    await screen.findByText("Glucose (Serum)");
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove test/i }));
+
+    expect(
+      await screen.findByText(messages["label.sampleType.tests.removeError"]),
+    ).toBeInTheDocument();
+  });
 });

@@ -204,9 +204,17 @@ export default function MethodsSection({ testId }) {
   // ── Remove link ───────────────────────────────────────────────────────────
 
   const handleRemove = (linkId) => {
-    deleteFromOpenElisServer(`/rest/test/${testId}/methods/${linkId}`, () => {
-      loadLinks();
-    });
+    deleteFromOpenElisServer(
+      `/rest/test/${testId}/methods/${linkId}`,
+      (status) => {
+        if (status >= 200 && status < 300) {
+          setNotification(null);
+        } else {
+          notify("error", "admin.testCatalog.methods.error.removeFailed");
+        }
+        loadLinks();
+      },
+    );
   };
 
   // ── Copy from test ────────────────────────────────────────────────────────

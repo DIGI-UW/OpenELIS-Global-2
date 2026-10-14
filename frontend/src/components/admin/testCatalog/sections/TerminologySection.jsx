@@ -19,9 +19,12 @@ import { Add, Checkmark, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-949 M10 / OGC-957..958 — Terminology Mappings section.
@@ -97,6 +100,9 @@ const TerminologySection = ({ testId }) => {
       return next;
     });
 
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
+
   const loadLoincIntegrity = () => {
     getFromOpenElisServer(
       `/rest/test-catalog/tests/${testId}/loinc-integrity`,
@@ -116,8 +122,17 @@ const TerminologySection = ({ testId }) => {
         setMappings(res.mappings || []);
         setComponents(res.components || []);
         setSampleTypes(res.sampleTypes || []);
+        setVersion(res.version || null);
       },
     );
+  };
+
+  const reloadAfterStale = () => {
+    setStale(false);
+    setLoading(true);
+    setEditingRows(new Set());
+    loadMappings();
+    loadLoincIntegrity();
   };
 
   useEffect(() => {
@@ -229,6 +244,7 @@ const TerminologySection = ({ testId }) => {
     setSaving(true);
     const payload = {
       testId,
+      version,
       mappings: complete.map((m) => ({
         id: m.id || null,
         source: m.source,
@@ -239,11 +255,19 @@ const TerminologySection = ({ testId }) => {
         sampleTypeId: m.sampleTypeId || null,
       })),
     };
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/terminology`,
       JSON.stringify(payload),
-      (status) => {
+      async (response) => {
         setSaving(false);
+        const status = response ? response.status : 0;
+        if (status === 409) {
+          const body = await response.json().catch(() => null);
+          if (isStaleConflict(status, body)) {
+            setStale(true);
+            return;
+          }
+        }
         setNotificationVisible(true);
         if (status === 200) {
           addNotification({
@@ -662,7 +686,13 @@ const TerminologySection = ({ testId }) => {
         </Button>
       </Stack>
 
-      <Button kind="primary" disabled={saving} onClick={handleSave}>
+      {stale && (
+        <StaleSaveNotice
+          testId="terminology-stale-save"
+          onRefresh={reloadAfterStale}
+        />
+      )}
+      <Button kind="primary" disabled={saving || stale} onClick={handleSave}>
         <FormattedMessage id="label.button.save" />
       </Button>
     </Stack>

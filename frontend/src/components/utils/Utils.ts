@@ -99,6 +99,29 @@ const handleSessionError = (response: Response): Response => {
   return response;
 };
 
+/**
+ * A write that "succeeds" with a page instead of an API answer: a redirect to
+ * the login page, or an HTML body from a REST endpoint (which only ever answers
+ * JSON or nothing). That is what a proxy or SSO layer hands back once the
+ * session has ended, and it means nothing was saved (OGC-1461).
+ */
+const answeredWithLoginPage = (
+  response: Response,
+  endPoint: string,
+): boolean => {
+  if (!response.ok) {
+    return false;
+  }
+  if (response.redirected && /login/i.test(response.url || "")) {
+    return true;
+  }
+  const contentType = response.headers?.get("content-type") || "";
+  return endPoint.includes("/rest/") && contentType.includes("text/html");
+};
+
+/** Reports an ended session as the 401 it really is. */
+const SESSION_ENDED_STATUS = 401;
+
 const DATE_FMT = "yyyy-MM-dd";
 
 /**
@@ -288,7 +311,11 @@ export const postToOpenElisServer = <TExtra = unknown>(
     },
   )
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status, extraParams);
     })
@@ -322,7 +349,17 @@ const sendForFullResponse = <TExtra = unknown>(
     ...(payLoad === undefined ? {} : { body: payLoad as BodyInit }),
   })
     .then(handleSessionError)
-    .then((response) => callback(response, extraParams))
+    .then((response) =>
+      callback(
+        answeredWithLoginPage(response, endPoint)
+          ? new Response(null, {
+              status: SESSION_ENDED_STATUS,
+              statusText: "Session ended",
+            })
+          : response,
+        extraParams,
+      ),
+    )
     .catch((error) => {
       console.error(error);
       callback(undefined, extraParams);
@@ -357,7 +394,11 @@ export const postToOpenElisServerFormData = <TExtra = unknown>(
     },
   )
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status, extraParams);
     })
@@ -620,7 +661,11 @@ export const putToOpenElisServer = (
 
   fetch(config.serverBaseUrl + endPoint, options)
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status);
     })
@@ -709,7 +754,11 @@ export const deleteFromOpenElisServer = (
     },
   })
     .then(handleSessionError)
-    .then((response) => response.status)
+    .then((response) =>
+      answeredWithLoginPage(response, endPoint)
+        ? SESSION_ENDED_STATUS
+        : response.status,
+    )
     .then((status) => {
       callback(status);
     })
