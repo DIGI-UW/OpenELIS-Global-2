@@ -191,8 +191,14 @@ test("inoculates from the worklist and scans the saved culture label", async ({
 test("bench actions remain reachable on a narrow viewport", async ({
   page,
 }) => {
+  const seeded = await seedMicrobiologyCultureWorkspace(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/Microbiology/worklist?grain=bench");
+  await page.goto(
+    `/Microbiology/worklist?grain=bench&q=${encodeURIComponent(seeded.accessionNumber)}`,
+  );
+  await expect(
+    page.getByRole("row").filter({ hasText: seeded.accessionNumber }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
   await expect(
     page.getByRole("heading", { name: "Microbiology worklist" }),
   ).toBeVisible();
