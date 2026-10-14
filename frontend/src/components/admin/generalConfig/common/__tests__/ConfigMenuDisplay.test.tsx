@@ -101,6 +101,62 @@ describe("ConfigMenuDisplay", () => {
     (postToOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
   });
 
+  it.each([false, true])(
+    "clears the previous menu and selection while the next menu loads (editor open: %s)",
+    async (openEditor) => {
+      let deliverNextMenu: (response: unknown) => void;
+      const nextMenu = "SiteInformationMenu";
+      const client = createQueryClient();
+      const view = (menuType: string) => (
+        <MemoryRouter>
+          <IntlProvider locale="en" messages={messages}>
+            <QueryClientProvider client={client}>
+              <NotificationContext.Provider
+                value={{ notificationVisible: false }}
+              >
+                <ConfigMenuDisplay
+                  id="admin.formEntryConfig"
+                  menuType={menuType}
+                />
+              </NotificationContext.Provider>
+            </QueryClientProvider>
+          </IntlProvider>
+        </MemoryRouter>
+      );
+      const { rerender } = render(view(MENU));
+      fireEvent.click(await screen.findByLabelText("selectRow"));
+      expect(screen.getByRole("button", { name: "Modify" })).toBeEnabled();
+      if (openEditor) {
+        await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+        await screen.findByRole("heading", { name: "Edit Record" });
+      }
+      (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+        (url: string, callback: (response: unknown) => void) => {
+          if (url === `/rest/${nextMenu}`) deliverNextMenu = callback;
+        },
+      );
+
+      rerender(view(nextMenu));
+
+      expect(
+        screen.queryByRole("heading", { name: "Edit Record" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Results only")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("selectRow")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Modify" })).toBeDisabled();
+      await act(async () =>
+        deliverNextMenu({
+          menuList: [
+            { ...config("true"), id: "8", description: "24 hour clock" },
+          ],
+        }),
+      );
+      expect(await screen.findByText("24 hour clock")).toBeInTheDocument();
+      expect(screen.getByLabelText("selectRow")).not.toBeChecked();
+      expect(screen.getByRole("button", { name: "Modify" })).toBeDisabled();
+    },
+  );
+
   it("lists the configuration values", async () => {
     renderScreen();
 

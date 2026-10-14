@@ -257,6 +257,21 @@ public class MicrobiologyUatScenarioServiceTest {
         when(entityManager.createQuery(anyString())).thenReturn(bulkUpdate);
         when(bulkUpdate.setParameter(anyString(), any())).thenReturn(bulkUpdate);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
+        var reporting = mock(MicroPatientReportService.class);
+        var cultures = mock(MicroCultureService.class);
+        var details = mock(MicroCaseOrderDetailService.class);
+        var programs = mock(org.openelisglobal.program.service.ProgramService.class);
+        var programSamples = mock(org.openelisglobal.program.service.ProgramSampleService.class);
+        org.mockito.Mockito.lenient().when(cultures.getRows(anyString()))
+                .thenReturn(List.of(new org.openelisglobal.microbiology.form.MicroCultureForm()));
+        org.mockito.Mockito.lenient().when(details.getOrderDetail(anyString()))
+                .thenReturn(new org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail());
+        ReflectionTestUtils.setField(service, "patientReports", reporting);
+        ReflectionTestUtils.setField(service, "cultures", cultures);
+        ReflectionTestUtils.setField(service, "orderDetails", details);
+        ReflectionTestUtils.setField(service, "programs", programs);
+        ReflectionTestUtils.setField(service, "programSamples", programSamples);
+
     }
 
     @Test
@@ -313,8 +328,8 @@ public class MicrobiologyUatScenarioServiceTest {
             TimeZone.setDefault(TimeZone.getTimeZone(zone));
             SampleItem item = sampleItem("sample-item-1");
             item.setCollectionDate(Timestamp.from(Instant.parse("2026-09-09T22:30:00Z")));
-            configureHappyPath(sample("sample-1"), item, method("method-1"), test("test-1"),
-                    testAnalyte("test-analyte-1"), analysis("analysis-1"), microCase("case-1"));
+            configureHappyPath(sample("101"), item, method("method-1"), test("test-1"), testAnalyte("test-analyte-1"),
+                    analysis("analysis-1"), microCase("case-1"));
             MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
             request.scenario = "WORKLIST";
             request.scenarioKey = "playwright-collection-date";
@@ -330,7 +345,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsPatientWithValidationSafeNameAndDeterministicExternalIdentifier() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -383,7 +398,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void reusesReleasedFixtureWithoutReattachingOrRewritingCaseOwnership() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -415,7 +430,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsReusableLotTraceabilityFixturesThroughServices() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -450,7 +465,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsStructuredOrganismChoicesThroughConfigurationService() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -471,7 +486,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsSpecimenLostVocabularyThroughServices() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -505,7 +520,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void repairsExistingUatPatientMissingRequiredOrderDemographics() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -532,7 +547,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void repairsExistingUatMethodMissingLocalization() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -578,7 +593,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsM3ReferenceAdministrationDataThroughServices() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -644,7 +659,7 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     private MicrobiologyUatScenarioForm provisionReviewedAstScenario(String scenario, boolean includeUnmappedOrganism) {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -710,7 +725,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsAnalyzerAwaitingAstScenarioThroughServices() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");
@@ -801,7 +816,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
     @Test
     public void provisionsM4WhonetMappedAndUnmappedReferencesThroughServices() {
-        Sample sample = sample("sample-1");
+        Sample sample = sample("101");
         SampleItem sampleItem = sampleItem("sample-item-1");
         Method method = method("method-1");
         org.openelisglobal.test.valueholder.Test test = test("test-1");

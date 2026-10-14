@@ -18,6 +18,7 @@ import {
   useRouteMatch,
 } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import MolecularDstPage from "./MolecularDstPage";
 import AstPanelPage from "./AstPanelPage";
 import BreakpointPage from "./BreakpointPage";
 import { REFERENCE_DEFINITIONS } from "./definitions";
@@ -75,6 +76,7 @@ const MicrobiologyReferenceAdmin = () => {
 
   const sectionContent = (
     <>
+      {section === "dst-bindings" && <MolecularDstPage />}
       {REFERENCE_DEFINITIONS[section] && (
         <ReferenceDataPage
           definition={REFERENCE_DEFINITIONS[section]}

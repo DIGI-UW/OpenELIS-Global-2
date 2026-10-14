@@ -24,6 +24,8 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
 
     @org.springframework.beans.factory.annotation.Autowired
     private MicrobiologyCaseAccessService access;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -140,6 +142,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroIsolateIdentificationEvent event = identificationHistoryService.recordChange(previous, isolate, reason,
                 performedBy);
         MicroIsolate updated = isolateDAO.update(isolate);
+        panelAssignments.assignDefault(updated, performedBy);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,
                 identificationActivityNote(isolate, previous, reason),
                 "{\"isolateId\":\"" + isolate.getId() + "\",\"identificationEventId\":\"" + event.getId() + "\"}");

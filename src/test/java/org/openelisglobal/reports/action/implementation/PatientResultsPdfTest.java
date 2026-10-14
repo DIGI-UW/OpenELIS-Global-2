@@ -42,6 +42,32 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void microbiologyBlockPrintsBetweenOrdinaryResultsAndContinuesAcrossPages() throws Exception {
+        var before = row("PAT-MICRO", "Microbiology", "Before culture", "Negative", "", "", "", null);
+        var micro = row("PAT-MICRO", "Microbiology", "Culture anchor", "", "", "", "", null);
+        var after = row("PAT-MICRO", "Microbiology", "After culture", "Positive", "", "", "", null);
+        var report = new org.openelisglobal.microbiology.form.MicroPatientReportForm();
+        report.classification = "NOT_APPLICABLE";
+        var drugs = new ArrayList<org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility>();
+        for (int i = 0; i < 80; i++)
+            drugs.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility("d" + i,
+                    "Agent " + i, "reading", "run", "64", "ug/mL", "RESISTANT", "CLSI", "2026", "EXACT"));
+        report.isolates.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Isolate("i", "ISO-1",
+                "Escherichia coli", drugs));
+        report.notes.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Note("External clinical note",
+                "Validator", null));
+        micro.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
+        byte[] pdf = PatientResultsPdf.render(settings(true, List.of(), null), List.of(before, micro, after));
+        String text = PdfText.of(pdf).replaceAll("\\s+", " ");
+        assertTrue(text, text.contains("Agent 79 64 ug/mL Resistant CLSI 2026"));
+        assertTrue(text, text.contains("External clinical note"));
+        assertTrue(text, text.indexOf("Before culture") < text.indexOf("Initial testing"));
+        assertTrue(text, text.indexOf("Additional testing") < text.indexOf("After culture"));
+        assertTrue(PdfText.pageCount(pdf) > 1);
+        org.junit.Assert.assertFalse(text, text.contains("Culture anchor"));
+    }
+
+    @Test
     public void completionAndCorrectedNotesBelongToEachOrder() throws Exception {
         ClinicalPatientData complete = rows("PAT-0001").get(0);
         ClinicalPatientData partial = rows("PAT-0001").get(0);

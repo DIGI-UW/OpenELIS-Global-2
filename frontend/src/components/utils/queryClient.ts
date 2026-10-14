@@ -32,6 +32,9 @@ export const createQueryClient = (): QueryClient =>
   new QueryClient({
     defaultOptions: {
       queries: {
+        // A lab server can remain reachable on a local network without internet.
+        // Let the request determine reachability instead of navigator.onLine.
+        networkMode: "always",
         retry: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,

@@ -129,9 +129,11 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario =
+  | "AST_REPORTING"
   | "CASE"
   | "MVP"
   | "WORKLIST"
+  | "NO_GROWTH_REPORTING"
   | "CULTURE_WORKSPACE"
   | "ISOLATE_WORKSPACE"
   | "RECEIVED_ISOLATE"
@@ -506,6 +508,13 @@ async function ensureReviewedAstIsolate(
       hasAllAntibiotics(candidate, antibiotics),
   );
   if (reviewed) {
+    await requireJsonResponse(
+      `Select ${isolateLabel} AST results for reporting`,
+      await page.request.post(
+        `${API_PREFIX}/rest/microbiology/ast/runs/${reviewed.id}/reportable`,
+        { headers, data: {} },
+      ),
+    );
     return;
   }
 
@@ -548,6 +557,13 @@ async function ensureReviewedAstIsolate(
     `Review ${isolateLabel} AST run`,
     await page.request.post(
       `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/review`,
+      { headers, data: {} },
+    ),
+  );
+  await requireJsonResponse(
+    `Select ${isolateLabel} AST results for reporting`,
+    await page.request.post(
+      `${API_PREFIX}/rest/microbiology/ast/runs/${run.id}/reportable`,
       { headers, data: {} },
     ),
   );
@@ -682,7 +698,8 @@ async function seedMicrobiologyWhonetExportScenario(
           data: {
             culturePurpose,
             cultureMethodId: reference.methodId,
-            patientOrigin: patientOrigin || "",
+            patientOrigin:
+              patientOrigin || caseDetail.orderDetail?.patientOrigin || "",
             admissionDate: patientOrigin ? "2026-08-17" : null,
             numberOfSets: 1,
             clinicalHistory: "Synthetic WHONET export filter fixture",
@@ -693,26 +710,26 @@ async function seedMicrobiologyWhonetExportScenario(
     );
   }
 
-  await ensureReviewedAstIsolate(
-    page,
-    reference,
-    reference.organismId,
-    "WHONET-MAPPED",
-    "Reference organism (UAT)",
-    antibiotics,
-    mappedExisting,
-  );
-  await ensureReviewedAstIsolate(
-    page,
-    reference,
-    reference.unmappedOrganismId,
-    "WHONET-UNMAPPED",
-    "WHONET mapping pending (UAT)",
-    antibiotics,
-    unmappedExisting,
-    unmappedSignificance,
-  );
   if (caseDetail.finalReleaseState !== "FINAL_RELEASED") {
+    await ensureReviewedAstIsolate(
+      page,
+      reference,
+      reference.organismId,
+      "WHONET-MAPPED",
+      "Reference organism (UAT)",
+      antibiotics,
+      mappedExisting,
+    );
+    await ensureReviewedAstIsolate(
+      page,
+      reference,
+      reference.unmappedOrganismId,
+      "WHONET-UNMAPPED",
+      "WHONET mapping pending (UAT)",
+      antibiotics,
+      unmappedExisting,
+      unmappedSignificance,
+    );
     const headers = { "X-CSRF-Token": await getCsrfToken(page) };
     const release = await requireJsonResponse<MicrobiologyReleaseFixture>(
       "Release M4 case for WHONET export",
@@ -1222,6 +1239,9 @@ export function seedMicrobiologyInitialTestingCase(
   return provisionMicrobiologyScenario(page, "INITIAL_TESTING");
 }
 
+export const seedMicrobiologyNoGrowthReporting = (page: Page) =>
+  provisionMicrobiologyScenario(page, "NO_GROWTH_REPORTING");
+
 export const seedMicrobiologyCultureWorkspace = (page: Page) =>
   provisionMicrobiologyScenario(page, "CULTURE_WORKSPACE");
 
@@ -1233,3 +1253,6 @@ export const seedMicrobiologyIsolateWorkspace = (
     page,
     received ? "RECEIVED_ISOLATE" : "ISOLATE_WORKSPACE",
   );
+
+export const seedMicrobiologyAstReporting = (page: Page) =>
+  provisionMicrobiologyScenario(page, "AST_REPORTING");

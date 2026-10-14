@@ -42,12 +42,33 @@ public class MicroCaseReadinessServiceTest {
     private MicroCriticalCommunicationDAO communicationDAO;
 
     private MicroCaseReadinessService service;
+    private org.openelisglobal.microbiology.valueholder.MicroCaseInoculation culture;
+    @Mock
+    private MicroAstReportChoiceService choices;
 
     @Before
     public void setUp() {
         service = new MicroCaseReadinessServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "isolateWorkspace",
                 org.mockito.Mockito.mock(MicroIsolateWorkspaceServiceImpl.class));
+        var cultures = org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO.class);
+        culture = new org.openelisglobal.microbiology.valueholder.MicroCaseInoculation();
+        culture.setOutcome("GROWTH");
+        culture.setOutcomeAt(new java.sql.Timestamp(1000));
+        when(cultures.getRows("case-1")).thenReturn(List.of(culture));
+        var dst = org.mockito.Mockito.mock(MicroDstService.class);
+        when(dst.evaluate("case-1")).thenReturn(new org.openelisglobal.microbiology.form.MicroDstForm());
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "cultures", cultures);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "dst", dst);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "choices", choices);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "requirements",
+                org.mockito.Mockito.mock(MicroCaseFinalRequirementsService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "links",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "referrals",
+                org.mockito.Mockito.mock(org.openelisglobal.referral.dao.ReferralDAO.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "statuses",
+                org.mockito.Mockito.mock(org.openelisglobal.common.services.IStatusService.class));
     }
 
     @Test
@@ -82,7 +103,7 @@ public class MicroCaseReadinessServiceTest {
     }
 
     @Test
-    public void unreviewedRepeatRunBlocksFinalReleaseDespiteAnEarlierReviewedRun() {
+    public void reviewedRunWithoutDrugSelectionDoesNotAllowFinalRelease() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         MicroIsolate isolate = significantIsolate();
@@ -106,6 +127,7 @@ public class MicroCaseReadinessServiceTest {
 
     @Test
     public void reviewedAstAllowsFinalRelease() {
+        when(choices.getChoices("iso-1")).thenReturn(List.of(new org.openelisglobal.microbiology.valueholder.MicroAstReportChoice()));
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         MicroIsolate isolate = significantIsolate();
@@ -123,7 +145,7 @@ public class MicroCaseReadinessServiceTest {
     }
 
     @Test
-    public void multipleReviewedAttemptsRequireExactlyOneReportableSelection() {
+    public void multipleReviewedAttemptsRequireIndividualDrugSelections() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         MicroIsolate isolate = significantIsolate();
@@ -137,15 +159,17 @@ public class MicroCaseReadinessServiceTest {
         MicroCaseReadinessForm blocked = service.getReadiness("case-1");
 
         assertFalse(blocked.finalReleaseReady);
-        assertTrue(blocked.blockers.contains("REPORTABLE_AST_RUN_REQUIRED"));
+        assertTrue(blocked.blockers.contains("AST_REVIEW_REQUIRED"));
 
-        repeat.setReportable(true);
+        when(choices.getChoices("iso-1"))
+                .thenReturn(List.of(new org.openelisglobal.microbiology.valueholder.MicroAstReportChoice()));
         MicroCaseReadinessForm ready = service.getReadiness("case-1");
         assertTrue(ready.finalReleaseReady);
     }
 
     @Test
     public void noGrowthReadyAllowsFinalReleaseWithoutAnIsolate() {
+        culture.setOutcome("NO_GROWTH");
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setStage(MicroCaseStage.NO_GROWTH_READY.name());
@@ -207,6 +231,23 @@ public class MicroCaseReadinessServiceTest {
         assertEquals(1, readiness.significantIsolatesAwaitingAstSetup);
         assertEquals(1, readiness.isolatesPendingIdentification);
         assertTrue(readiness.blockers.contains("ISOLATE_IDENTIFICATION_REQUIRED"));
+    }
+
+    @Test
+    public void failedQualityControlBlocksEvenANonSignificantIsolate() {
+        var c = new MicroCase();
+        c.setId("case-1");
+        var isolate = significantIsolate();
+        isolate.setSignificance("UNKNOWN");
+        var run = new MicroAstRun();
+        run.setStatus("QC_FAILED");
+        run.setQcState("FAILED");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(c));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(isolate));
+        when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
+        var readiness = service.getReadiness("case-1");
+        assertFalse(readiness.finalReleaseReady);
+        assertTrue(readiness.blockers.contains("AST_REVIEW_REQUIRED"));
     }
 
     private MicroIsolate significantIsolate() {

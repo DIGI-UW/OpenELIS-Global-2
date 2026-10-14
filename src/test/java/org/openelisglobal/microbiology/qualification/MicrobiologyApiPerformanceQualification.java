@@ -91,7 +91,7 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
         String userId = fixtures.defaultUserId();
         MicrobiologyQualificationDataService qualificationService = new MicrobiologyQualificationDataService(
                 scenarioService, referenceService, breakpointService, configurationService, isolateService, astService,
-                caseService, true);
+                caseService, fixtures, true);
         MicrobiologyQualificationDataService.WorklistDataset worklist = qualificationService.buildWorklist(runKey, 200,
                 userId);
         MicrobiologyQualificationDataService.DenseCaseDataset dense = qualificationService.buildDenseCase(runKey,

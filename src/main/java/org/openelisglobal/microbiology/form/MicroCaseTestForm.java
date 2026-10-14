@@ -5,6 +5,8 @@ import java.util.List;
 import org.openelisglobal.test.beanItems.TestResultItem;
 
 public class MicroCaseTestForm {
+    public boolean selectedForReport;
+    public boolean reportable;
     public String analysisId;
     public String testId;
     public String testName;

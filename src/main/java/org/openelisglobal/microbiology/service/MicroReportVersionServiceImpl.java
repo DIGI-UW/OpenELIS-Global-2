@@ -5,6 +5,8 @@ import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.dao.MicroReportVersionDAO;
 import org.openelisglobal.microbiology.dao.MicroReportVersionSourceDAO;
+import org.openelisglobal.microbiology.form.MicroReportVersionForm;
+import org.openelisglobal.microbiology.form.MicroReportVersionSourceForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
@@ -17,13 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroReportVersionServiceImpl implements MicroReportVersionService {
 
+    private final MicroPatientReportService patientReports;
     private final MicroReportVersionDAO reportVersionDAO;
     private final MicroCaseAnalysisDAO caseAnalysisDAO;
     private final MicroReportProjectionService reportProjectionService;
     private final MicroReportVersionSourceDAO reportVersionSourceDAO;
 
     public MicroReportVersionServiceImpl(MicroReportVersionDAO reportVersionDAO, MicroCaseAnalysisDAO caseAnalysisDAO,
-            MicroReportProjectionService reportProjectionService, MicroReportVersionSourceDAO reportVersionSourceDAO) {
+            MicroReportProjectionService reportProjectionService, MicroReportVersionSourceDAO reportVersionSourceDAO,
+            MicroPatientReportService patientReports) {
+        this.patientReports = patientReports;
         this.reportVersionDAO = reportVersionDAO;
         this.caseAnalysisDAO = caseAnalysisDAO;
         this.reportProjectionService = reportProjectionService;
@@ -50,11 +55,21 @@ public class MicroReportVersionServiceImpl implements MicroReportVersionService 
     public MicroReportVersion recordInitialFinal(String caseId, MicroReportProjectionResult projection,
             String performedBy) {
         MicroReportVersion existing = reportVersionDAO.getLatestByCaseId(caseId);
-        if (existing != null) {
-            return existing;
-        }
-        return append(caseId, null, 1, MicroReportVersionType.FINAL, projection, MicroCaseServiceImpl.now(),
-                performedBy, null);
+        if (existing != null && !MicroReportVersionType.PRELIMINARY.name().equals(existing.getReleaseType()))
+            throw new MicroCaseLockedException("FINAL_CASE_LOCKED");
+        return append(caseId, null, existing == null ? 1 : existing.getVersionNumber() + 1,
+                MicroReportVersionType.FINAL, projection, MicroCaseServiceImpl.now(), performedBy, null);
+    }
+
+    @Override
+    @Transactional
+    public MicroReportVersion recordPreliminary(String caseId, MicroReportProjectionResult projection,
+            String performedBy) {
+        var existing = reportVersionDAO.getLatestByCaseId(caseId);
+        if (existing != null && !MicroReportVersionType.PRELIMINARY.name().equals(existing.getReleaseType()))
+            throw new MicroCaseLockedException("FINAL_CASE_LOCKED");
+        return append(caseId, null, existing == null ? 1 : existing.getVersionNumber() + 1,
+                MicroReportVersionType.PRELIMINARY, projection, MicroCaseServiceImpl.now(), performedBy, null);
     }
 
     @Override
@@ -95,6 +110,7 @@ public class MicroReportVersionServiceImpl implements MicroReportVersionService 
         version.setVersionNumber(versionNumber);
         version.setReleaseType(releaseType.name());
         version.setContent(projection.getContent());
+        version.setStructuredContent(projection.structuredContent);
         version.setReleasedAt(releasedAt);
         version.setReleasedBy(releasedBy);
         version.setCorrectsVersionId(correctsVersionId);
@@ -112,5 +128,36 @@ public class MicroReportVersionServiceImpl implements MicroReportVersionService 
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroReportVersionForm> getVersionForms(String caseId) {
+        var sources = getSourcesForCase(caseId).stream()
+                .collect(java.util.stream.Collectors.groupingBy(MicroReportVersionSource::getReportVersionId));
+        return getVersions(caseId).stream()
+                .map(version -> toForm(version, sources.getOrDefault(version.getId(), List.of()))).toList();
+    }
+
+    private MicroReportVersionForm toForm(MicroReportVersion version, List<MicroReportVersionSource> sources) {
+        MicroReportVersionForm form = new MicroReportVersionForm();
+        form.id = version.getId();
+        form.caseId = version.getCaseId();
+        form.amendmentId = version.getAmendmentId();
+        form.versionNumber = version.getVersionNumber();
+        form.releaseType = version.getReleaseType();
+        form.content = version.getStructuredContent() == null ? version.getContent() : null;
+        form.report = version.getStructuredContent() == null ? null
+                : patientReports.decode(version.getStructuredContent());
+        form.releasedAt = version.getReleasedAt();
+        form.releasedBy = version.getReleasedBy();
+        form.correctsVersionId = version.getCorrectsVersionId();
+        form.sources.addAll(sources.stream().map(source -> {
+            MicroReportVersionSourceForm sourceForm = new MicroReportVersionSourceForm();
+            sourceForm.analysisId = source.getAnalysisId();
+            sourceForm.resultId = source.getResultId();
+            return sourceForm;
+        }).toList());
+        return form;
     }
 }

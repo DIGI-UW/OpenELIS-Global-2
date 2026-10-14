@@ -208,6 +208,37 @@ public abstract class PatientReport extends Report {
      * A report instance serves a single request, so the set cannot go stale within
      * one run.
      */
+    protected Set<String> reportedMicroCases = new HashSet<>();
+
+    protected List<Analysis> includeIssuedMicrobiologyAnalyses(List<Analysis> analyses) {
+        var combined = new ArrayList<>(analyses);
+        for (var anchor : microbiologyReports().issuedAnalysesForSample(currentSample.getId()))
+            if (combined.stream().noneMatch(a -> a.getId().equals(anchor.getId())))
+                combined.add(anchor);
+        return combined;
+    }
+
+    protected org.openelisglobal.microbiology.service.MicroPatientReportService microbiologyReports() {
+        return SpringContext.getBean(org.openelisglobal.microbiology.service.MicroPatientReportService.class);
+    }
+
+    protected ClinicalPatientData buildMicrobiologyPatientData(
+            org.openelisglobal.microbiology.form.MicroPatientReportForm report, boolean hasParentResult) {
+        String key = convertToAlphaNumericDisplay(currentSample);
+        Boolean completeBefore = sampleCompleteMap.get(key);
+        ClinicalPatientData data = buildClinicalPatientData(hasParentResult);
+        sampleCompleteMap.put(key, Boolean.TRUE.equals(completeBefore) && !"PRELIMINARY".equals(report.releaseType));
+        data.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
+        data.setTestSection(report.labUnitName);
+        data.setSectionSortOrder(SpringContext.getBean(org.openelisglobal.test.service.TestSectionService.class)
+                .get(report.labUnitId).getSortOrderInt());
+        data.setPanel(null);
+        data.setPanelName(null);
+        data.setParentResult(null);
+        data.setNote(null);
+        return data;
+    }
+
     protected List<Analysis> filterAnalysesForReportUser(List<Analysis> analyses) {
         if (analyses == null) {
             return new ArrayList<>();
@@ -216,8 +247,12 @@ public abstract class PatientReport extends Report {
             reportUserTestIds = userService.getTestIdsInUserLabUnits(systemUserId, Constants.ROLE_REPORTS);
         }
         List<Analysis> allowed = new ArrayList<>(analyses.size());
+        var microReports = SpringContext
+                .getBean(org.openelisglobal.microbiology.service.MicroPatientReportService.class);
         for (Analysis analysis : analyses) {
-            if (analysis.getTest() != null && reportUserTestIds.contains(analysis.getTest().getId())) {
+            Boolean caseAccess = microReports.mayReportAnalysis(analysis.getId(), systemUserId);
+            if (caseAccess != null ? caseAccess
+                    : analysis.getTest() != null && reportUserTestIds.contains(analysis.getTest().getId())) {
                 allowed.add(analysis);
             }
         }
@@ -364,7 +399,10 @@ public abstract class PatientReport extends Report {
             Set<String> analysisStatusIds = new HashSet<>();
             analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
             sampleList = sampleList.stream().filter(
-                    e -> (analysisService.getAnalysesBySampleIdAndStatusId(e.getId(), analysisStatusIds).size() > 0))
+                    e -> (analysisService.getAnalysesBySampleIdAndStatusId(e.getId(), analysisStatusIds).size() > 0
+                            || !SpringContext
+                                    .getBean(org.openelisglobal.microbiology.service.MicroPatientReportService.class)
+                                    .issuedAnalysesForSample(e.getId()).isEmpty()))
                     .collect(Collectors.toList());
         }
 
@@ -1175,6 +1213,7 @@ public abstract class PatientReport extends Report {
      * @see PatientReport#initializeReportItems()
      */
     protected void initializeReportItems() {
+        reportedMicroCases = new HashSet<>();
         reportItems = new ArrayList<>();
     }
 

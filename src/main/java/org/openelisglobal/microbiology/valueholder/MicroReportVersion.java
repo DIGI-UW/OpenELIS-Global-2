@@ -116,4 +116,14 @@ public class MicroReportVersion extends BaseObject<String> {
         this.correctsVersionId = correctsVersionId;
     }
 
+    @Column(name = "structured_content")
+    private String structuredContent;
+
+    public String getStructuredContent() {
+        return structuredContent;
+    }
+
+    public void setStructuredContent(String value) {
+        structuredContent = value;
+    }
 }

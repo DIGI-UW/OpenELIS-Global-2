@@ -1,158 +1,85 @@
 import { test, expect } from "../../../helpers/test-base";
-import { seedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
+import { seedMicrobiologyNoGrowthReporting } from "../../../helpers/seed-microbiology-data";
+import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
-test.describe("Microbiology no-growth review and release", () => {
-  test("records no growth without publishing, then releases one final negative result", async ({
-    page,
-  }) => {
-    const seeded = await seedMicrobiologyCase(page);
-    const worklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
-      seeded.accessionNumber,
-    )}&sort=newest`;
-    await page.goto(worklistUrl, { waitUntil: "domcontentloaded" });
-
-    const row = page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`);
-    await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
-    await row.getByRole("link", { name: seeded.accessionNumber }).click();
-    await expect(page).toHaveURL(
-      new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
-      ),
-    );
-    const caseView = page.getByTestId("microbiology-case-view");
-    await expect(
-      page
-        .getByRole("navigation", { name: "Breadcrumb" })
-        .getByRole("link", { name: "Microbiology worklist" }),
-    ).toHaveAttribute(
-      "href",
-      `/Microbiology/worklist?grain=cultures&q=${seeded.accessionNumber}&sort=newest`,
-    );
-
-    const caseHeader = page.locator("header");
-    const nextStep = page.getByTestId("microbiology-next-step");
-    await expect(caseHeader.getByTitle("Received")).toBeVisible();
-    await nextStep.getByRole("button", { name: "Start inoculation" }).click();
-    await expect(page).toHaveURL(/section=setup&action=start-inoculation$/);
-    await page.getByLabel("Bottle or plate ID").fill("UAT-NO-GROWTH-01");
-    await page.getByLabel("Media or bottle").fill("Blood culture bottle");
-    await page.getByLabel("Incubation").fill("35 C for 48 hours");
-    await page.getByLabel("Atmosphere").fill("Ambient");
-    const mediaLot = page.getByRole("radio", {
-      name: /UAT-MICRO-MEDIA-FEFO/,
-    });
-    await mediaLot.focus();
-    await page.keyboard.press("Space");
-    await expect(mediaLot).toBeChecked();
-    await page.getByRole("button", { name: "Save media" }).click();
-    await expect(caseHeader.getByTitle("Incubating")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-
-    await caseView
-      .getByRole("button", { name: "Mark no growth", exact: true })
-      .click();
-    await expect(page).toHaveURL(/section=setup&action=mark-no-growth$/);
-    const transitionHeading = page.getByRole("heading", {
-      name: "Mark culture as no growth",
-    });
-    await expect(transitionHeading).toBeFocused();
-    await page.getByRole("button", { name: "Confirm no growth" }).click();
-
-    await expect(caseHeader.getByTitle("No Growth Ready")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-    await expect(page).toHaveURL(
-      new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
-      ),
-    );
-    await expect(nextStep).toContainText(
-      "No growth recorded. Review and release the final negative report.",
-    );
-    const currentStep = page.getByTestId("microbiology-current-step-action");
-    await expect(currentStep).toContainText("Reports");
-
-    await caseView
-      .getByRole("button", { name: "Timeline", exact: true })
-      .click();
-    await expect(page).toHaveURL(/section=timeline$/);
-    const timeline = page.getByTestId("microbiology-timeline-card");
-    const noGrowthEvent = timeline.getByRole("listitem").filter({
-      hasText: "Incubation complete with no growth",
-    });
-    await expect(noGrowthEvent).toContainText("Stage Changed");
-    await expect(noGrowthEvent).toContainText("Performed by Open ELIS");
-
-    await currentStep.getByRole("button", { name: "Open Reports" }).click();
-    await expect(page).toHaveURL(/section=reports$/);
-    await expect(
-      page.getByTestId("microbiology-case-section-reports"),
-    ).toBeFocused();
-    await expect(
-      page.getByTestId("microbiology-report-projection-content"),
-    ).toHaveText("No growth");
-    await expect(
-      page.getByRole("button", { name: "Release preliminary report" }),
-    ).toHaveCount(0);
-    const releaseFinal = page.getByRole("button", {
-      name: "Release final report",
-    });
-    await expect(releaseFinal).toBeEnabled({ timeout: LONG_TIMEOUT });
-
-    await page.goto(`/PatientResults/${seeded.patientId}`, {
-      waitUntil: "domcontentloaded",
-    });
-    await expect(
-      page.getByRole("heading", { name: "Patient History" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(
-      page.getByRole("row", {
-        name: /UAT microbiology culture.*No growth/,
-      }),
-    ).toHaveCount(0);
-
-    await page.goto(
-      `/Microbiology/cases/${seeded.caseId}?q=${encodeURIComponent(
-        seeded.accessionNumber,
-      )}&sort=newest&section=reports`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await expect(
-      page.getByTestId("microbiology-report-projection-content"),
-    ).toHaveText("No growth", { timeout: LONG_TIMEOUT });
-    await page.getByRole("button", { name: "Release final report" }).click();
-    await expect(page.getByTestId("microbiology-release-state")).toContainText(
-      "Final Released",
-      { timeout: LONG_TIMEOUT },
-    );
-    await expect(page.getByText("Final case is read-only")).toBeVisible();
-
-    await page.getByRole("link", { name: "View patient results" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Patient History" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(
-      page.getByRole("row", {
-        name: /UAT microbiology culture.*No growth/,
-      }),
-    ).toHaveCount(1);
-
-    await page.goto(
-      `/Microbiology/cases/${seeded.caseId}?q=${encodeURIComponent(
-        seeded.accessionNumber,
-      )}&sort=newest&section=setup`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await expect(page.getByText("Final case is read-only")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-    await expect(
-      page.getByRole("button", { name: "Start inoculation" }),
-    ).toBeDisabled();
-    await expect(
-      page.getByRole("button", { name: "Add subculture" }),
-    ).toBeDisabled();
+test("records no growth without publishing, then releases one final negative report", async ({
+  page,
+}, testInfo) => {
+  const seeded = await seedMicrobiologyNoGrowthReporting(page);
+  await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  const section = page.getByLabel("Testing section", { exact: true });
+  await section.selectOption("CULTURE");
+  await page
+    .getByRole("button", { name: "Inoculate culture", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Bottle or plate identifier")
+    .fill("UAT-NO-GROWTH-01");
+  await dialog
+    .getByLabel("Medium", { exact: true })
+    .selectOption(String(seeded.mediumItemId));
+  for (const label of ["Medium lot", "Atmosphere"]) {
+    const field = dialog.getByLabel(label, { exact: true });
+    const value = await field
+      .locator("option")
+      .evaluateAll((options) =>
+        options
+          .map((option) => (option as HTMLOptionElement).value)
+          .find(Boolean),
+      );
+    expect(value).toBeTruthy();
+    await field.selectOption(value!);
+  }
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  const row = page
+    .locator('[data-testid^="culture-row-"]')
+    .filter({ has: page.getByRole("heading", { name: /UAT-NO-GROWTH-01/ }) })
+    .first();
+  await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
+  await section.selectOption("REPORT");
+  await expect(
+    page.getByRole("button", { name: "Release final report", exact: true }),
+  ).toBeDisabled();
+  await section.selectOption("CULTURE");
+  await row
+    .getByRole("button", { name: "Record outcome", exact: true })
+    .click();
+  await dialog.getByLabel("Outcome", { exact: true }).selectOption("NO_GROWTH");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(row.getByText("No growth", { exact: true })).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
+  await section.selectOption("REPORT");
+  await expect(page.getByText(/UAT-NO-GROWTH-01: No growth/)).toBeVisible();
+  const versions = page.getByLabel("Report version", { exact: true });
+  await expect(versions.locator("option")).toHaveCount(1);
+  const release = page.getByRole("button", {
+    name: "Release final report",
+    exact: true,
+  });
+  await expect(release).toBeEnabled({ timeout: LONG_TIMEOUT });
+  await release.click();
+  await expect(versions.locator("option")).toHaveCount(2, {
+    timeout: LONG_TIMEOUT,
+  });
+  await page.reload();
+  await section.selectOption("CULTURE");
+  await expect(
+    page.getByRole("button", { name: "Inoculate culture", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Record outcome", exact: true }),
+  ).toHaveCount(0);
+  const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
+  expect(text).toContain(seeded.accessionNumber);
+  expect(text).toContain("UAT-NO-GROWTH-01: No growth");
+  expect(text).not.toContain("ISO-1");
+  await testInfo.attach("negative-patient-report.pdf", {
+    body: pdf,
+    contentType: "application/pdf",
   });
 });

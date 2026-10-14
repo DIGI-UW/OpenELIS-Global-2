@@ -8,6 +8,7 @@ public class MicroCaseReadinessForm {
     public String caseId;
     public boolean finalReleaseReady;
     public List<String> blockers = new ArrayList<>();
+    public java.util.Map<String, String> blockerLabels = java.util.Map.of();
     public int astRunsComplete;
     public int astRunsTotal;
     public int significantIsolatesAwaitingAstSetup;

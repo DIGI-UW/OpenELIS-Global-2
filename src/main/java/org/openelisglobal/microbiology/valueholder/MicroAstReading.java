@@ -204,4 +204,15 @@ public class MicroAstReading extends BaseObject<String> {
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
     }
+
+    @Column(name = "entry_sequence", nullable = false)
+    private long entrySequence;
+
+    public long getEntrySequence() {
+        return entrySequence;
+    }
+
+    public void setEntrySequence(long value) {
+        entrySequence = value;
+    }
 }
