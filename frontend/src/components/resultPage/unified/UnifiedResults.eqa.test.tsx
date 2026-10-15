@@ -212,17 +212,24 @@ describe("EQA rows on the Results page", () => {
     expect(within(kind).queryByText("Client sample")).not.toBeInTheDocument();
   });
 
-  it("does not mark a blinded in-house sample as EQA", () => {
-    renderPage(worklistRow({ ...PER_ANALYST, eqaInHouse: true }));
+  it("tags a blinded in-house sample as EQA and saves it with no analyst picker", async () => {
+    // The server sends no eqaPerAnalyst for it: its analyst is sealed with the panel.
+    renderPage(worklistRow());
 
-    expect(screen.queryByText(/EQA/)).not.toBeInTheDocument();
-    expect(screen.getByText("Analyst")).toBeInTheDocument();
     expect(
-      screen.getByText(messages["label.results.analystRequired"]),
+      within(
+        document.querySelector(".unifiedAccession") as HTMLElement,
+      ).getByText("EQA"),
     ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId(/^sample-kind-/)).getByText("Client sample"),
-    ).toBeInTheDocument();
+    expect(analystSelect()).toBeNull();
+    expect(screen.queryByText("Analyst (EQA)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Analyst")).not.toBeInTheDocument();
+
+    typeAndSave("540");
+
+    await waitFor(() => expect(signed).toHaveBeenCalledTimes(1));
+    expect(notify.addNotification).not.toHaveBeenCalled();
+    expect(savedItem().eqaAnalystId).toBeUndefined();
   });
 
   it("does not ask for a clinician callback on a critical EQA result", () => {

@@ -22,6 +22,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleSubmissionService;
 import org.openelisglobal.eqa.service.EQAParticipantResultService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAPanelSample;
@@ -80,6 +81,9 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private EQAPanelSampleDAO eqaPanelSampleDAO;
+
+    @Autowired
+    private SampleEQAService sampleEQAService;
 
     @Autowired
     private IStatusService statusService;
@@ -333,6 +337,35 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
         assertEquals(2, allResults().size());
     }
 
+    // ---- in-house: the sealed analyst keeps the credit ----
+
+    @Test
+    public void anInHouseSampleAsksForNoAnalystAndSavesUnderItsSealedOne() throws Exception {
+        Fixture fixture = order(inHousePerAnalystScheme());
+        Long sealedRow = insertSealedDraft(fixture, fixture.analysisId, OTHER_ANALYST);
+
+        assertEquals("result entry offers no analyst picker", Optional.empty(),
+                sampleEQAService.findPerAnalystSchemeId(SAMPLE));
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", "")).andExpect(status().isOk());
+
+        assertEquals(Long.valueOf(OTHER_ANALYST), analystOf(sealedRow));
+        assertEquals(1, allResults().size());
+    }
+
+    @Test
+    public void anInHouseSampleIsNotReattributedToAnotherAnalyst() throws Exception {
+        Fixture fixture = order(inHousePerAnalystScheme());
+        Long sealedRow = insertSealedDraft(fixture, fixture.analysisId, OTHER_ANALYST);
+
+        assertFalse(cycleSubmissionService.assignAnalyst(analysisService.get(String.valueOf(fixture.analysisId)),
+                ADMIN_USER_ID, USER));
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", String.valueOf(ADMIN_USER_ID)))
+                .andExpect(status().isOk());
+
+        assertEquals(Long.valueOf(OTHER_ANALYST), analystOf(sealedRow));
+        assertEquals(1, allResults().size());
+    }
+
     // ---- fixtures ----
 
     private long secondOrder(Fixture fixture) {
@@ -390,6 +423,12 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
 
     private EQAProgram perAnalystScheme(String name) {
         EQAProgram scheme = insertScheme(name, EQASchemeType.INTERNATIONAL_PT, "NHLS");
+        jdbc.update("UPDATE clinlims.eqa_program SET per_analyst = true WHERE id = ?", scheme.getId());
+        return eqaProgramService.get(scheme.getId());
+    }
+
+    private EQAProgram inHousePerAnalystScheme() {
+        EQAProgram scheme = insertScheme("In-house capture", EQASchemeType.IN_HOUSE, null);
         jdbc.update("UPDATE clinlims.eqa_program SET per_analyst = true WHERE id = ?", scheme.getId());
         return eqaProgramService.get(scheme.getId());
     }

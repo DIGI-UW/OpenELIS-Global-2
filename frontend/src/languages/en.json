@@ -14607,6 +14607,5 @@
   "analyzer.setup.sources.retryError": "The connection was saved for setup, but the sample could not be queued. Check Undelivered results before retrying.",
   "analyzer.setup.sources.queued": "Setup sample queued. Check for setup samples to confirm it arrived; queued does not mean received.",
   "analyzer.results.setupEvidence.title": "Retained setup samples ({count})",
-  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review.",
-  "label.results.analystRequired": "Choose an analyst before saving."
+  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review."
 }

@@ -290,8 +290,6 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
     };
   }, [eqaSchemeId]);
   const eqaAnalystId = (row.eqaAnalystId as string | undefined) || "";
-  // In-house orders are blinded, so they are not marked as EQA.
-  const showsEqa = Boolean(row.eqaSample) && !row.eqaInHouse;
 
   // one order-record fetch per accession feeds Order info + Programme
   const orderContext = useOrderContext(row.accessionNumber);
@@ -338,7 +336,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           data-testid={`sample-kind-${rowKey}`}
         >
           <FormattedMessage id="column.name.sampleKind" />
-          {showsEqa ? (
+          {row.eqaSample ? (
             <EQABadge priority={row.eqaPriority} />
           ) : (
             <SampleKindTag qcType={row.qcType} />
@@ -453,13 +451,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             {eqaSchemeId && (
               <>
                 <div className="cds--label unifiedFieldSpacer">
-                  <FormattedMessage
-                    id={
-                      row.eqaInHouse
-                        ? "eqa.inhouse.analyst"
-                        : "eqa.result.analyst"
-                    }
-                  />
+                  <FormattedMessage id="eqa.result.analyst" />
                 </div>
                 {editable ? (
                   <Select
@@ -468,9 +460,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
                     value={eqaAnalystId}
                     invalid={!eqaAnalystId}
                     invalidText={intl.formatMessage({
-                      id: row.eqaInHouse
-                        ? "label.results.analystRequired"
-                        : "eqa.result.analystRequired",
+                      id: "eqa.result.analystRequired",
                     })}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                       onFieldChange("eqaAnalystId", e.target.value)
@@ -931,7 +921,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           open={isSectionOpen(sectionLayout, "program", false)}
           onToggle={(open) => toggleSection("program", open)}
           order={orderContext}
-          eqaSample={showsEqa}
+          eqaSample={Boolean(row.eqaSample)}
           eqaPriority={row.eqaPriority as string | undefined}
         />
 

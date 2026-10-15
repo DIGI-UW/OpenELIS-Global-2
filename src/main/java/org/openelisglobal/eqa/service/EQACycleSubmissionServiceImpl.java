@@ -221,6 +221,11 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
                     scheme == null ? null : scheme.getPerAnalyst());
             return false;
         }
+        if (scheme.getSchemeType() == EQASchemeType.IN_HOUSE) {
+            logger.debug("EQA analyst skipped for analysis {}: in-house scheme {} keeps its sealed analyst",
+                    analysis.getId(), scheme.getId());
+            return false;
+        }
 
         Long enrollmentId = sample.getEqaEnrollmentId();
         Long roundId = resolveRound(sample, roundDAO.getAllMatching("cycle.id", cycle.getId()));
