@@ -94,6 +94,13 @@ public interface EQACycleSubmissionService {
      */
     boolean assignAnalyst(Analysis analysis, Long analystId, String sysUserId);
 
+    /**
+     * Whether another order already holds the participant result row this analysis
+     * would record its analyst on. External rows are keyed by round, enrollment,
+     * analyte and provider sample code.
+     */
+    boolean participantRowTaken(Analysis analysis);
+
     int intakeScores(Long cycleId, Long labEnrollmentId, List<Map<String, Object>> scores, String sysUserId);
 
     /**

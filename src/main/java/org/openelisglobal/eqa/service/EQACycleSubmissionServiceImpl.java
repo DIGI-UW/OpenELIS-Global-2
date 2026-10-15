@@ -19,7 +19,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.service.AlertService;
@@ -202,16 +204,57 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
      */
     @Override
     public boolean assignAnalyst(Analysis analysis, Long analystId, String sysUserId) {
-        if (analysis == null || analystId == null || analysis.getSampleItem() == null
-                || analysis.getSampleItem().getSample() == null) {
+        Target target = analystId == null ? null : targetOf(analysis);
+        if (target == null) {
             return false;
+        }
+        boolean recorded = false;
+        for (Result pipelineResult : resultService.getResultsByAnalysis(analysis)) {
+            Long analyteId = analyteIdOf(pipelineResult, analysis, target.schemeAnalytes());
+            if (analyteId == null) {
+                logger.warn("EQA analyst not recorded for analysis {}: it names no test, so it resolves no analyte",
+                        analysis.getId());
+                continue;
+            }
+            String value = EqaReportedValue.of(resultService, pipelineResult);
+            recorded |= recordAnalyst(target, analysis, analyteId, value, analystId, sysUserId);
+        }
+        return recorded;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean participantRowTaken(Analysis analysis) {
+        Target target = targetOf(analysis);
+        if (target == null) {
+            return false;
+        }
+        Long analysisId = Long.valueOf(analysis.getId());
+        List<Result> results = resultService.getResultsByAnalysis(analysis);
+        // Before the first save the test alone names the analyte.
+        Stream<Long> analytes = results.isEmpty() ? Stream.of(analyteIdOf(null, analysis, target.schemeAnalytes()))
+                : results.stream().map(result -> analyteIdOf(result, analysis, target.schemeAnalytes()));
+        return analytes
+                .filter(Objects::nonNull).map(analyteId -> rowFor(target.roundId(), target.enrollmentId(), analysis,
+                        analyteId, target.providerSampleCode()))
+                .anyMatch(row -> heldByAnotherAnalysis(row, analysisId));
+    }
+
+    private record Target(EQACycle cycle, Long roundId, Long enrollmentId, String providerSampleCode,
+            Map<Long, Long> schemeAnalytes) {
+    }
+
+    // Where the analyst is recorded; null when the scheme records none.
+    private Target targetOf(Analysis analysis) {
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return null;
         }
         Long sampleId = Long.valueOf(analysis.getSampleItem().getSample().getId());
         SampleEQA sample = sampleEQADAO.getAllMatching("sampleId", sampleId).stream().findFirst().orElse(null);
         if (sample == null || !Boolean.TRUE.equals(sample.getIsEqaSample()) || sample.getCycleId() == null) {
             logger.debug("EQA analyst skipped for analysis {}: sample {} eqa={} cycle={}", analysis.getId(), sampleId,
                     sample == null ? null : sample.getIsEqaSample(), sample == null ? null : sample.getCycleId());
-            return false;
+            return null;
         }
         EQACycle cycle = cycleDAO.get(sample.getCycleId()).orElse(null);
         EQAProgram scheme = cycle == null ? null : cycle.getScheme();
@@ -219,12 +262,12 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
             logger.debug("EQA analyst skipped for analysis {}: cycle {} scheme {} perAnalyst={}", analysis.getId(),
                     sample.getCycleId(), scheme == null ? null : scheme.getId(),
                     scheme == null ? null : scheme.getPerAnalyst());
-            return false;
+            return null;
         }
         if (scheme.getSchemeType() == EQASchemeType.IN_HOUSE) {
             logger.debug("EQA analyst skipped for analysis {}: in-house scheme {} keeps its sealed analyst",
                     analysis.getId(), scheme.getId());
-            return false;
+            return null;
         }
 
         Long enrollmentId = sample.getEqaEnrollmentId();
@@ -232,26 +275,13 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
         if (enrollmentId == null || roundId == null) {
             logger.warn("EQA analyst not recorded for analysis {}: enrollment={} round={}", analysis.getId(),
                     enrollmentId, roundId);
-            return false;
+            return null;
         }
+        return new Target(cycle, roundId, enrollmentId, providerSampleCode(sample), analyteByTest(enrollmentId));
+    }
 
-        Map<Long, Long> schemeAnalytes = analyteByTest(enrollmentId);
-        boolean recorded = false;
-        for (Result pipelineResult : resultService.getResultsByAnalysis(analysis)) {
-            Long analyteId = analyteIdOf(pipelineResult, analysis, schemeAnalytes);
-            if (analyteId == null) {
-                // Same unmapped-analyte case the bridge logs, and worth saying twice:
-                // here a user has explicitly named an analyst and would otherwise get
-                // no record and no reason.
-                logger.warn("EQA analyst not recorded for analysis {}: it names no test, so it resolves no analyte",
-                        analysis.getId());
-                continue;
-            }
-            String value = EqaReportedValue.of(resultService, pipelineResult);
-            recorded |= recordAnalyst(cycle, roundId, enrollmentId, analysis, analyteId, providerSampleCode(sample),
-                    value, analystId, sysUserId);
-        }
-        return recorded;
+    private static boolean heldByAnotherAnalysis(EQAParticipantResult row, Long analysisId) {
+        return row != null && row.getAnalysisId() != null && !analysisId.equals(row.getAnalysisId());
     }
 
     /**
@@ -259,25 +289,28 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
      * left alone: re-attributing a result the provider has already judged would
      * move an ISO 15189 record after the fact.
      */
-    private boolean recordAnalyst(EQACycle cycle, Long roundId, Long enrollmentId, Analysis analysis, Long analyteId,
-            String providerSampleCode, String value, Long analystId, String sysUserId) {
+    private boolean recordAnalyst(Target target, Analysis analysis, Long analyteId, String value, Long analystId,
+            String sysUserId) {
         Long analysisId = Long.valueOf(analysis.getId());
-        EQAParticipantResult row = rowFor(roundId, enrollmentId, analysis, analyteId, providerSampleCode);
-        // A row bound to another analysis belongs to another sample.
-        if (row != null && row.getAnalysisId() != null && !analysisId.equals(row.getAnalysisId())) {
-            row = null;
+        EQAParticipantResult row = rowFor(target.roundId(), target.enrollmentId(), analysis, analyteId,
+                target.providerSampleCode());
+        if (heldByAnotherAnalysis(row, analysisId)) {
+            // The key is unique; result entry refuses the save before this.
+            logger.warn("EQA analyst not recorded for analysis {}: participant result {} belongs to analysis {}",
+                    analysis.getId(), row.getId(), row.getAnalysisId());
+            return false;
         }
 
         if (row == null) {
             row = new EQAParticipantResult();
-            row.setCycle(cycle);
+            row.setCycle(target.cycle());
             EQARound roundRef = new EQARound();
-            roundRef.setId(roundId);
+            roundRef.setId(target.roundId());
             row.setRound(roundRef);
-            row.setLabEnrollmentId(enrollmentId);
+            row.setLabEnrollmentId(target.enrollmentId());
             row.setAnalyteId(analyteId);
             row.setAnalysisId(analysisId);
-            row.setProviderSampleCode(providerSampleCode);
+            row.setProviderSampleCode(target.providerSampleCode());
             row.setResultValue(GenericValidator.isBlankOrNull(value) ? null : value.trim());
         } else if (row.getSubmissionStatus() != EQASubmissionStatus.DRAFT) {
             // Refusing is the point, but say so: whoever picked the analyst gets no
@@ -386,7 +419,7 @@ public class EQACycleSubmissionServiceImpl implements EQACycleSubmissionService 
      * </ol>
      */
     private Long analyteIdOf(Result pipelineResult, Analysis analysis, Map<Long, Long> schemeAnalytes) {
-        Analyte reported = pipelineResult.getAnalyte();
+        Analyte reported = pipelineResult == null ? null : pipelineResult.getAnalyte();
         if (reported != null && reported.getId() != null) {
             return Long.valueOf(reported.getId());
         }

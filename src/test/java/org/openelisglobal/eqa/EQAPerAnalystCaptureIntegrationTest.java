@@ -325,7 +325,7 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
     public void twoSamplesOfOneTestEachKeepTheirOwnAnalyst() throws Exception {
         Fixture fixture = order(perAnalystScheme("Capture on"));
         jdbc.update("UPDATE clinlims.sample_eqa SET eqa_provider_sample_id = 'PS-A' WHERE sample_id = ?", SAMPLE);
-        long secondAnalysisId = secondOrder(fixture);
+        long secondAnalysisId = secondOrder(fixture, "PS-B");
 
         mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", String.valueOf(ADMIN_USER_ID)))
                 .andExpect(status().isOk());
@@ -335,6 +335,25 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
         assertEquals(Optional.of(ADMIN_USER_ID), participantResultService.findAssignedAnalystId(fixture.analysisId));
         assertEquals(Optional.of(OTHER_ANALYST), participantResultService.findAssignedAnalystId(secondAnalysisId));
         assertEquals(2, allResults().size());
+    }
+
+    @Test
+    public void aSecondOrderOfOneTestWithNoProviderSampleCodeIsRefusedNotSilentlyDropped() throws Exception {
+        Fixture fixture = order(perAnalystScheme("Capture on"));
+        long secondAnalysisId = secondOrder(fixture, null);
+
+        mockMvc.perform(saveResult(fixture.analysisId, "EQAT19001", String.valueOf(ADMIN_USER_ID)))
+                .andExpect(status().isOk());
+        mockMvc.perform(saveResult(secondAnalysisId, "EQAT19002", String.valueOf(OTHER_ANALYST)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value(MessageUtil.getMessage("eqa.result.providerSampleCodeRequired")));
+
+        assertEquals(Optional.of(ADMIN_USER_ID), participantResultService.findAssignedAnalystId(fixture.analysisId));
+        assertEquals("the first order's row is not re-attributed", 1, allResults().size());
+        assertEquals("the refused save wrote no result", "1200", jdbc.queryForObject(
+                "SELECT value FROM clinlims.result WHERE analysis_id = ?", String.class, secondAnalysisId));
+        assertFalse("the service refuses rather than colliding with the first order's row", cycleSubmissionService
+                .assignAnalyst(analysisService.get(String.valueOf(secondAnalysisId)), OTHER_ANALYST, USER));
     }
 
     // ---- in-house: the sealed analyst keeps the credit ----
@@ -368,7 +387,7 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
 
     // ---- fixtures ----
 
-    private long secondOrder(Fixture fixture) {
+    private long secondOrder(Fixture fixture, String providerSampleCode) {
         jdbc.update(
                 "INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date,"
                         + " collection_date, lastupdated) VALUES (?, 'EQAT19002', now(), now(), now(), now())",
@@ -380,8 +399,9 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
         jdbc.update(
                 "INSERT INTO clinlims.sample_eqa (id, sample_id, is_eqa_sample, eqa_enrollment_id, cycle_id,"
                         + " round_id, eqa_provider_sample_id, sys_user_id, last_updated)"
-                        + " VALUES (?, ?, true, ?, ?, ?, 'PS-B', ?, now())",
-                SECOND_SAMPLE, SECOND_SAMPLE, ENROLLMENT, fixture.cycle.getId(), fixture.round.getId(), USER);
+                        + " VALUES (?, ?, true, ?, ?, ?, ?, ?, now())",
+                SECOND_SAMPLE, SECOND_SAMPLE, ENROLLMENT, fixture.cycle.getId(), fixture.round.getId(),
+                providerSampleCode, USER);
         long analysisId = nextAnalysisId++;
         jdbc.update(
                 "INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision, analysis_type,"

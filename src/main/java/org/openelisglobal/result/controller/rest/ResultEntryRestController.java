@@ -360,9 +360,15 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
-        if (isAnswered(item) && GenericValidator.isBlankOrNull(item.getEqaAnalystId()) && capturesAnalyst(analysis)) {
-            body.put("error", MessageUtil.getMessage("eqa.result.analystRequired"));
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+        if (isAnswered(item) && capturesAnalyst(analysis)) {
+            if (GenericValidator.isBlankOrNull(item.getEqaAnalystId())) {
+                body.put("error", MessageUtil.getMessage("eqa.result.analystRequired"));
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+            }
+            if (cycleSubmissionService.participantRowTaken(analysis)) {
+                body.put("error", MessageUtil.getMessage("eqa.result.providerSampleCodeRequired"));
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+            }
         }
 
         List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(Collections.singletonList(item));
