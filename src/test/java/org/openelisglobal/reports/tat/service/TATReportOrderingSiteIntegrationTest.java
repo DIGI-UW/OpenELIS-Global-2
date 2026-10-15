@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -19,12 +20,23 @@ import org.hibernate.stat.Statistics;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.TableIdService;
+import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATResult;
 import org.openelisglobal.reports.tat.bean.TATSegment;
+import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.openelisglobal.sample.service.PatientManagementUpdate;
+import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
@@ -40,6 +52,12 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Autowired
+    private MicrobiologyTestFixtures fixtures;
+
+    @Autowired
+    private SamplePatientEntryService samplePatientEntryService;
 
     @Test
     public void eachRowCarriesItsOwnSamplesOrderingSite() {
@@ -61,6 +79,32 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
         assertEquals("South clinic " + run, sites.get("S" + run));
         assertNull(sites.get("O" + run));
         assertEquals("East clinic " + run, sites.get("D" + run));
+    }
+
+    @Test
+    public void anAddOrderRowShowsTheReferringSiteNotItsDepartment() {
+        String run = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        addOrder("R" + run, organization("Referring clinic " + run), organization("A department " + run));
+
+        Map<String, String> sites = new HashMap<>();
+        allResults().stream().filter(r -> r.getLabNumber().endsWith(run))
+                .forEach(r -> sites.put(r.getLabNumber(), r.getOrderingSite()));
+
+        assertEquals(Set.of("R" + run), sites.keySet());
+        assertEquals("Referring clinic " + run, sites.get("R" + run));
+    }
+
+    @Test
+    public void filteringByTheReferringSiteKeepsAnAddOrderRow() {
+        String run = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        long site = organization("Referring clinic " + run);
+        addOrder("R" + run, site, organization("A department " + run));
+
+        List<String> labNumbers = tatReportService.getAllResults(DAY, DAY, TATSegment.RECEIPT_TO_VALIDATION,
+                TATCalculationMode.CALENDAR, null, null, null, null, null, String.valueOf(site), false).stream()
+                .map(TATResult::getLabNumber).toList();
+
+        assertEquals(List.of("R" + run), labNumbers);
     }
 
     @Test
@@ -111,6 +155,40 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
     private List<TATResult> allResults() {
         return tatReportService.getAllResults(DAY, DAY, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR,
                 null, null, null, null, null, null, false);
+    }
+
+    // The calls SamplePatientEntryRestController makes to save a new order.
+    private void addOrder(String accession, long site, long department) {
+        fixtures.ensureRequiredWorkflowStatuses();
+        // Other classes' datasets drop the dept type Add Order links.
+        String deptType = TableIdService.getInstance().REFERRING_ORG_DEPARTMENT_TYPE_ID;
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.organization_type (id, short_name, description)"
+                        + " SELECT CAST(? AS numeric), 'dept', 'Organisation department'"
+                        + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.organization_type WHERE id = CAST(? AS numeric))",
+                deptType, deptType);
+        String userId = fixtures.defaultUserId();
+
+        SampleOrderItem order = new SampleOrderItem();
+        order.setLabNo(accession);
+        order.setReferringSiteId(String.valueOf(site));
+        order.setReferringSiteDepartmentId(String.valueOf(department));
+
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData(userId);
+        updateData.initializeRequester(order);
+        updateData.setAccessionNumber(accession);
+        updateData.initSampleData("<samples><sample sampleID='1' typeId='"
+                + fixtures.getOrCreateActiveSampleType().getId() + "' tests='" + fixtures.createCatalogTest().getId()
+                + "' testSectionMap='' testSampleTypeMap='' panels='' date='' time='' initialConditionIds=''/>"
+                + "</samples>", DateUtil.formatDateAsText(Date.valueOf(DAY)) + " 09:00", false, order);
+
+        PatientManagementInfo patientInfo = new PatientManagementInfo();
+        patientInfo.setPatientPK(fixtures.createPatient("TAT").getId());
+        SamplePatientEntryForm form = new SamplePatientEntryForm();
+        form.setPatientProperties(patientInfo);
+        samplePatientEntryService.persistData(updateData, SpringContext.getBean(PatientManagementUpdate.class),
+                patientInfo, form, new MockHttpServletRequest());
+        entityManager.flush();
     }
 
     private long organization(String name) {

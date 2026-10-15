@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="024-sample-requester-sample-index" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <indexExists schemaName="clinlims" tableName="sample_requester" columnNames="sample_id"/>
+   </not>
+  </preConditions>
+  <comment>Index sample_requester.sample_id for per-sample requester lookups</comment>
+  <createIndex schemaName="clinlims" tableName="sample_requester" indexName="idx_sample_requester_sample_id">
+   <column name="sample_id"/>
+  </createIndex>
+  <rollback>
+   <dropIndex schemaName="clinlims" tableName="sample_requester" indexName="idx_sample_requester_sample_id"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

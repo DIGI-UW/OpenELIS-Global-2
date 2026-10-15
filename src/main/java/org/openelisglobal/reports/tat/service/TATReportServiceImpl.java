@@ -53,6 +53,13 @@ public class TATReportServiceImpl implements TATReportService {
     private static final String[] HISTOGRAM_LABELS = { "0-1h", "1-2h", "2-3h", "3-4h", "4-6h", "6-8h", "8-12h",
             "12-24h", "24-48h", "48h+" };
 
+    // The site and its department are both organization requesters.
+    private static final String REFERRING_SITE = " FROM SampleRequester sr, Organization site"
+            + " WHERE sr.sampleId = s.id AND site.id = sr.requesterId"
+            + " AND sr.requesterTypeId = (SELECT rt.id FROM RequesterType rt WHERE rt.requesterType = 'organization')"
+            + " AND site.id NOT IN (SELECT dept.id FROM Organization dept JOIN dept.organizationTypes deptType"
+            + " WHERE deptType.name = 'dept')";
+
     @Override
     public TATSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate, TATSegment segment,
             TATCalculationMode mode, String labUnitIds, String testIds, String panelIds, String priority,
@@ -165,8 +172,9 @@ public class TATReportServiceImpl implements TATReportService {
             String sampleTypeId, String orderingSiteId, boolean includeCancelled) {
 
         StringBuilder hql = new StringBuilder();
-        hql.append("SELECT a, s, si, (SELECT min(o.organizationName) FROM SampleOrganization ordering");
-        hql.append(" JOIN ordering.organization o WHERE ordering.sample = s) FROM Analysis a ");
+        hql.append("SELECT a, s, si, COALESCE((SELECT min(site.organizationName)" + REFERRING_SITE + "),");
+        hql.append(" (SELECT min(o.organizationName) FROM SampleOrganization ordering");
+        hql.append(" JOIN ordering.organization o WHERE ordering.sample = s)) FROM Analysis a ");
         hql.append("JOIN a.sampleItem si ");
         hql.append("JOIN si.sample s ");
         hql.append("WHERE s.receivedTimestamp BETWEEN :fromDate AND :toDate ");
@@ -193,8 +201,10 @@ public class TATReportServiceImpl implements TATReportService {
             hql.append("AND si.typeOfSample.id = :sampleTypeId ");
         }
         if (orderingSiteId != null && !orderingSiteId.isBlank()) {
+            hql.append("AND (EXISTS (SELECT 1" + REFERRING_SITE + " AND site.id = :orderingSiteId) ");
+            hql.append("OR (NOT EXISTS (SELECT 1" + REFERRING_SITE + ") ");
             hql.append("AND EXISTS (SELECT 1 FROM SampleOrganization so ");
-            hql.append("WHERE so.sample.id = s.id AND so.organization.id = :orderingSiteId) ");
+            hql.append("WHERE so.sample.id = s.id AND so.organization.id = :orderingSiteId))) ");
         }
 
         Query query = entityManager.unwrap(Session.class).createQuery(hql.toString());
