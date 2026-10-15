@@ -8,6 +8,7 @@ public class MicroCultureForm {
     public String id, parentId, sourceSampleItemId, subculturePurpose, containerIdentifier;
     public Long mediumItemId, lotId;
     public String mediumName, lotNumber, atmosphereId, atmosphereName, durationUnit, outcome, outcomeBy, positiveSource;
+    public String outcomeByDisplay;
     public boolean receivedIsolate, notTracked, checkDue, finalReadDue, overdue, canEditInoculatedAt;
     public BigDecimal temperature, duration, checkIntervalHours, loopVolume, timeToPositivityHours;
     public Timestamp inoculatedAt, positiveAt, outcomeAt, incubationEnds, nextCheck;
@@ -16,13 +17,14 @@ public class MicroCultureForm {
     public List<Proposal> proposals;
 
     public record Reading(String id, String readingId, String readingName, String quantityId, String quantityName,
-            String note, BigDecimal incubationDay, String by, Timestamp at) {
+            String note, BigDecimal incubationDay, String by, Timestamp at, String byDisplay) {
     }
 
     public record Extension(String id, BigDecimal extendBy, String unit, String reasonId, String reasonName,
-            String note, String by, Timestamp at, Timestamp undoneAt) {
+            String note, String by, Timestamp at, Timestamp undoneAt, String byDisplay) {
     }
 
-    public record Proposal(String id, String signal, Timestamp receivedAt, String confirmedBy, Timestamp confirmedAt) {
+    public record Proposal(String id, String signal, Timestamp receivedAt, String confirmedBy, Timestamp confirmedAt,
+            String confirmedByDisplay) {
     }
 }

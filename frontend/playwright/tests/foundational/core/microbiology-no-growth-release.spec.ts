@@ -1,3 +1,4 @@
+import { selectCultureMedium } from "../../../helpers/microbiology-ui";
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyNoGrowthReporting } from "../../../helpers/seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
@@ -19,9 +20,7 @@ test("records no growth without publishing, then releases one final negative rep
   await dialog
     .getByLabel("Bottle or plate identifier")
     .fill("UAT-NO-GROWTH-01");
-  await dialog
-    .getByLabel("Medium", { exact: true })
-    .selectOption(String(seeded.mediumItemId));
+  await selectCultureMedium(page, seeded.mediumItemId!);
   for (const label of ["Medium lot", "Atmosphere"]) {
     const field = dialog.getByLabel(label, { exact: true });
     const value = await field

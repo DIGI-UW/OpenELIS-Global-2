@@ -1,3 +1,4 @@
+import { labTimestamp } from "./MicrobiologyTime";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -21,6 +22,17 @@ import {
 export function MicrobiologyReportBlock({ report }) {
   const intl = useIntl(),
     t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
+  const notesFor = (type, id) =>
+    (report.notes || [])
+      .filter(
+        (note) =>
+          (note.targetType || null) === type && (note.targetId || null) === id,
+      )
+      .map((note, index) => (
+        <p key={index}>
+          {note.text} · {note.author} · {labTimestamp(intl, note.at)}
+        </p>
+      ));
   const testRows = (tests) =>
     tests.map((test) => (
       <div key={test.analysisId}>
@@ -30,6 +42,7 @@ export function MicrobiologyReportBlock({ report }) {
             {value.component}: {value.value}
           </p>
         ))}
+        {notesFor("RESULT", test.analysisId)}
       </div>
     ));
   return (
@@ -43,18 +56,24 @@ export function MicrobiologyReportBlock({ report }) {
         <h4>{t("culture")}</h4>
         {report.cultures.length ? (
           report.cultures.map((row) => (
-            <p key={row.id}>
-              {row.label}: {t(`outcome.${row.outcome}`)} · {t("incubation")}:{" "}
-              {intl.formatNumber(row.incubationHours)} {t("hours")}
-            </p>
+            <div key={row.id}>
+              <p>
+                {row.label}: {t(`outcome.${row.outcome}`)} · {t("incubation")}:{" "}
+                {intl.formatNumber(row.incubationHours)} {t("hours")}
+              </p>
+              {notesFor("CULTURE", row.id)}
+            </div>
           ))
         ) : (
           <p>{t("none")}</p>
         )}
         {report.isolates.map((isolate) => (
-          <p key={isolate.id}>
-            {isolate.label}: {isolate.organism}
-          </p>
+          <div key={isolate.id}>
+            <p>
+              {isolate.label}: {isolate.organism}
+            </p>
+            {notesFor("ISOLATE", isolate.id)}
+          </div>
         ))}
       </section>
       <section>
@@ -80,7 +99,10 @@ export function MicrobiologyReportBlock({ report }) {
               <TableBody>
                 {isolate.susceptibilities.map((row) => (
                   <TableRow key={row.antibioticId}>
-                    <TableCell>{row.agent}</TableCell>
+                    <TableCell>
+                      {row.agent}
+                      {notesFor("DRUG", row.readingId)}
+                    </TableCell>
                     <TableCell>
                       {row.raw} {row.units}
                     </TableCell>
@@ -105,14 +127,16 @@ export function MicrobiologyReportBlock({ report }) {
           <p>{t("none")}</p>
         )}
       </section>
-      {report.notes.length > 0 && (
+      {report.notes.some((note) => !note.targetType) && (
         <section>
           <h4>{t("sendWithResult")}</h4>
-          {report.notes.map((note, index) => (
-            <p key={index}>
-              {note.text} · {note.author} · {intl.formatDate(new Date(note.at))}
-            </p>
-          ))}
+          {report.notes
+            .filter((note) => !note.targetType)
+            .map((note, index) => (
+              <p key={index}>
+                {note.text} · {note.author} · {labTimestamp(intl, note.at)}
+              </p>
+            ))}
         </section>
       )}
     </Stack>
@@ -151,7 +175,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
     return () => {
       live = false;
     };
-  }, [detail.id, detail.canWrite, detail.canValidate]);
+  }, [detail, service]);
   const [confirmIncoming, setConfirmIncoming] = useState(false);
   const release = async (type) => {
     if (
@@ -238,7 +262,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
               <SelectItem
                 key={v.id}
                 value={v.id}
-                text={`${intl.formatNumber(v.number)} · ${t(`release.${v.type}`)} · ${intl.formatDate(new Date(v.at))} ${intl.formatTime(new Date(v.at))}`}
+                text={`${intl.formatNumber(v.number)} · ${t(`release.${v.type}`)} · ${labTimestamp(intl, v.at)}`}
               />
             ))}
           </Select>
@@ -262,24 +286,47 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
             </Tile>
           )}
           {!versionId && state.readiness.blockers.length > 0 && (
-            <InlineNotification
-              kind="warning"
-              title={t("finalBlocked")}
-              subtitle={state.readiness.blockers
-                .map((blocker) => {
-                  const [code, field] = blocker.split(":");
-                  return (
-                    t(`blocker.${code}`) +
-                    (code === "CLINICAL_FIELD_REQUIRED"
-                      ? `: ${t(`field.${field}`)}`
-                      : state.readiness.blockerLabels?.[blocker]
-                        ? `: ${state.readiness.blockerLabels[blocker]}`
-                        : "")
-                  );
-                })
-                .join("; ")}
-              hideCloseButton
-            />
+            <Tile>
+              <h4>{t("finalBlocked")}</h4>
+              {
+                <ul>
+                  {state.readiness.blockers.map((blocker) => {
+                    const [code, field] = blocker.split(":");
+                    const label =
+                      t(`blocker.${code}`) +
+                      (code === "CLINICAL_FIELD_REQUIRED"
+                        ? `: ${t(`field.${field}`)}`
+                        : state.readiness.blockerLabels?.[blocker]
+                          ? `: ${state.readiness.blockerLabels[blocker]}`
+                          : "");
+                    const context = [
+                      "CLINICAL_FIELD_REQUIRED",
+                      "PROGRAM_REQUIRED",
+                      "QUESTIONNAIRE_FIELD_REQUIRED",
+                      "QUESTIONNAIRE_UNAVAILABLE",
+                    ].includes(code);
+                    return (
+                      <li key={blocker}>
+                        {context ? (
+                          <a
+                            href="#case-information"
+                            onClick={() =>
+                              document
+                                .getElementById("case-information")
+                                ?.focus()
+                            }
+                          >
+                            {label}
+                          </a>
+                        ) : (
+                          label
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              }
+            </Tile>
           )}
           <Tile>
             <MicrobiologyReportBlock report={report} />

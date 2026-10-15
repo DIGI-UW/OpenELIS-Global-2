@@ -9,6 +9,10 @@ import MicrobiologyWorklist from "../MicrobiologyWorklist";
 import messages from "../../../languages/en.json";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
+vi.mock("../CaseWorkspaceService", () => ({
+  searchCases: vi.fn().mockResolvedValue({ labUnits: [] }),
+}));
+
 const now = new Date(2026, 7, 4, 12, 0, 0);
 
 const renderWorklist = (
@@ -99,6 +103,7 @@ describe("MicrobiologyWorklist", () => {
     expect(service.getWorklistRows).toHaveBeenCalledWith({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
@@ -252,6 +257,7 @@ describe("MicrobiologyWorklist", () => {
       expect(service.getWorklistRows).toHaveBeenLastCalledWith({
         grain: "cultures",
         status: "",
+        labUnitIds: [],
         from: "",
         to: "",
         specimen: [],

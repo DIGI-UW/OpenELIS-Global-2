@@ -40,6 +40,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCultureService service;
     @Autowired
+    private MicroCaseTimelineService timeline;
+    @Autowired
     private MicroCaseInoculationDAO cultures;
     @Autowired
     private MicroCaseDAO cases;
@@ -199,6 +201,23 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
 
     private MicroCultureForm create() {
         return service.inoculate(microCase.getId(), request(), actor).get(0);
+    }
+
+    @Test
+    public void uuidCultureNotesSurviveFlushAndStayOffReportsUnlessExternal() {
+        String caseId = microCase.getId();
+        String cultureId = create().id;
+        timeline.addNote(caseId, "Internal bench discussion", false, "CULTURE", cultureId, actor);
+        timeline.addNote(caseId, "Culture report annotation", true, "CULTURE", cultureId, actor);
+        em.flush();
+        em.clear();
+        var notes = timeline.getTimeline(caseId).stream().filter(n -> "MANUAL_NOTE".equals(n.activityType)).toList();
+        assertEquals(2, notes.size());
+        assertTrue(notes.stream().allMatch(n -> "CULTURE".equals(n.targetType) && cultureId.equals(n.targetId)));
+        var reportNotes = timeline.getReportNotes(caseId);
+        assertEquals(1, reportNotes.size());
+        assertEquals("Culture report annotation", reportNotes.get(0).note);
+        assertEquals(cultureId, reportNotes.get(0).targetId);
     }
 
     @Test

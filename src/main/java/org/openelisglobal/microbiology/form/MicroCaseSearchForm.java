@@ -9,6 +9,7 @@ public class MicroCaseSearchForm {
     public String patientId;
     public String accessionNumber;
     public String labUnitId;
+    public java.util.List<String> labUnitIds;
     public String sort = "newest";
     public int page = 1;
     public int pageSize = 20;

@@ -87,6 +87,7 @@ describe("MicrobiologyRoutes", () => {
     ).toEqual({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
@@ -109,12 +110,14 @@ describe("MicrobiologyRoutes", () => {
     ).toMatchObject({
       grain: "ast",
       status: "",
+      labUnitIds: [],
     });
     expect(
       parseMicrobiologyWorklistSearch("?grain=cultures&status=results-in"),
     ).toMatchObject({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],
@@ -138,6 +141,7 @@ describe("MicrobiologyRoutes", () => {
     ).toEqual({
       grain: "cultures",
       status: "",
+      labUnitIds: [],
       from: "",
       to: "",
       specimen: [],

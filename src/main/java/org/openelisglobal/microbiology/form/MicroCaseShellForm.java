@@ -9,8 +9,12 @@ public class MicroCaseShellForm extends MicroCaseSummaryForm {
     public List<MicroCaseSpecimenForm> pendingSamples = new ArrayList<>();
     public List<MicroCaseSummaryForm> relatedCases = new ArrayList<>();
     public List<IdValuePair> transferLabUnits = new ArrayList<>();
+    public MicroCaseOrderDetailForm orderDetail;
+    public List<String> requiredClinicalFields = new ArrayList<>();
+    public boolean canAmend;
     public String orderId;
     public String programId;
+    public String reportingTrack;
     public List<IdValuePair> programs = new ArrayList<>();
     public String culturePurpose;
     public List<String> purposeOptions = new ArrayList<>();

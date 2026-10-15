@@ -156,3 +156,65 @@ it("requires and submits a replacement card when invalidating an instrument run"
     ),
   );
 });
+
+it("explains a validation blocker and clears it when another action opens", async () => {
+  const service = show(workspace("IN_PROGRESS"));
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_NO_BREAKPOINT_UNRESOLVED" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.review") }),
+  );
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  );
+  const message =
+    messages["microbiology.m6.error.AST_NO_BREAKPOINT_UNRESOLVED"];
+  expect(
+    await within(screen.getByRole("dialog")).findByText(message),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("cancel"),
+      exact: true,
+    }),
+  );
+  const run = screen.getByTestId("ast-run-run");
+  const drug = within(run).getByRole("row", { name: /Ampicillin/ });
+  fireEvent.click(
+    within(drug).getByRole("button", { name: t("action.reading") }),
+  );
+  expect(screen.queryByText(message)).not.toBeInTheDocument();
+});
+
+it("repeats a chosen antibiotic without silently ordering the whole panel", async () => {
+  const service = show(workspace());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.retest") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(messages["microbiology.ast.attemptScope"]),
+    { target: { value: "b" } },
+  );
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Confirm the discordant agent" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "retest",
+        orderedAntibioticIds: ["b"],
+        reason: "Confirm the discordant agent",
+      }),
+      false,
+    ),
+  );
+});

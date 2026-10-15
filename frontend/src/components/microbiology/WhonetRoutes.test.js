@@ -31,6 +31,8 @@ describe("WhonetRoutes", () => {
       significance: ["CLINICALLY_SIGNIFICANT"],
       includeScreening: false,
       includeUnspecified: false,
+      includeEnvironmentalIsolates: false,
+      surveyProgramIds: [],
       ...defaultDedupState,
       step: "configure",
       page: 1,
@@ -38,7 +40,7 @@ describe("WhonetRoutes", () => {
       source: "",
     });
     expect(buildWhonetSearch(state, now)).toBe(
-      `from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultDedupQuery}&step=configure&page=1&pageSize=20`,
+      `from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultDedupQuery}&step=configure&page=1&pageSize=20`,
     );
   });
 
@@ -105,7 +107,7 @@ describe("WhonetRoutes", () => {
         now,
       ),
     ).toBe(
-      `/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&specimen=urine&organism=organism-2&origin=INPATIENT&significance=NORMAL_FLORA&includeScreening=false&includeUnspecified=false&${defaultDedupQuery}&source=ast-worklist&step=configure&page=1&pageSize=20`,
+      `/Microbiology/whonet?from=2026-08-01&to=2026-08-31&specimen=blood&specimen=urine&organism=organism-2&origin=INPATIENT&significance=NORMAL_FLORA&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultDedupQuery}&source=ast-worklist&step=configure&page=1&pageSize=20`,
     );
   });
 
@@ -124,7 +126,7 @@ describe("WhonetRoutes", () => {
         now,
       ),
     ).toBe(
-      `/Microbiology/whonet?from=2026-08-01&to=2026-08-31&significance=CLINICALLY_SIGNIFICANT&significance=CONTAMINANT&significance=NORMAL_FLORA&significance=UNKNOWN&includeScreening=false&includeUnspecified=false&${defaultDedupQuery}&source=ast-worklist&step=configure&page=1&pageSize=20`,
+      `/Microbiology/whonet?from=2026-08-01&to=2026-08-31&significance=CLINICALLY_SIGNIFICANT&significance=CONTAMINANT&significance=NORMAL_FLORA&significance=UNKNOWN&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultDedupQuery}&source=ast-worklist&step=configure&page=1&pageSize=20`,
     );
   });
 
@@ -141,7 +143,7 @@ describe("WhonetRoutes", () => {
 
   it("round-trips sorted repeated population filters without dropping selections", () => {
     const search =
-      "?from=2026-06-01&to=2026-06-30&specimen=urine&specimen=blood&organism=org-2&organism=org-1&origin=OUTPATIENT&significance=NORMAL_FLORA&significance=CLINICALLY_SIGNIFICANT&includeScreening=true&includeUnspecified=true&dedup=NONE&step=preview&page=3&pageSize=50";
+      "?from=2026-06-01&to=2026-06-30&specimen=urine&specimen=blood&organism=org-2&organism=org-1&origin=OUTPATIENT&significance=NORMAL_FLORA&significance=CLINICALLY_SIGNIFICANT&includeScreening=true&includeUnspecified=true&includeEnvironmentalIsolates=false&dedup=NONE&step=preview&page=3&pageSize=50";
 
     const state = parseWhonetSearch(search, now);
 
@@ -154,7 +156,7 @@ describe("WhonetRoutes", () => {
       includeUnspecified: true,
     });
     expect(buildWhonetSearch(state, now)).toBe(
-      "from=2026-06-01&to=2026-06-30&specimen=blood&specimen=urine&organism=org-1&organism=org-2&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=true&dedup=NONE&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&step=preview&page=3&pageSize=50",
+      "from=2026-06-01&to=2026-06-30&specimen=blood&specimen=urine&organism=org-1&organism=org-2&origin=OUTPATIENT&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=true&includeEnvironmentalIsolates=false&dedup=NONE&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&step=preview&page=3&pageSize=50",
     );
   });
 
@@ -187,6 +189,8 @@ describe("WhonetRoutes", () => {
       significance: ["CLINICALLY_SIGNIFICANT"],
       includeScreening: false,
       includeUnspecified: false,
+      includeEnvironmentalIsolates: false,
+      surveyProgramIds: [],
       ...defaultDedupState,
       step: "preview",
       page: 3,

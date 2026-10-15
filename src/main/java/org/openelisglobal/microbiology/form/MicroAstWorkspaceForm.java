@@ -27,7 +27,10 @@ public class MicroAstWorkspaceForm {
         @jakarta.validation.constraints.NotBlank
         public String action;
         public String runId, readingId, panelId, technique, breakpointStandardId, antibioticId, interpretation, reason,
-                analyzerCardId;
+                analyzerCardId, analyzerInstrumentId;
+        public boolean awaitAnalyzerResults;
+        public List<MicroLotSelectionRequestForm> lotSelections = List.of();
+        public List<String> orderedAntibioticIds;
         public java.math.BigDecimal rawValue;
     }
 }
