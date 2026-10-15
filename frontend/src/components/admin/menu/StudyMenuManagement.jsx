@@ -39,7 +39,7 @@ function StudyMenuManagement() {
 
   const componentMounted = useRef(false);
 
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showChildren, setShowChildren] = useState(false);
   const [menuItem, setMenuItem] = useState({
@@ -96,7 +96,7 @@ function StudyMenuManagement() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.add.edited.msg" }),
       });
-      var body = await res.json();
+      await res.json();
       // setMenuItems(body); unpack response
     } else {
       addNotification({

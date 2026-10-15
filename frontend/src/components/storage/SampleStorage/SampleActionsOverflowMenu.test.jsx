@@ -141,7 +141,7 @@ describe("SampleActionsOverflowMenu", () => {
    */
   test("testHandlesMissingCallbacksWithoutErrors", () => {
     // Component should render even without callbacks
-    const { container } = renderWithIntl(
+    renderWithIntl(
       <SampleActionsOverflowMenu
         sample={mockSample}
         onManageLocation={undefined}

@@ -57,14 +57,7 @@ import DisplayOrderSection from "./sections/DisplayOrderSection";
 import DisposalSection from "./sections/DisposalSection";
 import AssociatedTestsSection from "./sections/AssociatedTestsSection";
 import ContainersSection from "./sections/ContainersSection";
-import {
-  Add,
-  Edit,
-  Save,
-  CheckmarkFilled,
-  WarningFilled,
-  ArrowLeft,
-} from "@carbon/react/icons";
+import { Add, Edit, Save, ArrowLeft } from "@carbon/react/icons";
 import { injectIntl, FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import useDomains from "../../common/useDomains";
@@ -177,8 +170,8 @@ function SampleTypeManagement({ intl }) {
 
   // Associated tests for the sample type currently being edited
   const [associatedTests, setAssociatedTests] = useState([]);
-  const [associatedTestsLoading, setAssociatedTestsLoading] = useState(false);
-  const [associatedTestsError, setAssociatedTestsError] = useState(null);
+  const [, setAssociatedTestsLoading] = useState(false);
+  const [, setAssociatedTestsError] = useState(null);
 
   // Fetch sample types from backend or use mock data
   useEffect(() => {
@@ -675,7 +668,7 @@ function SampleTypeManagement({ intl }) {
               let body = null;
               try {
                 body = response ? await response.json() : null;
-              } catch (e) {
+              } catch {
                 body = null;
               }
               if (isStaleConflict(response ? response.status : 0, body)) {

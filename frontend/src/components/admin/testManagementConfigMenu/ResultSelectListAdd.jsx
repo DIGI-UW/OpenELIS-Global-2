@@ -490,7 +490,7 @@ function ResultSelectListAdd() {
                     newArrangement[index] = {
                       ...updatedTestSelectListJson,
                       items: updatedTestSelectListJson.items.map(
-                        ({ value, ...rest }) => rest,
+                        ({ value: _value, ...rest }) => rest,
                       ),
                     };
                     delete newArrangement[index].description;

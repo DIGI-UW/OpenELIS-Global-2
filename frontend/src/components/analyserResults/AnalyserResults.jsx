@@ -301,7 +301,7 @@ const AnalyserResults = (props) => {
     },
   ];
 
-  const handleSave = (values) => {
+  const handleSave = (_values) => {
     if (isSubmitting) {
       return;
     }
@@ -399,7 +399,7 @@ const AnalyserResults = (props) => {
   };
 
   const handleChange = (e, rowId) => {
-    const { name, id, value } = e.target;
+    const { name, value } = e.target;
     let form = props.results;
     jpSet(form, name, value);
     const field = name.match(/\.(result|note)$/)?.[1];
@@ -415,12 +415,6 @@ const AnalyserResults = (props) => {
     }
   };
 
-  const handleDatePickerChange = (date, rowId) => {
-    console.debug("handleDatePickerChange:" + date);
-    const d = new Date(date).toLocaleDateString("fr-FR");
-    var form = props.results;
-    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
-  };
   // A test is decided on its head row; its parts and duplicates carry the same
   // decision, so a tick they loaded with cannot outvote it on save.
   const handleCheckBox = (e, rowId, fieldName) => {
@@ -475,9 +469,6 @@ const AnalyserResults = (props) => {
       row[fieldName] = checked;
       rememberEdit(rowId, fieldName, checked);
     }
-  };
-  const validateResults = (e, rowId) => {
-    handleChange(e, rowId);
   };
 
   const sampleGroupHasId = (id) => {
@@ -693,7 +684,7 @@ const AnalyserResults = (props) => {
     </React.Fragment>
   );
 
-  const renderCellContent = (row, index, column, id) => {
+  const renderCellContent = (row, index, column, _id) => {
     const held = Boolean(row.importIssueReason);
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
@@ -812,7 +803,7 @@ const AnalyserResults = (props) => {
             <div>
               {decisionHeadIds.has(row.id) && (
                 <Field name="isAccepted">
-                  {({ field }) => (
+                  {({ field: _field }) => (
                     <Checkbox
                       id={"resultList" + row.id + ".isAccepted"}
                       name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
@@ -836,7 +827,7 @@ const AnalyserResults = (props) => {
           <>
             {decisionHeadIds.has(row.id) && (
               <Field name="isRejected">
-                {({ field }) => (
+                {({ field: _field }) => (
                   <Checkbox
                     id={"resultList" + row.id + ".isRejected"}
                     name={"resultList[?(@.id == " + row.id + ")].isRejected"}
@@ -876,7 +867,7 @@ const AnalyserResults = (props) => {
           <>
             {decisionHeadIds.has(row.id) && (
               <Field name="isDeleted">
-                {({ field }) => (
+                {({ field: _field }) => (
                   <Checkbox
                     id={"resultList" + row.id + ".isDeleted"}
                     name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
@@ -1121,7 +1112,7 @@ const AnalyserResults = (props) => {
         onSubmit
         onChange
       >
-        {({ values, errors, touched, handleChange }) => (
+        {({ values, errors: _errors, touched: _touched, handleChange }) => (
           <Form onChange={handleChange}>
             {arrows.show && <ServerPageArrows {...arrows} />}
             {tableRows.length > 0 && (

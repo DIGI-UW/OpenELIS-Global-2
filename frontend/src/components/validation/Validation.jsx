@@ -549,7 +549,7 @@ const Validation = (props) => {
     setBulkOpen(true);
   };
 
-  const renderCell = (row, index, column, id) => {
+  const renderCell = (row, index, column, _id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const fullTestName = row.testName;
     const splitIndex = fullTestName.lastIndexOf("(");

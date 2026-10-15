@@ -17,7 +17,6 @@ import {
   getAnalyzerTypeCatalog,
   getAnalyzerTypeControlRecognition,
   getAnalyzerTypeDraft,
-  updateAnalyzerTypeDraft,
   getAnalyzerTypeRevision,
   publishAnalyzerTypeDraft,
   updateAnalyzerTypeControlRecognition,

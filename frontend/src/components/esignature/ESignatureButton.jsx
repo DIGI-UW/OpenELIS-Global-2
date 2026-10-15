@@ -110,7 +110,7 @@ const ESignatureButton = ({
         const result = await isEsigEnabled();
         esigEnabled = result.enabled;
         setIsEsigEnabledState(esigEnabled);
-      } catch (error) {
+      } catch {
         // On error, assume e-signatures are enabled for safety.
         esigEnabled = true;
         setIsEsigEnabledState(true);
@@ -126,7 +126,7 @@ const ESignatureButton = ({
     if (onBeforeSign) {
       try {
         await onBeforeSign();
-      } catch (error) {
+      } catch {
         return;
       }
     }
