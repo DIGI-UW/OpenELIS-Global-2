@@ -13,7 +13,7 @@ const NonConformityNotification = (props) => {
   const [accessionNumber, setAccessionNumber] = useState("");
   const [siteNames, setSiteNames] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState("");
-  const [selectedSiteName, setSelectedSiteName] = useState("");
+  const [, setSelectedSiteName] = useState("");
 
   function handleSiteName(e) {
     setSelectedSiteName(e.target.value);
@@ -31,7 +31,10 @@ const NonConformityNotification = (props) => {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", getSiteList);
+    getFromOpenElisServer(
+      "/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC",
+      getSiteList,
+    );
     return () => {
       componentMounted.current = false;
     };

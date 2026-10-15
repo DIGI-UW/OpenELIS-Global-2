@@ -47,7 +47,7 @@ const Questionnaire = ({
       item.repeats === true &&
       "answerOption" in item
     ) {
-      item.answerOption.map((answerOption, index) => {
+      item.answerOption.map((answerOption, _index) => {
         if ("valueString" in answerOption) {
           options.push({
             value: answerOption.valueString,

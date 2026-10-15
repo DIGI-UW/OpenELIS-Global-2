@@ -13,7 +13,7 @@ vi.mock("../../../utils/Utils", () => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";

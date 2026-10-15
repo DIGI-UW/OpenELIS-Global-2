@@ -52,7 +52,7 @@ function TestNotificationConfigEdit() {
   const componentMounted = useRef(false);
   const [indMsg, setIndMsg] = useState("0");
   const [loading, setLoading] = useState(true);
-  const [saveButton, setSaveButton] = useState(false);
+  const [saveButton] = useState(false);
   const [sysDefaultMsg, setSysDefaultMsg] = useState(true);
   const [testNotificationConfigEditData, setTestNotificationConfigEditData] =
     useState({});
@@ -62,8 +62,6 @@ function TestNotificationConfigEdit() {
   ] = useState({});
   const [testNamesList, setTestNamesList] = useState([]);
   const [testName, setTestName] = useState("");
-  const [testNotificationConfigMenuList, setTestNotificationConfigMenuList] =
-    useState([]);
 
   useEffect(() => {
     if (testNotificationConfigEditData) {

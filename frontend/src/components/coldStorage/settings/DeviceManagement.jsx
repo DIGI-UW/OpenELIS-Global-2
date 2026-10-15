@@ -76,26 +76,6 @@ const getDeviceColumns = (intl, canManage) => [
     : []),
 ];
 
-const DEVICE_TYPE_OPTIONS = [
-  { value: "freezer", label: "Freezer" },
-  { value: "refrigerator", label: "Refrigerator" },
-  { value: "cabinet", label: "Cabinet" },
-  { value: "other", label: "Other" },
-];
-
-const PROTOCOL_OPTIONS = [
-  { value: "TCP", label: "Modbus TCP" },
-  { value: "RTU", label: "Modbus RTU" },
-];
-
-const PARITY_OPTIONS = [
-  { value: "NONE", label: "None" },
-  { value: "EVEN", label: "Even" },
-  { value: "ODD", label: "Odd" },
-  { value: "MARK", label: "Mark" },
-  { value: "SPACE", label: "Space" },
-];
-
 function DeviceManagement() {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -118,8 +98,8 @@ function DeviceManagement() {
   );
   const [devices, setDevices] = useState([]);
   const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,7 +117,7 @@ function DeviceManagement() {
     description: "",
     active: true,
   });
-  const [formData, setFormData] = useState({
+  const [, setFormData] = useState({
     name: "",
     deviceType: "freezer",
     roomId: "",
@@ -342,10 +322,6 @@ function DeviceManagement() {
   const cancelDeleteDevice = () => {
     setIsDeleteModalOpen(false);
     setDeviceToDelete(null);
-  };
-
-  const handleFormChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (formData) => {
