@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -268,13 +269,10 @@ public class EQAParticipantCycleIntegrationTest extends EQASpineTestBase {
 
         assertEquals(scheme.getId(), jdbc.queryForObject("SELECT scheme_id FROM clinlims.eqa_cycle WHERE id = ?",
                 Long.class, ((Number) dto.get("id")).longValue()));
-        try {
-            controller().createMyCycle(requestForUser(), Map.of("schemeName", "Scheme nobody here runs N", "cycleName",
-                    "Round 1", "submissionDeadline", "2026-09-30"));
-            fail("an enrollment with no scheme here must be refused");
-        } catch (IllegalArgumentException expected) {
-            assertTrue(expected.getMessage(), expected.getMessage().contains("No scheme named"));
-        }
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> controller().createMyCycle(requestForUser(), Map.of("schemeName", "Scheme nobody here runs N",
+                        "cycleName", "Round 1", "submissionDeadline", "2026-09-30")));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("No scheme named"));
     }
 
     // ---- helpers ----

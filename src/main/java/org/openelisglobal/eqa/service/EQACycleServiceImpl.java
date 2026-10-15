@@ -494,9 +494,7 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
     }
 
     private static boolean sameScheme(EQACycle cycle, String schemeName) {
-        EQAProgram scheme = cycle.getScheme();
-        return scheme != null && scheme.getName() != null && schemeName != null
-                && scheme.getName().trim().equalsIgnoreCase(schemeName.trim());
+        return cycle.getScheme() != null && sameProgramme(cycle.getScheme().getName(), schemeName);
     }
 
     private static int nullToZero(Integer value) {

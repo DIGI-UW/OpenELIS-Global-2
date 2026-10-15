@@ -42,7 +42,7 @@ import {
   submitCycleManually,
 } from "./cyclesApi";
 import { asList } from "../eqaApi";
-import { fetchLabPerformance } from "../Performance/performanceApi";
+import { fetchOpenEqaNceCount } from "../Performance/performanceApi";
 import NewEqaCycleModal from "./NewEqaCycleModal";
 
 const breadcrumbs = [
@@ -219,7 +219,7 @@ const MyCyclesPage = () => {
       // EQA order is uncycled by definition.
       setUncycledOrders(asList(data).filter((o) => !o.cycleId));
     });
-    fetchLabPerformance((data) => setOpenNce(data.kpis.eqaNceOpenCount ?? 0));
+    fetchOpenEqaNceCount(setOpenNce);
   }, []);
 
   const schemeTypeLabel = (type) =>

@@ -218,6 +218,8 @@ public class EQACycleEnrichmentIntegrationTest extends EQASpineTestBase {
         seedLinkedOrder(cycleId, finalizedId, technicalAcceptance);
 
         assertEquals("one result still awaits validation", "entered", entryStatusOf(cycleId));
+        assertEquals("Progress counts the result awaiting validation as the sample does",
+                Map.of("entered", 2, "total", 2), findCycleRow(cycleId).get("progress"));
 
         jdbc.update("UPDATE clinlims.analysis SET status_id = ? WHERE id = ?", finalizedId, ANALYSIS_NOT_STARTED_ID);
 

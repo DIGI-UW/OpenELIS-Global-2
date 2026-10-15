@@ -85,8 +85,6 @@ export const submitCycleManually = (cycleId, reference, callback) => {
   );
 };
 
-// Active enrollments whose programme exists here as a scheme: the only ones
-// the server will create a cycle for.
 export const fetchEnrollmentsOpenForCycles = (callback) => {
   getFromOpenElisServer("/rest/eqa/cycles/mine/enrollments", (data) =>
     callback(Array.isArray(data) ? data : []),

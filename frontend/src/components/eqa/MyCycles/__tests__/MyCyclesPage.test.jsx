@@ -51,8 +51,7 @@ const renderPage = (
     if (url === "/rest/eqa/cycles/mine") cb(cycles);
     if (url.startsWith("/rest/eqa/orders")) cb(orders);
     if (url === "/rest/eqa/cycles/mine/enrollments") cb(enrollments);
-    if (url === "/rest/eqa/lab-performance")
-      cb({ kpis: { eqaNceOpenCount: 2 } });
+    if (url === "/rest/eqa/lab-performance/open-nce-count") cb({ open: 2 });
   });
   return render(
     <IntlProvider locale="en" messages={messages}>

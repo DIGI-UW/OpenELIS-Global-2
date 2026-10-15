@@ -110,8 +110,8 @@ public interface EQACycleService extends BaseObjectService<EQACycle, Long> {
             Date distributionDate, Date submissionDeadline, String sysUserId);
 
     /**
-     * The active enrolments a lab can record a cycle for: those whose programme
-     * exists here as a scheme, matched as {@link #ensureParticipantCycle} matches.
+     * Active enrollments whose programme matches a scheme the way
+     * {@link #ensureParticipantCycle} does.
      */
     List<EQALabProgramEnrollment> getEnrollmentsOpenForCycles();
 
