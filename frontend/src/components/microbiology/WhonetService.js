@@ -2,7 +2,9 @@ import config from "../../config.json";
 
 const requestSearch = (query) => {
   const params = new URLSearchParams();
-  ["from", "to"].forEach((key) => params.set(key, String(query[key])));
+  ["from", "to"].forEach((key) => {
+    if (query[key] != null) params.set(key, String(query[key]));
+  });
   [
     "specimen",
     "organism",
@@ -27,7 +29,9 @@ const requestSearch = (query) => {
     "excludeContaminants",
     "page",
     "pageSize",
-  ].forEach((key) => params.set(key, String(query[key])));
+  ].forEach((key) => {
+    if (query[key] != null) params.set(key, String(query[key]));
+  });
   return params.toString();
 };
 

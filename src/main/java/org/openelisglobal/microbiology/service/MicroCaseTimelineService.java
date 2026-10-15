@@ -11,5 +11,8 @@ public interface MicroCaseTimelineService {
 
     MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String performedBy);
 
+    MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String targetType,
+            String targetId, String performedBy);
+
     List<MicroCaseActivityForm> getReportNotes(String caseId);
 }

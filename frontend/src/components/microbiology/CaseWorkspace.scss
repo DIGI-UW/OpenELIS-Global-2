@@ -5,6 +5,11 @@
     min-width: 0;
   }
 
+  .cds--stack-vertical {
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   h1 {
     overflow-wrap: anywhere;
   }

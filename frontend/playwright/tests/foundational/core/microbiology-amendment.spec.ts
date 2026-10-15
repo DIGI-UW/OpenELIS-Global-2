@@ -4,11 +4,6 @@ import { seedFinalizedMicrobiologyCase } from "../../../helpers/seed-microbiolog
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
-const accordionButton = (page: Page, name: string) =>
-  page
-    .getByTestId("microbiology-case-view")
-    .getByRole("button", { name, exact: true });
-
 const attachScreenshot = async (
   page: Page,
   testInfo: TestInfo,
@@ -49,10 +44,12 @@ test.describe("Microbiology final-report amendments", () => {
         page.getByRole("heading", { name: "Amendments" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(page.getByText("Final case is read-only")).toBeVisible();
-      const openButton = page.getByRole("button", {
-        name: "Open amendment",
-        exact: true,
-      });
+      const openButton = page
+        .getByTestId("microbiology-amendment-card")
+        .getByRole("button", {
+          name: "Open amendment",
+          exact: true,
+        });
       await expect(openButton).toBeDisabled();
       await page
         .getByLabel("Amendment reason")
@@ -60,7 +57,9 @@ test.describe("Microbiology final-report amendments", () => {
       await expect(openButton).toBeEnabled();
       await openButton.click();
       await expect(
-        page.getByText("Amendment in progress", { exact: true }),
+        page
+          .getByTestId("microbiology-amendment-card")
+          .getByText("Open amendment", { exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
         page.getByText(
@@ -70,8 +69,10 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Record a reasoned isolate re-identification", async () => {
-      await accordionButton(page, "Isolates").click();
-      await expect(page).toHaveURL(/section=isolates$/);
+      await page
+        .getByLabel("Testing section", { exact: true })
+        .selectOption("ISOLATES");
+      await expect(page).toHaveURL(/scope=ISOLATES$/);
       await page.getByRole("button", { name: "Reidentify" }).click();
       const dialog = page.getByRole("dialog");
       const organism = dialog.getByRole("combobox", {
@@ -112,8 +113,10 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Release and inspect immutable report versions", async () => {
-      await accordionButton(page, "Amendments").click();
-      await expect(page).toHaveURL(/section=amendment$/);
+      await page
+        .getByLabel("Testing section", { exact: true })
+        .selectOption("AMENDMENT");
+      await expect(page).toHaveURL(/scope=AMENDMENT$/);
       await page
         .getByRole("button", { name: "Release amended report" })
         .click();

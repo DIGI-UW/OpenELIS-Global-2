@@ -1,3 +1,4 @@
+import { selectCultureMedium } from "../../../helpers/microbiology-ui";
 import { expect, test } from "../../../helpers/test-base";
 import { seedMicrobiologyIsolateWorkspace } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -33,9 +34,7 @@ test("picks a growth isolate, retains identification history and refers its dema
     .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M5-GROWTH");
-  await dialog
-    .getByLabel("Medium", { exact: true })
-    .selectOption(String(seeded.mediumItemId!));
+  await selectCultureMedium(page, seeded.mediumItemId!);
   await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
   await firstOption(dialog.getByLabel("Atmosphere", { exact: true }));
   await dialog.getByRole("button", { name: "Save", exact: true }).click();

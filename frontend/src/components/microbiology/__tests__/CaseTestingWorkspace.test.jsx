@@ -23,6 +23,7 @@ const detail = {
       sampleItemId: "sample-1",
       sampleTypeId: "type-1",
       specimenType: "Sputum",
+      label: "Sputum sample 1",
     },
   ],
 };

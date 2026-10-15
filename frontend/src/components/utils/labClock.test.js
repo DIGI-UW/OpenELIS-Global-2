@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { getFromOpenElisServer, toLocalIsoDate } from "./Utils";
 import {
+  labDateTimeInput,
   daysFromLabToday,
   labNow,
   labTimeToInstant,
@@ -66,6 +67,16 @@ describe("labClock", () => {
     await loadLabClock();
     expect(labTimeToInstant(new Date(2031, 2, 6, 0, 0)).toISOString()).toBe(
       "2031-03-05T10:00:00.000Z",
+    );
+  });
+
+  test("a timestamp edited on the laboratory clock retains milliseconds across midnight", async () => {
+    serverIn("Pacific/Kiritimati");
+    await loadLabClock();
+    const input = labDateTimeInput("2031-03-05T20:47:16.123Z");
+    expect(input).toBe("2031-03-06T10:47:16.123");
+    expect(labTimeToInstant(new Date(input)).toISOString()).toBe(
+      "2031-03-05T20:47:16.123Z",
     );
   });
 
