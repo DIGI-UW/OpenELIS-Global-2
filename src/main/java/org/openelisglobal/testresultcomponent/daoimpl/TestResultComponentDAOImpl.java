@@ -42,7 +42,7 @@ public class TestResultComponentDAOImpl extends BaseDAOImpl<TestResultComponent,
     @Override
     @Transactional(readOnly = true)
     public TestResultComponent getByTestIdAndCode(String testId, String code) {
-        String hql = "from TestResultComponent c where c.testId = :testId and c.code = :code";
+        String hql = "from TestResultComponent c where c.testId = :testId and c.code = :code and c.isActive = 'Y'";
         Query<TestResultComponent> query = entityManager.unwrap(Session.class).createQuery(hql,
                 TestResultComponent.class);
         query.setParameter("testId", testId);

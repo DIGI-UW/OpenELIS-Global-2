@@ -113,4 +113,46 @@ public class LocalizationTestNameRefreshIntegrationTest extends BaseWebContextSe
 
         assertEquals("RefreshIT old " + NAME_LOCALIZATION_ID, cachedName());
     }
+
+    /** OGC-1465: the English name every screen falls back to cannot be blanked. */
+    @Test
+    public void blankingTheFallbackNameIsRefused() throws Exception {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        mockMvc.perform(put("/rest/localizations/" + NAME_LOCALIZATION_ID + "/translations")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, usd).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"en\":\"  \"}")).andExpect(status().isBadRequest());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/rest/localizations/" + NAME_LOCALIZATION_ID + "/translations/en")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, usd).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"value\":\"\"}")).andExpect(status().isBadRequest());
+
+        assertEquals("RefreshIT old " + NAME_LOCALIZATION_ID, cachedName());
+        assertEquals("RefreshIT old " + NAME_LOCALIZATION_ID, jdbc.queryForObject(
+                "SELECT value FROM clinlims.localization_value WHERE localization_id = ?" + " AND locale = 'en'",
+                String.class, NAME_LOCALIZATION_ID));
+    }
+
+    /**
+     * OGC-1467: a locale the column cannot hold, a missing value and an unknown
+     * localization are refused instead of answering 500.
+     */
+    @Test
+    public void malformedTranslationSaves_areRefused() throws Exception {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        for (String body : new String[] { "{\"abcdefghijk\":\"x\"}", "{\"fr\":null}", "{\" \":\"x\"}" }) {
+            mockMvc.perform(put("/rest/localizations/" + OTHER_LOCALIZATION_ID + "/translations")
+                    .sessionAttr(IActionConstants.USER_SESSION_DATA, usd).contentType(MediaType.APPLICATION_JSON)
+                    .content(body)).andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(
+                put("/rest/localizations/99999999/translations").sessionAttr(IActionConstants.USER_SESSION_DATA, usd)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"en\":\"x\"}"))
+                .andExpect(status().isNotFound());
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.localization_value WHERE localization_id = ? AND locale <> 'en'",
+                        Integer.class, OTHER_LOCALIZATION_ID));
+    }
 }

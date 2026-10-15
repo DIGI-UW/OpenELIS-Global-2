@@ -815,6 +815,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             testId={row.testId as string | undefined}
             componentId={row.testResultComponentId as string | undefined}
             resultValue={row.resultValue as string | undefined}
+            dictionaryOptions={row.dictionaryResults}
             latestInterpretation={latestInterpretation}
             draft={interpretationDraft}
             onDraftChange={onInterpretationDraftChange}

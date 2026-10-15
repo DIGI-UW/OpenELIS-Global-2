@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1462: changing a test's primary result type between numeric and coded now
+    retires the QC targets of the old shape. A test whose type changed before that
+    kept its old targets active: QC Targets could not be saved and Results Entry
+    prefilled a target that no longer fitted. Retire them once, with the same rule
+    the service applies: a coded test (primary component D, M or C) keeps only
+    targets with an expected answer, any other test only targets with an expected
+    value and an uncertainty. Values are kept, so a target can be reactivated.
+    -->
+    <changeSet author="openelis" id="137-qc-targets-retire-stale">
+        <comment>Retire active QC targets that do not fit their test's primary result type.</comment>
+        <sql>
+            UPDATE clinlims.test_qc_target t
+            SET is_active = false, last_updated = now()
+            WHERE t.is_active = true
+              AND CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM clinlims.test_result_component c
+                        WHERE c.test_id = t.test_id AND c.is_primary = true AND c.is_active = 'Y'
+                          AND c.result_type IN ('D', 'M', 'C'))
+                    THEN t.expected_dict_result_id IS NULL
+                    ELSE t.expected_value IS NULL OR t.uncertainty IS NULL
+                  END
+        </sql>
+    </changeSet>
+</databaseChangeLog>

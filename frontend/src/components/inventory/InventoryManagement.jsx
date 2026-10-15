@@ -11,6 +11,7 @@ import {
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import InventoryItemsBoard from "./InventoryItemsBoard";
+import ReceiveDelivery from "./ReceiveDelivery";
 import InventoryReports from "./InventoryReports";
 import "./InventoryList.css";
 
@@ -25,6 +26,7 @@ const breadcrumbs = [
 
 const InventoryManagement = () => {
   const [selectedTab, setSelectedTab] = useState(0);
+  const [boardVersion, setBoardVersion] = useState(0);
 
   return (
     <>
@@ -45,6 +47,9 @@ const InventoryManagement = () => {
                   <FormattedMessage id="inventory.board.title" />
                 </Tab>
                 <Tab>
+                  <FormattedMessage id="inventory.tab.receive" />
+                </Tab>
+                <Tab>
                   <FormattedMessage id="inventory.tab.reports" />
                 </Tab>
               </TabList>
@@ -52,7 +57,13 @@ const InventoryManagement = () => {
               <TabPanels>
                 {/* Items Tab - Items Board */}
                 <TabPanel>
-                  <InventoryItemsBoard />
+                  <InventoryItemsBoard reloadKey={boardVersion} />
+                </TabPanel>
+
+                <TabPanel>
+                  <ReceiveDelivery
+                    onSaved={() => setBoardVersion((version) => version + 1)}
+                  />
                 </TabPanel>
 
                 {/* Reports Tab - Generate Reports */}

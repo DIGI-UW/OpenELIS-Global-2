@@ -72,6 +72,13 @@ const QC_TAG_TYPE = { PASS: "green", FAIL: "red" };
  * panel caps its own width to stay readable without scrolling sideways.
  */
 const PANEL_STYLE = { maxWidth: "1200px" };
+
+/**
+ * The server's select-list choices start with an empty ("0", "") entry for the
+ * legacy screens; the Modify list already offers its own empty choice.
+ */
+const isBlankChoice = (entry) =>
+  String(entry.id) === "0" && !String(entry.value ?? "").trim();
 const LABEL_STYLE = { display: "block" };
 
 const resultsEntryLink = (accessionNumber) =>
@@ -482,13 +489,15 @@ const ValidationReviewPanel = ({
                 onChange={(event) => setNewValue(event.target.value)}
               >
                 <SelectItem value="" text="" />
-                {(row.dictionaryResults || []).map((entry) => (
-                  <SelectItem
-                    key={entry.id}
-                    value={String(entry.id)}
-                    text={entry.value}
-                  />
-                ))}
+                {(row.dictionaryResults || [])
+                  .filter((entry) => !isBlankChoice(entry))
+                  .map((entry) => (
+                    <SelectItem
+                      key={entry.id}
+                      value={String(entry.id)}
+                      text={entry.value}
+                    />
+                  ))}
               </Select>
             )}
             {editableHere && row.resultType !== "D" && (

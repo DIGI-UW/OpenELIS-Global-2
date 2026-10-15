@@ -147,6 +147,21 @@ public class CatalogImportServiceImplTest {
         assertTrue(summary.getValue(), summary.getValue().contains("test-sections/test-sections-a.csv: created=2"));
     }
 
+    /**
+     * OGC-1466: two files with one name would overwrite each other; refused,
+     * nothing stored.
+     */
+    @Test
+    public void twoFilesWithOneNameAreRefusedBeforeAnythingIsStored() {
+        IllegalArgumentException refused = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.apply(List.of(csv("tests-c.csv", 1), csv("tests-c.csv", 2)), null, "7"));
+
+        assertTrue(refused.getMessage(), refused.getMessage().contains("tests-c.csv"));
+        org.junit.Assert.assertFalse(Files.exists(stored("tests", "tests-c.csv")));
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.preview(List.of(csv("tests-c.csv", 1), csv("TESTS-C.csv", 2)), null, "7"));
+    }
+
     @Test
     public void apply_reportsAFileTheLoaderNeverSawAsAnError() {
         when(initializationService.reload(any(ConfigurationReloadOptions.class)))

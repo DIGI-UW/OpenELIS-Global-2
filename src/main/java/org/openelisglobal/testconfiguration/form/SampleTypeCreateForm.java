@@ -1,6 +1,7 @@
 package org.openelisglobal.testconfiguration.form;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.validation.annotations.SafeHtml;
@@ -19,6 +20,7 @@ public class SampleTypeCreateForm extends BaseForm {
     private String existingFrenchNames;
 
     @NotBlank
+    @Size(max = 40)
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeEnglishName;
 
@@ -27,6 +29,7 @@ public class SampleTypeCreateForm extends BaseForm {
     private String sampleTypeFrenchName;
 
     // Optional: a blank description falls back to the English name.
+    @Size(max = 40)
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String description;
 

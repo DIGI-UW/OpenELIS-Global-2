@@ -17,7 +17,7 @@ fi
 # 3. Create .env from template if needed
 if [ ! -f .env ] && [ -f .env.example ]; then
   cp .env.example .env
-  echo "  Created .env from .env.example — review and customize as needed."
+  echo "  Created .env from .env.example — defaults support localhost development."
 fi
 
 # 4. Verify prerequisites
@@ -51,7 +51,9 @@ echo ""
 echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
-echo "  1. Review/edit .env if created"
-echo "  2. scripts/dev-stack doctor  (check source-build prerequisites)"
-echo "  3. scripts/dev-stack up  (build and start this checkout)"
-echo "  4. scripts/run-ci-checks.sh  (full local CI for committed changes)"
+echo "  scripts/dev-stack up  (check prerequisites, set up local HTTPS, build and start)"
+echo "  Open the URL printed by up; localhost needs no .env edits."
+echo "  First use may request administrator authentication for local HTTPS trust."
+echo ""
+echo "Optional diagnostics: scripts/dev-stack doctor"
+echo "Separate CI verification: scripts/run-ci-checks.sh (committed changes)"

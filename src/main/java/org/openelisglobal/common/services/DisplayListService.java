@@ -586,6 +586,18 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
     }
 
+    /**
+     * Reloads the lists built from organizations: the reference labs Refer Out
+     * offers, the referring clinics and the health regions. Called after an
+     * organization is created, changed, activated or imported, so a new or renamed
+     * reference lab is offered without a restart.
+     */
+    public void refreshOrganizationLists() {
+        refreshList(ListType.REFERRAL_ORGANIZATIONS);
+        refreshList(ListType.SAMPLE_PATIENT_REFERRING_CLINIC);
+        refreshList(ListType.PATIENT_HEALTH_REGIONS);
+    }
+
     public void refreshList(ListType listType) {
 
         switch (listType) {

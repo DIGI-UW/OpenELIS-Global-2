@@ -19,9 +19,12 @@ import { Add, Checkmark, Edit, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 /**
  * OGC-949 M10 / OGC-957..958 — Terminology Mappings section.
@@ -97,6 +100,9 @@ const TerminologySection = ({ testId }) => {
       return next;
     });
 
+  const [version, setVersion] = useState(null);
+  const [stale, setStale] = useState(false);
+
   const loadLoincIntegrity = () => {
     getFromOpenElisServer(
       `/rest/test-catalog/tests/${testId}/loinc-integrity`,
@@ -116,8 +122,17 @@ const TerminologySection = ({ testId }) => {
         setMappings(res.mappings || []);
         setComponents(res.components || []);
         setSampleTypes(res.sampleTypes || []);
+        setVersion(res.version || null);
       },
     );
+  };
+
+  const reloadAfterStale = () => {
+    setStale(false);
+    setLoading(true);
+    setEditingRows(new Set());
+    loadMappings();
+    loadLoincIntegrity();
   };
 
   useEffect(() => {
@@ -229,6 +244,7 @@ const TerminologySection = ({ testId }) => {
     setSaving(true);
     const payload = {
       testId,
+      version,
       mappings: complete.map((m) => ({
         id: m.id || null,
         source: m.source,
@@ -239,11 +255,19 @@ const TerminologySection = ({ testId }) => {
         sampleTypeId: m.sampleTypeId || null,
       })),
     };
-    putToOpenElisServer(
+    putToOpenElisServerFullResponse(
       `/rest/test-catalog/tests/${testId}/terminology`,
       JSON.stringify(payload),
-      (status) => {
+      async (response) => {
         setSaving(false);
+        const status = response ? response.status : 0;
+        if (status === 409) {
+          const body = await response.json().catch(() => null);
+          if (isStaleConflict(status, body)) {
+            setStale(true);
+            return;
+          }
+        }
         setNotificationVisible(true);
         if (status === 200) {
           addNotification({
@@ -269,14 +293,19 @@ const TerminologySection = ({ testId }) => {
           loadLoincIntegrity();
         } else if (status === 422) {
           // Server-side validation (duplicate mapping, unknown source/relationship,
-          // stale component scope) — name the cause instead of a generic failure.
+          // stale component scope, over-long code or name) — name the cause instead
+          // of a generic failure.
+          const refused = await response.json().catch(() => null);
           addNotification({
             kind: "error",
             title: intl.formatMessage({
               id: "label.testCatalog.section.terminology",
             }),
             message: intl.formatMessage({
-              id: "error.testCatalog.terminology.invalid",
+              id:
+                refused?.messageKey && intl.messages[refused.messageKey]
+                  ? refused.messageKey
+                  : "error.testCatalog.terminology.invalid",
             }),
           });
         } else {
@@ -420,6 +449,7 @@ const TerminologySection = ({ testId }) => {
                         id={`mapping-code-${i}`}
                         labelText=""
                         value={m.code || ""}
+                        maxLength={80}
                         onChange={(e) =>
                           updateMapping(i, { code: e.target.value })
                         }
@@ -434,6 +464,7 @@ const TerminologySection = ({ testId }) => {
                         id={`mapping-display-${i}`}
                         labelText=""
                         value={m.displayName || ""}
+                        maxLength={255}
                         placeholder={intl.formatMessage({
                           id: "label.testCatalog.terminology.displayName.placeholder",
                         })}
@@ -589,6 +620,7 @@ const TerminologySection = ({ testId }) => {
             id: "label.testCatalog.terminology.code",
           })}
           value={draft.code}
+          maxLength={80}
           onChange={(e) => setDraft({ ...draft, code: e.target.value })}
         />
         <TextInput
@@ -597,6 +629,7 @@ const TerminologySection = ({ testId }) => {
             id: "label.testCatalog.terminology.col.displayName",
           })}
           value={draft.displayName}
+          maxLength={255}
           onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
         />
         <Select
@@ -662,7 +695,13 @@ const TerminologySection = ({ testId }) => {
         </Button>
       </Stack>
 
-      <Button kind="primary" disabled={saving} onClick={handleSave}>
+      {stale && (
+        <StaleSaveNotice
+          testId="terminology-stale-save"
+          onRefresh={reloadAfterStale}
+        />
+      )}
+      <Button kind="primary" disabled={saving || stale} onClick={handleSave}>
         <FormattedMessage id="label.button.save" />
       </Button>
     </Stack>

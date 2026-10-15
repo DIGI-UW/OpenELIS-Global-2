@@ -275,6 +275,87 @@ class DevStackContractTest(unittest.TestCase):
         self.assertEqual(environment["DEV_STACK_HTTPS_PORT"], "0")
         self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
 
+    def test_localhost_defaults_to_trusted_local_ca(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        with patch.dict(self.dev_stack.os.environ, {"LETSENCRYPT_DOMAIN": "localhost"}, clear=True), patch.object(self.dev_stack, "read_dotenv", return_value={}):
+            environment = self.dev_stack.build_environment(context)
+        self.assertEqual("local-ca", environment["DEV_STACK_TLS"])
+
+    def test_local_trust_install_is_limited_to_system_store(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "localhost"}
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.ensure_local_tls_trust(context, environment)
+        run.assert_called_once_with(
+            ["mkcert", "-install"],
+            cwd=REPO_ROOT,
+            environment={**environment, "TRUST_STORES": "system"},
+        )
+        self.assertNotIn("TRUST_STORES", environment)
+
+    def test_other_tls_modes_do_not_change_host_trust(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        for tls in ("self-signed", "letsencrypt"):
+            with self.subTest(tls=tls), patch.object(self.dev_stack, "run") as run:
+                self.dev_stack.ensure_local_tls_trust(context, {"DEV_STACK_TLS": tls})
+            run.assert_not_called()
+
+    def test_up_stops_before_build_when_trust_setup_fails(self):
+        environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "localhost"}
+        with (
+            patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "build_environment", return_value=environment),
+            patch.object(self.dev_stack, "doctor"),
+            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "mkcert")),
+            patch.object(self.dev_stack, "ensure_submodules") as submodules,
+            patch.object(self.dev_stack, "build_application") as build,
+            patch.object(self.dev_stack, "start_services") as start,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "interactive terminal"):
+                self.dev_stack.main(["up"])
+        submodules.assert_not_called()
+        build.assert_not_called()
+        start.assert_not_called()
+
+    def test_local_tls_covers_loopback_and_never_copies_or_installs_ca(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            context = self.dev_stack.make_context(pathlib.Path(temporary))
+            environment = {"LETSENCRYPT_DOMAIN": "localhost", "DEV_STACK_TLS": "local-ca"}
+            def fake_run(command, **kwargs):
+                if command[0] == "mkcert":
+                    pathlib.Path(command[command.index("-key-file") + 1]).write_text("test-only key placeholder")
+                return SimpleNamespace(stdout="")
+            with patch.object(self.dev_stack, "run", side_effect=fake_run) as run:
+                self.dev_stack.configure_tls(context, environment)
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertEqual(["localhost", "127.0.0.1", "::1"], commands[0][-3:])
+            self.assertNotIn("-install", commands[0])
+            copies = [command for command in commands if "cp" in command]
+            self.assertEqual(2, len(copies))
+            self.assertEqual("proxy:/etc/nginx/certs/apache-selfsigned.crt", copies[0][-1])
+            self.assertEqual("proxy:/etc/nginx/keys/apache-selfsigned.key", copies[1][-1])
+            self.assertTrue(all(context.project in command for command in copies))
+            self.assertFalse(any("rootCA" in part for command in commands for part in command))
+            self.assertEqual(0o600, (context.repo_root / ".dev-stack/tls/localhost-key.pem").stat().st_mode & 0o777)
+
+    def test_trusted_tls_fails_closed_on_certificate_errors(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        with patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:12345"}), patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")) as run:
+            with self.assertRaisesRegex(RuntimeError, "HTTPS verification failed"):
+                self.dev_stack.verify_tls(context, {"DEV_STACK_TLS": "local-ca"})
+        command = run.call_args.args[0]
+        self.assertNotIn("--insecure", command)
+        self.assertNotIn("-k", command)
+        self.assertNotIn("--retry-all-errors", command)
+        self.assertEqual("https://localhost:12345/", command[-1])
+
+    def test_local_ca_refuses_public_domain(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        with patch.object(self.dev_stack, "run") as run:
+            with self.assertRaisesRegex(ValueError, "loopback"):
+                self.dev_stack.configure_tls(context, {"LETSENCRYPT_DOMAIN": "example.org", "DEV_STACK_TLS": "local-ca"})
+        run.assert_not_called()
+
     def test_domain_uses_public_standard_ingress_and_letsencrypt(self):
         context = self.dev_stack.make_context(REPO_ROOT)
         with patch.dict(
@@ -537,6 +618,7 @@ class DevStackContractTest(unittest.TestCase):
     def test_up_recreates_a_running_backend_exactly_once_after_build(self):
         with (
             patch.object(self.dev_stack, "doctor"),
+            patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "ensure_submodules"),
             patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
@@ -546,6 +628,7 @@ class DevStackContractTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_images"),
             patch.object(self.dev_stack, "reload_proxy"),
             patch.object(self.dev_stack, "configure_tls"),
+            patch.object(self.dev_stack, "verify_tls"),
             patch.object(self.dev_stack, "print_endpoints"),
             patch.object(self.dev_stack, "run") as run,
         ):

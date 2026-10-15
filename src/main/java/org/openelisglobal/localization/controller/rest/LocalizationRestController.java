@@ -34,6 +34,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,6 +47,11 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST controller for managing localization entries and their translations.
  * Provides endpoints for viewing and editing translations.
+ *
+ * <p>
+ * A localization value is a test's name or another label everyone sees, so
+ * every write needs the admin role the Test Catalog editor requires (OGC-1457);
+ * reads stay open to signed-in users.
  */
 @RestController
 @RequestMapping("/rest/localizations")
@@ -175,13 +181,34 @@ public class LocalizationRestController extends BaseController {
      * @param translations map of locale code to translation value
      * @return the updated localization
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/translations")
     public ResponseEntity<?> updateTranslations(@PathVariable String id,
             @RequestBody Map<String, String> translations) {
         try {
-            Localization localization = localizationService.get(id);
+            Localization localization;
+            try {
+                localization = localizationService.get(id);
+            } catch (RuntimeException notFound) {
+                localization = null;
+            }
             if (localization == null) {
                 return ResponseEntity.notFound().build();
+            }
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                if (entry.getKey() == null || entry.getKey().isBlank() || entry.getKey().length() > 10) {
+                    return ResponseEntity.badRequest().body(new ErrorResponse("Unknown locale: " + entry.getKey()));
+                }
+                if (entry.getValue() == null) {
+                    return ResponseEntity.badRequest().body(
+                            new ErrorResponse("The " + entry.getKey() + " value is missing; send \"\" to clear it"));
+                }
+            }
+            String fallbackLocale = supportedLocaleService.getFallbackLocaleCode();
+            if (fallbackLocale != null && translations.containsKey(fallbackLocale)
+                    && (translations.get(fallbackLocale) == null || translations.get(fallbackLocale).isBlank())) {
+                return ResponseEntity.badRequest().body(new ErrorResponse(
+                        "The " + fallbackLocale + " value is what every screen falls back to and cannot be blank"));
             }
 
             String sysUserId = getSysUserId(request);
@@ -215,6 +242,7 @@ public class LocalizationRestController extends BaseController {
      * @param request the translation value
      * @return the updated localization
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/translations/{locale}")
     public ResponseEntity<?> setTranslation(@PathVariable String id, @PathVariable String locale,
             @RequestBody TranslationRequest request) {
@@ -222,6 +250,11 @@ public class LocalizationRestController extends BaseController {
             Localization localization = localizationService.get(id);
             if (localization == null) {
                 return ResponseEntity.notFound().build();
+            }
+            String fallbackLocale = supportedLocaleService.getFallbackLocaleCode();
+            if (locale.equals(fallbackLocale) && (request.getValue() == null || request.getValue().isBlank())) {
+                return ResponseEntity.badRequest().body(new ErrorResponse(
+                        "The " + fallbackLocale + " value is what every screen falls back to and cannot be blank"));
             }
 
             localizationValueService.setTranslation(id, locale, request.getValue(), getSysUserId(this.request));
@@ -247,6 +280,7 @@ public class LocalizationRestController extends BaseController {
      * @param importData list of localization import records
      * @return import result summary
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/import")
     public ResponseEntity<?> importTranslations(@RequestBody List<LocalizationImportDTO> importData) {
         try {

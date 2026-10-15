@@ -157,10 +157,9 @@ public class AccreditationReportServiceIntegrationTest extends AccreditationInte
 
     @Test
     public void inactiveBody_isExcludedEntirely() {
-        AccreditingBody input = body("ISO15189", "ISO 15189", TODAY.plusYears(1));
-        input.setActive(Boolean.FALSE);
-        Long id = accreditingBodyService.createBody(input, USER).getId();
+        Long id = accreditingBodyService.createBody(body("ISO15189", "ISO 15189", TODAY.plusYears(1)), USER).getId();
         enrollWithLogo(id, TEST_GLUCOSE);
+        jdbc.update("UPDATE clinlims.accrediting_body SET active = false WHERE id = ?", id);
 
         AccreditationReportData resolved = accreditationReportService.resolve(List.of(TEST_GLUCOSE), TODAY);
 

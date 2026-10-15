@@ -118,6 +118,7 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
 
     private TerminologyResponse put(MappingDto... mappings) {
         TerminologyResponse body = new TerminologyResponse();
+        body.mappings = new java.util.ArrayList<>();
         for (MappingDto m : mappings) {
             body.mappings.add(m);
         }
@@ -155,6 +156,7 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
 
     private TerminologyResponse dup() {
         TerminologyResponse body = new TerminologyResponse();
+        body.mappings = new java.util.ArrayList<>();
         body.mappings.add(mapping("LOINC", "1558-6", "SAME_AS"));
         body.mappings.add(mapping("LOINC", "1558-6", "BROADER_THAN"));
         return body;
@@ -163,6 +165,7 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
     @org.junit.Test
     public void save_invalidSourceReturns422() {
         TerminologyResponse body = new TerminologyResponse();
+        body.mappings = new java.util.ArrayList<>();
         body.mappings.add(mapping("BOGUS", "X", null));
         assertEquals(422, controller.saveTerminology(testId(), body, authedRequest()).getStatusCode().value());
     }
@@ -331,5 +334,77 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
                 UUID.randomUUID().toString(), TEST_ID, insertComponent());
 
         assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
+    }
+
+    /** OGC-1463: a save from a page loaded before another editor's save. */
+    @org.junit.Test
+    public void aSaveFromAnOldPageIsRefusedAsStale_andKeepsTheOtherEditorsMapping() {
+        TerminologyResponse pageA = controller.getTerminology(testId()).getBody();
+        put(mapping("LOINC", "3333-3", "SAME_AS"));
+
+        pageA.mappings.add(mapping("SNOMED", "123456", "SAME_AS"));
+        ResponseEntity<TerminologyResponse> stale = controller.saveTerminology(testId(), pageA, authedRequest());
+
+        assertEquals(409, stale.getStatusCode().value());
+        assertEquals("stale", stale.getBody().conflict);
+        assertEquals(Long.valueOf(1), rowCount("LOINC", "3333-3"));
+        assertEquals(Long.valueOf(0), rowCount("SNOMED", "123456"));
+
+        TerminologyResponse reloaded = controller.getTerminology(testId()).getBody();
+        reloaded.mappings.add(mapping("SNOMED", "123456", "SAME_AS"));
+        assertEquals(200, controller.saveTerminology(testId(), reloaded, authedRequest()).getStatusCode().value());
+        assertEquals(Long.valueOf(1), rowCount("SNOMED", "123456"));
+    }
+
+    /** OGC-1465 (product ruling): codes are stored trimmed. */
+    @org.junit.Test
+    public void codesAreStoredTrimmed_andASpacedTwinInOneRequestIsADuplicate() {
+        put(mapping("LOINC", " 2345-7 ", "SAME_AS"));
+        assertEquals(Long.valueOf(1), rowCount("LOINC", "2345-7"));
+
+        TerminologyResponse twins = new TerminologyResponse();
+
+        twins.mappings = new java.util.ArrayList<>();
+        twins.mappings.add(mapping("LOINC", "3333-3", "SAME_AS"));
+        twins.mappings.add(mapping("LOINC", " 3333-3", "SAME_AS"));
+        assertEquals(422, controller.saveTerminology(testId(), twins, authedRequest()).getStatusCode().value());
+    }
+
+    private void insertRawMapping(String code) {
+        jdbc.update(
+                "INSERT INTO clinlims.test_terminology_mapping (id, test_id, source, code, relationship,"
+                        + " is_active, lastupdated) VALUES (?, ?, 'LOINC', ?, 'SAME_AS', 'Y', NOW())",
+                UUID.randomUUID().toString(), TEST_ID, code);
+    }
+
+    private Long rawCount(String code) {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_terminology_mapping WHERE test_id = ? AND code = ?", Long.class,
+                TEST_ID, code);
+    }
+
+    /**
+     * OGC-1465 review: the upgrade trims existing codes without tripping the unique
+     * index, even when two padded codes trim to one value or a trimmed twin exists.
+     */
+    @org.junit.Test
+    public void theUpgradeTrimsCodes_keepingOneRowPerTrimmedCode() throws Exception {
+        insertRawMapping(" 9999-1");
+        insertRawMapping("9999-1 ");
+        insertRawMapping(" 8888-1 ");
+        insertRawMapping("7777-1");
+        insertRawMapping(" 7777-1");
+        String xml = new String(getClass().getClassLoader()
+                .getResourceAsStream("liquibase/3.5.x.x/138-terminology-codes-trimmed.xml").readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        String sql = xml.substring(xml.indexOf("<sql>") + 5, xml.indexOf("</sql>")).replace("&lt;", "<").replace("&gt;",
+                ">");
+
+        jdbc.execute(sql);
+
+        assertEquals("one of the two padded twins is trimmed", Long.valueOf(1), rawCount("9999-1"));
+        assertEquals(Long.valueOf(1), rawCount("8888-1"));
+        assertEquals("a trimmed code already present keeps its padded twin as it is", Long.valueOf(1),
+                rawCount(" 7777-1"));
     }
 }

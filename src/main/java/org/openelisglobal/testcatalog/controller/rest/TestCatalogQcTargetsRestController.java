@@ -157,6 +157,9 @@ public class TestCatalogQcTargetsRestController {
         Map<String, QcTargetDto> activeByKey = new HashMap<>();
         List<TestQcTarget> desired = new ArrayList<>();
         for (QcTargetDto dto : body.targets) {
+            if (isUnsavedBlankInactive(dto)) {
+                continue;
+            }
             String problem = validate(dto, quantitative, componentIds, lotIds);
             if (problem != null) {
                 return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(problem);
@@ -228,6 +231,17 @@ public class TestCatalogQcTargetsRestController {
         if (dto.uncertainty != null && dto.uncertainty.signum() < 0) {
             return "uncertainty must be a non-negative number";
         }
+        if (tooLarge(dto.expectedValue) || tooLarge(dto.uncertainty)) {
+            return "expectedValue and uncertainty hold at most 10 digits before the decimal point";
+        }
+        if (!GenericValidator.isBlankOrNull(dto.expectedDictResultId)
+                && (!TestCatalogNumericIdGuard.isNumericId(dto.expectedDictResultId)
+                        || dictionaryService.getDictionaryById(dto.expectedDictResultId.trim()) == null)) {
+            return "expectedDictResultId is not a dictionary answer";
+        }
+        if (!dto.active) {
+            return null;
+        }
         if (quantitative) {
             if (dto.expectedValue == null || dto.uncertainty == null) {
                 return "expectedValue and uncertainty are required for a quantitative target";
@@ -236,6 +250,20 @@ public class TestCatalogQcTargetsRestController {
             return "expectedDictResultId is required for a qualitative target";
         }
         return null;
+    }
+
+    /**
+     * A row added and switched off before anything was entered: there is nothing to
+     * keep, so it is not stored (OGC-1462).
+     */
+    private static boolean isUnsavedBlankInactive(QcTargetDto dto) {
+        return dto != null && !dto.active && GenericValidator.isBlankOrNull(dto.id) && dto.expectedValue == null
+                && dto.uncertainty == null && GenericValidator.isBlankOrNull(dto.expectedDictResultId);
+    }
+
+    /** The columns are numeric(15,5): 10 digits before the point (OGC-1467). */
+    private static boolean tooLarge(BigDecimal value) {
+        return value != null && value.abs().compareTo(BigDecimal.TEN.pow(10)) >= 0;
     }
 
     private static String key(String componentId, String level, String lotId) {

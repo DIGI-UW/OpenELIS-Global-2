@@ -81,6 +81,10 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "catalog_number", length = 100)
     private String catalogNumber;
 
+    @Column(name = "upc", length = 64)
+    @Size(max = 64)
+    private String upc;
+
     @Column(name = "storage_requirements", length = 255)
     private String storageRequirements;
 
@@ -150,6 +154,9 @@ public class InventoryItem extends BaseObject<Long> {
 
     @Column(name = "kit_test_type", length = 50)
     private String kitTestType; // HIV, SYPHILIS, etc.
+
+    @Column(name = "last_counted_at")
+    private Timestamp lastCountedAt;
 
     @Column(name = "is_active", length = 1, nullable = false)
     private String isActive = "Y";

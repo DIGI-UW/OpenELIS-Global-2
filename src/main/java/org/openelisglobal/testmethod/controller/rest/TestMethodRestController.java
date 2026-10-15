@@ -137,13 +137,17 @@ public class TestMethodRestController extends BaseController {
         try {
             dto = testMethodService.createAndLinkMethod(testId, data);
         } catch (RuntimeException e) {
-            // A duplicate method code is reported by the service's app-level check
-            // (LIMSDuplicateRecordException), not the DB layer; a duplicate link
-            // surfaces as a Hibernate ConstraintViolationException. Either is a
-            // 409 — anything else is a real server error, not masked as a conflict.
-            if (hasCause(e, org.openelisglobal.common.exception.LIMSDuplicateRecordException.class)
-                    || hasCause(e, org.hibernate.exception.ConstraintViolationException.class)) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body("Method code already exists");
+            // The service's app-level check (LIMSDuplicateRecordException) is the
+            // method NAME check; a taken code reaches the database's unique index
+            // (ConstraintViolationException). Each 409 names its field (OGC-1464);
+            // anything else is a real server error, not masked as a conflict.
+            if (hasCause(e, org.openelisglobal.common.exception.LIMSDuplicateRecordException.class)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(java.util.Map.of("field", "name", "message", "A method with this name already exists"));
+            }
+            if (hasCause(e, org.hibernate.exception.ConstraintViolationException.class)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(java.util.Map.of("field", "code", "message", "Method code already exists"));
             }
             LogEvent.logError(e);
             throw e;
@@ -154,6 +158,15 @@ public class TestMethodRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.METHODS);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.METHODS_INACTIVE);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * A removed link is gone for its test: making it the default from an old page
+     * used to clear the real default (OGC-1465).
+     */
+    private static boolean isActiveLinkOf(TestMethod link, String testId) {
+        return link != null && link.getTestId().equals(testId)
+                && org.openelisglobal.common.action.IActionConstants.YES.equals(link.getIsActive());
     }
 
     private static boolean hasCause(Throwable t, Class<? extends Throwable> type) {
@@ -169,7 +182,7 @@ public class TestMethodRestController extends BaseController {
     public ResponseEntity<?> updateLink(@PathVariable String testId, @PathVariable String id,
             @RequestBody UpdateLinkRequest req, HttpServletRequest request) {
         TestMethod existing = testMethodService.findLinkById(id);
-        if (existing == null || !existing.getTestId().equals(testId)) {
+        if (!isActiveLinkOf(existing, testId)) {
             return ResponseEntity.notFound().build();
         }
         java.sql.Date effectiveDate = existing.getEffectiveDate();
@@ -198,7 +211,7 @@ public class TestMethodRestController extends BaseController {
     public ResponseEntity<?> removeLink(@PathVariable String testId, @PathVariable String id,
             HttpServletRequest request) {
         TestMethod tm = testMethodService.findLinkById(id);
-        if (tm == null || !tm.getTestId().equals(testId)) {
+        if (!isActiveLinkOf(tm, testId)) {
             return ResponseEntity.notFound().build();
         }
         testMethodService.removeLink(id, getSysUserId(request));

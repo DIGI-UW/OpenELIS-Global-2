@@ -21,6 +21,7 @@ public final class ImportRunContext {
 
     private static final ThreadLocal<String> RUN_ID = new ThreadLocal<>();
     private static final ThreadLocal<List<PendingReference>> PENDING = ThreadLocal.withInitial(ArrayList::new);
+    private static final ThreadLocal<Boolean> PREVIEW = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private ImportRunContext() {
     }
@@ -52,8 +53,25 @@ public final class ImportRunContext {
         PENDING.get().clear();
     }
 
+    /**
+     * Marks the current thread as running a preview: what it notices is reported,
+     * never recorded (OGC-1466).
+     */
+    public static void setPreview(boolean preview) {
+        if (preview) {
+            PREVIEW.set(Boolean.TRUE);
+        } else {
+            PREVIEW.remove();
+        }
+    }
+
+    public static boolean isPreview() {
+        return PREVIEW.get();
+    }
+
     public static void clear() {
         RUN_ID.remove();
         PENDING.remove();
+        PREVIEW.remove();
     }
 }

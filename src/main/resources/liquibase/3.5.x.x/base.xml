@@ -310,6 +310,12 @@
   <!-- OGC-438: individual_tracking becomes track_lots, the per-item lot-tracking flag -->
   <include relativeToChangelogFile="true" file="109-inventory-item-track-lots.xml"/>
 
+  <!-- OGC-438: physical count sessions and each item's last-counted stamp -->
+  <include relativeToChangelogFile="true" file="110-inventory-count-session.xml"/>
+
+  <!-- OGC-438: the manufacturer's product barcode (UPC or GTIN) on the item -->
+  <include relativeToChangelogFile="true" file="106-inventory-item-upc.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 
@@ -660,4 +666,13 @@
   <!-- Analyzer Bridge pairing: OpenELIS's client key pair and the pinned Bridge certificate. -->
   <include relativeToChangelogFile="true" file="131-analyzer-bridge-pairing.xml"/>
 
+
+  <!-- Result component codes are unique among a test's active components (OGC-1458). -->
+  <include relativeToChangelogFile="true" file="136-result-component-active-code-unique.xml"/>
+
+  <!-- QC targets that no longer fit their test's result type are retired once (OGC-1462). -->
+  <include relativeToChangelogFile="true" file="137-qc-targets-retire-stale.xml"/>
+
+  <!-- Terminology codes are stored trimmed (OGC-1465). -->
+  <include relativeToChangelogFile="true" file="138-terminology-codes-trimmed.xml"/>
 </databaseChangeLog>

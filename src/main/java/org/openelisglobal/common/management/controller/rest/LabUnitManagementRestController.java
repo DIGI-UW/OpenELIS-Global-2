@@ -16,6 +16,7 @@ import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.SupportedLocaleService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -102,6 +103,11 @@ public class LabUnitManagementRestController extends BaseRestController {
         private Boolean isExternal;
         private int sortOrder;
         private int testCount;
+        /**
+         * The unit's version token; an update sent with an older one is stale
+         * (OGC-1463).
+         */
+        private String lastupdated;
 
         public LabUnitManagementDTO() {
         }
@@ -125,6 +131,15 @@ public class LabUnitManagementRestController extends BaseRestController {
             this.isActive = "Y".equals(testSection.getIsActive());
             this.isExternal = "Y".equals(testSection.getIsExternal());
             this.sortOrder = testSection.getSortOrderInt();
+            this.lastupdated = StaleSaveGuard.token(testSection.getLastupdated());
+        }
+
+        public String getLastupdated() {
+            return lastupdated;
+        }
+
+        public void setLastupdated(String lastupdated) {
+            this.lastupdated = lastupdated;
         }
 
         public String getId() {
@@ -205,11 +220,37 @@ public class LabUnitManagementRestController extends BaseRestController {
         private boolean success;
         private String message;
         private T data;
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+        private String refusal;
+        /** Set only on a 409 for a stale save: "stale" (OGC-1463). */
+        private String conflict;
 
         public ApiResponse(boolean success, String message, T data) {
             this.success = success;
             this.message = message;
             this.data = data;
+        }
+
+        /** A refusal the screen can name in the user's language (OGC-1459). */
+        static <T> ApiResponse<T> refused(String refusal, String message) {
+            ApiResponse<T> response = new ApiResponse<>(false, message, null);
+            response.refusal = refusal;
+            return response;
+        }
+
+        public String getRefusal() {
+            return refusal;
+        }
+
+        static <T> ApiResponse<T> stale() {
+            ApiResponse<T> response = new ApiResponse<>(false,
+                    "Someone else changed this lab unit after it was opened.", null);
+            response.conflict = "stale";
+            return response;
+        }
+
+        public String getConflict() {
+            return conflict;
         }
 
         public boolean isSuccess() {
@@ -360,6 +401,9 @@ public class LabUnitManagementRestController extends BaseRestController {
             if (section == null) {
                 return ResponseEntity.notFound().build();
             }
+            if (StaleSaveGuard.isStale(labUnitDTO.getLastupdated(), section.getLastupdated())) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.stale());
+            }
             if (labUnitDTO.getDescription() != null
                     && labUnitDTO.getDescription().trim().length() > DESCRIPTION_MAX_LENGTH) {
                 return ResponseEntity.unprocessableEntity().body(new ApiResponse<>(false,
@@ -392,6 +436,11 @@ public class LabUnitManagementRestController extends BaseRestController {
             // localization_value rows carry every language, so creating a fresh
             // Localization would orphan them. Locales absent from the map are
             // left untouched; a blank value clears that translation.
+            String takenName = nameUsedByAnotherUnit(names, section);
+            if (takenName != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(new ApiResponse<>(false, "A lab unit with this name already exists: " + takenName, null));
+            }
             if (names != null && !names.isEmpty()) {
                 Localization localization = section.getLocalization();
                 boolean isNew = localization == null;
@@ -544,6 +593,14 @@ public class LabUnitManagementRestController extends BaseRestController {
         return ResponseEntity.ok(candidates);
     }
 
+    /**
+     * OGC-1459: deactivating a unit cannot hand its tests to an inactive one, which
+     * used to be switched back on without anyone deciding to. (A bulk reassign may
+     * still move tests into an inactive unit, decision D4; it no longer reactivates
+     * it.)
+     */
+    private static final String INACTIVE_DESTINATION_MESSAGE = "the destination lab unit is inactive; reactivate it first";
+
     /** Body for the bulk assign/reassign actions. */
     public static class BulkTestAssignmentRequest {
         public List<String> testIds;
@@ -665,6 +722,35 @@ public class LabUnitManagementRestController extends BaseRestController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Deactivation impact", dto));
     }
 
+    /**
+     * A changed name, in any language, that another lab unit already has (compared
+     * trimmed and without case), or null. Create refused duplicates; a rename did
+     * not (OGC-1465). A name the unit already holds is not a change.
+     */
+    private String nameUsedByAnotherUnit(Map<String, String> names, TestSection section) {
+        if (names == null || names.isEmpty()) {
+            return null;
+        }
+        Map<String, String> current = section.getLocalization() == null ? Map.of()
+                : section.getLocalization().getValuesAsMap();
+        for (TestSection other : testSectionService.getAllTestSections()) {
+            if (other.getId().equals(section.getId()) || other.getLocalization() == null) {
+                continue;
+            }
+            Map<String, String> otherNames = other.getLocalization().getValuesAsMap();
+            for (Map.Entry<String, String> entry : names.entrySet()) {
+                String wanted = entry.getValue() == null ? "" : entry.getValue().trim();
+                String theirs = otherNames.get(entry.getKey());
+                String mine = current.get(entry.getKey());
+                if (!wanted.isEmpty() && !(mine != null && wanted.equalsIgnoreCase(mine.trim())) && theirs != null
+                        && wanted.equalsIgnoreCase(theirs.trim())) {
+                    return wanted;
+                }
+            }
+        }
+        return null;
+    }
+
     /** Body for the guarded deactivation. */
     public static class DeactivationRequest {
         /** "keep", "deactivate_all" or "reassign". */
@@ -673,6 +759,8 @@ public class LabUnitManagementRestController extends BaseRestController {
         public String destinationLabUnitId;
         /** Must be the literal "DEACTIVATE" — the typed confirmation. */
         public String confirmation;
+        /** The unit's version token from the page that asks (OGC-1463). */
+        public String lastupdated;
     }
 
     /**
@@ -697,6 +785,9 @@ public class LabUnitManagementRestController extends BaseRestController {
             return ResponseEntity.unprocessableEntity()
                     .body(new ApiResponse<>(false, "confirmation must be the literal \"DEACTIVATE\"", null));
         }
+        if (StaleSaveGuard.isStale(body.lastupdated, section.getLastupdated())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.stale());
+        }
         String option = body.option == null ? "" : body.option.trim();
         if (!"keep".equals(option) && !"deactivate_all".equals(option) && !"reassign".equals(option)) {
             return ResponseEntity.unprocessableEntity()
@@ -715,6 +806,10 @@ public class LabUnitManagementRestController extends BaseRestController {
             if (labUnitId.equals(body.destinationLabUnitId)) {
                 return ResponseEntity.unprocessableEntity()
                         .body(new ApiResponse<>(false, "destination must differ from the source lab unit", null));
+            }
+            if ("N".equals(getManagedSection(body.destinationLabUnitId).getIsActive())) {
+                return ResponseEntity.unprocessableEntity()
+                        .body(ApiResponse.refused("destination.inactive", INACTIVE_DESTINATION_MESSAGE));
             }
         }
 

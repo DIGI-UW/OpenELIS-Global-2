@@ -161,8 +161,9 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
      * materialized into the dictionary master list under the "Test Result" category
      * (reusing an active entry with the same name if one exists) and the row
      * repointed at the entry's id. A numeric value that already resolves to an
-     * entry is kept as-is; a numeric value that resolves to nothing is treated as
-     * free text too.
+     * entry is kept as-is unless the option is marked as typed text (OGC-1458: a
+     * typed "1" is the grade 1, not dictionary entry 1); a numeric value that
+     * resolves to nothing is treated as free text too.
      */
     private void resolveDictionaryValue(TestResult option, String sysUserId) {
         if (!TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType())) {
@@ -172,7 +173,8 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
         if (value.isEmpty()) {
             return;
         }
-        if (StringUtils.isNumeric(value) && dictionaryService.getDictionaryById(value) != null) {
+        if (!option.isFreeText() && StringUtils.isNumeric(value)
+                && dictionaryService.getDictionaryById(value) != null) {
             return;
         }
         // Scoped to the result-option category. Matching on the name alone reused

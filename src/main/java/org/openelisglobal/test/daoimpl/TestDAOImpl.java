@@ -680,7 +680,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         if (localCode == null || localCode.isBlank()) {
             return null;
         }
-        String hql = "FROM Test t WHERE LOWER(t.localCode) = LOWER(:localCode) ORDER BY t.id";
+        String hql = "FROM Test t WHERE LOWER(TRIM(t.localCode)) = LOWER(:localCode) ORDER BY t.id";
         try {
             List<Test> tests = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
                     .setParameter("localCode", localCode.trim()).setMaxResults(1).list();
@@ -697,7 +697,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         if (localCode == null || localCode.isBlank()) {
             return new ArrayList<>();
         }
-        String hql = "FROM Test t WHERE LOWER(t.localCode) = LOWER(:localCode) ORDER BY t.id";
+        String hql = "FROM Test t WHERE LOWER(TRIM(t.localCode)) = LOWER(:localCode) ORDER BY t.id";
         return entityManager.unwrap(Session.class).createQuery(hql, Test.class)
                 .setParameter("localCode", localCode.trim()).list();
     }

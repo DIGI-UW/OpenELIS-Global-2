@@ -1222,4 +1222,28 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 send("PUT", "/rest/test-catalog/panels/" + panelAId + "/terminology", "{}").getResponse().getStatus());
         assertEquals("the member stays", Long.valueOf(1L), membershipRowCount(panelAId));
     }
+
+    /**
+     * OGC-1463: a member list saved from a page loaded before another editor's
+     * save.
+     */
+    @org.junit.Test
+    public void savePanelTests_fromAnOldPageIsRefusedAsStale() throws Exception {
+        String url = "/rest/test-catalog/panels/" + panelAId + "/tests";
+        String loadedVersion = json(send("GET", "/rest/test-catalog/panels/" + panelAId + "/test-order", ""))
+                .path("version").asText();
+        assertEquals(200, send("PUT", url, testsBody(testId())).getResponse().getStatus());
+
+        org.springframework.test.web.servlet.MvcResult stale = send("PUT", url,
+                "{\"tests\":[],\"version\":\"" + loadedVersion + "\"}");
+
+        assertEquals(409, stale.getResponse().getStatus());
+        assertEquals("stale", json(stale).path("conflict").asText());
+        assertEquals("the other editor's member stands", Long.valueOf(1L), membershipRowCount(panelAId));
+        String current = json(send("GET", "/rest/test-catalog/panels/" + panelAId + "/test-order", "")).path("version")
+                .asText();
+        assertEquals(200, send("PUT", url,
+                "{\"tests\":[{\"testId\":\"" + testId() + "\",\"position\":1}],\"version\":\"" + current + "\"}")
+                .getResponse().getStatus());
+    }
 }

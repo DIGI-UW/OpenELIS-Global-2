@@ -212,6 +212,16 @@ public class TestLabelConfigRestControllerTest extends BaseWebContextSensitiveTe
     // is gutted, this test must fail.
     // -----------------------------------------------------------------------
 
+    /** OGC-1467: a missing links list is refused instead of answering 500. */
+    @Test
+    public void putLabelConfig_withoutLinks_returns400() throws Exception {
+        for (String body : new String[] { "{\"allowOrderEntryOverride\":true,\"links\":null}",
+                "{\"allowOrderEntryOverride\":true,\"links\":[null]}" }) {
+            mockMvc.perform(put("/rest/api/tests/1/labelConfig").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
     @Test
     public void putLabelConfig_orderOnlyPreset_returns422() throws Exception {
         TestLabelConfigForm form = new TestLabelConfigForm();

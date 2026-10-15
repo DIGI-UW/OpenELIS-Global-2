@@ -135,9 +135,15 @@ const TranslationManagement = () => {
   const handleSave = () => {
     if (!editingItem) return;
 
+    const stored = editingItem.translations || {};
+    const changed = Object.fromEntries(
+      Object.entries(editValues).filter(
+        ([locale, value]) => value !== (stored[locale] || ""),
+      ),
+    );
     putToOpenElisServerFullResponse(
       `/rest/localizations/${editingItem.id}/translations`,
-      JSON.stringify(editValues),
+      JSON.stringify(changed),
       (response: Response) => {
         if (response.ok) {
           addNotification({
@@ -339,6 +345,8 @@ const TranslationManagement = () => {
                       {stat.displayName} ({code})
                     </strong>
                     <ProgressBar
+                      label={`${stat.displayName} (${code})`}
+                      hideLabel
                       value={stat.percentage}
                       max={100}
                       helperText={`${stat.translated}/${stats.totalEntries} (${stat.percentage.toFixed(1)}%)`}

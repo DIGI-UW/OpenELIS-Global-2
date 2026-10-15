@@ -157,11 +157,14 @@ public class CatalogImportServiceImpl implements CatalogImportService {
             return new FilePlan(domain, fileName, 0, 0, 0, List.of(),
                     "the " + domain + " loader cannot preview a file");
         }
+        ImportRunContext.setPreview(true);
         try (InputStream in = file.getInputStream()) {
             handler.processConfiguration(in, fileName, true);
             return toPlan(handler.getLastSummary(), null);
         } catch (Exception e) {
             return new FilePlan(domain, fileName, 0, 0, 0, List.of(), CsvLoadSummary.reason(e));
+        } finally {
+            ImportRunContext.setPreview(false);
         }
     }
 
@@ -181,8 +184,13 @@ public class CatalogImportServiceImpl implements CatalogImportService {
     private Map<String, List<MultipartFile>> groupByDomain(List<MultipartFile> files, List<String> domains) {
         Map<String, List<MultipartFile>> byDomain = new LinkedHashMap<>();
         List<String> importable = getImportableDomains();
+        Set<String> names = new java.util.HashSet<>();
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
+            if (!names.add(fileNameOf(file).toLowerCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("Two files in this batch are named '" + fileNameOf(file)
+                        + "'; the second would overwrite the first. Rename one and try again");
+            }
             String declared = domains != null && i < domains.size() ? domains.get(i) : null;
             String domain = declared != null && !declared.isBlank() ? declared.trim()
                     : inferDomain(fileNameOf(file), importable);

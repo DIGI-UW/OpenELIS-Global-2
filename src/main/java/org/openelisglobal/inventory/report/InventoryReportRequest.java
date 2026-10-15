@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.report;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 /**
  * Parameters for an inventory report. Report type and export format are
@@ -14,19 +15,17 @@ public class InventoryReportRequest {
     private final Timestamp endDate;
     private final boolean includeInactive;
     private final boolean includeExpired;
-    private final boolean groupByType;
-    private final boolean groupByLocation;
+    private final List<String> tags;
 
     public InventoryReportRequest(String reportType, String exportFormat, Timestamp startDate, Timestamp endDate,
-            boolean includeInactive, boolean includeExpired, boolean groupByType, boolean groupByLocation) {
+            boolean includeInactive, boolean includeExpired, List<String> tags) {
         this.reportType = reportType;
         this.exportFormat = exportFormat;
         this.startDate = startDate;
         this.endDate = endDate;
         this.includeInactive = includeInactive;
         this.includeExpired = includeExpired;
-        this.groupByType = groupByType;
-        this.groupByLocation = groupByLocation;
+        this.tags = tags == null ? List.of() : List.copyOf(tags);
     }
 
     public String getReportType() {
@@ -53,11 +52,8 @@ public class InventoryReportRequest {
         return includeExpired;
     }
 
-    public boolean isGroupByType() {
-        return groupByType;
-    }
-
-    public boolean isGroupByLocation() {
-        return groupByLocation;
+    /** Empty means no filter; an item matches if it carries any of these tags. */
+    public List<String> getTags() {
+        return tags;
     }
 }

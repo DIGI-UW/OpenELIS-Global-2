@@ -94,14 +94,19 @@ const CatalogImport = () => {
     setPlan(null);
     setApplied(false);
     setFailure(null);
-    setStaged((previous) => [
-      ...previous,
-      ...addedFiles.map((file) => ({
-        file,
-        name: file.name,
-        domain: inferDomain(file.name, domains),
-      })),
-    ]);
+    setStaged((previous) => {
+      const byName = new Map(
+        previous.map((entry) => [entry.name.toLowerCase(), entry]),
+      );
+      addedFiles.forEach((file) => {
+        byName.set(file.name.toLowerCase(), {
+          file,
+          name: file.name,
+          domain: inferDomain(file.name, domains),
+        });
+      });
+      return Array.from(byName.values());
+    });
   };
 
   const removeFile = (name) => {
@@ -117,6 +122,7 @@ const CatalogImport = () => {
         entry.name === name ? { ...entry, domain } : entry,
       ),
     );
+    setPlan(null);
   };
 
   const notify = (kind, messageId) => {

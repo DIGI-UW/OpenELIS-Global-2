@@ -646,7 +646,7 @@ exists in one of them.
 
 Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
 supported interactive development launcher and starts the complete core
-OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+OpenELIS + analyzer harness with checkout-scoped containers, images, networks,
 ports, and volumes.
 
 ```bash
@@ -662,8 +662,10 @@ application scenario services. `scripts/dev-stack down --volumes --yes` is the
 only supported destructive reset. CI-parity and release tooling are separate
 interfaces and are not replacements for this development path.
 
-Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
-servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+Localhost uses random loopback ports and mkcert TLS. Install mkcert as a
+prerequisite; `up` handles first-use system trust before building and may
+request administrator authentication. Later starts reuse trust. Domain-enabled
+dev servers use the same command after setting `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
 existing Let's Encrypt flow.
 

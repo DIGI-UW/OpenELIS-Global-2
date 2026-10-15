@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.organization.locations.LocationsApi;
 import org.openelisglobal.organization.locations.LocationsApi.Query;
 import org.openelisglobal.organization.locations.LocationsImportApi;
@@ -51,6 +52,21 @@ public class LocationsImportRestController extends BaseRestController {
     @Autowired
     private LocationsImportService importService;
 
+    @Autowired(required = false)
+    private DisplayListService displayListService;
+
+    /**
+     * Organization-backed pick lists (reference labs, referring clinics, health
+     * regions) are cached; reload them after a save so the change is offered at
+     * once, not after a restart.
+     */
+    private void refreshOrganizationLists() {
+        DisplayListService lists = displayListService != null ? displayListService : DisplayListService.getInstance();
+        if (lists != null) {
+            lists.refreshOrganizationLists();
+        }
+    }
+
     @PostMapping(value = "/import/preview", produces = MediaType.APPLICATION_JSON_VALUE)
     public Plan preview(@RequestParam("files") List<MultipartFile> files,
             @RequestParam(value = "areas", required = false) List<String> areas,
@@ -66,7 +82,9 @@ public class LocationsImportRestController extends BaseRestController {
             @RequestParam(value = "mode", defaultValue = LocationsImportApi.MODE_MERGE) String mode,
             @RequestParam(value = "decisions", required = false) String decisions,
             @RequestParam(value = "renames", required = false) String renames, HttpServletRequest request) {
-        return importService.apply(files, areas, options(mode, decisions, renames), getSysUserId(request));
+        Plan applied = importService.apply(files, areas, options(mode, decisions, renames), getSysUserId(request));
+        refreshOrganizationLists();
+        return applied;
     }
 
     private static Options options(String mode, String decisions, String renames) {
