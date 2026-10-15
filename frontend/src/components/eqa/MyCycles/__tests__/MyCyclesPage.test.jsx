@@ -178,6 +178,28 @@ describe("MyCyclesPage", () => {
     ).toBeInTheDocument();
   });
 
+  test("New cycle dates use the date picker in the site's format", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+
+    for (const label of ["Distribution date", "Submission deadline"]) {
+      const input = screen.getByLabelText(label);
+      expect(input).toHaveAttribute("type", "text");
+      expect(input).toHaveAttribute("placeholder", "dd/mm/yyyy");
+    }
+  });
+
+  test("New cycle spaces the Cycle name field from the helper text above it", () => {
+    renderPage(UNCYCLED_ORDERS, MOCK_CYCLES, []);
+    fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
+    const cycleName = screen.getByLabelText("Cycle name");
+
+    expect(cycleName.style.marginTop).toBe("");
+    expect(cycleName.closest(".cds--stack-scale-5")).toContainElement(
+      screen.getByText(/No active enrollment here matches a scheme/),
+    );
+  });
+
   test("New cycle shows the server's refusal instead of a false success", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
