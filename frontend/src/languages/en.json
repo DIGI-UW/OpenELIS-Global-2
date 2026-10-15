@@ -12485,6 +12485,7 @@
   "eqa.order.receipt.notes.required": "Say what was wrong with the material. A receipt marked not intact needs the note that explains it.",
   "eqa.provider.wizard.cycleName.required": "A cycle needs a name.",
   "eqa.provider.wizard.dates.required": "A cycle needs both a distribution date and a submission deadline; the deadline is what its reminders are sent against.",
+  "eqa.provider.wizard.dates.order": "The submission deadline cannot be before the distribution date.",
   "eqa.enrollment.scheme": "Scheme",
   "eqa.enrollment.scheme.helper": "Pick a scheme this instance carries, or choose Not listed and type the name.",
   "eqa.enrollment.scheme.frozen": "This enrollment has cycles against it, so its scheme and provider cannot be changed.",

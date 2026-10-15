@@ -1,9 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
   Column,
-  DatePicker,
-  DatePickerInput,
   FilterableMultiSelect,
   Grid,
   Heading,
@@ -33,7 +31,13 @@ import {
   resolveApiErrorMessage,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
-import { calendarOnlyInput, hintStyle, SchemeTestsNotice } from "../eqaCommon";
+import CustomDatePicker from "../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../layout/Layout";
+import {
+  formatIsoDateForBackend,
+  formatPickerDateForIso,
+} from "../../order/dateUtils";
+import { hintStyle, SchemeTestsNotice } from "../eqaCommon";
 import { createProviderCycle } from "./Workbench/workbenchApi";
 import { asList, fetchTests } from "../eqaApi";
 
@@ -75,6 +79,15 @@ const CycleWizard = () => {
   const { schemeId } = useParams();
   const t = (id, defaultMessage, values) =>
     intl.formatMessage({ id, defaultMessage }, values);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
+  const datePickerProps = (isoDate, setIsoDate) => ({
+    value: formatIsoDateForBackend(isoDate, dateLocale),
+    updateStateValue: true,
+    onChange: (picked) =>
+      setIsoDate(formatPickerDateForIso(picked, dateLocale)),
+  });
 
   const [step, setStep] = useState(0);
   const [scheme, setScheme] = useState(null);
@@ -168,12 +181,17 @@ const CycleWizard = () => {
     !samples.some(
       (sample, index) => duplicateSampleCode(index) || rangeBackwards(sample),
     );
+  const deadlineBeforeDistribution =
+    !!plannedStartDate && !!plannedEndDate && plannedEndDate < plannedStartDate;
   // Per step, what must be filled in to move on: whatever the server will
   // refuse. Step 0's date pair is the cycle's distribution date and submission
   // deadline, and a cycle without the deadline is invisible to the reminder
   // digest, so both are required rather than optional columns.
   const canAdvance = [
-    !!cycleName.trim() && !!plannedStartDate && !!plannedEndDate,
+    !!cycleName.trim() &&
+      !!plannedStartDate &&
+      !!plannedEndDate &&
+      !deadlineBeforeDistribution,
     !!panelName.trim() &&
       samplesValid &&
       (!vendorRequired || !!vendorName.trim()),
@@ -297,7 +315,7 @@ const CycleWizard = () => {
         <Column lg={16} md={8} sm={4}>
           {step === 0 && (
             <Grid condensed>
-              <Column lg={8} md={4} sm={4}>
+              <Column lg={4} md={4} sm={4}>
                 <TextInput
                   id="cycle-name"
                   labelText={t("eqa.provider.wizard.cycleName", "Cycle name")}
@@ -326,38 +344,40 @@ const CycleWizard = () => {
                 />
               </Column>
               <Column lg={4} md={4} sm={4}>
-                <DatePicker
-                  datePickerType="range"
-                  dateFormat="d/m/Y"
-                  onChange={([from, to]) => {
-                    setPlannedStartDate(from ? toIsoDate(from) : "");
-                    setPlannedEndDate(to ? toIsoDate(to) : "");
-                  }}
-                >
-                  <DatePickerInput
-                    {...calendarOnlyInput}
-                    id="cycle-planned-start"
-                    labelText={t(
-                      "eqa.provider.wizard.distributionDate",
-                      "Distribution date",
-                    )}
-                    placeholder="dd/mm/yyyy"
-                  />
-                  <DatePickerInput
-                    {...calendarOnlyInput}
-                    id="cycle-planned-end"
-                    labelText={t(
-                      "eqa.provider.wizard.submissionDeadline",
-                      "Submission deadline",
-                    )}
-                    placeholder="dd/mm/yyyy"
-                    invalid={!plannedStartDate || !plannedEndDate}
-                    invalidText={t(
-                      "eqa.provider.wizard.dates.required",
-                      "A cycle needs both a distribution date and a submission deadline; the deadline is what its reminders are sent against.",
-                    )}
-                  />
-                </DatePicker>
+                <CustomDatePicker
+                  id="cycle-planned-start"
+                  labelText={t(
+                    "eqa.provider.wizard.distributionDate",
+                    "Distribution date",
+                  )}
+                  {...datePickerProps(plannedStartDate, setPlannedStartDate)}
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <CustomDatePicker
+                  id="cycle-planned-end"
+                  labelText={t(
+                    "eqa.provider.wizard.submissionDeadline",
+                    "Submission deadline",
+                  )}
+                  {...datePickerProps(plannedEndDate, setPlannedEndDate)}
+                  invalid={
+                    !plannedStartDate ||
+                    !plannedEndDate ||
+                    deadlineBeforeDistribution
+                  }
+                  invalidText={
+                    deadlineBeforeDistribution
+                      ? t(
+                          "eqa.provider.wizard.dates.order",
+                          "The submission deadline cannot be before the distribution date.",
+                        )
+                      : t(
+                          "eqa.provider.wizard.dates.required",
+                          "A cycle needs both a distribution date and a submission deadline; the deadline is what its reminders are sent against.",
+                        )
+                  }
+                />
               </Column>
             </Grid>
           )}
@@ -644,23 +664,14 @@ const CycleWizard = () => {
                   </Select>
                 </Column>
                 <Column lg={8} md={4} sm={4}>
-                  <DatePicker
-                    datePickerType="single"
-                    dateFormat="d/m/Y"
-                    onChange={([date]) =>
-                      setExpirationDate(date ? toIsoDate(date) : "")
-                    }
-                  >
-                    <DatePickerInput
-                      {...calendarOnlyInput}
-                      id="panel-expiration"
-                      labelText={t(
-                        "eqa.provider.wizard.expiration",
-                        "Material expiry",
-                      )}
-                      placeholder="dd/mm/yyyy"
-                    />
-                  </DatePicker>
+                  <CustomDatePicker
+                    id="panel-expiration"
+                    labelText={t(
+                      "eqa.provider.wizard.expiration",
+                      "Material expiry",
+                    )}
+                    {...datePickerProps(expirationDate, setExpirationDate)}
+                  />
                 </Column>
               </Grid>
             </>
@@ -823,11 +834,5 @@ const Summary = ({ label, value }) => (
     <strong>{label}:</strong> {value}
   </p>
 );
-
-/** Local calendar date, not UTC — toISOString would shift it a day west. */
-const toIsoDate = (date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate(),
-  ).padStart(2, "0")}`;
 
 export default CycleWizard;

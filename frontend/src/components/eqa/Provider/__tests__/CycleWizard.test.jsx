@@ -6,6 +6,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import CycleWizard from "../CycleWizard";
+import { ConfigurationContext } from "../../../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -61,18 +62,24 @@ const renderWizard = (schemeTests = SCHEME_TESTS) => {
   const landedOn = [];
   const view = render(
     <IntlProvider locale="en" messages={messages}>
-      <MemoryRouter initialEntries={["/qa/eqa/provider/schemes/3/cycles/new"]}>
-        <Route path="/qa/eqa/provider/schemes/:schemeId/cycles/new" exact>
-          <CycleWizard />
-        </Route>
-        <Route
-          path="/qa/eqa/provider/cycles/:cycleId/workbench"
-          render={({ match }) => {
-            landedOn.push(match.url);
-            return <div>workbench</div>;
-          }}
-        />
-      </MemoryRouter>
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/qa/eqa/provider/schemes/3/cycles/new"]}
+        >
+          <Route path="/qa/eqa/provider/schemes/:schemeId/cycles/new" exact>
+            <CycleWizard />
+          </Route>
+          <Route
+            path="/qa/eqa/provider/cycles/:cycleId/workbench"
+            render={({ match }) => {
+              landedOn.push(match.url);
+              return <div>workbench</div>;
+            }}
+          />
+        </MemoryRouter>
+      </ConfigurationContext.Provider>
     </IntlProvider>,
   );
   return { ...view, landedOn };
@@ -90,8 +97,6 @@ const completeCycleStep = () => {
   if (!name.value) {
     fireEvent.change(name, { target: { value: "2026 Round 4" } });
   }
-  // flatpickr only publishes a typed date on Enter (its blur path sets the
-  // date without firing onChange), so each half of the range needs both events.
   typeDate("Distribution date", "01/09/2026");
   typeDate("Submission deadline", "01/10/2026");
 };
@@ -118,9 +123,7 @@ const throughPanelStep = () => {
   fireEvent.change(screen.getByLabelText("Storage temperature"), {
     target: { value: "DRY_ICE" },
   });
-  fireEvent.change(screen.getByLabelText("Material expiry"), {
-    target: { value: "2027-01-31" },
-  });
+  typeDate("Material expiry", "31/01/2027");
 };
 
 describe("CycleWizard", () => {
@@ -161,6 +164,49 @@ describe("CycleWizard", () => {
       target: { value: "  " },
     });
     expect(nextButton()).toBeDisabled();
+  });
+
+  test("dates typed in the site's day-first format are accepted", async () => {
+    renderWizard();
+    fireEvent.change(screen.getByLabelText("Cycle name"), {
+      target: { value: "2026 Round 4" },
+    });
+
+    await userEvent.type(
+      screen.getByLabelText("Distribution date"),
+      "13/10/2026",
+    );
+    await userEvent.type(
+      screen.getByLabelText("Submission deadline"),
+      "27/10/2026",
+    );
+
+    expect(screen.getByLabelText("Distribution date")).toHaveValue(
+      "13/10/2026",
+    );
+    expect(screen.getByLabelText("Submission deadline")).toHaveValue(
+      "27/10/2026",
+    );
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  test("a submission deadline before the distribution date holds the step", () => {
+    renderWizard();
+    fireEvent.change(screen.getByLabelText("Cycle name"), {
+      target: { value: "2026 Round 4" },
+    });
+    typeDate("Distribution date", "13/10/2026");
+    typeDate("Submission deadline", "12/10/2026");
+
+    expect(
+      screen.getByText(
+        "The submission deadline cannot be before the distribution date.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+
+    typeDate("Submission deadline", "13/10/2026");
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
   test("only tests that carry an analyte are offered", () => {
@@ -419,6 +465,9 @@ describe("CycleWizard", () => {
     const body = JSON.parse(payload);
     expect(body.schemeId).toBe(3);
     expect(body.cycleName).toBe("2026 Round 2");
+    expect(body.plannedStartDate).toBe("2026-09-01");
+    expect(body.plannedEndDate).toBe("2026-10-01");
+    expect(body.expirationDate).toBe("2027-01-31");
     expect(body.panelName).toBe("HIV VL panel");
     // Collected on the panel step now, and still reaching the same payload field.
     expect(body.storageTemp).toBe("DRY_ICE");
