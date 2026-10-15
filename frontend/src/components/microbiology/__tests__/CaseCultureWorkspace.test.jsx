@@ -2,8 +2,9 @@ import React from "react";
 import { vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
-import { IntlProvider } from "react-intl";
+import { IntlProvider, createIntl } from "react-intl";
 import messages from "../../../languages/en.json";
+import { labTimeZone } from "../MicrobiologyTime";
 import CaseCultureWorkspace from "../CaseCultureWorkspace";
 const sources = [
   {
@@ -89,7 +90,9 @@ it("prefills medium links and requires a lot for tracked media", async () => {
   fireEvent.click(
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
-  expect(screen.getByLabelText("Medium")).toHaveValue("10");
+  expect(screen.getByRole("combobox", { name: "Medium" })).toHaveValue(
+    "Blood agar · Lot tracked",
+  );
   expect(screen.getByLabelText("Incubation duration")).toHaveValue(48);
   expect(screen.getByLabelText("Atmosphere")).toHaveValue("air");
   expect(screen.getByLabelText("Lot not tracked")).toBeDisabled();
@@ -294,9 +297,13 @@ test("changing media applies source-specific incubation defaults before generic 
   fireEvent.click(
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
-  fireEvent.change(
-    screen.getByLabelText(messages["microbiology.culture.mediumItemId"]),
-    { target: { value: "11" } },
+  fireEvent.change(screen.getByRole("combobox", { name: "Medium" }), {
+    target: { value: "Long incubation" },
+  });
+  fireEvent.click(
+    screen.getByRole("option", {
+      name: "Long incubation medium · Lot not tracked",
+    }),
   );
   expect(
     screen.getByLabelText(messages["microbiology.culture.duration"]),
@@ -495,4 +502,26 @@ it("preserves received-isolate provenance while allowing a real subculture", asy
       name: messages["microbiology.culture.subculture"],
     }),
   ).toBeEnabled();
+});
+
+it("previews an extension from the existing end without resetting inoculation", async () => {
+  show(api());
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Extend incubation" }),
+  );
+  change("Extend by", "12");
+  change("Extension unit", "HOURS");
+  const preview = screen.getByText(/New incubation end:/);
+  const intl = createIntl({ locale: "en", messages });
+  const end = new Date("2026-10-11T22:00:00Z");
+  expect(preview).toHaveTextContent(
+    intl.formatDate(end, { timeZone: labTimeZone() }),
+  );
+  expect(preview).toHaveTextContent(
+    intl.formatTime(end, { timeZone: labTimeZone(), timeZoneName: "short" }),
+  );
+  change("Extend by", "0");
+  expect(screen.getByText(/New incubation end:/)).toHaveTextContent(
+    "Not available",
+  );
 });

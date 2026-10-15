@@ -9,11 +9,20 @@ export const openMicrobiologyCaseSection = async (
   page: Page,
   sectionName: string,
 ) => {
-  const section = page
-    .getByTestId("microbiology-case-view")
-    .getByRole("button", { name: sectionName, exact: true });
-  if ((await section.getAttribute("aria-expanded")) !== "true")
-    await section.click();
+  const values: Record<string, string> = {
+    Isolates: "ISOLATES",
+    "Manual AST": "AST",
+    Reports: "REPORT",
+    Amendments: "AMENDMENT",
+    "Critical communication": "CRITICAL",
+    Timeline: "HISTORY",
+    Inoculation: "CULTURE",
+  };
+  if (!values[sectionName])
+    throw new Error(`Unknown case section ${sectionName}`);
+  await page
+    .getByLabel("Testing section", { exact: true })
+    .selectOption(values[sectionName]);
 };
 
 export const selectCarbonRadio = async (page: Page, radio: Locator) => {
@@ -99,4 +108,27 @@ export const createAndIdentifyMicrobiologyIsolate = async (
 ) => {
   await createMicrobiologyIsolate(page, seeded);
   await identifyMicrobiologyIsolate(page, seeded.organismId!);
+};
+
+export const selectCultureMedium = async (page: Page, mediumId: number) => {
+  const caseId = new URL(page.url()).pathname.split("/").pop();
+  const options = await (
+    await page.request.get(
+      `/api/OpenELIS-Global/rest/microbiology/cases/${caseId}/cultures/options`,
+    )
+  ).json();
+  const medium = options.media.find(
+    (m: { id: number }) => String(m.id) === String(mediumId),
+  );
+  if (!medium) throw new Error(`Fixture medium ${mediumId} not available`);
+  const combo = page
+    .getByRole("dialog")
+    .getByRole("combobox", { name: "Medium", exact: true });
+  await combo.fill(medium.name);
+  await page
+    .getByRole("option", {
+      name: `${medium.name} · ${medium.trackLots ? "Lot tracked" : "Lot not tracked"}`,
+      exact: true,
+    })
+    .click();
 };

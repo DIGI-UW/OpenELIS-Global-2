@@ -22,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional(readOnly = true)
 public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.systemuser.service.SystemUserService displayUsers;
     private final org.openelisglobal.method.service.MethodService methods;
     private final MicroCaseAmendmentDAO amendments;
     private final MicroCaseDAO cases;
@@ -82,6 +84,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         boolean writer = mutable && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS);
         boolean validator = mutable && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_VALIDATION);
         var sources = cultures.getSources(caseId);
+        var names = new HashMap<String, String>();
         var form = new MicroIsolateWorkspaceForm();
         form.isolates = isolates.getWorkspace(caseId).stream().map(i -> {
             var sample = sources.stream().filter(s -> s.getId().equals(i.getSampleItemId())).findFirst().orElse(null);
@@ -90,7 +93,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                             organismName(e.getNewOrganismId(), e.getNewOrganismText()),
                             status(e.getNewIdentificationStatus()), e.getNewIdentificationMethod(),
                             e.getNewIdentificationConfidence(), e.getIdentifiedAt(), e.getChangedBy(), e.getChangedAt(),
-                            e.getReason(), e.getAmendmentId()))
+                            e.getReason(), e.getAmendmentId(),
+                            MicrobiologyUserDisplayResolver.resolve(displayUsers, e.getChangedBy(), names)))
                     .toList();
             return new MicroIsolateWorkspaceForm.Isolate(i.getId(), i.getIsolateLabel(), i.getSourceCultureId(),
                     i.getSourceCulture() == null ? null : i.getSourceCulture().getContainerIdentifier(),
@@ -110,7 +114,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                 .map(r -> new MicroIsolateWorkspaceForm.Referral(r.getId(), r.getAnalysis().getSampleItem().getId(),
                         r.getAnalysis().getTest().getName(),
                         r.getOrganization() == null ? null : r.getOrganization().getOrganizationName(),
-                        r.getStatus() == null ? null : r.getStatus().name(), r.getSentDate(),
+                        r.getStatus() == null ? null : r.getStatus().name(),
+                        r.getSubcontract() == null ? null : r.getSubcontract().getHandoffDatetime(),
                         r.getSubcontract() == null ? null : r.getSubcontract().getSubcontractNotes()))
                 .toList();
         return form;

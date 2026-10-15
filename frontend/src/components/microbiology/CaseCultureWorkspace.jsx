@@ -1,3 +1,11 @@
+import {
+  labDateTimeInput as localTime,
+  labInputInstant as instant,
+  labTimestamp,
+  labTimeZone,
+  positivityDuration,
+  extendedEnd,
+} from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
@@ -6,6 +14,7 @@ import {
   AccordionItem,
   Button,
   Checkbox,
+  ComboBox,
   Grid,
   Column,
   InlineLoading,
@@ -29,14 +38,6 @@ import {
 
 const units = ["HOURS", "DAYS", "WEEKS"];
 const outcomes = ["GROWTH", "NO_GROWTH", "CONTAMINATED"];
-const localTime = (value) => {
-  const date = value ? new Date(value) : new Date();
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 23);
-};
-const instant = (value) => (value ? new Date(value).toISOString() : null);
-
 const mediaLink = (options, sourceId, mediumId) => {
   const source = options.sources.find((s) => s.sampleItemId === sourceId);
   const links = options.mediaLinks.filter(
@@ -89,7 +90,13 @@ function CultureActionForm({
     intl.formatMessage({ id: `microbiology.culture.${key}` }, values);
   const [draft, setDraft] = useState(action.draft);
   const change = (key, value) =>
-    setDraft((previous) => ({ ...previous, [key]: value }));
+    setDraft((previous) => ({
+      ...previous,
+      [key]: value,
+      ...(key === "outcome" && value === "GROWTH" && !previous.positiveAt
+        ? { positiveAt: localTime() }
+        : {}),
+    }));
   const medium = options.media.find(
     (m) => String(m.id) === String(draft.mediumItemId),
   );
@@ -246,17 +253,25 @@ function CultureActionForm({
               </>
             )}
             {input("containerIdentifier")}
-            <Select
+            <ComboBox
               id="culture-mediumItemId"
-              labelText={t("mediumItemId")}
-              value={draft.mediumItemId || ""}
-              onChange={(e) => chooseMedium(e.target.value)}
-            >
-              <SelectItem value="" text={t("choose")} />
-              {options.media.map((m) => (
-                <SelectItem key={m.id} value={String(m.id)} text={m.name} />
-              ))}
-            </Select>
+              titleText={t("mediumItemId")}
+              items={options.media}
+              selectedItem={medium || null}
+              itemToString={(m) =>
+                m
+                  ? `${m.name} · ${t(m.trackLots || options.requireTrackedMedia ? "tracked" : "notTracked")}`
+                  : ""
+              }
+              shouldFilterItem={({ item, inputValue }) =>
+                item.name
+                  .toLocaleLowerCase()
+                  .includes((inputValue || "").toLocaleLowerCase())
+              }
+              onChange={({ selectedItem }) =>
+                chooseMedium(selectedItem ? String(selectedItem.id) : "")
+              }
+            />
             <Checkbox
               id="culture-notTracked"
               labelText={t("notTracked")}
@@ -285,6 +300,17 @@ function CultureActionForm({
             {input("extendBy", "number")}
             {select("unit", unitChoices)}
             {select("reasonId", options.extensionReasons)}
+            <p>
+              {t("newIncubationEnd")}:{" "}
+              {labTimestamp(
+                intl,
+                extendedEnd(
+                  action.row?.incubationEnds,
+                  draft.extendBy,
+                  draft.unit,
+                ),
+              )}
+            </p>
           </>
         )}
         {action.kind === "outcome" && (
@@ -310,6 +336,24 @@ function CultureActionForm({
             onChange={(e) => change("note", e.target.value)}
           />
         )}
+        {(draft.outcome === "GROWTH" || action.kind === "positive-time") &&
+          draft.positiveAt && (
+            <p>
+              {t("timeToPositivityHours")}:{" "}
+              {positivityDuration(
+                intl,
+                (new Date(instant(draft.positiveAt)) -
+                  new Date(action.row.inoculatedAt)) /
+                  3600000,
+              )}
+            </p>
+          )}
+        <p>
+          {intl.formatMessage(
+            { id: "microbiology.case.labClock" },
+            { zone: labTimeZone() },
+          )}
+        </p>
         <p>{t("serverValidation")}</p>
       </Stack>
     </Modal>
@@ -324,6 +368,7 @@ export default function CaseCultureWorkspace({
   onChooseTests,
   onPickIsolate,
   renderTests,
+  renderNotes,
 }) {
   const intl = useIntl();
   const t = (key, values) =>
@@ -359,10 +404,7 @@ export default function CaseCultureWorkspace({
       live = false;
     };
   }, [detail.id, detail.labUnitId, service]);
-  const date = (value) =>
-    value
-      ? `${intl.formatDate(new Date(value))} ${intl.formatTime(new Date(value))}`
-      : t("notAvailable");
+  const date = (value) => labTimestamp(intl, value);
   const numeric = (value) =>
     value == null ? t("notAvailable") : intl.formatNumber(Number(value));
   const open = (kind, row = null, draft = {}) => {
@@ -403,6 +445,8 @@ export default function CaseCultureWorkspace({
         ...draft,
       };
     }
+    if (kind === "outcome" && draft.outcome === "GROWTH" && !draft.positiveAt)
+      draft.positiveAt = localTime();
     setError("");
     setAction({ kind, row, draft });
   };
@@ -459,7 +503,7 @@ export default function CaseCultureWorkspace({
                 <TableCell>{r.quantityName || t("notAvailable")}</TableCell>
                 <TableCell>{r.note}</TableCell>
                 <TableCell>{numeric(r.incubationDay)}</TableCell>
-                <TableCell>{r.by}</TableCell>
+                <TableCell>{r.byDisplay || r.by}</TableCell>
                 <TableCell>{date(r.at)}</TableCell>
               </TableRow>
             ))}
@@ -484,7 +528,7 @@ export default function CaseCultureWorkspace({
                 </TableCell>
                 <TableCell>{e.reasonName}</TableCell>
                 <TableCell>{e.note}</TableCell>
-                <TableCell>{e.by}</TableCell>
+                <TableCell>{e.byDisplay || e.by}</TableCell>
                 <TableCell>{date(e.at)}</TableCell>
               </TableRow>
             ))}
@@ -540,19 +584,40 @@ export default function CaseCultureWorkspace({
                   ["temperature", numeric(row.temperature)],
                   [
                     "duration",
-                    `${numeric(row.duration)} ${row.durationUnit ? t(`unit.${row.durationUnit}`) : ""}`,
+                    <>
+                      {numeric(row.duration)}{" "}
+                      {row.durationUnit ? t(`unit.${row.durationUnit}`) : ""}{" "}
+                      {row.extensions.filter((e) => !e.undoneAt).length > 0 && (
+                        <Tag type="purple">
+                          {t("extended", {
+                            count: row.extensions.filter((e) => !e.undoneAt)
+                              .length,
+                          })}
+                        </Tag>
+                      )}
+                    </>,
                   ],
                   ["loopVolume", numeric(row.loopVolume)],
                   ["inoculatedAt", date(row.inoculatedAt)],
                   ["incubationEnds", date(row.incubationEnds)],
                   ["nextCheck", date(row.nextCheck)],
                   ["positiveAt", date(row.positiveAt)],
-                  ["timeToPositivityHours", numeric(row.timeToPositivityHours)],
+                  [
+                    "timeToPositivityHours",
+                    positivityDuration(
+                      intl,
+                      row.positiveAt && row.inoculatedAt
+                        ? (new Date(row.positiveAt) -
+                            new Date(row.inoculatedAt)) /
+                            3600000
+                        : row.timeToPositivityHours,
+                    ),
+                  ],
                   ...(row.outcome
                     ? [
                         [
                           "outcomeRecorded",
-                          `${row.outcomeBy} — ${date(row.outcomeAt)}`,
+                          `${row.outcomeByDisplay || row.outcomeBy} — ${date(row.outcomeAt)}`,
                         ],
                       ]
                     : []),
@@ -714,6 +779,7 @@ export default function CaseCultureWorkspace({
                     )}
                 </Stack>
               )}
+              {renderNotes?.("CULTURE", row.id)}
               {log(row)}
               {row.proposals.map((p) => (
                 <Tile key={p.id}>
@@ -726,7 +792,7 @@ export default function CaseCultureWorkspace({
                   {p.confirmedAt ? (
                     <p>
                       {t("confirmed", {
-                        by: p.confirmedBy,
+                        by: p.confirmedByDisplay || p.confirmedBy,
                         at: date(p.confirmedAt),
                       })}
                     </p>

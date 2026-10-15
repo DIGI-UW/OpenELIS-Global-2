@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useIntl } from "react-intl";
 import {
   Button,
+  Grid,
+  Column,
   InlineNotification,
   NumberInput,
   Select,
@@ -53,33 +55,39 @@ export default function CaseContextEditor({ detail, service, onSaved }) {
   return (
     <Tile>
       <Stack gap={4}>
-        <Select
-          id="case-program"
-          labelText={t("microbiology.case.program")}
-          value={programId}
-          disabled={!detail.canWrite || saving}
-          onChange={(e) => setProgramId(e.target.value)}
-        >
-          <SelectItem value="" text={t("not.available")} />
-          {(detail.programs || []).map((p) => (
-            <SelectItem key={p.id} value={p.id} text={p.value} />
-          ))}
-        </Select>
-        <Select
-          id="case-purpose"
-          labelText={t("microbiology.case.culturePurpose")}
-          value={purpose}
-          disabled={!detail.canWrite || saving}
-          onChange={(e) => setPurpose(e.target.value)}
-        >
-          {(detail.purposeOptions || []).map((value) => (
-            <SelectItem
-              key={value}
-              value={value}
-              text={t(`microbiology.case.purpose.${value}`)}
-            />
-          ))}
-        </Select>
+        <Grid>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="case-program"
+              labelText={t("microbiology.case.program")}
+              value={programId}
+              disabled={!detail.canWrite || saving}
+              onChange={(e) => setProgramId(e.target.value)}
+            >
+              <SelectItem value="" text={t("not.available")} />
+              {(detail.programs || []).map((p) => (
+                <SelectItem key={p.id} value={p.id} text={p.value} />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="case-purpose"
+              labelText={t("microbiology.case.culturePurpose")}
+              value={purpose}
+              disabled={!detail.canWrite || saving}
+              onChange={(e) => setPurpose(e.target.value)}
+            >
+              {(detail.purposeOptions || []).map((value) => (
+                <SelectItem
+                  key={value}
+                  value={value}
+                  text={t(`microbiology.case.purpose.${value}`)}
+                />
+              ))}
+            </Select>
+          </Column>
+        </Grid>
         {environmental && (
           <NumberInput
             id="case-replicates"

@@ -1,6 +1,7 @@
 # Milestone 9 — Workflow remediation and integrated acceptance
 
-**Status:** Planned; audit complete, fixes not started.
+**Status:** Implemented; candidate validation and owner acceptance remain separate gates.
+**Candidate evidence:** [Implementation validation](milestone-9-candidate-validation.md).
 **Branch:** `codex/amr-v2-ux-validation`, above
 `codex/amr-v2-environmental-migration` in native `gh stack` #4674.
 **Baseline:** [Audit and reproduction details](milestone-9-validation.md), recorded
@@ -15,7 +16,7 @@ journey against the pinned product design and the saved data.
 
 M9 resolves UX-01–09 and completes the audit's missing acceptance evidence. It
 preserves working M2–M8 behavior. Unexercised paths are coverage gaps until tested,
-not presumed defects. This planning commit changes no application behavior.
+not presumed defects. The implementation consolidates case entry, completes context entry, and repairs navigation, timing, attribution and validation feedback.
 
 Use [the repository specification](spec.md) for engineering invariants and the
 [pinned product design](https://github.com/DIGI-UW/openelis-work/blob/c9722f07304c3170913d565876a6dd085c388a7d/designs/microbiology/amr-micro-v2-amendments.md)
@@ -37,7 +38,7 @@ backend-only and frontend-only phases.
 | 4. Understand history and failures    | UX-08, UX-09                   | Display names, note types/counts at supported attachments, specific validation errors scoped to each action                              | Authors are recognizable; internal notes stay off reports, external notes accompany the intended result; unresolved AST validation explains the blocker; cancelling/opening another action clears the old error.                |
 | 5. Validate the assembled journey     | All findings and coverage gaps | Before/after evidence, regression results and owner review package                                                                       | All nine findings have a demonstrated resolution; remaining lanes below have results, not assumptions; CI and owner acceptance are recorded independently.                                                                      |
 
-## Starting implementation map
+## Implementation map
 
 Paths below are repository-relative. Inspect existing contracts before extending
 them; reuse the working services and panels rather than adding a third case UI.

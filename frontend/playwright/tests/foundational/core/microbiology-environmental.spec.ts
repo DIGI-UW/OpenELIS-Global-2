@@ -1,8 +1,9 @@
+import { selectCultureMedium } from "../../../helpers/microbiology-ui";
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyEnvironmental } from "../../../helpers/seed-microbiology-data";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 test("routes a site subject, records environmental culture context and releases a Laporan Hasil certificate", async ({
   page,
@@ -37,9 +38,7 @@ test("routes a site subject, records environmental culture context and releases 
     .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M8-WATER-PLATE");
-  await dialog
-    .getByLabel("Medium", { exact: true })
-    .selectOption(String(seeded.mediumItemId));
+  await selectCultureMedium(page, seeded.mediumItemId!);
   for (const label of ["Medium lot", "Atmosphere"]) {
     const field = dialog.getByLabel(label, { exact: true });
     const value = await field
@@ -125,8 +124,10 @@ test("routes a site subject, records environmental culture context and releases 
     expect(text).toContain("M8-WATER-PLATE");
     expect(text).toContain("No growth");
     expect(text).not.toContain("UAT Microbiology Patient");
+    const evidencePath = testInfo.outputPath("environmental-certificate.pdf");
+    await writeFile(evidencePath, pdf);
     await testInfo.attach("environmental-certificate.pdf", {
-      body: pdf,
+      path: evidencePath,
       contentType: "application/pdf",
     });
   } finally {

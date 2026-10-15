@@ -1,9 +1,11 @@
+import { labTimestamp } from "./MicrobiologyTime";
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import {
   Stack,
   Modal,
   Table,
+  TableContainer,
   TableHead,
   TableHeader,
   TableBody,
@@ -170,61 +172,60 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
           hideCloseButton
         />
       )}
-      <Table aria-label={t("microbiology.incoming.title")}>
-        <TableHead>
-          <TableRow>
-            {[
-              "test.name",
-              "common.status",
-              "microbiology.incoming.received",
-              "microbiology.incoming.values",
-              "common.actions",
-            ].map((key) => (
-              <TableHeader key={key}>{t(key)}</TableHeader>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.testName}</TableCell>
-              <TableCell>
-                {t(`microbiology.incoming.state.${row.state}`)}
-              </TableCell>
-              <TableCell>
-                {intl.formatDate(new Date(row.receivedAt))}{" "}
-                {intl.formatTime(new Date(row.receivedAt))}
-              </TableCell>
-              <TableCell>
-                {row.rawResultValue ||
-                  row.result?.components?.map((c) => c.value).join("; ")}
-              </TableCell>
-              <TableCell>
-                {detail.canWrite && row.state !== "PLACED" && (
-                  <Button
-                    size="sm"
-                    disabled={navigator.onLine === false}
-                    onClick={() => {
-                      setSelected(row);
-                      setAlerts(null);
-                      setSample(
-                        row.sampleItemId ||
-                          detail.samples[0]?.sampleItemId ||
-                          "",
-                      );
-                      setTarget("");
-                      setDestinationSearch("");
-                      setReason("");
-                    }}
-                  >
-                    {t("microbiology.incoming.review")}
-                  </Button>
-                )}
-              </TableCell>
+      <TableContainer>
+        <Table aria-label={t("microbiology.incoming.title")}>
+          <TableHead>
+            <TableRow>
+              {[
+                "test.name",
+                "common.status",
+                "microbiology.incoming.received",
+                "microbiology.incoming.values",
+                "common.actions",
+              ].map((key) => (
+                <TableHeader key={key}>{t(key)}</TableHeader>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.testName}</TableCell>
+                <TableCell>
+                  {t(`microbiology.incoming.state.${row.state}`)}
+                </TableCell>
+                <TableCell>{labTimestamp(intl, row.receivedAt)}</TableCell>
+                <TableCell>
+                  {row.rawResultValue ||
+                    row.result?.components?.map((c) => c.value).join("; ")}
+                </TableCell>
+                <TableCell>
+                  {detail.canWrite && row.state !== "PLACED" && (
+                    <Button
+                      size="sm"
+                      disabled={navigator.onLine === false}
+                      onClick={() => {
+                        setSelected(row);
+                        setAlerts(null);
+                        setSample(
+                          row.sampleItemId ||
+                            detail.samples[0]?.sampleItemId ||
+                            "",
+                        );
+                        setTarget("");
+                        setDestinationSearch("");
+                        setReason("");
+                      }}
+                    >
+                      {t("microbiology.incoming.review")}
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
       {!loading && !rows.length && <p>{t("microbiology.incoming.empty")}</p>}
       {selected && (
         <Modal

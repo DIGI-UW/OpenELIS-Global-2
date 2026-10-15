@@ -101,7 +101,7 @@ remain separate gates.
 - [ ] Finalize the clinical migration (assigning legacy data to new lab units/programs).
 - [ ] Supply the environmental and migration journeys for integrated acceptance in M9.
 
-## Milestone 9: Workflow Remediation & Integrated Acceptance (Planned)
+## Milestone 9: Workflow Remediation & Integrated Acceptance (Implemented; acceptance pending)
 
 **Goal:** Make the assembled V2 workspace consistent with the pinned design and
 usable from order entry through reporting, before UAT setup and workflow recording.
@@ -110,14 +110,14 @@ usable from order entry through reporting, before UAT setup and workflow recordi
 (UX-01–09), with [committed evidence](evidence/m9/2026-10-14/README.md).
 **Implementation plan:** [milestone-9.md](milestone-9.md).
 
-- [ ] Unify case entry routes, expose required clinical information, and provide
+- [x] Unify case entry routes, expose required clinical information, and provide
       consistent work/release state and reasoned amendment access (UX-01–02).
-- [ ] Preserve applicable worklist filters, surface waiting incoming results,
+- [x] Preserve applicable worklist filters, surface waiting incoming results,
       and restore sample/header context (UX-03–05).
-- [ ] Correct laboratory date/time presentation and referral handoff precision;
+- [x] Correct laboratory date/time presentation and referral handoff precision;
       complete culture previews, attribution, shared notes, and actionable errors
       (UX-06–09).
-- [ ] Reproduce each finding before its fix, add focused regression coverage, and
+- [x] Reproduce each finding before its fix, add focused regression coverage, and
       compare the corrected journeys with the pinned mocks at recorded viewports.
 - [ ] Complete the audit's remaining acceptance lanes using normal laboratory
       roles and isolated synthetic data; record failures separately from gaps.
@@ -126,4 +126,4 @@ usable from order entry through reporting, before UAT setup and workflow recordi
 
 M9 uses `codex/amr-v2-ux-validation`, already in the native `gh stack` above M8.
 It is one milestone PR containing ordered, usable workflow changes. The audit and
-plan are the preparation commit; implementation and acceptance remain outstanding.
+plan preserve the preparation baseline. [Candidate validation](milestone-9-candidate-validation.md) records implementation evidence separately from CI and owner acceptance.

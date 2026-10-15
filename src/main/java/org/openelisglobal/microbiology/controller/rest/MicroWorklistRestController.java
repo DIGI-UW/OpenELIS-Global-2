@@ -44,6 +44,17 @@ public class MicroWorklistRestController extends MicrobiologyRestControllerSuppo
             query.permittedLabUnitIds = new java.util.LinkedHashSet<>(results);
             query.permittedLabUnitIds.addAll(validation);
         }
+        var requestedUnits = new java.util.LinkedHashSet<String>();
+        if (request.getParameter("labUnitId") != null && !request.getParameter("labUnitId").isBlank())
+            requestedUnits.add(request.getParameter("labUnitId"));
+        if (request.getParameterValues("labUnitIds") != null)
+            java.util.Arrays.stream(request.getParameterValues("labUnitIds")).filter(id -> !id.isBlank())
+                    .forEach(requestedUnits::add);
+        if (!requestedUnits.isEmpty()) {
+            if (query.permittedLabUnitIds != null)
+                requestedUnits.retainAll(query.permittedLabUnitIds);
+            query.permittedLabUnitIds = requestedUnits;
+        }
         query.grain = grain;
         query.status = status;
         query.from = from;

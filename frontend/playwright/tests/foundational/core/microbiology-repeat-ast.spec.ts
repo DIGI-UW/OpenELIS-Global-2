@@ -1,131 +1,66 @@
 import { test, expect } from "../../../helpers/test-base";
-import type { Page, TestInfo } from "@playwright/test";
 import { seedReviewedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
-const accordionButton = (page: Page, name: string) =>
-  page
-    .getByTestId("microbiology-case-view")
-    .getByRole("button", { name, exact: true });
-
-const attachScreenshot = async (
-  page: Page,
-  testInfo: TestInfo,
-  name: string,
-) => {
-  await testInfo.attach(name, {
-    body: await page.screenshot({ fullPage: true }),
-    contentType: "image/png",
+test("preserves the original AST reading and reports the explicitly selected retest", async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const seeded = await seedReviewedMicrobiologyCase(page);
+  await page.goto(`/Microbiology/cases/${seeded.caseId}?section=ast`);
+  const original = page.getByTestId(`ast-run-${seeded.astRunId}`);
+  await expect(original).toContainText("4", { timeout: LONG_TIMEOUT });
+  await original.getByRole("button", { name: "Retest", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Reason", { exact: true })
+    .fill("Fresh inoculum after control failure");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  const runs = page.locator('[data-testid^="ast-run-"]');
+  await expect(runs).toHaveCount(2);
+  const repeated = runs.filter({
+    hasNot: page.getByRole("button", { name: "Retest", exact: true }),
   });
-};
-
-test.describe("Microbiology repeat AST attempts", () => {
-  test("preserves both attempts and reports only the explicitly selected run", async ({
-    page,
-  }, testInfo) => {
-    test.setTimeout(120_000);
-    const seeded = await seedReviewedMicrobiologyCase(page);
-
-    await test.step("Open the reviewed original attempt", async () => {
-      await page.goto(`/Microbiology/cases/${seeded.caseId}?section=ast`, {
-        waitUntil: "domcontentloaded",
-      });
-      await expect(page).toHaveURL(
-        new RegExp(`/Microbiology/cases/${seeded.caseId}\\?section=ast$`),
-      );
-      await expect(
-        page.getByRole("heading", { name: "Manual AST" }),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-
-      const original = page
-        .getByTestId("microbiology-ast-attempt-row")
-        .filter({ hasText: "Original" });
-      await expect(original).toContainText("Attempt 1");
-      await expect(original).toContainText("Included in report");
-      await expect(original).toContainText("Reviewed");
-      await expect(page.getByTestId("microbiology-ast-card")).toContainText(
-        "Ciprofloxacin (UAT)",
-      );
-    });
-
-    await test.step("Start a reasoned retest from the original", async () => {
-      const retestOption = page.getByRole("radio", { name: "Retest" });
-      await retestOption.press("Space");
-      await expect(retestOption).toBeChecked();
-      await page
-        .getByLabel("Reason for repeat or retest")
-        .fill("Control failure required a fresh inoculum");
-      await expect(
-        page.getByRole("button", { name: "Start retest attempt" }),
-      ).toBeEnabled();
-      await page.getByRole("button", { name: "Start retest attempt" }).click();
-
-      await expect(
-        page.getByTestId("microbiology-ast-attempt-row"),
-      ).toHaveCount(2, { timeout: LONG_TIMEOUT });
-      const retest = page
-        .getByTestId("microbiology-ast-attempt-row")
-        .filter({ hasText: "Retest" });
-      await expect(retest).toContainText("Attempt 2");
-      await expect(retest).toContainText("Attempt 1");
-      await expect(retest).toContainText(
-        "Control failure required a fresh inoculum",
-      );
-      await expect(retest).toContainText("In Progress");
-    });
-
-    await test.step("Record and review a different result without changing attempt 1", async () => {
-      await page
-        .getByLabel("Antibiotic", { exact: true })
-        .selectOption({ label: "Ciprofloxacin (UAT)" });
-      await page.getByLabel("MIC (ug/mL)").fill("32");
-      await page.getByRole("button", { name: "Record AST reading" }).click();
-      await expect(
-        page.getByTestId("microbiology-ast-interpretation"),
-      ).toContainText("Resistant", { timeout: LONG_TIMEOUT });
-      await page.getByRole("button", { name: "Review AST run" }).click();
-
-      const original = page
-        .getByTestId("microbiology-ast-attempt-row")
-        .filter({ hasText: "Original" });
-      const retest = page
-        .getByTestId("microbiology-ast-attempt-row")
-        .filter({ hasText: "Retest" });
-      await expect(original).toContainText("Included in report");
-      await expect(retest).toContainText("Not included");
-
-      await retest
-        .getByRole("button", { name: "Use attempt 2 for reporting" })
-        .click();
-      await expect(retest).toContainText("Included in report", {
-        timeout: LONG_TIMEOUT,
-      });
-      await expect(
-        page
-          .getByTestId("microbiology-ast-card")
-          .getByText("Final release ready", { exact: true }),
-      ).toBeVisible();
-      await attachScreenshot(page, testInfo, "repeat-ast-reportable-selection");
-    });
-
-    await test.step("Release and verify the selected retest reaches the patient report", async () => {
-      await accordionButton(page, "Reports").click();
-      await expect(page).toHaveURL(/section=reports$/);
-      await page
-        .getByRole("button", { name: "Release preliminary report" })
-        .click();
-      await expect(
-        page.getByTestId("microbiology-release-state"),
-      ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
-
-      const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
-      expect(text).toContain("Ciprofloxacin (UAT) 32 ug/mL Resistant");
-      expect(text).not.toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
-      await testInfo.attach("selected-retest-patient-report.pdf", {
-        body: pdf,
-        contentType: "application/pdf",
-      });
-    });
+  const drug = repeated.getByRole("row", { name: /Ciprofloxacin \(UAT\)/ });
+  await drug
+    .getByRole("button", { name: "Enter reading", exact: true })
+    .click();
+  await dialog.getByLabel("MIC / zone", { exact: true }).fill("32");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(drug).toContainText("Resistant");
+  await repeated
+    .getByRole("button", { name: "Validate run", exact: true })
+    .click();
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  // Select by the different observed reading after validation changes the run's actions.
+  const selectedDrug = runs.getByRole("row", {
+    name: /Ciprofloxacin \(UAT\).*32/,
+  });
+  await selectedDrug
+    .getByRole("button", { name: "Use for report", exact: true })
+    .click();
+  await dialog
+    .getByLabel("Reason", { exact: true })
+    .fill("Retest confirmed resistance");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    original.getByRole("row", { name: /Ciprofloxacin \(UAT\)/ }),
+  ).toContainText("4");
+  await page
+    .getByLabel("Testing section", { exact: true })
+    .selectOption("REPORT");
+  await page
+    .getByRole("button", { name: "Release partial report", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Report version", { exact: true }).locator("option"),
+  ).toHaveCount(2);
+  const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
+  expect(text).toContain("Ciprofloxacin (UAT) 32 ug/mL Resistant");
+  expect(text).not.toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");
+  await info.attach("selected-retest-patient-report.pdf", {
+    body: pdf,
+    contentType: "application/pdf",
   });
 });

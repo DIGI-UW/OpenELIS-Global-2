@@ -519,6 +519,14 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         assertEquals(childIds,
                 new HashSet<>(linked.stream().map(f -> f.getAnalysis().getSampleItem().getId()).toList()));
         assertEquals(2, linked.stream().map(f -> f.getAnalysis().getId()).distinct().count());
+        assertTrue(form.referrals.stream().allMatch(r -> r.sentAt() == null));
+        Timestamp handoff = Timestamp.from(Instant.parse("2026-10-14T23:59:42.123Z"));
+        linked.get(0).getSubcontract().setHandoffDatetime(handoff);
+        em.merge(linked.get(0).getSubcontract());
+        em.flush();
+        em.clear();
+        assertEquals(List.of(handoff), reload().referrals.stream().map(MicroIsolateWorkspaceForm.Referral::sentAt)
+                .filter(Objects::nonNull).toList());
         for (var ref : linked) {
             ref.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED);
             referrals.update(ref);

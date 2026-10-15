@@ -1,3 +1,9 @@
+import {
+  labDateTimeInput as localTime,
+  labInputInstant,
+  labTimestamp,
+  labTimeZone,
+} from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
@@ -29,12 +35,6 @@ import {
 import ReferralStatusTag from "../order/steps/referOut/referralStatusTag";
 import OrderReferOutForm from "../order/steps/referOut/OrderReferOutForm";
 
-const localTime = (value = Date.now()) => {
-  const date = new Date(value);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-};
 const labels = {
   referred: "label.results.history.event.REFERRAL",
 
@@ -194,7 +194,7 @@ function IsolateAction({
       ...draft,
       confidence: draft.confidence === "" ? null : Number(draft.confidence),
       identifiedAt: isIdentification
-        ? new Date(draft.identifiedAt).toISOString()
+        ? labInputInstant(draft.identifiedAt)
         : null,
     });
   const referral = ["referral", "specimen-referral"].includes(action.kind);
@@ -317,6 +317,7 @@ export default function CaseIsolateWorkspace({
   detail,
   service,
   initialCultureId = "",
+  renderNotes,
   onChanged,
   onClosePick,
   onLogCritical,
@@ -361,10 +362,7 @@ export default function CaseIsolateWorkspace({
       mounted.current = false;
     };
   }, [detail.id, detail.labUnitId, service]);
-  const date = (value) =>
-    value
-      ? `${intl.formatDate(new Date(value))} ${intl.formatTime(new Date(value))}`
-      : t("notAvailable");
+  const date = (value) => labTimestamp(intl, value);
   const close = () => {
     setAction(null);
     onClosePick?.();
@@ -461,6 +459,7 @@ export default function CaseIsolateWorkspace({
                 service={service}
               />
               <Stack gap={4} style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
+                {renderNotes?.("ISOLATE", isolate.id)}
                 <h3>
                   {isolate.label} —{" "}
                   {isolate.organismName ||
@@ -660,7 +659,9 @@ export default function CaseIsolateWorkspace({
                                   : intl.formatNumber(event.confidence)}
                               </TableCell>
                               <TableCell>{date(event.identifiedAt)}</TableCell>
-                              <TableCell>{event.by}</TableCell>
+                              <TableCell>
+                                {event.byDisplay || event.by}
+                              </TableCell>
                               <TableCell>{date(event.at)}</TableCell>
                               <TableCell>{event.reason}</TableCell>
                             </TableRow>

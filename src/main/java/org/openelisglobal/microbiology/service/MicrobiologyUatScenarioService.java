@@ -111,6 +111,9 @@ public class MicrobiologyUatScenarioService {
     private MicroIncomingResultService incomingResults;
     private static final String AUTOMATION_SCENARIO = "AUTOMATION_BENCH";
     private static final String AST_REPORTING_SCENARIO = "AST_REPORTING";
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.questionnaire.service.QuestionnaireStorageService questionnaireStorage;
+    private static final String UX_CONTEXT_SCENARIO = "UX_CONTEXT";
     private static final String NO_GROWTH_REPORTING_SCENARIO = "NO_GROWTH_REPORTING";
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCultureService cultures;
@@ -252,8 +255,9 @@ public class MicrobiologyUatScenarioService {
     public MicrobiologyUatScenarioForm provision(MicrobiologyUatScenarioRequestForm request, String performedBy) {
         String scenario = normalizeScenario(request == null ? null : request.scenario);
         boolean environmental = "M8".equals(scenario);
-        boolean cultureWorkspace = environmental || AUTOMATION_SCENARIO.equals(scenario)
-                || CULTURE_WORKSPACE_SCENARIO.equals(scenario) || NO_GROWTH_REPORTING_SCENARIO.equals(scenario);
+        boolean cultureWorkspace = environmental || UX_CONTEXT_SCENARIO.equals(scenario)
+                || AUTOMATION_SCENARIO.equals(scenario) || CULTURE_WORKSPACE_SCENARIO.equals(scenario)
+                || NO_GROWTH_REPORTING_SCENARIO.equals(scenario);
         boolean isolateWorkspace = ISOLATE_WORKSPACE_SCENARIO.equals(scenario)
                 || RECEIVED_ISOLATE_SCENARIO.equals(scenario) || AST_REPORTING_SCENARIO.equals(scenario);
         Analyzer analyzer = ANALYZER_REVIEW_SCENARIO.equals(scenario)
@@ -528,17 +532,21 @@ public class MicrobiologyUatScenarioService {
 
         if (AST_REPORTING_SCENARIO.equals(scenario)) {
             provisionReportingContext(microCase, sample, sampleItem, analysis, cultureMedium, suffix, performedBy, true,
-                    "CLINICAL_DIAGNOSTIC");
+                    "DIAGNOSTIC");
             astScenarioData = new AstScenarioData(
                     ensureConfirmedAstIsolate(microCase, astReferenceData, performedBy).getId(), null, null, null);
         }
 
         if (REVIEWED_AST_SCENARIO.equals(scenario) || WHONET_EXPORT_SCENARIO.equals(scenario)
-                || WHONET_FILTER_SCENARIO.equals(scenario) || NO_GROWTH_REPORTING_SCENARIO.equals(scenario)) {
+                || WHONET_FILTER_SCENARIO.equals(scenario) || NO_GROWTH_REPORTING_SCENARIO.equals(scenario)
+                || UX_CONTEXT_SCENARIO.equals(scenario)) {
             provisionReportingContext(microCase, sample, sampleItem, analysis, cultureMedium, suffix, performedBy,
-                    !NO_GROWTH_REPORTING_SCENARIO.equals(scenario),
-                    WHONET_EXPORT_SCENARIO.equals(scenario) ? null : "CLINICAL_DIAGNOSTIC");
+                    !NO_GROWTH_REPORTING_SCENARIO.equals(scenario) && !UX_CONTEXT_SCENARIO.equals(scenario),
+                    WHONET_EXPORT_SCENARIO.equals(scenario) ? null : "DIAGNOSTIC");
         }
+
+        if (UX_CONTEXT_SCENARIO.equals(scenario))
+            provisionMissingClinicalContext(microCase, suffix, performedBy);
 
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
         form.isolateSampleTypeId = isolateSampleType == null ? null : isolateSampleType.getId();
@@ -676,6 +684,46 @@ public class MicrobiologyUatScenarioService {
                     "AST_ANALYZER_REVIEW requires an analyzer with a profile and Bridge connection");
         }
         return analyzer;
+    }
+
+    private void provisionMissingClinicalContext(MicroCase microCase, String suffix, String actor) {
+        String code = "M9_" + suffix;
+        var program = programs.getAll().stream().filter(p -> code.equals(p.getCode())).findFirst().orElse(null);
+        if (program != null) {
+            microCase.setProgramId(program.getId());
+            entityManager.merge(microCase);
+            return;
+        }
+        var questionnaire = new org.hl7.fhir.r4.model.Questionnaire();
+        questionnaire.setId(UUID.nameUUIDFromBytes(code.getBytes(StandardCharsets.UTF_8)).toString());
+        questionnaire.setStatus(org.hl7.fhir.r4.model.Enumerations.PublicationStatus.ACTIVE);
+        questionnaire.setTitle("M9 clinical context " + suffix);
+        questionnaire.addItem().setLinkId("antibiotic-exposure").setText("Recent antibiotic exposure")
+                .setType(org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemType.BOOLEAN).setRequired(true);
+        questionnaire.addItem().setLinkId("antibiotic-name").setText("Antibiotic name")
+                .setType(org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemType.STRING).setRequired(true)
+                .addEnableWhen().setQuestion("antibiotic-exposure")
+                .setOperator(org.hl7.fhir.r4.model.Questionnaire.QuestionnaireItemOperator.EQUAL)
+                .setAnswer(new org.hl7.fhir.r4.model.BooleanType(true));
+        questionnaireStorage.saveQuestionnaire(questionnaire);
+        program = new org.openelisglobal.program.valueholder.Program();
+        program.setCode(code);
+        program.setProgramName("M9 clinical context " + suffix);
+        program.setDomain("CLINICAL");
+        program.setManuallyChanged(true);
+        program.setShowOnMicroCase(true);
+        program.setQuestionnaireUUID(UUID.fromString(questionnaire.getIdElement().getIdPart()));
+        program.setReportingTrackId(
+                dictionaryService.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track").getId());
+        program.setSysUserId(actor);
+        programs.insert(program);
+        microCase.setProgramId(program.getId());
+        entityManager.merge(microCase);
+        var detail = new org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm();
+        detail.culturePurpose = "DIAGNOSTIC";
+        detail.patientOrigin = "";
+        detail.antibioticExposure = false;
+        orderDetails.saveOrderDetail(microCase.getId(), detail, actor);
     }
 
     private boolean isReferenceScenario(String scenario) {
@@ -1018,6 +1066,10 @@ public class MicrobiologyUatScenarioService {
             programSamples.insert(association);
         }
         var selectedProgram = association.getProgram();
+        var reportingTrack = dictionaryService.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track");
+        selectedProgram.setReportingTrackId(reportingTrack.getId());
+        selectedProgram.setSysUserId(actor);
+        programs.update(selectedProgram);
         c.setProgramId(selectedProgram.getId());
         c.setSysUserId(actor);
         entityManager.merge(c);
@@ -1539,10 +1591,10 @@ public class MicrobiologyUatScenarioService {
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
         if (!"M8".equals(normalized) && !AUTOMATION_SCENARIO.equals(normalized)
-                && !NO_GROWTH_REPORTING_SCENARIO.equals(normalized) && !AST_REPORTING_SCENARIO.equals(normalized)
-                && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized) && !RECEIVED_ISOLATE_SCENARIO.equals(normalized)
-                && !CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized)
-                && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
+                && !UX_CONTEXT_SCENARIO.equals(normalized) && !NO_GROWTH_REPORTING_SCENARIO.equals(normalized)
+                && !AST_REPORTING_SCENARIO.equals(normalized) && !ISOLATE_WORKSPACE_SCENARIO.equals(normalized)
+                && !RECEIVED_ISOLATE_SCENARIO.equals(normalized) && !CULTURE_WORKSPACE_SCENARIO.equals(normalized)
+                && !"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
                 && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
                 && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
                 && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
