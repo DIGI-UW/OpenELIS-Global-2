@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -19,6 +20,12 @@ public class ReferralItemServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/referral-item.xml");
+    }
+
+    @After
+    public void cleanUp() throws Exception {
+        cleanRowsInCurrentConnection(
+                new String[] { "referral_result", "referral", "analysis", "sample_item", "sample", "result" });
     }
 
     @Test
