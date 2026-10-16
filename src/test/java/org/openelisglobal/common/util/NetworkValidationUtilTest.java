@@ -1,4 +1,4 @@
-package org.openelisglobal.analyzer.util;
+package org.openelisglobal.common.util;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -128,5 +128,33 @@ public class NetworkValidationUtilTest {
     @Test
     public void testAllowsPublicIP_203() {
         assertFalse("203.0.113.1 (public IP) should be allowed", NetworkValidationUtil.isBlockedAddress("203.0.113.1"));
+    }
+
+    @Test
+    public void testBlocksIPv6LinkLocal() {
+        assertTrue("fe80::1 (IPv6 Link-Local) should be blocked", NetworkValidationUtil.isBlockedAddress("fe80::1"));
+    }
+
+    @Test
+    public void testBlocksIPv6AnyLocal() {
+        assertTrue(":: (IPv6 unspecified/any-local) should be blocked", NetworkValidationUtil.isBlockedAddress("::"));
+    }
+
+    @Test
+    public void testAllowsIPv6MappedPrivateLAN_10() {
+        assertFalse("::ffff:10.0.1.50 (IPv6-mapped /8 private LAN) should be allowed",
+                NetworkValidationUtil.isBlockedAddress("::ffff:10.0.1.50"));
+    }
+
+    @Test
+    public void testAllowsIPv6MappedPrivateLAN_172_16() {
+        assertFalse("::ffff:172.16.0.1 (IPv6-mapped /12 private LAN) should be allowed",
+                NetworkValidationUtil.isBlockedAddress("::ffff:172.16.0.1"));
+    }
+
+    @Test
+    public void testAllowsIPv6MappedPrivateLAN_192_168() {
+        assertFalse("::ffff:192.168.1.100 (IPv6-mapped /16 private LAN) should be allowed",
+                NetworkValidationUtil.isBlockedAddress("::ffff:192.168.1.100"));
     }
 }
