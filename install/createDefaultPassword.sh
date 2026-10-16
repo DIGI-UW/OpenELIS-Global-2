@@ -54,7 +54,7 @@ while [ $result != 0 ]; do
   then
     echo "passwords did not match"
   else
-    echo "an error occured creating the password"
+    echo "an error occurred creating the password"
   fi
   while [ $cli_flag == false ]; do
     read -p "try again? [Y]es [N]o: " yn
