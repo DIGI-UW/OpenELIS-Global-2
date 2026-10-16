@@ -1,8 +1,10 @@
 package org.openelisglobal.sampleacceptance.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -20,10 +22,16 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -32,6 +40,10 @@ import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
+import org.openelisglobal.sample.override.valueholder.SampleOrderOverride;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
@@ -110,6 +122,18 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private SampleTypeRequestService sampleTypeRequestService;
 
+    @Autowired
+    private SampleEQAService sampleEQAService;
+
+    @Autowired
+    private SampleOrderOverrideService sampleOrderOverrideService;
+
+    @Autowired
+    private NoteService noteService;
+
+    @Autowired
+    private DisplayListService displayListService;
+
     @Before
     public void setup() throws Exception {
         executeDataSetWithStateManagement("testdata/resample-workflow.xml");
@@ -128,6 +152,19 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
     public void resetAccessionFactory() {
         // Pristine state for other tests sharing the cached Spring context.
         reset(accessionNumberValidatorFactory);
+        reset(displayListService);
+    }
+
+    private void makeOriginalAnEqaSample() {
+        SampleEQA eqa = new SampleEQA();
+        eqa.setSampleId(Long.valueOf(ORIGINAL_SAMPLE_ID));
+        eqa.setIsEqaSample(true);
+        eqa.setEqaProviderSampleId("PT-2026-A3");
+        eqa.setEqaEnrollmentId(7L);
+        eqa.setSysUserId("1");
+        sampleEQAService.insert(eqa);
+        sampleOrderOverrideService.record(Long.valueOf(ORIGINAL_SAMPLE_ID), OverrideType.NO_PATIENT,
+                OverrideReasonCode.EQA, "EQA", 1L);
     }
 
     /** The id of the fixture order's single specimen — the one we resample. */
@@ -376,5 +413,69 @@ public class ResampleServiceTest extends BaseWebContextSensitiveTest {
         List<ObservationHistory> clonedObs = observationHistoryService.getObservationHistoriesBySampleId(newSampleId);
         assertEquals("replacement carries the questionnaire / default-conditions answers", 1, clonedObs.size());
         assertEquals("same observation value as the original", "River bank A", clonedObs.get(0).getValue());
+    }
+
+    /**
+     * OGC-1488: a replacement for an EQA sample stays an EQA sample, with the
+     * original's provider sample id and enrollment, and stays an order with no
+     * patient.
+     */
+    @Test
+    public void resample_ofAnEqaSample_keepsItAnEqaSampleWithNoPatient() {
+        makeOriginalAnEqaSample();
+
+        String newSampleId = resampleService.resample(firstItemId(), REASON, TEST_USER_ID).getNewSampleId();
+
+        SampleEQA copy = sampleEQAService.findBySampleId(Long.valueOf(newSampleId)).orElse(null);
+        assertNotNull("the replacement is an EQA sample", copy);
+        assertTrue(copy.getIsEqaSample());
+        assertEquals("PT-2026-A3", copy.getEqaProviderSampleId());
+        assertEquals(Long.valueOf(7L), copy.getEqaEnrollmentId());
+        SampleOrderOverride noPatient = sampleOrderOverrideService
+                .findBySampleIdAndType(Long.valueOf(newSampleId), OverrideType.NO_PATIENT).orElse(null);
+        assertNotNull("the replacement keeps the no-patient decision", noPatient);
+        assertEquals(OverrideReasonCode.EQA, noPatient.getReasonCode());
+    }
+
+    /** OGC-1488: an EQA sample cannot be rejected without a rejection reason. */
+    @Test
+    public void reject_anEqaSampleWithoutAReason_isRefusedAndChangesNothing() {
+        makeOriginalAnEqaSample();
+        String itemId = firstItemId();
+
+        assertThrows(IllegalArgumentException.class, () -> resampleService.reject(itemId, null, "torn", 1));
+
+        assertFalse(sampleItemService.get(itemId).isRejected());
+    }
+
+    /** OGC-1488: an unknown rejection reason is refused. */
+    @Test
+    public void reject_withAnUnknownReason_isRefused() {
+        String itemId = firstItemId();
+
+        assertThrows(IllegalArgumentException.class, () -> resampleService.reject(itemId, "424242", null, 1));
+
+        assertFalse(sampleItemService.get(itemId).isRejected());
+    }
+
+    /**
+     * OGC-1488: a rejection keeps its reason on the specimen, as the id and as the
+     * rejection note with the comment.
+     */
+    @Test
+    public void reject_withAReason_storesTheReasonAndItsNote() {
+        when(displayListService.getList(DisplayListService.ListType.REJECTION_REASONS))
+                .thenReturn(List.of(new IdValuePair("9501", "Specimen leaked")));
+        makeOriginalAnEqaSample();
+        String itemId = firstItemId();
+
+        resampleService.reject(itemId, "9501", "box crushed", 1);
+
+        SampleItem rejected = sampleItemService.get(itemId);
+        assertTrue(rejected.isRejected());
+        assertEquals("9501", rejected.getRejectReasonId());
+        List<Note> notes = noteService.getNotes(rejected);
+        assertTrue("the reason and comment are the rejection note",
+                notes.stream().anyMatch(note -> "Specimen leaked | box crushed".equals(note.getText())));
     }
 }

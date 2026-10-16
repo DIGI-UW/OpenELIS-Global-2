@@ -25,6 +25,7 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.reports.valueholder.DocumentTrack;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.valueholder.Result;
@@ -304,6 +305,28 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         }
         return SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(sample,
                 ReportTrackingService.ReportType.PATIENT) != null;
+    }
+
+    @Override
+    public boolean releasedResultHasBeenReported(Analysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        if (analysis.isCorrectedSincePatientReport()) {
+            return true;
+        }
+        if (analysis.getReleasedDate() == null) {
+            return false;
+        }
+        org.openelisglobal.sample.valueholder.Sample sample = SpringContext
+                .getBean(org.openelisglobal.analysis.service.AnalysisAnchorService.class).resolveSample(analysis);
+        if (sample == null) {
+            return false;
+        }
+        DocumentTrack lastReport = SpringContext.getBean(IReportTrackingService.class).getLastReportForSample(sample,
+                ReportTrackingService.ReportType.PATIENT);
+        return lastReport != null && lastReport.getReportTime() != null
+                && !lastReport.getReportTime().before(analysis.getReleasedDate());
     }
 
     @Override

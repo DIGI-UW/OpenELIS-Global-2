@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="fixture-pathology-block-slide-identity-data"
+        author="openelis">
+        <comment>A deployment that recorded blocks and slides before either
+            carried a designation or a barcode: two cases, one with three
+            blocks that repeat the same legacy block_number, a fourth block
+            with no block_number at all, and two slides that repeat the same
+            legacy slide_number. The second case holds one block whose legacy
+            number matches the first case's, to prove the backfill ranks
+            duplicates within a case rather than across every block in the
+            table.</comment>
+        <sql>
+            INSERT INTO clinlims.sample
+            (id, accession_number, entered_date, received_date, lastupdated)
+            VALUES
+            (990001, 'IDN26000000001', now(), now(), now()),
+            (990002, 'IDN26000000002', now(), now(), now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_sample
+            (id, sample_id, status, last_updated)
+            VALUES
+            (990001, 990001, 'GROSSING', now()),
+            (990002, 990002, 'GROSSING', now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_block
+            (id, pathology_sample_id, block_number, last_updated)
+            VALUES
+            (990101, 990001, 1, now()),
+            (990102, 990001, 1, now()),
+            (990103, 990001, 2, now()),
+            (990104, 990001, NULL, NULL),
+            (990105, 990002, 1, now());
+        </sql>
+        <sql>
+            INSERT INTO clinlims.pathology_slide
+            (id, pathology_sample_id, slide_number, last_updated)
+            VALUES
+            (990201, 990001, 1, now()),
+            (990202, 990001, 1, now());
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -230,6 +230,15 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     boolean patientReportHasBeenDone(Analysis analysis);
 
+    /**
+     * A patient report has shown this analysis's released result, so a change to
+     * the value is a correction: the analysis was released before the last patient
+     * report of its sample, or a correction since a report is already recorded. A
+     * report printed while the result awaited release masked it, so changing that
+     * result is not a correction.
+     */
+    boolean releasedResultHasBeenReported(Analysis analysis);
+
     String getNotesAsString(Analysis analysis, boolean prefixType, boolean prefixTimestamp, String noteSeparator,
             boolean excludeExternPrefix);
 

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Button, Select, SelectItem, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { IdValue } from "./ExpandedPanel";
+import { ConfigurationContext } from "../../layout/Layout";
 
 /**
  * OGC-1023 (R4, FR-F1/F2) — "Refer this test" is a distinct row action, not an
@@ -12,6 +13,12 @@ import { IdValue } from "./ExpandedPanel";
  * (e-signature), riding the legacy handleReferrals path, which also sets
  * Analysis.referredOut and hands off to the Referrals subsystem (FR-F3).
  */
+/** The date-picker placeholder naming the lab's date format. */
+export const datePlaceholderId = (dateLocale?: string): string =>
+  dateLocale === "fr-FR"
+    ? "datepicker.placeholder.dmy"
+    : "datepicker.placeholder.mdy";
+
 export interface ReferralDraft {
   referredInstituteId: string;
   referralReasonId: string;
@@ -42,6 +49,8 @@ const ReferralAction: React.FC<ReferralActionProps> = ({
   onCancel,
 }) => {
   const intl = useIntl();
+  const { configurationProperties } = (useContext(ConfigurationContext) ||
+    {}) as { configurationProperties?: Record<string, string> };
   return (
     <div className="unifiedReferral" data-testid={`referral-${rowKey}`}>
       <div className="unifiedReferralGrid">
@@ -78,6 +87,9 @@ const ReferralAction: React.FC<ReferralActionProps> = ({
         <TextInput
           id={`referral-date-${rowKey}`}
           labelText={intl.formatMessage({ id: "label.results.referral.date" })}
+          placeholder={intl.formatMessage({
+            id: datePlaceholderId(configurationProperties?.DEFAULT_DATE_LOCALE),
+          })}
           value={draft.referredSendDate}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onDraftChange({ ...draft, referredSendDate: e.target.value })

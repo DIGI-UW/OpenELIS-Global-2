@@ -78,6 +78,7 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
+import org.openelisglobal.reports.action.implementation.reportBeans.ReportComponentLine;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.result.service.ResultService;
@@ -761,6 +762,7 @@ public abstract class PatientReport extends Report {
             if (!GenericValidator.isBlankOrNull(flag)) {
                 if (data != null) {
                     data.setAbnormalResult(Boolean.TRUE);
+                    data.setFlagCode(flag);
                 }
                 if (!GenericValidator.isBlankOrNull(imbed)) {
                     return " <b>" + flag + "," + imbed + "</b>";
@@ -988,6 +990,7 @@ public abstract class PatientReport extends Report {
         StringBuilder uoms = new StringBuilder();
         StringBuilder ranges = new StringBuilder();
         List<String> alerts = new ArrayList<>();
+        List<ReportComponentLine> lines = new ArrayList<>();
         for (TestResultComponent component : components) {
             // OGC-1127: a component flagged not to print is omitted from the report.
             // The primary is always kept so the test never renders with no result.
@@ -1022,7 +1025,8 @@ public abstract class PatientReport extends Report {
             }
             results.append("\n");
 
-            uoms.append(componentUomName(component, unitOfMeasureService)).append("\n");
+            String uom = componentUomName(component, unitOfMeasureService);
+            uoms.append(uom).append("\n");
 
             String significantDigits = first.getTestResult() == null ? "0"
                     : first.getTestResult().getSignificantDigits();
@@ -1030,7 +1034,9 @@ public abstract class PatientReport extends Report {
                     : resultLimitService.getDisplayReferenceRange(limit,
                             GenericValidator.isBlankOrNull(significantDigits) ? "0" : significantDigits, " - ");
             ranges.append(range).append("\n");
+            lines.add(new ReportComponentLine(component.getLabel(), componentValue, letter, range, uom));
         }
+        data.setComponents(lines);
         trimTrailingNewline(results);
         trimTrailingNewline(uoms);
         trimTrailingNewline(ranges);

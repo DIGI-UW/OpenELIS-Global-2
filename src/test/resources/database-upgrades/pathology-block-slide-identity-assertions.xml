@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-block-slide-identity"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990101 AND designation = '1'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990102 AND designation = '1-2'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990103 AND designation = '2'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990104 AND designation = 'B990104'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990105 AND designation = '1'
+            </sqlCheck>
+            <sqlCheck expectedResult="5">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id IN (990101, 990102, 990103, 990104, 990105)
+                AND cassette_state = 'BLOCK' AND active = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990101 AND barcode = 'IDN26000000001.1'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id = 990102 AND barcode = 'IDN26000000001.1-2'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_slide
+                WHERE id = 990201 AND designation = '1' AND block_id IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_slide
+                WHERE id = 990202 AND designation = '1-2' AND block_id IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_slide
+                WHERE id = 990201 AND barcode = 'IDN26000000001.1'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_slide
+                WHERE id = 990202 AND barcode = 'IDN26000000001.1-2'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM (
+                SELECT designation, barcode FROM clinlims.pathology_block
+                WHERE id IN (990101, 990102, 990103, 990104, 990105)
+                UNION ALL
+                SELECT designation, barcode FROM clinlims.pathology_slide
+                WHERE id IN (990201, 990202)
+                ) fixture_rows
+                WHERE designation IS NULL OR barcode IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="5">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims'
+                AND indexname IN (
+                'pathology_block_designation_uk',
+                'pathology_slide_designation_uk',
+                'idx_pathology_block_barcode',
+                'idx_pathology_slide_barcode',
+                'idx_pathology_slide_block_id')
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.pathology_block
+                WHERE id IN (990101, 990102, 990103, 990104, 990105)
+                AND last_updated IS NULL
+            </sqlCheck>
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM clinlims.reference_tables
+                WHERE name IN ('PATHOLOGY_BLOCK', 'PATHOLOGY_SLIDE')
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_indexes
+                WHERE schemaname = 'clinlims'
+                AND indexname = 'idx_pathology_request_sample_status'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims' AND table_name = 'pathology_block'
+                AND column_name = 'active' AND is_nullable = 'NO'
+                AND column_default LIKE '%true%'
+            </sqlCheck>
+            <sqlCheck expectedResult="4">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name IN (
+                'pathology.identifier.partScheme',
+                'pathology.identifier.blockFormat',
+                'pathology.identifier.slideFormat',
+                'pathology.identifier.separator')
+                AND value_type = 'text'
+                AND instruction_key = 'instructions.pathology.identifier'
+                AND domain_id = (SELECT id FROM clinlims.site_information_domain
+                WHERE name = 'resultConfiguration')
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.site_information
+                WHERE name = 'pathology.identifier.blockFormat'
+                AND value = '{part}{n}'
+            </sqlCheck>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

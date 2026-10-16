@@ -30,6 +30,7 @@ vi.mock("../utils/Utils", async (importOriginal) => {
     ...actual,
     getFromOpenElisServer: vi.fn(),
     postToOpenElisServerFullResponse: vi.fn(),
+    postToOpenElisServerJsonResponse: vi.fn(),
     postToOpenElisServerForPDF: vi.fn(),
     hasRole: vi.fn(() => false),
   };
@@ -38,6 +39,7 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
+  postToOpenElisServerJsonResponse,
   hasRole,
 } from "../utils/Utils";
 
@@ -218,9 +220,113 @@ const rail = () => within(document.querySelector(".case-view__rail"));
 const caseFetchCount = () =>
   getFromOpenElisServer.mock.calls.filter(([url]) => url === CASE_URL).length;
 
+// Rows as the server serves them once it has named them.
+const savedBlock = (id, designation, overrides = {}) => ({
+  id,
+  designation,
+  barcode: "ACC9." + designation,
+  cassetteState: "CASSETTE",
+  active: true,
+  location: "",
+  ...overrides,
+});
+
+const savedSlide = (id, designation, blockId, overrides = {}) => ({
+  id,
+  designation,
+  blockId,
+  barcode: "ACC9.A1." + designation,
+  active: true,
+  location: "",
+  ...overrides,
+});
+
+// One row of a list, found by the identifier it shows rather than by its
+// position, so a hidden deactivated row cannot shift what a test is looking at.
+const rowIn = (sectionId, identifier) =>
+  within(section(sectionId))
+    .getByText(identifier, {
+      selector: ".pathology-case-view__row-designation",
+    })
+    .closest(".pathology-case-view__row");
+
+const queryRowIn = (sectionId, identifier) =>
+  within(section(sectionId)).queryByText(identifier, {
+    selector: ".pathology-case-view__row-designation",
+  });
+
+const pendingRows = (sectionId) =>
+  within(section(sectionId)).queryAllByText(
+    messages["pathology.label.designationPending"],
+    { selector: ".pathology-case-view__row-designation" },
+  );
+
+const deactivateCassette = (designation) =>
+  intl.formatMessage(
+    { id: "pathology.action.deactivateCassette" },
+    { designation },
+  );
+
+const newCassette = (position) =>
+  intl.formatMessage({ id: "pathology.label.newCassette" }, { position });
+
+const newSlide = (position) =>
+  intl.formatMessage({ id: "pathology.label.newSlide" }, { position });
+
+const removeName = (name) =>
+  intl.formatMessage({ id: "common.removeSelection" }, { name });
+
+const addCassetteButton = () =>
+  screen.getByRole("button", {
+    name: messages["pathology.action.addCassette"],
+  });
+
+const addSlideButton = () =>
+  screen.getByRole("button", { name: messages["pathology.action.addSlide"] });
+
+// Named after the row it sits in, so the label starts with the field's word.
+const parentBlockCombobox = (row) =>
+  within(row).getByRole("combobox", {
+    name: new RegExp("^" + messages["pathology.label.parentBlock"]),
+  });
+
+const reasonField = () =>
+  within(screen.getByRole("dialog")).getByLabelText(messages["common.reason"]);
+
+const pressEnter = (element) =>
+  fireEvent.keyDown(element, {
+    key: "Enter",
+    code: "Enter",
+    keyCode: 13,
+    which: 13,
+  });
+
+const saveDraftButton = () =>
+  screen.getByRole("button", { name: messages["caseView.action.saveDraft"] });
+
+const postedCase = async () => {
+  fireEvent.click(saveDraftButton());
+  await waitFor(() =>
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+  );
+  return JSON.parse(postToOpenElisServerFullResponse.mock.calls.at(-1)[1]);
+};
+
+// By its own text: the role query bundled with this Testing Library names a
+// disabled button by its title, and Carbon puts an English word before a
+// danger button's label.
+const buttonWithText = (container, text) =>
+  within(container).getByText(text, { selector: "button" });
+
+const showDeactivatedSwitch = (sectionId) =>
+  within(section(sectionId)).queryByRole("switch", {
+    name: messages["caseView.action.showDeactivated"],
+  });
+
 beforeEach(() => {
   getFromOpenElisServer.mockReset();
   postToOpenElisServerFullResponse.mockReset();
+  postToOpenElisServerJsonResponse.mockReset();
   addNotification.mockReset();
   hasRole.mockReset();
   hasRole.mockReturnValue(false);
@@ -531,8 +637,15 @@ describe("PathologyCaseView sections", () => {
 
   it("counts the rows the case actually holds in the summary", async () => {
     servedCase = caseAtStage("MICROTOMY", {
-      blocks: [{ id: "1" }, { id: "2" }, { id: "3" }],
-      slides: [{ id: "1" }, { id: "2" }],
+      // A deactivated cassette and slide are kept for the record but are not
+      // work in hand, so neither row counts them.
+      blocks: [
+        { id: "1" },
+        { id: "2" },
+        { id: "3" },
+        { id: "4", active: false },
+      ],
+      slides: [{ id: "1" }, { id: "2" }, { id: "3", active: false }],
       requests: [
         { id: "1", value: "Deeper sections", status: "OPENED" },
         { id: "2", value: "Special stain", status: "COMPLETED" },
@@ -543,7 +656,7 @@ describe("PathologyCaseView sections", () => {
 
     await waitFor(() => expect(statusSelect()).not.toBeNull());
 
-    expect(summaryValue(messages["pathology.label.blocks"])).toBe("3");
+    expect(summaryValue(messages["pathology.label.cassettes"])).toBe("3");
     expect(summaryValue(messages["pathology.label.slides"])).toBe("2");
     expect(summaryValue(messages["pathology.label.request"])).toBe(
       intl.formatMessage(
@@ -882,7 +995,7 @@ describe("PathologyCaseView sections", () => {
   // technician is an attribution the case usually fills in by itself. Laid
   // out the other way round, as the flat form had it, the description read as
   // a footnote to a dropdown.
-  it("puts the macroscopic description first in grossing, the blocks under it and the attribution last", async () => {
+  it("puts the macroscopic description first in grossing, the cassettes under it and the attribution last", async () => {
     servedCase = caseAtStage("GROSSING", { blocks: [{ id: "1" }] });
     renderCaseView();
 
@@ -891,7 +1004,7 @@ describe("PathologyCaseView sections", () => {
     const grossing = section("pathology-section-grossing");
     const order = [
       grossing.querySelector("#grossExam"),
-      within(grossing).getByText(messages["pathology.label.blocks"]),
+      within(grossing).getByText(messages["pathology.label.cassettes"]),
       grossing.querySelector("#assignedTechnician"),
     ];
     order.forEach((element) => expect(element).not.toBeNull());
@@ -903,37 +1016,788 @@ describe("PathologyCaseView sections", () => {
     });
   });
 
-  // The remove control was a Carbon IconButton with a word forced in beside
-  // its glyph, which the button's square box laid over and clipped. A button
-  // that says what it removes in text is also the one a technician can read
-  // without hovering it.
-  it("removes a block from a row's own button, which names what it removes in text", async () => {
+  it("lets an unsaved row be removed and a saved one only deactivated, and offers a deactivated row neither", async () => {
+    servedCase = caseAtStage("GROSSING", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+
+    // Numbered among the new rows only, so A1 and the hidden A2 before it
+    // leave it the first.
+    const unsaved = pendingRows("pathology-section-grossing")[0].closest(
+      ".pathology-case-view__row",
+    );
+    expect(
+      within(unsaved).getByRole("button", {
+        name: removeName(newCassette(1)),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(unsaved).queryByText(messages["common.deactivate"], {
+        selector: "button",
+      }),
+    ).toBeNull();
+
+    const saved = rowIn("pathology-section-grossing", "A1");
+    expect(
+      within(saved).getByRole("button", { name: deactivateCassette("A1") }),
+    ).toBeInTheDocument();
+    expect(
+      within(saved).queryByText(messages["common.remove"], {
+        selector: "button",
+      }),
+    ).toBeNull();
+
+    fireEvent.click(showDeactivatedSwitch("pathology-section-grossing"));
+    const deactivated = rowIn("pathology-section-grossing", "A2");
+    expect(within(deactivated).queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("names each row's controls after the object the row stands for", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+
+    expect(
+      screen.getByLabelText(messages["pathology.label.location"] + " A1"),
+    ).toBe(document.getElementById("blockLocation0"));
+    expect(
+      screen.getByLabelText(
+        messages["pathology.label.location"] + " " + newCassette(1),
+      ),
+    ).toBe(document.getElementById("blockLocation1"));
+    expect(
+      screen.getByRole("button", { name: removeName(newCassette(1)) }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows each saved row's barcode and state, and an unsaved one as a cassette with no barcode yet", async () => {
     servedCase = caseAtStage("GROSSING", {
       blocks: [
-        { id: "1", blockNumber: 1 },
-        { id: "2", blockNumber: 2 },
+        savedBlock("1", "A1"),
+        savedBlock("2", "A2", { cassetteState: "BLOCK" }),
+      ],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+
+    const cassette = rowIn("pathology-section-grossing", "A1");
+    expect(within(cassette).getByText("ACC9.A1")).toBeInTheDocument();
+    expect(
+      within(cassette).getByText(messages["pathology.label.cassette"]),
+    ).toBeInTheDocument();
+    // The hidden label carries its own separator, so the barcode is heard
+    // as "Barcode: ACC9.A1" rather than run into the word before it.
+    expect(
+      cassette.querySelector(".pathology-case-view__row-barcode").textContent,
+    ).toBe(messages["label.barcode"] + ": ACC9.A1");
+
+    const block = rowIn("pathology-section-grossing", "A2");
+    expect(
+      within(block).getByText(messages["pathology.label.block"]),
+    ).toBeInTheDocument();
+
+    const unsaved = pendingRows("pathology-section-grossing")[0].closest(
+      ".pathology-case-view__row",
+    );
+    expect(
+      within(unsaved).getByText(messages["pathology.label.cassette"]),
+    ).toBeInTheDocument();
+    expect(
+      unsaved.querySelector(".pathology-case-view__row-barcode"),
+    ).toBeNull();
+  });
+
+  it("removes only the unsaved row whose own Remove was pressed", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+    fireEvent.change(document.getElementById("blockLocation1"), {
+      target: { value: "Tray 1" },
+    });
+    fireEvent.click(addCassetteButton());
+    fireEvent.change(document.getElementById("blockLocation2"), {
+      target: { value: "Tray 2" },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: removeName(newCassette(1)) }),
+    );
+
+    // Posted exactly as the server reads a new row: no id and no key the
+    // screen kept for itself.
+    const body = await postedCase();
+    expect(body.blocks).toEqual([
+      savedBlock("1", "A1"),
+      { location: "Tray 2" },
+    ]);
+  });
+
+  // A key taken from the position would hand the remaining row the removed
+  // row's controls, and with them the wrong file shown as attached.
+  it("keeps a new slide's own attachment when an earlier new slide is removed", async () => {
+    servedCase = caseAtStage("MICROTOMY", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addSlideButton());
+    fireEvent.click(addSlideButton());
+
+    const second = pendingRows("pathology-section-microtomy")[1].closest(
+      ".pathology-case-view__row",
+    );
+    await act(async () => {
+      fireEvent.change(second.querySelector('input[type="file"]'), {
+        target: {
+          files: [new File(["scan"], "scan-a1.png", { type: "image/png" })],
+        },
+      });
+    });
+    expect(within(second).getByText("scan-a1.png")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: removeName(newSlide(1)) }),
+    );
+
+    const remaining = pendingRows("pathology-section-microtomy");
+    expect(remaining).toHaveLength(1);
+    expect(
+      within(remaining[0].closest(".pathology-case-view__row")).getByText(
+        "scan-a1.png",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // The case is read back after a deactivation, so an edit not yet saved
+  // would be thrown away by it without a word.
+  it("holds deactivation back while there are unsaved changes, and says why", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    const deactivate = () =>
+      screen.getByRole("button", { name: deactivateCassette("A1") });
+    expect(deactivate()).toBeEnabled();
+
+    fireEvent.change(document.getElementById("grossExam"), {
+      target: { value: "Firm tan nodule" },
+    });
+
+    expect(deactivate()).toBeDisabled();
+    expect(deactivate()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeDeactivate"],
+    );
+
+    const fetchesBefore = caseFetchCount();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["caseView.action.discard"] }),
+    );
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(deactivate()).toBeEnabled();
+    expect(deactivate()).not.toHaveAttribute("title");
+  });
+
+  // The read-back after a deactivation would race the save's own read-back.
+  it("holds deactivation back while a save is in flight", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    const deactivate = () =>
+      screen.getByRole("button", { name: deactivateCassette("A1") });
+
+    fireEvent.click(saveDraftButton());
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+
+    expect(deactivate()).toBeDisabled();
+    expect(deactivate()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeDeactivate"],
+    );
+
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+    await act(async () => {
+      await callback({ status: 200, json: async () => ({}) });
+    });
+
+    expect(deactivate()).toBeEnabled();
+  });
+
+  it("offers no count input anywhere on the case", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1")],
+      slides: [savedSlide("5", "1", "1")],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+    expect(document.querySelectorAll('input[type="number"]')).toHaveLength(0);
+    expect(document.getElementById("blocksToAdd")).toBeNull();
+    expect(document.getElementById("slidesToAdd")).toBeNull();
+    expect(addCassetteButton()).toBeInTheDocument();
+  });
+
+  it("adds a cassette the server will name, and posts it with no id at all", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+
+    const added = pendingRows("pathology-section-grossing");
+    expect(added).toHaveLength(1);
+    expect(
+      added[0]
+        .closest(".pathology-case-view__row")
+        .querySelector(".pathology-case-view__row-barcode"),
+    ).toBeNull();
+
+    const body = await postedCase();
+    expect(body.blocks).toEqual([savedBlock("1", "A1"), { location: "" }]);
+    expect(body.blocks[1]).not.toHaveProperty("id");
+  });
+
+  it("keeps a deactivated row out of sight until it is asked for, then shows it as deactivated", async () => {
+    servedCase = caseAtStage("GROSSING", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
+    });
+    const { unmount } = renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+    expect(queryRowIn("pathology-section-grossing", "A2")).toBeNull();
+    const toggle = showDeactivatedSwitch("pathology-section-grossing");
+    expect(toggle).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    const deactivated = rowIn("pathology-section-grossing", "A2");
+    expect(
+      within(deactivated).getByText(messages["caseView.badge.deactivated"]),
+    ).toBeInTheDocument();
+    expect(document.getElementById("blockLocation1")).toBeDisabled();
+
+    unmount();
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    expect(showDeactivatedSwitch("pathology-section-grossing")).toBeNull();
+  });
+
+  // The server leaves a deactivated slide untouched, so a location or image
+  // given to one would be dropped without a word.
+  it("lets nothing be changed on a deactivated slide", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1")],
+      slides: [savedSlide("5", "1", "1", { active: false })],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(showDeactivatedSwitch("pathology-section-microtomy"));
+
+    const slide = rowIn("pathology-section-microtomy", "1");
+    expect(document.getElementById("slideLocation0")).toBeDisabled();
+    expect(
+      within(slide).getByText(messages["label.button.uploadfile"], {
+        selector: "button",
+      }),
+    ).toBeDisabled();
+  });
+
+  it("names the block each slide was cut from, and says when that was never recorded", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
+      slides: [
+        savedSlide("5", "1", "1"),
+        // A slide cut before slides named their block.
+        { id: "6", designation: "7", blockId: null, active: true },
+        savedSlide("8", "2", 2),
       ],
     });
     renderCaseView();
 
     await waitFor(() => expect(statusSelect()).not.toBeNull());
 
-    const removers = screen.getAllByRole("button", {
-      name: messages["label.button.remove.block"],
+    const cut = rowIn("pathology-section-microtomy", "1");
+    expect(
+      within(cut).getByText(messages["pathology.label.parentBlock"]),
+    ).toBeInTheDocument();
+    expect(within(cut).getByText("A1")).toBeInTheDocument();
+
+    const legacy = rowIn("pathology-section-microtomy", "7");
+    expect(
+      within(legacy).getByText(messages["caseView.label.notRecorded"]),
+    ).toBeInTheDocument();
+
+    const underDeactivated = rowIn("pathology-section-microtomy", "2");
+    expect(within(underDeactivated).getByText("A2")).toBeInTheDocument();
+    expect(
+      within(underDeactivated).getByText(
+        messages["caseView.badge.deactivated"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("holds Add slide back until the case has a saved cassette in use, and says why", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1", { active: false })],
     });
-    expect(removers).toHaveLength(2);
-    removers.forEach((remover) =>
-      expect(remover).toHaveTextContent(messages["label.button.remove.block"]),
+    const { unmount } = renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    const addSlide = () =>
+      buttonWithText(document.body, messages["pathology.action.addSlide"]);
+    expect(addSlide()).toBeDisabled();
+    expect(addSlide()).toHaveAttribute(
+      "title",
+      messages["pathology.locked.slideNeedsSavedBlock"],
     );
 
-    fireEvent.click(removers[0]);
+    unmount();
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1")],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    expect(addSlide()).toBeEnabled();
+    expect(addSlide()).not.toHaveAttribute("title");
+  });
+
+  it("lets a new slide name only a saved cassette in use, and posts the one chosen", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+    fireEvent.click(addSlideButton());
+
+    const user = userEvent.setup();
+    const newSlideRow = pendingRows("pathology-section-microtomy")[0].closest(
+      ".pathology-case-view__row",
+    );
+    await user.click(parentBlockCombobox(newSlideRow));
+    const offered = within(newSlideRow).getAllByRole("option");
+    expect(offered.map((option) => option.textContent)).toEqual(["A1"]);
+
+    await user.click(offered[0]);
+
+    const body = await postedCase();
+    expect(body.slides).toEqual([{ blockId: "1", location: "" }]);
+  });
+
+  it("will not post a new slide that names no block, and marks the slide that needs one", async () => {
+    servedCase = caseAtStage("MICROTOMY", { blocks: [savedBlock("1", "A1")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addSlideButton());
+    const newSlideRow = pendingRows("pathology-section-microtomy")[0].closest(
+      ".pathology-case-view__row",
+    );
+    expect(
+      within(newSlideRow).queryByText(
+        messages["pathology.locked.slideNeedsBlock"],
+      ),
+    ).toBeNull();
+
+    fireEvent.click(saveDraftButton());
+
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.locked.slideNeedsBlock"],
+      }),
+    );
+    expect(
+      within(newSlideRow).getByText(
+        messages["pathology.locked.slideNeedsBlock"],
+      ),
+    ).toBeInTheDocument();
+    expect(parentBlockCombobox(newSlideRow)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+
+    const user = userEvent.setup();
+    await user.click(parentBlockCombobox(newSlideRow));
+    await user.click(within(newSlideRow).getByRole("option", { name: "A1" }));
+    expect(
+      within(newSlideRow).queryByText(
+        messages["pathology.locked.slideNeedsBlock"],
+      ),
+    ).toBeNull();
+    expect(parentBlockCombobox(newSlideRow)).not.toHaveAttribute(
+      "aria-invalid",
+    );
+
+    const body = await postedCase();
+    expect(body.slides).toEqual([{ blockId: "1", location: "" }]);
+  });
+
+  it("deactivates a cassette through a dialog that names it, then reads the case back", async () => {
+    servedCase = caseAtStage("GROSSING", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2")],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(
+      screen.getByRole("button", { name: deactivateCassette("A2") }),
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        intl.formatMessage(
+          { id: "pathology.modal.deactivateCassetteHeading" },
+          { designation: "A2" },
+        ),
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.change(reasonField(), {
+      target: { value: "  Section folded " },
+    });
+    fireEvent.click(buttonWithText(dialog, messages["common.deactivate"]));
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    const [url, body, callback] =
+      postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/pathology/block/2/deactivate");
+    expect(body).toBe('{"reason":"Section folded"}');
+
+    const fetchesBefore = caseFetchCount();
+    act(() => callback({ id: 2, designation: "A2", active: false }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: intl.formatMessage(
+          { id: "pathology.toast.cassetteDeactivated" },
+          { designation: "A2" },
+        ),
+      }),
+    );
+  });
+
+  // The audit trail keeps why a retained object stopped being used, so the
+  // dialog takes no deactivation without one.
+  it("asks for a reason before deactivating, and posts the one given", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(
+      screen.getByRole("button", { name: deactivateCassette("A2") }),
+    );
+    const dialog = screen.getByRole("dialog");
+
+    expect(reasonField()).toBeRequired();
+    expect(
+      within(dialog).queryByText(messages["pathology.locked.reasonRequired"]),
+    ).toBeNull();
+
+    fireEvent.click(buttonWithText(dialog, messages["common.deactivate"]));
 
     expect(
-      screen.getAllByRole("button", {
-        name: messages["label.button.remove.block"],
+      within(dialog).getByText(messages["pathology.locked.reasonRequired"]),
+    ).toBeInTheDocument();
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+
+    fireEvent.change(reasonField(), { target: { value: "Section folded" } });
+    pressEnter(reasonField());
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    expect(postToOpenElisServerJsonResponse.mock.calls[0][1]).toBe(
+      '{"reason":"Section folded"}',
+    );
+  });
+
+  it("closes the dialog on Escape and on Cancel without deactivating anything, and hands focus back to the row", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    const launcher = () =>
+      screen.getByRole("button", { name: deactivateCassette("A2") });
+
+    fireEvent.click(launcher());
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(launcher());
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: messages["common.cancel"],
       }),
-    ).toHaveLength(1);
-    expect(document.getElementById("blockNumber1")).toBeNull();
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(launcher()).toHaveFocus());
+
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+  });
+
+  // The row whose Deactivate was pressed leaves the list on the read-back, so
+  // focus goes to the switch that brings it back rather than to the page.
+  it("puts focus on the list's show-deactivated switch once the row has gone", async () => {
+    servedCase = caseAtStage("GROSSING", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2")],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(
+      screen.getByRole("button", { name: deactivateCassette("A2") }),
+    );
+    fireEvent.change(reasonField(), { target: { value: "Section folded" } });
+    fireEvent.click(
+      buttonWithText(screen.getByRole("dialog"), messages["common.deactivate"]),
+    );
+
+    servedCase = caseAtStage("GROSSING", {
+      blocks: [savedBlock("1", "A1"), savedBlock("2", "A2", { active: false })],
+    });
+    const callback = postToOpenElisServerJsonResponse.mock.calls[0][2];
+    act(() => callback({ id: 2, designation: "A2", active: false }));
+
+    await waitFor(() =>
+      expect(showDeactivatedSwitch("pathology-section-grossing")).toHaveFocus(),
+    );
+  });
+
+  // Closing mid-flight would hide the outcome of a request that lands anyway.
+  it("stays open while the deactivation is in flight, then closes on its answer", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(
+      screen.getByRole("button", { name: deactivateCassette("A2") }),
+    );
+    fireEvent.change(reasonField(), { target: { value: "Section folded" } });
+    fireEvent.click(
+      buttonWithText(screen.getByRole("dialog"), messages["common.deactivate"]),
+    );
+
+    fireEvent.keyDown(document.activeElement, { key: "Escape" });
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByText(messages["common.cancel"], {
+        selector: "button",
+      }),
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    const fetchesBefore = caseFetchCount();
+    const callback = postToOpenElisServerJsonResponse.mock.calls[0][2];
+    act(() => callback({ id: 2, designation: "A2", active: false }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledTimes(1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+  });
+
+  // The server's sentence is English and names internal ids; the dialog says
+  // what happened in the reader's language and nothing else.
+  it("keeps the dialog open and says the deactivation was refused when the server refuses it", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(
+      screen.getByRole("button", { name: deactivateCassette("A2") }),
+    );
+    fireEvent.change(reasonField(), { target: { value: "Section folded" } });
+    fireEvent.click(
+      buttonWithText(screen.getByRole("dialog"), messages["common.deactivate"]),
+    );
+
+    const fetchesBefore = caseFetchCount();
+    const callback = postToOpenElisServerJsonResponse.mock.calls[0][2];
+    act(() => callback({ status: 404, error: "No pathology block with id 2" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(messages["pathology.modal.deactivateFailed"]),
+    ).toBeInTheDocument();
+    expect(dialog).not.toHaveTextContent("No pathology block with id 2");
+    expect(caseFetchCount()).toBe(fetchesBefore);
+    expect(addNotification).not.toHaveBeenCalled();
+  });
+
+  it("deactivates a slide through the slide endpoint, naming it by its barcode", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      blocks: [savedBlock("1", "A1")],
+      slides: [savedSlide("5", "1", "1")],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: intl.formatMessage(
+          { id: "pathology.action.deactivateSlide" },
+          { barcode: "ACC9.A1.1" },
+        ),
+      }),
+    );
+    fireEvent.change(reasonField(), { target: { value: "Cracked" } });
+    fireEvent.click(
+      buttonWithText(screen.getByRole("dialog"), messages["common.deactivate"]),
+    );
+
+    expect(postToOpenElisServerJsonResponse.mock.calls[0][0]).toBe(
+      "/rest/pathology/slide/5/deactivate",
+    );
+  });
+
+  // A cassette on the screen is not work recorded until the save names it.
+  it("counts an unsaved cassette nowhere: not on the header, the summary or grossing complete", async () => {
+    servedCase = caseAtStage("GROSSING", {
+      grossExam: "Firm tan nodule, 20mm",
+      blocks: [savedBlock("1", "A1", { active: false })],
+    });
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(addCassetteButton());
+
+    const grossing = within(section("pathology-section-grossing"));
+    expect(grossing.queryByText(messages["common.complete"])).toBeNull();
+    expect(
+      grossing.queryByText(
+        intl.formatMessage(
+          { id: "pathology.badge.cassetteCount" },
+          { count: 1 },
+        ),
+      ),
+    ).toBeNull();
+    expect(summaryValue(messages["pathology.label.cassettes"])).toBe("0");
+  });
+
+  // The servlet prints every saved label of the case from its accession
+  // number; the per-row buttons it replaced sent a block number it could not
+  // resolve.
+  it("prints the case's own labels, and only once there is a saved row to print", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    try {
+      servedCase = caseAtStage("MICROTOMY", {
+        labNumber: "AC C&9",
+        blocks: [savedBlock("1", "A1")],
+        slides: [savedSlide("5", "1", "1", { active: false })],
+      });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: messages["pathology.action.printCassetteLabels"],
+        }),
+      );
+
+      expect(open).toHaveBeenCalledTimes(1);
+      const [url, target] = open.mock.calls[0];
+      expect(url).toContain(
+        "/LabelMakerServlet?labelType=block&code=AC%20C%269",
+      );
+      expect(target).toBe("_blank");
+
+      const printSlides = buttonWithText(
+        document.body,
+        messages["pathology.action.printSlideLabels"],
+      );
+      expect(printSlides).toBeDisabled();
+      expect(printSlides).toHaveAttribute(
+        "title",
+        messages["pathology.locked.nothingToPrint"],
+      );
+    } finally {
+      open.mockRestore();
+    }
+  });
+
+  it("says a concurrent save named the same cassette, in the reader's language", async () => {
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(saveDraftButton());
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+
+    await act(async () => {
+      await callback({
+        status: 409,
+        json: async () => ({
+          status: 409,
+          conflict: "designation",
+          error: "duplicate key value violates unique constraint",
+        }),
+      });
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["pathology.error.designationConflict"],
+      }),
+    );
+  });
+
+  // The server's rule text is English and names the case's internal id, so a
+  // refusal without a meaning of its own reads as the ordinary save failure.
+  it("never shows the server's own sentence for a refused save", async () => {
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(saveDraftButton());
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+    const sentence =
+      "a slide must name the block it was cut from on pathology case 9";
+
+    await act(async () => {
+      await callback({
+        status: 400,
+        json: async () => ({ error: sentence }),
+      });
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["error.save.msg"],
+      }),
+    );
+    expect(JSON.stringify(addNotification.mock.calls)).not.toContain(sentence);
   });
 
   // The bar sits at the foot of a long page, where the native select the
@@ -1046,10 +1910,9 @@ describe("PathologyCaseView sections", () => {
   // from the rows, which is the outcome badge the shell asks for and a
   // different claim from Complete. A section with no rows and no rule says
   // nothing.
-  it("counts the blocks and slides a case holds on their section headers", async () => {
+  it("counts the cassettes in use on the grossing header", async () => {
     servedCase = caseAtStage("COMPLETED", {
-      blocks: [{ id: "1" }, { id: "2" }],
-      slides: [{ id: "1" }, { id: "2" }, { id: "3" }, { id: "4" }],
+      blocks: [{ id: "1" }, { id: "2" }, { id: "3", active: false }],
     });
     renderCaseView();
 
@@ -1057,20 +1920,12 @@ describe("PathologyCaseView sections", () => {
 
     expect(
       within(section("pathology-section-grossing")).getByText(
-        intl.formatMessage({ id: "pathology.badge.blockCount" }, { count: 2 }),
+        intl.formatMessage(
+          { id: "pathology.badge.cassetteCount" },
+          { count: 2 },
+        ),
       ),
     ).toBeInTheDocument();
-    expect(
-      within(section("pathology-section-microtomy")).getByText(
-        intl.formatMessage({ id: "pathology.badge.slideCount" }, { count: 4 }),
-      ),
-    ).toBeInTheDocument();
-    // Blocks without a description are counted, not called complete.
-    expect(
-      within(section("pathology-section-grossing")).queryByText(
-        messages["common.complete"],
-      ),
-    ).not.toBeInTheDocument();
   });
 
   it("puts the release reason in the control's own helper slot", async () => {

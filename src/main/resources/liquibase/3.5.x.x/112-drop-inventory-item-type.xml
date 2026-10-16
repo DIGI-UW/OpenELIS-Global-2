@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/drop-inventory-item-type.xml">
+
+    <!-- OGC-438: drop item_type; Postgres drops chk_item_type and its index with the column -->
+
+    <changeSet author="openelisglobal" id="OGC-438-drop-inventory-item-type">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        </preConditions>
+        <comment>Drop item_type; inventory_item_tag has held the classification since 105</comment>
+        <dropColumn schemaName="clinlims" tableName="inventory_item" columnName="item_type"/>
+        <rollback>
+            <sql><![CDATA[
+                ALTER TABLE clinlims.inventory_item ADD COLUMN item_type VARCHAR(50);
+                UPDATE clinlims.inventory_item i
+                SET item_type = COALESCE((
+                    SELECT m.item_type
+                    FROM clinlims.inventory_item_tag t
+                    JOIN (VALUES ('reagent', 'REAGENT'), ('rdt', 'RDT'), ('cartridge', 'CARTRIDGE'),
+                                 ('hiv kit', 'HIV_KIT'), ('syphilis kit', 'SYPHILIS_KIT')) AS m (tag, item_type)
+                        ON m.tag = lower(t.tag)
+                    WHERE t.item_id = i.id
+                    ORDER BY m.item_type
+                    LIMIT 1), 'REAGENT');
+                ALTER TABLE clinlims.inventory_item ALTER COLUMN item_type SET NOT NULL;
+                ALTER TABLE clinlims.inventory_item ADD CONSTRAINT chk_item_type
+                    CHECK (item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT'));
+                CREATE INDEX idx_inventory_item_type ON clinlims.inventory_item (item_type);
+            ]]></sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -24,7 +24,6 @@ import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryOrderCycleService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -57,7 +56,6 @@ public class InventoryProjectionServiceQueryCountTest {
         item.setId(id);
         item.setCode("ITEM_" + id);
         item.setName("Item " + id);
-        item.setItemType(ItemType.REAGENT);
         item.setUnits("tests");
         item.setLowStockThreshold(5);
         return item;

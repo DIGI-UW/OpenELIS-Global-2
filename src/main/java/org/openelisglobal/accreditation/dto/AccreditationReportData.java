@@ -26,9 +26,16 @@ public class AccreditationReportData {
 
     private final String notesLine;
 
+    private final List<String> bodyNames;
+
     public AccreditationReportData(List<byte[]> logos, String notesLine) {
+        this(logos, notesLine, Collections.emptyList());
+    }
+
+    public AccreditationReportData(List<byte[]> logos, String notesLine, List<String> bodyNames) {
         this.logos = logos == null ? Collections.emptyList() : logos;
         this.notesLine = notesLine;
+        this.bodyNames = bodyNames == null ? Collections.emptyList() : bodyNames;
     }
 
     /** Logo bytes in display order, capped at the number of template slots. */
@@ -42,5 +49,13 @@ public class AccreditationReportData {
      */
     public String getNotesLine() {
         return notesLine;
+    }
+
+    /**
+     * The bodies the notes line names, in display order, so a report that words the
+     * line from its own catalogue names the same bodies.
+     */
+    public List<String> getBodyNames() {
+        return bodyNames;
     }
 }

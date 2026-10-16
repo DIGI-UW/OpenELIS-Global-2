@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.audittrail.dao.HistoryDAO;
 import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
@@ -27,10 +29,13 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.util.validator.CustomDateValidator;
+import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
@@ -309,6 +314,11 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             body.put("error", MessageUtil.getMessage("referral.error.alreadyReferred"));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
+        String referralDateError = referralDatesError(item);
+        if (referralDateError != null) {
+            body.put("error", referralDateError);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
 
         item.setModified(true);
         reuseExistingResultForComponent(item, analysis);
@@ -547,6 +557,39 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             joined.append(text);
         }
         return joined.toString();
+    }
+
+    /**
+     * Why the referral dates on a save cannot be stored, or null when they can: the
+     * send date of a new referral and the reference laboratory's report date.
+     */
+    private static String referralDatesError(TestResultItem item) {
+        ReferralItem referral = item.getReferralItem();
+        if (referral == null) {
+            return null;
+        }
+        String error = item.isRefer() ? typedDateError(referral.getReferredSendDate()) : null;
+        return error != null ? error : typedDateError(referral.getReferredReportDate());
+    }
+
+    /**
+     * Why a typed date cannot be saved, or null when it can. It is read in the
+     * lab's date format and the save path parses it leniently, so a day and month
+     * in the wrong order would otherwise become a date months away.
+     */
+    private static String typedDateError(String typed) {
+        if (GenericValidator.isBlankOrNull(typed)) {
+            return null;
+        }
+        CustomDateValidator validator = CustomDateValidator.getInstance();
+        Date date = validator.getDate(typed.trim());
+        if (date == null) {
+            return MessageUtil.getMessage("errors.date", new String[] { typed });
+        }
+        if (IActionConstants.INVALID_TO_LARGE.equals(validator.validateDate(date, DateRelation.PAST))) {
+            return MessageUtil.getMessage("error.date.inFuture");
+        }
+        return null;
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

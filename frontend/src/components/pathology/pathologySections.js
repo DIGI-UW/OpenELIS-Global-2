@@ -17,6 +17,7 @@ import {
   stageDisplayKey,
   stageLabel,
 } from "./pathologyStages";
+import { countedRows } from "./pathologyRows";
 
 // The single-stage sections are titled by the stage's own key, so the rail,
 // the header and the locked hint can never call one stage two things.
@@ -183,12 +184,12 @@ export function stageBadgeKind(stageId) {
 
 /**
  * FR-3.4: grossing is done when the specimen has been described and cut, so
- * both the macroscopic description and at least one block are required. A
- * description of only whitespace is not a description.
+ * both the macroscopic description and at least one saved cassette in use
+ * are required. A description of only whitespace is not a description.
  */
 export function grossingComplete(caseInfo) {
   const described = (caseInfo?.grossExam ?? "").trim() !== "";
-  const cut = (caseInfo?.blocks ?? []).length > 0;
+  const cut = countedRows(caseInfo?.blocks).length > 0;
 
   return described && cut;
 }
@@ -217,7 +218,7 @@ export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
     if (grossingComplete(caseInfo)) {
       return { kind: "complete", textKey: "common.complete" };
     }
-    return countBadge("pathology.badge.blockCount", caseInfo?.blocks);
+    return countBadge("pathology.badge.cassetteCount", caseInfo?.blocks);
   }
 
   if (section.id === "pathology-section-microtomy") {
@@ -229,7 +230,7 @@ export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
 
 // i18n-keys: pathology.badge.*
 function countBadge(textKey, rows) {
-  const count = (rows ?? []).length;
+  const count = countedRows(rows).length;
   return count > 0 ? { kind: "inProgress", textKey, values: { count } } : null;
 }
 
@@ -430,7 +431,7 @@ export function deriveRailItems(
     } else if (section.id === "pathology-section-grossing") {
       complete = passed && grossingComplete(caseInfo);
     } else if (section.id === "pathology-section-microtomy") {
-      complete = passed && (caseInfo?.slides ?? []).length > 0;
+      complete = passed && countedRows(caseInfo?.slides).length > 0;
     }
 
     const pending =

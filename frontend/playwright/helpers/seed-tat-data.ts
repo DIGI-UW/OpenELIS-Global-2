@@ -306,14 +306,20 @@ export async function createSampleOrder(
     `${API_PREFIX}/rest/open-configuration-properties`,
   );
   const configProps = await dateFormatRes.json();
-  const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
-  const useMDY = dateLocale.startsWith("en");
   // UTC-based so the helper is deterministic regardless of the runner's local
   // timezone. Server defaults to UTC (docker-compose TZ); aligning here
   // prevents "today/yesterday" flips near midnight.
   const dd = String(now.getUTCDate()).padStart(2, "0");
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const yyyy = now.getUTCFullYear();
+  // The open properties do not publish the date locale, but they do carry
+  // today's date as the server formats it, which tells month-first from
+  // day-first.
+  const serverToday = String(configProps?.currentDateAsText || "");
+  const useMDY = configProps?.DEFAULT_DATE_LOCALE
+    ? String(configProps.DEFAULT_DATE_LOCALE).startsWith("en")
+    : serverToday.startsWith(`${mm}/`) &&
+      !serverToday.startsWith(`${dd}/${mm}`);
   const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
   // nextVisitDate must be strictly in the future (@ValidDate(FUTURE) on the form).
   // Using today as in the UI's default behavior triggers HTTP 400. Pick tomorrow.

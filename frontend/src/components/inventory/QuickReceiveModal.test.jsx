@@ -175,6 +175,14 @@ describe("QuickReceiveModal", () => {
       expect(screen.getByLabelText(/lot number/i)).toBeInTheDocument();
     });
 
+    it("matches a barcode that differs from the stored one only by leading zeros", () => {
+      renderModal();
+
+      scan("8901234567890");
+
+      expect(screen.getByLabelText(/lot number/i)).toBeInTheDocument();
+    });
+
     it("offers to define a new item when the barcode matches nothing", () => {
       const onDefineNew = vi.fn();
       renderModal({ onDefineNew });

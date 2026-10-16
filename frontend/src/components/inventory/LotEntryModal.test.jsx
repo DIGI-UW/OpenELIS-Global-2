@@ -93,7 +93,7 @@ describe("LotEntryModal — storage location wiring (OGC-657)", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(
-      await screen.findByText(/please assign a storage location/i),
+      await screen.findByText(/assign a storage location/i),
     ).toBeInTheDocument();
     expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
   });
@@ -356,7 +356,7 @@ describe("LotEntryModal — partial save recovery", () => {
     fireEvent.click(screen.getByText("Save"));
 
     expect(
-      await screen.findByText(/please assign a storage location/i),
+      await screen.findByText(/assign a storage location/i),
     ).toBeInTheDocument();
     expect(InventoryManagementAPI.receive).not.toHaveBeenCalled();
     expect(InventoryLotStorageAPI.assignLocation).not.toHaveBeenCalled();

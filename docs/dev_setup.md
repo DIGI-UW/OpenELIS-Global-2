@@ -48,23 +48,39 @@ the operating-system trust store. Later starts and other worktrees reuse that
 trust. If authentication is canceled or unavailable, startup stops before the
 build and explains how to retry.
 
-`up` builds OpenELIS, the frontend development stage, Bridge, and the analyzer
-mock from the checkout, including whatever is checked out in its submodules.
-Application image names, containers, networks, ports, and data volumes belong to
-this worktree. Docker and Maven caches are reused. Infrastructure images may be
-pulled; published application images never replace source builds.
+`up` never builds container images unless asked. It builds the OpenELIS WAR from
+the checkout and runs it, together with the frontend `src` and `public`
+directories, in the published development images named in
+`projects/analyzer-harness/docker-compose.dev.yml` and
+`docker-compose.worktree.yml` (`itechuw/openelis-global-2-dev`, `-frontend-dev`,
+`-analyzer-bridge` and `-analyzer-mock`, tag `develop`), which it pulls on each
+start. `DEV_STACK_IMAGE_NAMESPACE` and `DEV_STACK_IMAGE_TAG` select other
+published images.
+
+Run `up --build` to build those images from the checkout instead. That is only
+needed when a change lives inside an image rather than in the mounted WAR or
+frontend source: `Dockerfile.dev`, the frontend `Dockerfile`, frontend
+dependencies (`package.json`, `package-lock.json`) or build configuration
+(`vite.config.ts`, `index.html`, `tsconfig.json`), or Bridge and mock changes in
+`tools/<submodule>`. Without `--build`, `up` prints a warning when the frontend
+files, a Bridge or mock checkout, or `Dockerfile.dev`, `install/` or
+`tomcat/client-certificates` differ from what the published images were built
+from, and keeps running the published images. Application containers, networks,
+ports, and data volumes belong to this worktree. Docker and Maven caches are
+reused.
 
 `up` initializes an empty submodule at the commit the parent repository records.
-It never moves, resets or refuses a populated one, so Bridge and mock changes
-made in `tools/<submodule>` run on this stack before they are committed. For
-each submodule at another commit or with uncommitted changes, `up` prints a line
-such as
-`tools/openelis-analyzer-bridge: building checked-out a4a22a4 (recorded pin b20f5db), with uncommitted changes`.
-`scripts/run-ci-checks.sh` builds the recorded submodule commits instead.
+It never moves, resets or refuses a populated one. For each submodule at another
+commit or with uncommitted changes, `up` prints a line such as
+`tools/openelis-analyzer-bridge: checked out a4a22a4 (recorded pin b20f5db), with uncommitted changes`.
+`dataexport` changes are always built into the WAR; Bridge and mock changes run
+with `up --build`. `scripts/run-ci-checks.sh` builds the recorded submodule
+commits instead.
 
-Frontend edits hot reload. Re-run `up` after changing backend source, submodule
-source, frontend dependencies, or build configuration. `--skip-build` is only
-for reusing this worktree's already-built images and WAR.
+Frontend edits hot reload. Re-run `up` after changing backend source. Re-run
+`up --build` after changing frontend dependencies, image build configuration or
+Bridge and mock source. `--skip-build` reuses this checkout's WAR and the images
+the last `up` ran (published or built); it neither pulls nor builds.
 
 ```bash
 scripts/dev-stack status

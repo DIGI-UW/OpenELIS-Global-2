@@ -66,6 +66,7 @@ services:
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./configuration:/var/lib/openelis-global/configuration
             - reporting-data:/var/lib/openelis-global/reporting
+            - ./volume/translation:/var/lib/openelis-global/translation:ro
         secrets:
             - source: common.properties
             

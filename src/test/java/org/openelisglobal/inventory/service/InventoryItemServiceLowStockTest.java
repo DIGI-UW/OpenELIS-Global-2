@@ -12,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.inventory.dao.InventoryItemDAO;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -39,7 +38,6 @@ public class InventoryItemServiceLowStockTest {
         item.setId(id);
         item.setCode(code);
         item.setName(code);
-        item.setItemType(ItemType.REAGENT);
         item.setUnits("mL");
         item.setLowStockThreshold(threshold);
         return item;

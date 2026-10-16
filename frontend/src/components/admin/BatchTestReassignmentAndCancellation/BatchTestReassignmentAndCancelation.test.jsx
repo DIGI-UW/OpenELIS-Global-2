@@ -151,4 +151,47 @@ describe("BatchTestReassignmentAndCancelation provider calls", () => {
     );
     expect(providerCalls().filter((url) => url.includes("null"))).toEqual([]);
   });
+
+  /**
+   * The save answers after the click, outside React's batching, so the reset
+   * rendered once per state change: the pending analyses were already gone while
+   * the confirmation summary still listed them, and the page crashed on a saved
+   * cancellation.
+   */
+  it("returns to an empty form once a cancellation is saved", async () => {
+    api.get.mockImplementation((url, callback) => {
+      if (url === "/rest/BatchTestReassignment") {
+        callback(batchTestReassignment);
+      } else if (url.startsWith("/rest/AllTestsForSampleTypeProvider")) {
+        callback({ tests: [{ id: "17", name: "Amylase", isActive: "Y" }] });
+      } else if (url.startsWith("/rest/getPendingAnalysisForTestProvider")) {
+        callback({
+          notStarted: [{ id: "901", labNo: "DEV01260000000000002" }],
+          technicianRejection: [],
+          biologistRejection: [],
+          notValidated: [],
+        });
+      } else {
+        callback({});
+      }
+    });
+    api.post.mockImplementation((url, body, callback) => {
+      setTimeout(() => callback({}), 0);
+    });
+    renderPage();
+    await screen.findByText("Serum");
+    fireEvent.change(sampleTypeSelect(), { target: { value: "2" } });
+    expect(await currentTestOffers("Amylase")).toBe(true);
+    fireEvent.change(currentTestSelect(), { target: { value: "17" } });
+    fireEvent.click(await screen.findByLabelText("DEV01260000000000002"));
+    fireEvent.click(screen.getByRole("button", { name: "Ok" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Accept" })).toBeNull(),
+    );
+    expect(await screen.findByText("Serum")).toBeInTheDocument();
+  });
 });

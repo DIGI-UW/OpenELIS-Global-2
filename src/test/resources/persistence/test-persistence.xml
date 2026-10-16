@@ -195,6 +195,7 @@
         <!-- EQA entities -->
         <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
         <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
+        <class>org.openelisglobal.sample.override.valueholder.SampleOrderOverride</class>
         <class>org.openelisglobal.eqa.valueholder.EQADistribution</class>
         <class>org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit</class>
         <class>org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap</class>

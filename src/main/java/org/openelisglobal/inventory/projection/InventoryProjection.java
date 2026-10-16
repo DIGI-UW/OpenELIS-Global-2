@@ -21,7 +21,6 @@ public class InventoryProjection {
     private Long itemId;
     private String code;
     private String name;
-    private String itemType;
     private List<String> tags;
     private String units;
 

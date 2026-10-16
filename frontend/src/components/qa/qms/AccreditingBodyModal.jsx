@@ -19,6 +19,7 @@ import {
   postToOpenElisServerFormData,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
+  parseIsoDate,
   toLocalIsoDate,
 } from "../../utils/Utils";
 import { accreditationLogoUrl } from "../common/AccreditationStatusTag";
@@ -234,6 +235,7 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         <DatePicker
           datePickerType="single"
           dateFormat="Y-m-d"
+          parseDate={parseIsoDate}
           value={form.expiresOn ? [form.expiresOn] : []}
           onChange={(dates) =>
             set("expiresOn", dates.length ? toLocalIsoDate(dates[0]) : "")
@@ -241,6 +243,12 @@ const AccreditingBodyModal = ({ open, onClose, body, onSaved }) => {
         >
           <DatePickerInput
             id="accreditation-body-expires"
+            onBlur={(event) => {
+              const typed = parseIsoDate(event.target.value);
+              if (typed) {
+                set("expiresOn", toLocalIsoDate(typed));
+              }
+            }}
             labelText={intl.formatMessage({
               id: "qa.qms.accreditation.body.field.expiresOn",
             })}

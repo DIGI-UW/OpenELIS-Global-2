@@ -2,6 +2,7 @@ package org.openelisglobal.accreditation.service;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.Set;
 import org.openelisglobal.accreditation.dto.AccreditationReportData;
 
 /**
@@ -24,4 +25,13 @@ public interface AccreditationReportService {
      *                reproduces the original PDF even after a body has expired
      */
     AccreditationReportData resolve(Collection<String> testIds, LocalDate asOf);
+
+    /**
+     * The tests among {@code testIds} that lie within the scope of a body valid for
+     * reporting on {@code asOf}: the tests a report may print without the
+     * not-accredited marker.
+     *
+     * @param asOf the report's release date, as for {@link #resolve}
+     */
+    Set<String> testsInAccreditedScope(Collection<String> testIds, LocalDate asOf);
 }

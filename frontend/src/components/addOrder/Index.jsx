@@ -11,7 +11,7 @@ import {
 } from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
-import { newSampleKey } from "./sampleTypeUpdate";
+import { newSampleKey, rejectedWithoutReason } from "./sampleTypeUpdate";
 import { samplesMissingTests, samplesWithTests } from "./orderSamples";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
@@ -28,7 +28,10 @@ import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import OrderEntryMissingFieldsNotice from "./OrderEntryMissingFieldsNotice";
 import EQASampleEntry from "../eqa/EQASampleEntry";
-import EQAOrderForm, { eqaReceiptNoteMissing } from "../eqa/EQAOrderForm";
+import EQAOrderForm, {
+  eqaReceiptNoteMissing,
+  eqaSchemeMissing,
+} from "../eqa/EQAOrderForm";
 import EQAEnrollmentCoverageNotice from "../eqa/EQAEnrollmentCoverageNotice";
 import { FormattedMessage, useIntl } from "react-intl";
 import { createOrderEntryValidationSchema } from "../formModel/validationSchema/OrderEntryValidationSchema";
@@ -1073,7 +1076,8 @@ const Index = () => {
                       className="forwardButton"
                       disabled={
                         currentStep === STEP_PROGRAM &&
-                        eqaReceiptNoteMissing(orderFormValues)
+                        (eqaReceiptNoteMissing(orderFormValues) ||
+                          eqaSchemeMissing(orderFormValues))
                       }
                       onClick={navigateForward}
                     >
@@ -1091,7 +1095,8 @@ const Index = () => {
                           (item) => item.status === false,
                         ) ||
                         errors?.errors?.length > 0 ||
-                        missingTestSamples.length > 0
+                        missingTestSamples.length > 0 ||
+                        rejectedWithoutReason(samples)
                       }
                       onClick={handleSubmitOrderForm}
                     >

@@ -31,10 +31,10 @@ const BENCH_STAGE_WALKTHROUGH = [
 ];
 
 /**
- * Three fixed options ahead of the eleven stages: a disabled placeholder and
- * two groupings.
+ * Four fixed options ahead of the eleven stages: a disabled placeholder and
+ * three groupings.
  */
-const STAGE_FILTER_OPTION_COUNT = 3 + 11;
+const STAGE_FILTER_OPTION_COUNT = 4 + 11;
 
 test.describe("OGC-264: Pathology Dashboard bench stages", () => {
   test("the stage filter names every bench stage in the user's language", async ({
@@ -67,8 +67,8 @@ test.describe("OGC-264: Pathology Dashboard bench stages", () => {
       await demo.pause(2000);
     });
 
-    await test.step("The filter opens on the in-progress grouping", async () => {
-      await expect(stageFilter).toHaveValue("IN_PROGRESS", {
+    await test.step("The filter opens on the landing worklist", async () => {
+      await expect(stageFilter).toHaveValue("NOT_COMPLETED", {
         timeout: LONG_TIMEOUT,
       });
       await expect(stageFilter.locator("option")).toHaveCount(

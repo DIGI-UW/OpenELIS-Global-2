@@ -192,11 +192,11 @@ export const rejectPool = (vectorPoolId, reason) => {
  * @param {string} reason
  * @returns {Promise<Object>}
  */
-export const rejectSampleItem = (sampleItemId, reason) => {
+export const rejectSampleItem = (sampleItemId, reason, rejectReasonId) => {
   return new Promise((resolve, reject) => {
     postToOpenElisServerJsonResponse(
       `${BASE_URL}/sample-item/${sampleItemId}/reject`,
-      JSON.stringify({ reason }),
+      JSON.stringify(rejectReasonId ? { reason, rejectReasonId } : { reason }),
       (json) => {
         if (json && !json.error && json.rejected) {
           resolve(json);

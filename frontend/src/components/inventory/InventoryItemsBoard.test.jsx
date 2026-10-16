@@ -817,21 +817,6 @@ describe("InventoryItemsBoard", () => {
     });
   });
 
-  it("refetches when the page reports a delivery", async () => {
-    const { rerender } = await renderBoard();
-    expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
-
-    rerender(
-      <IntlProvider locale="en" messages={messages}>
-        <NotificationContext.Provider value={notificationContext}>
-          <InventoryItemsBoard reloadKey={1} />
-        </NotificationContext.Provider>
-      </IntlProvider>,
-    );
-
-    await waitFor(() => expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(2));
-  });
-
   it("does not refetch while it simply stays visible", async () => {
     await renderBoard();
     expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);

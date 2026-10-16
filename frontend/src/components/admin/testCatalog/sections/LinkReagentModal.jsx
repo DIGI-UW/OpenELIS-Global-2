@@ -15,7 +15,7 @@ import {
 /**
  * OGC-949 M15 / OGC-992 (epic OGC-762) — Link Reagent modal.
  *
- * Multi-select of reagent inventory (item_type=REAGENT) minus the reagents
+ * Multi-select of inventory items minus the reagents
  * already linked to this test. "Link Selected" creates one test_reagent_link
  * per selected reagent with default usage_type=PRIMARY (quantity left null,
  * filled in later via the per-row inline edit, OGC-993).

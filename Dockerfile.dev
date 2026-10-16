@@ -37,6 +37,7 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
 ADD ./pom.xml /build/pom.xml
 ADD ./tools /build/tools
 ADD ./src /build/src
+ADD ./frontend/src/languages /build/frontend/src/languages
 ADD ./dataexport /build/dataexport
 
 WORKDIR /build

@@ -122,6 +122,23 @@ public class SamplePatientEntryEQAReceiptIntegrationTest extends EQASpineTestBas
         assertEquals(EQACycleStatus.PANEL_RECEIVED, readBack(cycleId).getStatus());
     }
 
+    /**
+     * OGC-1483: every later step re-saves an EQA order with its EQA flag; the order
+     * keeps the record it was saved with instead of failing on a second one.
+     */
+    @Test
+    public void aReSavedEqaOrder_keepsItsRecord() {
+        Long cycleId = seedCycle("Re-saved order");
+        impl().persistSampleEQAData(eqaOrder(cycleId, ENROLLMENT));
+
+        impl().persistSampleEQAData(eqaOrder(null, ENROLLMENT));
+
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.sample_eqa WHERE sample_id = ?", Integer.class, SAMPLE_ID));
+        assertEquals(cycleId, jdbc.queryForObject("SELECT cycle_id FROM clinlims.sample_eqa WHERE sample_id = ?",
+                Long.class, SAMPLE_ID));
+    }
+
     /** No cycle picked is a legal order, not a rejected one. */
     @Test
     public void orderSaveWithoutACycle_recordsNoReceipt() {

@@ -2145,15 +2145,15 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Override
     public List<Analysis> getAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate) {
-        String hql = "FROM Analysis a WHERE a.enteredDate BETWEEN :lowerDate AND :upperDate AND"
+        String hql = "FROM Analysis a WHERE a.enteredDate >= :lowerDate AND a.enteredDate < :dayAfterUpperDate AND"
                 + " a.sampleItem.sample.id IN (SELECT sr.sampleId FROM SampleRequester sr WHERE"
                 + " sr.requesterId = :requesterId AND sr.requesterTypeId = (SELECT rt.id FROM"
                 + " RequesterType rt WHERE rt.requesterType = 'organization' ))";
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
             query.setParameter("requesterId", Long.valueOf(referringSiteId));
-            query.setParameter("lowerDate", java.sql.Date.valueOf(lowerDate));
-            query.setParameter("upperDate", java.sql.Date.valueOf(upperDate));
+            query.setParameter("lowerDate", Timestamp.valueOf(lowerDate.atStartOfDay()));
+            query.setParameter("dayAfterUpperDate", Timestamp.valueOf(upperDate.plusDays(1).atStartOfDay()));
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAnalysisForSiteBetweenResultDates");
@@ -2164,14 +2164,14 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Override
     public List<Analysis> getStudyAnalysisForSiteBetweenResultDates(String referringSiteId, LocalDate lowerDate,
             LocalDate upperDate) {
-        String hql = "FROM Analysis a WHERE a.releasedDate BETWEEN :lowerDate AND :upperDate AND"
+        String hql = "FROM Analysis a WHERE a.releasedDate >= :lowerDate AND a.releasedDate < :dayAfterUpperDate AND"
                 + " a.sampleItem.sample.id IN (SELECT so.sample.id FROM SampleOrganization so WHERE"
                 + " so.organization.id = :requesterId )";
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(hql, Analysis.class);
             query.setParameter("requesterId", referringSiteId);
-            query.setParameter("lowerDate", java.sql.Date.valueOf(lowerDate));
-            query.setParameter("upperDate", java.sql.Date.valueOf(upperDate));
+            query.setParameter("lowerDate", Timestamp.valueOf(lowerDate.atStartOfDay()));
+            query.setParameter("dayAfterUpperDate", Timestamp.valueOf(upperDate.plusDays(1).atStartOfDay()));
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getAnalysisForSiteBetweenResultDates");

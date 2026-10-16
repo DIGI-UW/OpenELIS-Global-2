@@ -423,6 +423,53 @@ public class EQACycleServiceImpl extends BaseObjectServiceImpl<EQACycle, Long> i
         return new EQAPrepGate(participants, requirements, blockers);
     }
 
+    private static final Set<EQACycleStatus> CLOSED_TO_SAMPLES = EnumSet.of(SUBMITTED, SUBMISSIONS_CLOSED, SCORING,
+            SCORED, CLOSED);
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OpenCycle> findOpenCycles(String schemeName) {
+        List<OpenCycle> open = new ArrayList<>();
+        if (schemeName == null || schemeName.isBlank()) {
+            return open;
+        }
+        for (EQACycle cycle : eqaCycleDAO.getAll()) {
+            if (!sameScheme(cycle, schemeName) || CLOSED_TO_SAMPLES.contains(cycle.getStatus())) {
+                continue;
+            }
+            List<String> codes = new ArrayList<>();
+            for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
+                for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
+                    if (sample.getSampleCode() != null && !codes.contains(sample.getSampleCode())) {
+                        codes.add(sample.getSampleCode());
+                    }
+                }
+            }
+            codes.sort(String::compareTo);
+            String name = cycle.getCycleName() != null && !cycle.getCycleName().isBlank() ? cycle.getCycleName()
+                    : cycle.getScheme().getName() + " #" + cycle.getCycleNumber();
+            open.add(new OpenCycle(cycle.getId(), name, cycle.getCycleNumber(), cycle.getPlannedEndDate(), codes));
+        }
+        open.sort((left, right) -> Long.compare(right.id(), left.id()));
+        return open;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isOpenCycleOfScheme(Long cycleId, String schemeName) {
+        if (cycleId == null) {
+            return false;
+        }
+        EQACycle cycle = eqaCycleDAO.get(cycleId).orElse(null);
+        return cycle != null && sameScheme(cycle, schemeName) && !CLOSED_TO_SAMPLES.contains(cycle.getStatus());
+    }
+
+    private static boolean sameScheme(EQACycle cycle, String schemeName) {
+        EQAProgram scheme = cycle.getScheme();
+        return scheme != null && scheme.getName() != null && schemeName != null
+                && scheme.getName().trim().equalsIgnoreCase(schemeName.trim());
+    }
+
     private static int nullToZero(Integer value) {
         return value == null ? 0 : value;
     }

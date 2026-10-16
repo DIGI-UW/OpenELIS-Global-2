@@ -39,6 +39,12 @@ import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import {
+  activeRows,
+  blockIdentifier,
+  labelStreamUrl,
+  slideOnBlockName,
+} from "../pathology/pathologyRows";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -1379,65 +1385,69 @@ function ImmunohistochemistryCaseView() {
                   </Column>
                   <div> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
                   <Column lg={16} md={8} sm={4} />
-                  {immunohistochemistrySampleInfo.blocks &&
-                    immunohistochemistrySampleInfo.blocks.map(
-                      (block, index) => {
-                        return (
-                          <>
-                            <Column lg={2} md={2} sm={1} key={index}>
-                              <TextInput
-                                id="blockNumber"
-                                labelText={intl.formatMessage({
-                                  id: "pathology.label.block.number",
-                                })}
-                                hideLabel={true}
-                                placeholder={intl.formatMessage({
-                                  id: "pathology.label.block.number",
-                                })}
-                                value={block.blockNumber}
-                                disabled={true}
-                              />
-                            </Column>
-                            <Column lg={2} md={2} sm={1}>
-                              <TextInput
-                                id="location"
-                                labelText={intl.formatMessage({
-                                  id: "pathology.label.location",
-                                })}
-                                hideLabel={true}
-                                placeholder={intl.formatMessage({
-                                  id: "pathology.label.location",
-                                })}
-                                value={block.location}
-                                disabled={true}
-                              />
-                            </Column>
-                            <Column lg={2} md={2} sm={2}>
-                              <Button
-                                onClick={() => {
-                                  window.open(
-                                    config.serverBaseUrl +
-                                      "/LabelMakerServlet?labelType=block&code=" +
-                                      block.blockNumber,
-                                    "_blank",
-                                  );
-                                }}
-                              >
-                                {" "}
-                                <FormattedMessage id="pathology.label.printlabel" />
-                              </Button>
-                            </Column>
-                            <Column lg={10} md={2} sm={0} />
-                            <Column lg={16} md={8} sm={4}>
-                              <div>
-                                {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                              </div>
-                            </Column>
-                          </>
-                        );
-                      },
-                    )}
+                  {activeRows(immunohistochemistrySampleInfo.blocks).map(
+                    (block, index) => {
+                      return (
+                        <React.Fragment key={block.id ?? index}>
+                          <Column lg={2} md={2} sm={1}>
+                            <TextInput
+                              id={"blockNumber_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.block.number",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.block.number",
+                              })}
+                              value={blockIdentifier(block)}
+                              disabled={true}
+                            />
+                          </Column>
+                          <Column lg={2} md={2} sm={1}>
+                            <TextInput
+                              id={"blockLocation_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.location",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.location",
+                              })}
+                              value={block.location ?? ""}
+                              disabled={true}
+                            />
+                          </Column>
+                          <Column lg={12} md={4} sm={2} />
+                          <Column lg={16} md={8} sm={4}>
+                            <div>
+                              {" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                            </div>
+                          </Column>
+                        </React.Fragment>
+                      );
+                    },
+                  )}
+                  {activeRows(immunohistochemistrySampleInfo.blocks).length >
+                    0 && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Button
+                        kind="tertiary"
+                        onClick={() => {
+                          window.open(
+                            labelStreamUrl(
+                              config.serverBaseUrl,
+                              "block",
+                              immunohistochemistrySampleInfo.labNumber,
+                            ),
+                            "_blank",
+                          );
+                        }}
+                      >
+                        <FormattedMessage id="pathology.action.printCassetteLabels" />
+                      </Button>
+                    </Column>
+                  )}
                 </Grid>
               </Column>
 
@@ -1452,87 +1462,93 @@ function ImmunohistochemistryCaseView() {
                   </Column>
 
                   <Column lg={16} md={8} sm={4} />
-                  {immunohistochemistrySampleInfo.slides &&
-                    immunohistochemistrySampleInfo.slides.map(
-                      (slide, index) => {
-                        return (
-                          <>
-                            <Column lg={2} md={2} sm={1} key={index}>
-                              <TextInput
-                                id="slideNumber"
-                                labelText={intl.formatMessage({
-                                  id: "pathology.label.slide.number",
-                                })}
-                                hideLabel={true}
-                                disabled={true}
-                                placeholder={intl.formatMessage({
-                                  id: "pathology.label.slide.number",
-                                })}
-                                value={slide.slideNumber}
-                              />
-                            </Column>
-                            <Column lg={2} md={2} sm={1}>
-                              <TextInput
-                                id="location"
-                                labelText={intl.formatMessage({
-                                  id: "pathology.label.location",
-                                })}
-                                hideLabel={true}
-                                placeholder={intl.formatMessage({
-                                  id: "pathology.label.location",
-                                })}
-                                value={slide.location}
-                                disabled={true}
-                              />
-                            </Column>
-                            <Column lg={2} md={1} sm={2}>
-                              {immunohistochemistrySampleInfo.slides[index]
-                                .image && (
-                                <>
-                                  <Button
-                                    onClick={() => {
-                                      var win = window.open();
-                                      win.document.write(
-                                        '<iframe src="' +
-                                          slide.fileType +
-                                          ";base64," +
-                                          slide.image +
-                                          '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                                      );
-                                    }}
-                                  >
-                                    <Launch />{" "}
-                                    <FormattedMessage id="pathology.label.view" />
-                                  </Button>
-                                </>
+                  {activeRows(immunohistochemistrySampleInfo.slides).map(
+                    (slide, index) => {
+                      return (
+                        <React.Fragment key={slide.id ?? index}>
+                          <Column lg={2} md={2} sm={1}>
+                            <TextInput
+                              id={"slideNumber_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.slide.number",
+                              })}
+                              hideLabel={true}
+                              disabled={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.slide.number",
+                              })}
+                              value={slideOnBlockName(
+                                slide,
+                                immunohistochemistrySampleInfo.blocks,
                               )}
-                            </Column>
-                            <Column lg={2} md={1} sm={2}>
-                              <Button
-                                onClick={() => {
-                                  window.open(
-                                    config.serverBaseUrl +
-                                      "/LabelMakerServlet?labelType=slide&code=" +
-                                      slide.slideNumber,
-                                    "_blank",
-                                  );
-                                }}
-                              >
-                                {" "}
-                                <FormattedMessage id="pathology.label.printlabel" />
-                              </Button>
-                            </Column>
-                            <Column lg={8} md={1} sm={2} />
-                            <Column lg={16} md={8} sm={4}>
-                              <div>
-                                {" "}
-                                &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
-                              </div>
-                            </Column>
-                          </>
-                        );
-                      },
-                    )}
+                            />
+                          </Column>
+                          <Column lg={2} md={2} sm={1}>
+                            <TextInput
+                              id={"slideLocation_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.location",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.location",
+                              })}
+                              value={slide.location ?? ""}
+                              disabled={true}
+                            />
+                          </Column>
+                          <Column lg={2} md={1} sm={2}>
+                            {slide.image && (
+                              <>
+                                <Button
+                                  onClick={() => {
+                                    var win = window.open();
+                                    win.document.write(
+                                      '<iframe src="' +
+                                        slide.fileType +
+                                        ";base64," +
+                                        slide.image +
+                                        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
+                                    );
+                                  }}
+                                >
+                                  <Launch />{" "}
+                                  <FormattedMessage id="pathology.label.view" />
+                                </Button>
+                              </>
+                            )}
+                          </Column>
+                          <Column lg={10} md={3} sm={2} />
+                          <Column lg={16} md={8} sm={4}>
+                            <div>
+                              {" "}
+                              &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+                            </div>
+                          </Column>
+                        </React.Fragment>
+                      );
+                    },
+                  )}
+                  {activeRows(immunohistochemistrySampleInfo.slides).length >
+                    0 && (
+                    <Column lg={16} md={8} sm={4}>
+                      <Button
+                        kind="tertiary"
+                        onClick={() => {
+                          window.open(
+                            labelStreamUrl(
+                              config.serverBaseUrl,
+                              "slide",
+                              immunohistochemistrySampleInfo.labNumber,
+                            ),
+                            "_blank",
+                          );
+                        }}
+                      >
+                        <FormattedMessage id="pathology.action.printSlideLabels" />
+                      </Button>
+                    </Column>
+                  )}
                 </Grid>
               </Column>
 

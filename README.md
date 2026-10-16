@@ -98,12 +98,14 @@ local HTTPS and may request administrator authentication. Later starts reuse
 that trust. Use the printed localhost URL; no manual certificate generation,
 browser warning bypass, domain setup or port selection is needed.
 
-The launcher builds the backend, frontend, Analyzer Bridge and mock from the
-checkout and checked-out submodules. Its containers, images, ports and data
-belong to this worktree. Frontend edits hot reload; re-run `up` after backend or
-dependency changes. Native builds, focused tests, domain setup and
-published-image deployment are described in
-[the development guide](docs/dev_setup.md).
+The launcher builds the backend WAR from the checkout and runs it, with the
+frontend source mounted, in the published development images; it does not build
+container images. Its containers, ports and data belong to this worktree.
+Frontend edits hot reload; re-run `up` after backend changes. Run
+`scripts/dev-stack up --build` to build the images from the checkout instead,
+which frontend dependency, Dockerfile, Analyzer Bridge and mock changes need.
+Native builds, focused tests, domain setup and published-image deployment are
+described in [the development guide](docs/dev_setup.md).
 
 #### The Instances can be accessed at
 

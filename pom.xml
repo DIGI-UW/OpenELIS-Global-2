@@ -877,6 +877,16 @@
             <resource>
                 <directory>src/main/resources</directory>
             </resource>
+            <!-- The interface's translation catalogue, which server-rendered reports
+                print their labels from (UiMessages), so a report reads in the screens' language
+                and wording. -->
+            <resource>
+                <directory>frontend/src/languages</directory>
+                <targetPath>ui-languages</targetPath>
+                <includes>
+                    <include>*.json</include>
+                </includes>
+            </resource>
         </resources>
         <plugins>
             <plugin>

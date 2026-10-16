@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    The case view load filters pathology_request by its case and its status
+    on every open, and the dashboard's additional-requests tile counts the
+    same columns across every case, and the table carried only its primary
+    key, so each of those reads was a sequential scan.
+    -->
+    <changeSet id="OGC-264-pathology-request-status-index" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_pathology_request_sample_status"/>
+            </not>
+        </preConditions>
+        <comment>Index pathology_request by case and status for the open-request count and the case view load</comment>
+        <createIndex indexName="idx_pathology_request_sample_status" tableName="pathology_request" schemaName="clinlims">
+            <column name="pathology_sample_id"/>
+            <column name="status"/>
+        </createIndex>
+        <rollback>
+            <dropIndex schemaName="clinlims" tableName="pathology_request" indexName="idx_pathology_request_sample_status"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

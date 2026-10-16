@@ -50,6 +50,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -82,6 +83,8 @@ import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.OrderProgressService;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
@@ -251,6 +254,14 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private TestMethodService testMethodService;
+
+    @Autowired
+    @Lazy
+    private SampleEQAService sampleEQAService;
+
+    @Autowired
+    @Lazy
+    private SampleOrderOverrideService sampleOrderOverrideService;
 
     @Autowired(required = false)
     private String ADDRESS_PART_VILLAGE_ID;
@@ -1337,6 +1348,31 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
+     * The EQA and no-patient decisions travel with the order, so a later step
+     * opened on it skips the patient block and the consent gate (OGC-1483).
+     */
+    private void putEqaAndNoPatient(Map<String, Object> sampleOrderItems, String sampleId) {
+        if (sampleId == null) {
+            return;
+        }
+        Long id = Long.valueOf(sampleId);
+        sampleEQAService.findBySampleId(id).ifPresent(eqa -> {
+            sampleOrderItems.put("isEQASample", Boolean.TRUE.equals(eqa.getIsEqaSample()));
+            sampleOrderItems.put("eqaProgramId",
+                    eqa.getEqaEnrollmentId() == null ? "" : String.valueOf(eqa.getEqaEnrollmentId()));
+            sampleOrderItems.put("eqaCycleId", eqa.getCycleId() == null ? "" : String.valueOf(eqa.getCycleId()));
+            sampleOrderItems.put("eqaProviderSampleId",
+                    eqa.getEqaProviderSampleId() == null ? "" : eqa.getEqaProviderSampleId());
+        });
+        sampleOrderOverrideService.findBySampleIdAndType(id, OverrideType.NO_PATIENT).ifPresent(override -> {
+            sampleOrderItems.put("noPatientOverride", true);
+            sampleOrderItems.put("noPatientReasonCode",
+                    override.getReasonCode() == null ? "" : override.getReasonCode().name());
+            sampleOrderItems.put("noPatientReason", override.getReason() == null ? "" : override.getReason());
+        });
+    }
+
+    /**
      * Build sampleOrderItems with all order-level data including: - Lab number and
      * dates - Provider/Requester info from SampleHuman (provider) and
      * SampleRequester (organization) - Referring site (organization) info - Program
@@ -1356,6 +1392,7 @@ public class OrderSearchRestController extends BaseRestController {
         sampleOrderItems.put("receivedTime", sample.getReceivedTimeForDisplay());
 
         String sampleId = sample.getId();
+        putEqaAndNoPatient(sampleOrderItems, sampleId);
 
         // Provider - get from SampleHuman.providerId via
         // sampleHumanService.getProviderForSample()

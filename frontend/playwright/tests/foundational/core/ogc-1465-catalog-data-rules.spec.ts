@@ -122,11 +122,9 @@ test.describe("The server applies the Test Catalog's data rules (OGC-1465)", () 
     const headers = { "X-CSRF-Token": await csrfToken(page) };
     const testId = await seedTest(page, headers);
     try {
-      const reagents = (
-        (await (
-          await page.request.get(`${API}/rest/inventory/items/type/REAGENT`)
-        ).json()) as { id: string; isActive: string | boolean }[]
-      ).filter((r) => r.isActive === "Y" || r.isActive === true);
+      const reagents = (await (
+        await page.request.get(`${API}/rest/inventory/items`)
+      ).json()) as { id: string }[];
       if (reagents.length > 0) {
         const negative = await page.request.post(`${TC}/${testId}/reagents`, {
           headers,

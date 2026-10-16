@@ -138,9 +138,10 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
 
     @Test
     public void theBoardReadCostDoesNotGrowWithLotsOrRetiredItems() {
-        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, item_type, units, is_active,"
-                + " last_updated) VALUES (?, gen_random_uuid(), 'PROJ_RETIRED', 'Retired item', 'REAGENT', 'mL',"
-                + " 'N', NOW())", RETIRED_ITEM_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, units, is_active, last_updated)"
+                        + " VALUES (?, gen_random_uuid(), 'PROJ_RETIRED', 'Retired item', 'mL', 'N', NOW())",
+                RETIRED_ITEM_ID);
         jdbc.update("INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number,"
                 + " expiration_date, receipt_date, initial_quantity, current_quantity, qc_status, status, version,"
                 + " last_updated) VALUES (?, gen_random_uuid(), ?, 'PROJ-LOT-RETIRED', NOW() + INTERVAL '1 year',"

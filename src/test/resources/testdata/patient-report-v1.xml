@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- OGC-932: one order for the V1 patient report populator. Three primary
+    samples (serum collected and received, urine with neither time, whole blood
+    rejected), a voided sample and an aliquot of the serum; a released glucose
+    with its method, an urea awaiting validation, a potassium on the rejected
+    sample and a released creatinine on the aliquot. History, notes, callbacks
+    and report issues reference tables whose ids are only known at run time,
+    so the test writes them itself. -->
+<dataset>
+    <status_of_sample id="1" name="Test Entered"
+        status_type="ORDER"
+        description="No tests have been run for this order" code="1"
+        display_key="status.sample.notStarted" is_active="Y" />
+    <status_of_sample id="2" name="Testing Started"
+        status_type="ORDER"
+        description="Some tests have been run on this order" code="1"
+        display_key="status.sample.started" is_active="Y" />
+    <status_of_sample id="3" name="Testing finished"
+        status_type="ORDER"
+        description="All tests have been run on this order" code="1"
+        display_key="status.sample.finished" is_active="Y" />
+    <status_of_sample id="12" name="NonConforming"
+        status_type="ORDER" description="The order is non-conforming" code="1"
+        display_key="status.sample.nonConforming" is_active="N" />
+
+    <status_of_sample id="4" name="Not Tested"
+        status_type="ANALYSIS" description="This test has not yet been done"
+        code="1" display_key="status.test.notStarted" is_active="Y" />
+    <status_of_sample id="6" name="Finalized"
+        status_type="ANALYSIS"
+        description="The results of the analysis are final" code="1"
+        display_key="status.test.valid" is_active="Y" />
+    <status_of_sample id="7" name="Biologist Rejection"
+        status_type="ANALYSIS"
+        description="The Biologist did not accept this result as valid"
+        code="1" display_key="status.test.biologist.reject" is_active="Y" />
+    <status_of_sample id="13" name="NonConforming"
+        status_type="ANALYSIS" description="The order is non-conforming"
+        code="1" display_key="status.analysis.nonConforming" is_active="N" />
+    <status_of_sample id="14" name="Test Canceled"
+        status_type="ANALYSIS"
+        description="Test was requested but then canceled" code="1"
+        display_key="status.test.canceled" is_active="Y" />
+    <status_of_sample id="15" name="Technical Acceptance"
+        status_type="ANALYSIS"
+        description="The results of the test were accepted by technician as being valid"
+        code="1" display_key="status.test.tech.accepted" is_active="Y" />
+    <status_of_sample id="16" name="Technical Rejected"
+        status_type="ANALYSIS"
+        description="The results of the test were not accepted by the technicain"
+        code="1" display_key="status.test.tech.rejected" is_active="Y" />
+
+    <status_of_sample id="19" name="SampleCanceled"
+        status_type="SAMPLE"
+        description="The sample has been canceled by the user" code="1"
+        display_key="status.sample.entered" is_active="Y" />
+    <status_of_sample id="20" name="SampleEntered"
+        status_type="SAMPLE"
+        description="The sample has been entered into the system" code="1"
+        display_key="status.sample.entered" is_active="Y" />
+    <status_of_sample id="24" name="SampleDisposed"
+        status_type="SAMPLE" description="Sample has been physically disposed"
+        code="1" display_key="status.sample.disposed" is_active="Y" />
+
+    <status_of_sample id="21" name="Entered"
+        status_type="EXTERNAL_ORDER"
+        description="The electronic order has been entered into OE" code="1"
+        display_key="status.sample.entered" is_active="Y" />
+    <status_of_sample id="22" name="Cancelled"
+        status_type="EXTERNAL_ORDER"
+        description="The electronic order has been cancelled" code="1"
+        display_key="status.sample.cancelled" is_active="Y" />
+    <status_of_sample id="23" name="Realized"
+        status_type="EXTERNAL_ORDER"
+        description="The patient associated with the electronic order has appeared at the lab"
+        code="1" display_key="status.sample.realized" is_active="Y" />
+
+    <!-- Added on top of the SQL seed by liquibase changesets: support_reject_sample
+        (Sample Rejected, both domains), 055-rejected-by-reference-lab-status, 061-awaiting-specimen-order-status
+        and locator_form_integration. They take their ids from status_of_sample_seq,
+        which the seed leaves at 24. -->
+    <status_of_sample id="25" name="Sample Rejected"
+        status_type="ANALYSIS" description="The sample has been rejected"
+        code="1" display_key="status.sample.rejected" is_active="Y" />
+    <status_of_sample id="26" name="Sample Rejected"
+        status_type="SAMPLE" description="The sample has been rejected"
+        code="1" display_key="status.sample.rejected" is_active="Y" />
+    <status_of_sample id="27"
+        name="RejectedByReferenceLab" status_type="ANALYSIS"
+        description="Result rejected by reference lab; re-collection required"
+        code="1" display_key="status.analysis.rejectedByReferenceLab"
+        is_active="Y" />
+    <status_of_sample id="28" name="NonConforming"
+        status_type="EXTERNAL_ORDER"
+        description="This order is non-conforming" code="1"
+        display_key="status.order.nonConforming" is_active="Y" />
+    <status_of_sample id="29" name="AwaitingSpecimen"
+        status_type="EXTERNAL_ORDER"
+        description="This order is awaiting specimen clarification" code="1"
+        display_key="status.order.awaitingSpecimen" is_active="Y" />
+
+    <localization id="9301" description="v1 report section"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9301" localization_id="9301"
+        locale="en" value="Chemistry" />
+    <localization id="9302" description="v1 report glucose"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9302" localization_id="9302"
+        locale="en" value="Glucose" />
+    <localization id="9303" description="v1 report urea"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9303" localization_id="9303"
+        locale="en" value="Urea" />
+    <localization id="9304" description="v1 report potassium"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9304" localization_id="9304"
+        locale="en" value="Potassium" />
+    <localization id="9305" description="v1 report creatinine"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9305" localization_id="9305"
+        locale="en" value="Creatinine" />
+    <localization id="9306" description="v1 report serum"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9306" localization_id="9306"
+        locale="en" value="Serum" />
+    <localization id="9307" description="v1 report urine"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9307" localization_id="9307"
+        locale="en" value="Urine" />
+    <localization id="9308"
+        description="v1 report whole blood" lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9308" localization_id="9308"
+        locale="en" value="Whole blood" />
+    <localization id="9309"
+        description="v1 report billing label"
+        lastupdated="2026-01-01 12:00:00" />
+    <localization_value id="9309" localization_id="9309"
+        locale="en" value="Billing Number" />
+
+    <person id="9301" last_name="Kila" first_name="Mary"
+        lastupdated="2026-01-01 12:00:00" />
+    <patient id="9301" person_id="9301" gender="F"
+        birth_date="1990-03-12 00:00:00" is_merged="0"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <system_user id="9301" external_id="V1-9301"
+        login_name="schen" last_name="Chen" first_name="Sarah" initials="SC"
+        is_active="Y" is_employee="Y" lastupdated="2026-01-01 12:00:00" />
+    <system_user id="9302" external_id="V1-9302"
+        login_name="bokello" last_name="Okello" first_name="Ben" initials="BO"
+        is_active="Y" is_employee="Y" lastupdated="2026-01-01 12:00:00" />
+    <system_user id="9303" external_id="V1-9303"
+        login_name="tbench" last_name="Bench" first_name="Tom" initials="TB"
+        is_active="Y" is_employee="Y" lastupdated="2026-01-01 12:00:00" />
+
+    <type_of_sample id="9301" description="v1 Serum"
+        domain="H" local_abbrev="V1SER" name_localization_id="9306"
+        lastupdated="2026-01-01 12:00:00" />
+    <type_of_sample id="9302" description="v1 Urine"
+        domain="H" local_abbrev="V1URI" name_localization_id="9307"
+        lastupdated="2026-01-01 12:00:00" />
+    <type_of_sample id="9303" description="v1 Whole blood"
+        domain="H" local_abbrev="V1WB" name_localization_id="9308"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <test_section id="9301" name="V1 Chemistry"
+        description="v1 report section" is_active="Y"
+        name_localization_id="9301" sort_order="1"
+        lastupdated="2026-01-01 12:00:00" domain="CLINICAL" />
+    <test id="9301" description="Glucose Test"
+        reporting_description="Glucose" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2035-12-31 12:00:00"
+        is_reportable="Y" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2026-01-01 12:00:00" local_code="V1-9301"
+        sort_order="9301" name="Glucose" orderable="true"
+        guid="v1-report-9301" antimicrobial_resistance="false"
+        test_section_id="9301" name_localization_id="9302"
+        reporting_name_localization_id="9302" in_lab_only="false" />
+    <test id="9302" description="Urea Test"
+        reporting_description="Urea" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2035-12-31 12:00:00"
+        is_reportable="Y" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2026-01-01 12:00:00" local_code="V1-9302"
+        sort_order="9302" name="Urea" orderable="true" guid="v1-report-9302"
+        antimicrobial_resistance="false" test_section_id="9301"
+        name_localization_id="9303" reporting_name_localization_id="9303"
+        in_lab_only="false" />
+    <test id="9303" description="Potassium Test"
+        reporting_description="Potassium" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2035-12-31 12:00:00"
+        is_reportable="Y" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2026-01-01 12:00:00" local_code="V1-9303"
+        sort_order="9303" name="Potassium" orderable="true"
+        guid="v1-report-9303" antimicrobial_resistance="false"
+        test_section_id="9301" name_localization_id="9304"
+        reporting_name_localization_id="9304" in_lab_only="false" />
+    <test id="9304" description="Creatinine Test"
+        reporting_description="Creatinine" sticker_req_flag="N" is_active="Y"
+        active_begin="2025-01-01 12:00:00" active_end="2035-12-31 12:00:00"
+        is_reportable="Y" time_holding="30" time_wait="15"
+        time_ta_average="60" time_ta_warning="90" time_ta_max="120"
+        label_qty="1" lastupdated="2026-01-01 12:00:00" local_code="V1-9304"
+        sort_order="9304" name="Creatinine" orderable="true"
+        guid="v1-report-9304" antimicrobial_resistance="false"
+        test_section_id="9301" name_localization_id="9305"
+        reporting_name_localization_id="9305" in_lab_only="false" />
+
+    <method id="9301" name="Hexokinase" description="Hexokinase"
+        reporting_description="" active_begin="2025-01-01"
+        lastupdated="2026-01-01 12:00:00" />
+
+    <sample id="9301" accession_number="V1RPT0000009301"
+        status_id="2" received_date="2026-10-01 09:00:00"
+        entered_date="2026-10-01 09:00:00"
+        collection_date="2026-10-01 08:10:00"
+        lastupdated="2026-10-01 09:00:00" />
+    <sample_human id="9301" patient_id="9301" samp_id="9301"
+        lastupdated="2026-10-01 09:00:00" />
+
+    <sample_item id="9301" samp_id="9301" sort_order="1"
+        status_id="20" typeosamp_id="9301"
+        collection_date="2026-10-01 08:10:00"
+        received_date="2026-10-01 08:50:00" collection_conditions="Fasting"
+        rejected="false" voided="false" lastupdated="2026-10-01 09:00:00" />
+    <sample_item id="9302" samp_id="9301" sort_order="2"
+        status_id="20" typeosamp_id="9302" rejected="false" voided="false"
+        lastupdated="2026-10-01 09:00:00" />
+    <sample_item id="9303" samp_id="9301" sort_order="3"
+        status_id="20" typeosamp_id="9303"
+        collection_date="2026-10-01 07:55:00"
+        received_date="2026-10-01 08:50:00" rejected="true" voided="false"
+        lastupdated="2026-10-01 09:00:00" />
+    <sample_item id="9304" samp_id="9301" sort_order="4"
+        status_id="20" typeosamp_id="9302" rejected="false" voided="true"
+        void_reason="Entered twice" lastupdated="2026-10-01 09:00:00" />
+    <sample_item id="9305" samp_id="9301" sort_order="5"
+        status_id="20" typeosamp_id="9301" parent_sample_item_id="9301"
+        collection_date="2026-10-01 08:10:00" rejected="false" voided="false"
+        lastupdated="2026-10-01 09:00:00" />
+
+    <analysis id="9301" test_sect_id="9301" sampitem_id="9301"
+        test_id="9301" status_id="6" method_id="9301" analysis_type="MANUAL"
+        is_reportable="Y" released_date="2026-10-01 10:15:00"
+        lastupdated="2026-10-01 10:15:00" />
+    <analysis id="9302" test_sect_id="9301" sampitem_id="9302"
+        test_id="9302" status_id="15" analysis_type="MANUAL" is_reportable="Y"
+        lastupdated="2026-10-01 10:00:00" />
+    <analysis id="9303" test_sect_id="9301" sampitem_id="9303"
+        test_id="9303" status_id="25" analysis_type="MANUAL" is_reportable="Y"
+        lastupdated="2026-10-01 09:00:00" />
+    <analysis id="9305" test_sect_id="9301" sampitem_id="9305"
+        test_id="9304" status_id="6" analysis_type="MANUAL" is_reportable="Y"
+        released_date="2026-10-01 11:40:00" lastupdated="2026-10-01 11:40:00" />
+
+    <result id="9301" analysis_id="9301" value="6.3" result_type="N"
+        min_normal="3.9" max_normal="5.8" is_reportable="Y"
+        lastupdated="2026-10-01 10:00:00" />
+    <result id="9302" analysis_id="9302" value="5.1" result_type="N"
+        min_normal="2.5" max_normal="7.1" is_reportable="Y"
+        lastupdated="2026-10-01 10:00:00" />
+    <result id="9305" analysis_id="9305" value="80" result_type="N"
+        min_normal="60" max_normal="110" is_reportable="Y"
+        lastupdated="2026-10-01 11:30:00" />
+</dataset>

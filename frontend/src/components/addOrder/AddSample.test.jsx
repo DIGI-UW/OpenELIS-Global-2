@@ -264,6 +264,21 @@ describe("AddSample carries what the step shows (OGC-1388)", () => {
     expect(latestSamples[0].sampleRejected).toBe(false);
   });
 
+  // OGC-1488: a reason is required to submit, so Back must leave it choosable.
+  test("Next then Back keeps Reject ticked and its reason choosable", () => {
+    const { rerender } = render(<Harness initialSamples={[emptySample()]} />);
+    act(() => {
+      fireEvent.click(document.getElementById("reject_0"));
+    });
+
+    rerender(<Harness initialSamples={[emptySample()]} showStep={false} />);
+    rerender(<Harness initialSamples={[emptySample()]} showStep />);
+
+    expect(document.getElementById("reject_0")).toBeChecked();
+    expect(document.getElementById("rejectedReasonId_0")).toBeEnabled();
+    expect(latestSamples[0].sampleRejected).toBe(true);
+  });
+
   test("the reference-lab referral is offered unless the screen turns it off", () => {
     const { unmount } = render(<Harness initialSamples={[emptySample()]} />);
     expect(document.getElementById("useReferral_0")).toBeInTheDocument();

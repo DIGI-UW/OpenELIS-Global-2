@@ -673,12 +673,15 @@ existing Let's Encrypt flow.
 
 Use the mode matching the work:
 
-- `scripts/dev-stack up` builds this checkout using worktree-specific images,
-  including the Bridge and analyzer mock exactly as checked out in their
-  submodules. It initializes only empty submodules, never moves or resets a
-  populated one, and prints a line for each submodule that differs from the
-  recorded commit or has uncommitted changes. It does not reuse published
-  application images.
+- `scripts/dev-stack up` builds this checkout's WAR and runs it, with the
+  frontend source mounted, in the published development images named in the
+  harness compose files. It never builds container images by default; only
+  `up --build` builds them from the checkout, which Bridge, mock, frontend
+  dependency and image build changes need. Without `--build` it warns when the
+  checkout differs from what the published images contain. It initializes only
+  empty submodules, never moves or resets a populated one, and prints a line for
+  each submodule that differs from the recorded commit or has uncommitted
+  changes.
 - `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
   revision and its recorded submodule commits, concurrently with GitHub after
   each push. Targeted tests alone are not full parity. Retain and inspect the

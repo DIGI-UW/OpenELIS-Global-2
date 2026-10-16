@@ -126,6 +126,30 @@ describe("OrderQA", () => {
     ).not.toBeInTheDocument();
   });
 
+  // OGC-1483: an EQA proficiency sample has no patient to show.
+  it("shows no Patient block for an EQA order", () => {
+    const original = orderContextValue.orderData;
+    orderContextValue.orderData = {
+      patientProperties: {},
+      sampleOrderItems: { ...original.sampleOrderItems, isEQASample: true },
+    };
+    try {
+      renderQa();
+      expect(
+        screen.queryByText(messages["qa.summary.patient"]),
+      ).not.toBeInTheDocument();
+    } finally {
+      orderContextValue.orderData = original;
+    }
+  });
+
+  it("shows the Patient block for a clinical order", () => {
+    renderQa();
+    expect(
+      screen.getByText(messages["qa.summary.patient"]),
+    ).toBeInTheDocument();
+  });
+
   it("does not load a checklist configuration of its own", () => {
     renderQa();
 

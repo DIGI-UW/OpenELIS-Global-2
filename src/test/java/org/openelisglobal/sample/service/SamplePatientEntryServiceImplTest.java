@@ -352,4 +352,18 @@ public class SamplePatientEntryServiceImplTest {
                 org.mockito.ArgumentMatchers.anyMap());
     }
 
+    /**
+     * OGC-1488: every later step re-saves the order's specimens; a specimen
+     * rejected earlier already has its rejection note and gets no second one.
+     */
+    @Test
+    public void rejectionNote_isWrittenOnlyForASpecimenRejectedInThisSave() {
+        SampleItem rejected = new SampleItem();
+        rejected.setRejected(true);
+        SampleItem accepted = new SampleItem();
+
+        org.junit.Assert.assertTrue(SamplePatientEntryServiceImpl.rejectionNoteDue(rejected, true));
+        org.junit.Assert.assertFalse(SamplePatientEntryServiceImpl.rejectionNoteDue(rejected, false));
+        org.junit.Assert.assertFalse(SamplePatientEntryServiceImpl.rejectionNoteDue(accepted, true));
+    }
 }
