@@ -117,14 +117,9 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
                 ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), performedBy));
         astService.reviewRun(run.getId(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
-
-        // V1 retirement left the workflow_type column readable only for this
-        // export selection, with no application writer left: stamp the stored
-        // V1 value directly to stand in for a legacy bacteriology row.
-        entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
+        // The M4 seeder stamps BACTERIOLOGY; current cases leave it null.
+        entityManager.createQuery("update MicroCase c set c.workflowType = null where c.id = :id")
                 .setParameter("id", released.getId()).executeUpdate();
-        entityManager.flush();
-        entityManager.refresh(released);
 
         assertTrue(released.getClosedAt().after(new Timestamp(collectionDate.getTime() + 1_000)));
         assertEquals(List.of(released), caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,
@@ -166,6 +161,12 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
                 persisted.getPopulationSelection().getSignificance());
         assertTrue(new String(result.getContent(), java.nio.charset.StandardCharsets.UTF_8)
                 .contains(scenario.accessionNumber));
+
+        // Stored V1 rows keep their workflow_type; no application code writes it.
+        entityManager.createQuery("update MicroCase c set c.workflowType = 'MYCOBACTERIOLOGY_TB' where c.id = :id")
+                .setParameter("id", released.getId()).executeUpdate();
+        assertFalse(caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,
+                new Timestamp(collectionDate.getTime() + 1_000)).contains(released));
     }
 
     @Test
