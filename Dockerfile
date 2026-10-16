@@ -1,7 +1,7 @@
 ##
 # Build Stage
 #
-FROM maven:3-eclipse-temurin-21 AS build
+FROM maven:3-eclipse-temurin-27 AS build
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
@@ -66,7 +66,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ##
 # Tomcat's client certificate trust manager (see tomcat/oe_server.xml)
 #
-FROM maven:3-eclipse-temurin-21 AS tomcat-lib
+FROM maven:3-eclipse-temurin-27 AS tomcat-lib
 COPY ./tomcat/client-certificates /build/client-certificates
 RUN mkdir -p /build/classes \
     && javac --release 21 -d /build/classes $(find /build/client-certificates -name '*.java') \
