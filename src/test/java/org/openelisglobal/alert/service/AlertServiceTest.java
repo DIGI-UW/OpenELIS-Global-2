@@ -2,11 +2,13 @@ package org.openelisglobal.alert.service;
 
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.alert.event.AlertAcknowledgedEvent;
 import org.openelisglobal.alert.event.AlertCreatedEvent;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
@@ -76,6 +78,78 @@ public class AlertServiceTest extends BaseWebContextSensitiveTest {
 
         assertThrows(IllegalStateException.class, () -> alertService.acknowledgeAlert(alert.getId(), 1));
         assertEquals(AlertStatus.RESOLVED, alertService.get(alert.getId()).getStatus());
+    }
+
+    /**
+     * The returned Alert only shows the state after acknowledging, so
+     * previousStatus can only be verified on the published AlertAcknowledgedEvent
+     * itself.
+     */
+    @Test
+    public void testAcknowledgeAlert_PublishesEventWithPreviousAndCurrentStatus() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+        assertEquals("Newly created alert should start OPEN", AlertStatus.OPEN, alert.getStatus());
+
+        List<AlertAcknowledgedEvent> events = captureAcknowledgedEventsDuring(
+                () -> alertService.acknowledgeAlert(alert.getId(), 1));
+
+        assertEquals("Exactly one acknowledged event should be published", 1, events.size());
+        AlertAcknowledgedEvent event = events.get(0);
+        assertEquals("Event should carry the alert id", alert.getId(), event.getAlertId());
+        assertEquals("previousStatus should be the status before acknowledging", AlertStatus.OPEN,
+                event.getPreviousStatus());
+        assertEquals("currentStatus should be ACKNOWLEDGED", AlertStatus.ACKNOWLEDGED, event.getCurrentStatus());
+        assertEquals("Event should carry the acknowledging user", Long.valueOf(1L), event.getAcknowledgedByUserId());
+        assertNotNull("acknowledgedAt should be populated", event.getAcknowledgedAt());
+    }
+
+    @Test
+    public void testAcknowledgeAlert_WithNotes_PublishesNotesAsAcknowledgementReason() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+
+        List<AlertAcknowledgedEvent> events = captureAcknowledgedEventsDuring(
+                () -> alertService.acknowledgeAlert(alert.getId(), 1, "Probe checked, door was ajar"));
+
+        assertEquals("Exactly one acknowledged event should be published", 1, events.size());
+        assertEquals("Event should carry the acknowledgement notes", "Probe checked, door was ajar",
+                events.get(0).getAcknowledgementReason());
+    }
+
+    @Test
+    public void testAcknowledgeAlert_WithBlankNotes_PublishesNoReason() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+
+        List<AlertAcknowledgedEvent> events = captureAcknowledgedEventsDuring(
+                () -> alertService.acknowledgeAlert(alert.getId(), 1, "   "));
+
+        assertEquals("Exactly one acknowledged event should be published", 1, events.size());
+        assertNull("Blank notes should be treated as no reason", events.get(0).getAcknowledgementReason());
+    }
+
+    @Test
+    public void testAcknowledgeAlert_WithNonExistentAlert_ThrowsIllegalArgumentException() {
+        try {
+            alertService.acknowledgeAlert(999999L, 1);
+            fail("Expected IllegalArgumentException for non-existent alert ID");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Exception message should reference the alert ID", e.getMessage().contains("999999"));
+        }
+    }
+
+    @Test
+    public void testAcknowledgeAlert_WithNonExistentUser_ThrowsIllegalArgumentException() {
+        Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
+                "Temperature threshold violated", "{\"temperature\": -15.5}");
+
+        try {
+            alertService.acknowledgeAlert(alert.getId(), 999999);
+            fail("Expected IllegalArgumentException for non-existent user ID");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Exception message should reference the user ID", e.getMessage().contains("999999"));
+        }
     }
 
     @Test
@@ -200,6 +274,26 @@ public class AlertServiceTest extends BaseWebContextSensitiveTest {
             multicaster.removeApplicationListener(counter);
         }
         return published.get();
+    }
+
+    /** Collects every AlertAcknowledgedEvent published while {@code work} runs. */
+    private List<AlertAcknowledgedEvent> captureAcknowledgedEventsDuring(Runnable work) {
+        List<AlertAcknowledgedEvent> captured = new ArrayList<>();
+        ApplicationListener<AlertAcknowledgedEvent> collector = new ApplicationListener<AlertAcknowledgedEvent>() {
+            @Override
+            public void onApplicationEvent(AlertAcknowledgedEvent event) {
+                captured.add(event);
+            }
+        };
+        ApplicationEventMulticaster multicaster = applicationContext.getBean(
+                AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME, ApplicationEventMulticaster.class);
+        multicaster.addApplicationListener(collector);
+        try {
+            work.run();
+        } finally {
+            multicaster.removeApplicationListener(collector);
+        }
+        return captured;
     }
 
     /**
