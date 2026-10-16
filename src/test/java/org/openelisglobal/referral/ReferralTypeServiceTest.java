@@ -2,7 +2,6 @@ package org.openelisglobal.referral;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
@@ -41,7 +40,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getReferralTypeByName_ShouldReturnAReferralTypeMatchingTheNamePassedAsParameter() {
         ReferralType referralType = referralTypeService.getReferralTypeByName("Specialist");
-        assertNotNull(referralType);
         assertEquals("3", referralType.getId());
         assertEquals(Timestamp.valueOf("2024-07-03 11:30:00"), referralType.getLastupdated());
         assertEquals("referral.type.specialist", referralType.getDisplayKey());
@@ -50,7 +48,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAll_ShouldReturnAllReferralTypes() {
         referralTypes = referralTypeService.getAll();
-        assertNotNull(referralTypes);
         assertEquals(6, referralTypes.size());
         assertEquals("5", referralTypes.get(4).getId());
     }
@@ -58,7 +55,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllMatching_ShouldReturnAllMatchingReferralTypes_UsingPropertyNameAndValue() {
         referralTypes = referralTypeService.getAllMatching("name", "External");
-        assertNotNull(referralTypes);
         assertEquals(3, referralTypes.size());
         assertEquals("5", referralTypes.get(1).getId());
     }
@@ -66,7 +62,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllMatching_ShouldReturnAllMatchingReferralTypes_UsingAMap() {
         referralTypes = referralTypeService.getAllMatching(propertyValues);
-        assertNotNull(referralTypes);
         assertEquals(3, referralTypes.size());
         assertEquals("5", referralTypes.get(1).getId());
     }
@@ -74,7 +69,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllOrdered_ShouldReturnAllOrderedReferralTypes_UsingAnOrderProperty() {
         referralTypes = referralTypeService.getAllOrdered("id", false);
-        assertNotNull(referralTypes);
         assertEquals(6, referralTypes.size());
         assertEquals("6", referralTypes.get(5).getId());
     }
@@ -82,7 +76,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllOrdered_ShouldReturnAllOrdered_UsingAList() {
         referralTypes = referralTypeService.getAllOrdered(orderProperties, true);
-        assertNotNull(referralTypes);
         assertEquals(6, referralTypes.size());
         assertEquals("6", referralTypes.get(4).getId());
     }
@@ -91,7 +84,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedReferralTypes_UsingPropertyNameAndValueAndAnOrderProperty() {
         referralTypes = referralTypeService.getAllMatchingOrdered("description", "Referral to another facility",
                 "lastupdated", true);
-        assertNotNull(referralTypes);
         assertEquals(3, referralTypes.size());
         assertEquals("5", referralTypes.get(1).getId());
     }
@@ -100,7 +92,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedReferralTypes_UsingPropertyNameAndValueAndAList() {
         referralTypes = referralTypeService.getAllMatchingOrdered("displayKey", "referral.type.external",
                 orderProperties, true);
-        assertNotNull(referralTypes);
         assertEquals(3, referralTypes.size());
         assertEquals("5", referralTypes.get(1).getId());
     }
@@ -108,7 +99,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedReferralTypes_UsingAMapAndAnOrderProperty() {
         referralTypes = referralTypeService.getAllMatchingOrdered(propertyValues, "id", true);
-        assertNotNull(referralTypes);
         assertEquals(3, referralTypes.size());
         assertEquals("2", referralTypes.get(2).getId());
     }
@@ -116,7 +106,6 @@ public class ReferralTypeServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getAllMatchingOrdered_ShouldReturnAllMatchingOrderedReferralTypes_UsingAMapAndAList() {
         referralTypes = referralTypeService.getAllMatchingOrdered(propertyValues, orderProperties, false);
-        assertNotNull(referralTypes);
         assertEquals(3, referralTypes.size());
         assertEquals("2", referralTypes.get(0).getId());
     }
