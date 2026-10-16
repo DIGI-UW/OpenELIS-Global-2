@@ -175,7 +175,7 @@ function LabelPresetEditor({ preset, onClose }) {
       }
       response.text().then((text) => {
         if (response.status === 422) {
-          let body = null;
+          let body;
           try {
             body = JSON.parse(text);
           } catch (e) {

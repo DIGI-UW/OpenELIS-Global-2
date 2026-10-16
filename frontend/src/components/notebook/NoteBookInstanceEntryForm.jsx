@@ -301,7 +301,7 @@ const NoteBookInstanceEntryForm = () => {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
         samples.map((sampleItem) => {
-          let tests = null;
+          let tests;
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {

@@ -466,7 +466,7 @@ const OrderLabel = () => {
   // hand back a stub window rather than null, which the old null-only check
   // read as success and reported labels as printed that never were.
   const openPrintWindow = (url) => {
-    let printWindow = null;
+    let printWindow;
     try {
       printWindow = window.open(url, "_blank");
     } catch {

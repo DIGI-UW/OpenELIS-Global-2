@@ -93,8 +93,8 @@ const EditSample = (props) => {
     });
   };
   const handleChecked = (e, rowId) => {
-    var tests = [];
-    var updatedTests = [];
+    var tests;
+    var updatedTests;
     if (e.currentTarget.name === "add") {
       tests = orderFormValues.possibleTests;
       updatedTests = tests.map((test) => {
