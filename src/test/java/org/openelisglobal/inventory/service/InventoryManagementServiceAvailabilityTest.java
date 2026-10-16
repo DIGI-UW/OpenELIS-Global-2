@@ -46,6 +46,7 @@ public class InventoryManagementServiceAvailabilityTest {
     private InventoryManagementServiceImpl service;
 
     private InventoryItem item;
+    private long nextLotId = 1;
 
     @Before
     public void setup() {
@@ -59,6 +60,7 @@ public class InventoryManagementServiceAvailabilityTest {
 
     private InventoryLot lot(double quantity, LotStatus status, QCStatus qcStatus) {
         InventoryLot lot = new InventoryLot();
+        lot.setId(nextLotId++);
         lot.setInventoryItem(item);
         lot.setLotNumber("LOT-" + qcStatus + "-" + quantity);
         lot.setInitialQuantity(quantity);

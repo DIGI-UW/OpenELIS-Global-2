@@ -76,6 +76,7 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
         lot.id,
         formData.newQuantity,
         formData.reason,
+        formData.notes,
       );
 
       setFormData({

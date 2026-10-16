@@ -3,7 +3,6 @@ package org.openelisglobal.inventory.controller.rest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -284,22 +283,14 @@ public class InventoryReportRestControllerTest extends BaseWebContextSensitiveTe
     }
 
     @Test
-    public void stockOnHand_asOfToday_includesAQuantityEditedOnTheLotForm() throws Exception {
+    public void stockOnHand_asOfToday_includesAnAdjustedQuantity() throws Exception {
         long lotId = receive(itemId, CODE_PREFIX + "DELIVERY9", 12);
-        JsonNode stored = objectMapper
-                .readTree(mockMvc.perform(get("/rest/inventory/lots/" + lotId).session(mockSession)).andReturn()
-                        .getResponse().getContentAsString());
-        HashMap<String, Object> edited = new HashMap<>();
-        edited.put("inventoryItem", java.util.Map.of("id", itemId));
-        edited.put("lotNumber", CODE_PREFIX + "DELIVERY9");
-        edited.put("initialQuantity", 12.0);
-        edited.put("currentQuantity", 4.0);
-        edited.put("qcStatus", stored.get("qcStatus").asText());
-        edited.put("status", stored.get("status").asText());
-        edited.put("version", stored.get("version").asInt());
+        HashMap<String, Object> adjustment = new HashMap<>();
+        adjustment.put("newQuantity", 4.0);
+        adjustment.put("reason", "RECOUNT");
         MvcResult saved = mockMvc
-                .perform(put("/rest/inventory/lots/" + lotId).session(mockSession)
-                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(edited)))
+                .perform(post("/rest/inventory/lots/" + lotId + "/adjust").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(adjustment)))
                 .andReturn();
         assertEquals(saved.getResponse().getContentAsString(), 200, saved.getResponse().getStatus());
 
