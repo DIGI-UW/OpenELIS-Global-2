@@ -8,9 +8,12 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +30,7 @@ import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.After;
 import org.junit.Before;
@@ -45,11 +49,17 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContextSensitiveTest {
@@ -90,6 +100,12 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private AnalyzerResultsService resultsService;
     @Autowired
     private AnalyzerDeliveryBundleService bundleService;
+    @Autowired
+    private AnalyzerResultsAcceptService acceptService;
+    @Autowired
+    private IStatusService statusService;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -947,6 +963,48 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
         assertEquals(receipt, importService.importBundle(bundle, "1"));
         assertEquals(3, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
+    }
+
+    @Test
+    @Transactional
+    public void aResultAcceptedOnAnEnteredOrderIsCompletedAtTheTimeTheAnalyzerReportedIt() throws Exception {
+        try {
+            // status_service.xml holds an entered order: accession 123456789, tube 8600.
+            executeDataSetWithStateManagement("testdata/status_service.xml");
+            bindTest("VENDOR-NEW-42");
+            long analysisId = jdbc.queryForObject("SELECT nextval('analysis_seq')", Long.class);
+            jdbc.update(
+                    "INSERT INTO clinlims.analysis (id, sampitem_id, test_id, status_id, analysis_type, revision,"
+                            + " is_reportable, lastupdated) VALUES (?, 8600, ?, ?, 'MANUAL', '0', 'Y', NOW())",
+                    analysisId, TEST_ID, Long.valueOf(statusService.getStatusID(AnalysisStatus.NotStarted)));
+            Timestamp completedAt = Timestamp.valueOf("2026-10-12 17:04:00");
+            Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+            bundle.getEntry().stream().map(entry -> entry.getResource()).filter(Specimen.class::isInstance)
+                    .map(Specimen.class::cast).findFirst().orElseThrow().getIdentifierFirstRep().setValue("123456789");
+            bundle.getEntry().stream().map(entry -> entry.getResource()).filter(Observation.class::isInstance)
+                    .map(Observation.class::cast).findFirst().orElseThrow().setEffective(new DateTimeType(completedAt));
+            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+            importService.importBundle(bundle, "1");
+            AnalyzerResults staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+            AnalyzerResultItem accepted = new AnalyzerResultItem();
+            accepted.setId(staged.getId());
+            accepted.setAccessionNumber("123456789");
+            accepted.setTestId(String.valueOf(TEST_ID));
+            accepted.setResult(staged.getResult());
+            accepted.setSampleGroupingNumber(1);
+            accepted.setIsAccepted(true);
+            acceptService.acceptAndPersist(List.of(accepted), "1");
+            entityManager.flush();
+
+            assertEquals("the order's analysis holds the result", "DETECTED", jdbc.queryForObject(
+                    "SELECT value FROM clinlims.result WHERE analysis_id = ?", String.class, analysisId));
+            assertEquals("the analysis is completed when the analyzer completed it", completedAt, jdbc.queryForObject(
+                    "SELECT completed_date FROM clinlims.analysis WHERE id = ?", Timestamp.class, analysisId));
+        } finally {
+            // Roll back first: tearDown cannot delete a test an analysis still uses.
+            TestTransaction.end();
+        }
     }
 
     private Analyzer analyzer() {

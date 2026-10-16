@@ -566,9 +566,9 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         forged.setCompleteDate("01/01/2000");
         acceptService.acceptAndPersist(List.of(forged), "1");
 
-        assertEquals("the analysis carries the analyzer's completion date", "2026-09-01",
+        assertEquals("the analysis carries the analyzer's completion time", "2026-09-01 10:00:00",
                 jdbc.queryForObject(
-                        "SELECT to_char(a.completed_date, 'YYYY-MM-DD') FROM clinlims.analysis a"
+                        "SELECT to_char(a.completed_date, 'YYYY-MM-DD HH24:MI:SS') FROM clinlims.analysis a"
                                 + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
                                 + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
                         String.class, ACCESSION));
