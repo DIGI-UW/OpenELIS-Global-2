@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.storage.service.LabelManagementService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
@@ -34,21 +32,12 @@ public class LabelManagementRestController extends BaseRestController {
     @Autowired
     private LabelManagementService labelManagementService;
 
-    @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
-
-    @Autowired
-    private StorageShelfDAO storageShelfDAO;
-
-    @Autowired
-    private StorageRackDAO storageRackDAO;
-
     /**
      * Generate and return PDF label POST /rest/storage/{type}/{id}/print-label
      * Validates code exists before printing, returns error if missing
      */
     @PostMapping(value = "/{type}/{id}/print-label", produces = MediaType.APPLICATION_PDF_VALUE)
-    public void printLabel(@PathVariable String type, @PathVariable String id, HttpServletResponse response)
+    public void printLabel(@PathVariable String type, @PathVariable String id, jakarta.servlet.http.HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         try {
             // Validate type
@@ -81,7 +70,7 @@ public class LabelManagementRestController extends BaseRestController {
 
             // Generate label (uses code from entity)
             ByteArrayOutputStream pdfStream;
-            String userId = getCurrentUserId(); // Get from security context
+            String userId = ControllerUtills.getSysUserId(request); // Get from security context
 
             if (location instanceof StorageDevice) {
                 pdfStream = labelManagementService.generateLabel((StorageDevice) location);
@@ -165,22 +154,7 @@ public class LabelManagementRestController extends BaseRestController {
      * Helper method to get location by type and ID
      */
     private Object getLocationById(String type, String id) {
-        try {
-            Integer locationId = Integer.parseInt(id);
-            switch (type) {
-            case "device":
-                return storageDeviceDAO.get(locationId).orElse(null);
-            case "shelf":
-                return storageShelfDAO.get(locationId).orElse(null);
-            case "rack":
-                return storageRackDAO.get(locationId).orElse(null);
-            default:
-                return null;
-            }
-        } catch (NumberFormatException e) {
-            logger.error("Invalid location ID format: " + id, e);
-            return null;
-        }
+        return labelManagementService.getLocationById(type, id);
     }
 
     /**
@@ -196,14 +170,6 @@ public class LabelManagementRestController extends BaseRestController {
         }
         return null;
     }
-
-    /**
-     * Get current user ID from security context TODO: Implement proper security
-     * context retrieval
-     */
-    private String getCurrentUserId() {
-        // Placeholder: should get from Spring Security context
-        // For now, return default system user
-        return "1";
-    }
 }
+
+

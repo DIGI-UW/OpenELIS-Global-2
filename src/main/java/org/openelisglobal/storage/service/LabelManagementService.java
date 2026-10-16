@@ -56,4 +56,13 @@ public interface LabelManagementService {
      * @param userId       The user ID who printed the label
      */
     void trackPrintHistory(String locationId, String locationType, String code, String userId);
+
+    /**
+     * Get location by type and ID
+     * 
+     * @param type The type: "device", "shelf", or "rack"
+     * @param id The ID of the location
+     * @return The location object, or null if not found
+     */
+    Object getLocationById(String type, String id);
 }
