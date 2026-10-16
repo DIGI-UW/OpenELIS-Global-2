@@ -308,6 +308,7 @@ it("keeps the page the user moved to when an earlier search answers late", async
     }
     return callback([]);
   });
+
   const pageOne = {
     items: [
       DASHBOARD_ENTRIES[0],
@@ -322,6 +323,7 @@ it("keeps the page the user moved to when an earlier search answers late", async
     ],
     paging: { currentPage: "1", totalPages: "2" },
   };
+
   const pageTwo = {
     items: [
       {
@@ -335,6 +337,7 @@ it("keeps the page the user moved to when an earlier search answers late", async
     ],
     paging: { currentPage: "2", totalPages: "2" },
   };
+
   renderDashboard();
 
   await waitFor(() => {
@@ -342,15 +345,20 @@ it("keeps the page the user moved to when an earlier search answers late", async
       pending.filter((p) => !p.url.includes("page=")).length,
     ).toBeGreaterThan(0);
   });
+
   const searches = pending.filter((p) => !p.url.includes("page="));
+
   act(() => searches[searches.length - 1].callback(pageOne));
   await screen.findByText("ACC9");
 
   fireEvent.click(document.getElementById("loadnextresults"));
+
   await waitFor(() => {
     expect(pending.some((p) => p.url.includes("page=2"))).toBe(true);
   });
+
   act(() => pending.find((p) => p.url.includes("page=2")).callback(pageTwo));
+
   await screen.findByText("ACC11");
   expect(screen.getByText("2 / 2")).toBeInTheDocument();
 
@@ -359,4 +367,25 @@ it("keeps the page the user moved to when an earlier search answers late", async
   expect(screen.getByText("ACC11")).toBeInTheDocument();
   expect(screen.queryByText("ACC9")).toBeNull();
   expect(screen.getByText("2 / 2")).toBeInTheDocument();
+});
+
+it("requests cases ready for a pathologist when the review tile is clicked", async () => {
+  renderDashboard();
+  await screen.findByText("ACC9");
+
+  fireEvent.click(screen.getByText(messages["pathology.label.review"]));
+
+  await waitFor(() => {
+    const matchingCall = getFromOpenElisServer.mock.calls.find(([url]) => {
+      if (!url.startsWith("/rest/pathology/dashboard?")) {
+        return false;
+      }
+      return (
+        new URLSearchParams(url.split("?")[1]).get("statuses") ===
+        "READY_PATHOLOGIST"
+      );
+    });
+
+    expect(matchingCall).toBeDefined();
+  });
 });
