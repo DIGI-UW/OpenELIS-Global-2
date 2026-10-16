@@ -327,14 +327,12 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         // cycle at once, so one date covers every row on the page.
         metaCell(meta, MessageUtil.getMessage("eqa.report.scoredOn"),
                 cycle.getActualEndDate() == null ? DASH : cycle.getActualEndDate().toString());
-        metaCell(meta, MessageUtil.getMessage("eqa.report.laboratory"), siteName());
-        metaCell(meta, MessageUtil.getMessage("eqa.report.generated"), formatDate(new Date()));
-        if (participant != null) {
-            // Whose results these are. On the provider's copy the Laboratory cell
-            // above names the provider, so without this line the two would be
-            // indistinguishable.
+        if (participant == null) {
+            metaCell(meta, MessageUtil.getMessage("eqa.report.laboratory"), siteName());
+        } else {
             metaCell(meta, MessageUtil.getMessage("eqa.report.participant"), participant);
         }
+        metaCell(meta, MessageUtil.getMessage("eqa.report.generated"), formatDate(new Date()));
         // The block is four columns and each fact adds two cells, so an odd number
         // of facts leaves the last row short — and iText renders only complete
         // rows, dropping it silently. That already cost the cycle-level report its

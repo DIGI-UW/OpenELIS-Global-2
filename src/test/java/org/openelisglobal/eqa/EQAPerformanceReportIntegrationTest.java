@@ -17,6 +17,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.eqa.controller.rest.EQACycleRestController;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQACycleService;
@@ -213,6 +215,21 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
         assertTrue("the cycle number and name identify the round", text.contains("#3 — Q3 2026"));
         assertTrue("the planned period is printed", text.contains("2026-07-01 — 2026-09-30"));
         assertTrue("scheme type is printed in the reader's language", text.contains("International PT"));
+    }
+
+    @Test
+    public void theLaboratorysOwnCopyNamesItsLaboratoryAndNoParticipant() throws IOException {
+        ConfigurationProperties config = ConfigurationProperties.getInstance();
+        String originalSite = config.getPropertyValue(Property.SiteName);
+        try {
+            config.setPropertyValue(Property.SiteName, "EQA Report Test Site");
+            String text = reportText();
+
+            assertTrue(rowIn(text, "Laboratory", "EQA Report Test Site"));
+            assertFalse(text.contains("Participant"));
+        } finally {
+            config.setPropertyValue(Property.SiteName, originalSite);
+        }
     }
 
     @Test

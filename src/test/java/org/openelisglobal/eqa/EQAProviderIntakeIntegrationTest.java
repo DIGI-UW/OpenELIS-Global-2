@@ -245,6 +245,8 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
         // there disappears from a report nobody re-reads.
         assertTrue("the generation stamp survives the block's last row", text.contains("Generated"));
         assertTrue("and so does the laboratory this copy is about", text.contains("Intake lab " + failing));
+        assertTrue("the laboratory is labelled as the participant", text.contains("Participant"));
+        assertTrue("no Laboratory row naming the provider's own site", !text.contains("Laboratory"));
         assertTrue("the analyte the laboratory reported", text.contains("Intake HIV serology test"));
         assertTrue("the value it reported", text.contains("Non-reactive"));
         assertTrue("the target it was judged against", text.contains("Reactive"));
