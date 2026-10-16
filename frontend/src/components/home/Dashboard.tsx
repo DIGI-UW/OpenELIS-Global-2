@@ -19,7 +19,6 @@ import {
   Tab,
   Tabs,
   TabList,
-  Tag,
   InlineNotification,
   Stack,
 } from "@carbon/react";
@@ -163,7 +162,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const [selectedTile, setSelectedTile] = useState<Tile>(null);
   // Identifies the tile load in flight, so a superseded response is dropped.
   const latestRequest = useRef(0);
-  const [url, setUrl] = useState("");
   const { userSessionDetails } = useContext(
     UserSessionDetailsContext,
   ) as UserSessionDetails;
@@ -435,7 +433,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setSelectedTile(tile);
   };
 
-  const renderCell = (cell, row) => {
+  const renderCell = (cell, _row) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
         <TableCell key={cell.id}>

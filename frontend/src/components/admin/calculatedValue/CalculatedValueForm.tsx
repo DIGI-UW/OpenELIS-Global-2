@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { useContext, useState, useEffect, useRef } from "react";
 import {
   Form,
@@ -11,7 +11,6 @@ import {
   Toggle,
   Loading,
   Checkbox,
-  ModalWrapper,
   Grid,
   Column,
   Section,
@@ -138,12 +137,12 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       if (calculations.length > 0) {
         setCalculationList(calculations);
 
-        calculations.forEach((calculation, index) => {
+        calculations.forEach((calculation, _index) => {
           if (calculation.sampleId) {
             sampleList.push(calculation.sampleId);
           }
 
-          calculation.operations.forEach((operation, opeartionIdex) => {
+          calculation.operations.forEach((operation, _operationIndex) => {
             if (operation.sampleId) {
               sampleList.push(operation.sampleId);
             }
