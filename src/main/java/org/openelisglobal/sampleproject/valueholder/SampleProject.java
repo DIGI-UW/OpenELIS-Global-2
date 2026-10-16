@@ -13,106 +13,62 @@
  */
 package org.openelisglobal.sampleproject.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.sample.valueholder.Sample;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "SAMPLE_PROJECTS")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class SampleProject extends BaseObject<String> {
 
     /** */
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "sample_proj_seq_gen")
+    @GenericGenerator(name = "sample_proj_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "sample_proj_seq"))
+    @Column(name = "ID", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
-    private String projectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "PROJ_ID", nullable = false)
+    private Project project;
 
-    private ValueHolderInterface project;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "SAMP_ID", nullable = false)
+    private Sample sample;
 
-    private String sampleId;
-
-    private ValueHolderInterface sample;
-
+    @Column(name = "IS_PERMANENT", length = 10)
     private String isPermanent;
 
     public SampleProject() {
         super();
-        this.project = new ValueHolder();
-        this.sample = new ValueHolder();
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getIsPermanent() {
-        return isPermanent;
-    }
-
-    public void setIsPermanent(String isPermanent) {
-        this.isPermanent = isPermanent;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setSampleId(String sampleId) {
-        this.sampleId = sampleId;
-    }
-
-    public String getSampleId() {
-        return sampleId;
-    }
-
-    // PROJECT
-    public Project getProject() {
-        return (Project) this.project.getValue();
-    }
-
-    public void setProject(ValueHolderInterface project) {
-        this.project = project;
-    }
-
-    public void setProject(Project project) {
-        this.project.setValue(project);
-    }
-
-    protected ValueHolderInterface getProjectHolder() {
-        return this.project;
-    }
-
-    protected void setProjectHolder(ValueHolderInterface project) {
-        this.project = project;
-    }
-
-    // SAMPLE
-    public Sample getSample() {
-        return (Sample) this.sample.getValue();
-    }
-
-    public void setSample(ValueHolderInterface sample) {
-        this.sample = sample;
-    }
-
-    public void setSample(Sample sample) {
-        this.sample.setValue(sample);
-    }
-
-    protected ValueHolderInterface getSampleHolder() {
+    protected Sample getSampleHolder() {
         return this.sample;
     }
 
-    protected void setSampleHolder(ValueHolderInterface sample) {
+    protected void setSampleHolder(Sample sample) {
         this.sample = sample;
     }
 }

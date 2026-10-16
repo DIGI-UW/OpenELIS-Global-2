@@ -188,8 +188,9 @@ public class RejectionController extends BaseController {
             TypeOfSample sampleType = typeOfSampleService.get(form.getTypeOfSampleId());
 
             // sampleProject
-            SampleProject sampProject = new SampleProject();
-            sampProject.setProjectId(form.getProjectId());
+            SampleProject sampProject = ObjectUtils.isNotEmpty(form.getProjectId())
+                    ? sampleProjectService.get(form.getProjectId())
+                    : new SampleProject();
             sampProject.setSample(rejectedSample);
             sampProject = sampleProjectService.save(sampProject);
 
