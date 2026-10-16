@@ -513,6 +513,15 @@ describe("Accreditation page", () => {
     expect(within(row).queryByText("Full coverage")).not.toBeInTheDocument();
   });
 
+  test("EQA coverage cites the ISO 15189:2022 EQA clause", () => {
+    mockEndpoints();
+    renderPage();
+
+    expect(
+      screen.getByText(/^ISO 15189:2022 §7\.3\.7\.3 asks whether/),
+    ).toBeInTheDocument();
+  });
+
   test("EQA coverage with no gaps reads as full coverage", () => {
     mockEndpoints({
       eqaCoverage: [

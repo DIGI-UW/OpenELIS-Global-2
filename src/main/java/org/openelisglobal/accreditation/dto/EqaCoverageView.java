@@ -4,14 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * OGC-686 — one accrediting body's EQA cover, the ISO 15189 §7.7 question
- * answered as a row: of the tests in this body's accredited scope, how many are
- * in a live EQA scheme, and which are not.
- *
- * <p>
- * Derived on read from data the lab already maintains in two places (test
- * accreditation and EQA lab enrollment). No schema, nothing to keep in sync,
- * and no way for the answer to go stale.
+ * OGC-686: one accrediting body's EQA cover under ISO 15189:2022 §7.3.7.3, how
+ * many accredited tests are in a live EQA scheme and which are not.
  */
 public class EqaCoverageView {
 

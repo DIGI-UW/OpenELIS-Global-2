@@ -102,11 +102,7 @@ public class AccreditationRestController extends BaseRestController {
         return testAccreditationService.getEnrollmentViews(bodyId, testId);
     }
 
-    /**
-     * OGC-686: accredited scope vs. live EQA cover, per body. Read-only and derived
-     * — the inspector's ISO 15189 §7.7 question answered from data the lab already
-     * keeps.
-     */
+    /** OGC-686: EQA cover of accredited scope (ISO 15189:2022 §7.3.7.3). */
     @GetMapping(value = "/eqa-coverage", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(QaPermissions.VIEW_QMS)
     public List<EqaCoverageView> eqaCoverage() {
