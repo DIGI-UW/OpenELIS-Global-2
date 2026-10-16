@@ -29,6 +29,37 @@ import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { getBranding } from "./utils/BrandingUtils";
 
+const LOGIN_LOGO_CACHE_KEY = "openelis.loginLogoUrl";
+
+const readCachedLoginLogo = () => {
+  try {
+    const raw = sessionStorage.getItem(LOGIN_LOGO_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.url === "string") {
+      return { url: parsed.url, version: parsed.version ?? 0 };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedLoginLogo = (url, version) => {
+  try {
+    if (url) {
+      sessionStorage.setItem(
+        LOGIN_LOGO_CACHE_KEY,
+        JSON.stringify({ url, version }),
+      );
+    } else {
+      sessionStorage.removeItem(LOGIN_LOGO_CACHE_KEY);
+    }
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+};
+
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -36,14 +67,21 @@ function Login(props) {
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
-  const [loginLogoUrl, setLoginLogoUrl] = useState(null);
-  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
+  const [loginLogoUrl, setLoginLogoUrl] = useState(
+    () => readCachedLoginLogo()?.url ?? null,
+  );
+  const [brandingResolved, setBrandingResolved] = useState(
+    () => readCachedLoginLogo() !== null,
+  );
+  const [logoVersion, setLogoVersion] = useState(
+    () => readCachedLoginLogo()?.version ?? 0,
+  );
   const samlRedirectInitiatedRef = useRef(false);
   const shouldAutoRedirectToSaml =
     configurationProperties?.useSaml === "true" &&
     configurationProperties?.useSamlLoginPage === "false" &&
     !userSessionDetails.authenticated;
-  const userIsActiveRef = useRef(false); // Track if user is actively typing without triggering re-renders
+  const userIsActiveRef = useRef(false);
   const activityResetTimerRef = useRef(null);
   const markUserActive = useCallback(() => {
     userIsActiveRef.current = true;
@@ -56,14 +94,9 @@ function Login(props) {
   }, []);
   const firstInput = useRef(null);
 
-  // Auto-redirect to SAML if configured to bypass login page
   useEffect(() => {
     if (shouldAutoRedirectToSaml && !samlRedirectInitiatedRef.current) {
-      // Mark as initiated to prevent multiple redirects
       samlRedirectInitiatedRef.current = true;
-
-      // Use full-page redirect instead of popup to avoid popup blockers
-      // Add 'redirect=true' parameter to tell backend to redirect to dashboard after auth
       window.location.href =
         config.serverBaseUrl + "/LoginPage?useSAML=true&redirect=true";
     }
@@ -72,8 +105,6 @@ function Login(props) {
   useEffect(() => {
     firstInput?.current?.focus();
 
-    // Poll every 10s, but skip polling while the user is actively typing.
-    // Using a ref (not state) keeps a single stable interval alive across renders.
     const interval = setInterval(() => {
       if (!userIsActiveRef.current) {
         refresh();
@@ -88,20 +119,32 @@ function Login(props) {
     };
   }, [refresh]);
 
-  // Load branding configuration for login logo
-  // Colors are handled by App.js
   useEffect(() => {
     getBranding((response) => {
-      if (response) {
-        // Check useHeaderLogoForLogin flag
-        if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
-          setLoginLogoUrl(response.headerLogoUrl);
-          setLogoVersion((prev) => prev + 1);
-        } else if (response.loginLogoUrl) {
-          setLoginLogoUrl(response.loginLogoUrl);
-          setLogoVersion((prev) => prev + 1);
-        }
+      if (response === undefined) {
+        setBrandingResolved(true);
+        return;
       }
+
+      let newUrl = null;
+      if (response?.useHeaderLogoForLogin && response.headerLogoUrl) {
+        newUrl = response.headerLogoUrl;
+      } else if (response?.loginLogoUrl) {
+        newUrl = response.loginLogoUrl;
+      }
+
+      if (!newUrl) {
+        writeCachedLoginLogo(null, 0);
+        setLoginLogoUrl(null);
+        setBrandingResolved(true);
+        return;
+      }
+
+      const newVersion = response.logoRevision ?? Date.now();
+      writeCachedLoginLogo(newUrl, newVersion);
+      setLoginLogoUrl(newUrl);
+      setLogoVersion(newVersion);
+      setBrandingResolved(true);
     });
   }, []);
 
@@ -112,28 +155,32 @@ function Login(props) {
   }, [userSessionDetails]);
 
   const loginMessage = () => {
-    // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = loginLogoUrl
       ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
-      : `images/openelis_logo_full.png`;
+      : brandingResolved
+        ? `images/openelis_logo_full.png`
+        : null;
 
     return (
       <>
         <Column lg={6} md={0} sm={0} />
         <Column lg={4} md={8} sm={4}>
-          <picture>
-            <img
-              src={logoSrc}
-              alt="fullsize logo"
-              width="300"
-              height="56"
-              style={{ objectFit: "contain" }}
-              onError={(e) => {
-                // Fallback to default logo if custom logo fails to load
-                e.target.src = `images/openelis_logo_full.png`;
-              }}
-            />
-          </picture>
+          {logoSrc ? (
+            <picture>
+              <img
+                src={logoSrc}
+                alt="fullsize logo"
+                width="300"
+                height="56"
+                style={{ objectFit: "contain" }}
+                onError={(e) => {
+                  e.target.src = `images/openelis_logo_full.png`;
+                }}
+              />
+            </picture>
+          ) : (
+            <div style={{ width: 300, height: 56 }} aria-hidden="true" />
+          )}
         </Column>
         <Column lg={6} md={0} sm={0} />
         <Column lg={6} md={0} sm={0} />
@@ -148,7 +195,6 @@ function Login(props) {
   const doLogin = (data) => {
     setSubmitting(true);
     fetch(config.serverBaseUrl + "/ValidateLogin?apiCall=true", {
-      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "POST",
       headers: {
@@ -158,7 +204,6 @@ function Login(props) {
     })
       .then(async (response) => {
         setSubmitting(false);
-        // get json response here
         let data = await response.json();
         if (response.status === 200) {
           window.location.href = "/";
@@ -351,7 +396,6 @@ function Login(props) {
                                 type="button"
                                 renderIcon={HardwareSecurityModule}
                                 onClick={() => {
-                                  // Use full-page redirect instead of popup to avoid popup blockers
                                   window.location.href =
                                     config.serverBaseUrl +
                                     "/LoginPage?useSAML=true&redirect=true";
