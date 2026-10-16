@@ -684,4 +684,7 @@
 
   <!-- Terminology codes are stored trimmed (OGC-1465). -->
   <include relativeToChangelogFile="true" file="138-terminology-codes-trimmed.xml"/>
+
+  <!-- Patient name search ignores accents as well as case. -->
+  <include relativeToChangelogFile="true" file="139-patient-search-accent-insensitive.xml"/>
 </databaseChangeLog>

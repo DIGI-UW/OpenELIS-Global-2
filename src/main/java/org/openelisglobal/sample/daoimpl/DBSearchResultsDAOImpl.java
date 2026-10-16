@@ -19,7 +19,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Session;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -65,7 +67,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
             String sql = buildQueryString(lastName, firstName, false, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
-                    queryGender);
+                    queryGender, new LinkedHashMap<>());
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -111,8 +113,10 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             boolean queryDateOfBirth = !GenericValidator.isBlankOrNull(dateOfBirth);
             boolean queryGender = !GenericValidator.isBlankOrNull(gender);
 
+            Map<String, Object> fuzzyNameParameters = new LinkedHashMap<>();
             String sql = buildQueryString(lastName, firstName, true, querySTNumber, querySubjectNumber, queryNationalId,
-                    queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth, queryGender);
+                    queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth, queryGender,
+                    fuzzyNameParameters);
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -123,12 +127,11 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
             query.setParameter(ID_TYPE_FOR_GUID,
                     Integer.valueOf(PatientIdentityTypeMap.getInstance().getIDForType("GUID")));
 
-            if ((queryLastName && FuzzyNameMatch.isFuzzyMatchable(lastName))
-                    || (queryFirstName && FuzzyNameMatch.isFuzzyMatchable(firstName))) {
+            if ((queryLastName && FuzzyNameMatch.hasFuzzyMatchableWord(lastName))
+                    || (queryFirstName && FuzzyNameMatch.hasFuzzyMatchableWord(firstName))) {
                 applySimilarityThreshold();
             }
-            bindFuzzyNameParameters(query, LAST_NAME_TERM, LAST_NAME_SWAPS, lastName, queryLastName);
-            bindFuzzyNameParameters(query, FIRST_NAME_TERM, FIRST_NAME_SWAPS, firstName, queryFirstName);
+            fuzzyNameParameters.forEach(query::setParameter);
 
             lastName = queryLastName ? '%' + FuzzyNameMatch.normalize(lastName) + '%' : lastName;
             firstName = queryFirstName ? '%' + FuzzyNameMatch.normalize(firstName) + '%' : firstName;
@@ -222,7 +225,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
             String sql = buildQueryString(lastName, firstName, false, querySTNumber, querySubjectNumber,
                     queryNationalId, queryExternalId, queryAnyID, queryPatientID, queryGuid, queryDateOfBirth,
-                    queryGender);
+                    queryGender, new LinkedHashMap<>());
 
             org.hibernate.query.Query query = entityManager.unwrap(Session.class).createNativeQuery(sql);
 
@@ -286,41 +289,59 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
     /**
      * A name matches when it contains the term, exactly as it always has, or - for
-     * a search that is not asking for whole values - when it is a plausible
-     * misspelling of it. The alternatives sit inside one pair of brackets so the
-     * surrounding clause keeps ANDing as before.
+     * a search that is not asking for whole values - when every word of the term is
+     * in it or is a plausible misspelling of it. The alternatives sit inside one
+     * pair of brackets so the surrounding clause keeps ANDing as before.
+     *
+     * <p>
+     * The fuzzy search compares search_fold() of both sides, which ignores case and
+     * accents, so "nguyen" finds "Nguyễn"; the trigram indexes are on that
+     * expression. The whole-value search keeps comparing lower(), so it stays exact
+     * apart from case.
      */
     private void appendNameCondition(StringBuilder queryBuilder, String column, String likeParam, String termParam,
-            String swapsParam, String value, boolean fuzzy) {
+            String swapsParam, String value, boolean fuzzy, Map<String, Object> fuzzyNameParameters) {
 
-        // lower() on every leg so all of them can use the GIN trigram index; an
-        // ilike here would fall back to a sequential scan and drag the whole OR
-        // down with it.
-        queryBuilder.append(" (lower(").append(column).append(") like :").append(likeParam);
+        if (!fuzzy) {
+            queryBuilder.append(" (lower(").append(column).append(") like :").append(likeParam).append(")");
+            return;
+        }
 
-        if (fuzzy && FuzzyNameMatch.isFuzzyMatchable(value)) {
-            queryBuilder.append(" or lower(").append(column).append(") % :").append(termParam);
-            if (!FuzzyNameMatch.adjacentSwaps(value).isEmpty()) {
-                queryBuilder.append(" or lower(").append(column).append(") in (:").append(swapsParam).append(")");
+        String folded = "search_fold(" + column + ")";
+        queryBuilder.append(" (").append(folded).append(" like search_fold(:").append(likeParam).append(")");
+
+        List<String> words = FuzzyNameMatch.words(value);
+        if (words.size() > 1 || FuzzyNameMatch.hasFuzzyMatchableWord(value)) {
+            queryBuilder.append(" or (");
+            for (int i = 0; i < words.size(); i++) {
+                String word = words.get(i);
+                String wordParam = termParam + i;
+                if (i > 0) {
+                    queryBuilder.append(" and ");
+                }
+                queryBuilder.append("(").append(folded).append(" like search_fold(:").append(wordParam).append("Like)");
+                fuzzyNameParameters.put(wordParam + "Like", '%' + word + '%');
+
+                if (FuzzyNameMatch.isFuzzyMatchable(word)) {
+                    queryBuilder.append(" or ").append(folded).append(" % search_fold(:").append(wordParam).append(")");
+                    fuzzyNameParameters.put(wordParam, word);
+
+                    // The swapped spellings are looked for inside the name, like the
+                    // word itself, because the name may hold other words too.
+                    List<String> swaps = FuzzyNameMatch.adjacentSwaps(word);
+                    for (int j = 0; j < swaps.size(); j++) {
+                        String swapParam = swapsParam + i + "_" + j;
+                        queryBuilder.append(" or ").append(folded).append(" like search_fold(:").append(swapParam)
+                                .append(")");
+                        fuzzyNameParameters.put(swapParam, '%' + swaps.get(j) + '%');
+                    }
+                }
+                queryBuilder.append(")");
             }
+            queryBuilder.append(")");
         }
 
         queryBuilder.append(")");
-    }
-
-    @SuppressWarnings("rawtypes")
-    private void bindFuzzyNameParameters(org.hibernate.query.Query query, String termParam, String swapsParam,
-            String value, boolean queried) {
-
-        if (!queried || !FuzzyNameMatch.isFuzzyMatchable(value)) {
-            return;
-        }
-        query.setParameter(termParam, FuzzyNameMatch.normalize(value));
-
-        List<String> swaps = FuzzyNameMatch.adjacentSwaps(value);
-        if (!swaps.isEmpty()) {
-            query.setParameterList(swapsParam, swaps);
-        }
     }
 
     /**
@@ -357,7 +378,7 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
      */
     private String buildQueryString(String lastName, String firstName, boolean fuzzyNames, boolean STNumber,
             boolean subjectNumber, boolean nationalID, boolean externalID, boolean anyID, boolean patientID,
-            boolean guid, boolean dateOfBirth, boolean gender) {
+            boolean guid, boolean dateOfBirth, boolean gender, Map<String, Object> fuzzyNameParameters) {
 
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("select p.id, pr.first_name, pr.last_name, p.gender, p.entered_birth_date, p.national_id,"
@@ -427,13 +448,13 @@ public class DBSearchResultsDAOImpl implements SearchResultsDAO {
 
         if (!GenericValidator.isBlankOrNull(lastName)) {
             appendNameCondition(queryBuilder, "pr.last_name", LAST_NAME_PARAM, LAST_NAME_TERM, LAST_NAME_SWAPS,
-                    lastName, fuzzyNames);
+                    lastName, fuzzyNames, fuzzyNameParameters);
             queryBuilder.append(" and");
         }
 
         if (!GenericValidator.isBlankOrNull(firstName)) {
             appendNameCondition(queryBuilder, "pr.first_name", FIRST_NAME_PARAM, FIRST_NAME_TERM, FIRST_NAME_SWAPS,
-                    firstName, fuzzyNames);
+                    firstName, fuzzyNames, fuzzyNameParameters);
             queryBuilder.append(" and");
         }
 

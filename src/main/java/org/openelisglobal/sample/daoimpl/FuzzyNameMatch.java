@@ -10,6 +10,10 @@ import java.util.Set;
  * Tolerances for the misspelled-name half of the patient search.
  *
  * <p>
+ * Names are compared after folding case and accents in the database (see
+ * search_fold() in the Liquibase changelog), so "tran" finds "Trần".
+ *
+ * <p>
  * Misspellings are matched by trigram similarity, which the GIN index serves
  * directly. Similarity alone is weak for the commonest typing slip though -
  * swapping two neighbouring letters scores only 0.14 on a three letter name -
@@ -42,6 +46,27 @@ final class FuzzyNameMatch {
 
     static boolean isFuzzyMatchable(String term) {
         return term != null && normalize(term).length() >= MIN_FUZZY_LENGTH;
+    }
+
+    /**
+     * The words of the term. A misspelling is judged one word at a time: compared
+     * as a whole, two names that share a common word ("Thị Bé" and "Thị Dứt", or
+     * "Mary Ann" and "Mary Jo") look similar enough to pass for a misspelling of
+     * each other although the word that tells them apart has nothing in common.
+     */
+    static List<String> words(String term) {
+        List<String> words = new ArrayList<>();
+        for (String word : normalize(term).split("\\s+")) {
+            if (!word.isEmpty()) {
+                words.add(word);
+            }
+        }
+        return words;
+    }
+
+    /** Whether any word of the term is long enough to be matched fuzzily. */
+    static boolean hasFuzzyMatchableWord(String term) {
+        return term != null && words(term).stream().anyMatch(FuzzyNameMatch::isFuzzyMatchable);
     }
 
     /** Every spelling of the term with one pair of neighbouring letters swapped. */
