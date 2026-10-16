@@ -78,6 +78,21 @@ public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements S
     }
 
     @Override
+    public Integer findSystemUserIdById(Integer shipmentId) {
+        try {
+            String hql = "SELECT s.systemUserId FROM Shipment s WHERE s.id = :id";
+            Query<Integer> query = entityManager.unwrap(Session.class).createQuery(hql, Integer.class);
+            query.setParameter("id", shipmentId);
+            query.setMaxResults(1);
+            List<Integer> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            logger.error("Error fetching sys_user_id for shipment {}", shipmentId, e);
+            throw new LIMSRuntimeException("Error fetching sys_user_id for shipment", e);
+        }
+    }
+
+    @Override
     public List<Object[]> findLatestShippedDatesByEqaCycleIds(Collection<Long> eqaCycleIds) {
         if (eqaCycleIds == null || eqaCycleIds.isEmpty()) {
             return List.of();
