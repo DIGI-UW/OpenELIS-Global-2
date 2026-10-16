@@ -123,7 +123,7 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
                 message: errorMessage,
               });
             }
-          } catch (error) {
+          } catch {
             const errorMessage = intl.formatMessage({
               id: "shipment.error.assignToBox",
             });

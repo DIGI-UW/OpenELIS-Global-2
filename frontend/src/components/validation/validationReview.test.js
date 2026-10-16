@@ -7,7 +7,6 @@ import {
   NOTE_CONTEXT_MODIFICATION,
   NOTE_CONTEXT_VALIDATION,
   NOTE_EXTERNAL,
-  NOTE_INTERNAL,
   actionPayload,
   componentRowsFor,
   displayResult,

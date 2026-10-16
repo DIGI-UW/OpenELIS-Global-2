@@ -11,7 +11,7 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
     tutorials: "",
     "release-notes": "",
   });
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
 

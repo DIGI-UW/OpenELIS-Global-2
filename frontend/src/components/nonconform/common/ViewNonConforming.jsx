@@ -179,7 +179,7 @@ export const ViewNonConformingEvent = () => {
           }
         },
       );
-    } catch (error) {
+    } catch {
       setReportFormValues({
         ...reportFormValues,
         error: intl.formatMessage({
@@ -294,7 +294,7 @@ export const ViewNonConformingEvent = () => {
             }
           },
         );
-      } catch (error) {
+      } catch {
         setReportFormValues({
           ...reportFormValues,
           error: intl.formatMessage({

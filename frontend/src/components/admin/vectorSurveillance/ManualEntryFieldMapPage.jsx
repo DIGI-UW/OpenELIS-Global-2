@@ -165,7 +165,6 @@ function FieldRow({ field, onSaved }) {
 }
 
 export default function ManualEntryFieldMapPage() {
-  const intl = useIntl();
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
 

@@ -220,7 +220,7 @@ function CytologyCaseView() {
       reader.onerror = reject;
     });
 
-  const save = (e) => {
+  const save = (_e) => {
     if (isSubmitting) {
       return;
     }
@@ -689,7 +689,7 @@ function CytologyCaseView() {
                     </Column>
                     <Column lg={2} md={1} sm={2}>
                       <Button
-                        onClick={(e) => {
+                        onClick={(_e) => {
                           window.open(
                             config.serverBaseUrl +
                               "/LabelMakerServlet?labelType=slide&code=" +
@@ -907,7 +907,7 @@ function CytologyCaseView() {
                       <Button
                         disabled={reportParams[index]?.submited}
                         id={"generate_report_" + index}
-                        onClick={(e) => {
+                        onClick={(_e) => {
                           setLoadingReport(true);
                           const form = {
                             report: "PatientCytologyReport",

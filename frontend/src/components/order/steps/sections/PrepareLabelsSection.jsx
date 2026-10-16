@@ -311,7 +311,7 @@ const PrepareLabelsSection = ({
       let printWindow = null;
       try {
         printWindow = window.open("", "_blank");
-      } catch (e) {
+      } catch {
         printWindow = null;
       }
       const giveUp = (error) => {
@@ -371,7 +371,7 @@ const PrepareLabelsSection = ({
           anchor.remove();
           notify(NotificationKinds.info, "orderEntry.labels.downloaded");
         }
-      } catch (e) {
+      } catch {
         giveUp({ kind: "failed", status: 0, target });
       } finally {
         setPrinting(false);

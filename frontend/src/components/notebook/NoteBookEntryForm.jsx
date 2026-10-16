@@ -91,7 +91,7 @@ const NoteBookEntryForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
-  const [noteBookForm, setNoteBookForm] = useState(NoteBookFormValues);
+  const [noteBookForm] = useState(NoteBookFormValues);
   const [analyzerList, setAnalyzerList] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [initialMount, setInitialMount] = useState(false);
@@ -338,7 +338,7 @@ const NoteBookEntryForm = () => {
   };
 
   const handleTagChange = (e) => {
-    const { name, value } = e.target;
+    const { value } = e.target;
     setNewTag(value);
   };
 

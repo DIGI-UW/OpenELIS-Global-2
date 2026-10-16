@@ -173,7 +173,7 @@ function parseQuestionnaire(raw) {
   }
   try {
     return typeof raw === "string" ? JSON.parse(raw) : raw;
-  } catch (_e) {
+  } catch {
     return null;
   }
 }
@@ -911,7 +911,7 @@ function ProgramEditor({
       if (mode === 0) {
         try {
           setRawJson(JSON.stringify(buildFromQuestions(), null, 2));
-        } catch (_e2) {
+        } catch {
           /* keep the current rawJson */
         }
         setMode(1);
@@ -973,7 +973,7 @@ function ProgramEditor({
         setRawJson(JSON.stringify(buildFromQuestions(), null, 2));
         setJsonError(null);
         setJsonValid(null);
-      } catch (_e) {
+      } catch {
         /* leave rawJson untouched */
       }
       setMode(1);

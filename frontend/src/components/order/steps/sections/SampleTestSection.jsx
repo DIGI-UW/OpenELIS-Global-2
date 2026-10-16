@@ -59,7 +59,7 @@ const SampleTestSection = ({
   const [panelSearchTerms, setPanelSearchTerms] = useState({});
   const [lifecycleStagesPerSample, setLifecycleStagesPerSample] = useState({});
   const [trapTypesPerSample, setTrapTypesPerSample] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
   const [loadFailedPerSample, setLoadFailedPerSample] = useState({});
 

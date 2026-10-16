@@ -61,7 +61,7 @@ export default function SlideOverNotifications(props) {
 
   async function unsubscribe() {
     try {
-      putToOpenElisServer("/rest/notification/unsubscribe", null, (res) => {
+      putToOpenElisServer("/rest/notification/unsubscribe", null, (_res) => {
         addNotification({
           kind: "success",
           message: intl.formatMessage({
@@ -72,7 +72,7 @@ export default function SlideOverNotifications(props) {
         setNotificationVisible(true);
         setSubscriptionState("NotSubscribed");
       });
-    } catch (e) {
+    } catch {
       addNotification({
         kind: "warning",
         message: intl.formatMessage({
@@ -100,7 +100,7 @@ export default function SlideOverNotifications(props) {
       }
 
       // Register the service worker if not already registered
-      const registration = await navigator.serviceWorker
+      await navigator.serviceWorker
         .register(getServiceWorkerUrl())
         .catch((error) => {
           throw new Error(

@@ -38,8 +38,8 @@ const StatisticsReport = () => {
     label: labNow().getFullYear(),
   });
 
-  const [loading, setLoading] = useState(false);
-  const [notificationVisible, setNotificationVisible] = useState(false);
+  const [, setLoading] = useState(false);
+  const [, setNotificationVisible] = useState(false);
 
   useEffect(() => {
     getFromOpenElisServer(
@@ -48,9 +48,12 @@ const StatisticsReport = () => {
         setLabUnits(fetchedTestSections);
       },
     );
-    getFromOpenElisServer("/rest/displayList/ORDER_PRIORITY", (fetchedPriorities) => {
-      setPriorities(fetchedPriorities);
-    });
+    getFromOpenElisServer(
+      "/rest/displayList/ORDER_PRIORITY",
+      (fetchedPriorities) => {
+        setPriorities(fetchedPriorities);
+      },
+    );
   }, []);
 
   const handleSubmit = () => {
@@ -108,15 +111,6 @@ const StatisticsReport = () => {
     value: currentYear - index,
     label: (currentYear - index).toString(),
   }));
-
-  const breadcrumbs = [
-    { label: "home.label", link: "/" },
-    { label: "routine.reports", link: "/RoutineReports" },
-    {
-      label: "openreports.stat.aggregate",
-      link: "/RoutineReport?type=indicator&report=statisticsReport",
-    },
-  ];
 
   return (
     <>

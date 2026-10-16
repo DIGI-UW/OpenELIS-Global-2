@@ -178,7 +178,7 @@ function LabelPresetEditor({ preset, onClose }) {
           let body = null;
           try {
             body = JSON.parse(text);
-          } catch (e) {
+          } catch {
             body = null;
           }
           applyServerFieldErrors(body);

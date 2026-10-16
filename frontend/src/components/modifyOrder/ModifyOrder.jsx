@@ -247,7 +247,7 @@ const ModifyOrder = () => {
     if (response) {
       try {
         body = await response.json();
-      } catch (_) {
+      } catch {
         // Body wasn't JSON — fall through to the generic key.
       }
     }

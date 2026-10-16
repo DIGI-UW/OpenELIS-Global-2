@@ -105,16 +105,16 @@ const NoteBookInstanceEntryForm = () => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const [statuses, setStatuses] = useState([]);
   const [types, setTypes] = useState([]);
-  const [technicianUsers, setTechnicianUsers] = useState([]);
+  const [, setTechnicianUsers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingSample, setIsSubmittingSample] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noteBookData, setNoteBookData] = useState(NoteBookInitialData);
-  const [noteBookForm, setNoteBookForm] = useState(NoteBookFormValues);
+  const [noteBookForm] = useState(NoteBookFormValues);
   const [sampleList, setSampleList] = useState([]);
   const [analyzerList, setAnalyzerList] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [addedSampleIds, setAddedSampleIds] = useState([]);
+  const [, setAddedSampleIds] = useState([]);
   const [accession, setAccesiion] = useState("");
   const [initialMount, setInitialMount] = useState(false);
   const [allTests, setAllTests] = useState([]);
@@ -122,7 +122,7 @@ const NoteBookInstanceEntryForm = () => {
   const [sampleTypes, setSampleTypes] = useState([]);
   const [samples, setSamples] = useState([sampleObject]);
   const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
-  const [errors, setErrors] = useState([]);
+  const [errors] = useState([]);
   const [selectedTab, setSelectedTab] = useState(TABS.CONTENT);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -354,7 +354,7 @@ const NoteBookInstanceEntryForm = () => {
   const closeTagModal = () => setShowTagModal(false);
 
   const handleTagChange = (e) => {
-    const { name, value } = e.target;
+    const { value } = e.target;
     setNewTag(value);
   };
 
@@ -1435,7 +1435,7 @@ const NoteBookInstanceEntryForm = () => {
                       });
                       setNotificationVisible(true);
                     }}
-                    renderCustomContent={(formData, updateField) => (
+                    renderCustomContent={(_formData, _updateField) => (
                       <Grid fullWidth={true}>
                         <Column lg={16} md={8} sm={4}>
                           <div

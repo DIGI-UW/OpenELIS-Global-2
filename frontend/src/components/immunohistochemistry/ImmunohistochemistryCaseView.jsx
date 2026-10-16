@@ -77,7 +77,7 @@ function ImmunohistochemistryCaseView() {
   const [loading, setLoading] = useState(true);
   const [loadingReport, setLoadingReport] = useState(false);
   const [intensityList, setIntensityList] = useState([]);
-  const [cerbB2PatternList, setCerbB2PatternList] = useState([]);
+  const [, setCerbB2PatternList] = useState([]);
   const [molecularSubTypeList, setMolecularSubTypeList] = useState([]);
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
@@ -1307,7 +1307,7 @@ function ImmunohistochemistryCaseView() {
                       <Column lg={3} md={2} sm={2}>
                         <Button
                           disabled={reportParams[index]?.submited}
-                          onClick={(e) => {
+                          onClick={(_e) => {
                             setLoadingReport(true);
                             const form = {
                               report: getReportName(report.reportType),

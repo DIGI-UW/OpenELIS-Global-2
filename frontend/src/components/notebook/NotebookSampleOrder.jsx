@@ -37,7 +37,7 @@ export default function NotebookSampleOrder() {
   ];
 
   // Handle successful save - redirect back to notebook
-  const handleSaveSuccess = (data) => {
+  const handleSaveSuccess = (_data) => {
     // Navigate back to the notebook entry form with the samples tab active
     if (notebookEntryId) {
       history.push(`/NoteBookInstanceEditForm/${notebookEntryId}?tab=samples`);
@@ -75,7 +75,7 @@ export default function NotebookSampleOrder() {
       // Callbacks
       onSaveSuccess={handleSaveSuccess}
       // Custom content to show notebook info
-      renderCustomContent={(formData, updateField) => (
+      renderCustomContent={(_formData, _updateField) => (
         <div
           style={{
             marginBottom: "1rem",

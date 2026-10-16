@@ -36,7 +36,6 @@ import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { Formik, Field } from "formik";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
-import { ConfigurationContext } from "../layout/Layout";
 
 // An empty search: what the screen showed after reloading itself.
 const NO_SAMPLE = { sampleItems: [], accessionNumber: "" };
@@ -206,8 +205,7 @@ export function SearchSampleForm(props) {
 }
 
 export function SampleItemsDisplay(props) {
-  const { configurationProperties } = useContext(ConfigurationContext);
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const intl = useIntl();
   const [expandedRows, setExpandedRows] = useState({});
@@ -477,7 +475,7 @@ export function SampleItemsDisplay(props) {
       // Validate all sample items before saving
       const validationErrors = [];
 
-      props.sampleData.sampleItems.forEach((sampleItem, index) => {
+      props.sampleData.sampleItems.forEach((sampleItem, _index) => {
         if (sampleItem.aliquots.length > 0) {
           // Check if quantity is balanced
           if (!isQuantityBalanced(sampleItem)) {
@@ -547,7 +545,7 @@ export function SampleItemsDisplay(props) {
         JSON.stringify(submissionData),
         handlePost,
       );
-    } catch (error) {
+    } catch {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "aliquot.save.error" }),

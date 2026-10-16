@@ -235,7 +235,7 @@ describe("AlertsDashboard", () => {
   test("renders severity tags with correct colors", () => {
     const { container } = renderWithIntl(<AlertsDashboard />);
     const redTags = container.querySelectorAll(".cds--tag--red");
-    const warmGrayTags = container.querySelectorAll(".cds--tag--warm-gray");
+
     expect(redTags.length).toBeGreaterThanOrEqual(1);
   });
 

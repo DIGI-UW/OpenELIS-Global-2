@@ -19,7 +19,12 @@ import PropTypes from "prop-types";
 import "@carbon/charts/styles.css";
 import "./LeveyJenningsChart.css";
 
-const LeveyJenningsChart = ({ data, statistics, height, showLegend }) => {
+const LeveyJenningsChart = ({
+  data,
+  statistics: _statistics,
+  height,
+  showLegend,
+}) => {
   const intl = useIntl();
 
   // Transform data for Carbon Charts — plot z-scores on Y-axis.

@@ -2,14 +2,8 @@ import React, { useContext, useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
-import {
-  Heading,
-  Grid,
-  Column,
-  Section,
-  Loading,
-} from "@carbon/react";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
+import { injectIntl, FormattedMessage } from "react-intl";
 import PatientStatusReport from "../common/PatientStatusReport";
 import ReportByID from "../common/ReportByID";
 import ReportByDate from "../common/ReportByDate";
@@ -190,13 +184,11 @@ export const StudyReports = (props) => {
 
 const StudyIndex = () => {
   const history = useHistory();
-  const intl = useIntl();
-  const { setNotificationVisible, addNotification, notificationVisible } =
-    useContext(NotificationContext);
+
+  const { notificationVisible } = useContext(NotificationContext);
 
   const [type, setType] = useState("");
   const [report, setReport] = useState("");
-  const [source, setSource] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [breadcrumbs, setBreadcrumbs] = useState([]);
 

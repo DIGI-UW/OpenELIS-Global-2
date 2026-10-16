@@ -527,11 +527,6 @@ export const NceDashboard = () => {
     history.push("/ReportNonConformingEvent");
   };
 
-  // Navigate to NCE details
-  const handleViewDetails = (nce) => {
-    history.push(`/ViewNonConformingEvent?nceNumber=${nce.nceNumber}`);
-  };
-
   // Handle attachment download with authentication
   const handleDownloadAttachment = async (attachmentId, fileName) => {
     try {
@@ -571,7 +566,7 @@ export const NceDashboard = () => {
   };
 
   // Handle attachment view (for images and PDFs) with authentication
-  const handleViewAttachment = async (attachmentId, fileType) => {
+  const handleViewAttachment = async (attachmentId, _fileType) => {
     try {
       const url = `${config.serverBaseUrl}/rest/nce/attachments/${attachmentId}/download`;
       const response = await fetch(url, {

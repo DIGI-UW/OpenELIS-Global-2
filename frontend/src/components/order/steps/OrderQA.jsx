@@ -653,7 +653,6 @@ const OrderQA = () => {
               // verify its specific test configuration.
               <Accordion size="sm" className="qa-pool-accordion">
                 {poolGroups.map((pool, index) => {
-                  const panelNames = (pool.panels || []).map((p) => p.name);
                   const panelTestIds = new Set(
                     (pool.panels || []).flatMap((p) =>
                       p.testIds

@@ -123,16 +123,16 @@ function ReflexRule() {
 
   const loadDefaultTestResultList = () => {
     var sampleList = [];
-    ruleList.forEach(function (rule, index) {
+    ruleList.forEach(function (rule, _index) {
       if (rule.conditions) {
-        rule.conditions.forEach(function (condition, conditionIndex) {
+        rule.conditions.forEach(function (condition, _conditionIndex) {
           if (condition.sampleId) {
             sampleList.push(condition.sampleId);
           }
         });
       }
       if (rule.actions) {
-        rule.actions.forEach(function (action, actionIndex) {
+        rule.actions.forEach(function (action, _actionIndex) {
           if (action.sampleId) {
             sampleList.push(action.sampleId);
           }
@@ -266,11 +266,6 @@ function ReflexRule() {
     const list = [...ruleList];
     list[index][field][itemIndex][name] = value;
     setRuleList(list);
-  };
-
-  const handleAddNotificationChange = (value, index, itemIndex, field) => {
-    const e = { target: { name: "addNotification", value: value } };
-    handleRuleFieldItemChange(e, index, itemIndex, field);
   };
 
   const handleTestSelected = (id, index, item_index, field) => {

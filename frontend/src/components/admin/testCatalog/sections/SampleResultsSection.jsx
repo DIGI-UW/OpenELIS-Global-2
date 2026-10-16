@@ -782,7 +782,7 @@ const SampleResultsSection = ({ testId }) => {
           let body = null;
           try {
             body = await response.json();
-          } catch (e) {
+          } catch {
             body = null;
           }
           const refusal = body && SAVE_REFUSALS[body.refusal];

@@ -15,7 +15,7 @@ const parseStructuredData = (structuredData) => {
   if (typeof structuredData === "object") return structuredData;
   try {
     return JSON.parse(structuredData);
-  } catch (_error) {
+  } catch {
     return {};
   }
 };

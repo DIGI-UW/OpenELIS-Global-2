@@ -189,7 +189,7 @@ function ExternalConnectionAddModify() {
     );
   }
 
-  const submitCallback = (res) => {
+  const submitCallback = (_res) => {
     setLoading(false);
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),

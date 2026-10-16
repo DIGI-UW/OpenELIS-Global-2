@@ -114,8 +114,6 @@ const SampleType = (props) => {
   );
   const [loading, setLoading] = useState(true);
 
-  const defaultSelect = { id: "", value: "Choose Rejection Reason" };
-
   function handleCollectionDate(date) {
     setSampleXml({
       ...sampleXml,
@@ -344,19 +342,6 @@ const SampleType = (props) => {
       currentTests.filter((selectedTest) => selectedTest.id !== test.id),
     );
   };
-
-  function removeReferralRequest(test) {
-    let index = 0;
-    for (let x in referralRequests) {
-      if (referralRequests[x].testId === test.id) {
-        const newReferralRequests = referralRequests;
-        newReferralRequests.splice(index, 1);
-        setReferralRequests([...newReferralRequests]);
-        break;
-      }
-      index++;
-    }
-  }
 
   const handleFetchSampleTypeTests = (e, index) => {
     setSelectedTests([]);

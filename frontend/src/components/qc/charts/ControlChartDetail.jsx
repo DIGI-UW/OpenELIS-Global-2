@@ -31,7 +31,7 @@ import {
 } from "@carbon/react";
 import { Download, ZoomIn, ZoomOut, FitToScreen } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
 import LeveyJenningsChart from "./LeveyJenningsChart";
 import { controlLevelItems, useControlLotChart } from "./controlLotChart";
@@ -51,7 +51,6 @@ const SIGMA_TAG_TYPE = {
 
 const ControlChartDetail = () => {
   const intl = useIntl();
-  const history = useHistory();
   const { analyzerId } = useParams();
 
   // State
@@ -174,11 +173,6 @@ const ControlChartDetail = () => {
 
   const handleZoomReset = () => {
     setZoomLevel(1);
-  };
-
-  // Navigate back to dashboard
-  const handleBackToDashboard = () => {
-    history.push("/qa/qc/dashboard");
   };
 
   if (loading && chartData.length === 0) {

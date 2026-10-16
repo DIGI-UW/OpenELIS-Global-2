@@ -15,7 +15,7 @@ import AlertSettings from "./settings/AlertSettings";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 
-function Settings({ intl }) {
+function Settings({ intl: _intl }) {
   const [selectedTab, setSelectedTab] = useState(0);
   const { notificationVisible } = useContext(NotificationContext);
 

@@ -292,7 +292,7 @@ export const fetchAuditTrail = async ({ freezerId }) => {
 
 export const downloadReportDirect = ({
   reportName,
-  format,
+  format: _format,
   startDate,
   endDate,
   freezerId,
