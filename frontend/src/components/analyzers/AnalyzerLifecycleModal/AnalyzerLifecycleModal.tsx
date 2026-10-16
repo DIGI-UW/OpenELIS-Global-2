@@ -10,32 +10,24 @@ import {
 import { useIntl } from "react-intl";
 
 import {
-  activateAnalyzer,
   deactivateAnalyzer,
-  reactivateAnalyzer,
-  type AnalyzerActivationResultView,
   type AnalyzerDeactivationResultView,
 } from "../../../services/analyzerService";
 import { analyzerErrorText } from "../analyzerErrors";
 import type { Analyzer } from "../types";
 
-export type AnalyzerLifecycleAction = "activate" | "deactivate" | "reactivate";
-
 interface AnalyzerLifecycleModalProps {
-  action: AnalyzerLifecycleAction;
   analyzer: Analyzer;
   open: boolean;
   onClose: () => void;
   onConfirm: (analyzerId: string) => void;
 }
 
-interface LifecycleBlocker {
-  code: string;
-  args?: Record<string, unknown>;
-}
-
+/**
+ * Confirms deactivating an analyzer. Activating and reactivating one happen
+ * in setup's Connect step, which shows what still blocks it.
+ */
 const AnalyzerLifecycleModal = ({
-  action,
   analyzer,
   open,
   onClose,
@@ -44,58 +36,21 @@ const AnalyzerLifecycleModal = ({
   const intl = useIntl();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [blockers, setBlockers] = useState<LifecycleBlocker[]>([]);
-  const isDeactivation = action === "deactivate";
 
   const message = (suffix: string) =>
-    intl.formatMessage({ id: `analyzer.lifecycle.${action}.${suffix}` });
-
-  const formatBlocker = (blocker: LifecycleBlocker) => {
-    const id = blocker.code;
-    const known = Boolean(
-      id && Object.prototype.hasOwnProperty.call(intl.messages, id),
-    );
-    return intl.formatMessage(
-      {
-        id: known ? id : "analyzer.setup.connect.activation.blockerUnknown",
-      },
-      blocker.args,
-    );
-  };
-
-  const finish = (analyzerId: string) => {
-    setSubmitting(false);
-    onConfirm(analyzerId);
-    onClose();
-  };
+    intl.formatMessage({ id: `analyzer.lifecycle.deactivate.${suffix}` });
 
   const handleDeactivation = (
     response: AnalyzerDeactivationResultView | undefined,
   ) => {
+    setSubmitting(false);
     if (response?.deactivated) {
-      finish(response.analyzerId);
-      return;
-    }
-    setSubmitting(false);
-    setError(
-      analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
-    );
-  };
-
-  const handleActivation = (
-    response: AnalyzerActivationResultView | undefined,
-  ) => {
-    if (response?.activated) {
-      finish(response.analyzerId);
-      return;
-    }
-    setSubmitting(false);
-    if (response?.blockers?.length) {
-      setBlockers(response.blockers);
+      onConfirm(response.analyzerId);
+      onClose();
       return;
     }
     setError(
-      analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
+      analyzerErrorText(intl, response, "analyzer.lifecycle.deactivate.error"),
     );
   };
 
@@ -104,17 +59,9 @@ const AnalyzerLifecycleModal = ({
       setError(message("error"));
       return;
     }
-
     setSubmitting(true);
     setError(null);
-    setBlockers([]);
-    if (isDeactivation) {
-      deactivateAnalyzer(analyzer.id, handleDeactivation);
-    } else if (action === "activate") {
-      activateAnalyzer(analyzer.id, handleActivation);
-    } else {
-      reactivateAnalyzer(analyzer.id, handleActivation);
-    }
+    deactivateAnalyzer(analyzer.id, handleDeactivation);
   };
 
   const handleClose = () => {
@@ -128,7 +75,7 @@ const AnalyzerLifecycleModal = ({
       open={open}
       onClose={handleClose}
       preventCloseOnClickOutside
-      danger={isDeactivation}
+      danger
       data-testid="analyzer-lifecycle-modal"
     >
       <ModalHeader title={message("title")} />
@@ -142,27 +89,9 @@ const AnalyzerLifecycleModal = ({
             hideCloseButton
           />
         )}
-        {blockers.length > 0 && (
-          <>
-            <InlineNotification
-              kind="error"
-              title={message("blockedTitle")}
-              subtitle={message("blockedMessage")}
-              lowContrast
-              hideCloseButton
-            />
-            <ul>
-              {blockers.map((blocker, index) => (
-                <li key={`${blocker.code}-${index}`}>
-                  {formatBlocker(blocker)}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
         <p>
           {intl.formatMessage(
-            { id: `analyzer.lifecycle.${action}.message` },
+            { id: "analyzer.lifecycle.deactivate.message" },
             { name: analyzer.name },
           )}
         </p>
@@ -171,11 +100,7 @@ const AnalyzerLifecycleModal = ({
         <Button kind="secondary" onClick={handleClose} disabled={submitting}>
           {message("cancel")}
         </Button>
-        <Button
-          kind={isDeactivation ? "danger" : "primary"}
-          onClick={handleConfirm}
-          disabled={submitting}
-        >
+        <Button kind="danger" onClick={handleConfirm} disabled={submitting}>
           {message("confirm")}
         </Button>
       </ModalFooter>

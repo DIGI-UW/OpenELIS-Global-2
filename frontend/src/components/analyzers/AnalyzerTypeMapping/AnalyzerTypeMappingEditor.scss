@@ -1,8 +1,12 @@
 @use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
 
-.analyzer-type-mapping {
-  padding-bottom: spacing.$spacing-09;
+// The mapping editor: an overview with filters, one row per analyzer code, the
+// control recognition, and one action bar pinned to the bottom of the window.
+// It lays out by its own width, which inside setup's Verify panel is narrower
+// than the window.
+.analyzer-type-mapping__body {
+  container-type: inline-size;
 }
 
 .analyzer-type-mapping__loading {
@@ -12,69 +16,333 @@
   min-height: 20rem;
 }
 
-.analyzer-type-mapping__heading {
-  align-items: flex-start;
-  display: flex;
-  gap: spacing.$spacing-06;
-  justify-content: space-between;
-  margin: spacing.$spacing-06 0;
-
-  h1 {
-    @include type.type-style("heading-05");
-    color: var(--cds-text-primary);
-    margin: 0;
-  }
-
-  p {
-    @include type.type-style("body-01");
-    color: var(--cds-text-secondary);
-    margin: spacing.$spacing-02 0 0;
-  }
-}
-
-.analyzer-type-mapping__heading-actions,
-.analyzer-type-mapping__actions > div:last-child {
-  display: flex;
-  flex: 0 0 auto;
-  gap: spacing.$spacing-03;
-}
-
 .analyzer-type-mapping__notice {
   margin-bottom: spacing.$spacing-05;
   max-width: none;
 }
 
-.analyzer-type-mapping__summary {
-  background: var(--cds-layer-01);
+.analyzer-type-mapping__section-title {
+  @include type.type-style("heading-03");
+  color: var(--cds-text-primary);
+  margin: spacing.$spacing-05 0 spacing.$spacing-04;
+}
+
+// Filters, search and the mapping's state, above the rows.
+.analyzer-type-mapping__overview {
   display: grid;
-  gap: 1px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: spacing.$spacing-07;
+  gap: spacing.$spacing-04;
+  margin-bottom: spacing.$spacing-05;
+}
 
-  > div {
+.analyzer-type-mapping__filters {
+  align-items: center;
+  display: grid;
+  gap: spacing.$spacing-05;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem);
+}
+
+.analyzer-type-mapping__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03 spacing.$spacing-07;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  li {
+    @include type.type-style("body-compact-01");
     align-items: center;
-    background: var(--cds-layer-02);
+    color: var(--cds-text-primary);
     display: flex;
-    justify-content: space-between;
-    min-height: 4.5rem;
-    padding: spacing.$spacing-05;
-  }
-
-  span {
-    @include type.type-style("label-01");
-    color: var(--cds-text-secondary);
-  }
-
-  strong {
-    @include type.type-style("heading-03");
+    gap: spacing.$spacing-03;
   }
 }
 
-.analyzer-type-mapping__section-heading {
+.analyzer-type-mapping__icon {
+  flex: 0 0 auto;
+}
+
+.analyzer-type-mapping__icon--success {
+  fill: var(--cds-support-success);
+}
+
+.analyzer-type-mapping__icon--warning {
+  fill: var(--cds-support-warning);
+
+  [data-icon-path="inner-path"] {
+    fill: #161616;
+    opacity: 1;
+  }
+}
+
+.analyzer-type-mapping__icon--excluded,
+.analyzer-type-mapping__icon--none {
+  fill: var(--cds-icon-secondary);
+}
+
+// One row per analyzer code: the code, the OpenELIS test, "Do not receive",
+// the state; result values and adoption detail span beneath.
+.analyzer-type-mapping__columns,
+.analyzer-type-mapping__row {
+  column-gap: spacing.$spacing-05;
+  display: grid;
+  grid-template-areas: "code target receive state";
+  grid-template-columns: minmax(8rem, 13rem) minmax(14rem, 1fr) auto 9rem;
+}
+
+.analyzer-type-mapping__columns {
+  @include type.type-style("label-01");
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  color: var(--cds-text-secondary);
+  padding: 0 spacing.$spacing-04 spacing.$spacing-03;
+
+  > :nth-child(1) {
+    grid-area: code;
+  }
+
+  > :nth-child(2) {
+    grid-area: target;
+  }
+
+  > :nth-child(3) {
+    grid-area: receive;
+  }
+
+  > :nth-child(4) {
+    grid-area: state;
+  }
+}
+
+.analyzer-type-mapping__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analyzer-type-mapping__row {
+  align-items: start;
+  background: var(--cds-layer-01);
+  border-bottom: 1px solid var(--cds-border-subtle-01);
+  grid-template-areas:
+    "adoption adoption adoption adoption"
+    "code target receive state"
+    ". values values values";
+  padding: spacing.$spacing-04;
+  row-gap: spacing.$spacing-03;
+}
+
+.analyzer-type-mapping__row-adoption {
+  grid-area: adoption;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.analyzer-type-mapping__row-code {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-01;
+  grid-area: code;
+  min-width: 0;
+  padding-top: spacing.$spacing-03;
+
+  strong {
+    @include type.type-style("heading-compact-01");
+    overflow-wrap: anywhere;
+  }
+
+  span {
+    @include type.type-style("body-compact-01");
+    color: var(--cds-text-secondary);
+  }
+
+  .analyzer-type-mapping__identity {
+    @include type.type-style("helper-text-01");
+
+    > span + span::before {
+      content: " · ";
+    }
+  }
+}
+
+.analyzer-type-mapping__row-target {
+  display: grid;
+  gap: spacing.$spacing-03;
+  grid-area: target;
+  min-width: 0;
+}
+
+// A type's defaults read as text: nothing there can be changed.
+.analyzer-type-mapping__target-text {
+  @include type.type-style("body-compact-01");
+  margin: 0;
+  padding-top: spacing.$spacing-03;
+}
+
+.analyzer-type-mapping__target-detail {
+  @include type.type-style("helper-text-01");
+  color: var(--cds-text-secondary);
+  margin: 0;
+
+  strong {
+    color: var(--cds-text-primary);
+  }
+}
+
+// A picker named only for assistive technology takes no room for its label.
+.analyzer-type-mapping__row
+  .cds--label:has(> .cds--visually-hidden:only-child) {
+  margin: 0;
+}
+
+.analyzer-type-mapping__row .cds--dropdown__wrapper--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 spacing.$spacing-03;
+}
+
+.analyzer-type-mapping__reason {
+  @include type.type-style("helper-text-01");
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.analyzer-type-mapping__suggestion {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+
+  span {
+    @include type.type-style("helper-text-01");
+  }
+}
+
+.analyzer-type-mapping__row-receive {
+  grid-area: receive;
+  padding-top: spacing.$spacing-03;
+  white-space: nowrap;
+}
+
+.analyzer-type-mapping__row-state {
   align-items: flex-start;
   display: flex;
-  gap: spacing.$spacing-05;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+  grid-area: state;
+  padding-top: spacing.$spacing-03;
+}
+
+.analyzer-type-mapping__state {
+  @include type.type-style("body-compact-01");
+  align-items: center;
+  display: inline-flex;
+  gap: spacing.$spacing-02;
+}
+
+// A record's result values, under its row.
+.analyzer-type-mapping__row-values {
+  display: grid;
+  gap: spacing.$spacing-03;
+  grid-area: values;
+  min-width: 0;
+}
+
+.analyzer-type-mapping__values-toggle {
+  align-items: center;
+  display: flex;
+  gap: spacing.$spacing-03;
+
+  > span {
+    @include type.type-style("helper-text-01");
+    color: var(--cds-text-secondary);
+  }
+}
+
+.analyzer-type-mapping__values-hint {
+  @include type.type-style("helper-text-01");
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.analyzer-type-mapping__values-list > ul {
+  border-left: 2px solid var(--cds-border-subtle-01);
+  display: grid;
+  gap: spacing.$spacing-03;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 spacing.$spacing-05;
+}
+
+.analyzer-type-mapping__value {
+  align-items: start;
+  column-gap: spacing.$spacing-05;
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) minmax(12rem, 1fr) auto;
+}
+
+.analyzer-type-mapping__value--translation {
+  padding-left: spacing.$spacing-05;
+}
+
+.analyzer-type-mapping__value-source {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+  min-width: 0;
+  padding-top: spacing.$spacing-03;
+
+  code {
+    @include type.type-style("code-01");
+    overflow-wrap: anywhere;
+  }
+
+  > span {
+    @include type.type-style("helper-text-01");
+    color: var(--cds-text-secondary);
+  }
+}
+
+.analyzer-type-mapping__value .cds--checkbox-wrapper {
+  padding-top: spacing.$spacing-03;
+  white-space: nowrap;
+}
+
+.analyzer-type-mapping__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-02;
+}
+
+.analyzer-type-mapping__catalog-action {
+  display: grid;
+  gap: spacing.$spacing-03;
+  justify-items: start;
+
+  p {
+    @include type.type-style("helper-text-01");
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
+    margin: 0;
+  }
+}
+
+.analyzer-type-mapping__empty {
+  @include type.type-style("body-01");
+  background: var(--cds-layer-01);
+  color: var(--cds-text-secondary);
+  margin: 0;
+  padding: spacing.$spacing-06 spacing.$spacing-05;
+}
+
+// Adoption groups rows by what adopting does to them.
+.analyzer-type-mapping__bucket {
+  margin-bottom: spacing.$spacing-07;
+}
+
+.analyzer-type-mapping__section-heading {
   margin-bottom: spacing.$spacing-04;
 
   h2 {
@@ -89,86 +357,10 @@
   }
 }
 
-.analyzer-type-mapping__row-title {
-  align-items: center;
-  display: grid;
-  gap: spacing.$spacing-04;
-  grid-template-columns: minmax(8rem, 0.7fr) minmax(12rem, 2fr) auto;
-  padding-right: spacing.$spacing-04;
-
-  span:not(.cds--tag__label) {
-    color: var(--cds-text-secondary);
-  }
-}
-
-.analyzer-type-mapping__row {
-  display: grid;
-  gap: spacing.$spacing-06;
-  padding: spacing.$spacing-05 0 spacing.$spacing-06;
-}
-
-.analyzer-type-mapping__source {
-  display: flex;
-  flex-wrap: wrap;
-  gap: spacing.$spacing-05 spacing.$spacing-08;
-
-  > div {
-    display: flex;
-    flex-direction: column;
-    gap: spacing.$spacing-02;
-  }
-}
-
-.analyzer-type-mapping__label {
-  @include type.type-style("label-01");
-  color: var(--cds-text-secondary);
-}
-
-.analyzer-type-mapping__alias {
-  @include type.type-style("label-01");
-  align-self: end;
-  color: var(--cds-text-secondary);
-  padding-bottom: spacing.$spacing-02;
-}
-
-.analyzer-type-mapping__decision {
-  align-items: end;
-  display: grid;
-  gap: spacing.$spacing-05;
-  grid-template-columns: minmax(18rem, 1fr) minmax(12rem, auto);
-
-  .cds--checkbox-wrapper {
-    padding-bottom: spacing.$spacing-03;
-  }
-}
-
-.analyzer-type-mapping__suggestion {
-  align-items: center;
-  display: flex;
-  gap: spacing.$spacing-03;
-  grid-column: 1 / -1;
-  justify-content: flex-start;
-}
-
-.analyzer-type-mapping__summary--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.analyzer-type-mapping__reason {
-  @include type.type-style("helper-text-01");
-  color: var(--cds-text-secondary);
-  grid-column: 1 / -1;
-}
-
-.analyzer-type-mapping__bucket {
-  margin-bottom: spacing.$spacing-07;
-}
-
 // A changed record's current decision beside the newer revision's default.
 .analyzer-type-mapping__adoption-comparison {
   display: grid;
   gap: 1px;
-  grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 
   > div {
@@ -200,70 +392,20 @@
   }
 }
 
-.analyzer-type-mapping__results {
-  border-top: 1px solid var(--cds-border-subtle-01);
-  display: grid;
-  gap: spacing.$spacing-04;
-  padding-top: spacing.$spacing-05;
-
-  h3 {
-    @include type.type-style("heading-02");
-    margin: 0;
-  }
-
-  .cds--inline-notification {
-    max-width: none;
-  }
-}
-
-.analyzer-type-mapping__catalog-action {
-  display: grid;
-  gap: spacing.$spacing-03;
-  justify-items: start;
-}
-
-.analyzer-type-mapping__result-row {
-  align-items: end;
-  display: grid;
-  gap: spacing.$spacing-05;
-  grid-template-columns: minmax(10rem, 0.7fr) minmax(16rem, 1.5fr) minmax(
-      8rem,
-      auto
-    );
-
-  code {
-    @include type.type-style("code-01");
-    align-items: center;
-    background: var(--cds-layer-02);
-    display: flex;
-    min-height: 3rem;
-    padding: 0 spacing.$spacing-04;
-  }
-
-  .cds--checkbox-wrapper {
-    padding-bottom: spacing.$spacing-03;
-  }
-}
-
-.analyzer-type-mapping__result-row--translation {
-  padding-left: spacing.$spacing-07;
-}
-
-.analyzer-type-mapping__translation-of {
-  @include type.type-style("helper-text-01");
-  color: var(--cds-text-secondary);
-}
-
-.analyzer-type-mapping__result-source {
-  align-items: start;
-  display: grid;
-  gap: spacing.$spacing-02;
-}
-
 .analyzer-type-mapping__recognition {
-  border-top: 1px solid var(--cds-border-subtle-01);
   margin-top: spacing.$spacing-07;
-  padding-top: spacing.$spacing-06;
+
+  .analyzer-type-mapping__recognition-mode {
+    @include type.type-style("body-01");
+    display: flex;
+    flex-direction: column;
+    gap: spacing.$spacing-02;
+    margin: 0 0 spacing.$spacing-04;
+
+    span {
+      color: var(--cds-text-secondary);
+    }
+  }
 
   ul {
     display: grid;
@@ -279,7 +421,6 @@
     display: flex;
     gap: spacing.$spacing-05;
     justify-content: space-between;
-    min-height: 3.5rem;
     padding: spacing.$spacing-04 spacing.$spacing-05;
 
     span {
@@ -289,42 +430,99 @@
   }
 }
 
-.analyzer-type-mapping__actions {
-  align-items: center;
+// The one action bar: what is pending on the left, the steps in order on the
+// right, feedback from the last step above them.
+.analyzer-type-mapping__bar {
+  background: var(--cds-layer-01);
   border-top: 1px solid var(--cds-border-subtle-01);
+  bottom: 0;
+  margin-top: spacing.$spacing-07;
+  padding: spacing.$spacing-04 spacing.$spacing-05;
+  position: sticky;
+  z-index: 3;
+}
+
+.analyzer-type-mapping__bar-notice {
+  margin: 0 0 spacing.$spacing-04;
+  max-width: none;
+}
+
+.analyzer-type-mapping__bar-row {
+  align-items: center;
   display: flex;
   gap: spacing.$spacing-05;
   justify-content: space-between;
-  margin-top: spacing.$spacing-07;
-  min-height: 5rem;
-  padding-top: spacing.$spacing-05;
-
-  > div:first-child {
-    @include type.type-style("label-01");
-    color: var(--cds-text-secondary);
-  }
 }
 
-@media (max-width: 66rem) {
-  .analyzer-type-mapping__decision,
-  .analyzer-type-mapping__result-row {
+.analyzer-type-mapping__bar-status {
+  @include type.type-style("body-compact-01");
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.analyzer-type-mapping__bar-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 1px;
+}
+
+@container (max-width: 56rem) {
+  .analyzer-type-mapping__filters {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .analyzer-type-mapping__suggestion {
-    grid-column: auto;
+  .analyzer-type-mapping__columns {
+    display: none;
   }
-}
 
-@media (max-width: 42rem) {
-  .analyzer-type-mapping__heading,
-  .analyzer-type-mapping__actions {
+  .analyzer-type-mapping__row {
+    grid-template-areas:
+      "adoption adoption adoption"
+      "code target state"
+      ". receive ."
+      ". values values";
+    grid-template-columns: minmax(6rem, 10rem) minmax(0, 1fr) auto;
+  }
+
+  .analyzer-type-mapping__row-receive {
+    padding-top: 0;
+  }
+
+  .analyzer-type-mapping__value {
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    > :nth-child(2) {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+
+  .analyzer-type-mapping__bar-row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .analyzer-type-mapping__heading-actions,
-  .analyzer-type-mapping__actions > div:last-child {
+  .analyzer-type-mapping__bar-buttons {
+    flex-wrap: wrap;
+  }
+}
+
+@container (max-width: 36rem) {
+  .analyzer-type-mapping__row {
+    grid-template-areas:
+      "adoption adoption"
+      "code state"
+      "target target"
+      "receive receive"
+      "values values";
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .analyzer-type-mapping__adoption-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analyzer-type-mapping__bar-buttons {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
 
@@ -332,16 +530,6 @@
       max-width: none;
       width: 100%;
     }
-  }
-
-  .analyzer-type-mapping__summary,
-  .analyzer-type-mapping__adoption-comparison {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .analyzer-type-mapping__row-title {
-    align-items: flex-start;
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .analyzer-type-mapping__recognition li {

@@ -349,6 +349,20 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void aCodeTheLabDoesNotReceiveIsDroppedEvenWhenItsAssayIsOff() throws IOException {
+        AnalyzerMappingTest excluded = excludedTest("WBC");
+        excluded.setEnabled(false);
+        arrangeBinding(List.of(excluded), List.of());
+
+        AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"),
+                "7");
+
+        assertEquals(0, summary.resultsStaged());
+        assertEquals(0, summary.resultsHeld());
+        verify(analyzerResultsService, never()).insertAnalyzerResults(anyList(), eq("7"));
+    }
+
+    @Test
     public void aResultForAnAssayThisInstrumentDoesNotRunIsHeldNotDropped() throws IOException {
         AnalyzerMappingTest off = boundTest(revision, "WBC", "501");
         off.setEnabled(false);

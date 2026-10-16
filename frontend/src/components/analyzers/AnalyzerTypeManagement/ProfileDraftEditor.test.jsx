@@ -13,7 +13,8 @@ import {
   updateAnalyzerTypeControlRecognition,
   publishAnalyzerTypeDraft,
 } from "../../../services/analyzerService";
-import AnalyzerTypeLifecycleModals from "./AnalyzerTypeLifecycleModals";
+import { MemoryRouter, Route, useLocation } from "react-router-dom";
+import AnalyzerTypeDraftPage from "./AnalyzerTypeDraftPage";
 import newFileProfile from "./__fixtures__/new-file-profile.json";
 import ProfileDraftEditor from "./ProfileDraftEditor";
 import fileProfile from "./__fixtures__/fluorocycler-xt-v3.json";
@@ -81,7 +82,7 @@ const changeText = (input, value) =>
   fireEvent.change(input, { target: { value } });
 const save = async () =>
   userEvent.click(
-    screen.getByRole("button", { name: "Save and validate profile settings" }),
+    screen.getByRole("button", { name: "Save and validate settings" }),
   );
 
 beforeEach(() => {
@@ -133,7 +134,7 @@ it.each(preservationCases)(
       expected,
       expect.any(Function),
     );
-    await screen.findByText("Profile settings saved");
+    await screen.findByText("Settings saved");
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ dirty: false, publishable: true }),
     );
@@ -170,7 +171,7 @@ it("retains edits after a save failure and retries the same complete profile", a
   expect(updateAnalyzerTypeDraft.mock.calls[1][1]).toEqual(
     updateAnalyzerTypeDraft.mock.calls[0][1],
   );
-  expect(await screen.findByText("Profile settings saved")).toBeVisible();
+  expect(await screen.findByText("Settings saved")).toBeVisible();
 });
 
 it("shows Bridge validation failures after saving and keeps publication blocked", async () => {
@@ -239,7 +240,7 @@ it("does not collapse duplicate file column names into a silently truncated mapp
     screen.getByText("Each column needs a unique name and a selected meaning."),
   ).toBeVisible();
   expect(
-    screen.getByRole("button", { name: "Save and validate profile settings" }),
+    screen.getByRole("button", { name: "Save and validate settings" }),
   ).toBeDisabled();
   expect(updateAnalyzerTypeDraft).not.toHaveBeenCalled();
 });
@@ -294,7 +295,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     draftId: "new-file",
     kind: "CREATE",
     profile: empty,
-    validationIssues: ["Profile settings are incomplete"],
+    validationIssues: ["Type settings are incomplete"],
   };
   getAnalyzerTypeControlRecognition.mockImplementation((id, callback) =>
     callback({
@@ -355,31 +356,42 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
       },
     }),
   );
-  const onSuccess = vi.fn();
+  // Where publishing the draft's page leads, and what it says it did.
+  const Published = () => {
+    const location = useLocation();
+    return (
+      <p data-testid="published">
+        {`${location.pathname} ${location.state?.analyzerTypeNotice}`}
+      </p>
+    );
+  };
   const editor = () => (
-    <IntlProvider locale="en" messages={messages}>
-      <AnalyzerTypeLifecycleModals
-        action="create"
-        types={[]}
-        draftId="new-file"
-        onClose={vi.fn()}
-        onError={vi.fn()}
-        onSuccess={onSuccess}
-        onDraftCreated={vi.fn()}
-      />
-    </IntlProvider>
+    <MemoryRouter
+      initialEntries={[
+        "/analyzers/types/drafts/new-file?returnTo=%2Fanalyzers%2Ftypes",
+      ]}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <Route path="/analyzers/types/drafts/:draftId">
+          <AnalyzerTypeDraftPage />
+        </Route>
+        <Route path="/analyzers/types" exact>
+          <Published />
+        </Route>
+      </IntlProvider>
+    </MemoryRouter>
   );
   const view = render(editor());
   const choose = async (name, value) =>
     userEvent.selectOptions(screen.getByRole("combobox", { name }), value);
-  changeText(screen.getByRole("textbox", { name: "Profile version" }), "1.0");
+  changeText(screen.getByRole("textbox", { name: "Type version" }), "1.0");
   await choose("Evidence confidence", "LOW");
   await choose("Laboratory discipline", "MOLECULAR");
   await choose("Protocol", "FILE");
   await choose("Receives analyzer results", "true");
   await choose("Sends orders to the analyzer", "false");
   await choose("Supports a connection test", "true");
-  await choose("Profile file format", "CSV");
+  await choose("File format", "CSV");
   await choose("Default file format", "CSV");
   changeText(
     screen.getByRole("textbox", { name: "Filename pattern" }),
@@ -449,9 +461,7 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
     testRow.getByRole("combobox", { name: "Reported value type" }),
     "quantitative",
   );
-  expect(
-    screen.getByRole("button", { name: "Publish Profile" }),
-  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Publish type" })).toBeDisabled();
   await save();
   const settings = clone(newFileProfile);
   delete settings.controlResultRecognition;
@@ -505,14 +515,16 @@ it("creates, saves, reopens, recognizes controls and explicitly publishes a new 
   expect(
     screen.queryByText("Save control recognition before publishing."),
   ).toBeNull();
-  const publish = screen.getByRole("button", { name: "Publish Profile" });
+  const publish = screen.getByRole("button", { name: "Publish type" });
   await waitFor(() => expect(publish).toBeEnabled());
   await userEvent.click(publish);
   expect(publishAnalyzerTypeDraft).toHaveBeenCalledExactlyOnceWith(
     "new-file",
     expect.any(Function),
   );
-  expect(onSuccess).toHaveBeenCalledWith("create");
+  expect(await screen.findByTestId("published")).toHaveTextContent(
+    "/analyzers/types create",
+  );
 });
 
 it("edits test definitions without losing aliases, named results or unrelated profile behavior", async () => {
@@ -625,7 +637,7 @@ it("keeps invalid typed input visible and blocks saving instead of discarding it
   await userEvent.type(value, "[[");
   expect(value).toHaveValue("[");
   expect(
-    screen.getByRole("button", { name: "Save and validate profile settings" }),
+    screen.getByRole("button", { name: "Save and validate settings" }),
   ).toBeDisabled();
   expect(onStateChange).toHaveBeenLastCalledWith(
     expect.objectContaining({ dirty: true, publishable: false }),
@@ -742,7 +754,7 @@ it("clears local validation when an invalid visibility condition is explicitly r
     "invalid",
   );
   expect(
-    screen.getByRole("button", { name: "Save and validate profile settings" }),
+    screen.getByRole("button", { name: "Save and validate settings" }),
   ).toBeDisabled();
   await userEvent.click(
     role.getByRole("button", { name: "Remove visibility condition" }),
@@ -765,7 +777,7 @@ it.each(["ASTM", "HL7"])(
     });
     const choose = async (name, value) =>
       userEvent.selectOptions(screen.getByLabelText(name), value);
-    await replace("Profile version", "1.0");
+    await replace("Type version", "1.0");
     await choose("Evidence confidence", "LOW");
     await choose("Laboratory discipline", "MOLECULAR");
     await choose("Protocol", protocol);
@@ -901,14 +913,11 @@ it("requires confirmation before clearing settings when changing an unsaved prot
     profileMeta: { id: "site.switch", displayName: "Synthetic switch" },
   });
   await userEvent.selectOptions(screen.getByLabelText("Protocol"), "FILE");
-  await userEvent.selectOptions(
-    screen.getByLabelText("Profile file format"),
-    "CSV",
-  );
+  await userEvent.selectOptions(screen.getByLabelText("File format"), "CSV");
   await replace("Filename pattern", "*.csv");
   await userEvent.selectOptions(screen.getByLabelText("Protocol"), "ASTM");
   expect(
-    screen.getByRole("button", { name: "Save and validate profile settings" }),
+    screen.getByRole("button", { name: "Save and validate settings" }),
   ).toBeDisabled();
   expect(screen.getByLabelText("Filename pattern")).toHaveValue("*.csv");
   await userEvent.click(

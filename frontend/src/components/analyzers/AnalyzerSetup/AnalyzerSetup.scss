@@ -1,89 +1,90 @@
 @use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
 
+// The setup page: the steps on the left, the current step's form on the right.
 .analyzer-setup {
-  background: var(--cds-layer-01);
-  border-block: 1px solid var(--cds-border-subtle-01);
-  margin-bottom: spacing.$spacing-06;
+  padding: 0 0 spacing.$spacing-07;
 }
 
-.analyzer-setup__header {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  min-height: 3rem;
-  padding: 0 spacing.$spacing-05;
-
-  h2 {
-    @include type.type-style("heading-compact-02");
-    color: var(--cds-text-primary);
-    margin: 0;
-  }
+.analyzer-setup__body {
+  display: grid;
+  gap: spacing.$spacing-07;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  align-items: start;
 }
 
 .analyzer-setup__steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  position: sticky;
+  top: 4rem;
 }
 
-.analyzer-setup__step {
-  border-top: 1px solid var(--cds-border-subtle-01);
-  min-height: 3.5rem;
-  padding: 0 spacing.$spacing-05;
+.analyzer-setup__content {
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  min-width: 0;
+  padding: spacing.$spacing-05 spacing.$spacing-06 spacing.$spacing-06;
+}
+
+.analyzer-setup__step-title {
+  @include type.type-style("heading-03");
+  color: var(--cds-text-primary);
+  margin: 0 0 spacing.$spacing-05;
+}
+
+.analyzer-setup__step-count {
+  @include type.type-style("label-01");
+  color: var(--cds-text-secondary);
+  display: block;
+  margin-bottom: spacing.$spacing-02;
+}
+
+.analyzer-setup__type-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.analyzer-setup__type-option-detail {
+  @include type.type-style("helper-text-01");
+  color: var(--cds-text-secondary);
+}
+
+// The type picker's menu shows two lines per type.
+.analyzer-setup__instrument .cds--list-box__menu-item {
+  height: auto;
+}
+
+.analyzer-setup__instrument .cds--list-box__menu-item__option {
+  height: auto;
+  padding-top: spacing.$spacing-03;
+  padding-bottom: spacing.$spacing-03;
+  white-space: normal;
 }
 
 .analyzer-setup__instrument {
   display: grid;
   gap: spacing.$spacing-05;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 36rem;
+}
+
+.analyzer-setup__lab-unit-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-02;
+  margin-top: calc(-1 * #{spacing.$spacing-03});
 }
 
 .analyzer-setup__instrument-actions {
   align-items: center;
   display: flex;
   gap: spacing.$spacing-05;
-  grid-column: 1 / -1;
   justify-content: space-between;
-}
-
-.analyzer-setup__instrument-summary {
-  display: grid;
-  gap: spacing.$spacing-05;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: 0 0 spacing.$spacing-05 calc(1.5rem + #{spacing.$spacing-04});
-
-  div {
-    min-width: 0;
-  }
-
-  dt {
-    @include type.type-style("label-01");
-    color: var(--cds-text-secondary);
-    margin-bottom: spacing.$spacing-02;
-  }
-
-  dd {
-    @include type.type-style("body-compact-01");
-    color: var(--cds-text-primary);
-    margin: 0;
-    overflow-wrap: anywhere;
-  }
-}
-
-.analyzer-setup__verify-summary {
-  @include type.type-style("body-compact-01");
-  color: var(--cds-text-secondary);
-  margin: 0;
-  padding: 0 0 spacing.$spacing-05 calc(1.5rem + #{spacing.$spacing-04});
 }
 
 .analyzer-setup__verify {
   display: grid;
   gap: spacing.$spacing-05;
-  padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
 }
 
 // One row per assay, like the instrument's host test code table: whether it
@@ -91,12 +92,35 @@
 .analyzer-setup__assays {
   display: grid;
   gap: spacing.$spacing-05;
-  padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
+}
+
+.analyzer-setup__assays-toolbar {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-04;
+  justify-content: space-between;
+}
+
+.analyzer-setup__assays-toolbar .cds--search {
+  flex: 1 1 18rem;
+  max-width: 28rem;
 }
 
 .analyzer-setup__assays-count {
   @include type.type-style("label-01");
   color: var(--cds-text-secondary);
+}
+
+.analyzer-setup__assay-group {
+  display: grid;
+  gap: spacing.$spacing-03;
+
+  h5 {
+    @include type.type-style("heading-compact-01");
+    color: var(--cds-text-primary);
+    margin: 0;
+  }
 }
 
 .analyzer-setup__assay-list {
@@ -106,12 +130,17 @@
 
   li {
     align-items: center;
-    background: var(--cds-layer-01);
+    background: var(--cds-layer-02);
     display: grid;
     gap: spacing.$spacing-04;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.5fr);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
     padding: spacing.$spacing-03 spacing.$spacing-04;
   }
+}
+
+.analyzer-setup__assays-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .analyzer-setup__assay-match {
@@ -119,28 +148,16 @@
   color: var(--cds-text-secondary);
 }
 
-.analyzer-setup__verify-actions {
-  align-items: center;
-  display: flex;
-  gap: spacing.$spacing-05;
-  justify-content: space-between;
-}
-
 .analyzer-setup__connect {
   display: grid;
   gap: spacing.$spacing-05;
-  max-width: 48rem;
-  padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
+  max-width: 40rem;
 }
 
 .analyzer-setup__connect-fields {
   display: grid;
   gap: spacing.$spacing-05;
-  grid-template-columns: minmax(0, 2fr) minmax(10rem, 1fr);
-
-  > :only-child {
-    grid-column: 1 / -1;
-  }
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .analyzer-setup__connect-actions {
@@ -158,6 +175,41 @@
     @include type.type-style("heading-compact-01");
     color: var(--cds-text-primary);
     margin: 0;
+  }
+}
+
+.analyzer-setup__readiness-list {
+  display: grid;
+  gap: spacing.$spacing-03;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analyzer-setup__readiness-item {
+  @include type.type-style("body-compact-01");
+  align-items: flex-start;
+  color: var(--cds-text-primary);
+  display: flex;
+  gap: spacing.$spacing-03;
+
+  svg {
+    flex: none;
+    margin-top: 1px;
+  }
+}
+
+.analyzer-setup__readiness-item--ready svg {
+  fill: var(--cds-support-success);
+}
+
+.analyzer-setup__readiness-item--blocked svg {
+  fill: var(--cds-support-warning);
+
+  // The warning glyph's inner mark stays dark on the yellow fill.
+  [data-icon-path="inner-path"] {
+    fill: var(--cds-icon-primary, #161616);
+    opacity: 1;
   }
 }
 
@@ -205,60 +257,43 @@
 }
 
 .analyzer-setup__notification {
-  margin: 0 spacing.$spacing-05 spacing.$spacing-05;
-}
-
-.analyzer-setup__step-heading {
-  align-items: center;
-  display: flex;
-  gap: spacing.$spacing-04;
-  min-height: 3.5rem;
-
-  h3 {
-    @include type.type-style("heading-compact-01");
-    color: var(--cds-text-primary);
-    margin: 0;
-  }
-}
-
-.analyzer-setup__step-edit {
-  margin-left: auto;
-}
-
-.analyzer-setup__step-number {
-  @include type.type-style("label-01");
-  align-items: center;
-  border: 1px solid var(--cds-border-strong-01);
-  border-radius: 50%;
-  color: var(--cds-text-secondary);
-  display: inline-flex;
-  height: 1.5rem;
-  justify-content: center;
-  width: 1.5rem;
-}
-
-.analyzer-setup__step--current {
-  border-left: 0.25rem solid var(--cds-border-interactive);
-  padding-left: calc(#{spacing.$spacing-05} - 0.25rem);
-
-  .analyzer-setup__step-number {
-    background: var(--cds-background-brand);
-    border-color: var(--cds-background-brand);
-    color: var(--cds-text-on-color);
-  }
-}
-
-.analyzer-setup__step--future {
-  .analyzer-setup__step-heading h3,
-  .analyzer-setup__step-number {
-    color: var(--cds-text-disabled);
-  }
+  margin: 0 0 spacing.$spacing-05;
 }
 
 @media (max-width: 66rem) {
-  .analyzer-setup__instrument,
-  .analyzer-setup__instrument-summary {
-    grid-template-columns: 1fr;
+  .analyzer-setup__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analyzer-setup__steps {
+    position: static;
+  }
+
+  // Four equal columns above the form; labels wrap inside their column.
+  .analyzer-setup__steps.cds--progress--vertical {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .analyzer-setup__steps.cds--progress--vertical .cds--progress-step {
+    min-width: 0;
+  }
+
+  .analyzer-setup__steps.cds--progress--vertical .cds--progress-step-button {
+    inline-size: 100%;
+  }
+
+  .analyzer-setup__steps.cds--progress--vertical .cds--progress-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-inline-end: spacing.$spacing-03;
+  }
+
+  .analyzer-setup__steps.cds--progress--vertical .cds--progress-label,
+  .analyzer-setup__steps.cds--progress--vertical .cds--progress-optional {
+    max-inline-size: none;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .analyzer-setup__instrument-actions {
@@ -266,30 +301,15 @@
     flex-direction: column;
   }
 
-  .analyzer-setup__verify {
-    padding-left: 0;
-  }
-
-  .analyzer-setup__verify-summary {
-    padding-left: 0;
-  }
-
   .analyzer-setup__connect {
     max-width: none;
-    padding-left: 0;
   }
 
-  .analyzer-setup__connect-fields,
   .analyzer-setup__connect-evidence dl > div {
     grid-template-columns: 1fr;
   }
 
   .analyzer-setup__assay-list li {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .analyzer-setup__verify-actions {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }

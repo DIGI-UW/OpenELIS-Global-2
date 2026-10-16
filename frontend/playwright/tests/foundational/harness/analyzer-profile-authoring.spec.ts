@@ -27,36 +27,37 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
         );
         await openAnalyzerTypes(page);
         await demo.caption(
-          "Analyzer Types lists what the Bridge ships and what this site created. Create Profile starts a draft.",
+          "Analyzer Types lists what the Bridge ships and what this site created. Create type starts a draft.",
         );
         await page
-          .getByRole("button", { name: "Create Profile", exact: true })
+          .getByRole("button", { name: "Create type", exact: true })
           .click();
         const dialog = page.getByRole("dialog", {
-          name: "Create Profile",
+          name: "Create type",
           exact: true,
         });
         await dialog
-          .getByRole("textbox", { name: "Profile name", exact: true })
+          .getByRole("textbox", { name: "Type name", exact: true })
           .fill(name);
         await dialog
-          .getByRole("button", { name: "Create Profile", exact: true })
+          .getByRole("button", { name: "Create type", exact: true })
           .click();
+        await expect(page).toHaveURL(/\/analyzers\/types\/drafts\//);
+        const draft = page.getByTestId("analyzer-type-draft-page");
         await expect(
-          dialog.getByText("Profile draft created", { exact: true }),
+          draft.getByRole("heading", { level: 1, name: `New type: ${name}` }),
         ).toBeVisible();
-        await expect(page).toHaveURL(/action=create&draft=/);
         const draftUrl = page.url();
         await demo.caption(
-          "The draft lives in the Bridge. Its settings describe the interface: the protocol, what it receives, and how it connects.",
+          "The draft opens on its own page and lives in the Bridge. Its settings describe the interface: the protocol, what it receives, and how it connects.",
         );
         const text = async (label: string, value: string) =>
-          dialog.getByRole("textbox", { name: label, exact: true }).fill(value);
+          draft.getByRole("textbox", { name: label, exact: true }).fill(value);
         const choose = async (label: string, value: string) =>
-          dialog
+          draft
             .getByRole("combobox", { name: label, exact: true })
             .selectOption(value);
-        await text("Profile version", "1.0");
+        await text("Type version", "1.0");
         await choose("Evidence confidence", "LOW");
         await choose("Laboratory discipline", "MOLECULAR");
         await choose("Protocol", protocol);
@@ -68,12 +69,12 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
           await demo.caption(
             "A file profile says what the instrument writes: the format, the filename pattern, and what each column means.",
           );
-          await choose("Profile file format", "CSV");
+          await choose("File format", "CSV");
           await choose("Default file format", "CSV");
           await text("Filename pattern", "*.csv");
           await choose("First row contains column names", "true");
           await text("Column delimiter", ",");
-          const extensions = dialog.getByRole("group", {
+          const extensions = draft.getByRole("group", {
             name: "Supported file extensions",
             exact: true,
           });
@@ -87,10 +88,10 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
             ["Value", "result"],
           ];
           for (const [index, [source, meaning]] of columns.entries()) {
-            await dialog
+            await draft
               .getByRole("button", { name: "Add column", exact: true })
               .click();
-            const row = dialog.getByRole("group", {
+            const row = draft.getByRole("group", {
               name: `File column ${index + 1}`,
               exact: true,
             });
@@ -122,7 +123,7 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
             await choose("ASTM framing version", "LIS01_A");
             await choose("Result records to parse", "ALL");
           }
-          await dialog.getByText("Support TCP/IP", { exact: true }).click();
+          await draft.getByText("Support TCP/IP", { exact: true }).click();
           await choose("Who starts communication", "ANALYZER_INITIATED");
           await choose(
             "Allows the laboratory system to start communication",
@@ -135,10 +136,10 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
         await demo.caption(
           "A connection field is what setup will ask for on each analyzer of this type.",
         );
-        await dialog
+        await draft
           .getByRole("button", { name: "Add connection field", exact: true })
           .click();
-        const connection = dialog.getByRole("group", {
+        const connection = draft.getByRole("group", {
           name: "Connection field 1",
           exact: true,
         });
@@ -162,17 +163,17 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
           })
           .selectOption(protocol === "FILE" ? "true" : "false");
 
-        await dialog
+        await draft
           .getByRole("button", {
-            name: "Save and validate profile settings",
+            name: "Save and validate settings",
             exact: true,
           })
           .click();
         await expect(
-          dialog.getByText("Profile settings saved", { exact: true }),
+          draft.getByText("Settings saved", { exact: true }),
         ).toBeVisible();
         await expect(
-          dialog.getByRole("button", { name: "Publish Profile", exact: true }),
+          draft.getByRole("button", { name: "Publish type", exact: true }),
         ).toBeDisabled();
         await demo.caption(
           "Settings saved. Publish stays shut until control recognition is stated. Reloading the draft's address brings it back as saved.",
@@ -180,24 +181,24 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
         await page.reload({ waitUntil: "domcontentloaded" });
         await expect(page).toHaveURL(draftUrl);
         await expect(
-          dialog.getByRole("textbox", { name: "Profile name", exact: true }),
+          draft.getByRole("textbox", { name: "Type name", exact: true }),
         ).toHaveValue(name);
         await expect(
-          dialog.getByRole("combobox", { name: "Protocol", exact: true }),
+          draft.getByRole("combobox", { name: "Protocol", exact: true }),
         ).toHaveValue(protocol);
         if (protocol === "FILE") {
           await expect(
-            dialog.getByRole("textbox", {
+            draft.getByRole("textbox", {
               name: "Filename pattern",
               exact: true,
             }),
           ).toHaveValue("*.csv");
           await expect(
-            dialog.getByRole("group", { name: /^File column \d+$/ }),
+            draft.getByRole("group", { name: /^File column \d+$/ }),
           ).toHaveCount(3);
         } else {
           await expect(
-            dialog.getByRole("combobox", {
+            draft.getByRole("combobox", {
               name: "Default connection role",
               exact: true,
             }),
@@ -207,28 +208,28 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
           "Controls are recognized by a rule the author states, here specimen IDs starting with QC-. Nothing is assumed about them.",
         );
         // Use the existing UI's explicit rule authoring; never affirm absent controls by assumption.
-        await dialog
+        await draft
           .getByText("Recognize controls using these conditions", {
             exact: true,
           })
           .click();
-        await dialog
+        await draft
           .getByRole("combobox", { name: "New condition", exact: true })
           .selectOption("SPECIMEN_ID_STARTS_WITH|");
-        await dialog
+        await draft
           .getByRole("button", { name: "Add condition", exact: true })
           .click();
-        await dialog
+        await draft
           .getByRole("textbox", { name: "Specimen ID prefix", exact: true })
           .fill("QC-");
-        await dialog
+        await draft
           .getByRole("button", {
             name: "Save control recognition",
             exact: true,
           })
           .click();
-        const publish = dialog.getByRole("button", {
-          name: "Publish Profile",
+        const publish = draft.getByRole("button", {
+          name: "Publish type",
           exact: true,
         });
         await expect(publish).toBeEnabled();
@@ -251,10 +252,10 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
           contentType: "image/png",
         });
         await demo.caption(
-          "Publish Profile: the type is revision 1, site-created, and offered in analyzer setup.",
+          "Publish type: the type is revision 1, site-created, and offered in analyzer setup.",
         );
         await publish.click();
-        await expect(dialog).not.toBeVisible();
+        await expect(page).toHaveURL(/\/analyzers\/types$/);
         const row = analyzerTypeRow(page, name);
         await expect(row).toBeVisible();
         await expect(row).toContainText("Site");
@@ -277,7 +278,7 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
     }
 
     test(
-      "publishes a new revision through Update shared; analyzers keep the revision they chose",
+      "publishes a new revision through New revision; analyzers keep the revision they chose",
       { tag: ["@evidence", LANE[protocol], "@admin"] },
       async ({ page }, testInfo) => {
         const demo = createDemoPresentation(page, testInfo);
@@ -288,48 +289,54 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
         await openAnalyzerTypes(page);
         const row = analyzerTypeRow(page, name);
         await expect(row).toContainText("revision 1");
-        await demo.caption("Update shared starts a draft from revision 1.");
-        await openRowAction(page, name, "Update shared");
-        const dialog = page.getByRole("dialog", { name: `Update ${name}` });
+        await demo.caption("New revision starts a draft from revision 1.");
+        await openRowAction(page, name, "New revision");
+        const dialog = page.getByRole("dialog", {
+          name: `New revision of ${name}`,
+        });
         await expect(dialog).toContainText(
           "This starts a new immutable revision from revision 1.",
         );
         await dialog
-          .getByRole("button", { name: "Start update", exact: true })
+          .getByRole("button", { name: "Start the revision", exact: true })
           .click();
-        await expect(page).toHaveURL(/action=update&profile=[^&]+&draft=/);
+        await expect(page).toHaveURL(/\/analyzers\/types\/drafts\//);
+        const draft = page.getByTestId("analyzer-type-draft-page");
         await expect(
-          dialog.getByText("Profile update draft created", { exact: true }),
+          draft.getByRole("heading", {
+            level: 1,
+            name: `New revision of ${name}`,
+          }),
         ).toBeVisible();
         await demo.caption(
-          "The draft opens on the profile's settings. The version is raised and the settings saved again.",
+          "The draft opens on its own page. The version is raised and the settings saved again.",
         );
-        await dialog
-          .getByRole("textbox", { name: "Profile version", exact: true })
+        await draft
+          .getByRole("textbox", { name: "Type version", exact: true })
           .fill("1.1");
-        await dialog
+        await draft
           .getByRole("button", {
-            name: "Save and validate profile settings",
+            name: "Save and validate settings",
             exact: true,
           })
           .click();
         await expect(
-          dialog.getByText("Profile settings saved", { exact: true }),
+          draft.getByText("Settings saved", { exact: true }),
         ).toBeVisible();
-        const publish = dialog.getByRole("button", {
-          name: "Publish Profile",
+        const publish = draft.getByRole("button", {
+          name: "Publish type",
           exact: true,
         });
         await expect(publish).toBeEnabled();
         await demo.caption("Publish: revision 2 of the shared type.");
         await publish.click();
-        await expect(page.getByText("Profile updated")).toBeVisible();
+        await expect(page.getByText("Type updated")).toBeVisible();
         await expect(row).toContainText("revision 2");
         await demo.highlight(row);
         await demo.caption(
           "Its history keeps revision 1. An analyzer set up on it stays there until it adopts revision 2.",
         );
-        await openRowAction(page, name, "View history");
+        await openRowAction(page, name, "History");
         const history = page.getByRole("dialog", { name: `${name} history` });
         await expect(history).toContainText("Revision 2");
         await expect(history).toContainText("Updated");
@@ -375,16 +382,16 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
           name: `Deactivate ${name}`,
         });
         await expect(deactivate).toContainText(
-          "This profile will no longer be available for new analyzer setup.",
+          "This type will no longer be available for new analyzer setup.",
         );
         // Carbon names a danger button "danger <label>" for screen readers.
         await deactivate.getByRole("button", { name: /Deactivate$/ }).click();
-        await expect(page.getByText("Profile deactivated")).toBeVisible();
+        await expect(page.getByText("Type deactivated")).toBeVisible();
         await demo.caption(
-          "Deactivated types leave the list until Show deactivated is on.",
+          "Deactivated types leave the active list for their own view.",
         );
         await expect(analyzerTypeRow(page, name)).toHaveCount(0);
-        await page.getByText("Show deactivated", { exact: true }).click();
+        await page.getByTestId("analyzer-type-view-deactivated").click();
         const row = analyzerTypeRow(page, name);
         await expect(row).toContainText("Deactivated");
         await demo.highlight(row);
@@ -396,18 +403,19 @@ for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
         await setup.close();
 
         await demo.caption("Reactivate: the type is offered again.");
-        await openAnalyzerTypes(page, "?showDeactivated=true");
+        await openAnalyzerTypes(page, "?view=deactivated");
         await openRowAction(page, name, "Reactivate");
         const reactivate = page.getByRole("dialog", {
           name: `Reactivate ${name}`,
         });
         await expect(reactivate).toContainText(
-          "This profile will be available for new analyzer setup again.",
+          "This type will be available for new analyzer setup again.",
         );
         await reactivate
           .getByRole("button", { name: "Reactivate", exact: true })
           .click();
-        await expect(page.getByText("Profile reactivated")).toBeVisible();
+        await expect(page.getByText("Type reactivated")).toBeVisible();
+        await page.getByTestId("analyzer-type-view-all").click();
         await expect(analyzerTypeRow(page, name)).toContainText("Active");
         await openTypePicker();
         await expect(offered()).toHaveCount(1);

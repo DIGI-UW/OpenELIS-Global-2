@@ -4,7 +4,7 @@ import ImportIssuesPanel from "../analyserResults/ImportIssuesPanel";
 
 /**
  * The analyzer's stuck import events, inside the admin shell. The same panel
- * is reachable from the Analyzers area at /AnalyzerResults?view=import-issues;
+ * is reachable from the Analyzers area at /analyzers/import-issues;
  * this route exists so that opening it from the admin menu keeps the admin
  * navigation in place instead of dropping the reader back to the main one.
  */

@@ -100,6 +100,58 @@ describe("useMenuAutoExpand", () => {
     });
   });
 
+  describe("a group that shares its URL with its first child", () => {
+    /**
+     * Test: the child is the selected item and the group opens, since a
+     * group has no selected state of its own.
+     */
+    test("testAutoExpand_GroupAndChildShareUrl_ChildSelected", () => {
+      const menus = [
+        {
+          menu: {
+            id: "1",
+            displayKey: "menu.analyzers",
+            actionURL: "/analyzers",
+            isActive: true,
+          },
+          childMenus: [
+            {
+              menu: {
+                id: "1.1",
+                displayKey: "menu.analyzers.list",
+                actionURL: "/analyzers",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+            {
+              menu: {
+                id: "1.2",
+                displayKey: "menu.analyzers.types",
+                actionURL: "/analyzers/types",
+                isActive: true,
+              },
+              childMenus: [],
+            },
+          ],
+          expanded: false,
+        },
+      ];
+
+      window.history.pushState({}, "", "/analyzers");
+
+      const { result } = renderHook(() => useMenuAutoExpand(menus), {
+        wrapper,
+      });
+
+      const [group] = result.current;
+      expect(group.routeActive).toBe(false);
+      expect(group.expanded).toBe(true);
+      expect(group.childMenus[0].routeActive).toBe(true);
+      expect(group.childMenus[1].routeActive).toBe(false);
+    });
+  });
+
   describe("nested expansion", () => {
     /**
      * Test: Expands multiple ancestors for deeply nested routes

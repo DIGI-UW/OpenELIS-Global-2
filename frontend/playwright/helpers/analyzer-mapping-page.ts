@@ -10,7 +10,7 @@ export async function saveMapping(page: Page) {
 /** Confirms the saved mapping and control recognition as the ones in force. */
 export async function confirmMapping(page: Page) {
   const confirm = page.getByRole("button", {
-    name: "Confirm mappings and control recognition",
+    name: "Confirm mapping",
   });
   await expect(confirm).toBeEnabled();
   await confirm.click();
@@ -22,7 +22,7 @@ export async function confirmMapping(page: Page) {
 /** Applies the confirmed mapping to the analyzer, which retries what it holds. */
 export async function applyMappings(page: Page) {
   await page
-    .getByRole("button", { name: "Apply mappings and retry held results" })
+    .getByRole("button", { name: "Apply and retry held results" })
     .click();
   await expect(
     page.getByText(

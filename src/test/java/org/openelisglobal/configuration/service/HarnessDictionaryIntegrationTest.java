@@ -21,6 +21,7 @@ import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDefaults;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDraft;
+import org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.test.service.TestService;
@@ -36,7 +37,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * The analyzer harness loads only the configuration the analyzer stories use.
  * Loaded the way OpenELIS loads configuration at startup, it lets every
  * baseline profile the Bridge ships bind every test, record and value with no
- * operator work.
+ * operator work, except the BC-5380's manual differential: the harness lab does
+ * not count differentials on the analyzer, so those assays start off.
  */
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
         HarnessDictionaryIntegrationTest.TestConfig.class })
@@ -50,6 +52,13 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
     private static final List<String> BASELINE_PROFILES = List.of("cepheid-genexpert-astm.json",
             "hain-fluorocycler-xt.json", "hain-fluorocycler-xt-madagascar.json", "thermo-quantstudio.json",
             "mindray-bc5380.json");
+    /**
+     * The BC-5380 microscope exam's manual differential, declared by its profile;
+     * no harness test carries these codes.
+     */
+    private static final Set<String> BC5380_MANUAL_DIFFERENTIAL = Set.of("747-6", "783-1", "749-2", "740-1", "764-1",
+            "769-0", "714-6", "707-0", "33831-9", "6746-2", "737-7", "29261-5", "33840-0", "13599-6", "744-3",
+            "18309-5", "31112-6");
     private static final Set<String> CATALOG_DOMAINS = Set.of("sample-types", "test-sections", "tests", "dictionaries",
             "result-components", "test-results", "result-limits", "answer-terminology");
 
@@ -111,7 +120,18 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
             values.removeAll(resolvedValues);
             assertEquals(profileFile + " values with no result row", Set.of(), values);
 
+            if ("mindray-bc5380.json".equals(profileFile)) {
+                List<String> manualOn = draft.tests().stream()
+                        .filter(row -> BC5380_MANUAL_DIFFERENTIAL.contains(row.sourceRowKey()))
+                        .filter(row -> row.mappingState() == AnalyzerMappingState.BOUND || row.isEnabled())
+                        .map(AnalyzerMappingTestDraft::sourceRowKey).toList();
+                assertEquals("manual differential bound or on", List.of(), manualOn);
+                assertEquals(BC5380_MANUAL_DIFFERENTIAL.size(), draft.tests().stream()
+                        .filter(row -> BC5380_MANUAL_DIFFERENTIAL.contains(row.sourceRowKey())).count());
+            }
             draft.tests().stream().filter(row -> row.mappingState() != AnalyzerMappingState.BOUND)
+                    .filter(row -> !("mindray-bc5380.json".equals(profileFile)
+                            && BC5380_MANUAL_DIFFERENTIAL.contains(row.sourceRowKey())))
                     .forEach(row -> unbound.add(profileFile + " " + row.sourceRowKey() + " " + row.subIdentity() + ": "
                             + row.unresolvedReason()));
             draft.results().stream().filter(row -> row.mappingState() != AnalyzerMappingState.BOUND)

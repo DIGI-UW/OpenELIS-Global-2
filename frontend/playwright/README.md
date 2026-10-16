@@ -83,8 +83,8 @@ CI workflows load fixtures via the unified loader script:
 Analyzer rows used by harness tests are created via REST API seeding:
 
 - **`projects/analyzer-harness/seed-analyzers.sh`** — Creates
-  `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`, and
-  `FluoroCycler XT` through the ordinary analyzer API. CI uses
+  `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`,
+  `FluoroCycler XT`, and `Mindray BC-5380` through the ordinary analyzer API. CI uses
   `--ensure-connections`, preserving mapping and activation for the workflow
   tests to verify in the UI. Native traffic belongs to those tests.
 

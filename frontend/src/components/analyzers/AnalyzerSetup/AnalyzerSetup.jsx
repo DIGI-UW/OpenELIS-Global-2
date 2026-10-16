@@ -2,15 +2,23 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   ComboBox,
+  DismissibleTag,
   FilterableMultiSelect,
   InlineNotification,
   Link as CarbonLink,
   Loading,
+  ProgressIndicator,
+  ProgressStep,
   TextInput,
 } from "@carbon/react";
 import { ArrowRight, Close } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
+import {
+  Link as RouterLink,
+  Redirect,
+  useHistory,
+  useLocation,
+} from "react-router-dom";
 
 import {
   createAnalyzer,
@@ -22,6 +30,7 @@ import {
 } from "../../../services/analyzerService";
 import { analyzerErrorText } from "../analyzerErrors";
 import { includesComboBoxText } from "../comboBoxSearch";
+import AnalyzerPageHeader from "../AnalyzerPageHeader";
 import AnalyzerTypeMappingEditor from "../AnalyzerTypeMapping/AnalyzerTypeMappingEditor";
 import AnalyzerAssaysSetup from "./AnalyzerAssaysSetup";
 import AnalyzerConnectionSetup, {
@@ -32,15 +41,27 @@ import "./AnalyzerSetup.scss";
 
 const SETUP_STEPS = ["instrument", "assays", "verify", "connect"];
 
+/**
+ * The analyzer setup as its own page: the four steps as a progress indicator
+ * on the left, the current step's form on the right. The URL carries the
+ * step and the analyzer (`?setup=<step>&analyzerId=…&profile=…&revision=…`),
+ * so every step can be bookmarked and the browser's Back works.
+ */
 const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const intl = useIntl();
   const history = useHistory();
   const location = useLocation();
   const currentIndex = Math.max(SETUP_STEPS.indexOf(currentStep), 0);
-  const [analyzerName, setAnalyzerName] = useState("");
+  const [analyzerName, setAnalyzerName] = useState(
+    () => new URLSearchParams(location.search).get("name") || "",
+  );
   const [profileCatalog, setProfileCatalog] = useState(null);
   const [labUnits, setLabUnits] = useState([]);
-  const [selectedLabUnitIds, setSelectedLabUnitIds] = useState([]);
+  const [selectedLabUnitIds, setSelectedLabUnitIds] = useState(() =>
+    (new URLSearchParams(location.search).get("labUnits") || "")
+      .split(",")
+      .filter(Boolean),
+  );
   const [candidate, setCandidate] = useState(null);
   // What the mapping editor embedded in Verify last reported.
   const [verifyState, setVerifyState] = useState({
@@ -205,6 +226,27 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         )
       : "";
 
+  // The name on its own line, what tells two types apart beneath it.
+  const typeOption = (type) =>
+    type ? (
+      <span className="analyzer-setup__type-option">
+        <span className="analyzer-setup__type-option-name">
+          {type.displayName}
+        </span>
+        <span className="cds--visually-hidden"> · </span>
+        <span className="analyzer-setup__type-option-detail">
+          {intl.formatMessage(
+            { id: "analyzer.setup.instrument.typeOption.detail" },
+            {
+              manufacturer: type.manufacturer || "-",
+              protocol: type.protocol,
+              revision: type.revision,
+            },
+          )}
+        </span>
+      </span>
+    ) : null;
+
   const selectType = (type) => {
     const params = new URLSearchParams(location.search);
     if (type) {
@@ -275,6 +317,16 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const returnParams = new URLSearchParams(location.search);
   returnParams.delete("profile");
   returnParams.delete("revision");
+  if (!candidate?.id) {
+    returnParams.delete("name");
+    returnParams.delete("labUnits");
+    if (analyzerName.trim()) {
+      returnParams.set("name", analyzerName.trim());
+    }
+    if (selectedLabUnitIds.length > 0) {
+      returnParams.set("labUnits", selectedLabUnitIds.join(","));
+    }
+  }
   const returnTo = `${location.pathname}?${returnParams.toString()}`;
   const createTypeTarget = `/analyzers/types?action=create&returnTo=${encodeURIComponent(
     returnTo,
@@ -331,33 +383,66 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     history.push({ pathname: location.pathname, search: params.toString() });
   };
 
+  // A step after Instrument needs an analyzer; a link that skips ahead
+  // without one lands on the first step instead of waiting for nothing.
+  if (currentIndex > 0 && !analyzerId) {
+    const params = new URLSearchParams(location.search);
+    params.set("setup", "instrument");
+    return (
+      <Redirect
+        to={{ pathname: location.pathname, search: params.toString() }}
+      />
+    );
+  }
+
+  const stepTitle = (step) =>
+    intl.formatMessage({ id: `analyzer.setup.${step}.title` });
+  const stepSecondary = (step, state) => {
+    if (step === "instrument" && state === "complete" && candidate?.name) {
+      return candidate.name;
+    }
+    if (step === "verify" && state === "complete") {
+      return intl.formatMessage({
+        id: needsMappingVerification(connectReadiness)
+          ? "analyzer.setup.verify.summary.stale"
+          : "analyzer.setup.verify.summary",
+      });
+    }
+    return undefined;
+  };
+  const pageTitle = candidate?.name
+    ? intl.formatMessage(
+        { id: "analyzer.setup.title.named" },
+        { name: candidate.name },
+      )
+    : intl.formatMessage({ id: "analyzer.setup.title" });
+
   return (
     <section
       className="analyzer-setup"
       aria-labelledby="analyzer-setup-title"
       data-testid="analyzer-setup"
     >
-      <header className="analyzer-setup__header">
-        <h2 id="analyzer-setup-title">
-          {candidate?.name
-            ? intl.formatMessage(
-                { id: "analyzer.setup.title.named" },
-                { name: candidate.name },
-              )
-            : intl.formatMessage({ id: "analyzer.setup.title" })}
-        </h2>
-        <Button
-          kind="ghost"
-          size="sm"
-          hasIconOnly
-          renderIcon={Close}
-          iconDescription={intl.formatMessage({
-            id: "analyzer.setup.close",
-          })}
-          onClick={onClose}
-          data-testid="analyzer-setup-close"
-        />
-      </header>
+      <AnalyzerPageHeader
+        breadcrumbs={[
+          { label: "home.label", link: "/" },
+          { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+          { label: pageTitle, isCurrentPage: true },
+        ]}
+        title={pageTitle}
+        titleId="analyzer-setup-title"
+        subtitle={intl.formatMessage({ id: "analyzer.setup.subtitle" })}
+        actions={
+          <Button
+            kind="ghost"
+            renderIcon={Close}
+            onClick={() => onClose()}
+            data-testid="analyzer-setup-close"
+          >
+            {intl.formatMessage({ id: "analyzer.setup.close" })}
+          </Button>
+        }
+      />
 
       {saveError && (
         <InlineNotification
@@ -372,180 +457,193 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         />
       )}
 
-      <ol
-        className="analyzer-setup__steps"
-        aria-label={intl.formatMessage({ id: "analyzer.setup.steps" })}
-      >
-        {SETUP_STEPS.map((step, index) => {
-          const state =
-            index < currentIndex
-              ? "complete"
-              : index === currentIndex
-                ? "current"
-                : "future";
-
-          return (
-            <li
-              key={step}
-              className={`analyzer-setup__step analyzer-setup__step--${state}`}
-              aria-current={state === "current" ? "step" : undefined}
-              aria-disabled={state === "future" ? true : undefined}
-            >
-              <div className="analyzer-setup__step-heading">
-                <span className="analyzer-setup__step-number" aria-hidden>
-                  {index + 1}
-                </span>
-                <h3>
-                  {intl.formatMessage({ id: `analyzer.setup.${step}.title` })}
-                </h3>
-                {state === "complete" && (
-                  <Button
-                    type="button"
-                    kind="ghost"
-                    size="sm"
-                    className="analyzer-setup__step-edit"
-                    aria-label={intl.formatMessage(
-                      { id: "analyzer.setup.step.edit" },
-                      {
-                        step: intl.formatMessage({
-                          id: `analyzer.setup.${step}.title`,
-                        }),
-                      },
-                    )}
-                    onClick={() => editStep(step)}
-                  >
-                    {intl.formatMessage({ id: "button.edit" })}
-                  </Button>
-                )}
-              </div>
-              {state === "current" && step === "instrument" && (
-                <div className="analyzer-setup__instrument">
-                  <ComboBox
-                    id="analyzer-setup-type"
-                    titleText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.type",
-                    })}
-                    placeholder={intl.formatMessage({
-                      id: "analyzer.setup.instrument.type.placeholder",
-                    })}
-                    helperText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.type.helper",
-                    })}
-                    items={activeTypes}
-                    selectedItem={selectedType}
-                    itemToString={typeLabel}
-                    shouldFilterItem={includesComboBoxText}
-                    onChange={({ selectedItem }) => selectType(selectedItem)}
-                    invalid={submitAttempted && !selectedType}
-                    invalidText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.type.required",
-                    })}
-                  />
-                  <TextInput
-                    id="analyzer-setup-name"
-                    labelText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.name",
-                    })}
-                    value={analyzerName}
-                    onChange={(event) => setAnalyzerName(event.target.value)}
-                    invalid={submitAttempted && !analyzerName.trim()}
-                    invalidText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.name.required",
-                    })}
-                  />
-                  <FilterableMultiSelect
-                    id="analyzer-setup-lab-units"
-                    titleText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.labUnits",
-                    })}
-                    label={intl.formatMessage({
-                      id: "analyzer.setup.instrument.labUnits.placeholder",
-                    })}
-                    items={labUnits}
-                    selectedItems={selectedLabUnits}
-                    itemToString={(unit) => unit?.name || ""}
-                    onChange={({ selectedItems }) =>
-                      setSelectedLabUnitIds(
-                        (selectedItems || []).map((unit) => String(unit.id)),
+      <div className="analyzer-setup__body">
+        <ProgressIndicator
+          vertical
+          currentIndex={currentIndex}
+          aria-label={intl.formatMessage({ id: "analyzer.setup.steps" })}
+          className="analyzer-setup__steps"
+          onChange={(index) => {
+            if (index < currentIndex) editStep(SETUP_STEPS[index]);
+          }}
+        >
+          {SETUP_STEPS.map((step, index) => {
+            const state =
+              index < currentIndex
+                ? "complete"
+                : index === currentIndex
+                  ? "current"
+                  : "future";
+            return (
+              <ProgressStep
+                key={step}
+                label={stepTitle(step)}
+                secondaryLabel={stepSecondary(step, state)}
+                complete={state === "complete"}
+                current={state === "current"}
+                disabled={state === "future"}
+                aria-label={
+                  state === "complete"
+                    ? intl.formatMessage(
+                        { id: "analyzer.setup.step.edit" },
+                        { step: stepTitle(step) },
                       )
-                    }
-                    invalid={submitAttempted && selectedLabUnitIds.length === 0}
-                    invalidText={intl.formatMessage({
-                      id: "analyzer.setup.instrument.labUnits.required",
-                    })}
-                  />
-                  <div className="analyzer-setup__instrument-actions">
-                    <CarbonLink as={RouterLink} to={createTypeTarget}>
-                      {intl.formatMessage({
-                        id: "analyzer.setup.instrument.notListed",
-                      })}
-                    </CarbonLink>
-                    <Button
-                      type="button"
-                      renderIcon={ArrowRight}
-                      disabled={submitting}
-                      onClick={submitInstrument}
-                    >
-                      {intl.formatMessage({
-                        id: submitting
-                          ? "analyzer.setup.instrument.saving"
-                          : "analyzer.setup.instrument.continue",
-                      })}
-                    </Button>
-                  </div>
+                    : undefined
+                }
+                data-testid={`analyzer-setup-progress-${step}`}
+              />
+            );
+          })}
+        </ProgressIndicator>
+
+        <div
+          className="analyzer-setup__content"
+          data-testid={`analyzer-setup-step-${currentStep}`}
+        >
+          <h2 className="analyzer-setup__step-title">
+            <span className="analyzer-setup__step-count">
+              {intl.formatMessage(
+                { id: "analyzer.setup.step.count" },
+                { number: currentIndex + 1, total: SETUP_STEPS.length },
+              )}
+            </span>
+            {stepTitle(currentStep)}
+          </h2>
+
+          {currentStep === "instrument" && (
+            <div className="analyzer-setup__instrument">
+              <ComboBox
+                id="analyzer-setup-type"
+                titleText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.type",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "analyzer.setup.instrument.type.placeholder",
+                })}
+                helperText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.type.helper",
+                })}
+                items={activeTypes}
+                selectedItem={selectedType}
+                itemToString={typeLabel}
+                itemToElement={typeOption}
+                shouldFilterItem={includesComboBoxText}
+                onChange={({ selectedItem }) => selectType(selectedItem)}
+                invalid={submitAttempted && !selectedType}
+                invalidText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.type.required",
+                })}
+              />
+              <TextInput
+                id="analyzer-setup-name"
+                labelText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.name",
+                })}
+                value={analyzerName}
+                onChange={(event) => setAnalyzerName(event.target.value)}
+                invalid={submitAttempted && !analyzerName.trim()}
+                invalidText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.name.required",
+                })}
+              />
+              <FilterableMultiSelect
+                id="analyzer-setup-lab-units"
+                titleText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.labUnits",
+                })}
+                label={intl.formatMessage({
+                  id: "analyzer.setup.instrument.labUnits.placeholder",
+                })}
+                items={labUnits}
+                selectedItems={selectedLabUnits}
+                itemToString={(unit) => unit?.name || ""}
+                onChange={({ selectedItems }) =>
+                  setSelectedLabUnitIds(
+                    (selectedItems || []).map((unit) => String(unit.id)),
+                  )
+                }
+                invalid={submitAttempted && selectedLabUnitIds.length === 0}
+                invalidText={intl.formatMessage({
+                  id: "analyzer.setup.instrument.labUnits.required",
+                })}
+              />
+              {selectedLabUnits.length > 0 && (
+                <div
+                  className="analyzer-setup__lab-unit-tags"
+                  data-testid="analyzer-setup-lab-unit-tags"
+                >
+                  {selectedLabUnits.map((unit) => {
+                    const remove = intl.formatMessage(
+                      { id: "analyzer.setup.instrument.labUnits.remove" },
+                      { name: unit.name },
+                    );
+                    return (
+                      <DismissibleTag
+                        key={unit.id}
+                        type="gray"
+                        size="sm"
+                        text={unit.name}
+                        title={remove}
+                        dismissTooltipLabel={remove}
+                        onClose={() =>
+                          setSelectedLabUnitIds((ids) =>
+                            ids.filter((id) => id !== String(unit.id)),
+                          )
+                        }
+                      />
+                    );
+                  })}
                 </div>
               )}
-              {state === "complete" && step === "instrument" && candidate && (
-                <dl
-                  className="analyzer-setup__instrument-summary"
-                  aria-label={intl.formatMessage({
-                    id: "analyzer.setup.instrument.summary",
+              <div className="analyzer-setup__instrument-actions">
+                <CarbonLink as={RouterLink} to={createTypeTarget}>
+                  {intl.formatMessage({
+                    id: "analyzer.setup.instrument.notListed",
                   })}
+                </CarbonLink>
+                <Button
+                  type="button"
+                  renderIcon={ArrowRight}
+                  disabled={submitting}
+                  onClick={submitInstrument}
                 >
-                  <div>
-                    <dt>
-                      {intl.formatMessage({
-                        id: "analyzer.setup.instrument.name",
-                      })}
-                    </dt>
-                    <dd>{candidate.name}</dd>
-                  </div>
-                  <div>
-                    <dt>
-                      {intl.formatMessage({
-                        id: "analyzer.setup.instrument.type",
-                      })}
-                    </dt>
-                    <dd>{typeLabel(selectedType)}</dd>
-                  </div>
-                  <div>
-                    <dt>
-                      {intl.formatMessage({
-                        id: "analyzer.setup.instrument.labUnits",
-                      })}
-                    </dt>
-                    <dd>
-                      {selectedLabUnits.map((unit) => unit.name).join(", ")}
-                    </dd>
-                  </div>
-                </dl>
-              )}
-              {state === "current" && step === "assays" && candidate && (
-                <AnalyzerAssaysSetup
-                  analyzerId={String(candidate.id)}
-                  onContinue={() => editStep("verify")}
-                />
-              )}
-              {state === "current" && step === "verify" && (
-                <div className="analyzer-setup__verify">
-                  {candidate ? (
-                    <>
-                      {mapping && !verification.complete && (
-                        <InlineNotification
-                          kind="warning"
-                          lowContrast
-                          hideCloseButton
-                          title={intl.formatMessage(
+                  {intl.formatMessage({
+                    id: submitting
+                      ? "analyzer.setup.instrument.saving"
+                      : "analyzer.setup.instrument.continue",
+                  })}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === "assays" &&
+            (candidate ? (
+              <AnalyzerAssaysSetup
+                analyzerId={String(candidate.id)}
+                onContinue={() => editStep("verify")}
+              />
+            ) : (
+              <Loading
+                small
+                withOverlay={false}
+                description={intl.formatMessage({
+                  id: "analyzer.setup.assays.loading",
+                })}
+              />
+            ))}
+
+          {currentStep === "verify" && (
+            <div className="analyzer-setup__verify">
+              {candidate ? (
+                <>
+                  <AnalyzerTypeMappingEditor
+                    analyzerId={String(candidate.id)}
+                    embedded
+                    onMappingChange={reportVerifyMapping}
+                    statusText={
+                      mapping && !verification.complete
+                        ? intl.formatMessage(
                             {
                               id:
                                 verification.assaysOn === 0
@@ -555,90 +653,70 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                                     : "analyzer.setup.verify.confirm",
                             },
                             { count: verification.unresolved },
-                          )}
-                        />
-                      )}
-                      <AnalyzerTypeMappingEditor
-                        analyzerId={String(candidate.id)}
-                        embedded
-                        onMappingChange={reportVerifyMapping}
-                      />
-                      {bindingSelectionError && (
-                        <InlineNotification
-                          kind="error"
-                          lowContrast
-                          hideCloseButton
-                          title={intl.formatMessage({
-                            id: "analyzer.setup.verify.selectionError",
-                          })}
-                          subtitle={analyzerErrorText(
-                            intl,
-                            bindingSelectionError,
-                            null,
-                          )}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <Loading
-                      small
-                      withOverlay={false}
-                      description={intl.formatMessage({
-                        id: "analyzer.setup.verify.loading",
-                      })}
-                    />
-                  )}
-
-                  <div className="analyzer-setup__verify-actions">
-                    <Button
-                      type="button"
-                      renderIcon={ArrowRight}
-                      disabled={!verification.complete || selectingBinding}
-                      onClick={continueToConnect}
-                    >
-                      {intl.formatMessage({
+                          )
+                        : null
+                    }
+                    nextAction={{
+                      label: intl.formatMessage({
                         id: selectingBinding
                           ? "analyzer.setup.verify.selecting"
                           : "analyzer.setup.verify.continue",
+                      }),
+                      icon: ArrowRight,
+                      disabled: !verification.complete || selectingBinding,
+                      onClick: continueToConnect,
+                    }}
+                  />
+                  {bindingSelectionError && (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={intl.formatMessage({
+                        id: "analyzer.setup.verify.selectionError",
                       })}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {state === "complete" && step === "verify" && (
-                <p className="analyzer-setup__verify-summary">
-                  {intl.formatMessage({
-                    id: needsMappingVerification(connectReadiness)
-                      ? "analyzer.setup.verify.summary.stale"
-                      : "analyzer.setup.verify.summary",
+                      subtitle={analyzerErrorText(
+                        intl,
+                        bindingSelectionError,
+                        null,
+                      )}
+                    />
+                  )}
+                </>
+              ) : (
+                <Loading
+                  small
+                  withOverlay={false}
+                  description={intl.formatMessage({
+                    id: "analyzer.setup.verify.loading",
                   })}
-                </p>
+                />
               )}
-              {state === "current" &&
-                step === "connect" &&
-                (candidate ? (
-                  <AnalyzerConnectionSetup
-                    key={`${candidate.id}:${candidate.profileId}:${candidate.profileRevision}`}
-                    candidate={candidate}
-                    onCandidateChange={setCandidate}
-                    onClose={onClose}
-                    onVerifyMappings={() => editStep("verify")}
-                    onProfileReset={reloadAfterReset}
-                    onReadinessChange={setConnectReadiness}
-                  />
-                ) : (
-                  <Loading
-                    small
-                    withOverlay={false}
-                    description={intl.formatMessage({
-                      id: "analyzer.setup.connect.loading",
-                    })}
-                  />
-                ))}
-            </li>
-          );
-        })}
-      </ol>
+            </div>
+          )}
+
+          {currentStep === "connect" &&
+            (candidate ? (
+              <AnalyzerConnectionSetup
+                key={`${candidate.id}:${candidate.profileId}:${candidate.profileRevision}`}
+                candidate={candidate}
+                onCandidateChange={setCandidate}
+                onClose={onClose}
+                onVerifyMappings={() => editStep("verify")}
+                onProfileReset={reloadAfterReset}
+                onReadinessChange={setConnectReadiness}
+              />
+            ) : (
+              <Loading
+                small
+                withOverlay={false}
+                description={intl.formatMessage({
+                  id: "analyzer.setup.connect.loading",
+                })}
+              />
+            ))}
+        </div>
+      </div>
     </section>
   );
 };

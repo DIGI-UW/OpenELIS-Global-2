@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, InlineNotification, Loading } from "@carbon/react";
+import { CheckmarkFilled, WarningAltFilled } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 
 import {
@@ -352,18 +353,57 @@ const AnalyzerConnectionSetup = ({
         setReadiness(result);
         if (result.activated && result.status === "ACTIVE") {
           onCandidateChange?.({ ...saved, status: "ACTIVE" });
-          onClose?.();
+          onClose?.({ kind: "activated", name: saved.name });
         }
       });
     });
   };
 
   const saveAndFinishLater = () => {
-    saveCandidate("save", () => {
+    saveCandidate("save", (saved) => {
       setAction(null);
-      onClose?.();
+      onClose?.({
+        kind: alreadyActive ? "updated" : "saved",
+        name: saved.name,
+      });
     });
   };
+
+  const readinessItems = [
+    ...(readiness?.ready
+      ? [
+          {
+            key: "ready",
+            ready: true,
+            text: intl.formatMessage({
+              id: readiness.activated
+                ? "analyzer.setup.connect.activation.active"
+                : "analyzer.setup.connect.activation.ready",
+            }),
+          },
+        ]
+      : []),
+    ...(candidate?.connection?.readiness?.blockers || [])
+      .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
+      .map((blocker) => ({
+        key: blocker.key,
+        ready: false,
+        text: intl.formatMessage(
+          { id: blocker.messageKey },
+          {
+            profileId: candidate.connection.profileRef?.profileId,
+            revision: candidate.connection.profileRef?.revision,
+          },
+        ),
+      })),
+    ...(readiness?.blockers || [])
+      .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
+      .map((blocker, index) => ({
+        key: `${blocker.code}-${index}`,
+        ready: false,
+        text: formatActivationBlocker(intl, blocker),
+      })),
+  ];
 
   if (!candidate?.id || !candidate?.connection) {
     return (
@@ -387,7 +427,12 @@ const AnalyzerConnectionSetup = ({
       />
 
       <div className="analyzer-setup__connect-actions">
-        <Button type="button" disabled={submitting} onClick={runProbe}>
+        <Button
+          type="button"
+          kind="tertiary"
+          disabled={submitting}
+          onClick={runProbe}
+        >
           {intl.formatMessage({
             id:
               action === "probe"
@@ -464,35 +509,30 @@ const AnalyzerConnectionSetup = ({
             })}
           />
         )}
-        {readiness?.ready && (
-          <InlineNotification
-            kind="success"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: readiness.activated
-                ? "analyzer.setup.connect.activation.active"
-                : "analyzer.setup.connect.activation.ready",
-            })}
-          />
+        {readinessItems.length > 0 && (
+          <ul
+            className="analyzer-setup__readiness-list"
+            data-testid="analyzer-activation-readiness-list"
+          >
+            {readinessItems.map((item) => (
+              <li
+                key={item.key}
+                className={
+                  item.ready
+                    ? "analyzer-setup__readiness-item analyzer-setup__readiness-item--ready"
+                    : "analyzer-setup__readiness-item analyzer-setup__readiness-item--blocked"
+                }
+              >
+                {item.ready ? (
+                  <CheckmarkFilled aria-hidden="true" />
+                ) : (
+                  <WarningAltFilled aria-hidden="true" />
+                )}
+                <span>{item.text}</span>
+              </li>
+            ))}
+          </ul>
         )}
-        {(candidate?.connection?.readiness?.blockers || [])
-          .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
-          .map((blocker) => (
-            <InlineNotification
-              key={blocker.key}
-              kind="warning"
-              lowContrast
-              hideCloseButton
-              title={intl.formatMessage(
-                { id: blocker.messageKey },
-                {
-                  profileId: candidate.connection.profileRef?.profileId,
-                  revision: candidate.connection.profileRef?.revision,
-                },
-              )}
-            />
-          ))}
         {onProfileReset &&
           (candidate?.connection?.readiness?.blockers || []).some(
             (blocker) =>
@@ -517,17 +557,6 @@ const AnalyzerConnectionSetup = ({
             title={intl.formatMessage({ id: resetRefusal })}
           />
         )}
-        {readiness?.blockers
-          .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
-          .map((blocker, index) => (
-            <InlineNotification
-              key={`${blocker.code}-${index}`}
-              kind="warning"
-              lowContrast
-              hideCloseButton
-              title={formatActivationBlocker(intl, blocker)}
-            />
-          ))}
         {onVerifyMappings && needsMappingVerification(readiness) && (
           <Button
             type="button"
@@ -575,16 +604,6 @@ const AnalyzerConnectionSetup = ({
             })}
           </Button>
         )}
-        <Button
-          type="button"
-          kind="ghost"
-          disabled={submitting}
-          onClick={onClose}
-        >
-          {intl.formatMessage({
-            id: "analyzer.setup.connect.activation.cancel",
-          })}
-        </Button>
       </div>
     </div>
   );

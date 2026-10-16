@@ -18,7 +18,6 @@ import {
   activateShippedAnalyzer,
   activateShippedBc5380,
   activateShippedGeneXpert,
-  excludeCodes,
 } from "../../../helpers/analyzer-setup-flow";
 import { FLUOROCYCLER, QUANTSTUDIO } from "../../../helpers/shipped-profiles";
 import { csrfToken, withAuthedPage } from "../../../helpers/api-session";
@@ -26,6 +25,7 @@ import { API } from "../../../helpers/analyzer-profile-api";
 import {
   acceptAll,
   savedValue,
+  showSample,
   type Order,
 } from "../../../helpers/analyzer-review";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
@@ -526,6 +526,7 @@ test.describe("A catalog test deactivated after setup", () => {
       await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
         waitUntil: "domcontentloaded",
       });
+      await showSample(page, order.accession);
       const held = page.getByTestId(`held-analyzer-result-${fluBRow.id}`);
       await expect(held).toBeVisible();
       await demo.caption("The held Influenza B result stays on the screen.");
@@ -543,7 +544,7 @@ test.describe("A catalog test deactivated after setup", () => {
       deactivated = null;
       await held.getByRole("link", { name: "Review analyzer mapping" }).click();
       const apply = page.getByRole("button", {
-        name: "Apply mappings and retry held results",
+        name: "Apply and retry held results",
       });
       await expect(apply).toBeEnabled();
       await apply.click();
@@ -686,7 +687,7 @@ const REPORTED: Array<{ test: string; value: string; normal: boolean }> = [
   { test: "Platelet Distribution Width", value: "15.4", normal: true },
   { test: "Plateletcrit", value: "1.40", normal: true },
 ];
-/** The manual differential of the message's microscope exam, which this lab does not take from the analyzer. */
+/** The manual differential a technician's count adds to a CBC, which this lab does not take from the analyzer. */
 const MICROSCOPE_EXAM = [
   "747-6",
   "783-1",
@@ -708,6 +709,8 @@ const MICROSCOPE_EXAM = [
   "11000",
   "11001",
 ];
+/** The two microscope-exam codes the type cannot declare: Mindray gives them no LOINC code. */
+const UNDECLARED_MICROSCOPE_EXAM = new Set(["11000", "11001"]);
 
 const orderCbc = async (page: Page) => {
   const testIds = new Map<string, string>();
@@ -739,17 +742,17 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
       const demo = createDemoPresentation(page, testInfo);
       await demo.intro(
         "Mindray BC-5380: a microscope exam the lab does not do",
-        "The instrument reports a manual differential with every CBC. This lab decides not to receive it.",
+        "A technician can enter a manual differential on the analyzer, and it then travels with the CBC. This lab counts differentials elsewhere and decides not to receive it.",
       );
       await demo.caption(
-        "Off screen: a CBC is ordered on whole blood, and the BC-5380 sends its message, microscope exam included.",
+        "Off screen: a CBC is ordered on whole blood, and the BC-5380 sends it with a manual differential a technician entered.",
       );
       const { order, testIds } = await orderCbc(page);
       await sendBc5380Fixture(
         page,
         analyzer.id,
         order.accession,
-        "analysis-result",
+        "manual-count",
         senderId,
       );
       const staged = () =>
@@ -761,9 +764,15 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
       expect(held.map((row) => row.rawTestCode).sort()).toEqual(
         [...MICROSCOPE_EXAM].sort(),
       );
-      expect(new Set(held.map((row) => row.importIssueReason))).toEqual(
-        new Set(["unknown_analyzer_test"]),
-      );
+      // The type names 17 of them, which start off in a lab with no test for
+      // them; the other two it cannot declare.
+      for (const row of held) {
+        expect(row.importIssueReason, row.rawTestCode).toBe(
+          UNDECLARED_MICROSCOPE_EXAM.has(row.rawTestCode)
+            ? "unknown_analyzer_test"
+            : "assay_not_enabled",
+        );
+      }
 
       await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
         waitUntil: "domcontentloaded",
@@ -773,9 +782,10 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
           `${MICROSCOPE_EXAM.length} analyzer results need attention`,
         ),
       ).toBeVisible();
+      await showSample(page, order.accession);
       const firstHeld = page.getByTestId(`held-analyzer-result-${held[0].id}`);
       await demo.caption(
-        `The CBC's ${REPORTED.length} values wait for review. The ${MICROSCOPE_EXAM.length} microscope-exam records are held: the profile declares them, but this lab's mapping has no decision for them yet, since no catalog test carries their codes.`,
+        `The CBC's ${REPORTED.length} values wait for review. The ${MICROSCOPE_EXAM.length} manual-differential records are held for the lab's decision: no test in this lab's catalog carries their codes, so the ones the type names start off, and two it cannot name.`,
       );
       await demo.highlight(firstHeld);
       await demo.caption("A held row leads to this analyzer's mapping page.");
@@ -786,7 +796,7 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
         new RegExp(`/analyzers/${analyzer.id}/mapping`),
       );
       await demo.caption(
-        "The lab does its differentials by hand, so each microscope-exam code is marked Do not receive.",
+        "The lab counts differentials at its own microscope, so each manual-differential code is marked Do not receive.",
       );
       for (const code of MICROSCOPE_EXAM) {
         await doNotReceive(page, code);
@@ -811,7 +821,7 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
         page.getByText(/analyzer results? needs? attention/),
       ).toHaveCount(0);
       await demo.caption(
-        "Nothing is held. The reviewer accepts the CBC; the next CBC arrives without the microscope exam.",
+        "Nothing is held. The reviewer accepts the CBC; a manual differential sent later is not received.",
       );
       await acceptAll(page, analyzer, [order.accession], {
         onScreen: true,
@@ -844,8 +854,6 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
         `Results BC-5380 ${run}`,
         senderId,
       );
-      // The lab's first CBC brought the microscope exam codes, held for its
-      // decision; it excluded them on the analyzer's mapping page.
       const { order } = await orderCbc(page);
       await sendBc5380Fixture(
         page,
@@ -854,14 +862,6 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
         "analysis-result",
         senderId,
       );
-      await expect
-        .poll(
-          async () =>
-            (await worklistFor<WorklistRow>(page, active.id, order.accession))
-              .length,
-        )
-        .toBe(REPORTED.length + MICROSCOPE_EXAM.length);
-      await excludeCodes(page, active.id, MICROSCOPE_EXAM);
       await expect
         .poll(
           async () =>
@@ -912,6 +912,7 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
       await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
         waitUntil: "domcontentloaded",
       });
+      await showSample(page, order.accession);
       const alarms = page.getByTestId("InstrumentSampleFlags");
       await expect(alarms).toHaveCount(1);
       await expect(alarms).toHaveText("Analyzer flags: Anemia, Hypochromia");

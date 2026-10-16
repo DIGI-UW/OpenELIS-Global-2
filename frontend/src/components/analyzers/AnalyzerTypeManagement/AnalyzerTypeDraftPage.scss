@@ -1,0 +1,174 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+// A type's draft on its own page: the settings as a two-column form, each
+// part under its heading, and one bar pinned to the bottom of the window.
+.analyzer-type-draft-page {
+  padding-bottom: spacing.$spacing-09;
+}
+
+.analyzer-type-draft-page__loading {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 16rem;
+}
+
+.analyzer-type-draft-page .analyzer-type-profile-editor {
+  container-type: inline-size;
+  display: grid;
+  gap: spacing.$spacing-06;
+  max-width: 64rem;
+
+  .cds--inline-notification {
+    max-width: none;
+  }
+}
+
+.analyzer-type-draft-page .analyzer-type-profile-editor > fieldset {
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  column-gap: spacing.$spacing-06;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  min-inline-size: 0;
+  padding: spacing.$spacing-06;
+  row-gap: spacing.$spacing-05;
+
+  > legend {
+    @include type.type-style("heading-03");
+    float: left;
+    grid-column: 1 / -1;
+    margin-bottom: spacing.$spacing-03;
+    padding: 0;
+    width: 100%;
+  }
+
+  // Headings, help, groups of fields and buttons span the form; single
+  // fields take one column each.
+  > * {
+    grid-column: 1 / -1;
+  }
+
+  > .cds--form-item,
+  > .cds--select,
+  > .cds--text-input-wrapper {
+    grid-column: auto;
+  }
+
+  > h4 {
+    @include type.type-style("heading-02");
+    border-top: 1px solid var(--cds-border-subtle-01);
+    margin: spacing.$spacing-05 0 0;
+    padding-top: spacing.$spacing-05;
+  }
+
+  > p {
+    @include type.type-style("body-01");
+    color: var(--cds-text-secondary);
+    margin: 0;
+  }
+
+  > [role="group"] {
+    align-items: end;
+    background: var(--cds-layer-02);
+    display: grid;
+    gap: spacing.$spacing-04;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    padding: spacing.$spacing-04;
+  }
+
+  > .cds--btn {
+    justify-self: start;
+  }
+}
+
+// Parts drawn by the editor's sub-components (tests, transports, lists)
+// head the same way as the form's own parts.
+.analyzer-type-draft-page .analyzer-type-profile-editor > fieldset {
+  > section {
+    display: grid;
+    gap: spacing.$spacing-04;
+
+    > h4 {
+      @include type.type-style("heading-02");
+      border-top: 1px solid var(--cds-border-subtle-01);
+      margin: spacing.$spacing-05 0 0;
+      padding-top: spacing.$spacing-05;
+    }
+
+    > p {
+      @include type.type-style("body-01");
+      color: var(--cds-text-secondary);
+      margin: 0;
+    }
+  }
+
+  fieldset {
+    border: 0;
+    margin: 0;
+    min-inline-size: 0;
+    padding: 0;
+
+    > legend {
+      @include type.type-style("heading-compact-01");
+      margin-bottom: spacing.$spacing-03;
+    }
+  }
+}
+
+@container (max-width: 40rem) {
+  .analyzer-type-draft-page .analyzer-type-profile-editor > fieldset {
+    grid-template-columns: minmax(0, 1fr);
+    padding: spacing.$spacing-05;
+  }
+}
+
+.analyzer-type-draft-page__bar {
+  background: var(--cds-layer-01);
+  border-top: 1px solid var(--cds-border-subtle-01);
+  bottom: 0;
+  margin-top: spacing.$spacing-07;
+  max-width: 64rem;
+  padding: spacing.$spacing-04 spacing.$spacing-05;
+  position: sticky;
+  z-index: 3;
+}
+
+.analyzer-type-draft-page__bar-notice {
+  margin: 0 0 spacing.$spacing-04;
+  max-width: none;
+}
+
+.analyzer-type-draft-page__bar-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-05;
+  justify-content: space-between;
+}
+
+.analyzer-type-draft-page__bar-status {
+  @include type.type-style("body-compact-01");
+  color: var(--cds-text-secondary);
+  margin: 0;
+}
+
+.analyzer-type-draft-page__bar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+
+// On a phone the buttons fill the bar, one row each when they do not fit.
+@media (max-width: 42rem) {
+  .analyzer-type-draft-page__bar-buttons {
+    width: 100%;
+
+    .cds--btn {
+      flex: 1 1 auto;
+      max-inline-size: none;
+    }
+  }
+}

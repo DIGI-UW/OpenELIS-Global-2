@@ -21,12 +21,9 @@ import {
 import {
   createAnalyzerTypeDraft,
   duplicateAnalyzerType,
-  getAnalyzerTypeDraft,
   getAnalyzerTypeRevision,
-  publishAnalyzerTypeDraft,
   updateSharedAnalyzerType,
 } from "../../../services/analyzerService";
-import ProfileDraftEditor from "./ProfileDraftEditor";
 import AffectedAnalyzerList from "./AffectedAnalyzerList";
 
 const nextDuplicateName = (displayName, types) => {
@@ -45,55 +42,11 @@ const isExactUpdateDraft = (draft, profile) =>
   draft.baseProfileId === profile.profileId &&
   draft.baseRevision === profile.revision;
 
-const DraftLoadingModal = ({ headingId, onClose }) => {
-  const intl = useIntl();
-  return (
-    <Modal
-      open
-      passiveModal
-      modalHeading={intl.formatMessage({ id: headingId })}
-      onRequestClose={onClose}
-      size="sm"
-    >
-      <div className="analyzer-type-modal__loading">
-        <Loading
-          withOverlay={false}
-          description={intl.formatMessage({
-            id: "analyzerType.draft.loading",
-          })}
-        />
-      </div>
-    </Modal>
-  );
-};
-
-const CreateProfileModal = ({
-  types,
-  draftId,
-  onClose,
-  onError,
-  onSuccess,
-  onDraftCreated,
-}) => {
+// Names a new type; its draft then opens on its own page.
+const CreateProfileModal = ({ types, onClose, onError, onDraftCreated }) => {
   const intl = useIntl();
   const [displayName, setDisplayName] = useState("");
-  const [draft, setDraft] = useState(null);
-  const [editorState, setEditorState] = useState({ publishable: false });
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!draftId || draft?.draftId === draftId) {
-      return;
-    }
-    getAnalyzerTypeDraft(draftId, (response) => {
-      if (hasError(response) || response.kind !== "CREATE") {
-        onError(response?.error);
-        return;
-      }
-      setDraft(response);
-      setDisplayName(response.profile?.profileMeta?.displayName || "");
-    });
-  }, [draft?.draftId, draftId, onError]);
 
   const normalizedName = displayName.trim();
   const duplicateName = types.some(
@@ -112,67 +65,9 @@ const CreateProfileModal = ({
         onError(response?.error);
         return;
       }
-      setDraft(response);
       onDraftCreated(response.draftId);
     });
   };
-
-  const activeDraft = draft?.draftId === draftId ? draft : null;
-
-  if (draftId && !activeDraft) {
-    return (
-      <DraftLoadingModal
-        headingId="analyzerType.button.create"
-        onClose={onClose}
-      />
-    );
-  }
-
-  if (activeDraft) {
-    return (
-      <Modal
-        open
-        primaryButtonText={intl.formatMessage({
-          id: "analyzerType.button.publish",
-        })}
-        primaryButtonDisabled={!editorState.publishable || submitting}
-        onRequestSubmit={() => {
-          if (!editorState.publishable || submitting) return;
-          setSubmitting(true);
-          publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
-            setSubmitting(false);
-            if (hasError(response)) {
-              onError(response?.error);
-              return;
-            }
-            onSuccess("create");
-          });
-        }}
-        modalHeading={intl.formatMessage({
-          id: "analyzerType.button.create",
-        })}
-        onRequestClose={onClose}
-        size="lg"
-      >
-        <InlineNotification
-          kind="success"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({
-            id: "analyzerType.draft.created.title",
-          })}
-          subtitle={intl.formatMessage({
-            id: "analyzerType.draft.created.subtitle",
-          })}
-        />
-        <ProfileDraftEditor
-          key={activeDraft.draftId}
-          draft={activeDraft}
-          onStateChange={setEditorState}
-        />
-      </Modal>
-    );
-  }
 
   return (
     <Modal
@@ -211,13 +106,13 @@ const CreateProfileModal = ({
   );
 };
 
+// Chooses the type to copy and names the copy; its draft then opens on its
+// own page.
 const DuplicateProfileModal = ({
   types,
   initialProfileId,
   initialRevision,
-  draftId,
   onClose,
-  onSuccess,
   onError,
   onDraftCreated,
 }) => {
@@ -238,23 +133,10 @@ const DuplicateProfileModal = ({
     initialSource ? nextDuplicateName(initialSource.displayName, types) : "",
   );
   const [pinnedSource, setPinnedSource] = useState(initialPinnedSource);
-  const [draft, setDraft] = useState(null);
-  const [recognitionState, setRecognitionState] = useState({
-    loaded: false,
-    dirty: false,
-    valid: false,
-    publishable: false,
-    validationIssues: [],
-  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (
-      draftId ||
-      !initialProfileId ||
-      !initialRevision ||
-      initialPinnedSource
-    ) {
+    if (!initialProfileId || !initialRevision || initialPinnedSource) {
       return;
     }
     getAnalyzerTypeRevision(initialProfileId, initialRevision, (response) => {
@@ -266,33 +148,10 @@ const DuplicateProfileModal = ({
       setSourceId(response.profileId);
       setDisplayName(nextDuplicateName(response.displayName, types));
     });
-  }, [
-    draftId,
-    initialPinnedSource,
-    initialProfileId,
-    initialRevision,
-    onError,
-    types,
-  ]);
+  }, [initialPinnedSource, initialProfileId, initialRevision, onError, types]);
 
-  useEffect(() => {
-    if (!draftId || draft?.draftId === draftId) {
-      return;
-    }
-    getAnalyzerTypeDraft(draftId, (response) => {
-      if (hasError(response) || response.kind !== "DUPLICATE") {
-        onError(response?.error);
-        return;
-      }
-      setDraft(response);
-      setSourceId(response.baseProfileId || "");
-      setDisplayName(response.profile?.profileMeta?.displayName || "");
-    });
-  }, [draft?.draftId, draftId, onError]);
-
-  const activeDraft = draft?.draftId === draftId ? draft : null;
   const exactInitialRevisionRequested =
-    !draftId && initialProfileId === sourceId && Boolean(initialRevision);
+    initialProfileId === sourceId && Boolean(initialRevision);
   const source = exactInitialRevisionRequested
     ? pinnedSource?.profileId === sourceId
       ? pinnedSource
@@ -302,10 +161,7 @@ const DuplicateProfileModal = ({
   const duplicateName = types.some(
     (type) => type.displayName.toLowerCase() === normalizedName.toLowerCase(),
   );
-  const publishable = Boolean(activeDraft) && recognitionState.publishable;
-  const valid = activeDraft
-    ? publishable
-    : Boolean(source) && Boolean(normalizedName) && !duplicateName;
+  const valid = Boolean(source) && Boolean(normalizedName) && !duplicateName;
 
   const changeSource = (profileId) => {
     const nextSource = activeTypes.find((type) => type.profileId === profileId);
@@ -321,17 +177,6 @@ const DuplicateProfileModal = ({
       return;
     }
     setSubmitting(true);
-    if (activeDraft) {
-      publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
-        setSubmitting(false);
-        if (hasError(response)) {
-          onError(response?.error);
-          return;
-        }
-        onSuccess("duplicate");
-      });
-      return;
-    }
     duplicateAnalyzerType(
       source.profileId,
       source.revision,
@@ -342,20 +187,10 @@ const DuplicateProfileModal = ({
           onError(response?.error);
           return;
         }
-        setDraft(response);
         onDraftCreated(response.draftId);
       },
     );
   };
-
-  if (draftId && !activeDraft) {
-    return (
-      <DraftLoadingModal
-        headingId="analyzerType.button.duplicate"
-        onClose={onClose}
-      />
-    );
-  }
 
   return (
     <Modal
@@ -364,9 +199,7 @@ const DuplicateProfileModal = ({
         id: "analyzerType.button.duplicate",
       })}
       primaryButtonText={intl.formatMessage({
-        id: activeDraft
-          ? "analyzerType.button.publish"
-          : "analyzerType.button.duplicate",
+        id: "analyzerType.button.duplicate",
       })}
       secondaryButtonText={intl.formatMessage({
         id: "analyzerType.button.cancel",
@@ -375,77 +208,47 @@ const DuplicateProfileModal = ({
       onRequestClose={onClose}
       onSecondarySubmit={onClose}
       onRequestSubmit={submit}
-      size={activeDraft ? "lg" : "sm"}
+      size="sm"
     >
       <div className="analyzer-type-modal__form">
-        {activeDraft ? (
-          <>
-            <InlineNotification
-              kind={publishable ? "success" : "info"}
-              lowContrast
-              hideCloseButton
-              title={intl.formatMessage({
-                id: publishable
-                  ? "analyzerType.draft.publish.ready.title"
-                  : "analyzerType.draft.publish.review.title",
-              })}
-              subtitle={intl.formatMessage(
-                {
-                  id: publishable
-                    ? "analyzerType.draft.publish.ready.subtitle"
-                    : "analyzerType.draft.publish.review.subtitle",
-                },
-                { name: normalizedName },
-              )}
+        <Select
+          id="analyzer-type-duplicate-source"
+          aria-label={intl.formatMessage({
+            id: "analyzerType.field.sourceProfile",
+          })}
+          labelText={intl.formatMessage({
+            id: "analyzerType.field.sourceProfile",
+          })}
+          value={sourceId}
+          onChange={(event) => changeSource(event.target.value)}
+        >
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "analyzerType.field.sourceProfile.placeholder",
+            })}
+          />
+          {activeTypes.map((type) => (
+            <SelectItem
+              key={type.profileId}
+              value={type.profileId}
+              text={`${type.displayName} · ${type.protocol}`}
             />
-            <ProfileDraftEditor
-              key={activeDraft.draftId}
-              draft={activeDraft}
-              onStateChange={setRecognitionState}
-            />
-          </>
-        ) : (
-          <>
-            <Select
-              id="analyzer-type-duplicate-source"
-              aria-label={intl.formatMessage({
-                id: "analyzerType.field.sourceProfile",
-              })}
-              labelText={intl.formatMessage({
-                id: "analyzerType.field.sourceProfile",
-              })}
-              value={sourceId}
-              onChange={(event) => changeSource(event.target.value)}
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({
-                  id: "analyzerType.field.sourceProfile.placeholder",
-                })}
-              />
-              {activeTypes.map((type) => (
-                <SelectItem
-                  key={type.profileId}
-                  value={type.profileId}
-                  text={`${type.displayName} · ${type.protocol}`}
-                />
-              ))}
-            </Select>
-            <TextInput
-              id="analyzer-type-duplicate-name"
-              labelText={intl.formatMessage({
-                id: "analyzerType.field.newProfileName",
-              })}
-              value={displayName}
-              invalid={Boolean(normalizedName) && duplicateName}
-              invalidText={intl.formatMessage({
-                id: "analyzerType.error.nameUnique",
-              })}
-              onChange={(event) => setDisplayName(event.target.value)}
-            />
-          </>
-        )}
-        {!activeDraft && source && (
+          ))}
+        </Select>
+        <TextInput
+          id="analyzer-type-duplicate-name"
+          labelText={intl.formatMessage({
+            id: "analyzerType.field.newProfileName",
+          })}
+          value={displayName}
+          invalid={Boolean(normalizedName) && duplicateName}
+          invalidText={intl.formatMessage({
+            id: "analyzerType.error.nameUnique",
+          })}
+          onChange={(event) => setDisplayName(event.target.value)}
+        />
+        {source && (
           <InlineNotification
             kind="info"
             lowContrast
@@ -467,63 +270,26 @@ const DuplicateProfileModal = ({
   );
 };
 
+// Says what a new revision of a shared type does; its draft then opens on
+// its own page.
 const UpdateSharedProfileModal = ({
   profile,
-  draftId,
   onClose,
-  onSuccess,
   onError,
   onDraftCreated,
 }) => {
   const intl = useIntl();
-  const [draft, setDraft] = useState(null);
-  const [recognitionState, setRecognitionState] = useState({
-    loaded: false,
-    dirty: false,
-    valid: false,
-    publishable: false,
-    validationIssues: [],
-  });
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!draftId || draft?.draftId === draftId) {
-      return;
-    }
-    getAnalyzerTypeDraft(draftId, (response) => {
-      if (hasError(response) || !isExactUpdateDraft(response, profile)) {
-        onError(response?.error);
-        return;
-      }
-      setDraft(response);
-    });
-  }, [draft?.draftId, draftId, onError, profile]);
-
-  const activeDraft =
-    draft?.draftId === draftId && isExactUpdateDraft(draft, profile)
-      ? draft
-      : null;
   const title = intl.formatMessage(
     { id: "analyzerType.modal.update.title" },
     { name: profile.displayName },
   );
 
   const submit = () => {
-    if (submitting || (activeDraft && !recognitionState.publishable)) {
+    if (submitting) {
       return;
     }
     setSubmitting(true);
-    if (activeDraft) {
-      publishAnalyzerTypeDraft(activeDraft.draftId, (response) => {
-        setSubmitting(false);
-        if (hasError(response)) {
-          onError(response?.error);
-          return;
-        }
-        onSuccess("update");
-      });
-      return;
-    }
     updateSharedAnalyzerType(
       profile.profileId,
       profile.revision,
@@ -537,59 +303,10 @@ const UpdateSharedProfileModal = ({
           onError(response?.error);
           return;
         }
-        setDraft(response);
         onDraftCreated(response.draftId);
       },
     );
   };
-
-  if (draftId && !activeDraft) {
-    return (
-      <DraftLoadingModal
-        headingId="analyzerType.draft.update.loading"
-        onClose={onClose}
-      />
-    );
-  }
-
-  if (activeDraft) {
-    return (
-      <Modal
-        open
-        modalHeading={title}
-        primaryButtonText={intl.formatMessage({
-          id: "analyzerType.button.publish",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "analyzerType.button.cancel",
-        })}
-        primaryButtonDisabled={!recognitionState.publishable || submitting}
-        onRequestClose={onClose}
-        onSecondarySubmit={onClose}
-        onRequestSubmit={submit}
-        size="lg"
-      >
-        <div className="analyzer-type-modal__form">
-          <InlineNotification
-            kind="info"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: "analyzerType.draft.update.title",
-            })}
-            subtitle={intl.formatMessage({
-              id: "analyzerType.draft.update.subtitle",
-            })}
-          />
-          <ProfileDraftEditor
-            key={activeDraft.draftId}
-            draft={activeDraft}
-            onStateChange={setRecognitionState}
-          />
-        </div>
-      </Modal>
-    );
-  }
 
   return (
     <Modal
@@ -807,7 +524,6 @@ const AnalyzerTypeLifecycleModals = ({
   action,
   profileId,
   revision,
-  draftId,
   types,
   onClose,
   onSuccess,
@@ -820,8 +536,6 @@ const AnalyzerTypeLifecycleModals = ({
     return (
       <CreateProfileModal
         types={types}
-        onSuccess={onSuccess}
-        draftId={draftId}
         onClose={onClose}
         onError={onError}
         onDraftCreated={onDraftCreated}
@@ -834,9 +548,7 @@ const AnalyzerTypeLifecycleModals = ({
         types={types}
         initialProfileId={profileId}
         initialRevision={revision}
-        draftId={draftId}
         onClose={onClose}
-        onSuccess={onSuccess}
         onError={onError}
         onDraftCreated={onDraftCreated}
       />
@@ -859,9 +571,7 @@ const AnalyzerTypeLifecycleModals = ({
     return (
       <UpdateSharedProfileModal
         profile={profile}
-        draftId={draftId}
         onClose={onClose}
-        onSuccess={onSuccess}
         onError={onError}
         onDraftCreated={onDraftCreated}
       />

@@ -97,7 +97,9 @@ test.describe("Adopting a newer profile revision", () => {
         .getByRole("heading", { name: "Needs mapping" })
         .locator("xpath=ancestor::section[1]");
       await expect(
-        needsMapping.getByRole("button", { name: /^ADOPT-NEW\b/ }),
+        needsMapping
+          .getByTestId("analyzer-type-mapping-row")
+          .filter({ hasText: "ADOPT-NEW" }),
       ).toBeVisible();
       await demo.caption(
         "Changed: the corrected LOINC now finds the local test as its new default.",
@@ -121,14 +123,14 @@ test.describe("Adopting a newer profile revision", () => {
 
       await page
         .getByRole("button", {
-          name: "Confirm mappings and control recognition",
+          name: "Confirm mapping",
         })
         .click();
       await expect(
         page.getByText("Mappings and control recognition confirmed"),
       ).toBeVisible();
       await page
-        .getByRole("button", { name: "Apply mappings and retry held results" })
+        .getByRole("button", { name: "Apply and retry held results" })
         .click();
       await expect(
         page.getByText("Current mappings applied to this analyzer.", {

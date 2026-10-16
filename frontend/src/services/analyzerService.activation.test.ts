@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  activateAnalyzer,
-  deactivateAnalyzer,
-  reactivateAnalyzer,
-} from "./analyzerService";
+import { activateAnalyzer, deactivateAnalyzer } from "./analyzerService";
 
 describe("analyzer activation client", () => {
   beforeEach(() => {
@@ -72,40 +68,6 @@ describe("analyzer activation client", () => {
         analyzerId: "42",
         status: "INACTIVE",
         deactivated: true,
-      }),
-    );
-  });
-
-  it("preserves analyzer status and exact blockers when reactivation is rejected", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: false,
-      status: 422,
-      statusText: "Unprocessable Entity",
-      json: async () => ({
-        analyzerId: "42",
-        status: "INACTIVE",
-        ready: false,
-        activated: false,
-        blockers: [{ code: "analyzer.activation.blocker.mappings" }],
-      }),
-    } as Response);
-
-    const result = await new Promise((resolve) =>
-      reactivateAnalyzer("42", resolve),
-    );
-
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/rest/analyzer/analyzers/42/reactivate"),
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(result).toEqual(
-      expect.objectContaining({
-        analyzerId: "42",
-        status: "INACTIVE",
-        statusCode: 422,
-        ready: false,
-        activated: false,
-        blockers: [{ code: "analyzer.activation.blocker.mappings" }],
       }),
     );
   });

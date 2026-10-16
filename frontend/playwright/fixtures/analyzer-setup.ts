@@ -22,7 +22,7 @@ export class AnalyzerSetupPage {
     await expect(this.surface).toBeVisible();
     await expect(
       this.surface.getByRole("heading", {
-        level: 2,
+        level: 1,
         name: "Set up a new analyzer",
       }),
     ).toBeVisible();

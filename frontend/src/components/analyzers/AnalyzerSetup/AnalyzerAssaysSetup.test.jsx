@@ -97,6 +97,26 @@ describe("AnalyzerAssaysSetup", () => {
     ).not.toBeChecked();
   });
 
+  it("puts the assays the catalog matched ahead of the ones it did not", async () => {
+    renderAssays();
+
+    const matched = await screen.findByRole("region", {
+      name: "Matched to a test in this lab (1)",
+    });
+    const unmatched = screen.getByRole("region", {
+      name: "Not matched to a test yet (2)",
+    });
+    expect(within(matched).getByTestId("analyzer-assay-MTB-RIF")).toBeVisible();
+    expect(
+      within(unmatched).getByTestId("analyzer-assay-HBV-VL"),
+    ).toBeVisible();
+    expect(within(unmatched).getByTestId("analyzer-assay-FLU")).toBeVisible();
+    expect(
+      matched.compareDocumentPosition(unmatched) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("saves the assays turned on, then continues", async () => {
     saveAnalyzerMapping.mockImplementation((_id, _update, callback) =>
       callback({ ...mapping, tests: mapping.tests }),

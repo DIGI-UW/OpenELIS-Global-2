@@ -71,7 +71,7 @@ const MappingPage = () => {
 
 const renderWorklist = () => {
   const history = createMemoryHistory({
-    initialEntries: ["/AnalyzerResults?id=2001"],
+    initialEntries: ["/analyzers/2001/results"],
   });
   render(
     <Router history={history}>
@@ -87,7 +87,7 @@ const renderWorklist = () => {
         >
           <IntlProvider locale="en" messages={messages}>
             <Switch>
-              <Route path="/AnalyzerResults">
+              <Route path="/analyzers/:analyzerId/results">
                 <Index />
               </Route>
               <Route path="/analyzers/:analyzerId/mapping">

@@ -13,6 +13,7 @@ import { sendGeneXpertFixture } from "../../../helpers/analyzer-native-traffic";
 import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
 import { createProfile, numeric } from "../../../helpers/analyzer-profile-api";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { showSample } from "../../../helpers/analyzer-review";
 import {
   applyMappings,
   confirmMapping,
@@ -249,6 +250,7 @@ test.describe("Results the mapping does not cover", () => {
         waitUntil: "domcontentloaded",
       });
       const fluBRow = (await own(assayOff.accession, "FLUB"))!;
+      await showSample(page, assayOff.accession);
       const heldOff = page.getByTestId(`held-analyzer-result-${fluBRow.id}`);
       await expect(heldOff).toContainText(
         "This assay is off in the analyzer's setup",
@@ -303,6 +305,7 @@ test.describe("Results the mapping does not cover", () => {
         waitUntil: "domcontentloaded",
       });
       const rsvRow = (await own(undeclared.accession, "RSVX"))!;
+      await showSample(page, undeclared.accession);
       const heldCode = page.getByTestId(`held-analyzer-result-${rsvRow.id}`);
       await demo.caption(
         "The RSVX result is held as a code nobody has mapped.",

@@ -12,34 +12,94 @@ const TAG_TYPE = {
   NEW_SAMPLE: "purple",
 };
 
+const tubeName = (intl, placement, tubeId) => {
+  const tube = (placement.tubes || []).find(
+    (candidate) => candidate.sampleItemId === tubeId,
+  );
+  return (
+    tube?.externalId ||
+    intl.formatMessage(
+      { id: "analyzer.placement.tubeUnlabelled" },
+      { id: tubeId },
+    )
+  );
+};
+
+/** The placement state as a tag, on its own. */
+export const PlacementStateTag = ({ placement }) => (
+  <Tag type={TAG_TYPE[placement.state] || "gray"} size="sm">
+    <FormattedMessage id={`analyzer.placement.state.${placement.state}`} />
+  </Tag>
+);
+
+/**
+ * The choice a result with several matching analyses asks of the reviewer:
+ * which analysis it belongs to.
+ */
+export const AnalysisChooser = ({ row, onChooseAnalysis }) => {
+  const intl = useIntl();
+  const placement = row.placement;
+  const candidates = placement?.analyses || [];
+  if (placement?.state !== "MULTI_TUBE" || candidates.length === 0) {
+    return null;
+  }
+  return (
+    <Select
+      id={`resultList${row.id}.chosenAnalysisId`}
+      size="sm"
+      labelText={intl.formatMessage({
+        id: "analyzer.placement.chooseAnalysis",
+      })}
+      defaultValue={row.chosenAnalysisId || ""}
+      onChange={(event) => onChooseAnalysis?.(event.target.value, row.id)}
+    >
+      <SelectItem
+        value=""
+        text={intl.formatMessage({
+          id: "analyzer.placement.chooseAnalysis.none",
+        })}
+      />
+      {candidates.map((candidate) => (
+        <SelectItem
+          key={candidate.analysisId}
+          value={candidate.analysisId}
+          text={intl.formatMessage(
+            { id: "analyzer.placement.option" },
+            {
+              tube: tubeName(intl, placement, candidate.sampleItemId),
+              status: intl.formatMessage({
+                id: candidate.awaitingResult
+                  ? "analyzer.placement.option.awaiting"
+                  : "analyzer.placement.option.hasResult",
+              }),
+            },
+          )}
+        />
+      ))}
+    </Select>
+  );
+};
+
 /**
  * What a result will do when it is saved, and why, for one review row. A result
  * with a single waiting analysis only says so; every other state explains
- * itself, and several matching analyses ask the reviewer to choose one.
+ * itself, and several matching analyses ask the reviewer to choose one. The
+ * parts can be left out when another row of the same sample already shows them.
  */
 const PlacementNotice = ({
   row,
   onChooseAnalysis,
   onViewBundle,
   showChooser = true,
+  showState = true,
+  showPatient = true,
+  showBundle = true,
 }) => {
   const intl = useIntl();
   const placement = row.placement;
   if (!placement) {
     return null;
   }
-  const tubeName = (tubeId) => {
-    const tube = (placement.tubes || []).find(
-      (candidate) => candidate.sampleItemId === tubeId,
-    );
-    return (
-      tube?.externalId ||
-      intl.formatMessage(
-        { id: "analyzer.placement.tubeUnlabelled" },
-        { id: tubeId },
-      )
-    );
-  };
   const patient = placement.patient;
   const instrumentPatient = patient?.instrumentId
     ? patient.instrumentName
@@ -54,20 +114,22 @@ const PlacementNotice = ({
       : `analyzer.placement.reason.${placement.state}`;
   return (
     <div className="placementNotice" data-testid={`placement-${row.id}`}>
-      <Tag type={TAG_TYPE[placement.state] || "gray"} size="sm">
-        <FormattedMessage id={`analyzer.placement.state.${placement.state}`} />
-      </Tag>
-      <p>
-        <FormattedMessage
-          id={reasonId}
-          values={{
-            tube: placement.proposedSampleItemId
-              ? tubeName(placement.proposedSampleItemId)
-              : "",
-          }}
-        />
-      </p>
-      {patient?.status === "MATCH" && (
+      {showState && (
+        <div className="placementNotice__state">
+          <PlacementStateTag placement={placement} />
+          <span>
+            <FormattedMessage
+              id={reasonId}
+              values={{
+                tube: placement.proposedSampleItemId
+                  ? tubeName(intl, placement, placement.proposedSampleItemId)
+                  : "",
+              }}
+            />
+          </span>
+        </div>
+      )}
+      {showPatient && patient?.status === "MATCH" && (
         <p>
           <FormattedMessage
             id="analyzer.placement.patient.match"
@@ -75,12 +137,12 @@ const PlacementNotice = ({
           />
         </p>
       )}
-      {patient?.status === "MISMATCH" && (
-        <>
+      {showPatient && patient?.status === "MISMATCH" && (
+        <div className="placementNotice__state">
           <Tag type="red" size="sm">
             <FormattedMessage id="analyzer.placement.patient.mismatch.tag" />
           </Tag>
-          <p>
+          <span>
             <FormattedMessage
               id="analyzer.placement.patient.mismatch"
               values={{
@@ -88,10 +150,10 @@ const PlacementNotice = ({
                 order: patient.orderName || "",
               }}
             />
-          </p>
-        </>
+          </span>
+        </div>
       )}
-      {patient?.status === "NO_ORDER_PATIENT" && (
+      {showPatient && patient?.status === "NO_ORDER_PATIENT" && (
         <p>
           <FormattedMessage
             id="analyzer.placement.patient.noOrderPatient"
@@ -99,41 +161,10 @@ const PlacementNotice = ({
           />
         </p>
       )}
-      {ambiguous && candidates.length > 0 && showChooser && (
-        <Select
-          id={`resultList${row.id}.chosenAnalysisId`}
-          labelText={intl.formatMessage({
-            id: "analyzer.placement.chooseAnalysis",
-          })}
-          defaultValue={row.chosenAnalysisId || ""}
-          onChange={(event) => onChooseAnalysis?.(event.target.value, row.id)}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "analyzer.placement.chooseAnalysis.none",
-            })}
-          />
-          {candidates.map((candidate) => (
-            <SelectItem
-              key={candidate.analysisId}
-              value={candidate.analysisId}
-              text={intl.formatMessage(
-                { id: "analyzer.placement.option" },
-                {
-                  tube: tubeName(candidate.sampleItemId),
-                  status: intl.formatMessage({
-                    id: candidate.awaitingResult
-                      ? "analyzer.placement.option.awaiting"
-                      : "analyzer.placement.option.hasResult",
-                  }),
-                },
-              )}
-            />
-          ))}
-        </Select>
+      {showChooser && (
+        <AnalysisChooser row={row} onChooseAnalysis={onChooseAnalysis} />
       )}
-      {row.deliveryReceiptId && (
+      {showBundle && row.deliveryReceiptId && (
         <Button
           kind="ghost"
           size="sm"

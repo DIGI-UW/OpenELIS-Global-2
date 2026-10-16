@@ -31,6 +31,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
     private static final String BRIDGE_PROFILE_UNAVAILABLE = "analyzer.connection.readiness.profileUnavailable";
+    private static final String BRIDGE_RESTORE_FAILED = "analyzer.connection.readiness.restoreFailed";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
 
     private final AnalyzerService analyzerService;
@@ -95,8 +96,13 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private AnalyzerActivationResult activateExact(Analyzer analyzer, String actor) {
         String exactActor = requireText(actor, "actor");
         ActivationContext context = validateActivation(analyzer);
-        if (!context.blockers().isEmpty()) {
-            return AnalyzerActivationResult.blocked(analyzer, context.blockers());
+        // The Bridge keeps a connection it could not restart at startup inactive
+        // until it is activated again, and only that activation clears the
+        // failure. Readiness reports it; activation must not wait on it.
+        List<AnalyzerActivationBlocker> blocking = context.blockers().stream()
+                .filter(blocker -> !BRIDGE_RESTORE_FAILED.equals(blocker.code())).toList();
+        if (!blocking.isEmpty()) {
+            return AnalyzerActivationResult.blocked(analyzer, blocking);
         }
 
         ObjectNode acknowledgement;

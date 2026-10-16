@@ -65,6 +65,9 @@ const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
 const AnalyzerTypesPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypesPage"),
 );
+const AnalyzerTypeDraftPage = lazyWithRetry(
+  () => import("./pages/AnalyzerTypeDraftPage"),
+);
 const AnalyzerTypeMappingPage = lazyWithRetry(
   () => import("./pages/AnalyzerTypeMappingPage"),
 );
@@ -122,6 +125,7 @@ import ReportingRoute from "./components/reports/CustomDataExport/ReportingRoute
 import { REPORTING_ROUTE_PATHS } from "./components/reports/CustomDataExport/routes";
 import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
+import { LegacyAnalyzerResultsRedirect } from "./components/analyserResults/analyzerResultsRoutes.jsx";
 const AnalyserResultIndex = lazyWithRetry(
   () => import("./components/analyserResults/Index"),
 );
@@ -1469,6 +1473,18 @@ export default function App() {
                   role={ANALYZER_SETUP_ROLES}
                 />
                 <SecureRoute
+                  path="/analyzers/types/drafts/:draftId"
+                  exact
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeDraftPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={ANALYZER_SETUP_ROLES}
+                />
+                <SecureRoute
                   path="/analyzers/types/:profileId/mapping"
                   exact
                   component={() => (
@@ -1782,7 +1798,10 @@ export default function App() {
                   role={Roles.VALIDATION}
                 />
                 <SecureRoute
-                  path="/AnalyzerResults"
+                  path={[
+                    "/analyzers/import-issues",
+                    "/analyzers/:analyzerId/results",
+                  ]}
                   exact
                   render={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzerResults}>
@@ -1791,6 +1810,12 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
+                  role={ANALYZER_RESULTS_ROLES}
+                />
+                <SecureRoute
+                  path="/AnalyzerResults"
+                  exact
+                  render={() => <LegacyAnalyzerResultsRedirect />}
                   role={ANALYZER_RESULTS_ROLES}
                 />
                 <Route path="*" render={() => <RedirectOldUI />} />

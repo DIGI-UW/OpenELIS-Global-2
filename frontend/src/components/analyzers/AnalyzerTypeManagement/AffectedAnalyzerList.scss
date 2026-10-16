@@ -1,0 +1,19 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+// Shown on a type's pages, which do not load the types list's stylesheet.
+.analyzer-type-affected {
+  margin-block: spacing.$spacing-05;
+
+  h3 {
+    @include type.type-style("heading-compact-01");
+    margin-block-end: spacing.$spacing-03;
+  }
+}
+
+.analyzer-type-affected__item {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}

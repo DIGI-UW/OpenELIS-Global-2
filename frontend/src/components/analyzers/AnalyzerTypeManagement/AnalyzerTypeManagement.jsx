@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionableNotification,
   Button,
-  Checkbox,
   Column,
   DataTable,
   Grid,
   InlineNotification,
+  Link as CarbonLink,
   Loading,
   OverflowMenu,
   OverflowMenuItem,
@@ -21,12 +21,17 @@ import {
   TableHeader,
   TableRow,
   Tag,
-  Tile,
 } from "@carbon/react";
-import { Add, Copy } from "@carbon/icons-react";
+import {
+  Add,
+  CheckmarkFilled,
+  Copy,
+  WarningAltFilled,
+} from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
-import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { Link, Redirect, useHistory, useLocation } from "react-router-dom";
+import AnalyzerCountChips from "../AnalyzerCountChips";
+import AnalyzerPageHeader from "../AnalyzerPageHeader";
 import { safeInternalPath } from "../../utils/UrlUtils";
 import { getAnalyzerTypeCatalog } from "../../../services/analyzerService";
 import AnalyzerTypeLifecycleModals from "./AnalyzerTypeLifecycleModals";
@@ -34,7 +39,8 @@ import "./AnalyzerTypeManagement.scss";
 
 const SOURCE_VALUES = new Set(["ALL", "SHIPPED", "SITE"]);
 const PROTOCOL_VALUES = new Set(["ALL", "ASTM", "HL7", "FILE"]);
-const MAPPING_VALUES = new Set(["ALL", "COMPLETE", "INCOMPLETE"]);
+// The count chips: each is a view of the catalog.
+const VIEWS = ["all", "inUse", "needsMapping", "deactivated"];
 
 const readEnum = (params, key, allowed) => {
   const value = params.get(key) || "ALL";
@@ -43,12 +49,12 @@ const readEnum = (params, key, allowed) => {
 
 const readFilters = (search) => {
   const params = new URLSearchParams(search);
+  const view = params.get("view");
   return {
     query: params.get("q") || "",
     source: readEnum(params, "source", SOURCE_VALUES),
     protocol: readEnum(params, "protocol", PROTOCOL_VALUES),
-    mapping: readEnum(params, "mapping", MAPPING_VALUES),
-    showDeactivated: params.get("showDeactivated") === "true",
+    view: VIEWS.includes(view) ? view : "all",
   };
 };
 
@@ -61,12 +67,22 @@ const getMappingState = (type) => {
     : "INCOMPLETE";
 };
 
-const SummaryTile = ({ label, value }) => (
-  <Tile className="analyzer-type-summary__tile">
-    <div className="analyzer-type-summary__label">{label}</div>
-    <div className="analyzer-type-summary__value">{value}</div>
-  </Tile>
-);
+// Deactivated types show only in their own view.
+const inView = (type, view) => {
+  if (view === "deactivated") {
+    return type.status === "INACTIVE";
+  }
+  if (type.status === "INACTIVE") {
+    return false;
+  }
+  if (view === "inUse") {
+    return type.usedBy > 0;
+  }
+  if (view === "needsMapping") {
+    return getMappingState(type) === "INCOMPLETE";
+  }
+  return true;
+};
 
 const AnalyzerTypeManagement = () => {
   const intl = useIntl();
@@ -79,7 +95,16 @@ const AnalyzerTypeManagement = () => {
   const [catalog, setCatalog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [notification, setNotification] = useState(null);
+  // A draft published on its own page comes back here with what it did.
+  const [notification, setNotification] = useState(() =>
+    location.state?.analyzerTypeNotice
+      ? {
+          kind: "success",
+          titleId: `analyzerType.notification.${location.state.analyzerTypeNotice}.success`,
+          detail: "",
+        }
+      : null,
+  );
   const actionState = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const requestedRevision = Number(params.get("revision"));
@@ -134,16 +159,28 @@ const AnalyzerTypeManagement = () => {
     });
   }, [history, location.pathname, location.search]);
 
-  const handleDraftCreated = useCallback(
+  // A draft is edited on its own page, which returns to where the action began.
+  const draftLocation = useCallback(
     (draftId) => {
       const params = new URLSearchParams(location.search);
-      params.set("draft", draftId);
-      history.push({
-        pathname: location.pathname,
-        search: `?${params.toString()}`,
-      });
+      const returnTo = safeInternalPath(params.get("returnTo"));
+      ["action", "profile", "draft", "revision", "returnTo"].forEach((key) =>
+        params.delete(key),
+      );
+      const list = params.toString()
+        ? `/analyzers/types?${params.toString()}`
+        : "/analyzers/types";
+      return {
+        pathname: `/analyzers/types/drafts/${encodeURIComponent(draftId)}`,
+        search: `?${new URLSearchParams({ returnTo: returnTo || list }).toString()}`,
+      };
     },
-    [history, location.pathname, location.search],
+    [location.search],
+  );
+
+  const handleDraftCreated = useCallback(
+    (draftId) => history.push(draftLocation(draftId)),
+    [draftLocation, history],
   );
 
   const handleActionSuccess = useCallback(
@@ -181,6 +218,7 @@ const AnalyzerTypeManagement = () => {
       const isDefault =
         value === "" ||
         value === "ALL" ||
+        value === "all" ||
         value === false ||
         value === undefined;
       if (isDefault) {
@@ -201,11 +239,18 @@ const AnalyzerTypeManagement = () => {
     [history, location.pathname, location.search],
   );
 
+  const types = catalog?.types || [];
+  const viewCounts = Object.fromEntries(
+    VIEWS.map((view) => [
+      view,
+      types.filter((type) => inView(type, view)).length,
+    ]),
+  );
+
   const visibleTypes = useMemo(() => {
-    const types = catalog?.types || [];
     const query = filters.query.trim().toLowerCase();
-    return types.filter((type) => {
-      if (!filters.showDeactivated && type.status === "INACTIVE") {
+    return (catalog?.types || []).filter((type) => {
+      if (!inView(type, filters.view)) {
         return false;
       }
       if (
@@ -219,12 +264,7 @@ const AnalyzerTypeManagement = () => {
       if (filters.source !== "ALL" && type.source !== filters.source) {
         return false;
       }
-      if (filters.protocol !== "ALL" && type.protocol !== filters.protocol) {
-        return false;
-      }
-      return (
-        filters.mapping === "ALL" || getMappingState(type) === filters.mapping
-      );
+      return filters.protocol === "ALL" || type.protocol === filters.protocol;
     });
   }, [catalog, filters]);
 
@@ -234,16 +274,8 @@ const AnalyzerTypeManagement = () => {
       header: intl.formatMessage({ id: "analyzerType.column.type" }),
     },
     {
-      key: "protocol",
-      header: intl.formatMessage({ id: "analyzerType.column.protocol" }),
-    },
-    {
-      key: "testMappings",
-      header: intl.formatMessage({ id: "analyzerType.column.testsMapped" }),
-    },
-    {
-      key: "resultMappings",
-      header: intl.formatMessage({ id: "analyzerType.column.resultsMapped" }),
+      key: "mapping",
+      header: intl.formatMessage({ id: "analyzerType.column.mapping" }),
     },
     {
       key: "usedBy",
@@ -262,42 +294,42 @@ const AnalyzerTypeManagement = () => {
   const rows = visibleTypes.map((type) => ({
     id: type.profileId,
     displayName: type.displayName,
-    protocol: type.protocol,
-    testMappings: type.testMappings,
-    resultMappings: type.resultMappings,
+    mapping: type.profileId,
     usedBy: type.usedBy,
     status: type.status,
     actions: type.profileId,
-    source: type.source,
-    manufacturer: type.manufacturer,
-    model: type.model,
-    revision: type.revision,
-    parentProfileId: type.parentProfileId,
-    parentRevision: type.parentRevision,
   }));
-  const typesById = new Map(
-    (catalog?.types || []).map((type) => [type.profileId, type]),
-  );
+  const typesById = new Map(types.map((type) => [type.profileId, type]));
 
-  const formatMappings = (summary) => {
+  // One line per kind of mapping the type has: tests, and result values when
+  // its tests report coded results.
+  const mappingLine = (summary, kind) => {
     if (!summary || summary.state === "NOT_APPLICABLE") {
-      return intl.formatMessage({ id: "analyzerType.mapping.notApplicable" });
+      return null;
     }
-    const percent = Math.round((summary.mapped / summary.total) * 100);
-    if (summary.excluded > 0) {
-      return intl.formatMessage(
-        { id: "analyzerType.mapping.countWithExcluded" },
-        {
-          mapped: summary.mapped,
-          total: summary.total,
-          percent,
-          excluded: summary.excluded,
-        },
-      );
-    }
-    return intl.formatMessage(
-      { id: "analyzerType.mapping.count" },
-      { mapped: summary.mapped, total: summary.total, percent },
+    const complete = summary.state === "COMPLETE";
+    const Icon = complete ? CheckmarkFilled : WarningAltFilled;
+    return (
+      <span
+        className={`analyzer-type-mapping-line analyzer-type-mapping-line--${
+          complete ? "complete" : "incomplete"
+        }`}
+      >
+        <Icon aria-hidden="true" />
+        {intl.formatMessage(
+          {
+            id:
+              summary.excluded > 0
+                ? `analyzerType.mapping.${kind}WithExcluded`
+                : `analyzerType.mapping.${kind}`,
+          },
+          {
+            mapped: summary.mapped,
+            total: summary.total,
+            excluded: summary.excluded,
+          },
+        )}
+      </span>
     );
   };
 
@@ -315,74 +347,54 @@ const AnalyzerTypeManagement = () => {
     });
   };
 
-  const openMapping = (type) => {
-    const returnTo = `${location.pathname}${location.search}`;
-    const params = new URLSearchParams({
+  const mappingPath = (type) => ({
+    pathname: `/analyzers/types/${encodeURIComponent(type.profileId)}/mapping`,
+    search: `?${new URLSearchParams({
       revision: String(type.revision),
-      returnTo,
-    });
-    history.push({
-      pathname: `/analyzers/types/${encodeURIComponent(type.profileId)}/mapping`,
-      search: `?${params.toString()}`,
-    });
-  };
+      returnTo: `${location.pathname}${location.search}`,
+    }).toString()}`,
+  });
 
-  const summary = catalog?.summary || {
-    total: 0,
-    inUse: 0,
-    needsAttention: 0,
-    deactivated: 0,
-  };
+  const protocolLabel = (protocol) =>
+    protocol === "FILE"
+      ? intl.formatMessage({ id: "analyzerType.protocol.file" })
+      : protocol;
+
+  // An address saved while drafts were edited in a dialog opens the draft's page.
+  if (actionState.draftId) {
+    return <Redirect to={draftLocation(actionState.draftId)} />;
+  }
 
   return (
     <>
-      <PageBreadCrumb
-        breadcrumbs={[
-          { label: "home.label", link: "/" },
-          { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-          {
-            label: "analyzerType.page.title",
-            link: "/analyzers/types",
-            isCurrentPage: true,
-          },
-        ]}
-      />
       <Grid fullWidth className="analyzer-type-page">
         <Column lg={16} md={8} sm={4}>
-          <div className="analyzer-type-page__heading">
-            <div>
-              <h1>
-                <FormattedMessage id="analyzerType.page.title" />
-              </h1>
-              <p className="analyzer-type-page__subtitle">
-                <FormattedMessage id="analyzerType.page.subtitle" />
-              </p>
-            </div>
-            <div className="analyzer-type-page__actions">
-              <Button
-                kind="secondary"
-                renderIcon={Copy}
-                onClick={() => openAction("duplicate")}
-              >
-                <FormattedMessage id="analyzerType.button.duplicate" />
-              </Button>
-              <Button renderIcon={Add} onClick={() => openAction("create")}>
-                <FormattedMessage id="analyzerType.button.create" />
-              </Button>
-            </div>
-          </div>
-
-          <InlineNotification
-            className="analyzer-type-page__explainer"
-            kind="info"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: "analyzerType.explainer.title",
-            })}
-            subtitle={intl.formatMessage({
-              id: "analyzerType.explainer.subtitle",
-            })}
+          <AnalyzerPageHeader
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+              {
+                label: "analyzerType.page.title",
+                link: "/analyzers/types",
+                isCurrentPage: true,
+              },
+            ]}
+            title={<FormattedMessage id="analyzerType.page.title" />}
+            subtitle={<FormattedMessage id="analyzerType.page.subtitle" />}
+            actions={
+              <>
+                <Button
+                  kind="secondary"
+                  renderIcon={Copy}
+                  onClick={() => openAction("duplicate")}
+                >
+                  <FormattedMessage id="analyzerType.button.duplicate" />
+                </Button>
+                <Button renderIcon={Add} onClick={() => openAction("create")}>
+                  <FormattedMessage id="analyzerType.button.create" />
+                </Button>
+              </>
+            }
           />
 
           {notification && (
@@ -398,33 +410,19 @@ const AnalyzerTypeManagement = () => {
             />
           )}
 
-          <section
-            className="analyzer-type-summary"
-            aria-label={intl.formatMessage({
-              id: "analyzerType.summary.ariaLabel",
-            })}
-          >
-            <SummaryTile
-              label={intl.formatMessage({ id: "analyzerType.summary.total" })}
-              value={summary.total}
-            />
-            <SummaryTile
-              label={intl.formatMessage({ id: "analyzerType.summary.inUse" })}
-              value={summary.inUse}
-            />
-            <SummaryTile
-              label={intl.formatMessage({
-                id: "analyzerType.summary.needsAttention",
-              })}
-              value={summary.needsAttention}
-            />
-            <SummaryTile
-              label={intl.formatMessage({
-                id: "analyzerType.summary.deactivated",
-              })}
-              value={summary.deactivated}
-            />
-          </section>
+          <AnalyzerCountChips
+            testId="analyzer-type-views"
+            label={intl.formatMessage({ id: "analyzerType.view.label" })}
+            chips={VIEWS.map((view) => ({
+              id: view,
+              value: viewCounts[view],
+              label: intl.formatMessage({ id: `analyzerType.view.${view}` }),
+              current: filters.view === view,
+              warning: view === "needsMapping" && viewCounts[view] > 0,
+              testId: `analyzer-type-view-${view}`,
+              onSelect: () => updateQuery("view", view),
+            }))}
+          />
 
           <div className="analyzer-type-filters">
             <Search
@@ -488,56 +486,8 @@ const AnalyzerTypeManagement = () => {
               />
               <SelectItem value="ASTM" text="ASTM" />
               <SelectItem value="HL7" text="HL7" />
-              <SelectItem
-                value="FILE"
-                text={intl.formatMessage({
-                  id: "analyzerType.protocol.file",
-                })}
-              />
+              <SelectItem value="FILE" text={protocolLabel("FILE")} />
             </Select>
-            <Select
-              id="analyzer-type-mapping"
-              aria-label={intl.formatMessage({
-                id: "analyzerType.filter.mapping",
-              })}
-              labelText={intl.formatMessage({
-                id: "analyzerType.filter.mapping",
-              })}
-              value={filters.mapping}
-              onChange={(event) => updateQuery("mapping", event.target.value)}
-            >
-              <SelectItem
-                value="ALL"
-                text={intl.formatMessage({
-                  id: "analyzerType.filter.all",
-                })}
-              />
-              <SelectItem
-                value="INCOMPLETE"
-                text={intl.formatMessage({
-                  id: "analyzerType.mapping.incomplete",
-                })}
-              />
-              <SelectItem
-                value="COMPLETE"
-                text={intl.formatMessage({
-                  id: "analyzerType.mapping.complete",
-                })}
-              />
-            </Select>
-            <Checkbox
-              id="analyzer-type-show-deactivated"
-              aria-label={intl.formatMessage({
-                id: "analyzerType.filter.showDeactivated",
-              })}
-              labelText={intl.formatMessage({
-                id: "analyzerType.filter.showDeactivated",
-              })}
-              checked={filters.showDeactivated}
-              onChange={(_, state) =>
-                updateQuery("showDeactivated", state.checked)
-              }
-            />
           </div>
 
           {loadError && (
@@ -600,7 +550,7 @@ const AnalyzerTypeManagement = () => {
                   getHeaderProps,
                   getRowProps,
                 }) => (
-                  <TableContainer>
+                  <TableContainer className="analyzer-type-table">
                     <Table {...getTableProps()} size="lg">
                       <TableHead>
                         <TableRow>
@@ -618,18 +568,12 @@ const AnalyzerTypeManagement = () => {
                         {carbonRows.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={headers.length}>
-                              <InlineNotification
-                                className="analyzer-type-page__empty"
-                                kind="info"
-                                lowContrast
-                                hideCloseButton
-                                title={intl.formatMessage({
-                                  id: "analyzerType.empty.title",
-                                })}
-                                subtitle={intl.formatMessage({
-                                  id: "analyzerType.empty.subtitle",
-                                })}
-                              />
+                              <p className="analyzer-type-page__empty">
+                                <strong>
+                                  <FormattedMessage id="analyzerType.empty.title" />
+                                </strong>{" "}
+                                <FormattedMessage id="analyzerType.empty.subtitle" />
+                              </p>
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -640,17 +584,25 @@ const AnalyzerTypeManagement = () => {
                               <TableRow key={row.id} {...getRowProps({ row })}>
                                 <TableCell>
                                   <div className="analyzer-type-name">
-                                    <strong>{type.displayName}</strong>
+                                    <CarbonLink
+                                      as={Link}
+                                      to={mappingPath(type)}
+                                      className="analyzer-type-name__link"
+                                    >
+                                      {type.displayName}
+                                    </CarbonLink>
                                     <div className="analyzer-type-name__meta">
-                                      {[type.manufacturer, type.model]
+                                      {[
+                                        type.manufacturer,
+                                        type.model,
+                                        protocolLabel(type.protocol),
+                                        intl.formatMessage(
+                                          { id: "analyzerType.revision" },
+                                          { revision: type.revision },
+                                        ),
+                                      ]
                                         .filter(Boolean)
                                         .join(" · ")}
-                                      {(type.manufacturer || type.model) &&
-                                        " · "}
-                                      <FormattedMessage
-                                        id="analyzerType.revision"
-                                        values={{ revision: type.revision }}
-                                      />
                                     </div>
                                     <div className="analyzer-type-name__tags">
                                       <Tag
@@ -683,41 +635,11 @@ const AnalyzerTypeManagement = () => {
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell>{type.protocol}</TableCell>
                                 <TableCell>
-                                  <span
-                                    className={
-                                      getMappingState({
-                                        testMappings: type.testMappings,
-                                        resultMappings: {
-                                          state: "NOT_APPLICABLE",
-                                        },
-                                      }) === "COMPLETE"
-                                        ? "analyzer-type-mapping--complete"
-                                        : "analyzer-type-mapping--incomplete"
-                                    }
-                                  >
-                                    {formatMappings(type.testMappings)}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <span
-                                    className={
-                                      !type.resultMappings ||
-                                      type.resultMappings.state ===
-                                        "NOT_APPLICABLE" ||
-                                      getMappingState({
-                                        testMappings: type.resultMappings,
-                                        resultMappings: {
-                                          state: "NOT_APPLICABLE",
-                                        },
-                                      }) === "COMPLETE"
-                                        ? "analyzer-type-mapping--complete"
-                                        : "analyzer-type-mapping--incomplete"
-                                    }
-                                  >
-                                    {formatMappings(type.resultMappings)}
-                                  </span>
+                                  <div className="analyzer-type-mapping-cell">
+                                    {mappingLine(type.testMappings, "tests")}
+                                    {mappingLine(type.resultMappings, "values")}
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <FormattedMessage
@@ -759,7 +681,9 @@ const AnalyzerTypeManagement = () => {
                                       itemText={intl.formatMessage({
                                         id: "analyzerType.action.editMappings",
                                       })}
-                                      onClick={() => openMapping(type)}
+                                      onClick={() =>
+                                        history.push(mappingPath(type))
+                                      }
                                     />
                                     <OverflowMenuItem
                                       itemText={intl.formatMessage({
@@ -824,7 +748,6 @@ const AnalyzerTypeManagement = () => {
           key={`${actionState.action}:${actionState.profileId || ""}:${actionState.revision || ""}`}
           action={actionState.action}
           profileId={actionState.profileId}
-          draftId={actionState.draftId}
           revision={actionState.revision}
           types={catalog.types}
           onClose={closeAction}

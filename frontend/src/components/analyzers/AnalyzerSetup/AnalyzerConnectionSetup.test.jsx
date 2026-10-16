@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { createMemoryHistory } from "history";
@@ -258,6 +258,12 @@ describe("AnalyzerConnectionSetup", () => {
       ),
     ).toBeVisible();
     expect(screen.queryByText("raw Bridge text")).not.toBeInTheDocument();
+    // Readiness and the Bridge warnings read as one list.
+    expect(
+      within(
+        screen.getByTestId("analyzer-activation-readiness-list"),
+      ).getAllByRole("listitem"),
+    ).toHaveLength(3);
   });
 
   describe("when the Bridge no longer has the analyzer's type", () => {
@@ -421,7 +427,10 @@ describe("AnalyzerConnectionSetup", () => {
         expect.any(Function),
       ),
     );
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith({
+      kind: "saved",
+      name: candidate.name,
+    });
     expect(history.location.search).toContain("setup=connect");
   });
 
@@ -946,6 +955,8 @@ describe("AnalyzerConnectionSetup", () => {
 
     await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(1));
     expect(activateAnalyzer).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "updated" }),
+    );
   });
 });

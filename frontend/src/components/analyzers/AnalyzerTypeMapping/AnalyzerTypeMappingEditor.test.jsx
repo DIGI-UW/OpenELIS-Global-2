@@ -14,6 +14,7 @@ import {
   getAnalyzerMappingComponents,
   getAnalyzerMappingResultOptions,
   getAnalyzerMappingTests,
+  getAnalyzerTypeCatalog,
   getAnalyzerTypeDefaults,
   getAnalyzerTypeRevision,
   saveAnalyzerMapping,
@@ -27,6 +28,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerMappingComponents: vi.fn(),
   getAnalyzerMappingResultOptions: vi.fn(),
   getAnalyzerMappingTests: vi.fn(),
+  getAnalyzerTypeCatalog: vi.fn(),
   getAnalyzerTypeDefaults: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
   saveAnalyzerMapping: vi.fn(),
@@ -205,6 +207,10 @@ const ReturnStateProbe = () => {
     <output data-testid="return-state">{JSON.stringify(location.state)}</output>
   );
 };
+
+// The editor opens on the rows that need mapping when there are any.
+const showAllRows = async () =>
+  userEvent.click(await screen.findByRole("tab", { name: /^All \(/ }));
 
 const renderEditor = (
   entry = "/analyzers/501/mapping?returnTo=%2FAnalyzerResults%3Fid%3D501",
@@ -417,6 +423,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         level: 1,
         name: "Cepheid GeneXpert MTB/RIF mappings",
       });
+      await showAllRows();
 
       const main = rowFor("HIVVL");
       expect(rowFor("HIVVL &LOG")).toBeDefined();
@@ -514,6 +521,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         level: 1,
         name: "Cepheid GeneXpert MTB/RIF mappings",
       });
+      await showAllRows();
 
       await userEvent.click(
         within(rowFor("HIVVL")).getByRole("combobox", {
@@ -538,6 +546,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         level: 1,
         name: "Cepheid GeneXpert MTB/RIF mappings",
       });
+      await showAllRows();
 
       const log = rowFor("HIVVL &LOG");
       const picker = within(log).getByRole("combobox", {
@@ -591,6 +600,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         level: 1,
         name: "Cepheid GeneXpert MTB/RIF mappings",
       });
+      await showAllRows();
 
       const log = rowFor("HIVVL &LOG");
       const picker = within(log).getByRole("combobox", {
@@ -660,6 +670,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         level: 1,
         name: "Cepheid GeneXpert MTB/RIF mappings",
       });
+      await showAllRows();
 
       const main = rowFor("HIVVL");
       expect(
@@ -689,6 +700,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         level: 1,
         name: "Cepheid GeneXpert MTB/RIF mappings",
       });
+      await showAllRows();
 
       const endPoint = rowFor("HIVVL HIV-1&EndPt");
       await userEvent.click(
@@ -777,12 +789,12 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(document.querySelector("h1")).toBeNull();
     expect(
       screen.queryByRole("button", {
-        name: "Apply mappings and retry held results",
+        name: "Apply and retry held results",
       }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mapping",
       }),
     ).toBeInTheDocument();
     await waitFor(() =>
@@ -791,6 +803,74 @@ describe("AnalyzerTypeMappingEditor", () => {
         false,
       ),
     );
+  });
+
+  it("opens on the codes that need mapping and keeps a row in place until the mapping is saved", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        tests: mapping.tests.map((test) =>
+          test.sourceRowKey === "RAW-A"
+            ? {
+                ...test,
+                results: test.results.map((result) => ({
+                  ...result,
+                  mappingState:
+                    result.mappingState === "UNRESOLVED"
+                      ? "EXCLUDED"
+                      : result.mappingState,
+                })),
+              }
+            : test,
+        ),
+      }),
+    );
+    renderEditor();
+
+    expect(
+      await screen.findByRole("tab", { name: "Needs mapping (2)" }),
+    ).toHaveAttribute("aria-selected", "true");
+    const codes = () =>
+      screen
+        .getAllByTestId("analyzer-type-mapping-row")
+        .map((row) => within(row).getByText(/^RAW-/, { selector: "strong" }))
+        .map((code) => code.textContent);
+    expect(codes()).toEqual(["RAW-B", "RAW-C"]);
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Do not receive RAW-B" }),
+    );
+    expect(codes()).toEqual(["RAW-B", "RAW-C"]);
+
+    await userEvent.click(screen.getByRole("tab", { name: "All (3)" }));
+    expect(codes()).toEqual(["RAW-A", "RAW-B", "RAW-C"]);
+  });
+
+  it("makes the next of Save, Confirm and Apply the one primary action", async () => {
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+    const bar = screen.getByTestId("analyzer-mapping-actions");
+    const primary = () =>
+      within(bar)
+        .getAllByRole("button")
+        .filter((button) => button.classList.contains("cds--btn--primary"))
+        .map((button) => button.textContent);
+
+    expect(primary()).toEqual(["Confirm mapping"]);
+    expect(
+      within(bar).getByRole("button", {
+        name: "Apply and retry held results",
+      }),
+    ).toBeDisabled();
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Do not receive RAW-B" }),
+    );
+    expect(primary()).toEqual(["Save mapping"]);
+    expect(within(bar).getByText("Unsaved mapping changes")).toBeVisible();
   });
 
   it("returns to the worklist with its unsaved review choices", async () => {
@@ -826,7 +906,7 @@ describe("AnalyzerTypeMappingEditor", () => {
 
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Apply mappings and retry held results",
+        name: "Apply and retry held results",
       }),
     );
 
@@ -881,7 +961,7 @@ describe("AnalyzerTypeMappingEditor", () => {
 
       await userEvent.click(
         await screen.findByRole("button", {
-          name: "Apply mappings and retry held results",
+          name: "Apply and retry held results",
         }),
       );
 
@@ -932,7 +1012,7 @@ describe("AnalyzerTypeMappingEditor", () => {
 
       expect(
         await screen.findByRole("button", {
-          name: "Apply mappings and retry held results",
+          name: "Apply and retry held results",
         }),
       ).toBeDisabled();
       expect(applyAnalyzerMapping).not.toHaveBeenCalled();
@@ -948,13 +1028,18 @@ describe("AnalyzerTypeMappingEditor", () => {
         name: "Cepheid GeneXpert MTB/RIF mappings",
       }),
     ).toBeVisible();
+    await showAllRows();
     expect(document.querySelectorAll("h1")).toHaveLength(1);
     expect(getAnalyzerMapping).toHaveBeenCalledWith(
       "501",
       expect.any(Function),
     );
     expect(getAnalyzerTypeRevision).not.toHaveBeenCalled();
-    expect(screen.getByText("This analyzer's own mapping")).toBeVisible();
+    expect(
+      screen.getByText(
+        /This analyzer's own mapping\. Changes apply only to it/,
+      ),
+    ).toBeVisible();
 
     const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(
@@ -990,7 +1075,7 @@ describe("AnalyzerTypeMappingEditor", () => {
   it("confirms partial mappings without excluding unresolved rows", async () => {
     renderEditor();
     const button = await screen.findByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mapping",
     });
     expect(button).toBeEnabled();
     expect(
@@ -1062,8 +1147,8 @@ describe("AnalyzerTypeMappingEditor", () => {
     renderEditor();
 
     expect(
-      await screen.findAllByText("Control recognition not configured"),
-    ).toHaveLength(2);
+      await screen.findByText("Control recognition not configured"),
+    ).toBeVisible();
     expect(
       screen.getByText(
         "No control recognition rules are configured. Control results may not be identified automatically.",
@@ -1326,7 +1411,7 @@ describe("AnalyzerTypeMappingEditor", () => {
 
     expect(screen.getByText("Mappings saved")).toBeVisible();
     const confirm = screen.getByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mapping",
     });
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
@@ -1358,7 +1443,6 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(
       screen.getByText(/Confirmed by Lab Admin on Aug 22, 2026/),
     ).toBeVisible();
-    expect(screen.getByText("Current confirmation")).toBeVisible();
   });
 
   it("keeps the selections of an excluded test so that un-excluding restores them", async () => {
@@ -1477,9 +1561,9 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(changes.getByText("RAW-A")).toBeVisible();
     expect(changes.getByText("RAW-A / DETECTED")).toBeVisible();
     expect(
-      changes.getByText("Rifampin Resistance to Do not receive"),
+      changes.getByText("Rifampin Resistance to Not received"),
     ).toBeVisible();
-    expect(changes.getByText("Resistant to Do not receive")).toBeVisible();
+    expect(changes.getByText("Resistant to Not received")).toBeVisible();
     expect(saveAnalyzerMapping).not.toHaveBeenCalled();
   });
 
@@ -1503,10 +1587,53 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.getAllByText("Edited")).toHaveLength(1);
   });
 
+  it("opens a type's defaults on its current revision when the address names none", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({ types: [{ profileId: "shipped.genexpert", revision: 2 }] }),
+    );
+    renderDefaults("/analyzers/types/shipped.genexpert/mapping");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent("revision=2"),
+    );
+    expect(getAnalyzerTypeDefaults).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      2,
+      expect.any(Function),
+    );
+    expect(
+      await screen.findByText(/Defaults for new analyzers of this type/),
+    ).toBeVisible();
+  });
+
+  it("says an adoption address names no revision instead of loading forever", async () => {
+    render(
+      <MemoryRouter initialEntries={["/analyzers/501/adoption"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <Route path="/analyzers/:analyzerId/adoption">
+            <AnalyzerTypeMappingEditor />
+            <LocationProbe />
+          </Route>
+          <Route path="/analyzers" exact>
+            <LocationProbe />
+          </Route>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText(/This address names no revision of the analyzer type/),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByTestId("location")).toHaveTextContent(/^\/analyzers$/);
+  });
+
   it("shows a type's defaults read-only, with no way to save, confirm or apply them", async () => {
     renderDefaults();
 
-    expect(await screen.findByText("Defaults for new analyzers")).toBeVisible();
+    expect(
+      await screen.findByText(/Defaults for new analyzers of this type/),
+    ).toBeVisible();
     expect(getAnalyzerTypeDefaults).toHaveBeenCalledWith(
       "shipped.genexpert",
       2,
@@ -1519,19 +1646,20 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mapping",
       }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Apply mappings and retry held results",
+        name: "Apply and retry held results",
       }),
     ).not.toBeInTheDocument();
-    screen
-      .getAllByRole("combobox", { name: /OpenELIS test for/ })
-      .forEach((picker) => expect(picker).toBeDisabled());
-    screen
-      .getAllByRole("checkbox")
-      .forEach((checkbox) => expect(checkbox).toBeDisabled());
+    // Defaults read as text: there is nothing to pick or tick.
+    await showAllRows();
+    expect(screen.getAllByTestId("analyzer-type-mapping-row")).not.toHaveLength(
+      0,
+    );
+    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 });

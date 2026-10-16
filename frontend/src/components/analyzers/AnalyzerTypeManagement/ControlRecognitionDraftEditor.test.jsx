@@ -67,12 +67,42 @@ const noneDraft = {
   },
 };
 
+// Stands in for the draft's bar, which saves the recognition through the
+// editor's ref when it has valid, unsaved changes.
+const Host = ({ onStateChange, ...props }) => {
+  const editor = React.useRef(null);
+  const [state, setState] = React.useState({});
+  const report = React.useCallback(
+    (next) => {
+      setState(next);
+      onStateChange(next);
+    },
+    [onStateChange],
+  );
+  return (
+    <>
+      <ControlRecognitionDraftEditor
+        ref={editor}
+        onStateChange={report}
+        {...props}
+      />
+      <button
+        type="button"
+        disabled={!(state.dirty && state.valid && !state.saving)}
+        onClick={() => editor.current?.save()}
+      >
+        Save control recognition
+      </button>
+    </>
+  );
+};
+
 const renderEditor = (props = {}) => {
   const onStateChange = vi.fn();
   const onError = vi.fn();
   const view = render(
     <IntlProvider locale="en" messages={messages}>
-      <ControlRecognitionDraftEditor
+      <Host
         draftId="draft-1"
         onStateChange={onStateChange}
         onError={onError}

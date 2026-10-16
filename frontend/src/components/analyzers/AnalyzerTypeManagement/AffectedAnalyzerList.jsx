@@ -2,6 +2,7 @@ import React from "react";
 import { ListItem, UnorderedList } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import { Link } from "react-router-dom";
+import "./AffectedAnalyzerList.scss";
 
 const AffectedAnalyzerList = ({ analyzers = [], revision }) => {
   if (analyzers.length === 0) {

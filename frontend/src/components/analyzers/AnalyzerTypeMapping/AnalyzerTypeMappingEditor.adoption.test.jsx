@@ -195,7 +195,12 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
         name: "Adopt revision 2 of Chemistry analyzer",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Adopting revision 2")).toBeInTheDocument();
+    // The page says what adopting does, under its title.
+    expect(
+      screen.getByText(
+        /Adopting revision 2: this analyzer keeps receiving on revision 1/,
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Confirmation")).not.toBeInTheDocument();
     expect(getAnalyzerAdoption).toHaveBeenCalledWith(
       "501",
@@ -203,9 +208,7 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
       expect.any(Function),
     );
     const record = (bucket, code) =>
-      within(section(bucket)).getByRole("button", {
-        name: new RegExp(`^${code}\\b`),
-      });
+      within(section(bucket)).getByText(code, { selector: "strong" });
     expect(record("Changed", "GLU")).toBeInTheDocument();
     expect(record("Needs mapping", "K")).toBeInTheDocument();
     expect(record("Unchanged", "NA")).toBeInTheDocument();
@@ -214,7 +217,7 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Apply mappings and retry held results",
+        name: "Apply and retry held results",
       }),
     ).not.toBeInTheDocument();
   });

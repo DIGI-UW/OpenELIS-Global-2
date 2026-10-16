@@ -607,26 +607,6 @@ export const activateAnalyzer = (
   );
 };
 
-export const reactivateAnalyzer = (
-  id: string,
-  callback: ApiCallback<AnalyzerActivationResultView>,
-) => {
-  postAnalyzerLifecycle<AnalyzerActivationResultView>(
-    id,
-    "reactivate",
-    callback,
-    (error) => ({
-      analyzerId: id,
-      status: "UNKNOWN",
-      ready: false,
-      activated: false,
-      blockers: [],
-      error,
-      statusCode: 0,
-    }),
-  );
-};
-
 export const deactivateAnalyzer = (
   id: string,
   callback: ApiCallback<AnalyzerDeactivationResultView>,

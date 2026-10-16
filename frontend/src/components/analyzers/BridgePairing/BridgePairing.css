@@ -1,0 +1,69 @@
+.bridge-pairing {
+  margin-bottom: 1rem;
+}
+
+/* One line at desktop: state, the three facts, the one action at the end. */
+.bridge-pairing__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 2rem;
+  padding: 0.75rem 1rem;
+  background: var(--cds-layer-01, #f4f4f4);
+  border-left: 3px solid var(--cds-support-success, #24a148);
+}
+
+.bridge-pairing__state {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bridge-pairing__icon--paired {
+  fill: var(--cds-support-success, #24a148);
+}
+
+.bridge-pairing__facts {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  margin: 0;
+}
+
+.bridge-pairing__facts dt {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.bridge-pairing__facts dd {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bridge-pairing__facts code {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-size: 0.875rem;
+}
+
+.bridge-pairing__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 28rem;
+  margin-top: 1rem;
+}
+
+.cds--modal .bridge-pairing__form {
+  margin-top: 0;
+  max-width: none;
+}
+
+.bridge-pairing__form .cds--btn {
+  align-self: flex-start;
+}

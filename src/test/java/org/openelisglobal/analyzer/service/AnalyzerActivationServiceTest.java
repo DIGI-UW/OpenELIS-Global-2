@@ -131,6 +131,53 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void activatesAConnectionTheBridgeCouldNotRestoreSinceActivatingIsWhatRestoresIt() {
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "runtime-restore-failed")
+                .put("messageKey", "analyzer.connection.readiness.restoreFailed");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenReturn(retained);
+
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.activated());
+        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
+        verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004");
+    }
+
+    @Test
+    public void readinessStillReportsAConnectionTheBridgeCouldNotRestore() {
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "runtime-restore-failed")
+                .put("messageKey", "analyzer.connection.readiness.restoreFailed");
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.connection.readiness.restoreFailed"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+    }
+
+    @Test
+    public void aRestoreFailureDoesNotHideTheBridgesOtherBlockers() {
+        connection.with("readiness").put("ready", false);
+        var blockers = connection.with("readiness").putArray("blockers");
+        blockers.addObject().put("key", "runtime-restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        blockers.addObject().put("key", "listener-port").put("messageKey",
+                "analyzer.connection.listenerPort.unavailable");
+
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
+
+        assertFalse(result.activated());
+        assertEquals(List.of("analyzer.connection.listenerPort.unavailable"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
+        assertUnchanged();
+    }
+
+    @Test
     public void readinessReadsButDoesNotMutateTheSavedConnection() {
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 

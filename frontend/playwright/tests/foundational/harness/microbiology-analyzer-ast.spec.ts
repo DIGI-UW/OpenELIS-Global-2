@@ -162,7 +162,7 @@ test.describe("Microbiology analyzer AST review", () => {
       row.getByRole("link", { name: "Open analyzer results" }),
     ).toHaveAttribute(
       "href",
-      `/AnalyzerResults?id=${seeded.analyzerInstrumentId}`,
+      `/analyzers/${seeded.analyzerInstrumentId}/results`,
     );
     await expect(
       page.getByRole("button", { name: /retry|reprocess/i }),

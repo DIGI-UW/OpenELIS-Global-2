@@ -12,8 +12,10 @@ set -euo pipefail
 #   analyzers are all set up by the stories that run on it (the evidence recording).
 # A newly created analyzer is set up as an operator would in the setup screens:
 # its shipped defaults confirmed, applied and activated. An analyzer whose
-# defaults leave a row unresolved stays in Setup. This seed runs on dev, demo and
-# testing stacks only, never at a lab.
+# defaults leave a row of an assay that is on unresolved stays in Setup; an
+# assay that starts off (no local test carries its code, as for the BC-5380's
+# manual differential) is not mapped, as in Verify. This seed runs on dev, demo
+# and testing stacks only, never at a lab.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
 NETWORKS_ONLY=false
@@ -53,6 +55,8 @@ fi
 GENEXPERT_PROFILE_ID="cepheid-genexpert-astm"
 FLUOROCYCLER_PROFILE_ID="hain-fluorocycler-xt-madagascar"
 QUANTSTUDIO_PROFILE_ID="thermo-quantstudio"
+BC5380_PROFILE_ID="mindray-bc5380"
+BC5380_LAB_UNIT_NAME="${BC5380_LAB_UNIT_NAME:-Hematology}"
 
 CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
@@ -104,7 +108,7 @@ PY
 }
 
 resolve_lab_unit_id() {
-  python3 - "$LAB_UNITS_FILE" "$HARNESS_LAB_UNIT_NAME" <<'PY'
+  python3 - "$LAB_UNITS_FILE" "$1" <<'PY'
 import json
 import sys
 
@@ -147,10 +151,11 @@ reconcile_profile_analyzer() {
   local profile_revision="$3"
   local connection_values="{}"
   [ "$#" -ge 4 ] && connection_values="$4"
+  local lab_unit_id="${5:-$LAB_UNIT_ID}"
 
   local payload
   payload="$(
-    python3 - "$name" "$profile_id" "$profile_revision" "$LAB_UNIT_ID" "$connection_values" <<'PY'
+    python3 - "$name" "$profile_id" "$profile_revision" "$lab_unit_id" "$connection_values" <<'PY'
 import json
 import sys
 
@@ -207,41 +212,60 @@ api_send() {
 }
 
 # Confirm every resolved row of the analyzer's own mapping, apply it and activate, as Verify,
-# Apply and "Finish and activate" do. Unresolved rows leave the analyzer in Setup.
+# Apply and "Finish and activate" do. An unresolved row of an assay that is on leaves the
+# analyzer in Setup; assays that are off are not mapped.
 set_up_like_an_operator() {
   local analyzer_id="$1"
   local name="$2"
   local request
   local status
+  local undecided
   fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  undecided="$(python3 - "$RESPONSE_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    mapping = json.load(handle)
+codes = set()
+off = {t["sourceRowKey"] for t in mapping.get("tests", []) if not t.get("subIdentity") and t.get("enabled") is False}
+for test in mapping.get("tests", []):
+    if test["sourceRowKey"] in off:
+        continue
+    states = [test.get("mappingState")] + [r.get("mappingState") for r in test.get("results", [])]
+    if any(state not in ("BOUND", "EXCLUDED") for state in states):
+        codes.add(test["sourceRowKey"])
+print(" ".join(sorted(codes)))
+PY
+)"
+  if [ -n "$undecided" ]; then
+    echo "  Left in Setup: $name has unresolved mapping rows to review in OpenELIS ($undecided)"
+    return 0
+  fi
   request="$(python3 - "$RESPONSE_FILE" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     mapping = json.load(handle)
-confirmed, excluded, unresolved = [], [], []
+confirmed, excluded = [], []
 for test in mapping.get("tests", []):
     sub = test.get("subIdentity") or ""
     rows = [(test.get("mappingState"), None)] + [(r.get("mappingState"), r.get("rawValue")) for r in test.get("results", [])]
     for state, raw in rows:
         row = {"sourceRowKey": test["sourceRowKey"], "subIdentity": sub, "rawValue": raw}
-        {"BOUND": confirmed, "EXCLUDED": excluded}.get(state, unresolved).append(row)
-if unresolved:
-    print("")
-else:
-    print(json.dumps({
-        "baseMappingFingerprint": mapping["mappingFingerprint"],
-        "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
-        "confirmedRows": confirmed,
-        "excludedRows": excluded,
-    }))
+        if state == "BOUND":
+            confirmed.append(row)
+        elif state == "EXCLUDED":
+            excluded.append(row)
+print(json.dumps({
+    "baseMappingFingerprint": mapping["mappingFingerprint"],
+    "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
+    "confirmedRows": confirmed,
+    "excludedRows": excluded,
+}))
 PY
 )"
-  if [ -z "$request" ]; then
-    echo "  Left in Setup: $name has unresolved mapping rows to review in OpenELIS"
-    return 0
-  fi
   status="$(api_send POST "$ANALYZER_API/$analyzer_id/mapping/confirm" "$request")"
   [ "$status" = "200" ] || { echo "ERROR: Could not confirm $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
   fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
@@ -304,7 +328,7 @@ PY
 verify_profile_pins() {
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
   python3 - "$ANALYZERS_FILE" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$QUANTSTUDIO_PROFILE_ID" \
-    "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" <<'PY'
+    "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" "$BC5380_PROFILE_ID" "$BC5380_REVISION" <<'PY'
 import json
 import sys
 
@@ -314,11 +338,13 @@ with open(sys.argv[1], encoding="utf-8") as handle:
 genexpert = (sys.argv[2], int(sys.argv[3]))
 quantstudio = (sys.argv[4], int(sys.argv[5]))
 fluorocycler = (sys.argv[6], int(sys.argv[7]))
+bc5380 = (sys.argv[8], int(sys.argv[9]))
 expected = {
     "Cepheid GeneXpert (ASTM Mode)": genexpert,
     "QuantStudio 5": quantstudio,
     "QuantStudio 7": quantstudio,
     "FluoroCycler XT": fluorocycler,
+    "Mindray BC-5380": bc5380,
 }
 problems = []
 for name, pin in expected.items():
@@ -342,14 +368,18 @@ fetch_json "$TYPE_API" "$CATALOG_FILE" "Analyzer Types catalog"
 GENEXPERT_REVISION="$(resolve_active_revision "$GENEXPERT_PROFILE_ID")"
 FLUOROCYCLER_REVISION="$(resolve_active_revision "$FLUOROCYCLER_PROFILE_ID")"
 QUANTSTUDIO_REVISION="$(resolve_active_revision "$QUANTSTUDIO_PROFILE_ID")"
+BC5380_REVISION="$(resolve_active_revision "$BC5380_PROFILE_ID")"
 echo "  $GENEXPERT_PROFILE_ID@$GENEXPERT_REVISION"
 echo "  $FLUOROCYCLER_PROFILE_ID@$FLUOROCYCLER_REVISION"
 echo "  $QUANTSTUDIO_PROFILE_ID@$QUANTSTUDIO_REVISION"
+echo "  $BC5380_PROFILE_ID@$BC5380_REVISION"
 
-echo "Resolving an active lab unit from $LAB_UNITS_API..."
+echo "Resolving active lab units from $LAB_UNITS_API..."
 fetch_json "$LAB_UNITS_API" "$LAB_UNITS_FILE" "Active lab units"
-LAB_UNIT_ID="$(resolve_lab_unit_id)"
-echo "  lab unit $LAB_UNIT_ID"
+LAB_UNIT_ID="$(resolve_lab_unit_id "$HARNESS_LAB_UNIT_NAME")"
+BC5380_LAB_UNIT_ID="$(resolve_lab_unit_id "$BC5380_LAB_UNIT_NAME")"
+echo "  $HARNESS_LAB_UNIT_NAME: lab unit $LAB_UNIT_ID"
+echo "  $BC5380_LAB_UNIT_NAME: lab unit $BC5380_LAB_UNIT_ID"
 
 if [ "$MOCK_NETWORK" = true ]; then
   if [ "$ENSURE_CONNECTIONS" = false ]; then
@@ -375,6 +405,7 @@ reconcile_profile_analyzer "Cepheid GeneXpert (ASTM Mode)" "$GENEXPERT_PROFILE_I
 reconcile_profile_analyzer "QuantStudio 5" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-5/incoming"}'
 reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUDIO_REVISION" '{"directory":"/data/analyzer-imports/quantstudio-7/incoming"}'
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
+reconcile_profile_analyzer "Mindray BC-5380" "$BC5380_PROFILE_ID" "$BC5380_REVISION" '{"senderId":"OE2-TEST-BC5380"}' "$BC5380_LAB_UNIT_ID"
 
 if [ "$ENSURE_CONNECTIONS" = true ]; then
   echo "Done. Missing harness connections created; existing configuration and review data preserved."
@@ -382,4 +413,4 @@ if [ "$ENSURE_CONNECTIONS" = true ]; then
 fi
 
 verify_profile_pins
-echo "Done. Four instances use the three pinned Bridge profile families; mappings and traffic remain untouched."
+echo "Done. Five instances use the four pinned Bridge profile families; mappings and traffic remain untouched."

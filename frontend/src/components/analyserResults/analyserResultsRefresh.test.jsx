@@ -95,12 +95,14 @@ describe("Analyzer results worklist", () => {
   it("reads the worklist named in the address bar when the page opens", async () => {
     renderScreen();
 
-    expect(await screen.findByText(/ACC0/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /ACC0/ }),
+    ).toBeInTheDocument();
   });
 
   it("serves the worklist the server holds after accepting, without a page load", async () => {
     renderScreen();
-    await screen.findByText(/ACC0/);
+    await screen.findByRole("heading", { name: /ACC0/ });
 
     // Only the server knows about ACC7, so seeing it proves a real reread.
     worklist = { resultList: [row(7)], type: "Demo Analyzer" };
@@ -109,8 +111,12 @@ describe("Analyzer results worklist", () => {
     );
     fireEvent.click(screen.getByTestId("Save-btn"));
 
-    expect(await screen.findByText(/ACC7/)).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByText(/ACC0/)).toBeNull());
+    expect(
+      await screen.findByRole("heading", { name: /ACC7/ }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: /ACC0/ })).toBeNull(),
+    );
     expect(hrefWrittenTo).toBeNull();
   });
 
@@ -138,13 +144,15 @@ describe("Analyzer results worklist", () => {
         .map(([url]) => url)
         .filter((url) => url.includes("page="));
     renderScreen();
-    await screen.findByText(/ACC0/);
+    await screen.findByRole("heading", { name: /ACC0/ });
     expect(pageUrls()).toEqual([]);
 
     fireEvent.click(screen.getByRole("button", { name: "Next Page" }));
 
-    expect(await screen.findByText(/ACC1/)).toBeInTheDocument();
-    expect(screen.queryByText(/ACC0/)).toBeNull();
+    expect(
+      await screen.findByRole("heading", { name: /ACC1/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /ACC0/ })).toBeNull();
     expect(pageUrls()).toEqual(["/rest/AnalyzerResults?id=22&page=2"]);
 
     postToOpenElisServerFullResponse.mockImplementation((url, body, callback) =>
@@ -154,7 +162,9 @@ describe("Analyzer results worklist", () => {
 
     await waitFor(() => expect(pageUrls()).toHaveLength(2));
     expect(pageUrls()[1]).toBe("/rest/AnalyzerResults?id=22&page=2");
-    expect(await screen.findByText(/ACC1/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /ACC1/ }),
+    ).toBeInTheDocument();
     const posted = JSON.parse(
       postToOpenElisServerFullResponse.mock.calls[0][1],
     );
@@ -171,7 +181,7 @@ describe("Analyzer results worklist", () => {
         paging: { totalPages: 2, currentPage: 1, searchTermToPage: [] },
       };
       renderScreen();
-      await screen.findByText(/ACC0/);
+      await screen.findByRole("heading", { name: /ACC0/ });
       expect(screen.getByRole("button", { name: "next" })).toBeInTheDocument();
 
       worklist = {
@@ -185,7 +195,9 @@ describe("Analyzer results worklist", () => {
       fireEvent.click(screen.getByTestId("Save-btn"));
 
       await waitFor(() =>
-        expect(screen.queryByText(/ACC0/)).not.toBeInTheDocument(),
+        expect(
+          screen.queryByRole("heading", { name: /ACC0/ }),
+        ).not.toBeInTheDocument(),
       );
       expect(screen.queryByRole("button", { name: "next" })).toBeNull();
     },

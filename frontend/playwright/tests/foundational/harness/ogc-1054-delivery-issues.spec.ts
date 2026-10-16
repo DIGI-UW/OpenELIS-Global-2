@@ -131,7 +131,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
       await banner
         .getByRole("button", { name: "Review undelivered results" })
         .click();
-      await expect(page).toHaveURL(/\/AnalyzerResults\?view=import-issues/);
+      await expect(page).toHaveURL(/\/analyzers\/import-issues/);
 
       const section = page.getByTestId("analyzer-delivery-issues");
       await expect(

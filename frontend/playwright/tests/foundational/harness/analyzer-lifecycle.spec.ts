@@ -16,7 +16,7 @@ test.describe("An analyzer's lifecycle", () => {
       const demo = createDemoPresentation(page, testInfo);
       await demo.intro(
         "Deactivate and reactivate an analyzer",
-        "Both from the analyzer's actions on the dashboard.",
+        "Deactivate is confirmed on the dashboard. Reactivate opens setup's Connect step, which checks the setup before activating.",
       );
       const runId = Date.now().toString().slice(-8);
       const analyzerName = `Lifecycle GeneXpert ${runId}`;
@@ -52,16 +52,21 @@ test.describe("An analyzer's lifecycle", () => {
       await demo.highlight(analyzerRow);
 
       await demo.caption(
-        "Reactivate checks its setup again before it can be used.",
+        "Reactivate opens the Connect step, which checks the setup again.",
       );
       await analyzerRow.getByRole("button", { name: "Actions" }).click();
       await page.getByRole("menuitem", { name: "Reactivate" }).click();
-      await expect(page).toHaveURL(/lifecycle=reactivate/);
+      await expect(page).toHaveURL(/setup=connect/);
       await expect(
-        page.getByRole("heading", { name: "Reactivate analyzer" }),
+        page.getByRole("heading", { name: "Activation readiness" }),
       ).toBeVisible();
       await demo.pause(1500);
-      await page.getByRole("button", { name: "Reactivate analyzer" }).click();
+      await page.getByRole("button", { name: "Finish and activate" }).click();
+      await expect(page).not.toHaveURL(/setup=/);
+      await expect(page.getByTestId("analyzer-setup-notice")).toContainText(
+        `${analyzerName} is active`,
+      );
+      await list.search(analyzerName);
       await expect(analyzerRow).toContainText("Active");
       await expect(analyzerRow).not.toContainText("Inactive");
       await demo.highlight(analyzerRow);

@@ -44,39 +44,6 @@
   margin: 0.5rem 0 0;
 }
 
-.analyzers-list-stats {
-  margin-bottom: 1rem;
-}
-
-.analyzers-list-stats .cds--tile {
-  background-color: var(--cds-layer-01);
-  margin-bottom: 1rem;
-}
-
-/* Stats grid uses negative margin for tighter spacing between tiles */
-.analyzers-list-stats .cds--grid {
-  margin: 0 -0.5rem;
-}
-
-.analyzers-list-stats .cds--col {
-  padding: 0 0.5rem;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--cds-text-secondary);
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 600;
-  margin-top: 0.5rem;
-}
-
-.stat-value--warning {
-  color: var(--cds-support-error, #da1e28);
-}
-
 .analyzers-list-filters {
   margin-bottom: 1.5rem;
 }
@@ -85,4 +52,74 @@
 /* Only ensure table container doesn't clip the menu */
 .analyzers-list-table-container {
   overflow: visible;
+}
+
+.analyzers-list-name {
+  color: var(--cds-link-primary, #0f62fe);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.analyzers-list-name:hover {
+  text-decoration: underline;
+}
+
+.analyzers-list-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.analyzers-list-indicator__icon--ok {
+  fill: var(--cds-support-success, #24a148);
+}
+
+.analyzers-list-indicator__icon--warn {
+  fill: var(--cds-support-warning, #f1c21b);
+}
+
+.analyzers-list-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.analyzers-list-status .cds--tag {
+  margin: 0;
+}
+
+.analyzers-list-held {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--cds-link-primary, #0f62fe);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.analyzers-list-held:hover {
+  text-decoration: underline;
+}
+
+.analyzers-list-table-container .cds--data-table-content {
+  overflow-x: auto;
+}
+
+/* Notices span the content, like the rows they are about. */
+.analyzers-list .cds--actionable-notification,
+.analyzers-list .cds--inline-notification {
+  max-inline-size: none;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.analyzers-list__notice {
+  margin-bottom: 1rem;
+}
+
+.analyzers-list__notice .cds--inline-notification {
+  max-width: none;
 }

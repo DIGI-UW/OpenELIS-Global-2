@@ -56,10 +56,13 @@ const withFallbacks = (code) => {
  * All available language message bundles, keyed by canonical locale code.
  * These are bundled at build time and contain UI translations.
  */
+// en.json is written in US English, so en-US is the source itself: the
+// Transifex en_US bundle is a copy that lags every merge and would show
+// last month's labels to most English browsers.
 export const languageMessages = Object.fromEntries(
   Object.keys(rawBundles).map((code) => [
     code,
-    code === "en" ? en : withFallbacks(code),
+    code === "en" || code === "en-US" ? en : withFallbacks(code),
   ]),
 );
 

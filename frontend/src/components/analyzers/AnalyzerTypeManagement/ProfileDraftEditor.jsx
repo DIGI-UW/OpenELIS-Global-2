@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   InlineNotification,
@@ -43,7 +43,18 @@ const columnsOf = (profile) =>
     field,
   }));
 
-const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
+/**
+ * A type's draft: its settings, then its control recognition, and one bar that
+ * saves whichever has unsaved changes and then publishes. `closeAction` and
+ * `publishAction` ({ label, onClick, busy }) and `notice` come from the page.
+ */
+const ProfileDraftEditor = ({
+  draft: initialDraft,
+  onStateChange,
+  closeAction,
+  publishAction,
+  notice,
+}) => {
   const intl = useIntl();
   const text = (key, values) => profileAuthoringMessage(intl, key, values);
   const [draft, setDraft] = useState(initialDraft);
@@ -66,6 +77,7 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
   const [pendingProtocol, setPendingProtocol] = useState(null);
   const [recognition, setRecognition] = useState(null);
   const [recognitionVersion, setRecognitionVersion] = useState(0);
+  const recognitionEditor = useRef(null);
   const draftId = initialDraft.draftId;
   const columnsChanged = encode(columns) !== encode(columnsOf(draft.profile));
   const dirty =
@@ -228,15 +240,18 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
     </Select>
   );
 
+  const canSaveSettings =
+    dirty &&
+    columnsValid &&
+    invalidValues.size === 0 &&
+    !pendingProtocol &&
+    !fieldsLocked;
+  const recognitionDirty = !dirty && Boolean(recognition?.dirty);
+  const canSaveRecognition =
+    recognitionDirty && Boolean(recognition?.valid) && !recognition?.saving;
+
   const save = () => {
-    if (
-      !dirty ||
-      !columnsValid ||
-      invalidValues.size > 0 ||
-      pendingProtocol ||
-      fieldsLocked
-    )
-      return;
+    if (!canSaveSettings) return;
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -695,19 +710,6 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
         >
           {text("addField")}
         </Button>
-        <Button
-          kind="secondary"
-          disabled={
-            !dirty ||
-            !columnsValid ||
-            invalidValues.size > 0 ||
-            pendingProtocol ||
-            fieldsLocked
-          }
-          onClick={save}
-        >
-          {text("save")}
-        </Button>
       </fieldset>
       {error && (
         <InlineNotification
@@ -741,6 +743,7 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
       ) : (
         <>
           <ControlRecognitionDraftEditor
+            ref={recognitionEditor}
             key={`${draftId}-${recognitionVersion}`}
             draftId={draftId}
             onStateChange={setRecognition}
@@ -760,6 +763,57 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
             subtitle={validationIssues.join(" ")}
           />
         )}
+      <div
+        className="analyzer-type-draft-page__bar"
+        data-testid="analyzer-type-draft-actions"
+      >
+        {notice}
+        <div className="analyzer-type-draft-page__bar-row">
+          <p className="analyzer-type-draft-page__bar-status">
+            {intl.formatMessage({
+              id: dirty
+                ? "analyzerType.draft.status.unsavedSettings"
+                : recognitionDirty
+                  ? "analyzerType.draft.status.unsavedRecognition"
+                  : publishable
+                    ? "analyzerType.draft.publish.ready.title"
+                    : "analyzerType.draft.publish.review.title",
+            })}
+          </p>
+          <div className="analyzer-type-draft-page__bar-buttons">
+            {closeAction && (
+              <Button kind="ghost" onClick={closeAction.onClick}>
+                {closeAction.label}
+              </Button>
+            )}
+            {/* One save: the settings, or the recognition once they are saved. */}
+            <Button
+              kind={dirty || recognitionDirty ? "primary" : "secondary"}
+              disabled={
+                recognitionDirty ? !canSaveRecognition : !canSaveSettings
+              }
+              onClick={
+                recognitionDirty
+                  ? () => recognitionEditor.current?.save()
+                  : save
+              }
+            >
+              {recognitionDirty
+                ? intl.formatMessage({ id: "analyzerType.recognition.save" })
+                : text("save")}
+            </Button>
+            {publishAction && (
+              <Button
+                kind={dirty || recognitionDirty ? "secondary" : "primary"}
+                disabled={!publishable || publishAction.busy}
+                onClick={publishAction.onClick}
+              >
+                {publishAction.label}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </section>
   );
 };

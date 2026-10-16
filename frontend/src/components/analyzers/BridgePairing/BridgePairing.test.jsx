@@ -4,7 +4,7 @@ vi.mock("../../../services/analyzerService", () => ({
 }));
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
@@ -77,20 +77,59 @@ describe("BridgePairing", () => {
     await userEvent.type(screen.getByLabelText("Pairing code"), "WRONG");
     await userEvent.click(screen.getByTestId("bridge-pairing-submit"));
 
-    expect(await screen.findByTestId("bridge-pairing-error")).toHaveTextContent(
-      "The Bridge did not accept that code.",
-    );
+    // A problem with the code is said on the field itself.
+    expect(
+      await screen.findByText("The Bridge did not accept that code."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Pairing code")).toBeInvalid();
     expect(screen.queryByTestId("bridge-pairing-paired")).toBeNull();
   });
 
-  it("offers to pair again once paired", async () => {
-    getBridgePairing.mockImplementation((callback) => callback(PAIRED));
+  it("reports a Bridge it could not reach as a notification, not a field error", async () => {
+    getBridgePairing.mockImplementation((callback) => callback(UNPAIRED));
+    pairBridge.mockImplementation((code, callback) =>
+      callback({
+        errorKey: "analyzer.bridgePairing.error.unreachable",
+        status: 502,
+      }),
+    );
     renderPairing();
 
-    expect(screen.queryByTestId("bridge-pairing-form")).toBeNull();
-    await userEvent.click(screen.getByTestId("bridge-pairing-again"));
+    await userEvent.type(screen.getByLabelText("Pairing code"), "ABCD");
+    await userEvent.click(screen.getByTestId("bridge-pairing-submit"));
 
+    expect(await screen.findByTestId("bridge-pairing-error")).toHaveTextContent(
+      "OpenELIS could not reach the Analyzer Bridge.",
+    );
+    expect(screen.getByLabelText("Pairing code")).not.toBeInvalid();
+  });
+
+  it("shows the pairing as labelled facts and offers to pair again in a dialog", async () => {
+    getBridgePairing.mockImplementation((callback) => callback(PAIRED));
+    pairBridge.mockImplementation((code, callback) =>
+      callback({ ...PAIRED, pairedAt: "2026-10-13T09:00:00Z" }),
+    );
+    renderPairing();
+
+    const paired = screen.getByTestId("bridge-pairing-paired");
+    expect(paired).toHaveTextContent("Bridge");
+    expect(paired).toHaveTextContent("https://bridge.openelis.org:8443");
+    expect(paired).toHaveTextContent("Certificate");
+    expect(paired).toHaveTextContent("Paired on");
+    expect(screen.queryByTestId("bridge-pairing-form")).toBeNull();
+
+    await userEvent.click(screen.getByTestId("bridge-pairing-again"));
+    const dialog = screen.getByRole("dialog", {
+      name: "Pair with the Analyzer Bridge",
+    });
     expect(screen.getByTestId("bridge-pairing-form")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Pairing code"), "NEW-CODE");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Pair" }));
+
+    expect(pairBridge).toHaveBeenCalledWith("NEW-CODE", expect.any(Function));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 
   it("shows nothing when no Bridge is configured", () => {

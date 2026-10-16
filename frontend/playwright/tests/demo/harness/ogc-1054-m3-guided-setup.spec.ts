@@ -132,8 +132,10 @@ test.describe.serial("OGC-1054 M3 guided analyzer setup", () => {
         await expect(
           page.getByRole("button", { name: "Edit Instrument" }),
         ).toBeVisible();
-        const notConfirmed = page.getByText("Not confirmed", { exact: true });
-        const current = page.getByText("Current confirmation");
+        const notConfirmed = page.getByText("Not confirmed yet", {
+          exact: true,
+        });
+        const current = page.getByText(/^Confirmed by /);
         await expect(notConfirmed.or(current)).toBeVisible();
         if (await notConfirmed.isVisible()) {
           await demo.caption(
@@ -141,7 +143,7 @@ test.describe.serial("OGC-1054 M3 guided analyzer setup", () => {
           );
           await demo.highlight(notConfirmed);
           const confirm = page.getByRole("button", {
-            name: "Confirm mappings and control recognition",
+            name: "Confirm mapping",
           });
           await expect(confirm).toBeEnabled();
           await confirm.click();
@@ -149,7 +151,6 @@ test.describe.serial("OGC-1054 M3 guided analyzer setup", () => {
             page.getByText("Mappings and control recognition confirmed"),
           ).toBeVisible();
         }
-        await expect(page.getByText("Current", { exact: true })).toBeVisible();
         await expect(current).toBeVisible();
         await expect(
           page.getByRole("button", { name: "Continue to Connect" }),

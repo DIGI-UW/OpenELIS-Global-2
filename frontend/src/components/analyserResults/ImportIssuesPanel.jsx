@@ -22,6 +22,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import DeliveryIssuesPanel from "./DeliveryIssuesPanel";
 
 import useInAppNavigation from "../common/useInAppNavigation";
+import { analyzerResultsPath } from "./analyzerResultsRoutes.jsx";
 const EVENT_TYPE_MESSAGES = {
   AST_RESULT_AVAILABLE: "analyzer.importIssues.event.astResultAvailable",
   AST_QC_FAIL: "analyzer.importIssues.event.astQcFail",
@@ -157,10 +158,8 @@ const ImportIssuesPanel = () => {
       : "-",
     action: event.analyzerId ? (
       <Link
-        href={`/AnalyzerResults?id=${encodeURIComponent(event.analyzerId)}`}
-        onClick={navigate(
-          `/AnalyzerResults?id=${encodeURIComponent(event.analyzerId)}`,
-        )}
+        href={analyzerResultsPath(event.analyzerId)}
+        onClick={navigate(analyzerResultsPath(event.analyzerId))}
       >
         {intl.formatMessage({ id: "analyzer.importIssues.openResults" })}
       </Link>

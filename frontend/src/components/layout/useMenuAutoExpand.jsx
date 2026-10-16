@@ -20,7 +20,7 @@ export function useMenuAutoExpand(initialMenus) {
     const currentQuery = new URLSearchParams(search);
     let activeItem;
     let bestScore = -1;
-    const findDestination = (items) => {
+    const findDestination = (items, depth = 0) => {
       for (const item of items) {
         if (item.menu.isActive === false) continue;
         const url = item.menu.actionURL;
@@ -35,16 +35,19 @@ export function useMenuAutoExpand(initialMenus) {
             currentQuery.getAll(key).includes(value),
           );
           if ((exact || prefix) && queryMatches) {
-            // Prefer the most specific route, then its query variant. Extra
+            // Prefer the most specific route, then its query variant, then
+            // the deepest item: a group and its first child can share one
+            // URL, and only the child can be shown as selected. Extra
             // page/job/review parameters never change the menu destination.
-            const score = path.length * 1000 + [...target.searchParams].length;
+            const score =
+              path.length * 1000 + [...target.searchParams].length * 10 + depth;
             if (score > bestScore) {
               activeItem = item;
               bestScore = score;
             }
           }
         }
-        findDestination(item.childMenus || []);
+        findDestination(item.childMenus || [], depth + 1);
       }
     };
     findDestination(initialMenus || []);

@@ -2,32 +2,107 @@ import React, { useEffect, useState } from "react";
 import {
   Button,
   Callout,
+  CopyButton,
   InlineNotification,
+  Layer,
+  Modal,
   TextInput,
-  Tile,
 } from "@carbon/react";
+import { CheckmarkFilled } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getBridgePairing,
   pairBridge,
   type BridgePairingStatus,
 } from "../../../services/analyzerService";
+import "./BridgePairing.css";
 
+// Errors about the code itself belong on the field; the rest are about the
+// Bridge or OpenELIS and show as a notification.
+const CODE_ERRORS = new Set([
+  "analyzer.bridgePairing.error.codeRequired",
+  "analyzer.bridgePairing.error.wrongCode",
+]);
 const KNOWN_ERRORS = new Set([
+  ...CODE_ERRORS,
   "analyzer.bridgePairing.error.certificateMismatch",
   "analyzer.bridgePairing.error.closed",
-  "analyzer.bridgePairing.error.codeRequired",
   "analyzer.bridgePairing.error.identity",
   "analyzer.bridgePairing.error.invalidAnswer",
   "analyzer.bridgePairing.error.notConfigured",
   "analyzer.bridgePairing.error.refused",
   "analyzer.bridgePairing.error.unreachable",
-  "analyzer.bridgePairing.error.wrongCode",
 ]);
 
+/** The pairing-code field with the one explanation of where the code comes from. */
+const PairingForm = ({
+  code,
+  errorKey,
+  submitting,
+  onCode,
+  onSubmit,
+  withSubmit,
+}: {
+  code: string;
+  errorKey: string | null;
+  submitting: boolean;
+  onCode: (code: string) => void;
+  onSubmit: (event: React.FormEvent) => void;
+  withSubmit: boolean;
+}) => {
+  const intl = useIntl();
+  const codeError = errorKey && CODE_ERRORS.has(errorKey) ? errorKey : null;
+  return (
+    <form
+      className="bridge-pairing__form"
+      data-testid="bridge-pairing-form"
+      onSubmit={onSubmit}
+    >
+      <Layer>
+        <TextInput
+          id="bridge-pairing-code"
+          labelText={intl.formatMessage({
+            id: "analyzer.bridgePairing.code.label",
+          })}
+          helperText={intl.formatMessage({
+            id: "analyzer.bridgePairing.code.help",
+          })}
+          value={code}
+          autoComplete="off"
+          invalid={Boolean(codeError)}
+          invalidText={codeError ? intl.formatMessage({ id: codeError }) : ""}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            onCode(event.target.value)
+          }
+        />
+      </Layer>
+      {errorKey && !codeError && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          data-testid="bridge-pairing-error"
+          title={intl.formatMessage({ id: errorKey })}
+        />
+      )}
+      {withSubmit && (
+        <Button
+          type="submit"
+          kind="primary"
+          size="md"
+          disabled={submitting || !code.trim()}
+          data-testid="bridge-pairing-submit"
+        >
+          {intl.formatMessage({ id: "analyzer.bridgePairing.pair" })}
+        </Button>
+      )}
+    </form>
+  );
+};
+
 /**
- * Shows whether OpenELIS is paired with the Analyzer Bridge, and pairs it with
- * the code the Bridge shows or was configured with.
+ * Whether OpenELIS is paired with the Analyzer Bridge, as a status row, and
+ * the way to pair it with the code the Bridge shows or was configured with.
  */
 const BridgePairing = () => {
   const intl = useIntl();
@@ -47,8 +122,12 @@ const BridgePairing = () => {
     return null;
   }
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const submit = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!code.trim()) {
+      setErrorKey("analyzer.bridgePairing.error.codeRequired");
+      return;
+    }
     setSubmitting(true);
     setErrorKey(null);
     pairBridge(code, (response) => {
@@ -67,59 +146,14 @@ const BridgePairing = () => {
     });
   };
 
-  const form = (
-    <form
-      className="bridge-pairing-form"
-      data-testid="bridge-pairing-form"
-      onSubmit={submit}
-    >
-      <TextInput
-        id="bridge-pairing-code"
-        labelText={intl.formatMessage({
-          id: "analyzer.bridgePairing.code.label",
-        })}
-        value={code}
-        autoComplete="off"
-        onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-          setCode(event.target.value)
-        }
-      />
-      <Button
-        type="submit"
-        kind="primary"
-        size="md"
-        disabled={submitting || !code.trim()}
-        data-testid="bridge-pairing-submit"
-      >
-        {intl.formatMessage({ id: "analyzer.bridgePairing.pair" })}
-      </Button>
-      {status.paired && (
-        <Button
-          kind="ghost"
-          size="md"
-          onClick={() => {
-            setPairingAgain(false);
-            setErrorKey(null);
-          }}
-        >
-          {intl.formatMessage({ id: "analyzer.bridgePairing.cancel" })}
-        </Button>
-      )}
-      {errorKey && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          hideCloseButton
-          data-testid="bridge-pairing-error"
-          title={intl.formatMessage({ id: errorKey })}
-        />
-      )}
-    </form>
-  );
+  const onCode = (value: string) => {
+    setCode(value);
+    if (errorKey && CODE_ERRORS.has(errorKey)) setErrorKey(null);
+  };
 
   if (!status.paired) {
     return (
-      <div data-testid="bridge-pairing">
+      <div className="bridge-pairing" data-testid="bridge-pairing">
         <Callout
           kind="warning"
           lowContrast
@@ -133,46 +167,121 @@ const BridgePairing = () => {
               : "analyzer.bridgePairing.unpaired.subtitle",
           })}
         />
-        {form}
+        <PairingForm
+          code={code}
+          errorKey={errorKey}
+          submitting={submitting}
+          onCode={onCode}
+          onSubmit={submit}
+          withSubmit
+        />
       </div>
     );
   }
 
+  const fingerprint = (status.bridgeCertificateSha256 || "").slice(0, 16);
   return (
-    <Tile data-testid="bridge-pairing">
-      <div data-testid="bridge-pairing-paired">
-        <strong>
-          {intl.formatMessage({ id: "analyzer.bridgePairing.paired.title" })}
-        </strong>
-        <p>
-          {intl.formatMessage(
-            { id: "analyzer.bridgePairing.paired.detail" },
-            {
-              url: status.bridgeUrl,
-              fingerprint: (status.bridgeCertificateSha256 || "").slice(0, 16),
-              pairedAt: status.pairedAt
+    <div className="bridge-pairing" data-testid="bridge-pairing">
+      <div className="bridge-pairing__row" data-testid="bridge-pairing-paired">
+        <div className="bridge-pairing__state">
+          <CheckmarkFilled
+            className="bridge-pairing__icon bridge-pairing__icon--paired"
+            aria-hidden="true"
+          />
+          <span>
+            {intl.formatMessage({ id: "analyzer.bridgePairing.paired.title" })}
+          </span>
+        </div>
+        <dl className="bridge-pairing__facts">
+          <div>
+            <dt>
+              {intl.formatMessage({ id: "analyzer.bridgePairing.bridge" })}
+            </dt>
+            <dd>{status.bridgeUrl}</dd>
+          </div>
+          <div>
+            <dt>
+              {intl.formatMessage({ id: "analyzer.bridgePairing.certificate" })}
+            </dt>
+            <dd>
+              <code>{fingerprint}</code>
+              {status.bridgeCertificateSha256 && (
+                <CopyButton
+                  size="sm"
+                  align="top"
+                  iconDescription={intl.formatMessage({
+                    id: "analyzer.bridgePairing.copyCertificate",
+                  })}
+                  feedback={intl.formatMessage({
+                    id: "analyzer.bridgePairing.copied",
+                  })}
+                  onClick={() =>
+                    navigator.clipboard?.writeText(
+                      status.bridgeCertificateSha256 || "",
+                    )
+                  }
+                />
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              {intl.formatMessage({ id: "analyzer.bridgePairing.pairedOn" })}
+            </dt>
+            <dd>
+              {status.pairedAt
                 ? intl.formatDate(status.pairedAt, {
                     dateStyle: "medium",
                     timeStyle: "short",
                   })
-                : "",
-            },
-          )}
-        </p>
-      </div>
-      {pairingAgain ? (
-        form
-      ) : (
+                : "-"}
+            </dd>
+          </div>
+        </dl>
         <Button
-          kind="tertiary"
+          kind="ghost"
           size="sm"
           data-testid="bridge-pairing-again"
-          onClick={() => setPairingAgain(true)}
+          onClick={() => {
+            setErrorKey(null);
+            setPairingAgain(true);
+          }}
         >
           {intl.formatMessage({ id: "analyzer.bridgePairing.pairAgain" })}
         </Button>
+      </div>
+      {pairingAgain && (
+        <Modal
+          open
+          size="sm"
+          modalHeading={intl.formatMessage({
+            id: "analyzer.bridgePairing.modal.title",
+          })}
+          primaryButtonText={intl.formatMessage({
+            id: "analyzer.bridgePairing.pair",
+          })}
+          secondaryButtonText={intl.formatMessage({
+            id: "analyzer.bridgePairing.cancel",
+          })}
+          primaryButtonDisabled={submitting || !code.trim()}
+          onRequestSubmit={() => submit()}
+          onRequestClose={() => {
+            setPairingAgain(false);
+            setErrorKey(null);
+            setCode("");
+          }}
+        >
+          <PairingForm
+            code={code}
+            errorKey={errorKey}
+            submitting={submitting}
+            onCode={onCode}
+            onSubmit={submit}
+            withSubmit={false}
+          />
+        </Modal>
       )}
-    </Tile>
+    </div>
   );
 };
 

@@ -1,6 +1,6 @@
 # Analyzer harness lane identifiers
 
-Canonical accession strings for the four analyzers `seed-analyzers.sh` creates.
+Canonical accession strings for the five analyzers `seed-analyzers.sh` creates.
 All use valid SiteYearNum format: `DEV0126{LANE}{SEQ:011d}` (prefix `DEV01`,
 year `26`, 2-digit lane code, 11-digit sequence). Total: exactly 20 characters.
 
@@ -16,6 +16,7 @@ are not SQL fixtures.
 | **QuantStudio 7**   | QuantStudio 7                 | 20        | DEV01262000000000001 | FILE/EXCEL; `quantstudio-e2e-results.xlsx`           |
 | **QuantStudio 5**   | QuantStudio 5                 | 21        | DEV01262100000000001 | FILE/EXCEL; `quantstudio-e2e-results-qs5.xls`        |
 | **FluoroCycler XT** | FluoroCycler XT               | 30        | DEV01263000000000001 | FILE/XLSX; the mock substitutes sample IDs           |
+| **HL7 BC-5380**     | Mindray BC-5380               | 40        | DEV01264000000000001 | Bridge-profile-backed `mindray_bc5380_hl7` over MLLP |
 
 **Do not** reuse storage E2E accessions (`E2E001`, ...) for harness analyzer
 demos; they are owned by `storage-e2e.xml` and overlap caused CI/local drift.

@@ -254,15 +254,17 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         if (testMapping == null) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST));
         }
+        // A confirmed "Do not receive" drops the record whether or not its assay is
+        // on; an assay that is off only holds records the lab has not excluded.
+        if (mappingConfirmed && testMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
+            return List.of();
+        }
         AnalyzerMappingTest assay = mapping.tests().get(AnalyzerMappingRowKey.main(result.rawTestCode()));
         if (assay != null && !assay.isEnabled()) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_ASSAY_NOT_ENABLED));
         }
         if (!mappingConfirmed) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
-        }
-        if (testMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
-            return List.of();
         }
         if (testMapping.getMappingState() != AnalyzerMappingState.BOUND
                 || !mapping.catalog().isCurrentBoundTest(record)) {

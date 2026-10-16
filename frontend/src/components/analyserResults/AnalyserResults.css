@@ -1,0 +1,574 @@
+/* The page's white wrapper clips its overflow, which would pin the sticky
+   footer and the sample rail to the wrapper instead of the window. */
+.orderLegendBody.analyzerResults__page {
+  overflow: visible;
+}
+
+.analyzerResults {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.analyzerResults__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__secondary {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+  line-height: 1.33;
+  margin: 0;
+}
+
+/* The worklist: samples on the left, the sample in view on the right. */
+.analyzerResults__worklist {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.analyzerResults__rail {
+  position: sticky;
+  top: 3.5rem;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+}
+
+.analyzerResults__railList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.analyzerResults__railItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  font: inherit;
+  color: var(--cds-text-primary, #161616);
+  background: var(--cds-layer-01, #f4f4f4);
+  border: 0;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+}
+
+.analyzerResults__railItem:hover {
+  background: var(--cds-layer-hover-01, #e8e8e8);
+}
+
+.analyzerResults__railItem:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: -2px;
+}
+
+.analyzerResults__railItem--current {
+  background: var(--cds-layer-selected-01, #e0e0e0);
+  border-left-color: var(--cds-interactive, #0f62fe);
+}
+
+.analyzerResults__railLabNumber {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.analyzerResults__railMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__railMeta .cds--tag {
+  margin: 0;
+}
+
+.analyzerResults__railDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--cds-support-success, #24a148);
+}
+
+/* The sample in view. */
+.analyzerResults__sample {
+  min-width: 0;
+  background: var(--cds-layer-01, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+}
+
+.analyzerResults__sampleHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--cds-layer-02, #ffffff);
+  border-bottom: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+}
+
+.analyzerResults__sampleTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.analyzerResults__labNumber {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.analyzerResults__sampleTitle .cds--tag {
+  margin: 0;
+}
+
+/* The sample's actions, right-aligned; the redirect form drops to its own line. */
+.analyzerResults__sampleActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.analyzerResults__sampleActions .redirectControl {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 28rem;
+  margin-top: 0.5rem;
+}
+
+.analyzerResults__sampleFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.analyzerResults__sampleFacts:empty {
+  display: none;
+}
+
+.placementNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.placementNotice p {
+  margin: 0;
+}
+
+.placementNotice__state {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.placementNotice__state .cds--tag {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* The results: one designed row each, aligned on a shared grid. */
+.analyzerResults__results {
+  padding: 0 1.25rem 0.5rem;
+}
+
+.analyzerResults__rowHead,
+.analyzerResults__rowMain {
+  display: grid;
+  grid-template-columns:
+    minmax(8rem, 1.2fr) minmax(7rem, 1fr) minmax(15rem, auto)
+    2.5rem;
+  gap: 0 1rem;
+  align-items: center;
+}
+
+.analyzerResults__rowHead {
+  padding: 0.75rem 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--cds-text-secondary, #525252);
+  border-bottom: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+}
+
+.analyzerResults__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analyzerResults__row {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.analyzerResults__row:last-child {
+  border-bottom: 0;
+}
+
+.analyzerResults__rowMain {
+  min-height: 2.5rem;
+}
+
+.analyzerResults__rowTest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.analyzerResults__testName {
+  font-weight: 500;
+}
+
+.analyzerResults__rowTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.analyzerResults__rowTags .cds--tag {
+  margin: 0;
+}
+
+.analyzerResults__rowValue {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.analyzerResults__rowValue .cds--tag {
+  margin: 0;
+}
+
+.analyzerResults__value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--cds-text-primary, #161616);
+}
+
+.analyzerResults__value--editable {
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed var(--cds-border-strong-01, #8d8d8d);
+  padding: 0 0 1px;
+  cursor: text;
+}
+
+.analyzerResults__value--editable:hover {
+  border-bottom-style: solid;
+  color: var(--cds-link-primary, #0f62fe);
+}
+
+.analyzerResults__value--editable:focus-visible {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: 2px;
+}
+
+.analyzerResults__unit {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__valueEdit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.analyzerResults__valueEdit .cds--text-input {
+  width: 6rem;
+}
+
+.analyzerResults__detailFacts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.analyzerResults .cds--radio-button-group {
+  flex-wrap: nowrap;
+}
+
+.analyzerResults
+  .cds--radio-button-group
+  .cds--radio-button-wrapper:not(:last-of-type) {
+  margin-right: 1rem;
+}
+
+.analyzerResults__rowMore {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The test's components, on one line under its name. */
+.analyzerResults__rowParts {
+  padding: 0.25rem 0 0;
+  font-size: 0.875rem;
+}
+
+.analyzerResults__partsLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem 1rem;
+}
+
+.analyzerResults__part {
+  white-space: nowrap;
+}
+
+.analyzerResults__part .cds--tag {
+  margin: 0;
+}
+
+.analyzerResults__partLabel {
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* Row details: what the instrument said, the components in full, the note. */
+.analyzerResults__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem 2rem;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--cds-layer-02, #ffffff);
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.analyzerResults__note {
+  grid-column: 1 / -1;
+  max-width: 40rem;
+}
+
+.instrumentReported {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  font-size: 0.875rem;
+}
+
+.instrumentReported__label {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.resultParts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.resultParts li {
+  display: contents;
+}
+
+.resultParts__value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.resultParts__label {
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__heldInline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.analyzerResults__heldActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.analyzerResults__heldInline .cds--tag {
+  margin: 0;
+  align-self: flex-start;
+}
+
+/* The sample's held codes, by reason. */
+.analyzerResults__held {
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+}
+
+.analyzerResults__sectionTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.analyzerResults__heldGroup {
+  margin-top: 0.5rem;
+}
+
+.analyzerResults__heldReason {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.analyzerResults__heldReason .cds--tag {
+  margin: 0;
+}
+
+.analyzerResults__heldList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 48rem;
+}
+
+.analyzerResults__heldItem {
+  display: grid;
+  grid-template-columns: 7rem 5rem 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.analyzerResults__heldItem:last-child {
+  border-bottom: 0;
+}
+
+.analyzerResults__heldCode {
+  font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+.analyzerResults__heldValue {
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__heldStep {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.analyzerResults__empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__empty h4 {
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.5rem;
+}
+
+/* One primary action, kept in view while the reviewer works down the page. */
+.analyzerResults__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  background: var(--cds-layer-01, #ffffff);
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.analyzerResults__decided {
+  color: var(--cds-text-secondary, #525252);
+}
+
+.analyzerResults__labNumberSearch {
+  align-items: flex-end;
+  margin-top: 1rem;
+}
+
+/* Under Carbon's large breakpoint the rail becomes a strip above the sample
+   and the decisions stack, so the row keeps its value readable. */
+@media (max-width: 1055px) {
+  .analyzerResults__worklist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analyzerResults__rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .analyzerResults__railList {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .analyzerResults__railList li {
+    flex: 1 1 14rem;
+  }
+
+  .analyzerResults__rowHead,
+  .analyzerResults__rowMain {
+    grid-template-columns: minmax(7rem, 1.2fr) minmax(6rem, 1fr) 7rem 2.5rem;
+  }
+
+  .analyzerResults .cds--radio-button-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .analyzerResults
+    .cds--radio-button-group
+    .cds--radio-button-wrapper:not(:last-of-type) {
+    margin-right: 0;
+    margin-bottom: 0.25rem;
+  }
+}
+
+.analyzerResults__confirmBody {
+  margin-bottom: 1rem;
+}

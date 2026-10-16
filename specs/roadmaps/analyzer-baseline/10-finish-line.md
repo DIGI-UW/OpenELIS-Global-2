@@ -73,6 +73,14 @@ was left of steps 1b and 7.
 - Draft issues (11 Oct): "Fix now on top (Recommended)", on the authoring
   dialog showing `$: required property 'controlResultRecognition' not found`
   inside the control recognition step while the author filled it in.
+- BC-5380 manual counts (14 Oct): "seems like our mock is sending unrealistic
+  stuff if we have so many unmapped, or our config is wrong for manual counts",
+  then "yes go ahead with all four": the mock's routine CBC is the automated
+  count and a separate `manual-count` message carries a technician's
+  differential; the shipped profile declares the 17 LOINC-coded manual
+  percentages by name (they start off where no local test carries them); a
+  confirmed "Do not receive" drops a record even when its assay is off; and the
+  demo site's held rows from the old message are removed.
 
 ### Facts
 

@@ -59,7 +59,7 @@ describe("ImportIssuesPanel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Open analyzer results" }),
-    ).toHaveAttribute("href", "/AnalyzerResults?id=77");
+    ).toHaveAttribute("href", "/analyzers/77/results");
     expect(
       screen.queryByRole("button", { name: /retry|reprocess/i }),
     ).not.toBeInTheDocument();

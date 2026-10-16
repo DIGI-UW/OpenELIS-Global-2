@@ -37,19 +37,15 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
         breadcrumb.getByRole("link", { name: "Analyzers", exact: true }),
       ).toHaveAttribute("href", "/analyzers");
       await expect(page.locator("h1")).toHaveCount(1);
-      await expect(page.getByText("Reusable analyzer setup")).toBeVisible();
-
-      const summary = page.getByRole("region", {
-        name: "Analyzer type summary",
-      });
-      await expect(summary).toContainText("Analyzer Types");
-      await expect(summary).toContainText("In Use");
-      await expect(summary).toContainText("Needs Attention");
-      await expect(summary).toContainText("Deactivated");
+      const views = page.getByTestId("analyzer-type-views");
+      await expect(views).toContainText("Active");
+      await expect(views).toContainText("In use");
+      await expect(views).toContainText("Needs mapping");
+      await expect(views).toContainText("Deactivated");
       await demo.caption(
-        "The summary counts the types, those in use, those needing attention, and those deactivated.",
+        "One line of counts: active types, those in use, those that need mapping, and those deactivated. Each count is the view it names.",
       );
-      await demo.highlight(summary);
+      await demo.highlight(views);
 
       const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
       await expect(sourceRow).toBeVisible();
@@ -57,17 +53,15 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       await expect(sourceRow).toContainText("ASTM");
       await expect(sourceRow).toContainText(/revision [1-9]\d*/);
       await expect(sourceRow).toContainText("Active");
-      // Tests mapped and Results mapped read "mapped / total": never more mapped than there are.
-      for (const column of [2, 3]) {
-        const cell = sourceRow.getByRole("cell").nth(column);
-        await expect(cell).toHaveText(/\d+ \/ \d+/);
-        const [mapped, total] = ((await cell.textContent()) ?? "")
-          .match(/(\d+) \/ (\d+)/)!
-          .slice(1)
-          .map(Number);
-        expect(mapped).toBeLessThanOrEqual(total);
+      // Mapping reads "mapped of total": never more mapped than there are.
+      const mappingCell = sourceRow.getByRole("cell").nth(1);
+      await expect(mappingCell).toHaveText(/\d+ of \d+ tests/);
+      for (const [, mapped, total] of (
+        (await mappingCell.textContent()) ?? ""
+      ).matchAll(/(\d+) of (\d+)/g)) {
+        expect(Number(mapped)).toBeLessThanOrEqual(Number(total));
       }
-      await expect(sourceRow.getByRole("cell").nth(4)).toContainText(
+      await expect(sourceRow.getByRole("cell").nth(2)).toContainText(
         /analyzer|Not in use/,
       );
       await expect(page.getByText("Plugin class")).toHaveCount(0);
@@ -85,15 +79,14 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       });
       await search.fill("gene");
       await page
-        .getByRole("combobox", { name: "Created" })
+        .getByRole("combobox", { name: "Source" })
         .selectOption("SHIPPED");
       await page
         .getByRole("combobox", { name: "Protocol" })
         .selectOption("ASTM");
-      await page.getByText("Show deactivated", { exact: true }).click();
 
       const filteredUrl =
-        "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM&showDeactivated=true";
+        "/analyzers/types?q=gene&source=SHIPPED&protocol=ASTM";
       await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
       await expect(analyzerTypeRow(page, SOURCE_PROFILE)).toBeVisible();
       await expect(page.getByRole("table").getByRole("row")).toHaveCount(2);
@@ -103,19 +96,16 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       });
       await expect(page.getByRole("table")).toBeVisible();
       await expect(search).toHaveValue("gene");
-      await expect(page.getByRole("combobox", { name: "Created" })).toHaveValue(
+      await expect(page.getByRole("combobox", { name: "Source" })).toHaveValue(
         "SHIPPED",
       );
       await expect(
         page.getByRole("combobox", { name: "Protocol" }),
       ).toHaveValue("ASTM");
-      await expect(
-        page.getByRole("checkbox", { name: "Show deactivated" }),
-      ).toBeChecked();
 
       await page.goBack();
       await expect(page).toHaveURL(
-        /\/analyzers\/types\?q=gene&source=SHIPPED&protocol=ASTM$/,
+        /\/analyzers\/types\?q=gene&source=SHIPPED$/,
       );
       await page.goForward();
       await expect(page).toHaveURL(new RegExp(`${escapeRegExp(filteredUrl)}$`));
@@ -139,10 +129,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await openAnalyzerTypes(page);
 
     await expect(
-      page.getByRole("button", { name: "Duplicate Profile", exact: true }),
+      page.getByRole("button", { name: "Duplicate type", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Create Profile", exact: true }),
+      page.getByRole("button", { name: "Create type", exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("searchbox", { name: "Search analyzer types" }),
@@ -161,7 +151,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(rowAction).toBeVisible();
     await rowAction.click();
     await expect(
-      page.getByRole("menuitem", { name: "Duplicate Profile", exact: true }),
+      page.getByRole("menuitem", { name: "Duplicate type", exact: true }),
     ).toBeVisible();
     await page.keyboard.press("Escape");
 
@@ -171,30 +161,35 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     });
   });
 
-  test("starts a Bridge-owned site profile draft from Create Profile", async ({
+  test("starts a Bridge-owned site profile draft from Create type", async ({
     page,
   }) => {
     const draftName = `M1 Site Draft ${Date.now()}`;
     await openAnalyzerTypes(page);
     await page
-      .getByRole("button", { name: "Create Profile", exact: true })
+      .getByRole("button", { name: "Create type", exact: true })
       .click();
 
-    const dialog = page.getByRole("dialog", { name: "Create Profile" });
+    const dialog = page.getByRole("dialog", { name: "Create type" });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole("textbox", { name: "Profile name" }).fill(draftName);
+    await dialog.getByRole("textbox", { name: "Type name" }).fill(draftName);
     await dialog
-      .getByRole("button", { name: "Create Profile", exact: true })
+      .getByRole("button", { name: "Create type", exact: true })
       .click();
 
-    await expect(dialog.getByText("Profile draft created")).toBeVisible();
-    await expect(dialog).toContainText("saved in Analyzer Bridge");
+    // The draft opens on its own page; Finish later leaves it saved.
     await expect(page).toHaveURL(
-      /\/analyzers\/types\?action=create&draft=[^&]+$/,
+      /\/analyzers\/types\/drafts\/[^?]+\?returnTo=%2Fanalyzers%2Ftypes$/,
     );
-
-    await page.keyboard.press("Escape");
-    await expect(dialog).not.toBeVisible();
+    const draft = page.getByTestId("analyzer-type-draft-page");
+    await expect(
+      draft.getByRole("heading", { level: 1, name: `New type: ${draftName}` }),
+    ).toBeVisible();
+    await expect(draft).toContainText("saved in Analyzer Bridge");
+    await draft
+      .getByRole("button", { name: "Finish later", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/analyzers\/types$/);
 
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
@@ -230,32 +225,32 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     ).toBeTruthy();
 
     await page
-      .getByRole("button", { name: "Duplicate Profile", exact: true })
+      .getByRole("button", { name: "Duplicate type", exact: true })
       .click();
-    let dialog = page.getByRole("dialog", { name: "Duplicate Profile" });
+    const dialog = page.getByRole("dialog", { name: "Duplicate type" });
     await dialog
       .getByRole("combobox", { name: "Source analyzer type" })
       .selectOption({ label: `${SOURCE_PROFILE} · ASTM` });
     await expect(
-      dialog.getByText("New profile with preserved lineage"),
+      dialog.getByText("The new type keeps its lineage"),
     ).toBeVisible();
     await dialog
-      .getByRole("textbox", { name: "New profile name" })
+      .getByRole("textbox", { name: "Name of the new type" })
       .fill(duplicateName);
     await dialog
-      .getByRole("button", { name: "Duplicate Profile", exact: true })
+      .getByRole("button", { name: "Duplicate type", exact: true })
       .click();
 
-    dialog = page.getByRole("dialog", { name: "Duplicate Profile" });
-    await expect(dialog.getByText("Ready to publish")).toBeVisible();
     await expect(page).toHaveURL(
-      /\/analyzers\/types\?action=duplicate&draft=[^&]+$/,
+      /\/analyzers\/types\/drafts\/[^?]+\?returnTo=/,
     );
-    await dialog
-      .getByRole("button", { name: "Publish Profile", exact: true })
+    const bar = page.getByTestId("analyzer-type-draft-actions");
+    await expect(bar.getByText("Ready to publish")).toBeVisible();
+    await bar
+      .getByRole("button", { name: "Publish type", exact: true })
       .click();
 
-    await expect(page.getByText("Profile duplicated")).toBeVisible();
+    await expect(page.getByText("Type duplicated")).toBeVisible();
     await expect(page).toHaveURL(/\/analyzers\/types$/);
     const duplicateRow = analyzerTypeRow(page, duplicateName);
     await expect(duplicateRow).toBeVisible();
@@ -267,7 +262,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(duplicateRow).toContainText("Not in use");
     await expect(sourceCells).toHaveText(sourceBefore);
 
-    await openRowAction(page, duplicateName, "View history");
+    await openRowAction(page, duplicateName, "History");
     const history = page.getByRole("dialog", {
       name: `${duplicateName} history`,
     });
@@ -280,14 +275,12 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       name: `Deactivate ${duplicateName}`,
     });
     await lifecycle.getByRole("button", { name: /Deactivate$/ }).click();
-    await expect(page.getByText("Profile deactivated")).toBeVisible();
+    await expect(page.getByText("Type deactivated")).toBeVisible();
     await expect(duplicateRow).toHaveCount(0);
 
-    const showDeactivated = page.getByRole("checkbox", {
-      name: "Show deactivated",
-    });
-    await page.getByText("Show deactivated", { exact: true }).click();
-    await expect(showDeactivated).toBeChecked();
+    const deactivatedView = page.getByTestId("analyzer-type-view-deactivated");
+    await deactivatedView.click();
+    await expect(deactivatedView).toHaveAttribute("aria-pressed", "true");
     await expect(analyzerTypeRow(page, duplicateName)).toContainText(
       "Deactivated",
     );
@@ -299,7 +292,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await lifecycle
       .getByRole("button", { name: "Reactivate", exact: true })
       .click();
-    await expect(page.getByText("Profile reactivated")).toBeVisible();
+    await expect(page.getByText("Type reactivated")).toBeVisible();
+    // A reactivated type leaves the Deactivated view for the Active one.
+    await expect(analyzerTypeRow(page, duplicateName)).toHaveCount(0);
+    await page.getByTestId("analyzer-type-view-all").click();
     await expect(analyzerTypeRow(page, duplicateName)).toContainText("Active");
 
     await openRowAction(page, duplicateName, "Deactivate");
@@ -307,7 +303,8 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       name: `Deactivate ${duplicateName}`,
     });
     await lifecycle.getByRole("button", { name: /Deactivate$/ }).click();
-    await expect(page.getByText("Profile deactivated")).toBeVisible();
+    await expect(page.getByText("Type deactivated")).toBeVisible();
+    await deactivatedView.click();
     await expect(analyzerTypeRow(page, duplicateName)).toContainText(
       "Deactivated",
     );
