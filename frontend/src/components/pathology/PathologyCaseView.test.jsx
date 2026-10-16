@@ -191,3 +191,55 @@ describe("PathologyCaseView stage select", () => {
     expect(JSON.parse(body).status).toBe("STAINING");
   });
 });
+
+/**
+ * The technician on a case must be someone allowed to work in Pathology:
+ * the list comes from the lab-unit staff endpoint, never from every user.
+ */
+describe("PathologyCaseView technician list", () => {
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/displayList/PATHOLOGY_STATUS") {
+        return callback(STATUS_LIST);
+      }
+      if (url === CASE_URL) {
+        return callback(caseAtStage("MICROTOMY"));
+      }
+      if (url === "/rest/users/Results/labUnit/Pathology") {
+        return callback([{ id: "10", value: "Kayla Ramlogan" }]);
+      }
+      if (url === "/rest/users") {
+        return callback([
+          { id: "10", value: "Kayla Ramlogan" },
+          { id: "99", value: "Kevin Mohammed" },
+        ]);
+      }
+      if (url.startsWith("/rest/paginatedDisplayList/")) {
+        return callback({
+          displayItems: [],
+          paging: { totalPages: 1, currentPage: 1 },
+        });
+      }
+      return callback([]);
+    });
+  });
+
+  it("offers only staff with Results on Pathology", async () => {
+    renderCaseView();
+
+    const select = await waitFor(() => {
+      const element = document.getElementById("assignedTechnician");
+      expect(element).not.toBeNull();
+      return element;
+    });
+    await waitFor(() =>
+      expect(within(select).getByText("Kayla Ramlogan")).toBeInTheDocument(),
+    );
+    expect(within(select).queryByText("Kevin Mohammed")).toBeNull();
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/users/Results/labUnit/Pathology",
+      expect.any(Function),
+    );
+  });
+});

@@ -397,7 +397,10 @@ function CytologyCaseView() {
       setReportTypeList,
     );
     //TODO make conclusions list instead of reusing pathrequest
-    getFromOpenElisServer("/rest/users", setTechnicianUsers);
+    getFromOpenElisServer(
+      "/rest/users/Results/labUnit/Cytology",
+      setTechnicianUsers,
+    );
     getFromOpenElisServer("/rest/users/Cytopathologist", setPathologistUsers);
     getFromOpenElisServer(
       "/rest/cytology/caseView/" + cytologySampleId,

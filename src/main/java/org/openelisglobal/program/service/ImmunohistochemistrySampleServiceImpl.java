@@ -39,6 +39,7 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
+import org.openelisglobal.userrole.service.LabUnitStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +47,11 @@ import org.springframework.stereotype.Service;
 public class ImmunohistochemistrySampleServiceImpl
         extends AuditableBaseObjectServiceImpl<ImmunohistochemistrySample, Integer>
         implements ImmunohistochemistrySampleService {
+    // the test section whose Results role a technician on these cases needs
+    private static final String LAB_UNIT = "Immunohistochemistry";
+
+    @Autowired
+    private LabUnitStaffService labUnitStaffService;
     @Autowired
     protected ImmunohistochemistrySampleDAO baseObjectDAO;
     @Autowired
@@ -99,6 +105,8 @@ public class ImmunohistochemistrySampleServiceImpl
             immunohistochemistrySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
         }
         if (!GenericValidator.isBlankOrNull(form.getAssignedTechnicianId())) {
+            labUnitStaffService.checkTechnician(form.getAssignedTechnicianId(),
+                    immunohistochemistrySample.getTechnician(), LAB_UNIT);
             immunohistochemistrySample.setTechnician(systemUserService.get(form.getAssignedTechnicianId()));
         }
         immunohistochemistrySample.setStatus(form.getStatus());
