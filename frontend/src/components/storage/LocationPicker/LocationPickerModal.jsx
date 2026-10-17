@@ -64,7 +64,6 @@ export default function LocationPickerModal({
     }
     // dispatch is stable from useReducer; currentLocation intentionally
     // omitted — we only want to reset on the isOpen rising edge.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const setLevel = (level, value) =>

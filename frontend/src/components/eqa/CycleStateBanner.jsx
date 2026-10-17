@@ -49,7 +49,6 @@ const CycleStateBanner = ({ cycleId, status, hint, distributionMethod }) => {
     if (opened.current && cycleId) {
       fetchHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, cycleId]);
 
   return (

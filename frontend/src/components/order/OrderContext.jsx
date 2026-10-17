@@ -1599,7 +1599,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
 
     urlOrderLoadStarted.current = true;
     loadOrder(orderParam, false); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [configurationReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [configurationReady]);
 
   /**
    * Auto-save effect - saves every 30 seconds if form is dirty and has minimum required data.

@@ -99,7 +99,6 @@ const DisplayOrderSection = ({ testId }) => {
 
   useEffect(() => {
     loadOrder(selectedTypeId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTypeId]);
 
   const persist = (ordered) => {

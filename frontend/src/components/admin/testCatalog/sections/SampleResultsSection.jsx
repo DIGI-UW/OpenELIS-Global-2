@@ -276,7 +276,6 @@ const SampleResultsSection = ({ testId }) => {
       controller.signal,
     );
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   // FR-76 — changing the result type resets fields that don't apply to the new

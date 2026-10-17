@@ -103,7 +103,6 @@ const QcTargetsSection = ({ testId }) => {
       return;
     }
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   const isActive = (t) => t.active !== false;

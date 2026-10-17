@@ -89,7 +89,6 @@ const TestCatalogEditor = () => {
           : canonicalPath,
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, section]);
 
   const handleEnvelope = (res) => {
