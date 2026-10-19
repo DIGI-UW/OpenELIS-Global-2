@@ -44,5 +44,7 @@
   <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
   <!-- OGC-1599: panels an upgrade left on CLINICAL move to the domain their members share -->
   <include relativeToChangelogFile="true" file="025-panel-domain-from-members.xml"/>
+  <!-- Add-ons: registry, sandboxed UI assets, event outbox with triggers, delivery queue -->
+  <include relativeToChangelogFile="true" file="026-addons.xml"/>
 
 </databaseChangeLog>
