@@ -198,7 +198,7 @@ public class AddonRegistryServiceTest extends BaseWebContextSensitiveTest {
                         AddonCatalog.SLOT_RESULT_VALIDATION_SIDE_PANEL, CONTEXT, ADMIN, Set.of("VALIDATION")))
                         .getRefusal());
         assertEquals(Refusal.ROLE, assertThrows(TokenRefusedException.class, () -> tokens.issue("reg-slot",
-                AddonCatalog.SLOT_RESULT_LOOKUP_SIDE_PANEL, CONTEXT, ADMIN, Set.of("RECEPTION"))).getRefusal());
+                AddonCatalog.SLOT_RESULT_LOOKUP_SIDE_PANEL, CONTEXT, ADMIN, Set.of("BILLING"))).getRefusal());
     }
 
     @Test

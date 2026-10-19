@@ -2,8 +2,11 @@ package org.openelisglobal.addon.service;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.addon.AddonCatalog;
@@ -13,6 +16,8 @@ import org.openelisglobal.addon.packaging.AddonManifest;
 import org.openelisglobal.addon.packaging.AddonSignature;
 import org.openelisglobal.addon.security.AddonToken;
 import org.openelisglobal.addon.valueholder.Addon;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +34,8 @@ public class AddonTokenServiceImpl implements AddonTokenService {
     private AddonSecretDAO secretDAO;
     @Autowired
     private AddonSettings settings;
+    @Autowired
+    private SampleService sampleService;
 
     private volatile byte[] tokenKey;
 
@@ -47,7 +54,7 @@ public class AddonTokenServiceImpl implements AddonTokenService {
             throw new TokenRefusedException(Refusal.ROLE);
         }
         List<String> scopes = addon.getScopeList();
-        Map<String, Object> filtered = AddonCatalog.filterContext(context, scopes);
+        Map<String, Object> filtered = AddonCatalog.filterContext(withPatientOrders(context), scopes);
         @SuppressWarnings("unchecked")
         List<String> accessions = (List<String>) filtered.getOrDefault("accessionNumbers", List.of());
         long ttl = settings.tokenTtlSeconds();
@@ -75,6 +82,31 @@ public class AddonTokenServiceImpl implements AddonTokenService {
             return new AddonToken.Claims(addon.getId(), null, addon.getScopeList(), null, Long.MAX_VALUE);
         }
         throw new IllegalArgumentException("token");
+    }
+
+    /**
+     * A page that shows one patient (the patient results page) names the patient
+     * instead of listing lab numbers; the server looks up that patient's orders,
+     * newest first. The patient id itself is not passed on to the add-on, and a
+     * page cannot add lab numbers of its own to a patient's list.
+     */
+    Map<String, ?> withPatientOrders(Map<String, ?> context) {
+        if (context == null || !(context.get("patientId") instanceof Object raw)) {
+            return context;
+        }
+        Map<String, Object> out = new LinkedHashMap<>(context);
+        out.remove("patientId");
+        String patientId = String.valueOf(raw);
+        List<String> accessions = new ArrayList<>();
+        if (patientId.matches("\\d{1,18}")) {
+            sampleService.getSamplesForPatient(patientId).stream()
+                    .sorted(Comparator.comparing(Sample::getReceivedTimestamp,
+                            Comparator.nullsLast(Comparator.reverseOrder())))
+                    .map(Sample::getAccessionNumber).filter(AddonCatalog::isAccessionNumber).distinct()
+                    .limit(AddonCatalog.MAX_CONTEXT_ACCESSIONS).forEach(accessions::add);
+        }
+        out.put("accessionNumbers", accessions);
+        return out;
     }
 
     byte[] tokenKey() {
