@@ -237,13 +237,21 @@ one hour, and given up after 10 attempts. Delivery is at least once: add-ons
 de-duplicate on `webhook-id` and reject timestamps older than 5 minutes. Events
 are kept 7 days (`addons.events.retentionDays`).
 
-## UI slots (second pull request)
+## UI slots
 
-| Slot                                | Where                                  | `state`                    |
-| ----------------------------------- | -------------------------------------- | -------------------------- |
-| `result-validation-side-panel-slot` | side panel of result validation        | `page`, `accessionNumbers` |
-| `result-lookup-side-panel-slot`     | side panel of the patient results page | `page`, `accessionNumbers` |
-| `app-menu-slot`                     | main menu entry opening a full page    | `page`                     |
+| Slot                                | Where                                                                    | `state`                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `result-validation-side-panel-slot` | right column of result validation                                        | `page`, `accessionNumbers` (rows on screen, at most 50) |
+| `result-lookup-side-panel-slot`     | patient results page (`/PatientResults`)                                 | `page`, `patientId` (see below)                         |
+| `app-menu-slot`                     | "Extensions" section of the main menu, opening `/extensions/{id}/{name}` | `page`                                                  |
+
+The patient results page shows one patient and has no list of lab numbers. It
+passes `patientId`; when issuing the token the server replaces it with that
+patient's lab numbers (newest first, at most 50) and drops the id, so the add-on
+never receives the patient id and the page cannot add lab numbers of its own.
+
+A slot with no extension renders nothing: pages look exactly as before for a
+laboratory without add-ons.
 
 The host page renders each extension as
 `<iframe sandbox="allow-scripts allow-forms">` (no `allow-same-origin`) with
@@ -261,9 +269,17 @@ returns a token; the host posts
 to that frame's `contentWindow` only. The frame may send `resize` and
 `token-refresh`. The host accepts messages only from the frame's own window.
 
-Each slot lists the roles that may get a token for it (for example, validation
-needs `VALIDATION` or `ADMIN`), so an add-on cannot widen what a user can
-already see.
+Each slot lists the roles that may get a token for it (validation needs
+`VALIDATION` or `ADMIN`; the patient results page needs one of the roles that
+open it), so an add-on cannot widen what a user can already see.
+
+The Extensions page (Administration → Extensions) uploads a package, shows the
+provenance line ("Verified publisher: _name_", "Unverified publisher" with the
+name the package claims, or a prominent "Signature does not match the
+contents"), lists what the add-on may read, what it is told about and where it
+appears, and asks for that consent again in a dialog before turning it on. It
+also edits the configuration form generated from the manifest, issues new
+credentials and removes the add-on.
 
 ## Tokens and the add-on API
 
@@ -345,9 +361,8 @@ In `common.properties` or `extra.properties`:
    manifest checks, outbox triggers, dispatcher, tokens, add-on API,
    administration REST endpoints, example add-on.
 2. **UI**: `ExtensionSlot` and the sandboxed frame host with the `postMessage`
-   context, the three slots, and the Extensions page (list, install,
-   enable/disable, configuration form from the manifest, granted permissions,
-   recent deliveries), with English strings in `en.json`.
+   context, the three slots, and the Extensions page, with English strings in
+   `en.json` and a Playwright test that runs an add-on page in the sandbox.
 
 ## Not included
 

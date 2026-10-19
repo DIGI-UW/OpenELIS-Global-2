@@ -1,0 +1,60 @@
+// Add-on frames. Carbon tokens only.
+@use "@carbon/react/scss/spacing" as *;
+@use "@carbon/react/scss/theme" as *;
+
+.addon-slot {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+}
+
+.addon-frame {
+  border: 1px solid $border-subtle;
+  background: $layer;
+
+  iframe {
+    display: block;
+    width: 100%;
+    border: 0;
+  }
+}
+
+.addon-frame__title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: $spacing-03 $spacing-04;
+  border-bottom: 1px solid $border-subtle;
+
+  small {
+    color: $text-secondary;
+  }
+}
+
+.addon-admin__card {
+  margin-top: $spacing-06;
+  padding: $spacing-05;
+  border: 1px solid $border-subtle;
+  background: $layer;
+}
+
+.addon-admin__head {
+  display: flex;
+  justify-content: space-between;
+  gap: $spacing-05;
+}
+
+.addon-admin__meta {
+  color: $text-secondary;
+}
+
+.addon-admin__section {
+  margin-top: $spacing-05;
+}
+
+.addon-admin__form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-05;
+  max-width: 32rem;
+}
