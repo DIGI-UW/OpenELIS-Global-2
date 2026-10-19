@@ -38,6 +38,7 @@ nav:
           - Analyzer setup with partial mappings: analyzers/partial-mapping-setup.md
           - Pairing with the Analyzer Bridge: analyzers/bridge-pairing.md
           - Pre-Bridge analyzer settings: analyzers/pre-bridge-settings-export.md
+       - Add-ons: addons/design.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
     - Security:

@@ -21,6 +21,11 @@ import java.util.List;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.TextEncryptor;
+import org.openelisglobal.addon.security.AddonApiAuthenticationFilter;
+import org.openelisglobal.addon.security.AddonAuthenticationToken;
+import org.openelisglobal.addon.security.AddonSecurity;
+import org.openelisglobal.addon.service.AddonSettings;
+import org.openelisglobal.addon.service.AddonTokenService;
 import org.openelisglobal.analyzer.service.AnalyzerBridgePairingService;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
@@ -106,7 +111,7 @@ public class SecurityConfig {
     // pages that have special security constraints
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
-            "/rest/site-branding/**", "/rest/supportedlocales/active" };
+            "/rest/site-branding/**", "/rest/supportedlocales/active", AddonSecurity.UI_ASSET_PATH };
     public static final String[] LOGIN_PAGES = { "/LoginPage", "/ValidateLogin", "/session" };
 
     public static final String[] AUTH_OPEN_PAGES = { "/Home", "/Dashboard", "/Logout", "/MasterListsPage",
@@ -123,6 +128,11 @@ public class SecurityConfig {
      * alone.
      */
     public static final String[] BRIDGE_INGRESS_PATHS = { "/analyzer/fhir" };
+    /**
+     * The add-on API, called by add-on containers with an add-on token or service
+     * key. Internal: see AddonApiAuthenticationFilter.
+     */
+    public static final String[] ADDON_API_PATHS = { AddonSecurity.API_PATH };
 
     private static final String CONTENT_SECURITY_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
             + " connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';"
@@ -168,6 +178,28 @@ public class SecurityConfig {
                 .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
                 .addFilterBefore(new AnalyzerBridgeCertificateFilter(pairing), AnonymousAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(AnalyzerBridgeAuthenticationToken.ROLE))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                .csrf(csrf -> csrf.disable()).requestCache(requestCache -> requestCache.disable());
+    }
+
+    @Bean
+    @Order(1)
+    public SecurityFilterChain addonApiSecurityFilterChain(HttpSecurity http, ObjectProvider<AddonTokenService> tokens,
+            ObjectProvider<AddonSettings> addonSettings) throws Exception {
+        configureAddonApi(http, tokens, addonSettings);
+        http.headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    static void configureAddonApi(HttpSecurity http, ObjectProvider<AddonTokenService> tokens,
+            ObjectProvider<AddonSettings> addonSettings) throws Exception {
+        http.securityMatcher(ADDON_API_PATHS)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+                .addFilterBefore(new AddonApiAuthenticationFilter(tokens, addonSettings),
+                        AnonymousAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(AddonAuthenticationToken.ROLE))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .csrf(csrf -> csrf.disable()).requestCache(requestCache -> requestCache.disable());
