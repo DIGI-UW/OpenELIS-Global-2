@@ -75,7 +75,8 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         String clientFingerprint = record.map(this::clientFingerprint).orElse(null);
         boolean paired = record.map(r -> r.getBridgeCertificateSha256() != null).orElse(false);
         return new Status(bridgeUrl, paired, paired ? record.get().getBridgeCertificateSha256() : null,
-                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null, !configuredCode.isEmpty(),
+                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null,
+                !configuredCode.isEmpty() && !configuredCodeRefused,
                 paired ? checkPin(record.get()).orElse(null) : null);
     }
 

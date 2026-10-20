@@ -178,6 +178,7 @@ public class AnalyzerBridgePairingServiceTest {
 
         assertEquals("the Bridge keeps its attempts for the code entered on the page", 1, bridge.pairingAttempts.get());
         assertFalse(pairing.getStatus().paired());
+        assertFalse("the page asks for the code instead", pairing.getStatus().pairsAutomatically());
         assertTrue(pairing.pair(CODE, "7").paired());
     }
 
