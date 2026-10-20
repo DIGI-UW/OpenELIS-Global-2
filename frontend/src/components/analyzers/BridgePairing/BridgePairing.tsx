@@ -67,6 +67,11 @@ const BridgePairing = () => {
     });
   };
 
+  const stalePin =
+    status.paired &&
+    (status.pinCheck === "OTHER_CERTIFICATE" ||
+      status.pinCheck === "BRIDGE_UNPAIRED");
+
   const form = (
     <form
       className="bridge-pairing-form"
@@ -93,7 +98,7 @@ const BridgePairing = () => {
       >
         {intl.formatMessage({ id: "analyzer.bridgePairing.pair" })}
       </Button>
-      {status.paired && (
+      {status.paired && !stalePin && (
         <Button
           kind="ghost"
           size="md"
@@ -116,6 +121,35 @@ const BridgePairing = () => {
       )}
     </form>
   );
+
+  if (stalePin) {
+    const key =
+      status.pinCheck === "OTHER_CERTIFICATE"
+        ? "analyzer.bridgePairing.stale.otherCertificate"
+        : "analyzer.bridgePairing.stale.bridgeUnpaired";
+    return (
+      <div data-testid="bridge-pairing">
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="bridge-pairing-stale"
+          title={intl.formatMessage({ id: `${key}.title` })}
+          subtitle={`${intl.formatMessage(
+            { id: `${key}.subtitle` },
+            {
+              url: status.bridgeUrl,
+              fingerprint: (status.bridgeCertificateSha256 || "").slice(0, 16),
+            },
+          )} ${intl.formatMessage({
+            id: status.pairsAutomatically
+              ? "analyzer.bridgePairing.automatic"
+              : "analyzer.bridgePairing.unpaired.subtitle",
+          })}`}
+        />
+        {form}
+      </div>
+    );
+  }
 
   if (!status.paired) {
     return (

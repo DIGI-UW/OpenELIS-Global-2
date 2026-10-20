@@ -212,6 +212,91 @@ public class AnalyzerBridgePairingServiceTest {
         assertNull(stored.get());
     }
 
+    @Test
+    public void theConfiguredCodeReplacesAPinForACertificateTheBridgeNoLongerPresents() throws Exception {
+        service("").pair(CODE, "7");
+
+        try (FakeBridge reinstalled = new FakeBridge(CODE)) {
+            AnalyzerBridgePairingService copied = new AnalyzerBridgePairingServiceImpl(dao, encryptor,
+                    reinstalled.url(), CODE, "", "");
+            assertEquals(AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE, copied.getStatus().pinCheck());
+
+            copied.pairWithConfiguredCode();
+
+            assertEquals(sha256(reinstalled.identity.certificate()), stored.get().getBridgeCertificateSha256());
+            assertTrue("deliveries from the reinstalled Bridge are accepted",
+                    copied.isPairedBridge(reinstalled.identity.certificate()));
+            assertFalse(copied.isPairedBridge(bridge.identity.certificate()));
+            assertEquals(AnalyzerBridgePairingService.PinCheck.MATCHES, copied.getStatus().pinCheck());
+        }
+    }
+
+    @Test
+    public void theConfiguredCodePairsAgainWithABridgeThatLostThePairing() {
+        AnalyzerBridgePairingService pairing = service(CODE);
+        pairing.pairWithConfiguredCode();
+        bridge.forget();
+        assertEquals(AnalyzerBridgePairingService.PinCheck.BRIDGE_UNPAIRED, pairing.getStatus().pinCheck());
+
+        pairing.pairWithConfiguredCode();
+
+        assertEquals(2, bridge.pairingAttempts.get());
+        assertEquals(stored.get().getBridgeCertificateSha256(), sha256(bridge.identity.certificate()));
+        assertEquals(AnalyzerBridgePairingService.PinCheck.MATCHES, pairing.getStatus().pinCheck());
+    }
+
+    @Test
+    public void aPinTheBridgeStillPresentsIsLeftAlone() {
+        AnalyzerBridgePairingService pairing = service(CODE);
+        pairing.pairWithConfiguredCode();
+        java.sql.Timestamp pairedAt = stored.get().getPairedAt();
+
+        pairing.pairWithConfiguredCode();
+        pairing.pairWithConfiguredCode();
+
+        assertEquals(1, bridge.pairingAttempts.get());
+        assertEquals(pairedAt, stored.get().getPairedAt());
+        assertEquals(AnalyzerBridgePairingService.PinCheck.MATCHES, pairing.getStatus().pinCheck());
+    }
+
+    @Test
+    public void withoutAConfiguredCodeAStalePinIsReportedButKept() throws Exception {
+        service("").pair(CODE, "7");
+        String pinned = stored.get().getBridgeCertificateSha256();
+
+        try (FakeBridge reinstalled = new FakeBridge(CODE)) {
+            AnalyzerBridgePairingService copied = new AnalyzerBridgePairingServiceImpl(dao, encryptor,
+                    reinstalled.url(), "", "", "");
+
+            copied.pairWithConfiguredCode();
+
+            assertEquals(AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE, copied.getStatus().pinCheck());
+            assertTrue(copied.getStatus().paired());
+            assertEquals(0, reinstalled.pairingAttempts.get());
+            assertEquals(pinned, stored.get().getBridgeCertificateSha256());
+        }
+    }
+
+    @Test
+    public void anUnreachableBridgeKeepsThePinAndIsNotCalledStale() {
+        AnalyzerBridgePairingService pairing = service(CODE);
+        pairing.pairWithConfiguredCode();
+        String pinned = stored.get().getBridgeCertificateSha256();
+        bridge.close();
+
+        pairing.pairWithConfiguredCode();
+
+        assertTrue(pairing.getStatus().paired());
+        assertNull(pairing.getStatus().pinCheck());
+        assertEquals(pinned, stored.get().getBridgeCertificateSha256());
+    }
+
+    @Test
+    public void anUnpairedOpenElisHasNoPinToCheck() {
+        assertNull(service("").getStatus().pinCheck());
+        assertEquals(0, bridge.pairingAttempts.get());
+    }
+
     private static String sha256(X509Certificate certificate) {
         try {
             return BridgeTls.sha256(certificate);
