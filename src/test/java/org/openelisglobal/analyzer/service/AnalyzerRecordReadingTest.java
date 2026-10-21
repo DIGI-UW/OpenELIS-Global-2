@@ -96,6 +96,55 @@ public class AnalyzerRecordReadingTest {
     }
 
     @Test
+    public void aSpellingMovedToAnotherValueReadsDifferently() throws Exception {
+        Map<AnalyzerMappingSourceRow, Object> before = AnalyzerRecordReading
+                .rowReadings(profile("{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"result_type\":\"qualitative\","
+                        + "\"values\":[\"POS\",\"NEG\"],\"translations\":{\"NEG\":[\"NEGATIF\"]}}"));
+        Map<AnalyzerMappingSourceRow, Object> after = AnalyzerRecordReading
+                .rowReadings(profile("{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"result_type\":\"qualitative\","
+                        + "\"values\":[\"POS\",\"NEG\"],\"translations\":{\"POS\":[\"NEGATIF\"]}}"));
+        AnalyzerMappingSourceRow spelling = new AnalyzerMappingSourceRow("HBSAG", "NEGATIF", "");
+
+        assertTrue(before.containsKey(spelling));
+        assertNotEquals(before.get(spelling), after.get(spelling));
+    }
+
+    @Test
+    public void aTranslatedRunFailureSpellingIsPartOfHowATestAndItsPartsAreRead() throws Exception {
+        String test = "{\"test_code\":\"MTB\",\"loinc\":\"38379-4\",\"run_failure_values\":[\"ERROR\"],"
+                + "\"translations\":{\"ERROR\":[%s]},\"components\":[{\"code\":\"ct\",\"sub_identity\":\"MTB&Ct\","
+                + "\"run_failure_values\":[%s]}]}";
+        Set<AnalyzerMappingRowKey> alike = AnalyzerRecordReading.readAlike(
+                profile(String.format(test, "\"ERREUR\"", "\"INVALID\"")),
+                profile(String.format(test, "\"NO RESULT\"", "\"INVALID\",\"NA\"")));
+
+        assertFalse(alike.contains(AnalyzerMappingRowKey.main("MTB")));
+        assertFalse(alike.contains(new AnalyzerMappingRowKey("MTB", "MTB&Ct")));
+    }
+
+    @Test
+    public void aRecordReadsAlikeOnlyWhenTheValuesBothDeclareReadAlike() throws Exception {
+        Set<AnalyzerMappingRowKey> alike = AnalyzerRecordReading.readAlike(profile(
+                "{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"values\":[\"POS\",\"NEG\"],\"translations\":{\"NEG\":[\"NEGATIF\"]}}"),
+                profile("{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"values\":[\"POS\",\"NEG\"],\"translations\":{\"POS\":[\"NEGATIF\"]}}"));
+
+        assertFalse(alike.contains(AnalyzerMappingRowKey.main("HBSAG")));
+    }
+
+    @Test
+    public void whereAndHowARecordWritesItsValueIsPartOfTheTypeReading() throws Exception {
+        BridgeAnalyzerProfile base = typeProfile("\"configDefaults\":{\"numberFormat\":\".\","
+                + "\"extractionOverrides\":{\"resultParts\":{\"value\":{\"field\":3}}}}");
+        BridgeAnalyzerProfile moved = typeProfile("\"configDefaults\":{\"numberFormat\":\".\","
+                + "\"extractionOverrides\":{\"resultParts\":{\"value\":{\"field\":4}}}}");
+        BridgeAnalyzerProfile comma = typeProfile("\"configDefaults\":{\"numberFormat\":\",\","
+                + "\"extractionOverrides\":{\"resultParts\":{\"value\":{\"field\":3}}}}");
+
+        assertNotEquals(AnalyzerRecordReading.typeReading(base), AnalyzerRecordReading.typeReading(moved));
+        assertNotEquals(AnalyzerRecordReading.typeReading(base), AnalyzerRecordReading.typeReading(comma));
+    }
+
+    @Test
     public void theTypeReadingIsItsRoutingParsingAndRecognitionNotItsNamesOrConnectionDefaults() throws Exception {
         BridgeAnalyzerProfile base = typeProfile(
                 "\"identifier_pattern\":\"GENEXPERT\",\"configDefaults\":{\"port\":1}");
