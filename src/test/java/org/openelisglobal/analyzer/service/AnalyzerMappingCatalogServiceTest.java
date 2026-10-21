@@ -114,6 +114,18 @@ public class AnalyzerMappingCatalogServiceTest {
     }
 
     @Test
+    public void aCodeForOneComponentOfATestDoesNotNameTheTest() {
+        org.openelisglobal.test.valueholder.Test hiv = test("1", "HIV Viral Load", "HIVVL", "25836-8", true);
+        when(testService.getAllActiveTests(false)).thenReturn(List.of(hiv));
+        TestTerminologyMapping ct = code("1", "CPHL", "HIV-CT");
+        ct.setComponentId("77");
+        when(terminologyService.getAllActive()).thenReturn(List.of(code("1", "CPHL", "VL-HIV"), ct));
+
+        assertEquals(List.of(Coding.loinc("25836-8"), new Coding("CPHL", "VL-HIV")),
+                service.searchActiveTests(null).get(0).codings());
+    }
+
+    @Test
     public void activeResultOptionsDeriveValuesAndLabelsAndExcludeInvalidRows() {
         org.openelisglobal.test.valueholder.Test mapped = test("1", "HIV", "HIV", null, true);
         org.openelisglobal.test.valueholder.Test other = test("2", "Other", "OTHER", null, true);

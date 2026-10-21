@@ -1,5 +1,6 @@
 package org.openelisglobal.terminology;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
@@ -29,7 +30,7 @@ public final class TerminologySystems {
             return null;
         }
         String trimmed = source.trim();
-        switch (trimmed.toUpperCase()) {
+        switch (trimmed.toUpperCase(Locale.ROOT)) {
         case "LOINC":
             return LOINC;
         case "SNOMED":
@@ -67,8 +68,8 @@ public final class TerminologySystems {
         if (trimmed.length() > MAX_SOURCE_LENGTH) {
             return null;
         }
-        return switch (trimmed.toUpperCase()) {
-        case "LOINC", "SNOMED", "CIEL", "OCL" -> trimmed.toUpperCase();
+        return switch (trimmed.toUpperCase(Locale.ROOT)) {
+        case "LOINC", "SNOMED", "CIEL", "OCL" -> trimmed.toUpperCase(Locale.ROOT);
         default -> trimmed;
         };
     }

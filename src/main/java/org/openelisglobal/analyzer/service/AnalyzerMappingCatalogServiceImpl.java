@@ -54,7 +54,9 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     @Override
     @Transactional(readOnly = true)
     public List<TestOption> searchActiveTests(String query) {
+        // A code scoped to one component names that part of a result, not the test.
         Map<String, List<TestTerminologyMapping>> codesByTestId = terminologyService.getAllActive().stream()
+                .filter(mapping -> mapping.getComponentId() == null)
                 .collect(Collectors.groupingBy(TestTerminologyMapping::getTestId));
         Map<String, String> specimenNames = sampleTypes.getAllTypeOfSamples().stream()
                 .filter(type -> type.isActive() && !isBlank(type.getDescription()))

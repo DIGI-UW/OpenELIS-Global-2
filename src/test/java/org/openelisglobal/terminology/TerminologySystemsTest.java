@@ -31,6 +31,18 @@ public class TerminologySystemsTest {
     }
 
     @Test
+    public void aKnownSourceIsRecognizedWhateverTheServersLocale() {
+        java.util.Locale before = java.util.Locale.getDefault();
+        try {
+            java.util.Locale.setDefault(java.util.Locale.forLanguageTag("tr-TR"));
+            assertEquals("LOINC", TerminologySystems.sourceOf("loinc"));
+            assertEquals("https://openconceptlab.org/orgs/CIEL/sources/CIEL", TerminologySystems.urlOf("ciel"));
+        } finally {
+            java.util.Locale.setDefault(before);
+        }
+    }
+
+    @Test
     public void aSourceMustBeNonBlankAndFitItsColumn() {
         assertNull(TerminologySystems.sourceOf(" "));
         assertNull(TerminologySystems.sourceOf(null));

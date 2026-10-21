@@ -177,6 +177,6 @@ public class TerminologyConfigurationHandler extends AbstractCatalogCsvHandler {
 
     private static String key(String componentId, String sampleTypeId, String source, String code) {
         return (componentId == null ? "" : componentId) + "|" + (sampleTypeId == null ? "" : sampleTypeId) + "|"
-                + source.toUpperCase(Locale.ROOT) + "|" + code.trim().toUpperCase(Locale.ROOT);
+                + TerminologySystems.systemOf(source) + "|" + code.trim().toUpperCase(Locale.ROOT);
     }
 }

@@ -137,6 +137,6 @@ public class AnswerTerminologyConfigurationHandler extends AbstractCatalogCsvHan
     }
 
     private static String key(String source, String code) {
-        return source.toUpperCase(Locale.ROOT) + "|" + code.trim().toUpperCase(Locale.ROOT);
+        return TerminologySystems.systemOf(source) + "|" + code.trim().toUpperCase(Locale.ROOT);
     }
 }
