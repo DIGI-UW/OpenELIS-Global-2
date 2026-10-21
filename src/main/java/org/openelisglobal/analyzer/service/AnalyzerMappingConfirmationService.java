@@ -39,7 +39,8 @@ public interface AnalyzerMappingConfirmationService {
 
     /**
      * Whether the mapping has a confirmation that still stands against the profile
-     * the Bridge serves for the pin; false when the Bridge cannot serve it.
+     * revision the Bridge serves for its pin; false when that could not be read
+     * (null).
      */
-    boolean standsAsServed(String mappingId, org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin pin);
+    boolean standsAsServed(String mappingId, BridgeProfileCatalog.ProfileRevision served);
 }

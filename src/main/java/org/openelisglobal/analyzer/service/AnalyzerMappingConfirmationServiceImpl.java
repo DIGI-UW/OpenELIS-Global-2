@@ -238,10 +238,13 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     @Override
     @Transactional(readOnly = true)
-    public boolean standsAsServed(String mappingId, AnalyzerProfilePin pin) {
+    public boolean standsAsServed(String mappingId, BridgeProfileCatalog.ProfileRevision served) {
+        if (served == null) {
+            return false;
+        }
+        ServedReading reading = servedFrom(served);
         return confirmationDAO.findByMappingId(mappingId).filter(confirmation -> hasText(confirmation.getAuditEventId())
-                && checkedReading(pin, confirmation).filter(AnalyzerConfirmationReading::isUnchanged).isPresent())
-                .isPresent();
+                && readingAgainst(reading, confirmation).isUnchanged()).isPresent();
     }
 
     /**
@@ -276,30 +279,23 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
      */
     private AnalyzerConfirmationReading currentReading(AnalyzerProfilePin pin,
             AnalyzerMappingConfirmation confirmation) {
-        return checkedReading(pin, confirmation).orElseGet(AnalyzerConfirmationReading::unchanged);
+        try {
+            return readingAgainst(served(pin), confirmation);
+        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
+            return AnalyzerConfirmationReading.unchanged();
+        }
     }
 
-    /**
-     * The served profile against a confirmation, or empty when the Bridge cannot
-     * serve it.
-     */
-    private Optional<AnalyzerConfirmationReading> checkedReading(AnalyzerProfilePin pin,
-            AnalyzerMappingConfirmation confirmation) {
-        ServedReading served;
-        try {
-            served = served(pin);
-        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
-            return Optional.empty();
-        }
+    private AnalyzerConfirmationReading readingAgainst(ServedReading served, AnalyzerMappingConfirmation confirmation) {
         if (confirmation.getReadingsFingerprint() == null) {
-            return Optional.of(served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())
+            return served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())
                     ? AnalyzerConfirmationReading.unchanged()
-                    : AnalyzerConfirmationReading.typeReadingChanged());
+                    : AnalyzerConfirmationReading.typeReadingChanged();
         }
         if (served.fingerprint().equals(confirmation.getReadingsFingerprint())) {
-            return Optional.of(AnalyzerConfirmationReading.unchanged());
+            return AnalyzerConfirmationReading.unchanged();
         }
-        return Optional.of(compare(confirmation, served));
+        return compare(confirmation, served);
     }
 
     private AnalyzerConfirmationReading compare(AnalyzerMappingConfirmation confirmation, ServedReading served) {
@@ -328,6 +324,10 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
             throw new IllegalArgumentException(
                     "The Bridge does not serve " + pin.getProfileId() + " revision " + pin.getProfileRevision());
         }
+        return servedFrom(revision);
+    }
+
+    private ServedReading servedFrom(BridgeProfileCatalog.ProfileRevision revision) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
         Map<AnalyzerMappingSourceRow, JsonNode> rows = new LinkedHashMap<>();
         AnalyzerRecordReading.rowReadings(profile)

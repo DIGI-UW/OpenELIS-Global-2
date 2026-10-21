@@ -507,14 +507,13 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void aConfirmationIsNotShownAsStandingWhenTheBridgeCannotServeItsProfile() {
+    public void aConfirmationStandsOnlyAgainstAServedProfileThatReadsAsConfirmed() {
         AnalyzerMappingConfirmation saved = confirmed();
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
-        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
-                .thenThrow(new BridgeProfileCatalogException("Bridge catalog unreachable"));
 
-        assertFalse(service.standsAsServed("61", new org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin(
-                "site.mock-analyzer", 2, PROFILE_FINGERPRINT)));
+        assertTrue(service.standsAsServed("61", served(PROFILE_FINGERPRINT, "copies/mL", "DETECTED", "MOCK")));
+        assertFalse(service.standsAsServed("61", served(EDITED_FINGERPRINT, "IU/mL", "DETECTED", "MOCK")));
+        assertFalse("the Bridge could not serve it", service.standsAsServed("61", null));
     }
 
     @Test

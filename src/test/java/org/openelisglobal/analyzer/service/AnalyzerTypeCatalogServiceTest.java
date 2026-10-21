@@ -298,6 +298,22 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     @Test
+    public void eachRevisionTheAnalyzersArePinnedToIsReadFromTheBridgeOnce() throws Exception {
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
+        List<Analyzer> analyzers = List.of(analyzer("501", "Main", 3, 1), analyzer("502", "Annex", 3, 1),
+                analyzer("503", "Night", 2, 1), analyzer("504", "Outreach", 2, 1));
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(analyzers);
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+
+        service.getCatalog();
+
+        org.mockito.Mockito.verify(bridgeCatalogService, org.mockito.Mockito.never())
+                .getProfile("site.mock-hematology", 3);
+        org.mockito.Mockito.verify(bridgeCatalogService).getProfile("site.mock-hematology", 2);
+    }
+
+    @Test
     public void codesTheProfileExcludesByDefaultCountAsDecidedAndTheTypeIsReady() throws Exception {
         when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-epicenter")).thenReturn(List.of());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100", "58410-2")));
