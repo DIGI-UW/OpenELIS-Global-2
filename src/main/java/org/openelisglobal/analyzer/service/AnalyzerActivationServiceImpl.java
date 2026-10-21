@@ -26,6 +26,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private static final String PROFILE_BLOCKER = "analyzer.activation.blocker.profile";
     private static final String NAME_BLOCKER = "analyzer.activation.blocker.name";
+    private static final String RETIRED_BLOCKER = "analyzer.activation.blocker.retired";
     private static final String LAB_UNIT_BLOCKER = "analyzer.activation.blocker.labUnit";
     private static final String MAPPINGS_BLOCKER = "analyzer.activation.blocker.mappings";
     private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
@@ -206,6 +207,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private ActivationContext validateActivation(Analyzer analyzer) {
         List<AnalyzerActivationBlocker> blockers = new ArrayList<>();
+        // A retired analyzer returns through Restore, never straight to running.
+        if (analyzer.getStatus() == Analyzer.AnalyzerStatus.RETIRED) {
+            blockers.add(new AnalyzerActivationBlocker(RETIRED_BLOCKER));
+        }
         if (analyzer.getName() == null || analyzer.getName().isBlank()) {
             blockers.add(new AnalyzerActivationBlocker(NAME_BLOCKER));
         }

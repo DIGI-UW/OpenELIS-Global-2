@@ -131,6 +131,19 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void aRetiredAnalyzerIsRestoredBeforeItCanBeActivated() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.RETIRED);
+
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
+
+        assertFalse(result.activated());
+        assertTrue(result.blockers().stream().map(AnalyzerActivationBlocker::code).toList()
+                .contains("analyzer.activation.blocker.retired"));
+        assertEquals(Analyzer.AnalyzerStatus.RETIRED, analyzer.getStatus());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
+    }
+
+    @Test
     public void readinessReadsButDoesNotMutateTheSavedConnection() {
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 

@@ -860,6 +860,7 @@
   "analyzer.activation.blocker.mappings": "Analyzer mappings must be verified again.",
   "analyzer.activation.blocker.name": "Enter an analyzer name.",
   "analyzer.activation.blocker.profile": "The selected analyzer type revision is unavailable or no longer matches this analyzer.",
+  "analyzer.activation.blocker.retired": "This analyzer is retired. Restore it before activating it.",
   "analyzer.activation.blocker.recognition": "Control recognition must be verified again.",
   "analyzer.activation.blocker.transport": "The selected connection type is not supported by this analyzer type.",
   "analyzer.setup.connect.activation.active": "Analyzer is active",

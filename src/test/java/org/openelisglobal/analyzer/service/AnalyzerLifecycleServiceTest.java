@@ -4,7 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
@@ -22,6 +26,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerLifecycleServiceTest {
@@ -34,23 +39,27 @@ public class AnalyzerLifecycleServiceTest {
     private AnalyzerResultsService analyzerResultsService;
     @Mock
     private AnalyzerActivationRecordService activationRecordService;
+    @Mock
+    private AuditTrailService auditTrailService;
 
     private AnalyzerLifecycleService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerLifecycleServiceImpl(analyzerService, mappingDAO, analyzerResultsService,
-                activationRecordService);
+                activationRecordService, auditTrailService);
     }
 
     @Test
     public void anAnalyzerThatIsNotRunningIsRetiredWithItsHistory() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer(Analyzer.AnalyzerStatus.INACTIVE)));
+        given(analyzer(Analyzer.AnalyzerStatus.INACTIVE));
 
         service.retire("42", "17");
 
         ArgumentCaptor<Analyzer> saved = ArgumentCaptor.forClass(Analyzer.class);
-        verify(analyzerService).update(saved.capture());
+        InOrder order = inOrder(analyzerService);
+        order.verify(analyzerService).findByIdForUpdate("42");
+        order.verify(analyzerService).update(saved.capture());
         assertEquals(Analyzer.AnalyzerStatus.RETIRED, saved.getValue().getStatus());
         assertFalse(saved.getValue().isActive());
         assertEquals("17", saved.getValue().getSysUserId());
@@ -58,7 +67,7 @@ public class AnalyzerLifecycleServiceTest {
 
     @Test
     public void aRunningAnalyzerIsDeactivatedBeforeItCanBeRetired() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer(Analyzer.AnalyzerStatus.ACTIVE)));
+        given(analyzer(Analyzer.AnalyzerStatus.ACTIVE));
 
         AnalyzerRequestException refused = assertThrows(AnalyzerRequestException.class,
                 () -> service.retire("42", "17"));
@@ -69,7 +78,7 @@ public class AnalyzerLifecycleServiceTest {
 
     @Test
     public void aRetiredAnalyzerIsRestoredInactive() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer(Analyzer.AnalyzerStatus.RETIRED)));
+        given(analyzer(Analyzer.AnalyzerStatus.RETIRED));
 
         service.restore("42", "17");
 
@@ -80,18 +89,20 @@ public class AnalyzerLifecycleServiceTest {
 
     @Test
     public void anAnalyzerNeverUsedIsDeletedWithItsMappings() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer(Analyzer.AnalyzerStatus.SETUP)));
+        given(analyzer(Analyzer.AnalyzerStatus.SETUP));
         when(analyzerResultsService.getResultsbyAnalyzer("42")).thenReturn(List.of());
         when(activationRecordService.findByAnalyzerId("42")).thenReturn(List.of());
 
         service.delete("42", "17");
 
-        verify(mappingDAO).deleteAnalyzerWithItsMappings("42");
+        InOrder order = inOrder(auditTrailService, mappingDAO);
+        order.verify(auditTrailService).saveHistory(isNull(), any(Analyzer.class), eq("17"), eq("D"), eq("analyzer"));
+        order.verify(mappingDAO).deleteAnalyzerWithItsMappings("42");
     }
 
     @Test
     public void anAnalyzerWithResultsOrActivationsIsNotDeleted() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer(Analyzer.AnalyzerStatus.INACTIVE)));
+        given(analyzer(Analyzer.AnalyzerStatus.INACTIVE));
         when(analyzerResultsService.getResultsbyAnalyzer("42")).thenReturn(List.of(new AnalyzerResults()));
 
         AnalyzerRequestException withResults = assertThrows(AnalyzerRequestException.class,
@@ -109,7 +120,7 @@ public class AnalyzerLifecycleServiceTest {
 
     @Test
     public void anAnalyzerSomethingElseStillRefersToIsNotDeleted() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer(Analyzer.AnalyzerStatus.INACTIVE)));
+        given(analyzer(Analyzer.AnalyzerStatus.INACTIVE));
         when(analyzerResultsService.getResultsbyAnalyzer("42")).thenReturn(List.of());
         when(activationRecordService.findByAnalyzerId("42")).thenReturn(List.of());
         doThrow(new jakarta.persistence.PersistenceException("violates foreign key constraint")).when(mappingDAO)
@@ -119,6 +130,11 @@ public class AnalyzerLifecycleServiceTest {
                 () -> service.delete("42", "17"));
 
         assertEquals("analyzer.lifecycle.error.inUse", refused.messageKey());
+    }
+
+    private void given(Analyzer analyzer) {
+        when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
     }
 
     private static Analyzer analyzer(Analyzer.AnalyzerStatus status) {
