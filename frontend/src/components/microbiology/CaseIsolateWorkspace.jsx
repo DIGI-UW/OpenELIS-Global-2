@@ -384,10 +384,14 @@ export default function CaseIsolateWorkspace({
               );
       if (!mounted.current) return;
       setData(updated);
-      setOptions(await service.getIsolateOptions(detail.id));
-      if (!mounted.current) return;
       close();
       onChanged?.();
+      try {
+        const choices = await service.getIsolateOptions(detail.id);
+        if (mounted.current) setOptions(choices);
+      } catch {
+        if (mounted.current) setError("loadError");
+      }
     } catch (failure) {
       if (!mounted.current) return;
       setError(failure.response?.status === 409 ? "conflict" : "saveError");
@@ -402,8 +406,13 @@ export default function CaseIsolateWorkspace({
       style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
     >
       <h2>{t("title")}</h2>
-      {error && !action && (
+      {error && (!action || !data || !options) && (
         <InlineNotification kind="error" title={t(error)} hideCloseButton />
+      )}
+      {error && action && (!data || !options) && (
+        <Button kind="ghost" onClick={close}>
+          {t("cancel")}
+        </Button>
       )}
       {!data && !error && <InlineLoading description={t("loading")} />}
       {data && options && (

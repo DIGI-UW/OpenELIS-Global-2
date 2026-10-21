@@ -80,10 +80,38 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
     private MicroCaseService caseService;
 
     @Autowired
+    private org.openelisglobal.microbiology.service.MicroCultureService cultures;
+
+    @Autowired
     private MicrobiologyTestFixtures fixtures;
 
     @Autowired
     private DataSource dataSource;
+
+    private String growingCulture(String caseId, String actor) {
+        var options = cultures.getOptions(caseId);
+        var medium = options.media.stream()
+                .filter(m -> (!options.requireTrackedMedia || m.trackLots()) && (!m.trackLots() || !m.lots().isEmpty()))
+                .findFirst().orElseThrow();
+        var request = new org.openelisglobal.microbiology.form.MicroCultureRequestForm();
+        request.sourceSampleItemId = options.sources.get(0).sampleItemId();
+        request.mediumItemId = medium.id();
+        request.notTracked = !medium.trackLots();
+        request.lotId = medium.trackLots() ? medium.lots().get(0).id() : null;
+        request.containerIdentifier = "QPERF-" + UUID.randomUUID();
+        request.atmosphereId = options.atmospheres.get(0).getId();
+        request.temperature = new BigDecimal("37");
+        request.duration = new BigDecimal("48");
+        request.durationUnit = "HOURS";
+        request.inoculatedAt = java.sql.Timestamp.from(java.time.Instant.now());
+        var row = cultures.inoculate(caseId, request, actor).stream()
+                .filter(r -> request.containerIdentifier.equals(r.containerIdentifier)).findFirst().orElseThrow();
+        var outcome = new org.openelisglobal.microbiology.form.MicroCultureRequestForm();
+        outcome.outcome = "GROWTH";
+        outcome.positiveAt = request.inoculatedAt;
+        cultures.act(caseId, row.id, "outcome", outcome, actor);
+        return row.id;
+    }
 
     @Test
     public void qualifyApiOperationsAtExpectedLaboratoryVolume() throws Exception {
@@ -114,15 +142,14 @@ public class MicrobiologyApiPerformanceQualification extends BaseWebContextSensi
         measurements.add(PerformanceEvidence.measure("case-load", WARMUPS, MEASURED, 1000, (iteration,
                 warmup) -> expectOk(authenticated(get("/rest/microbiology/cases/{caseId}", dense.caseId()), session))));
 
-        measurements
-                .add(PerformanceEvidence.measure("isolate-save", WARMUPS, MEASURED, 500,
-                        (iteration, warmup) -> expectOk(authenticated(
-                                post("/rest/microbiology/isolates").contentType(MediaType.APPLICATION_JSON)
-                                        .content(mapToJson(Map.of("caseId", dense.caseId(), "isolateLabel",
-                                                operationKey("QPERF-ISO", iteration, warmup), "gramStain",
-                                                "Gram negative rods", "preliminaryOrganismText",
-                                                "Qualification organism", "significance", "CLINICALLY_SIGNIFICANT"))),
-                                session))));
+        String cultureId = growingCulture(dense.caseId(), userId);
+        measurements.add(PerformanceEvidence.measure("isolate-save", WARMUPS, MEASURED, 500, (iteration,
+                warmup) -> expectOk(authenticated(post("/rest/microbiology/cases/{caseId}/isolates", dense.caseId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapToJson(Map.of("cultureId", cultureId, "gramStain", "Gram negative rods",
+                                "colonyMorphology", operationKey("QPERF-ISO", iteration, warmup), "significance",
+                                "CLINICALLY_SIGNIFICANT"))),
+                        session))));
 
         MicroAstPanel panel = qualificationPanel();
         MicroBreakpointStandard standard = qualificationStandard();

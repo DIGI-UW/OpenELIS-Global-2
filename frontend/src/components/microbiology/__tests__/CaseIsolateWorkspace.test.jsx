@@ -361,3 +361,43 @@ it("submits the shared specimen referral with only a receiving lab and scoped te
     screen.getByText(messages["label.results.history.event.REFERRAL"]),
   ).toBeVisible();
 });
+
+it("closes a committed pick before a failing options refresh can invite a duplicate save", async () => {
+  const service = api([]);
+  service.getIsolateOptions
+    .mockResolvedValueOnce(options)
+    .mockRejectedValueOnce(new Error("refresh failed"));
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await screen.findByText(messages["microbiology.isolateWorkspace.loadError"]);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.pickIsolate).toHaveBeenCalledTimes(1);
+});
+
+it("shows a preopened pick load failure and lets the user close it", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockRejectedValue(new Error("load failed"));
+  const close = vi.fn();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseIsolateWorkspace
+        detail={{ id: "c1", labUnitId: "unit1", canWrite: true }}
+        service={service}
+        initialCultureId="r1"
+        onClosePick={close}
+      />
+    </IntlProvider>,
+  );
+  await screen.findByText(messages["microbiology.isolateWorkspace.loadError"]);
+  fireEvent.click(
+    screen.getByRole("button", { name: messages["label.button.cancel"] }),
+  );
+  expect(close).toHaveBeenCalledTimes(1);
+});

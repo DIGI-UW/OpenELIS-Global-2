@@ -90,19 +90,15 @@ public class MicroCaseAccessGuardTest {
     }
 
     @Test
-    public void confirmedIdentificationRequiresUnitValidationButPreliminaryUsesResults() throws Exception {
-        var form = new MicroIsolateRequestForm();
-        form.identificationStatus = "CONFIRMED";
-        Method update = MicroIsolateRestController.class.getMethod("updateIdentification", String.class,
-                MicroIsolateRequestForm.class, jakarta.servlet.http.HttpServletRequest.class);
+    public void reidentificationRequiresValidationInTheCurrentCaseUnit() throws Exception {
+        Method update = MicroIsolateRestController.class.getMethod("validate", String.class, String.class,
+                MicroIsolateWorkspaceRequestForm.class, jakarta.servlet.http.HttpServletRequest.class);
+        var form = new MicroIsolateWorkspaceRequestForm();
         when(access.hasLabUnitRole("7", "unit", Constants.ROLE_RESULTS)).thenReturn(true);
-        assertThrows(AccessDeniedException.class, () -> check(update, "isolate", form, request));
-        form.identificationStatus = "PRELIMINARY";
-        check(update, "isolate", form, request);
-        form.identificationStatus = "CONFIRMED";
+        assertThrows(AccessDeniedException.class, () -> check(update, "case", "isolate", form, request));
         when(access.hasLabUnitRole("7", "unit", Constants.ROLE_RESULTS)).thenReturn(false);
         when(access.hasLabUnitRole("7", "unit", Constants.ROLE_VALIDATION)).thenReturn(true);
-        check(update, "isolate", form, request);
+        check(update, "case", "isolate", form, request);
         var scope = (MicroCaseWriteAccessGuard.WriteScope) request
                 .getAttribute(MicroCaseWriteAccessGuard.REQUEST_SCOPE);
         assertEquals(Constants.ROLE_VALIDATION, scope.role());
