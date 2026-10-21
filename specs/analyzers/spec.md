@@ -56,7 +56,10 @@ is listed in [roadmap.md](roadmap.md).
    its reason and recovers, without duplication, once the mapping is fixed.
    Both systems keep their audit copy: the Bridge every raw message and
    bundle, OpenELIS the bundle for the life of the result, viewable from the
-   review row.
+   review row. A reviewer may remove a held result from review instead, such
+   as a test message or a result from a retired analyzer: the removal is in
+   the audit trail with the row it removed, the bundle stays on the delivery
+   receipt, and the removed result does not recover.
 7. **A newer profile revision is adopted explicitly.** One review screen shows
    every row's fate by the reading comparison of point 13; the analyzer keeps
    receiving on its current revision until the operator confirms and applies. Apply switches OpenELIS and the Bridge
@@ -112,11 +115,14 @@ is listed in [roadmap.md](roadmap.md).
     profile file (decided 20 October, the user: "no whole-file fingerprint as
     a gate, Bridge never refuses on content"). A profile reads a code by the
     other codes it is sent under (aliases), its unit, result type, parts and
-    their sub-identities, call component, declared values and translations,
-    run-failure values included. It reads every result of the type by how a
-    message is matched to it (identifier and MSH-3 patterns), its file column
-    mapping, sheet detection and result value order, its record declarations
-    (`test_code_values`), control recognition and sample flags. When an
+    their sub-identities, call component, declared values and the spellings
+    translated to each, run-failure values and their spellings included. It
+    reads every result of the type by how a message is matched to it
+    (identifier and MSH-3 patterns), its file column mapping, sheet detection
+    and result value order, where each part of a record sits and how the
+    instrument writes a number (`extractionOverrides` and `numberFormat`), its
+    record declarations (`test_code_values`), control recognition and sample
+    flags. When an
     analyzer's mapping is confirmed,
     OpenELIS keeps the reading each mapped row was confirmed against and the
     type's reading. When the profile the Bridge serves reads differently:
@@ -129,9 +135,12 @@ is listed in [roadmap.md](roadmap.md).
     Everything else in a profile changes nothing: names, hints, codings and
     LOINC, connection fields and defaults, capabilities, a new assay. The
     confirmation stands, connections restore and keep running, and nothing
-    needs activating again. A held result recovers by analyzer, Bridge
-    connection and code against the row's current reading, whatever profile
-    or revision it arrived under. Adopting a newer revision (point 7) uses
+    needs activating again. A held result keeps how its record and the type
+    read under the profile it arrived on, and recovers by analyzer, Bridge
+    connection and code where that reading is the confirmed one, whatever
+    profile or revision it arrived under and whether or not the Bridge still
+    serves it; how a message was routed is not compared, since the result is
+    already routed. Adopting a newer revision (point 7) uses
     the same comparison. The fingerprints that stay are about other things:
     the mapping's own, which tells an editor the mapping changed since it was
     loaded; the connection settings', which ties a probe to the settings it
@@ -152,6 +161,7 @@ analyzer code. OpenELIS has no file poller and never opens a result file.
 ## What must always hold
 
 - Unknown or unmappable results are held; they are never dropped or posted.
+  Only a reviewer removes one from review, and that is audited (point 6).
 - Recovery never duplicates a result. Acceptance is recorded once per
   `(connection_id, message_id)` in `analyzer_delivery_receipt`, independent of
   staging, mapping changes and profile revisions; receipts are never purged.
