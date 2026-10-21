@@ -1,13 +1,9 @@
 package org.openelisglobal.microbiology.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Synthetic thresholds exercise the transport contract, not a clinical catalog.
@@ -23,7 +19,7 @@ public class ReferencePackageFixture {
         this.version = version;
         organism = "TEST_ORG_" + suffix;
         antibiotic = "TEST_AB_" + suffix;
-        edition = "2026-" + version;
+        edition = "2026-" + version + "-" + suffix;
         files.put("organisms.csv", "source,code,displayName,whonetCode,gramStain\nAMR," + organism
                 + ",Synthetic organism " + suffix + ",,GRAM_NEGATIVE\n");
         files.put("antimicrobials.csv", "source,code,displayName,whonetCode,antibioticClass\nAMR," + antibiotic
@@ -49,34 +45,4 @@ public class ReferencePackageFixture {
         files.put("NOTICE.txt", "Synthetic contract fixture; not for clinical use.\n");
     }
 
-    public byte[] archive() throws Exception {
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> inventory = new LinkedHashMap<>();
-        for (var entry : files.entrySet()) {
-            byte[] bytes = entry.getValue().getBytes(StandardCharsets.UTF_8);
-            Map<String, Object> metadata = new LinkedHashMap<>();
-            metadata.put("sha256", MicroReferencePackageServiceImpl.sha256(bytes));
-            metadata.put("bytes", bytes.length);
-            if (entry.getKey().endsWith(".csv"))
-                metadata.put("rows", entry.getValue().lines().count() - 1);
-            inventory.put(entry.getKey(), metadata);
-        }
-        Map<String, Object> manifest = Map.of("format", "openelis-amr-reference/v1", "packageVersion", version,
-                "packageId", "amr-reference-" + version, "source", Map.of("commit", "a".repeat(40)), "scope",
-                mapper.readTree(files.get("scope.json")), "files", inventory, "standards",
-                List.of(Map.of("publisher", "EUCAST", "version", edition, "guideline", "EUCAST 2026")));
-        Map<String, String> entries = new LinkedHashMap<>(files);
-        entries.put("manifest.json", mapper.writeValueAsString(manifest));
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try (ZipOutputStream zip = new ZipOutputStream(bytes)) {
-            for (var entry : entries.entrySet()) {
-                ZipEntry item = new ZipEntry(entry.getKey());
-                item.setTime(0);
-                zip.putNextEntry(item);
-                zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
-                zip.closeEntry();
-            }
-        }
-        return bytes.toByteArray();
-    }
 }

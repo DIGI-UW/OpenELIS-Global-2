@@ -612,7 +612,7 @@ describe("microbiology reference administration", () => {
         authority: "EUCAST",
         version: "2026-2026.1",
         lifecycleStatus: "LOADED",
-        packageManaged: true,
+        configurationManaged: true,
       });
       getBreakpointRules.mockResolvedValue({
         rows: [
@@ -638,7 +638,7 @@ describe("microbiology reference administration", () => {
         />,
       );
       await screen.findByText(
-        messages["microbiology.admin.breakpoints.packageManaged.title"],
+        messages["microbiology.admin.breakpoints.configurationManaged.title"],
       );
       expect(await screen.findByText("> 4")).toBeInTheDocument();
       expect(

@@ -104,9 +104,9 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if ("ARCHIVED".equals(standard.getLifecycleStatus())) {
             throw new MicroReferenceConflictException("Archived breakpoint standards are read-only");
         }
-        if (standard.getReferencePackageHash() != null) {
+        if (standard.getConfigurationHash() != null) {
             throw new MicroReferenceConflictException(
-                    "Package-managed breakpoint rules are immutable; load a new package revision");
+                    "Configuration-managed breakpoint rules are immutable; load a new edition revision");
         }
         if (request == null) {
             throw new IllegalArgumentException("Breakpoint rule is required");
@@ -272,7 +272,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         MicroBreakpointStandardAdminForm form = new MicroBreakpointStandardAdminForm();
         form.id = standard.getId();
         form.authority = standard.getAuthority();
-        form.packageManaged = standard.getReferencePackageHash() != null;
+        form.configurationManaged = standard.getConfigurationHash() != null;
         form.version = standard.getVersion();
         form.lifecycleStatus = standard.getLifecycleStatus();
         form.effectiveDate = standard.getEffectiveDate() == null ? null : standard.getEffectiveDate().toString();
@@ -304,7 +304,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         form.intermediateUpperValue = rule.getIntermediateUpperValue();
         form.resistantValue = rule.getResistantValue();
         form.resistantInclusive = rule.isResistantInclusive();
-        form.packageManaged = standard.getReferencePackageHash() != null;
+        form.configurationManaged = standard.getConfigurationHash() != null;
         form.units = rule.getUnits();
         form.notes = rule.getNotes();
         form.active = "Y".equals(rule.getIsActive());

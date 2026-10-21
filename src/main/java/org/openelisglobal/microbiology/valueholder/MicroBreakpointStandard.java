@@ -36,15 +36,15 @@ public class MicroBreakpointStandard extends BaseObject<String> {
     @Column(name = "last_updated_by", length = 20)
     private String lastUpdatedBy;
 
-    @Column(name = "reference_package_hash", length = 64)
-    private String referencePackageHash;
+    @Column(name = "configuration_hash", length = 64)
+    private String configurationHash;
 
-    public String getReferencePackageHash() {
-        return referencePackageHash;
+    public String getConfigurationHash() {
+        return configurationHash;
     }
 
-    public void setReferencePackageHash(String value) {
-        referencePackageHash = value;
+    public void setConfigurationHash(String value) {
+        configurationHash = value;
     }
 
     @Override

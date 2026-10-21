@@ -84,7 +84,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   );
   const canEditRules =
     selectedStandard &&
-    !selectedStandard.packageManaged &&
+    !selectedStandard.configurationManaged &&
     selectedStandard.lifecycleStatus !== "ARCHIVED";
   const requestQuery = buildReferenceRequestQuery(query);
 
@@ -396,16 +396,16 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           subtitle={error}
         />
       )}
-      {selectedStandard?.packageManaged && (
+      {selectedStandard?.configurationManaged && (
         <InlineNotification
           kind="info"
           lowContrast
           hideCloseButton
           title={intl.formatMessage({
-            id: "microbiology.admin.breakpoints.packageManaged.title",
+            id: "microbiology.admin.breakpoints.configurationManaged.title",
           })}
           subtitle={intl.formatMessage({
-            id: "microbiology.admin.breakpoints.packageManaged.description",
+            id: "microbiology.admin.breakpoints.configurationManaged.description",
           })}
         />
       )}

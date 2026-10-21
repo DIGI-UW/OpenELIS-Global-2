@@ -23,7 +23,7 @@ public class MicroReferencePackageOrmValidationTest {
             assertEquals(String.class,
                     model.entity(MicroAntibiotic.class).getAttribute("referenceSource").getJavaType());
             assertEquals(String.class,
-                    model.entity(MicroBreakpointStandard.class).getAttribute("referencePackageHash").getJavaType());
+                    model.entity(MicroBreakpointStandard.class).getAttribute("configurationHash").getJavaType());
             assertEquals(boolean.class,
                     model.entity(MicroBreakpointRule.class).getAttribute("resistantInclusive").getJavaType());
         }

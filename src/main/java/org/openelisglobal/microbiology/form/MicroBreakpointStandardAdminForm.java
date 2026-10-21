@@ -2,7 +2,7 @@ package org.openelisglobal.microbiology.form;
 
 public class MicroBreakpointStandardAdminForm {
     public String id;
-    public boolean packageManaged;
+    public boolean configurationManaged;
     public String authority;
     public String version;
     public String lifecycleStatus;

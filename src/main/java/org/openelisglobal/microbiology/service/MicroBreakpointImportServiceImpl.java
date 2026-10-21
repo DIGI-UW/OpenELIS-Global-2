@@ -86,48 +86,52 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
 
     @Override
     @Transactional
-    public MicroBreakpointImportPreviewForm applyConfiguration(String csv, String actorId, String packageHash) {
-        if (actorId == null || actorId.isBlank() || packageHash == null || !packageHash.matches("[a-f0-9]{64}")) {
-            throw new IllegalArgumentException("Configuration actor and package checksum are required");
+    public MicroBreakpointImportPreviewForm applyConfiguration(String csv, String actorId) {
+        if (actorId == null || actorId.isBlank()) {
+            throw new IllegalArgumentException("Configuration actor is required");
         }
+        String configurationHash = hash(csv);
         ImportPreview preview = parse(csv);
         if (!preview.errors.isEmpty() || preview.validRows.isEmpty()) {
-            throw new IllegalArgumentException("Invalid package breakpoints: "
+            throw new IllegalArgumentException("Invalid configuration breakpoints: "
                     + preview.errors.stream().map(e -> e.message).collect(java.util.stream.Collectors.joining("; ")));
         }
         for (ImportRow row : preview.validRows) {
             var existing = standardDAO.findByAuthorityAndVersion(row.authority, row.version);
-            if (existing.isPresent() && !packageHash.equals(existing.get().getReferencePackageHash())) {
+            if (existing.isPresent() && !configurationHash.equals(existing.get().getConfigurationHash())) {
                 throw new IllegalArgumentException(
                         "Standard edition already belongs to different content: " + row.version);
             }
         }
-        var result = applyRows(preview, null, actorId, packageHash);
+        var result = applyRows(preview, null, actorId, configurationHash);
         if (!result.errors.isEmpty()) {
-            throw new IllegalArgumentException("Package conflicts with an existing breakpoint");
+            throw new IllegalArgumentException("Configuration conflicts with an existing breakpoint");
         }
         return result;
     }
 
     private MicroBreakpointImportPreviewForm applyRows(ImportPreview preview, String previewToken, String actorId,
-            String packageHash) {
+            String configurationHash) {
         int imported = 0;
         int unchanged = 0;
+        List<Integer> unchangedLines = new ArrayList<>();
+        List<Integer> importedLines = new ArrayList<>();
         Map<String, MicroBreakpointStandard> standards = new java.util.HashMap<>();
         for (ImportRow row : preview.validRows) {
             String key = row.authority + "\n" + row.version;
             MicroBreakpointStandard standard = standards.computeIfAbsent(key,
-                    ignored -> findOrCreateStandard(row.authority, row.version, actorId, packageHash != null));
-            if (standard.getReferencePackageHash() != null && !standard.getReferencePackageHash().equals(packageHash)) {
-                throw new IllegalArgumentException("Package-managed standards cannot be changed by CSV upload");
+                    ignored -> findOrCreateStandard(row.authority, row.version, actorId, configurationHash != null));
+            if (standard.getConfigurationHash() != null && !standard.getConfigurationHash().equals(configurationHash)) {
+                throw new IllegalArgumentException("Configuration-managed standards cannot be changed by CSV upload");
             }
-            if (packageHash != null && standard.getReferencePackageHash() == null) {
-                standard.setReferencePackageHash(packageHash);
+            if (configurationHash != null && standard.getConfigurationHash() == null) {
+                standard.setConfigurationHash(configurationHash);
                 standardDAO.update(standard);
             }
             Optional<MicroBreakpointRule> existingHash = ruleDAO.findBySourceRowHash(row.sourceHash);
             if (existingHash.isPresent()) {
                 unchanged++;
+                unchangedLines.add(row.rowNumber);
                 continue;
             }
             Optional<MicroBreakpointRule> existingRule = ruleDAO.findByNaturalKey(standard.getId(), row.organismId,
@@ -146,8 +150,12 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 ruleDAO.insert(rule);
             }
             imported++;
+            importedLines.add(row.rowNumber);
         }
-        return toForm(previewToken, preview, imported + unchanged, imported, unchanged);
+        var result = toForm(previewToken, preview, imported + unchanged, imported, unchanged);
+        result.importedRowNumbers = importedLines;
+        result.unchangedRowNumbers = unchangedLines;
+        return result;
     }
 
     private ImportPreview parse(String csv) {
@@ -250,15 +258,48 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             row.resistantInclusive = Boolean.parseBoolean(inclusive);
         }
         row.notes = record.isMapped("notes") ? blankToNull(record.get("notes")) : null;
+        validateThresholds(row);
         row.sourceHash = hash(normalizedRow(row));
         return row;
     }
 
+    private void validateThresholds(ImportRow row) {
+        if (!row.method.equals(row.breakpointType)) {
+            throw new IllegalArgumentException("Method and breakpoint type must agree");
+        }
+        if (!("MIC".equals(row.method) ? List.of("mg/L", "ug/mL").contains(row.units) : "mm".equals(row.units))) {
+            throw new IllegalArgumentException("Unsupported measurement units");
+        }
+        var values = java.util.stream.Stream
+                .of(row.susceptibleValue, row.intermediateLowerValue, row.intermediateUpperValue, row.resistantValue)
+                .filter(java.util.Objects::nonNull).toList();
+        if (values.isEmpty()) {
+            throw new IllegalArgumentException("At least one threshold is required");
+        }
+        for (BigDecimal value : values) {
+            if (value.signum() <= 0 || value.stripTrailingZeros().scale() > 4
+                    || value.precision() - value.scale() > 8) {
+                throw new IllegalArgumentException("Threshold cannot be retained exactly: " + value);
+            }
+        }
+        if (row.susceptibleValue != null && row.resistantValue != null) {
+            int comparison = row.susceptibleValue.compareTo(row.resistantValue);
+            if ("MIC".equals(row.method) ? comparison > 0 : comparison < 0) {
+                throw new IllegalArgumentException("Thresholds are out of order");
+            }
+        }
+        if ((row.intermediateLowerValue == null) != (row.intermediateUpperValue == null)
+                || (row.intermediateLowerValue != null
+                        && row.intermediateLowerValue.compareTo(row.intermediateUpperValue) > 0)) {
+            throw new IllegalArgumentException("Intermediate interval must have ordered lower and upper bounds");
+        }
+    }
+
     private MicroBreakpointStandard findOrCreateStandard(String authority, String version, String actorId,
-            boolean packageReload) {
+            boolean configurationReload) {
         Optional<MicroBreakpointStandard> existing = standardDAO.findByAuthorityAndVersion(authority, version);
         if (existing.isPresent()) {
-            if (!packageReload && "ARCHIVED".equals(existing.get().getLifecycleStatus())) {
+            if (!configurationReload && "ARCHIVED".equals(existing.get().getLifecycleStatus())) {
                 throw new IllegalArgumentException("Cannot import into archived breakpoint standard");
             }
             return existing.get();

@@ -17,18 +17,18 @@
    <column name="resistant_inclusive" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
   </addColumn>
   <addColumn schemaName="clinlims" tableName="micro_breakpoint_standard">
-   <column name="reference_package_hash" type="varchar(64)"/>
+   <column name="configuration_hash" type="varchar(64)"/>
   </addColumn>
   <rollback>
    <sql splitStatements="false">DO $$ BEGIN
-    IF EXISTS (SELECT 1 FROM clinlims.micro_breakpoint_standard WHERE reference_package_hash IS NOT NULL)
+    IF EXISTS (SELECT 1 FROM clinlims.micro_breakpoint_standard WHERE configuration_hash IS NOT NULL)
        OR EXISTS (SELECT 1 FROM clinlims.micro_breakpoint_rule WHERE NOT resistant_inclusive)
        OR EXISTS (SELECT 1 FROM clinlims.micro_organism WHERE reference_code IS NOT NULL)
        OR EXISTS (SELECT 1 FROM clinlims.micro_antibiotic WHERE reference_code IS NOT NULL) THEN
      RAISE EXCEPTION 'Reference package rollback would lose provenance or change interpretation boundaries; restore the pre-import backup instead';
     END IF;
    END $$;</sql>
-   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_standard" columnName="reference_package_hash"/>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_standard" columnName="configuration_hash"/>
    <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="resistant_inclusive"/>
    <dropUniqueConstraint schemaName="clinlims" tableName="micro_antibiotic" constraintName="uq_micro_antibiotic_reference"/>
    <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="reference_code"/>

@@ -48,14 +48,14 @@ public class MicroReferencePackageLiquibaseRollbackTest {
                         sql.execute(
                                 "UPDATE clinlims.micro_breakpoint_rule SET resistant_inclusive=true WHERE id='legacy'");
                         sql.execute(
-                                "INSERT INTO clinlims.micro_breakpoint_standard(id,reference_package_hash) VALUES ('managed','"
+                                "INSERT INTO clinlims.micro_breakpoint_standard(id,configuration_hash) VALUES ('managed','"
                                         + "a".repeat(64) + "')");
                     }
                     connection.commit();
                     assertThrows(liquibase.exception.LiquibaseException.class, () -> migration.rollback(1, ""));
                     database.rollback();
                     assertEquals("a".repeat(64), scalar(connection,
-                            "SELECT reference_package_hash FROM clinlims.micro_breakpoint_standard WHERE id='managed'"));
+                            "SELECT configuration_hash FROM clinlims.micro_breakpoint_standard WHERE id='managed'"));
                 }
             }
         }

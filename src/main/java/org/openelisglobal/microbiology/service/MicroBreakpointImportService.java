@@ -8,5 +8,5 @@ public interface MicroBreakpointImportService {
 
     MicroBreakpointImportPreviewForm apply(String previewToken, String actorId);
 
-    MicroBreakpointImportPreviewForm applyConfiguration(String csv, String actorId, String packageHash);
+    MicroBreakpointImportPreviewForm applyConfiguration(String csv, String actorId);
 }

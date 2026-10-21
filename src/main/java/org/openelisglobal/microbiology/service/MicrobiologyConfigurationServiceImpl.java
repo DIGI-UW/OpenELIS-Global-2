@@ -219,9 +219,9 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
     private void requireUnmanagedStandard(String id) {
         MicroBreakpointStandard standard = standardDAO.get(id)
                 .orElseThrow(() -> new IllegalArgumentException("Breakpoint standard not found"));
-        if (standard.getReferencePackageHash() != null) {
+        if (standard.getConfigurationHash() != null) {
             throw new MicroReferenceConflictException(
-                    "Package-managed editions require explicit activation and cannot be edited");
+                    "Configuration-managed editions require explicit activation and cannot be edited");
         }
     }
 

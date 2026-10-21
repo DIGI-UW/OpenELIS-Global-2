@@ -19,7 +19,7 @@ public class MicroBreakpointRuleAdminForm {
     public BigDecimal intermediateUpperValue;
     public BigDecimal resistantValue;
     public boolean resistantInclusive = true;
-    public boolean packageManaged;
+    public boolean configurationManaged;
     public String units;
     public String notes;
     public boolean active = true;

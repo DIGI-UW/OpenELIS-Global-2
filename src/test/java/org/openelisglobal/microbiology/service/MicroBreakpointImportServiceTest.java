@@ -180,6 +180,17 @@ public class MicroBreakpointImportServiceTest {
         verify(ruleDAO, never()).update(org.mockito.ArgumentMatchers.any());
     }
 
+    @Test
+    public void previewRejectsMeasurementsThatCannotBeInterpretedOrStoredExactly() {
+        for (String fields : List.of("MIC,,MIC,0,,,4,ug/mL", "MIC,,MIC,0.00001,,,4,ug/mL", "MIC,,MIC,5,,,4,ug/mL",
+                "MIC,,MIC,1,,,4,mm", "MIC,,ZONE,1,,,4,ug/mL", "MIC,,MIC,1,3,2,4,ug/mL", "MIC,,MIC,1,2,,4,ug/mL")) {
+            var result = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            assertEquals(fields, 0, result.validRows);
+            assertEquals(fields, 1, result.errors.size());
+        }
+        verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
     private String csv(String rows) {
         return "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,"

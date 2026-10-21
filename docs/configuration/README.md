@@ -46,20 +46,20 @@ District → Sub-District → Village).
 - **Features:** Configurable hierarchy levels, parent-child relationships,
   backward compatible with Health Region/District
 
-### [Microbiology Reference Packages](microbiology-reference-packages.md)
+### [Microbiology Reference Configuration](microbiology-reference-packages.md)
 
-- **Location:** `configuration/backend/microbiology-reference-packages/`
-- **Format:** independently released, checksum-pinned ZIP
-  (`openelis-amr-reference/v1`)
-- **Features:** source-identified concepts, immutable inactive editions, exact
-  MIC boundaries, source-generated interpretation checks, repeatable loading
+- **Locations:** `configuration/backend/microbiology-organisms/`,
+  `microbiology-antimicrobials/`, and `microbiology-breakpoints/`
+- **Format:** ordinary configuration CSVs, optionally installed from an
+  independently published, deployment-pinned metadata package
+- **Features:** shared catalog preview/apply/reload, source identities, local
+  customization preservation, immutable inactive editions and exact boundaries
 
 ## How Configuration Loading Works
 
 Configuration files are loaded automatically during application startup:
 
 1. **Files are discovered** from:
-
    - Classpath: `src/main/resources/configuration/{domain}/*.csv`
    - Filesystem: `/var/lib/openelis-global/configuration/backend/{domain}/*.csv`
      (mapped from `./configuration/backend/{domain}/` in Docker)
