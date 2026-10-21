@@ -7,12 +7,10 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.openelisglobal.common.constants.Constants;
-import org.openelisglobal.microbiology.dao.*;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseResourceAccessService;
 import org.openelisglobal.microbiology.service.MicroCaseWriteAccessGuard;
-import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
@@ -20,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Applies the case's current unit to retained case and child-resource
@@ -29,21 +26,10 @@ import org.springframework.web.server.ResponseStatusException;
 @Aspect
 @Component
 public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
-    private final MicrobiologyCaseAccessService access;
-    private final MicroCaseDAO cases;
-    private final MicroIsolateDAO isolates;
-    private final MicroAstRunDAO runs;
-    private final MicroAstReadingDAO readings;
-    private final MicroCriticalCommunicationDAO communications;
+    private final MicroCaseResourceAccessService resources;
 
-    public MicroCaseAccessGuard(MicrobiologyCaseAccessService access, MicroCaseDAO cases, MicroIsolateDAO isolates,
-            MicroAstRunDAO runs, MicroAstReadingDAO readings, MicroCriticalCommunicationDAO communications) {
-        this.access = access;
-        this.cases = cases;
-        this.isolates = isolates;
-        this.runs = runs;
-        this.readings = readings;
-        this.communications = communications;
+    public MicroCaseAccessGuard(MicroCaseResourceAccessService resources) {
+        this.resources = resources;
     }
 
     @Before("execution(public * org.openelisglobal.microbiology.controller.rest.*.*(..)) && @within(org.springframework.web.bind.annotation.RestController)")
@@ -63,7 +49,7 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
             if ("caseId".equals(name))
                 caseId = (String) args[i];
             else if (name != null && args[i] instanceof String) {
-                String resolved = resolve(name, (String) args[i]);
+                String resolved = resources.resolveCaseId(name, (String) args[i]);
                 if (resolved != null)
                     childCase = resolved;
             }
@@ -75,7 +61,7 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
                 if (arg instanceof MicroIsolateRequestForm f)
                     caseId = f.caseId;
                 if (arg instanceof MicroAstRunRequestForm f)
-                    caseId = resolve("isolateId", f.isolateId);
+                    caseId = resources.resolveCaseId("isolateId", f.isolateId);
             }
         if (caseId == null)
             return; // Catalog/search endpoints have their own scoped query.
@@ -84,32 +70,20 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
             throw new AccessDeniedException("Authenticated request required");
         HttpServletRequest request = attributes.getRequest();
         String actor = authenticatedUserId(request);
-        var c = cases.get(caseId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         boolean read = "GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod());
         PreAuthorize rule = method.getAnnotation(PreAuthorize.class);
         String role = rule != null && SUPERVISOR_ACCESS.equals(rule.value()) ? Constants.ROLE_VALIDATION
                 : Constants.ROLE_RESULTS;
-        boolean allowed = read || access.hasLabUnitRole(actor, c.getLabUnitId(), role);
-        if (!allowed)
-            throw new AccessDeniedException("Case lab unit access required");
+        for (Object arg : args) {
+            if (arg instanceof MicroIsolateRequestForm form
+                    && "CONFIRMED".equalsIgnoreCase(form.identificationStatus)) {
+                role = Constants.ROLE_VALIDATION;
+            }
+        }
+        resources.requireAccess(caseId, actor, role, read);
         if (!read)
             request.setAttribute(MicroCaseWriteAccessGuard.REQUEST_SCOPE,
                     new MicroCaseWriteAccessGuard.WriteScope(caseId, actor, role));
     }
 
-    private String resolve(String kind, String id) {
-        if (id == null)
-            return null;
-        return switch (kind) {
-        case "isolateId" ->
-            isolates.get(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)).getCaseId();
-        case "runId", "sourceRunId" -> resolve("isolateId",
-                runs.get(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)).getIsolateId());
-        case "readingId" -> resolve("runId",
-                readings.get(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)).getAstRunId());
-        case "communicationId" ->
-            communications.get(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)).getCaseId();
-        default -> null;
-        };
-    }
 }

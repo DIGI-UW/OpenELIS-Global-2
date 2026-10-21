@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import { Router, Route } from "react-router-dom";
@@ -155,6 +155,49 @@ describe("MVP microbiology case workspace", () => {
     finish({ ...shell, labUnit: "TB lab" });
     await waitFor(() => expect(screen.queryByText("Test Patient")).toBeNull());
     expect(screen.getByText("Second Patient")).toBeTruthy();
+  });
+  test("a transfer from a previous visit cannot overwrite a case revisited through another case", async () => {
+    let finish;
+    const service = {
+      getCase: vi.fn().mockImplementation((id) =>
+        Promise.resolve({
+          ...shell,
+          id,
+          patientName: id === "case-2" ? "Second Patient" : "Test Patient",
+        }),
+      ),
+      transferCase: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    };
+    const history = renderPage(
+      <Route path="/Microbiology/cases/:caseId">
+        <CaseViewShell service={service} />
+      </Route>,
+      "/Microbiology/cases/case-1",
+    );
+    await screen.findByText("Test Patient");
+    fireEvent.change(screen.getByLabelText("Destination lab unit"), {
+      target: { value: "11" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Transfer case" }));
+    act(() => history.push("/Microbiology/cases/case-2"));
+    await screen.findByText("Second Patient");
+    act(() => history.push("/Microbiology/cases/case-1"));
+    await screen.findByText("Test Patient");
+    await act(async () =>
+      finish({
+        ...shell,
+        patientName: "Stale transferred patient",
+        labUnit: "TB lab",
+      }),
+    );
+    expect(screen.queryByText("Stale transferred patient")).toBeNull();
+    expect(screen.getByText("Test Patient")).toBeTruthy();
+    expect(screen.getByText("Culture lab")).toBeTruthy();
   });
   test("validation readers do not receive transfer controls", async () => {
     renderPage(

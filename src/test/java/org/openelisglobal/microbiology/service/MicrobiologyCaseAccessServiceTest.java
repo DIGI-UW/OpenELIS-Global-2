@@ -19,6 +19,8 @@ public class MicrobiologyCaseAccessServiceTest {
     private MicroCaseDAO cases;
     private UserService users;
     private UserRoleService userRoles;
+    private org.openelisglobal.systemuser.service.SystemUserService systemUsers;
+    private org.openelisglobal.login.service.LoginUserService logins;
     private MicrobiologyCaseAccessServiceImpl access;
 
     @Before
@@ -33,7 +35,29 @@ public class MicrobiologyCaseAccessServiceTest {
         validation.setId("v");
         when(roles.getRoleByName(Constants.ROLE_RESULTS)).thenReturn(results);
         when(roles.getRoleByName(Constants.ROLE_VALIDATION)).thenReturn(validation);
-        access = new MicrobiologyCaseAccessServiceImpl(cases, users, roles, userRoles);
+        systemUsers = mock(org.openelisglobal.systemuser.service.SystemUserService.class);
+        logins = mock(org.openelisglobal.login.service.LoginUserService.class);
+        access = new MicrobiologyCaseAccessServiceImpl(cases, users, roles, userRoles, systemUsers, logins);
+    }
+
+    @Test
+    public void loginAdministratorNeedsNoGlobalRoleRecordOrLabAssignment() {
+        var user = new org.openelisglobal.systemuser.valueholder.SystemUser();
+        user.setLoginName("manager");
+        var login = new org.openelisglobal.login.valueholder.LoginUser();
+        login.setIsAdmin("Y");
+        when(systemUsers.get("7")).thenReturn(user);
+        when(logins.getUserProfile("manager")).thenReturn(login);
+        assertNull(access.permittedLabUnitIds("7", Constants.ROLE_RESULTS));
+        assertTrue(access.hasLabUnitRole("7", "10", Constants.ROLE_VALIDATION));
+        assertFalse(access.canAccessCase("missing", "7", true));
+    }
+
+    @Test
+    public void fallbackAdministratorNeedsNoGlobalAdministratorRole() {
+        when(userRoles.userInRole("7", "Admin")).thenReturn(true);
+        assertNull(access.permittedLabUnitIds("7", Constants.ROLE_RESULTS));
+        assertTrue(access.hasLabUnitRole("7", "10", Constants.ROLE_VALIDATION));
     }
 
     private void assign(String unit, String role) {

@@ -149,12 +149,14 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{runId}/review")
+    @PreAuthorize(SUPERVISOR_ACCESS)
     public ResponseEntity<MicroAstRunForm> reviewRun(@PathVariable String runId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunForm(astService.reviewRun(runId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/runs/{runId}/reportable")
+    @PreAuthorize(SUPERVISOR_ACCESS)
     public ResponseEntity<MicroAstRunForm> selectReportableRun(@PathVariable String runId,
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunForm(astService.selectReportableRun(runId, authenticatedUserId(httpRequest))));

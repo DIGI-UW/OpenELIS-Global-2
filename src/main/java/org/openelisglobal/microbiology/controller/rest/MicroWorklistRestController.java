@@ -1,11 +1,9 @@
 package org.openelisglobal.microbiology.controller.rest;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
-import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

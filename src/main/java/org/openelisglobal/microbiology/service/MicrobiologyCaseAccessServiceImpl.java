@@ -20,20 +20,25 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
     private final UserService users;
     private final RoleService roles;
     private final UserRoleService userRoles;
+    private final org.openelisglobal.systemuser.service.SystemUserService systemUsers;
+    private final org.openelisglobal.login.service.LoginUserService logins;
 
     public MicrobiologyCaseAccessServiceImpl(MicroCaseDAO cases, UserService users, RoleService roles,
-            UserRoleService userRoles) {
+            UserRoleService userRoles, org.openelisglobal.systemuser.service.SystemUserService systemUsers,
+            org.openelisglobal.login.service.LoginUserService logins) {
         this.cases = cases;
         this.users = users;
         this.roles = roles;
         this.userRoles = userRoles;
+        this.systemUsers = systemUsers;
+        this.logins = logins;
     }
 
     @Override
     public Set<String> permittedLabUnitIds(String userId, String roleName) {
         if (userId == null || userId.isBlank())
             return Set.of();
-        if (userRoles.userInRole(userId, Constants.ROLE_GLOBAL_ADMIN))
+        if (isAdministrator(userId))
             return null;
         var role = roles.getRoleByName(roleName);
         if (role == null)
@@ -51,6 +56,19 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
             }
         }
         return ids;
+    }
+
+    private boolean isAdministrator(String userId) {
+        if (userRoles.userInRole(userId, Constants.ROLE_GLOBAL_ADMIN) || userRoles.userInRole(userId, "Admin")) {
+            return true;
+        }
+        var user = systemUsers.get(userId);
+        if (user == null || user.getLoginName() == null) {
+            return false;
+        }
+        var login = logins.getUserProfile(user.getLoginName());
+        return login != null
+                && org.openelisglobal.common.action.IActionConstants.YES.equalsIgnoreCase(login.getIsAdmin());
     }
 
     @Override

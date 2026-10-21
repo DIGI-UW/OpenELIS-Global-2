@@ -36,8 +36,22 @@ export default function CaseViewShell({
   const location = useLocation();
   const id = providedId || params.caseId;
   const t = (id, values) => intl.formatMessage({ id }, values);
-  const currentCase = useRef(id);
-  currentCase.current = id;
+  const currentCase = useRef({ id, generation: 0 });
+  if (currentCase.current.id !== id) {
+    currentCase.current = {
+      id,
+      generation: currentCase.current.generation + 1,
+    };
+  }
+  useEffect(
+    () => () => {
+      currentCase.current = {
+        id: null,
+        generation: currentCase.current.generation + 1,
+      };
+    },
+    [],
+  );
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -68,7 +82,7 @@ export default function CaseViewShell({
     };
   }, [id, service]);
   const transfer = () => {
-    const requestedCase = id;
+    const requestedCase = currentCase.current;
     setSaving(true);
     setTransferError(false);
     service
