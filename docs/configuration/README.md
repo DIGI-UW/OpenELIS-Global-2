@@ -51,6 +51,7 @@ District → Sub-District → Village).
 Configuration files are loaded automatically during application startup:
 
 1. **Files are discovered** from:
+
    - Classpath: `src/main/resources/configuration/{domain}/*.csv`
    - Filesystem: `/var/lib/openelis-global/configuration/backend/{domain}/*.csv`
      (mapped from `./configuration/backend/{domain}/` in Docker)
@@ -106,8 +107,8 @@ are `programCode,reportingTrack`; the track must be an active entry in the
 follow the normal configuration checksum and reload behavior. Program
 administrators can also select the track in Program management.
 
-These catalogs are configuration, not Liquibase seed data. The M8 migration
-only changes storage and converts existing legacy case data.
+These catalogs are configuration, not Liquibase seed data. The M8 migration only
+changes storage and converts existing legacy case data.
 
 Culture atmospheres, reading codes, quantities, and extension reasons are loaded
 from `configuration/microbiology-cultures/default.csv` through the dictionary
@@ -116,13 +117,14 @@ entries retain their identifiers when the configuration is imported, and
 site-specific entries are retained. Installations can override this catalog in
 the `microbiology-cultures` configuration directory.
 
-Container label presets now load from `configuration/label-presets/microbiology.csv`,
-and the self-validation default loads from `configuration/microbiology-settings/default.csv`
-through the site-information importer. Both catalogs use `createOnly=true` to
-retain existing administrator choices, including enabled self-validation
-protection. A site configuration can set `createOnly=false` to update existing
-values. Their former M3 and M7 seed changesets have been removed; upgrading does
-not delete existing settings or labels.
+Container label presets now load from
+`configuration/label-presets/microbiology.csv`, and the self-validation default
+loads from `configuration/microbiology-settings/default.csv` through the
+site-information importer. Both catalogs use `createOnly=true` to retain
+existing administrator choices, including enabled self-validation protection. A
+site configuration can set `createOnly=false` to update existing values. Their
+former M3 and M7 seed changesets have been removed; upgrading does not delete
+existing settings or labels.
 
 The earlier patient-origin catalog also loads through configuration, from
 `configuration/microbiology-patient-origins/default.csv`. Matching codes retain

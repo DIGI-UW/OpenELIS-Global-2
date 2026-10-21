@@ -44,7 +44,7 @@
             type="java.lang.String" />
 
         <property name="reportingTrackId" column="reporting_track_id"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"/>
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
         <property name="showOnMicroCase" column="show_on_micro_case"
             type="boolean" not-null="true" />
 

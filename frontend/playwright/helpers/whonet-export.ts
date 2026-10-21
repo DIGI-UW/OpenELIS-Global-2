@@ -9,6 +9,7 @@ type WhonetExportFilters = {
   significance?: string[];
   includeScreening?: boolean;
   includeUnspecified?: boolean;
+  includeEnvironmentalIsolates?: boolean;
   dedup?:
     | "NONE"
     | "FIRST_ISOLATE_7_DAY"
@@ -50,6 +51,10 @@ export const buildWhonetExportQuery = (
     .forEach((id) => params.append("significance", id));
   params.set("includeScreening", String(Boolean(filters.includeScreening)));
   params.set("includeUnspecified", String(Boolean(filters.includeUnspecified)));
+  params.set(
+    "includeEnvironmentalIsolates",
+    String(Boolean(filters.includeEnvironmentalIsolates)),
+  );
 
   const canonical = new URLSearchParams();
   ["from", "to"].forEach((key) => canonical.set(key, params.get(key) || ""));
