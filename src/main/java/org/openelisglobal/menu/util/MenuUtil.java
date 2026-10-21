@@ -132,10 +132,18 @@ public class MenuUtil {
         sortChildren(rootWrapper);
         // The rows took the file's selection when the menu was seeded; entries added at
         // runtime take it here.
-        dropLeftOut(rootWrapper,
-                SpringContext.getBean(MenuConfigurationSeeder.class).leftOut(rootWrapper.getChildMenus()));
+        dropLeftOut(rootWrapper, runtimeEntriesLeftOut(rootWrapper.getChildMenus()));
 
         root = rootWrapper.getChildMenus();
+    }
+
+    /** Empty in a context without the seeder, which has no selection to apply. */
+    private static Set<String> runtimeEntriesLeftOut(List<MenuItem> tree) {
+        try {
+            return SpringContext.getBean(MenuConfigurationSeeder.class).leftOut(tree);
+        } catch (org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
+            return Set.of();
+        }
     }
 
     private static void dropLeftOut(MenuItem parent, Set<String> leftOut) {
