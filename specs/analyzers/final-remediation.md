@@ -106,6 +106,11 @@ final remediation; source inspection is not a passing regression test.
 - The corrected mock passed 281 tests and 13 subtests (5 skipped), Python
   compilation, and all seven Bridge cross-process traffic/recovery scenarios.
   The corrected inventory test passed all 81 tests in both Los Angeles and UTC.
+- The dictionary integration test now supplies Bridge API-shaped fingerprint
+  metadata when reading authored profile files. The candidate Mindray profile
+  also requires 17 manual-differential entries in the harness dictionary; those
+  fixtures now bind without weakening the all-records assertion. All eight
+  focused dictionary and API-profile parsing tests passed.
 - Full local CI and GitHub checks must be inspected on the pushed candidate.
   Check every stack layer; a green tip does not establish a green stack.
 
