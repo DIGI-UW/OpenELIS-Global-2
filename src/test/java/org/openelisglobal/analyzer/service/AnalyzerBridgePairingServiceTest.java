@@ -247,6 +247,20 @@ public class AnalyzerBridgePairingServiceTest {
     }
 
     @Test
+    public void aStateAnswerWithoutAPairedFlagIsReadAsUnknownAndChangesNothing() {
+        AnalyzerBridgePairingService pairing = service(CODE);
+        pairing.pairWithConfiguredCode();
+
+        for (String answer : new String[] { "{}", "", "[]", "{\"paired\":\"yes\"}" }) {
+            bridge.answerStateWith(answer);
+            assertNull(answer, pairing.getStatus().pinCheck());
+            pairing.pairWithConfiguredCode();
+        }
+
+        assertEquals(1, bridge.pairingAttempts.get());
+    }
+
+    @Test
     public void aPinTheBridgeStillPresentsIsLeftAlone() {
         AnalyzerBridgePairingService pairing = service(CODE);
         pairing.pairWithConfiguredCode();

@@ -207,8 +207,12 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
             if (response.statusCode() != 200) {
                 return Optional.empty();
             }
-            return Optional.of(JSON.readTree(response.body()).path("paired").asBoolean(true) ? PinCheck.MATCHES
-                    : PinCheck.BRIDGE_UNPAIRED);
+            JsonNode answer = JSON.readTree(response.body());
+            JsonNode paired = answer == null ? null : answer.get("paired");
+            if (paired == null || !paired.isBoolean()) {
+                return Optional.empty();
+            }
+            return Optional.of(paired.booleanValue() ? PinCheck.MATCHES : PinCheck.BRIDGE_UNPAIRED);
         } catch (GeneralSecurityException | IOException e) {
             return Optional.empty();
         } catch (InterruptedException e) {
