@@ -32,6 +32,31 @@ public class MicroBenchPrintServiceTest {
     }
 
     @Test
+    public void selectedCasesReadOnlyRequestedIdsAndRejectChangedOwnership() {
+        var workspace = mock(MicroCaseWorkspaceService.class);
+        var access = mock(MicrobiologyCaseAccessService.class);
+        var service = new MicroBenchServiceImpl(workspace, mock(MicroCultureService.class),
+                mock(org.openelisglobal.microbiology.dao.MicroIncomingItemDAO.class),
+                mock(org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO.class),
+                mock(org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO.class), access,
+                mock(MicroBenchCaseService.class));
+        when(access.canReadLabUnit("reader", "unit")).thenReturn(true);
+        var shell = new MicroCaseShellForm();
+        shell.id = "case";
+        shell.labUnitId = "unit";
+        when(workspace.get("case", "reader")).thenReturn(shell);
+        assertEquals(List.of("case"),
+                service.selectedCases("unit", List.of("case"), "reader").stream().map(r -> r.caseId).toList());
+        verify(workspace).get("case", "reader");
+        verify(workspace, never()).search(any(), anyString());
+        shell.labUnitId = "transferred";
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.selectedCases("unit", List.of("case"), "reader"));
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.selectedCases("unit", List.of("case"), "outsider"));
+    }
+
+    @Test
     public void openingSheetReplaysBytesWithoutReadingChangedCases() throws Exception {
         var bench = mock(MicroBenchService.class);
         var cultures = mock(MicroCultureService.class);
@@ -45,14 +70,13 @@ public class MicroBenchPrintServiceTest {
         row.accessionNumber = "PRINT-001";
         row.patientName = "Test Patient";
         row.cultureTests = List.of();
-        var page = new MicroBenchPageForm();
-        page.total = 1;
-        page.rows = List.of(row);
-        when(bench.search(any(), eq("reader"))).thenReturn(page);
+        when(bench.selectedCases("unit", List.of("case"), "reader")).thenReturn(List.of(row));
         var request = new MicroBenchPrintForm();
         request.labUnitId = "unit";
         request.caseIds = List.of("case");
         var printed = service.print(request, "reader");
+        verify(bench).selectedCases("unit", List.of("case"), "reader");
+        verify(bench, never()).search(any(), anyString());
         var captured = ArgumentCaptor.forClass(WorkplanPrintRecord.class);
         verify(records).insert(captured.capture());
         when(records.get(printed.id())).thenReturn(Optional.of(captured.getValue()));

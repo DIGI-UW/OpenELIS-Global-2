@@ -36,6 +36,7 @@ public class MicroIncomingResultServiceTest {
         var test = new org.openelisglobal.test.valueholder.Test();
         test.setId("12");
         test.setName("Culture");
+        test.setDescription("Culture");
         when(tests.get("12")).thenReturn(test);
         payload = new MicroCaseResultRequestForm();
         var component = new MicroCaseResultRequestForm.ResultComponent();
@@ -90,6 +91,25 @@ public class MicroIncomingResultServiceTest {
         assertEquals("PLACED", f.state);
         assertEquals("analysis", f.placementTarget);
         verify(results).receiveResult("case", "analysis", payload, "1");
+    }
+
+    @Test
+    public void directLinksPermitOutsideReadersWhilePlacementRemainsUnitRestricted() {
+        var item = new MicroIncomingItem();
+        item.setMicroCase(c);
+        item.setTestId("12");
+        item.setState("WAITING");
+        item.setStructuredResult("{\"components\":[{\"componentId\":\"primary\",\"value\":\"3\"}]}");
+        when(queue.forCase("case")).thenReturn(List.of(item));
+        var read = service.list("case", "outsider");
+        assertEquals(1, read.size());
+        assertEquals("Culture", read.get(0).testName);
+        assertEquals("3", read.get(0).result.components.get(0).value);
+        var request = new MicroIncomingPlacementForm();
+        request.sampleItemId = "tube";
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.place("case", item.getId(), request, "outsider", null));
+        verifyZeroInteractions(results);
     }
 
     @Test

@@ -130,7 +130,8 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
                 .anyMatch(t -> !"NotStarted".equals(t.status)))
             throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_EXISTING_RESULT");
         var payload = request.result == null ? decode(item.getStructuredResult()) : request.result;
-        payload.version = MicroCaseResultServiceImpl.version(candidates.get(0), links.getByCaseAndAnalysis(target, analysisId));
+        payload.version = MicroCaseResultServiceImpl.version(candidates.get(0),
+                links.getByCaseAndAnalysis(target, analysisId));
         results.saveResults(target, analysisId, payload, actor, http);
         item.setMicroCase(cases.get(target).orElseThrow());
         item.setSampleItemId(request.sampleItemId);

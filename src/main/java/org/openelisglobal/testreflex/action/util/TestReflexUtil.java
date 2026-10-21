@@ -577,6 +577,16 @@ public class TestReflexUtil {
             return Optional.empty();
         }
 
+        String requestedTestId = reflex.getAddedTestId();
+        if (!GenericValidator.isBlankOrNull(reflex.getFlags())) {
+            requestedTestId = isUserChoiceReflex(reflex) && actionSelectionId != null
+                    && actionSelectionId.startsWith("test_") ? actionSelectionId.substring("test_".length()) : null;
+        }
+        if (addTest && requestedTestId != null
+                && SpringContext.getBean(org.openelisglobal.microbiology.service.MicroIncomingReflexPolicy.class)
+                        .alreadyOnCaseOrWaiting(result.getAnalysis().getId(), requestedTestId))
+            return Optional.empty();
+
         if (addTest || handleAction) {
 
             ReflexAction reflexAction = reflexResolver.getReflexAction();
@@ -595,12 +605,6 @@ public class TestReflexUtil {
             Result finalResult = reflexAction.getFinalResult();
 
             ReflexAction.CaseWork caseWork = reflexAction.getCaseWork();
-            String reflexTestId = caseWork != null ? caseWork.test().getId()
-                    : newAnalysis == null ? null : newAnalysis.getTest().getId();
-            if (addTest && reflexTestId != null
-                    && SpringContext.getBean(org.openelisglobal.microbiology.service.MicroIncomingReflexPolicy.class)
-                            .alreadyOnCaseOrWaiting(result.getAnalysis().getId(), reflexTestId))
-                return Optional.empty();
             if (caseWork != null && addTest) {
                 SpringContext.getBean(org.openelisglobal.microbiology.service.MicroOrderRoutingService.class)
                         .routeCaseTest(caseWork.order(), caseWork.sampleTypeId(), caseWork.sample(), caseWork.test(),

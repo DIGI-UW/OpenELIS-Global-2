@@ -44,18 +44,8 @@ public class MicroBenchPrintServiceImpl implements MicroBenchPrintService {
         requireUnit(request.labUnitId, actor);
         if (request.caseIds == null || request.caseIds.isEmpty() || request.caseIds.size() > 100)
             throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
-        var query = new MicroBenchQueryForm();
-        query.labUnitId = request.labUnitId;
-        query.pageSize = 100;
-        query.page = 1;
-        java.util.List<MicroBenchPageForm.Row> selected = new ArrayList<>();
-        while (true) {
-            var page = bench.search(query, actor);
-            selected.addAll(page.rows.stream().filter(r -> request.caseIds.contains(r.caseId)).toList());
-            if (query.page * query.pageSize >= page.total)
-                break;
-            query.page++;
-        }
+        java.util.List<MicroBenchPageForm.Row> selected = bench.selectedCases(request.labUnitId, request.caseIds,
+                actor);
         if (selected.stream().map(r -> r.caseId).distinct().count() != new HashSet<>(request.caseIds).size())
             throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
         java.util.List<MicroBenchPageForm.Row> expanded = new ArrayList<>();

@@ -98,6 +98,22 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         return result;
     }
 
+    @Transactional(readOnly = true)
+    public List<MicroBenchPageForm.Row> selectedCases(String labUnitId, List<String> caseIds, String actor) {
+        if (labUnitId == null || !access.canReadLabUnit(actor, labUnitId))
+            throw new org.springframework.security.access.AccessDeniedException("Lab unit rights required");
+        if (caseIds == null || caseIds.isEmpty() || caseIds.size() > 100)
+            throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
+        var selected = new ArrayList<MicroBenchPageForm.Row>();
+        for (String caseId : new LinkedHashSet<>(caseIds)) {
+            var shell = workspace.get(caseId, actor);
+            if (!labUnitId.equals(shell.labUnitId))
+                throw new org.springframework.security.access.AccessDeniedException("Case lab unit access required");
+            selected.add(row(shell, null, List.of(), actor));
+        }
+        return selected;
+    }
+
     private List<String> caseAttention(String caseId) {
         var base = new ArrayList<String>();
         var queued = incoming.forCase(caseId);

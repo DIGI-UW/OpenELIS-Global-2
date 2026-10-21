@@ -19,7 +19,8 @@ public class MicroIncomingDeliveryListener {
         Map<List<String>, List<AnalyzerResults>> groups = new LinkedHashMap<>();
         for (var row : event.rows()) {
             var key = Arrays.asList(row.getSourceConnectionId(), row.getSourceMessageId(),
-                    row.getInstrumentSpecimenId(), row.getTestId(), row.getRawTestCode(), row.getRawSubIdentity());
+                    row.getInstrumentSpecimenId() == null ? row.getAccessionNumber() : row.getInstrumentSpecimenId(),
+                    row.getTestId());
             groups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
         }
         for (var group : groups.values()) {

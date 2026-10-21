@@ -310,7 +310,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             HttpServletRequest httpRequest, boolean checkToken) {
         var a = requireAnalysis(caseId, analysisId);
         if (checkToken)
-        checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
+            checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
         requireEditable(a);
         if (!checkToken && !"NotStarted".equals(state(a)))
             bad("MICROBIOLOGY_INCOMING_EXISTING_RESULT");

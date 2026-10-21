@@ -6,5 +6,7 @@ import org.openelisglobal.microbiology.form.*;
 public interface MicroBenchService {
     MicroBenchPageForm search(MicroBenchQueryForm query, String actor);
 
+    List<MicroBenchPageForm.Row> selectedCases(String labUnitId, List<String> caseIds, String actor);
+
     List<MicroBenchResultForm> apply(MicroBenchRequestForm request, String actor);
 }
