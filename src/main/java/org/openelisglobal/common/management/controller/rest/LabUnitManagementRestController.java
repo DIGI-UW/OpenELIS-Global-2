@@ -496,10 +496,10 @@ public class LabUnitManagementRestController extends BaseRestController {
                 section.setRequireTrackedMedia(labUnitDTO.getRequireTrackedMedia());
             if (labUnitDTO.getGramStainTestId() != null) {
                 String gram = labUnitDTO.getGramStainTestId();
-                if (!gram.isBlank() && testSectionService.getTestsInSection(labUnitId).stream()
-                        .noneMatch(t -> t.getId().equals(gram) && t.isActive()))
+                if (!gram.isBlank() && testSectionService.getTestsInSection(labUnitId).stream().noneMatch(
+                        t -> t.getId().equals(gram) && t.isActive() && Boolean.TRUE.equals(t.getOrderable())))
                     return ResponseEntity.unprocessableEntity()
-                            .body(new ApiResponse<>(false, "Select an active test in this lab unit", null));
+                            .body(new ApiResponse<>(false, "Select an active, orderable test in this lab unit", null));
                 section.setGramStainTestId(gram.isBlank() ? null : gram);
             }
             section.setSysUserId(userId);

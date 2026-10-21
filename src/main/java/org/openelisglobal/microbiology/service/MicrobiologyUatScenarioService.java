@@ -304,8 +304,7 @@ public class MicrobiologyUatScenarioService {
             unit.setGramStainTestId(followUp.getId());
             unit.setRequireTrackedMedia(true);
             testSectionService.update(unit);
-            cultureMedium = getOrCreateInventoryItem("UAT culture medium " + suffix, ItemType.REAGENT, "plate",
-                    performedBy);
+            cultureMedium = getOrCreateInventoryItem("UAT culture medium " + suffix, "Reagent", "plate", performedBy);
             cultureMedium.setMicrobiologyMedium(true);
             cultureMedium.setTrackLots("Y");
             inventoryItemService.update(cultureMedium);

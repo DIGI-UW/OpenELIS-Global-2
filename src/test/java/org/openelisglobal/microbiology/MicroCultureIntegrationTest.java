@@ -105,7 +105,6 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         medium = new InventoryItem();
         medium.setCode("M4" + UUID.randomUUID());
         medium.setName("M4 medium");
-        medium.setItemType(ItemType.REAGENT);
         medium.setUnits("plates");
         medium.setFhirUuid(UUID.randomUUID());
         medium.setMicrobiologyMedium(true);
@@ -466,6 +465,24 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         r.sourceSampleItemId = other.getId();
         rejects(() -> service.inoculate(microCase.getId(), r, actor), "MICROBIOLOGY_CULTURE_SOURCE");
         assertTrue(reload().isEmpty());
+    }
+
+    @Test
+    public void terminalNegativeAndContaminatedRowsRejectPositiveTimeEdits() {
+        for (String outcome : List.of("NO_GROWTH", "CONTAMINATED")) {
+            var row = service.inoculate(microCase.getId(), request(), actor).stream().filter(r -> r.outcome == null)
+                    .findFirst().orElseThrow();
+            var conclusion = new MicroCultureRequestForm();
+            conclusion.outcome = outcome;
+            service.act(microCase.getId(), row.id, "outcome", conclusion, actor);
+            var positive = new MicroCultureRequestForm();
+            positive.positiveAt = received;
+            rejects(() -> service.act(microCase.getId(), row.id, "positive-time", positive, actor),
+                    "MICROBIOLOGY_CULTURE_CONCLUDED");
+            var saved = reload().stream().filter(r -> r.id.equals(row.id)).findFirst().orElseThrow();
+            assertEquals(outcome, saved.outcome);
+            assertNull(saved.positiveAt);
+        }
     }
 
     @Test

@@ -110,7 +110,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
                 .toList();
         String gramTest = units.get(c.getLabUnitId()).getGramStainTestId();
         f.gramStainTest = units.getTestsInSection(c.getLabUnitId()).stream()
-                .filter(t -> t.isActive() && !Boolean.FALSE.equals(t.getOrderable()) && t.getId().equals(gramTest))
+                .filter(t -> t.isActive() && Boolean.TRUE.equals(t.getOrderable()) && t.getId().equals(gramTest))
                 .map(t -> new IdValuePair(t.getId(), t.getName())).findFirst().orElse(null);
         f.gramStainSampleTypeIds = f.gramStainTest == null ? List.of()
                 : sampleTests.getTypeOfSampleTestsForTest(f.gramStainTest.getId()).stream()
@@ -205,7 +205,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         if (r == null)
             bad("REQUIRED");
         Timestamp now = Timestamp.from(Instant.now());
-        if (!"outcome".equals(action) && !"positive-time".equals(action)
+        if (!"outcome".equals(action)
                 && ("NO_GROWTH".equals(row.getOutcome()) || "CONTAMINATED".equals(row.getOutcome())))
             bad("CONCLUDED");
         switch (action) {
