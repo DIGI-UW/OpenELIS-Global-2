@@ -14023,5 +14023,7 @@
   "microbiology.incoming.loadError": "Incoming results could not be loaded. Reload the case to check for pending results.",
   "microbiology.testing.notesCount": "Notes ({count})",
   "microbiology.culture.cultureRowId": "Culture row",
-  "microbiology.culture.noEligibleOutcomeRows": "No culture row is eligible for this outcome. Inoculate a culture row before recording an outcome."
+  "microbiology.culture.noEligibleOutcomeRows": "No culture row is eligible for this outcome. Inoculate a culture row before recording an outcome.",
+  "microbiology.admin.breakpoints.packageManaged.title": "Published reference edition",
+  "microbiology.admin.breakpoints.packageManaged.description": "These rules come from a pinned reference package and cannot be edited here. Load a new package version to update them. Activation remains a separate laboratory decision."
 }

@@ -61,12 +61,13 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     @Transactional(readOnly = true)
     public MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm> getRules(String standardId,
             MicroReferenceAdminQueryForm query) {
-        requireStandard(standardId);
+        MicroBreakpointStandard standard = requireStandard(standardId);
         MicroReferenceAdminQueryForm normalized = normalizeQuery(query);
         int offset = (normalized.page - 1) * normalized.pageSize;
-        List<MicroBreakpointRuleAdminForm> rows = ruleDAO.search(standardId, normalized.q, normalized.organism,
-                normalized.antibiotic, normalized.method, normalized.specimenTypeId, offset, normalized.pageSize)
-                .stream().map(this::toRuleForm).toList();
+        List<MicroBreakpointRuleAdminForm> rows = ruleDAO
+                .search(standardId, normalized.q, normalized.organism, normalized.antibiotic, normalized.method,
+                        normalized.specimenTypeId, offset, normalized.pageSize)
+                .stream().map(rule -> toRuleForm(rule, standard)).toList();
         MicroReferenceAdminPageForm<MicroBreakpointRuleAdminForm> page = new MicroReferenceAdminPageForm<>();
         page.rows = new ArrayList<>(rows);
         page.total = ruleDAO.countSearch(standardId, normalized.q, normalized.organism, normalized.antibiotic,
@@ -85,13 +86,13 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     @Override
     @Transactional(readOnly = true)
     public MicroBreakpointRuleAdminForm getRule(String standardId, String ruleId) {
-        requireStandard(standardId);
+        MicroBreakpointStandard standard = requireStandard(standardId);
         org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule = ruleDAO.get(ruleId)
                 .orElseThrow(() -> new IllegalArgumentException("Breakpoint rule not found: " + ruleId));
         if (!standardId.equals(rule.getStandardId())) {
             throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
         }
-        return toRuleForm(rule);
+        return toRuleForm(rule, standard);
     }
 
     @Override
@@ -102,6 +103,10 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         MicroBreakpointStandard standard = requireStandard(standardId);
         if ("ARCHIVED".equals(standard.getLifecycleStatus())) {
             throw new MicroReferenceConflictException("Archived breakpoint standards are read-only");
+        }
+        if (standard.getReferencePackageHash() != null) {
+            throw new MicroReferenceConflictException(
+                    "Package-managed breakpoint rules are immutable; load a new package revision");
         }
         if (request == null) {
             throw new IllegalArgumentException("Breakpoint rule is required");
@@ -164,7 +169,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         } else {
             ruleDAO.update(rule);
         }
-        return toRuleForm(rule);
+        return toRuleForm(rule, standard);
     }
 
     private void validateMethodAndBreakpointType(String method, String breakpointType) {
@@ -267,6 +272,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         MicroBreakpointStandardAdminForm form = new MicroBreakpointStandardAdminForm();
         form.id = standard.getId();
         form.authority = standard.getAuthority();
+        form.packageManaged = standard.getReferencePackageHash() != null;
         form.version = standard.getVersion();
         form.lifecycleStatus = standard.getLifecycleStatus();
         form.effectiveDate = standard.getEffectiveDate() == null ? null : standard.getEffectiveDate().toString();
@@ -276,7 +282,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
     }
 
     private MicroBreakpointRuleAdminForm toRuleForm(
-            org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule) {
+            org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule, MicroBreakpointStandard standard) {
         MicroBreakpointRuleAdminForm form = new MicroBreakpointRuleAdminForm();
         form.id = rule.getId();
         form.standardId = rule.getStandardId();
@@ -297,6 +303,8 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         form.intermediateLowerValue = rule.getIntermediateLowerValue();
         form.intermediateUpperValue = rule.getIntermediateUpperValue();
         form.resistantValue = rule.getResistantValue();
+        form.resistantInclusive = rule.isResistantInclusive();
+        form.packageManaged = standard.getReferencePackageHash() != null;
         form.units = rule.getUnits();
         form.notes = rule.getNotes();
         form.active = "Y".equals(rule.getIsActive());

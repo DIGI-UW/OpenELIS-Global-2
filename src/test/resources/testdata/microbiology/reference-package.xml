@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <micro_organism id="reference-package-adoption"
+        display_name="Synthetic organism ADOPT" gram_stain="GRAM_POSITIVE"
+        is_active="N" seeded="false" lastupdated="2026-01-01 00:00:00"
+        last_updated="2026-01-01 00:00:00" />
+</dataset>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="140-amr-reference-package-identities" author="openelis">
+  <addColumn schemaName="clinlims" tableName="micro_organism">
+   <column name="reference_source" type="varchar(80)"/>
+   <column name="reference_code" type="varchar(120)"/>
+  </addColumn>
+  <addUniqueConstraint schemaName="clinlims" tableName="micro_organism" columnNames="reference_source,reference_code" constraintName="uq_micro_organism_reference"/>
+  <addColumn schemaName="clinlims" tableName="micro_antibiotic">
+   <column name="reference_source" type="varchar(80)"/>
+   <column name="reference_code" type="varchar(120)"/>
+  </addColumn>
+  <addUniqueConstraint schemaName="clinlims" tableName="micro_antibiotic" columnNames="reference_source,reference_code" constraintName="uq_micro_antibiotic_reference"/>
+  <addColumn schemaName="clinlims" tableName="micro_breakpoint_rule">
+   <column name="resistant_inclusive" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="micro_breakpoint_standard">
+   <column name="reference_package_hash" type="varchar(64)"/>
+  </addColumn>
+  <rollback>
+   <sql splitStatements="false">DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM clinlims.micro_breakpoint_standard WHERE reference_package_hash IS NOT NULL)
+       OR EXISTS (SELECT 1 FROM clinlims.micro_breakpoint_rule WHERE NOT resistant_inclusive)
+       OR EXISTS (SELECT 1 FROM clinlims.micro_organism WHERE reference_code IS NOT NULL)
+       OR EXISTS (SELECT 1 FROM clinlims.micro_antibiotic WHERE reference_code IS NOT NULL) THEN
+     RAISE EXCEPTION 'Reference package rollback would lose provenance or change interpretation boundaries; restore the pre-import backup instead';
+    END IF;
+   END $$;</sql>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_standard" columnName="reference_package_hash"/>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="resistant_inclusive"/>
+   <dropUniqueConstraint schemaName="clinlims" tableName="micro_antibiotic" constraintName="uq_micro_antibiotic_reference"/>
+   <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="reference_code"/>
+   <dropColumn schemaName="clinlims" tableName="micro_antibiotic" columnName="reference_source"/>
+   <dropUniqueConstraint schemaName="clinlims" tableName="micro_organism" constraintName="uq_micro_organism_reference"/>
+   <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="reference_code"/>
+   <dropColumn schemaName="clinlims" tableName="micro_organism" columnName="reference_source"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

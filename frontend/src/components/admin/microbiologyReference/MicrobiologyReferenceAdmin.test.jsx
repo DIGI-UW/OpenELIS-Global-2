@@ -604,6 +604,60 @@ describe("microbiology reference administration", () => {
     expect(container.querySelector('input[type="file"]')).not.toBeNull();
   });
 
+  it.each(["rule:rule-1", "rule:new"])(
+    "keeps package rules read-only even with edit link %s",
+    async (edit) => {
+      getBreakpointStandard.mockResolvedValue({
+        id: "std-1",
+        authority: "EUCAST",
+        version: "2026-2026.1",
+        lifecycleStatus: "LOADED",
+        packageManaged: true,
+      });
+      getBreakpointRules.mockResolvedValue({
+        rows: [
+          {
+            id: "rule-1",
+            method: "MIC",
+            organismName: "Synthetic organism",
+            antibioticName: "Synthetic agent",
+            susceptibleValue: 1,
+            resistantValue: 4,
+            resistantInclusive: false,
+            seeded: true,
+          },
+        ],
+        total: 1,
+      });
+      renderPage(
+        <BreakpointPage
+          standardId="std-1"
+          basePath="/MasterListsPage"
+          query={{ ...query, edit }}
+          setQuery={vi.fn()}
+        />,
+      );
+      await screen.findByText(
+        messages["microbiology.admin.breakpoints.packageManaged.title"],
+      );
+      expect(await screen.findByText("> 4")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(messages["microbiology.admin.field.notes"]),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: messages["microbiology.admin.breakpoints.correction.add"],
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: messages["microbiology.admin.actions"],
+        }),
+      ).not.toBeInTheDocument();
+      expect(saveBreakpointRule).not.toHaveBeenCalled();
+    },
+  );
+
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();

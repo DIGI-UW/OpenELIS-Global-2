@@ -81,13 +81,50 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             throw new IllegalArgumentException("Import preview has expired or does not exist");
         }
 
+        return applyRows(preview, previewToken, actorId, null);
+    }
+
+    @Override
+    @Transactional
+    public MicroBreakpointImportPreviewForm applyConfiguration(String csv, String actorId, String packageHash) {
+        if (actorId == null || actorId.isBlank() || packageHash == null || !packageHash.matches("[a-f0-9]{64}")) {
+            throw new IllegalArgumentException("Configuration actor and package checksum are required");
+        }
+        ImportPreview preview = parse(csv);
+        if (!preview.errors.isEmpty() || preview.validRows.isEmpty()) {
+            throw new IllegalArgumentException("Invalid package breakpoints: "
+                    + preview.errors.stream().map(e -> e.message).collect(java.util.stream.Collectors.joining("; ")));
+        }
+        for (ImportRow row : preview.validRows) {
+            var existing = standardDAO.findByAuthorityAndVersion(row.authority, row.version);
+            if (existing.isPresent() && !packageHash.equals(existing.get().getReferencePackageHash())) {
+                throw new IllegalArgumentException(
+                        "Standard edition already belongs to different content: " + row.version);
+            }
+        }
+        var result = applyRows(preview, null, actorId, packageHash);
+        if (!result.errors.isEmpty()) {
+            throw new IllegalArgumentException("Package conflicts with an existing breakpoint");
+        }
+        return result;
+    }
+
+    private MicroBreakpointImportPreviewForm applyRows(ImportPreview preview, String previewToken, String actorId,
+            String packageHash) {
         int imported = 0;
         int unchanged = 0;
         Map<String, MicroBreakpointStandard> standards = new java.util.HashMap<>();
         for (ImportRow row : preview.validRows) {
             String key = row.authority + "\n" + row.version;
             MicroBreakpointStandard standard = standards.computeIfAbsent(key,
-                    ignored -> findOrCreateStandard(row.authority, row.version, actorId));
+                    ignored -> findOrCreateStandard(row.authority, row.version, actorId, packageHash != null));
+            if (standard.getReferencePackageHash() != null && !standard.getReferencePackageHash().equals(packageHash)) {
+                throw new IllegalArgumentException("Package-managed standards cannot be changed by CSV upload");
+            }
+            if (packageHash != null && standard.getReferencePackageHash() == null) {
+                standard.setReferencePackageHash(packageHash);
+                standardDAO.update(standard);
+            }
             Optional<MicroBreakpointRule> existingHash = ruleDAO.findBySourceRowHash(row.sourceHash);
             if (existingHash.isPresent()) {
                 unchanged++;
@@ -159,7 +196,11 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         row.version = required(record, "version");
 
         String organismValue = required(record, "organism_or_group");
-        if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
+        if (record.isMapped("organism_code") && !record.get("organism_code").isBlank()) {
+            row.organismId = organismDAO
+                    .findByReference(required(record, "organism_source"), required(record, "organism_code"))
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown organism source code")).getId();
+        } else if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
             String requestedGroup = requiredText(organismValue.substring("group:".length()), "organism group");
             row.organismGroup = organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
                     .filter(group -> group != null && group.equalsIgnoreCase(requestedGroup)).findFirst()
@@ -171,8 +212,12 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
 
         String antibioticCode = required(record, "antibiotic_whonet_code").toUpperCase(Locale.ROOT);
-        MicroAntibiotic antibiotic = antibioticDAO.findByWhonetCodeIgnoreCase(antibioticCode)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic code: " + antibioticCode));
+        MicroAntibiotic antibiotic = record.isMapped("antibiotic_code") && !record.get("antibiotic_code").isBlank()
+                ? antibioticDAO
+                        .findByReference(required(record, "antibiotic_source"), required(record, "antibiotic_code"))
+                        .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic source code"))
+                : antibioticDAO.findByWhonetCodeIgnoreCase(antibioticCode)
+                        .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic code: " + antibioticCode));
         row.antibioticId = antibiotic.getId();
 
         String rawMethod = required(record, "method").toUpperCase(Locale.ROOT);
@@ -197,14 +242,23 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         row.intermediateUpperValue = decimal(record, "intermediate_upper_value");
         row.resistantValue = decimal(record, "resistant_value");
         row.units = required(record, "units");
+        if (record.isMapped("resistant_inclusive") && !record.get("resistant_inclusive").isBlank()) {
+            String inclusive = record.get("resistant_inclusive");
+            if (!List.of("true", "false").contains(inclusive)) {
+                throw new IllegalArgumentException("resistant_inclusive must be true or false");
+            }
+            row.resistantInclusive = Boolean.parseBoolean(inclusive);
+        }
+        row.notes = record.isMapped("notes") ? blankToNull(record.get("notes")) : null;
         row.sourceHash = hash(normalizedRow(row));
         return row;
     }
 
-    private MicroBreakpointStandard findOrCreateStandard(String authority, String version, String actorId) {
+    private MicroBreakpointStandard findOrCreateStandard(String authority, String version, String actorId,
+            boolean packageReload) {
         Optional<MicroBreakpointStandard> existing = standardDAO.findByAuthorityAndVersion(authority, version);
         if (existing.isPresent()) {
-            if ("ARCHIVED".equals(existing.get().getLifecycleStatus())) {
+            if (!packageReload && "ARCHIVED".equals(existing.get().getLifecycleStatus())) {
                 throw new IllegalArgumentException("Cannot import into archived breakpoint standard");
             }
             return existing.get();
@@ -232,6 +286,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         rule.setIntermediateLowerValue(row.intermediateLowerValue);
         rule.setIntermediateUpperValue(row.intermediateUpperValue);
         rule.setResistantValue(row.resistantValue);
+        rule.setResistantInclusive(row.resistantInclusive);
+        rule.setNotes(row.notes);
         rule.setUnits(row.units);
         rule.setSeeded(true);
         rule.setLocallyCustomized(false);
@@ -289,7 +345,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         return String.join("|", row.authority, row.version, nullToEmpty(row.organismId), nullToEmpty(row.organismGroup),
                 row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType,
                 decimalText(row.susceptibleValue), decimalText(row.intermediateLowerValue),
-                decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units);
+                decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units,
+                Boolean.toString(row.resistantInclusive));
     }
 
     private String naturalKey(ImportRow row) {
@@ -347,6 +404,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         private BigDecimal intermediateUpperValue;
         private BigDecimal resistantValue;
         private String units;
+        private boolean resistantInclusive = true;
+        private String notes;
         private String sourceHash;
         private String sourceRow;
     }

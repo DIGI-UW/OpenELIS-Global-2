@@ -79,6 +79,13 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const ruleEditId = query.edit?.startsWith("rule:")
     ? query.edit.slice("rule:".length)
     : "";
+  const selectedStandard = standards.rows.find(
+    (standard) => standard.id === standardId,
+  );
+  const canEditRules =
+    selectedStandard &&
+    !selectedStandard.packageManaged &&
+    selectedStandard.lifecycleStatus !== "ARCHIVED";
   const requestQuery = buildReferenceRequestQuery(query);
 
   const load = useCallback(
@@ -129,7 +136,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   }, [standardId]);
 
   useEffect(() => {
-    if (!ruleEditId || ruleEditId === "new") {
+    if (!canEditRules || !ruleEditId || ruleEditId === "new") {
       return undefined;
     }
     const visibleRule = rules.rows.find((rule) => rule.id === ruleEditId);
@@ -143,17 +150,16 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         if (requestError.name !== "AbortError") setError(requestError.message);
       });
     return () => controller.abort();
-  }, [ruleEditId, rules.rows, standardId]);
+  }, [canEditRules, ruleEditId, rules.rows, standardId]);
 
-  const selectedStandard = standards.rows.find(
-    (standard) => standard.id === standardId,
-  );
   const visibleRule = rules.rows.find((rule) => rule.id === ruleEditId);
-  const ruleDraft = ruleEditId
-    ? ruleEditId === "new"
-      ? {}
-      : visibleRule || (loadedRule.key === ruleEditId ? loadedRule.value : null)
-    : null;
+  const ruleDraft =
+    canEditRules && ruleEditId
+      ? ruleEditId === "new"
+        ? {}
+        : visibleRule ||
+          (loadedRule.key === ruleEditId ? loadedRule.value : null)
+      : null;
 
   const standardHeaders = useMemo(
     () => [
@@ -277,6 +283,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   };
 
   const saveRule = async (rule) => {
+    if (!canEditRules) return;
     setSavingRule(true);
     try {
       await saveBreakpointRule(standardId, {
@@ -364,7 +371,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       rule.intermediateLowerValue == null && rule.intermediateUpperValue == null
         ? "—"
         : `${rule.intermediateLowerValue ?? ""}–${rule.intermediateUpperValue ?? ""}`,
-    resistant: rule.resistantValue ?? "—",
+    resistant:
+      rule.resistantValue == null
+        ? "—"
+        : rule.resistantInclusive === false
+          ? `${rule.method === "MIC" ? ">" : "<"} ${intl.formatNumber(rule.resistantValue)}`
+          : rule.resistantValue,
     source: rule.locallyCustomized
       ? "LOCAL"
       : rule.seeded
@@ -382,6 +394,19 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           hideCloseButton
           title={intl.formatMessage({ id: "microbiology.admin.error.title" })}
           subtitle={error}
+        />
+      )}
+      {selectedStandard?.packageManaged && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "microbiology.admin.breakpoints.packageManaged.title",
+          })}
+          subtitle={intl.formatMessage({
+            id: "microbiology.admin.breakpoints.packageManaged.description",
+          })}
         />
       )}
       {!standardId ? (
@@ -598,7 +623,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                       })}
                       onChange={(event) => setQuery({ q: event.target.value })}
                     />
-                    {selectedStandard?.lifecycleStatus !== "ARCHIVED" && (
+                    {canEditRules && (
                       <Button
                         renderIcon={Add}
                         onClick={(event) =>
@@ -748,8 +773,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                                 })}
                               </Tag>
                             ) : cell.info.header === "actions" ? (
-                              selectedStandard?.lifecycleStatus !==
-                                "ARCHIVED" && (
+                              canEditRules && (
                                 <OverflowMenu
                                   flipped
                                   aria-label={intl.formatMessage({

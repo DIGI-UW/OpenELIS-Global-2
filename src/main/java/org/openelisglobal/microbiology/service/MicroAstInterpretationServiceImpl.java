@@ -35,7 +35,8 @@ public class MicroAstInterpretationServiceImpl implements MicroAstInterpretation
         if (rawValue.compareTo(rule.getSusceptibleValue()) <= 0) {
             return MicroAstInterpretation.SUSCEPTIBLE;
         }
-        if (rawValue.compareTo(rule.getResistantValue()) >= 0) {
+        if (rawValue.compareTo(rule.getResistantValue()) > 0
+                || (rule.isResistantInclusive() && rawValue.compareTo(rule.getResistantValue()) == 0)) {
             return MicroAstInterpretation.RESISTANT;
         }
         return MicroAstInterpretation.INTERMEDIATE;
@@ -48,7 +49,8 @@ public class MicroAstInterpretationServiceImpl implements MicroAstInterpretation
         if (rawValue.compareTo(rule.getSusceptibleValue()) >= 0) {
             return MicroAstInterpretation.SUSCEPTIBLE;
         }
-        if (rawValue.compareTo(rule.getResistantValue()) <= 0) {
+        if (rawValue.compareTo(rule.getResistantValue()) < 0
+                || (rule.isResistantInclusive() && rawValue.compareTo(rule.getResistantValue()) == 0)) {
             return MicroAstInterpretation.RESISTANT;
         }
         return MicroAstInterpretation.INTERMEDIATE;

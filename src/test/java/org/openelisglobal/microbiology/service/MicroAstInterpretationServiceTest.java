@@ -56,6 +56,26 @@ public class MicroAstInterpretationServiceTest {
                 service.interpret(null, MicroAstMethod.MIC, new BigDecimal("4")));
     }
 
+    @Test
+    public void strictMicResistancePreservesEqualityAndOffDilutionValues() {
+        rule.setIntermediateLowerValue(null);
+        rule.setIntermediateUpperValue(null);
+        rule.setSusceptibleValue(new BigDecimal("1"));
+        rule.setResistantValue(new BigDecimal("4"));
+        rule.setResistantInclusive(false);
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("1")));
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("1.0001")));
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")));
+        assertEquals(MicroAstInterpretation.RESISTANT,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4.0001")));
+        rule.setResistantInclusive(true);
+        assertEquals(MicroAstInterpretation.RESISTANT,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void overrideRequiresReason() {
         service.validateOverride(MicroAstInterpretation.RESISTANT, " ");

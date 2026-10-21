@@ -46,6 +46,14 @@ District → Sub-District → Village).
 - **Features:** Configurable hierarchy levels, parent-child relationships,
   backward compatible with Health Region/District
 
+### [Microbiology Reference Packages](microbiology-reference-packages.md)
+
+- **Location:** `configuration/backend/microbiology-reference-packages/`
+- **Format:** independently released, checksum-pinned ZIP
+  (`openelis-amr-reference/v1`)
+- **Features:** source-identified concepts, immutable inactive editions, exact
+  MIC boundaries, source-generated interpretation checks, repeatable loading
+
 ## How Configuration Loading Works
 
 Configuration files are loaded automatically during application startup:
