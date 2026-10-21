@@ -499,6 +499,94 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         assertThrows(AccessDeniedException.class, () -> workspace.addTests(microCase.getId(), selection, outsider));
     }
 
+    private org.openelisglobal.test.valueholder.Test additionalTest() {
+        var follow = fixtures.createCatalogTest();
+        follow.setTestSection(analysis.getTestSection());
+        em.merge(follow);
+        components.saveSampleResults(follow.getId(), List.of(component("PRIMARY", "Follow-up", true)), null, null,
+                actor);
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(microCase.getSampleTypeId());
+        mapping.setTestId(follow.getId());
+        mapping.setSysUserId(actor);
+        em.persist(mapping);
+        em.flush();
+        return em.find(org.openelisglobal.test.valueholder.Test.class, follow.getId());
+    }
+
+    private MicroCaseAddTestsForm selection() {
+        var selection = new MicroCaseAddTestsForm();
+        selection.sampleItemId = microCase.getSampleItemId();
+        selection.placement = "ADDITIONAL";
+        return selection;
+    }
+
+    @Test
+    public void panelSelectionRetainsItsPanelOnTheAnalysis() {
+        var follow = additionalTest();
+        var panel = new org.openelisglobal.panel.valueholder.Panel();
+        var localized = new org.openelisglobal.localization.valueholder.Localization();
+        localized.setDescription("Culture panel");
+        localized.setEnglish("Culture panel");
+        localized.setSysUserId(actor);
+        em.persist(localized);
+        panel.setLocalization(localized);
+        panel.setPanelName("M3 culture panel");
+        panel.setDescription("M3 culture panel");
+        panel.setIsActive("Y");
+        panel.setSysUserId(actor);
+        em.persist(panel);
+        var item = new org.openelisglobal.panelitem.valueholder.PanelItem();
+        item.setPanel(panel);
+        item.setTest(follow);
+        item.setSysUserId(actor);
+        em.persist(item);
+        em.flush();
+        var selection = selection();
+        selection.panelIds = List.of(panel.getId());
+        workspace.addTests(microCase.getId(), selection, actor);
+        em.flush();
+        em.clear();
+        var added = links.getAnalyses(microCase.getId()).stream()
+                .filter(a -> follow.getId().equals(a.getTest().getId())).findFirst().orElseThrow();
+        assertEquals(panel.getId(), added.getPanel().getId());
+        assertEquals(2, workspace.addTests(microCase.getId(), selection, actor).size());
+    }
+
+    @Test
+    public void testsWithNullOrderabilityCannotBeAdded() {
+        var follow = additionalTest();
+        follow.setOrderable(null);
+        em.merge(follow);
+        em.flush();
+        em.clear();
+        var selection = selection();
+        selection.testIds = List.of(follow.getId());
+        var failure = assertThrows(IllegalArgumentException.class,
+                () -> workspace.addTests(microCase.getId(), selection, actor));
+        assertEquals("MICROBIOLOGY_TEST_SAMPLE_MISMATCH", failure.getMessage());
+        assertEquals(1, links.getAnalyses(microCase.getId()).size());
+    }
+
+    @Test
+    public void changingOnlyProvenanceRejectsThePreviouslyIssuedVersion() {
+        var payload = new MicroCaseTestedElsewhereRequestForm();
+        payload.version = payload().version;
+        payload.testedElsewhere = true;
+        payload.performingUserId = validator;
+        payload.performedAt = "2026-10-01";
+        var staleVersion = payload.version;
+        var saved = workspace.setTestedElsewhere(microCase.getId(), analysis.getId(), payload, actor).get(0);
+        em.flush();
+        em.clear();
+        assertNotEquals(staleVersion, saved.version);
+        payload.performingUserId = actor;
+        var failure = assertThrows(ResponseStatusException.class,
+                () -> workspace.setTestedElsewhere(microCase.getId(), analysis.getId(), payload, actor));
+        assertEquals(409, failure.getStatusCode().value());
+        assertEquals(validator, links.getByCaseAndAnalysis(microCase.getId(), analysis.getId()).getPerformingUserId());
+    }
+
     @Test
     public void ordinaryValidationCannotBypassTheSameAuthorRule() {
         workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));

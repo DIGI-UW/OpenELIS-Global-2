@@ -102,7 +102,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             f.testName = a.getTest().getName();
             f.placement = "ADDITIONAL".equals(link.getPlacement()) ? "ADDITIONAL" : "INITIAL";
             f.status = state(a);
-            f.version = version(a);
+            f.version = version(a, link);
             f.enteredBy = link.getEnteredBy();
             f.testedElsewhere = link.getTestedElsewhere();
             f.performingLabId = link.getPerformingLabId();
@@ -132,11 +132,15 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (specimen.isRejected())
             bad("MICROBIOLOGY_SAMPLE_REJECTED");
         Set<String> ids = new LinkedHashSet<>(request.testIds == null ? List.of() : request.testIds);
+        Map<String, org.openelisglobal.panel.valueholder.Panel> selectedPanels = new LinkedHashMap<>();
         for (String panel : request.panelIds == null ? List.<String>of() : request.panelIds) {
             var items = panels.getPanelItemsForPanel(panel);
             if (items.isEmpty())
                 bad("MICROBIOLOGY_INVALID_PANEL");
-            items.forEach(item -> ids.add(item.getTest().getId()));
+            items.forEach(item -> {
+                ids.add(item.getTest().getId());
+                selectedPanels.putIfAbsent(item.getTest().getId(), item.getPanel());
+            });
         }
         if (ids.isEmpty() || ids.size() > 100)
             bad("MICROBIOLOGY_TEST_SELECTION_REQUIRED");
@@ -144,7 +148,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         sampleTests.getTypeOfSampleTestsForSampleType(specimen.getTypeOfSample().getId())
                 .forEach(t -> allowed.add(t.getTestId()));
         var selected = ids.stream().map(tests::get).toList();
-        if (selected.stream().anyMatch(t -> t == null || !t.isActive() || Boolean.FALSE.equals(t.getOrderable())
+        if (selected.stream().anyMatch(t -> t == null || !t.isActive() || !Boolean.TRUE.equals(t.getOrderable())
                 || !allowed.contains(t.getId())))
             bad("MICROBIOLOGY_TEST_SAMPLE_MISMATCH");
         var existing = links.getAnalyses(caseId);
@@ -153,6 +157,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
                 continue;
             Analysis a = new Analysis();
             a.setTest(t);
+            a.setPanel(selectedPanels.get(t.getId()));
             a.setTestSection(t.getTestSection());
             a.setSampleItem(specimen);
             a.setIsReportable(t.getIsReportable());
@@ -180,7 +185,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             String actor, HttpServletRequest httpRequest) {
         writeCase(caseId, actor, Constants.ROLE_RESULTS);
         var a = requireAnalysis(caseId, analysisId);
-        checkVersion(a, request == null ? null : request.version);
+        checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
         requireEditable(a);
         if (request.note != null && request.note.length() > 4000)
             bad("MICROBIOLOGY_NOTE_TOO_LONG");
@@ -263,7 +268,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             MicroCaseTestedElsewhereRequestForm request, String actor) {
         writeCase(caseId, actor, Constants.ROLE_RESULTS);
         var a = requireAnalysis(caseId, analysisId);
-        checkVersion(a, request == null ? null : request.version);
+        checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
         requireEditable(a);
         Timestamp when = null;
         if (request.testedElsewhere) {
@@ -301,7 +306,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     public List<MicroCaseTestForm> validateResult(String caseId, String analysisId, String token, String actor) {
         writeCase(caseId, actor, Constants.ROLE_VALIDATION);
         var a = requireAnalysis(caseId, analysisId);
-        checkVersion(a, token);
+        checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), token);
         if (!"TechnicalAcceptance".equals(state(a)))
             bad("MICROBIOLOGY_RESULT_NOT_AWAITING_VALIDATION");
         selfValidation.requireAnotherValidator(a, actor);
@@ -409,12 +414,14 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         return statuses.getAnalysisStatusForID(a.getStatusId()).name();
     }
 
-    private String version(Analysis a) {
-        return a.getLastupdated() == null ? "" : a.getLastupdated().toInstant().toString();
+    private String version(Analysis a, MicroCaseAnalysis link) {
+        String analysisVersion = a.getLastupdated() == null ? "" : a.getLastupdated().toInstant().toString();
+        String provenanceVersion = link.getLastupdated() == null ? "" : link.getLastupdated().toInstant().toString();
+        return analysisVersion + "/" + provenanceVersion;
     }
 
-    private void checkVersion(Analysis a, String token) {
-        if (token == null || !token.equals(version(a)))
+    private void checkVersion(Analysis a, MicroCaseAnalysis link, String token) {
+        if (token == null || !token.equals(version(a, link)))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "MICROBIOLOGY_STALE_RESULT");
     }
 
