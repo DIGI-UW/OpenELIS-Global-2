@@ -31,6 +31,11 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
     private static final String BRIDGE_PROFILE_UNAVAILABLE = "analyzer.connection.readiness.profileUnavailable";
+    /**
+     * The Bridge could not restore the connection at start; an activate command
+     * restores it.
+     */
+    private static final String BRIDGE_RESTORE_FAILED = "analyzer.connection.readiness.restoreFailed";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
 
     private final AnalyzerService analyzerService;
@@ -334,9 +339,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         List<AnalyzerActivationBlocker> bridgeBlockers = bridgeBlockers(readiness.path("blockers"));
         if (bridgeBlockers.isEmpty()) {
             blockers.add(new AnalyzerActivationBlocker(CONNECTION_BLOCKER));
-        } else {
-            blockers.addAll(bridgeBlockers);
+            return;
         }
+        // Activating is what clears a failed restore, so it never blocks activation.
+        bridgeBlockers.stream().filter(blocker -> !BRIDGE_RESTORE_FAILED.equals(blocker.code())).forEach(blockers::add);
     }
 
     private static List<AnalyzerActivationBlocker> bridgeBlockers(JsonNode source) {

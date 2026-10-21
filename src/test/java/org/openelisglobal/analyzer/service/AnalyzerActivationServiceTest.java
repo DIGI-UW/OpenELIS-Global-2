@@ -171,6 +171,38 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void aConnectionThatFailedToRestoreIsActivatedBecauseActivatingRestoresIt() {
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenReturn(retained);
+
+        assertTrue(service.readiness(ANALYZER_ID).ready());
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.activated());
+        verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004");
+    }
+
+    @Test
+    public void aFailedRestoreDoesNotHideAnotherBridgeBlocker() {
+        connection.with("readiness").put("ready", false);
+        var bridgeBlockers = connection.with("readiness").putArray("blockers");
+        bridgeBlockers.addObject().put("key", "restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        bridgeBlockers.addObject().put("key", "listener-port").put("messageKey",
+                "analyzer.connection.listenerPort.unavailable");
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.connection.listenerPort.unavailable"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+    }
+
+    @Test
     public void rejectsAConnectionOwnedByAnotherOpenElisAnalyzer() {
         connection.put("clientAnalyzerId", "another-analyzer");
 
