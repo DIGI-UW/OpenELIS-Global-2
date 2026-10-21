@@ -172,22 +172,42 @@ public class MenuConfigurationSeeder {
         return depth;
     }
 
-    private void applySelection(File configFile, List<Menu> effective) {
+    /**
+     * Entries omitted by the file's selection, including entries added at runtime
+     * rather than stored as rows. Empty when filtering is off or no selection rule
+     * exists.
+     */
+    public Set<String> leftOut(List<MenuItem> tree) {
+        return applySelection ? leftOut(new File(configurationFile), tree) : Set.of();
+    }
+
+    public Set<String> leftOut(File configFile, List<MenuItem> tree) {
+        if (!configFile.isFile()) {
+            return Set.of();
+        }
         JsonNode config;
         try {
             config = new ObjectMapper().readTree(configFile);
         } catch (IOException e) {
             LogEvent.logError("Error reading menu config file: " + configFile.getAbsolutePath(), e);
-            return;
+            return Set.of();
         }
-        List<MenuItem> selected = MenuUtil.filterByConfiguration(tree(effective), config);
+        List<MenuItem> selected = MenuUtil.filterByConfiguration(tree, config);
         if (selected == null) {
-            return;
+            return Set.of();
         }
         Set<String> kept = new HashSet<>();
         collect(selected, kept);
+        Set<String> all = new HashSet<>();
+        collect(tree, all);
+        all.removeAll(kept);
+        return all;
+    }
+
+    private void applySelection(File configFile, List<Menu> effective) {
+        Set<String> leftOut = leftOut(configFile, tree(effective));
         effective.replaceAll(menu -> {
-            if (kept.contains(menu.getElementId()) || FROM_ADMIN.equals(menu.getConfigSource())) {
+            if (!leftOut.contains(menu.getElementId()) || FROM_ADMIN.equals(menu.getConfigSource())) {
                 return menu;
             }
             Menu selectedState = snapshot(menu);

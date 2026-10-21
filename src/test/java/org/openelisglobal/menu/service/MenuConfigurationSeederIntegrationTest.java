@@ -128,6 +128,23 @@ public class MenuConfigurationSeederIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void anEntryAProgramAddsAtRuntimeTakesTheFilesSelectionToo() throws Exception {
+        Menu runtime = new Menu();
+        runtime.setElementId("menu_seed_test_runtime");
+        MenuItem runtimeItem = new MenuItem();
+        runtimeItem.setMenu(runtime);
+        MenuItem hidden = new MenuItem();
+        hidden.setMenu(menuService.getMenuByElementId(HIDDEN));
+        MenuItem root = new MenuItem();
+        root.setMenu(menuService.getMenuByElementId(ROOT));
+        root.getChildMenus().add(hidden);
+        root.getChildMenus().add(runtimeItem);
+
+        assertEquals(java.util.Set.of("menu_seed_test_runtime"),
+                seeder.leftOut(config("{\"excludes\": [{\"elementId\": \"menu_seed_test_runtime\"}]}"), List.of(root)));
+    }
+
+    @Test
     public void theFileSelectionIsIgnoredWhenFilteringIsOff() throws Exception {
         seeder.seed(config("{\"excludes\": [{\"elementId\": \"" + HIDDEN + "\"}]}"), false);
 

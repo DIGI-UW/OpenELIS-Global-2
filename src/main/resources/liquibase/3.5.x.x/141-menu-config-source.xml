@@ -17,5 +17,8 @@
         <addColumn schemaName="clinlims" tableName="menu">
             <column name="config_source" type="VARCHAR(20)"/>
         </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="menu" columnName="config_source"/>
+        </rollback>
     </changeSet>
 </databaseChangeLog>
