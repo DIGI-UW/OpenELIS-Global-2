@@ -16,6 +16,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Observation;
+import org.openelisglobal.analyzer.service.AnalyzerArrivalReading;
 import org.openelisglobal.analyzer.service.AnalyzerConfirmationReading;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogState;
@@ -31,6 +32,7 @@ import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
@@ -144,14 +146,30 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
         AnalyzerProfilePin pin = analyzer.getPinnedProfile();
         int recoveredCount = 0;
-        // A row held under another revision, or under the type the analyzer was set up
-        // on before, is retried like a new delivery from that profile: it maps only
-        // where both profiles read it alike.
+        // A row that kept how its record read on arrival recovers only where the
+        // confirmation reads it the same way, whatever profile it arrived under. A row
+        // from before arrival readings were kept is retried like a new delivery from
+        // its
+        // profile: it maps only where both profiles, as the Bridge serves them, read it
+        // alike.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
             if (pin == null || held.getSourceProfileId() == null || held.getSourceProfileRevision() == null
                     || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())
                     || held.getSourcePayload() == null) {
                 continue;
+            }
+            Recovery recovery;
+            if (held.getArrivalReading() != null) {
+                if (analyzer.getMapping() == null
+                        || !confirmationService.readsAsConfirmed(analyzer.getMapping().getId(), held.getRawTestCode(),
+                                held.getRawSubIdentity(), held.getArrivalReading())) {
+                    continue;
+                }
+                recovery = Recovery.READS_AS_CONFIRMED;
+            } else {
+                recovery = held.getSourceProfileId().equals(pin.getProfileId())
+                        && held.getSourceProfileRevision() == pin.getProfileRevision() ? Recovery.NONE
+                                : Recovery.FROM_FORMER_PROFILE;
             }
             Observation observation = fhirContext.newJsonParser().parseResource(Observation.class,
                     held.getSourcePayload());
@@ -161,7 +179,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             var contract = new AnalyzerNormalizedResultContract(held.getSourceMessageId(), held.getSourceConnectionId(),
                     held.getSourceProfileId(), held.getSourceProfileRevision(), held.getSourceProtocol(),
                     List.of(source), List.of());
-            List<AnalyzerResults> mapped = mapResults(contract, analyzer);
+            List<AnalyzerResults> mapped = mapResults(contract, analyzer, recovery);
             // The lab now excludes this record or its value: a new delivery would not
             // stage it, so the held row leaves review. Its bundle stays on the receipt.
             if (mapped.isEmpty()) {
@@ -185,6 +203,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     row.setInstrumentPatientId(held.getInstrumentPatientId());
                     row.setInstrumentPatientName(held.getInstrumentPatientName());
                     row.setInstrumentSampleFlags(held.getInstrumentSampleFlags());
+                    row.setArrivalReading(held.getArrivalReading());
                 });
                 analyzerResultsService.insertAnalyzerResults(others, effectiveActor);
                 processControls(others, analyzer, effectiveActor);
@@ -202,6 +221,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             recovered.setInstrumentPatientId(held.getInstrumentPatientId());
             recovered.setInstrumentPatientName(held.getInstrumentPatientName());
             recovered.setInstrumentSampleFlags(held.getInstrumentSampleFlags());
+            recovered.setArrivalReading(held.getArrivalReading());
             recovered.setLastupdated(held.getLastupdated());
             recovered.setSysUserId(effectiveActor);
             analyzerResultsService.update(recovered);
@@ -218,6 +238,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     }
 
     private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer) {
+        return mapResults(contract, analyzer, Recovery.NONE);
+    }
+
+    private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer,
+            Recovery recovery) {
         if (analyzer.getMapping() == null || analyzer.getMapping().getId() == null) {
             throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingMapping",
                     "Analyzer has no mapping in force");
@@ -231,14 +256,37 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                         row -> new ResultKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()), row -> row)),
                 binding.results().stream().map(AnalyzerMappingRowKey::of).collect(Collectors.toSet()),
                 AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding),
-                readsAlike(contract, binding.mapping().getProfilePin()),
-                confirmationService.readingOnDelivery(binding, contract.profileFingerprint()));
+                recovery == Recovery.READS_AS_CONFIRMED ? record -> true
+                        : readsAlike(contract, binding.mapping().getProfilePin()),
+                recovery == Recovery.READS_AS_CONFIRMED ? AnalyzerConfirmationReading.unchanged()
+                        : confirmationService.readingOnDelivery(binding, contract.profileFingerprint()));
+        // A result whose reading was compared with the confirmation stands on the type
+        // the analyzer is confirmed on now, not the one it arrived under.
+        String confirmedRecognition = recovery == Recovery.NONE ? null
+                : confirmationService.findForMapping(binding.mapping().getId())
+                        .map(AnalyzerMappingConfirmation::getRecognitionFingerprint).orElse(null);
         Map<String, Boolean> confirmedByRecognition = new HashMap<>();
-        return contract.results().stream().flatMap(result -> {
-            boolean confirmed = confirmedByRecognition.computeIfAbsent(result.recognitionFingerprint(),
+        List<AnalyzerResults> staged = contract.results().stream().flatMap(result -> {
+            String recognition = confirmedRecognition != null ? confirmedRecognition : result.recognitionFingerprint();
+            boolean confirmed = confirmedByRecognition.computeIfAbsent(recognition,
                     fingerprint -> confirmationService.hasMatchingConfirmation(binding, fingerprint));
             return toStagedResults(contract, result, analyzer, mapping, confirmed).stream();
         }).toList();
+        AnalyzerArrivalReading arrival = mapping.reading().arrival();
+        if (arrival != null) {
+            staged.forEach(
+                    row -> row.setArrivalReading(arrival.forRecord(row.getRawTestCode(), row.getRawSubIdentity())));
+        }
+        return staged;
+    }
+
+    /**
+     * How a held result is retried: as a new delivery, after its arrival reading
+     * was found to read as the confirmation does, or from a former profile that
+     * must still read alike as the Bridge serves it.
+     */
+    private enum Recovery {
+        NONE, READS_AS_CONFIRMED, FROM_FORMER_PROFILE
     }
 
     /**

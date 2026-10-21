@@ -5,12 +5,18 @@ import java.util.Set;
 /**
  * How the profile the Bridge serves now reads compared with how it read when
  * the mapping was confirmed (spec point 13): the type as a whole, and each
- * confirmed row, a record or one value of a record.
+ * confirmed row, a record or one value of a record. {@code arrival} is how the
+ * delivery's own profile read it, when that is known.
  */
-public record AnalyzerConfirmationReading(boolean typeChanged, Set<AnalyzerMappingSourceRow> changedRows) {
+public record AnalyzerConfirmationReading(boolean typeChanged, Set<AnalyzerMappingSourceRow> changedRows,
+        AnalyzerArrivalReading arrival) {
 
     public AnalyzerConfirmationReading {
         changedRows = changedRows == null ? Set.of() : Set.copyOf(changedRows);
+    }
+
+    public AnalyzerConfirmationReading(boolean typeChanged, Set<AnalyzerMappingSourceRow> changedRows) {
+        this(typeChanged, changedRows, null);
     }
 
     public static AnalyzerConfirmationReading unchanged() {
@@ -19,6 +25,10 @@ public record AnalyzerConfirmationReading(boolean typeChanged, Set<AnalyzerMappi
 
     static AnalyzerConfirmationReading typeReadingChanged() {
         return new AnalyzerConfirmationReading(true, Set.of());
+    }
+
+    AnalyzerConfirmationReading arrivingAs(AnalyzerArrivalReading reading) {
+        return new AnalyzerConfirmationReading(typeChanged, changedRows, reading);
     }
 
     public boolean isUnchanged() {

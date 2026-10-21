@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- How the profile a staged result was parsed under read its record and the
+         type (spec point 13), so a held result recovers only under a confirmation
+         that reads it the same way. Rows staged before this column have none. -->
+    <changeSet id="142-analyzer-result-arrival-reading" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer_results" columnName="arrival_reading"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="arrival_reading" type="TEXT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="arrival_reading"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

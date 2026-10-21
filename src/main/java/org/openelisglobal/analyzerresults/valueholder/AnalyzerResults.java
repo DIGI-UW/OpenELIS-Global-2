@@ -203,6 +203,13 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "source_payload", columnDefinition = "TEXT")
     private String sourcePayload;
 
+    /**
+     * How the profile the result was parsed under read its record and type
+     * ({@code AnalyzerArrivalReading}); null when that was not known.
+     */
+    @Column(name = "arrival_reading", columnDefinition = "TEXT")
+    private String arrivalReading;
+
     // QC metadata propagated from the analyzer-bridge for control samples.
     // Transient — only carried in-memory from FHIR ingest
     // (AnalyzerFhirImportController) through to QCResultProcessingService.
@@ -413,6 +420,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setSourcePayload(String sourcePayload) {
         this.sourcePayload = sourcePayload;
+    }
+
+    public String getArrivalReading() {
+        return arrivalReading;
+    }
+
+    public void setArrivalReading(String arrivalReading) {
+        this.arrivalReading = arrivalReading;
     }
 
     public String getLotNumber() {

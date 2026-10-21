@@ -174,9 +174,13 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         }
         AnalyzerMappingConfirmation confirmation = found.get();
         String readFrom = confirmation.getReadingsFingerprint();
-        if (readFrom != null && (deliveredProfileFingerprint == null || readFrom.equals(deliveredProfileFingerprint))) {
-            return AnalyzerConfirmationReading.unchanged();
+        if (readFrom != null && readFrom.equals(deliveredProfileFingerprint)) {
+            return AnalyzerConfirmationReading.unchanged().arrivingAs(new AnalyzerArrivalReading(
+                    readTree(confirmation.getTypeReadingJson()), readRowReadings(confirmation.getRowReadingsJson())));
         }
+        // A delivery that does not say what it was parsed with is compared with what
+        // the
+        // Bridge serves, and how it arrived stays unknown.
         ServedReading served;
         try {
             served = served(binding.mapping().getProfilePin());
@@ -186,29 +190,58 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
             return readFrom == null ? AnalyzerConfirmationReading.unchanged()
                     : AnalyzerConfirmationReading.typeReadingChanged();
         }
+        AnalyzerArrivalReading arrival = served.fingerprint().equals(deliveredProfileFingerprint)
+                ? new AnalyzerArrivalReading(served.type(), served.rows())
+                : null;
         if (readFrom == null) {
             // A confirmation from before readings were kept: it takes them from the file it
             // confirmed.
             if (!served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())) {
-                return AnalyzerConfirmationReading.typeReadingChanged();
+                return AnalyzerConfirmationReading.typeReadingChanged().arrivingAs(arrival);
             }
             keep(confirmation, served);
             confirmationDAO.update(confirmation);
-            return AnalyzerConfirmationReading.unchanged();
+            return AnalyzerConfirmationReading.unchanged().arrivingAs(arrival);
         }
         AnalyzerConfirmationReading reading = compare(confirmation, served);
         if (reading.isUnchanged()) {
             confirmation.setReadingsFingerprint(served.fingerprint());
             confirmationDAO.update(confirmation);
         }
-        return reading;
+        return reading.arrivingAs(arrival);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean readsAsConfirmed(String mappingId, String code, String subIdentity, String arrivalReading) {
+        Optional<AnalyzerArrivalReading.RecordReading> arrived = AnalyzerArrivalReading.parseRecord(arrivalReading);
+        Optional<AnalyzerMappingConfirmation> found = confirmationDAO.findByMappingId(mappingId);
+        if (arrived.isEmpty() || found.isEmpty() || found.get().getReadingsFingerprint() == null) {
+            return false;
+        }
+        AnalyzerMappingConfirmation confirmation = found.get();
+        if (!AnalyzerRecordReading.parsing(arrived.get().type())
+                .equals(AnalyzerRecordReading.parsing(readTree(confirmation.getTypeReadingJson())))) {
+            return false;
+        }
+        String sub = subIdentity == null ? "" : subIdentity;
+        Map<AnalyzerMappingSourceRow, JsonNode> confirmed = readRowReadings(confirmation.getRowReadingsJson());
+        JsonNode record = confirmed.get(new AnalyzerMappingSourceRow(code, null, sub));
+        if (record == null || !record.equals(arrived.get().byValue().get(null))) {
+            return false;
+        }
+        return arrived.get().byValue().entrySet().stream().filter(entry -> entry.getKey() != null).allMatch(entry -> {
+            JsonNode now = confirmed.get(new AnalyzerMappingSourceRow(code, entry.getKey(), sub));
+            return now == null || now.equals(entry.getValue());
+        });
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean standsAsServed(String mappingId, AnalyzerProfilePin pin) {
         return confirmationDAO.findByMappingId(mappingId).filter(confirmation -> hasText(confirmation.getAuditEventId())
-                && currentReading(pin, confirmation).isUnchanged()).isPresent();
+                && checkedReading(pin, confirmation).filter(AnalyzerConfirmationReading::isUnchanged).isPresent())
+                .isPresent();
     }
 
     /**
@@ -239,25 +272,34 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     /**
      * The served profile against a confirmation, without writing; an unreadable
-     * profile changes nothing.
+     * profile changes nothing, so a Bridge outage never undoes a verification.
      */
     private AnalyzerConfirmationReading currentReading(AnalyzerProfilePin pin,
+            AnalyzerMappingConfirmation confirmation) {
+        return checkedReading(pin, confirmation).orElseGet(AnalyzerConfirmationReading::unchanged);
+    }
+
+    /**
+     * The served profile against a confirmation, or empty when the Bridge cannot
+     * serve it.
+     */
+    private Optional<AnalyzerConfirmationReading> checkedReading(AnalyzerProfilePin pin,
             AnalyzerMappingConfirmation confirmation) {
         ServedReading served;
         try {
             served = served(pin);
         } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
-            return AnalyzerConfirmationReading.unchanged();
+            return Optional.empty();
         }
         if (confirmation.getReadingsFingerprint() == null) {
-            return served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())
+            return Optional.of(served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())
                     ? AnalyzerConfirmationReading.unchanged()
-                    : AnalyzerConfirmationReading.typeReadingChanged();
+                    : AnalyzerConfirmationReading.typeReadingChanged());
         }
         if (served.fingerprint().equals(confirmation.getReadingsFingerprint())) {
-            return AnalyzerConfirmationReading.unchanged();
+            return Optional.of(AnalyzerConfirmationReading.unchanged());
         }
-        return compare(confirmation, served);
+        return Optional.of(compare(confirmation, served));
     }
 
     private AnalyzerConfirmationReading compare(AnalyzerMappingConfirmation confirmation, ServedReading served) {

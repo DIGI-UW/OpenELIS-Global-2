@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.hl7.fhir.r4.model.Bundle;
 import org.junit.Before;
 import org.junit.Test;
@@ -585,6 +587,62 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(held.getId(), updated.getValue().getId());
         assertTrue(updated.getValue().isReadOnly());
         assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, updated.getValue().getImportIssueReason());
+    }
+
+    @Test
+    public void aHeldResultKeepsHowItsRecordReadOnArrival() throws IOException {
+        analyzer = analyzer("site.unknown-capable", 3);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(), List.of());
+        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
+        when(confirmationService.readingOnDelivery(any(), any()))
+                .thenReturn(
+                        new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(false, Set.of(),
+                                new org.openelisglobal.analyzer.service.AnalyzerArrivalReading(
+                                        json.createObjectNode(), Map.of(
+                                                new org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow(
+                                                        "VENDOR-NEW-42", null, ""),
+                                                json.valueToTree(List.of("copies/mL"))))));
+
+        service.importBundle(fixture("normalized-unknown-test.fhir.json"), "7");
+
+        AnalyzerResults held = capturedRow();
+        assertTrue(held.isReadOnly());
+        assertTrue(held.getArrivalReading().contains("copies/mL"));
+    }
+
+    @Test
+    public void aHeldResultRecoversOnlyWhereItArrivedReadingAsTheConfirmationDoes() throws IOException {
+        AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
+        held.setArrivalReading("{\"type\":{},\"rows\":[]}");
+        when(confirmationService.readsAsConfirmed(eq("revision-1"), eq("VENDOR-NEW-42"), any(),
+                eq(held.getArrivalReading()))).thenReturn(false);
+
+        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
+        verify(analyzerResultsService, never()).update(any(AnalyzerResults.class));
+        verify(profileCatalogService, never()).getProfile("site.unknown-capable", 3);
+    }
+
+    @Test
+    public void aRecoveredResultStandsOnTheTypeTheAnalyzerIsConfirmedOnNow() throws IOException {
+        AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
+        held.setArrivalReading("{\"type\":{},\"rows\":[]}");
+        when(confirmationService.readsAsConfirmed(eq("revision-1"), eq("VENDOR-NEW-42"), any(),
+                eq(held.getArrivalReading()))).thenReturn(true);
+        String currentRecognition = "sha256:" + "c".repeat(64);
+        org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation confirmation = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
+        confirmation.setRecognitionFingerprint(currentRecognition);
+        when(confirmationService.findForMapping("revision-1")).thenReturn(Optional.of(confirmation));
+        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
+        when(confirmationService.hasMatchingConfirmation(any(), eq(currentRecognition))).thenReturn(true);
+
+        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
+        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(analyzerResultsService).update(updated.capture());
+        assertEquals("501", updated.getValue().getTestId());
+        assertFalse(updated.getValue().isReadOnly());
+        assertEquals(held.getArrivalReading(), updated.getValue().getArrivalReading());
     }
 
     /**

@@ -36,6 +36,12 @@ public final class AnalyzerRecordReading {
      */
     static final List<String> TYPE_READING_DEFAULTS = List.of("extractionOverrides", "numberFormat");
 
+    /**
+     * The type reading sections that route a message to its analyzer; a result
+     * already parsed does not depend on them.
+     */
+    static final List<String> ROUTING_SECTIONS = List.of("identifier_pattern", "msh3_pattern");
+
     private AnalyzerRecordReading() {
     }
 
@@ -44,6 +50,9 @@ public final class AnalyzerRecordReading {
      * and every value or spelling both declare for it.
      */
     public static Set<AnalyzerMappingRowKey> readAlike(BridgeAnalyzerProfile one, BridgeAnalyzerProfile other) {
+        if (!parsing(typeReading(one)).equals(parsing(typeReading(other)))) {
+            return Set.of();
+        }
         Map<AnalyzerMappingSourceRow, Object> mine = rowReadings(one);
         Map<AnalyzerMappingSourceRow, Object> theirs = rowReadings(other);
         Set<AnalyzerMappingRowKey> differing = mine.entrySet().stream()
@@ -115,6 +124,22 @@ public final class AnalyzerRecordReading {
      * A declared value is read by the spellings translated to it; a mapping keeps a
      * row for each spelling too, read by the values it translates to.
      */
+    /** A type reading without its routing: how it parses a result it was sent. */
+    public static Map<String, JsonNode> parsing(Map<String, JsonNode> typeReading) {
+        Map<String, JsonNode> parsing = new TreeMap<>(typeReading);
+        ROUTING_SECTIONS.forEach(parsing::remove);
+        return parsing;
+    }
+
+    /** {@link #parsing(Map)} of a type reading kept as JSON. */
+    public static Map<String, JsonNode> parsing(JsonNode typeReading) {
+        Map<String, JsonNode> reading = new TreeMap<>();
+        if (typeReading != null) {
+            typeReading.fields().forEachRemaining(entry -> reading.put(entry.getKey(), entry.getValue()));
+        }
+        return parsing(reading);
+    }
+
     private static void addValues(Map<AnalyzerMappingSourceRow, Object> readings, String code, String subIdentity,
             List<String> values, Map<String, List<String>> translations) {
         Map<String, Set<String>> valuesBySpelling = new TreeMap<>();

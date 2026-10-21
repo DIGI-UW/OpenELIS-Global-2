@@ -470,6 +470,54 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
+    public void aDeliveryThatDoesNotSayWhatItWasReadWithIsComparedWithTheServedProfile() {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerMappingConfirmation saved = confirmed();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
+                .thenReturn(served(EDITED_FINGERPRINT, "IU/mL", "DETECTED", "MOCK"));
+
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, null);
+
+        assertEquals(java.util.Set.of(new AnalyzerMappingSourceRow("RAW-A", null, "")), reading.changedRows());
+        assertNull("how it arrived is not known", reading.arrival());
+    }
+
+    @Test
+    public void aHeldRecordReadsAsConfirmedOnlyWhenItArrivedReadingTheConfirmedWay() {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerMappingConfirmation saved = confirmed();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        String arrivedAsConfirmed = service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).arrival()
+                .forRecord("RAW-A", null);
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
+                .thenReturn(served(EDITED_FINGERPRINT, "IU/mL", "DETECTED", "MOCK"));
+        String arrivedInIu = service.readingOnDelivery(candidate, EDITED_FINGERPRINT).arrival().forRecord("RAW-A",
+                null);
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
+                .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "OTHER"));
+        String arrivedRoutedElsewhere = service.readingOnDelivery(candidate, EDITED_FINGERPRINT).arrival()
+                .forRecord("RAW-A", null);
+
+        assertTrue(service.readsAsConfirmed("61", "RAW-A", null, arrivedAsConfirmed));
+        assertFalse("parsed in another unit", service.readsAsConfirmed("61", "RAW-A", null, arrivedInIu));
+        assertTrue("routing does not change a parsed result",
+                service.readsAsConfirmed("61", "RAW-A", null, arrivedRoutedElsewhere));
+        assertFalse(service.readsAsConfirmed("61", "RAW-A", null, null));
+    }
+
+    @Test
+    public void aConfirmationIsNotShownAsStandingWhenTheBridgeCannotServeItsProfile() {
+        AnalyzerMappingConfirmation saved = confirmed();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
+                .thenThrow(new BridgeProfileCatalogException("Bridge catalog unreachable"));
+
+        assertFalse(service.standsAsServed("61", new org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin(
+                "site.mock-analyzer", 2, PROFILE_FINGERPRINT)));
+    }
+
+    @Test
     public void aConfirmationTakenWhileTheBridgeCannotServeTheProfileIsSavedWithoutReadings() {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenThrow(new BridgeProfileCatalogException("Bridge catalog unreachable"));
