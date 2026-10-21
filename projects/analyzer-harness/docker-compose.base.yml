@@ -24,8 +24,9 @@ services:
     # The first compose file supplies the entrypoint and script mount: compose resolves
     # relative paths from the first file's directory, which differs between stacks.
     environment:
-      KEYSTORE_PW: ${SSL_KEYSTORE_PASSWORD:-kspass}
-      TRUSTSTORE_PW: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      # The webapp opens the stores with server.ssl.* from common.properties.
+      KEYSTORE_PW: kspass
+      TRUSTSTORE_PW: tspass
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - keys-vol:/etc/ssl/private/
