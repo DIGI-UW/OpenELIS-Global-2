@@ -2,8 +2,10 @@ import ReagentLotPicker, { formatReagentLotConflict } from "./ReagentLotPicker";
 import ReagentUsageHistory from "./ReagentUsageHistory";
 import { labTimestamp } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../utils/Utils";
 import {
   Accordion,
   AccordionItem,
@@ -63,6 +65,12 @@ export default function CaseAstWorkspace({
   renderNotes,
 }) {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canListAnalyzers = [
+    Roles.ANALYSER_IMPORT,
+    Roles.GLOBAL_ADMIN,
+    "Admin",
+  ].some((role) => hasRole(userSessionDetails, role));
   const t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [data, setData] = useState(null),
     [error, setError] = useState(false),
@@ -113,7 +121,7 @@ export default function CaseAstWorkspace({
     let live = true;
     Promise.all([
       service.getReagentLotOverview?.(detail.id),
-      service.getAnalyzers?.(),
+      canListAnalyzers ? service.getAnalyzers?.() : Promise.resolve([]),
     ])
       .then(([overview, instruments]) => {
         if (live) {
@@ -127,7 +135,7 @@ export default function CaseAstWorkspace({
     return () => {
       live = false;
     };
-  }, [detail.id, data, service]);
+  }, [detail.id, data, service, canListAnalyzers]);
   const canEnter = detail.canWrite && data?.canEnter;
   const canValidate = detail.canValidate && data?.canValidate;
   const open = (action, isolate, run, reading, antibioticId) => {

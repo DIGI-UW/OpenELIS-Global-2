@@ -525,3 +525,86 @@ it("previews an extension from the existing end without resetting inoculation", 
     "Not available",
   );
 });
+
+it.each([
+  ["mark-positive", "GROWTH"],
+  ["mark-no-growth", "NO_GROWTH"],
+])(
+  "opens the routed %s outcome and saves it on its culture row",
+  async (entryAction, outcome) => {
+    const service = api();
+    const changed = vi.fn();
+    const consumed = vi.fn();
+    show(service, {
+      entryAction,
+      onChanged: changed,
+      onEntryActionConsumed: consumed,
+    });
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Culture row")).toHaveValue("r1");
+    expect(within(dialog).getByLabelText("Outcome")).toHaveValue(outcome);
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    );
+    await waitFor(() =>
+      expect(service.cultureAction).toHaveBeenCalledWith(
+        "c1",
+        "r1",
+        "outcome",
+        expect.objectContaining({ outcome }),
+      ),
+    );
+    expect(service.cultureAction.mock.calls[0][3]).not.toHaveProperty(
+      "cultureRowId",
+    );
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(consumed).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("requires an explicit culture selection when a routed outcome has multiple eligible rows", async () => {
+  const service = api([
+    row,
+    { ...row, id: "r2", containerIdentifier: "PLATE-2" },
+  ]);
+  show(service, { entryAction: "mark-no-growth" });
+  const dialog = await screen.findByRole("dialog");
+  const save = within(dialog).getByRole("button", {
+    name: "Save",
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText("Culture row"), {
+    target: { value: "r2" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith(
+      "c1",
+      "r2",
+      "outcome",
+      expect.objectContaining({ outcome: "NO_GROWTH" }),
+    ),
+  );
+});
+
+it("explains a routed outcome without eligible cultures", async () => {
+  const service = api([]);
+  show(service, { entryAction: "mark-positive" });
+  await screen.findByText(
+    messages["microbiology.culture.noEligibleOutcomeRows"],
+  );
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});
+
+it("does not open a routed outcome for a read-only viewer", async () => {
+  const service = api();
+  show(service, {
+    entryAction: "mark-positive",
+    detail: { ...detail, canWrite: false },
+  });
+  await screen.findByTestId("culture-row-r1");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});

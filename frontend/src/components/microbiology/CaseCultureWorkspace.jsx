@@ -89,6 +89,15 @@ function CultureActionForm({
   const t = (key, values) =>
     intl.formatMessage({ id: `microbiology.culture.${key}` }, values);
   const [draft, setDraft] = useState(action.draft);
+  const eligibleRows = rows.filter(
+    (row) =>
+      !row.receivedIsolate &&
+      (!row.outcome ||
+        (row.outcome === "NO_GROWTH" && draft.outcome === "GROWTH")),
+  );
+  const selectedRow = action.chooseRow
+    ? rows.find((row) => row.id === draft.cultureRowId)
+    : action.row;
   const change = (key, value) =>
     setDraft((previous) => ({
       ...previous,
@@ -188,11 +197,17 @@ function CultureActionForm({
   if (action.kind === "reading") valid = !!draft.readingId;
   if (action.kind === "extension")
     valid = Number(draft.extendBy) > 0 && !!draft.unit && !!draft.reasonId;
-  if (action.kind === "outcome") valid = !!draft.outcome;
+  if (action.kind === "outcome")
+    valid =
+      !!draft.outcome &&
+      (!action.chooseRow ||
+        eligibleRows.some((row) => row.id === draft.cultureRowId));
   if (action.kind === "inoculated-time") valid = !!draft.inoculatedAt;
   if (action.kind === "positive-time") valid = !!draft.positiveAt;
   const submit = () => {
     const body = { ...draft };
+    const cultureRowId = body.cultureRowId;
+    delete body.cultureRowId;
     [
       "mediumItemId",
       "lotId",
@@ -209,7 +224,7 @@ function CultureActionForm({
     ["inoculatedAt", "positiveAt"].forEach((key) => {
       if (key in body) body[key] = instant(body[key]);
     });
-    onSave(body);
+    onSave(body, cultureRowId);
   };
   return (
     <Modal
@@ -315,6 +330,14 @@ function CultureActionForm({
         )}
         {action.kind === "outcome" && (
           <>
+            {action.chooseRow &&
+              select(
+                "cultureRowId",
+                eligibleRows.map((row) => ({
+                  id: row.id,
+                  value: row.containerIdentifier,
+                })),
+              )}
             {select(
               "outcome",
               outcomes.map((id) => ({ id, value: t(`outcome.${id}`) })),
@@ -337,13 +360,14 @@ function CultureActionForm({
           />
         )}
         {(draft.outcome === "GROWTH" || action.kind === "positive-time") &&
-          draft.positiveAt && (
+          draft.positiveAt &&
+          selectedRow && (
             <p>
               {t("timeToPositivityHours")}:{" "}
               {positivityDuration(
                 intl,
                 (new Date(instant(draft.positiveAt)) -
-                  new Date(action.row.inoculatedAt)) /
+                  new Date(selectedRow.inoculatedAt)) /
                   3600000,
               )}
             </p>
@@ -369,6 +393,9 @@ export default function CaseCultureWorkspace({
   onPickIsolate,
   renderTests,
   renderNotes,
+  entryAction,
+  onEntryActionConsumed,
+  onChanged,
 }) {
   const intl = useIntl();
   const t = (key, values) =>
@@ -404,6 +431,49 @@ export default function CaseCultureWorkspace({
       live = false;
     };
   }, [detail.id, detail.labUnitId, service]);
+  const entryHandled = useRef("");
+  useEffect(() => {
+    if (!["mark-positive", "mark-no-growth"].includes(entryAction)) {
+      entryHandled.current = "";
+      return;
+    }
+    const key = `${detail.id}:${entryAction}`;
+    if (!options || !detail.canWrite || entryHandled.current === key) return;
+    entryHandled.current = key;
+    const outcome = entryAction === "mark-positive" ? "GROWTH" : "NO_GROWTH";
+    const eligible = rows.filter(
+      (row) =>
+        !row.receivedIsolate &&
+        (!row.outcome || (row.outcome === "NO_GROWTH" && outcome === "GROWTH")),
+    );
+    const row =
+      eligible.find((row) => row.id === selectedId) ||
+      (eligible.length === 1 ? eligible[0] : null);
+    if (eligible.length === 0) {
+      setError("noEligibleOutcomeRows");
+    } else {
+      setError("");
+      setAction({
+        kind: "outcome",
+        chooseRow: true,
+        row,
+        draft: {
+          outcome,
+          cultureRowId: row?.id || "",
+          ...(outcome === "GROWTH" ? { positiveAt: localTime() } : {}),
+        },
+      });
+    }
+    onEntryActionConsumed?.();
+  }, [
+    entryAction,
+    detail.id,
+    detail.canWrite,
+    options,
+    rows,
+    selectedId,
+    onEntryActionConsumed,
+  ]);
   const date = (value) => labTimestamp(intl, value);
   const numeric = (value) =>
     value == null ? t("notAvailable") : intl.formatNumber(Number(value));
@@ -450,7 +520,7 @@ export default function CaseCultureWorkspace({
     setError("");
     setAction({ kind, row, draft });
   };
-  const save = async (body) => {
+  const save = async (body, cultureRowId) => {
     if (!detail.canWrite || saving) return;
     setSaving(true);
     setError("");
@@ -460,13 +530,14 @@ export default function CaseCultureWorkspace({
           ? await service.inoculateCulture(detail.id, body)
           : await service.cultureAction(
               detail.id,
-              action.row.id,
+              cultureRowId || action.row?.id,
               action.kind,
               body,
             );
       if (!live.current) return;
       setRows(data);
       setAction(null);
+      onChanged?.();
     } catch (failure) {
       if (!live.current) return;
       const message =

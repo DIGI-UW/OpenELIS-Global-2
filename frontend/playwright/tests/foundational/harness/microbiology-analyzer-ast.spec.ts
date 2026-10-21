@@ -87,10 +87,8 @@ test.describe("Microbiology analyzer AST review", () => {
       );
     });
 
-    await expect(
-      page.getByRole("heading", { name: "Manual AST" }),
-    ).toBeVisible();
     const astCard = page.getByTestId("microbiology-ast-card");
+    await expect(astCard).toBeVisible();
     await expect(astCard.getByText("Analyzer QC failed")).toBeVisible();
     await expect(astCard.getByText(SOURCE_ANALYZER)).toBeVisible();
     await expect(astCard.getByText(/UAT-AST-CARD-/)).toBeVisible();

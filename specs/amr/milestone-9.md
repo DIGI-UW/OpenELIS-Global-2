@@ -125,3 +125,12 @@ Complete these lanes and link the resulting evidence in a new candidate report:
 - Obtain owner workflow acceptance after reviewing remaining findings. Only then
   prepare the accepted UAT setup/checklist and record workflows. Neither a green
   build nor this documentation commit constitutes UAT approval.
+
+## Review follow-up acceptance
+
+Worklist positive/no-growth shortcuts open the culture-row outcome editor. With
+multiple eligible rows, the technician must select the row before saving; with
+no eligible row, the workspace explains that a culture must be inoculated first.
+A recorded row outcome refreshes the case header. Results users can enter manual
+susceptibility results without analyzer-import privileges. Historical referrals
+retain their sent date unless an actual subcontract handoff time is available.

@@ -801,10 +801,13 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "CULTURE" && (
         <CaseCultureWorkspace
+          entryAction={scanParams.get("action")}
+          onEntryActionConsumed={() => onScopeChange?.("CULTURE")}
+          onChanged={onCaseChanged}
           renderNotes={renderNotes}
           detail={detail}
           service={service}
-          selectedId={cultureId}
+          selectedId={(routedScope === "CULTURE" && scanRow) || cultureId}
           renderTests={renderTests}
           onPickIsolate={(row) => {
             setPickCultureId(row.id);

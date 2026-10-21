@@ -534,3 +534,60 @@ describe("culture test chooser", () => {
     );
   });
 });
+
+it("honors the worklist setup action through the shared chooser and records the selected row outcome", async () => {
+  const api = service();
+  const row = {
+    id: "culture-1",
+    sourceSampleItemId: "sample-1",
+    containerIdentifier: "PLATE-1",
+    inoculatedAt: "2026-01-01T10:00:00Z",
+    duration: 48,
+    durationUnit: "HOURS",
+    readings: [],
+    extensions: [],
+    proposals: [],
+  };
+  api.getCultures = vi.fn().mockResolvedValue([row]);
+  api.getCultureOptions = vi.fn().mockResolvedValue({
+    sources: detail.samples,
+    media: [],
+    mediaLinks: [],
+    atmospheres: [],
+    readings: [],
+    quantities: [],
+    extensionReasons: [],
+  });
+  api.cultureAction = vi
+    .fn()
+    .mockResolvedValue([{ ...row, outcome: "GROWTH" }]);
+  const changed = vi.fn();
+  const navigate = vi.fn();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=setup&action=mark-positive"
+        onCaseChanged={changed}
+        onScopeChange={navigate}
+      />
+    </IntlProvider>,
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(screen.getByLabelText("Testing section")).toHaveValue("CULTURE");
+  expect(within(dialog).getByLabelText("Outcome")).toHaveValue("GROWTH");
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() =>
+    expect(api.cultureAction).toHaveBeenCalledWith(
+      "case-1",
+      "culture-1",
+      "outcome",
+      expect.objectContaining({ outcome: "GROWTH" }),
+    ),
+  );
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(navigate).toHaveBeenCalledWith("CULTURE");
+});

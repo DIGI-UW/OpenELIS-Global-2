@@ -114,11 +114,16 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                 .map(r -> new MicroIsolateWorkspaceForm.Referral(r.getId(), r.getAnalysis().getSampleItem().getId(),
                         r.getAnalysis().getTest().getName(),
                         r.getOrganization() == null ? null : r.getOrganization().getOrganizationName(),
-                        r.getStatus() == null ? null : r.getStatus().name(),
-                        r.getSubcontract() == null ? null : r.getSubcontract().getHandoffDatetime(),
+                        r.getStatus() == null ? null : r.getStatus().name(), referralSentAt(r),
                         r.getSubcontract() == null ? null : r.getSubcontract().getSubcontractNotes()))
                 .toList();
         return form;
+    }
+
+    private java.sql.Timestamp referralSentAt(org.openelisglobal.referral.valueholder.Referral referral) {
+        var subcontract = referral.getSubcontract();
+        return subcontract != null && subcontract.getHandoffDatetime() != null ? subcontract.getHandoffDatetime()
+                : referral.getSentDate();
     }
 
     @Override

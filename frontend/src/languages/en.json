@@ -14017,5 +14017,7 @@
   "microbiology.enum.QUESTIONNAIRE_UPDATED": "Questionnaire updated",
   "microbiology.worklist.scopeFiltersReset": "Filters specific to the previous worklist section were cleared. Search, laboratory units and selected dates were retained.",
   "microbiology.incoming.loadError": "Incoming results could not be loaded. Reload the case to check for pending results.",
-  "microbiology.testing.notesCount": "Notes ({count})"
+  "microbiology.testing.notesCount": "Notes ({count})",
+  "microbiology.culture.cultureRowId": "Culture row",
+  "microbiology.culture.noEligibleOutcomeRows": "No culture row is eligible for this outcome. Inoculate a culture row before recording an outcome."
 }

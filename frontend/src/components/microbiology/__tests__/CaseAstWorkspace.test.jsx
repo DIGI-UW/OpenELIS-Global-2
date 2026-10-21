@@ -5,6 +5,7 @@ import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import CaseAstWorkspace from "../CaseAstWorkspace";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 const t = (key) => messages[`microbiology.m6.${key}`];
 const reading = (id, antibioticId, value) => ({
   id,
@@ -217,4 +218,69 @@ it("repeats a chosen antibiotic without silently ordering the whole panel", asyn
       false,
     ),
   );
+});
+
+it("lets Results users save a manual reading without requesting the analyzer list", async () => {
+  const data = workspace("IN_PROGRESS");
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(data),
+    astAction: vi.fn().mockResolvedValue(data),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAnalyzers: vi.fn().mockRejectedValue(new Error("Forbidden")),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles: ["Results"] } }}
+      >
+        <CaseAstWorkspace
+          detail={{ id: "c1", canWrite: true, canValidate: false }}
+          service={service}
+        />
+      </UserSessionDetailsContext.Provider>
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: t("action.reading") }))[0],
+  );
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(t("raw")), {
+    target: { value: "4" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "reading" }),
+      false,
+    ),
+  );
+  expect(service.getAnalyzers).not.toHaveBeenCalled();
+  expect(screen.queryByText(t("saveError"))).not.toBeInTheDocument();
+});
+
+it("loads analyzer choices when the session has analyzer import rights", async () => {
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(workspace()),
+    getAnalyzers: vi
+      .fn()
+      .mockResolvedValue([{ id: "instrument", name: "Instrument" }]),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles: ["Analyser Import"] } }}
+      >
+        <CaseAstWorkspace
+          detail={{ id: "c1", canWrite: true }}
+          service={service}
+        />
+      </UserSessionDetailsContext.Provider>
+    </IntlProvider>,
+  );
+  await waitFor(() => expect(service.getAnalyzers).toHaveBeenCalled());
 });
