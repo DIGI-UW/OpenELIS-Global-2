@@ -37,6 +37,16 @@ public class AnalyzerHeldResultServiceTest {
     }
 
     @Test
+    public void aResultHeldForPlacementIsDismissedToo() {
+        when(analyzerResultsService.get("9003"))
+                .thenReturn(row("9003", false, AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT));
+
+        service.dismiss("9003", "17");
+
+        verify(analyzerResultsService).delete("9003", "17");
+    }
+
+    @Test
     public void aResultWaitingForAcceptanceIsNotDismissedFromHere() {
         when(analyzerResultsService.get("9002")).thenReturn(row("9002", false, null));
 

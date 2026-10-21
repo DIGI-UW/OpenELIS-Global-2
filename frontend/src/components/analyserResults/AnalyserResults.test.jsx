@@ -487,6 +487,27 @@ describe("AnalyserResults", () => {
     );
   });
 
+  it("removes a result held for placement from review", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 204 }),
+    );
+    renderResults([
+      {
+        ...mappedQualitativeResult,
+        importIssueReason: "awaiting_placement",
+        readOnly: false,
+      },
+    ]);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+
+    expect(postResults.mock.calls[0][0]).toBe(
+      `/rest/analyzer/results/${mappedQualitativeResult.id}/dismiss`,
+    );
+  });
+
   it("reports a dismissal that never reached the server", async () => {
     postResults.mockImplementation((_endpoint, _body, callback) =>
       callback(undefined),

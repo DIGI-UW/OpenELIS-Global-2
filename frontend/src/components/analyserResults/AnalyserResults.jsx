@@ -744,6 +744,20 @@ const AnalyserResults = (props) => {
         );
 
       case "ignore":
+        // A row held for placement is saved by its review decision, which never
+        // deletes a held row, so it is removed the way other held rows are.
+        if (awaitingReview) {
+          return (
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={dismissingRunIds.includes(row.id)}
+              onClick={() => removeHeldResult(row)}
+            >
+              <FormattedMessage id="analyzer.results.held.remove" />
+            </Button>
+          );
+        }
         if (held) {
           return null;
         }

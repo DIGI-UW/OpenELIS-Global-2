@@ -17,7 +17,8 @@ public class AnalyzerHeldResultServiceImpl implements AnalyzerHeldResultService 
     @Transactional
     public void dismiss(String stagedResultId, String actor) {
         AnalyzerResults held = analyzerResultsService.get(stagedResultId);
-        if (!held.isReadOnly() || held.getImportIssueReason() == null) {
+        // Held for its mapping or for placement: either way it carries the reason.
+        if (held.getImportIssueReason() == null) {
             throw new IllegalStateException("Only a held result can be dismissed");
         }
         analyzerResultsService.delete(held.getId(), actor);
