@@ -133,6 +133,14 @@
   padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
 }
 
+.analyzer-setup__connect-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
 .analyzer-setup__connect-fields {
   display: grid;
   gap: spacing.$spacing-05;

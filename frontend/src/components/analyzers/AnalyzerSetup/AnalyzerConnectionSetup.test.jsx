@@ -15,11 +15,14 @@ import {
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
-import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
+import AnalyzerConnectionSetup, {
+  receivedSenders,
+} from "./AnalyzerConnectionSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
+  getAnalyzerDeliveryIssues: vi.fn(),
   resetAnalyzerProfile: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
@@ -947,5 +950,22 @@ describe("AnalyzerConnectionSetup", () => {
     await waitFor(() => expect(updateAnalyzer).toHaveBeenCalledTimes(1));
     expect(activateAnalyzer).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("receivedSenders", () => {
+  it("offers each sender the Bridge holds unowned or for this connection, once", () => {
+    const rows = [
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "MBT^Bruker^4.1", connectionId: "bridge-9" },
+      { sender: "EPICENTER^EpiCenter", connectionId: "bridge-other" },
+      { sender: null, connectionId: null },
+    ];
+
+    expect(receivedSenders(rows, "bridge-9")).toEqual([
+      "CPHL^GeneXpert^6.2",
+      "MBT^Bruker^4.1",
+    ]);
   });
 });

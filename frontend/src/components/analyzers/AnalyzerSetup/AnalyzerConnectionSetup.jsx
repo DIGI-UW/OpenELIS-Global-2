@@ -5,6 +5,7 @@ import { useIntl } from "react-intl";
 import {
   activateAnalyzer,
   getAnalyzerActivationReadiness,
+  getAnalyzerDeliveryIssues,
   resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
@@ -177,6 +178,26 @@ const formatActivationBlocker = (intl, blocker) => {
   );
 };
 
+const MAX_RECEIVED_SENDERS = 5;
+
+/**
+ * Sender fields of messages the Bridge holds that no other analyzer owns, so
+ * setup can name this instrument by what it actually sends.
+ */
+export const receivedSenders = (rows = [], connectionId) =>
+  [
+    ...new Set(
+      rows
+        .filter(
+          (row) =>
+            row.sender &&
+            (!row.connectionId ||
+              String(row.connectionId) === String(connectionId)),
+        )
+        .map((row) => row.sender),
+    ),
+  ].slice(0, MAX_RECEIVED_SENDERS);
+
 const AnalyzerConnectionSetup = ({
   candidate,
   onCandidateChange,
@@ -202,6 +223,22 @@ const AnalyzerConnectionSetup = ({
   const [activationError, setActivationError] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetRefusal, setResetRefusal] = useState(null);
+
+  const [senders, setSenders] = useState([]);
+  const asksForSender = fields.some((field) => field.key === "senderId");
+
+  useEffect(() => {
+    if (!asksForSender) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    getAnalyzerDeliveryIssues((response) => {
+      setSenders(
+        receivedSenders(response?.data?.rows, candidate?.bridgeConnectionId),
+      );
+    }, controller.signal);
+    return () => controller.abort();
+  }, [asksForSender, candidate?.bridgeConnectionId]);
 
   const submitting = action !== null;
   // A connection the Bridge could not restart is not running, so an analyzer
@@ -384,6 +421,7 @@ const AnalyzerConnectionSetup = ({
         changedSecrets={changedSecrets}
         submitAttempted={submitAttempted}
         onChange={updateSetting}
+        suggestions={{ senderId: senders }}
       />
 
       <div className="analyzer-setup__connect-actions">
