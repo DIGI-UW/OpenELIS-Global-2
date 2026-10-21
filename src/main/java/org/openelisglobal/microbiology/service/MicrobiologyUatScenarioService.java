@@ -919,7 +919,7 @@ public class MicrobiologyUatScenarioService {
         }
         if (includeCulture && cultures.getRows(c.getId()).isEmpty()) {
             if (medium == null) {
-                medium = getOrCreateInventoryItem(UAT_MEDIA_NAME, ItemType.REAGENT, "plate", actor);
+                medium = getOrCreateInventoryItem(UAT_MEDIA_NAME, "Reagent", "plate", actor);
             }
             final Long mediumId = medium.getId();
             var options = cultures.getOptions(c.getId());

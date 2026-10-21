@@ -383,7 +383,8 @@ final class PatientResultsPdf {
         table.setHeaderRows(1);
         for (var row : item.getMicrobiologyRows()) {
             if (row.isGrid()) {
-                for (String value : new String[] { row.getAgent(), row.getRaw(), row.getInterpretation(), row.getStandard() }) {
+                for (String value : new String[] { row.getAgent(), row.getRaw(), row.getInterpretation(),
+                        row.getStandard() }) {
                     table.addCell(text(value, fonts.regular(8, Color.BLACK), Element.ALIGN_LEFT));
                 }
             } else {
