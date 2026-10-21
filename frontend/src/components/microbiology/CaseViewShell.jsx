@@ -36,19 +36,14 @@ export default function CaseViewShell({
   const location = useLocation();
   const id = providedId || params.caseId;
   const t = (id, values) => intl.formatMessage({ id }, values);
-  const currentCase = useRef({ id, generation: 0 });
-  if (currentCase.current.id !== id) {
-    currentCase.current = {
-      id,
-      generation: currentCase.current.generation + 1,
-    };
-  }
+  const currentCase = useRef(id);
+  const visitGeneration = useRef(0);
+  if (currentCase.current !== id) visitGeneration.current += 1;
+  currentCase.current = id;
   useEffect(
     () => () => {
-      currentCase.current = {
-        id: null,
-        generation: currentCase.current.generation + 1,
-      };
+      visitGeneration.current += 1;
+      currentCase.current = null;
     },
     [],
   );
@@ -82,21 +77,21 @@ export default function CaseViewShell({
     };
   }, [id, service]);
   const transfer = () => {
-    const requestedCase = currentCase.current;
+    const requestedVisit = visitGeneration.current;
     setSaving(true);
     setTransferError(false);
     service
       .transferCase(id, destination)
       .then((d) => {
-        if (currentCase.current !== requestedCase) return;
+        if (visitGeneration.current !== requestedVisit) return;
         setDetail(d);
         setDestination("");
       })
       .catch(() => {
-        if (currentCase.current === requestedCase) setTransferError(true);
+        if (visitGeneration.current === requestedVisit) setTransferError(true);
       })
       .finally(() => {
-        if (currentCase.current === requestedCase) setSaving(false);
+        if (visitGeneration.current === requestedVisit) setSaving(false);
       });
   };
   // i18n-keys: microbiology.case.status.*
