@@ -75,3 +75,35 @@ test("saves case purpose and order replicates and disables writes for read-only 
   );
   expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
 });
+
+test("a writable case with no purpose can set purpose and program", async () => {
+  const initial = {
+    ...detail,
+    culturePurpose: null,
+    programId: null,
+    programs: [{ id: "p1", value: "Clinical program" }],
+  };
+  const service = {
+    getCase: vi.fn().mockResolvedValue(initial),
+    saveContext: vi.fn().mockResolvedValue({
+      ...initial,
+      culturePurpose: "ROUTINE_MONITORING",
+      programId: "p1",
+    }),
+  };
+  mount(service);
+  const purpose = await screen.findByLabelText("Culture purpose");
+  expect(purpose.value).toBe("");
+  fireEvent.change(purpose, { target: { value: "ROUTINE_MONITORING" } });
+  fireEvent.change(screen.getByLabelText("Program"), {
+    target: { value: "p1" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(service.saveContext).toHaveBeenCalledWith(detail.id, {
+      culturePurpose: "ROUTINE_MONITORING",
+      programId: "p1",
+      replicateCount: 2,
+    }),
+  );
+});

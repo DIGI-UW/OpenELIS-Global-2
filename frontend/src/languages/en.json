@@ -13601,6 +13601,8 @@
   "microbiology.enum.TEST_PANEL_ASSIGNED": "Test assigned to panel",
   "microbiology.enum.TESTED_ELSEWHERE": "Tested elsewhere",
   "microbiology.culture.title": "Culture",
+  "microbiology.culture.parentCulture": "Parent culture",
+  "microbiology.culture.noEligibleParentRows": "No culture is available for subculture.",
   "microbiology.culture.choose": "Choose an option",
   "microbiology.culture.save": "Save",
   "microbiology.culture.cancel": "Cancel",

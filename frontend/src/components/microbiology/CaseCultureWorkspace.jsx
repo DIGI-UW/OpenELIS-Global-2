@@ -95,6 +95,13 @@ function CultureActionForm({
       (!row.outcome ||
         (row.outcome === "NO_GROWTH" && draft.outcome === "GROWTH")),
   );
+  const eligibleParents = rows.filter(
+    (row) =>
+      (!row.outcome || row.outcome === "GROWTH") &&
+      options.sources.some(
+        (source) => source.sampleItemId === row.sourceSampleItemId,
+      ),
+  );
   const selectedRow = action.chooseRow
     ? rows.find((row) => row.id === draft.cultureRowId)
     : action.row;
@@ -147,12 +154,21 @@ function CultureActionForm({
       id={`culture-${key}`}
       labelText={t(label)}
       value={draft[key] || ""}
-      disabled={key === "sourceSampleItemId" && !!draft.parentId}
-      onChange={(e) =>
-        key === "sourceSampleItemId"
-          ? chooseSource(e.target.value)
-          : change(key, e.target.value)
+      disabled={
+        key === "sourceSampleItemId" &&
+        (!!draft.parentId || action.chooseParent)
       }
+      onChange={(e) => {
+        const value = e.target.value;
+        if (key === "sourceSampleItemId") chooseSource(value);
+        else if (key === "parentId") {
+          chooseSource(
+            eligibleParents.find((row) => row.id === value)
+              ?.sourceSampleItemId || "",
+          );
+          change(key, value);
+        } else change(key, value);
+      }}
     >
       <SelectItem value="" text={t("choose")} />
       {values.map((v) => (
@@ -186,6 +202,8 @@ function CultureActionForm({
   let valid = true;
   if (action.kind === "inoculate")
     valid =
+      (!action.chooseParent ||
+        eligibleParents.some((row) => row.id === draft.parentId)) &&
       !!draft.sourceSampleItemId &&
       !!draft.mediumItemId &&
       !!draft.atmosphereId &&
@@ -243,6 +261,15 @@ function CultureActionForm({
       <Stack gap={5}>
         {action.kind === "inoculate" && (
           <>
+            {action.chooseParent &&
+              select(
+                "parentId",
+                eligibleParents.map((row) => ({
+                  id: row.id,
+                  value: row.containerIdentifier,
+                })),
+                "parentCulture",
+              )}
             {select(
               "sourceSampleItemId",
               options.sources.map((s) => ({
@@ -433,13 +460,41 @@ export default function CaseCultureWorkspace({
   }, [detail.id, detail.labUnitId, service]);
   const entryHandled = useRef("");
   useEffect(() => {
-    if (!["mark-positive", "mark-no-growth"].includes(entryAction)) {
+    if (
+      ![
+        "mark-positive",
+        "mark-no-growth",
+        "start-inoculation",
+        "add-subculture",
+      ].includes(entryAction)
+    ) {
       entryHandled.current = "";
       return;
     }
     const key = `${detail.id}:${entryAction}`;
     if (!options || !detail.canWrite || entryHandled.current === key) return;
     entryHandled.current = key;
+    if (entryAction === "start-inoculation") {
+      open("inoculate");
+      onEntryActionConsumed?.();
+      return;
+    }
+    if (entryAction === "add-subculture") {
+      const parents = rows.filter(
+        (row) =>
+          (!row.outcome || row.outcome === "GROWTH") &&
+          options.sources.some(
+            (source) => source.sampleItemId === row.sourceSampleItemId,
+          ),
+      );
+      const parent =
+        parents.find((row) => row.id === selectedId) ||
+        (parents.length === 1 ? parents[0] : null);
+      if (parents.length) open("inoculate", parent, {}, true);
+      else setError("noEligibleParentRows");
+      onEntryActionConsumed?.();
+      return;
+    }
     const outcome = entryAction === "mark-positive" ? "GROWTH" : "NO_GROWTH";
     const eligible = rows.filter(
       (row) =>
@@ -477,7 +532,7 @@ export default function CaseCultureWorkspace({
   const date = (value) => labTimestamp(intl, value);
   const numeric = (value) =>
     value == null ? t("notAvailable") : intl.formatNumber(Number(value));
-  const open = (kind, row = null, draft = {}) => {
+  const open = (kind, row = null, draft = {}, chooseParent = false) => {
     if (kind === "inoculate") {
       const previous = row || rows[rows.length - 1];
       const source =
@@ -518,7 +573,7 @@ export default function CaseCultureWorkspace({
     if (kind === "outcome" && draft.outcome === "GROWTH" && !draft.positiveAt)
       draft.positiveAt = localTime();
     setError("");
-    setAction({ kind, row, draft });
+    setAction({ kind, row, draft, chooseParent });
   };
   const save = async (body, cultureRowId) => {
     if (!detail.canWrite || saving) return;

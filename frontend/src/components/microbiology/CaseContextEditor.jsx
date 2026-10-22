@@ -23,7 +23,7 @@ export default function CaseContextEditor({ detail, service, onSaved }) {
   const intl = useIntl();
   const t = (id, values) => intl.formatMessage({ id }, values);
   const [programId, setProgramId] = useState(detail.programId || "");
-  const [purpose, setPurpose] = useState(detail.culturePurpose);
+  const [purpose, setPurpose] = useState(detail.culturePurpose || "");
   const [replicates, setReplicates] = useState(detail.replicateCount ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -78,6 +78,7 @@ export default function CaseContextEditor({ detail, service, onSaved }) {
               disabled={!detail.canWrite || saving}
               onChange={(e) => setPurpose(e.target.value)}
             >
+              <SelectItem value="" text={t("microbiology.culture.choose")} />
               {(detail.purposeOptions || []).map((value) => (
                 <SelectItem
                   key={value}

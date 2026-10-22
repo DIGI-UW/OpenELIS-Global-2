@@ -608,3 +608,70 @@ it("does not open a routed outcome for a read-only viewer", async () => {
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(service.cultureAction).not.toHaveBeenCalled();
 });
+
+it("opens and consumes the routed primary inoculation action", async () => {
+  const consumed = vi.fn();
+  show(api([]), {
+    entryAction: "start-inoculation",
+    onEntryActionConsumed: consumed,
+  });
+  await screen.findByRole("dialog");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText("Parent culture")).not.toBeInTheDocument();
+  expect(consumed).toHaveBeenCalledTimes(1);
+});
+it("routed subculture requires an eligible parent and preserves its specimen", async () => {
+  const consumed = vi.fn();
+  const service = api([
+    row,
+    {
+      ...row,
+      id: "r2",
+      sourceSampleItemId: "s2",
+      containerIdentifier: "PLATE-2",
+    },
+    {
+      ...row,
+      id: "r3",
+      containerIdentifier: "CONCLUDED",
+      outcome: "NO_GROWTH",
+    },
+  ]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { ...sources[0], sampleItemId: "s2", label: "SPEC-2" },
+    ],
+  });
+  show(service, {
+    entryAction: "add-subculture",
+    onEntryActionConsumed: consumed,
+  });
+  const parent = await screen.findByLabelText("Parent culture");
+  expect(
+    screen.queryByRole("option", { name: "CONCLUDED" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: messages["microbiology.culture.save"] }),
+  ).toBeDisabled();
+  fireEvent.change(parent, { target: { value: "r2" } });
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toHaveValue("s2");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toBeDisabled();
+  change("Bottle or plate identifier", "SUB-2");
+  change("Medium lot", "20");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ parentId: "r2", sourceSampleItemId: "s2" }),
+    ),
+  );
+  expect(consumed).toHaveBeenCalledTimes(1);
+});

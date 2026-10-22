@@ -349,7 +349,7 @@ export default function CaseViewShell({
                     open={infoOpen}
                     onHeadingClick={({ isOpen }) => setInfoOpen(isOpen)}
                   >
-                    {detail.culturePurpose && (
+                    {(detail.culturePurpose || detail.canWrite) && (
                       <CaseContextEditor
                         key={`${id}-${detail.culturePurpose}-${detail.replicateCount}-${detail.programId}`}
                         detail={detail}
