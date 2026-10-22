@@ -19,3 +19,6 @@ runtime code.
   launcher is `scripts/dev-stack`; full local CI is `scripts/run-ci-checks.sh`.
 - `projects/reporting-uat/` — runtime qualification tools for the isolated
   reporting UAT deployment.
+- `projects/addons/assistant/` — the AI assistant add-on: a separate service
+  and package built on the add-on mechanism (`docs/addons/design.md`), not
+  part of the OpenELIS build.
