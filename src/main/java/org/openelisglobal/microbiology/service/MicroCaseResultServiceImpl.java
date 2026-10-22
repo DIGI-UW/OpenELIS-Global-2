@@ -37,6 +37,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.dataexchange.fhir.service.FhirTransformService fhir;
     @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.fhir.service.ObservationTransformService observationTransform;
+    @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.samplehuman.service.SampleHumanService sampleHumans;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
@@ -132,9 +134,15 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (specimen.isRejected())
             bad("MICROBIOLOGY_SAMPLE_REJECTED");
         Set<String> ids = new LinkedHashSet<>(request.testIds == null ? List.of() : request.testIds);
+        Set<String> allowed = new HashSet<>();
+        sampleTests.getTypeOfSampleTestsForSampleType(specimen.getTypeOfSample().getId())
+                .forEach(t -> allowed.add(t.getTestId()));
         Map<String, org.openelisglobal.panel.valueholder.Panel> selectedPanels = new LinkedHashMap<>();
         for (String panel : request.panelIds == null ? List.<String>of() : request.panelIds) {
-            var items = panels.getPanelItemsForPanel(panel);
+            var items = panels
+                    .getPanelItemsForPanel(panel).stream().filter(item -> allowed.contains(item.getTest().getId())
+                            && item.getTest().isActive() && Boolean.TRUE.equals(item.getTest().getOrderable()))
+                    .toList();
             if (items.isEmpty())
                 bad("MICROBIOLOGY_INVALID_PANEL");
             items.forEach(item -> {
@@ -144,17 +152,29 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         }
         if (ids.isEmpty() || ids.size() > 100)
             bad("MICROBIOLOGY_TEST_SELECTION_REQUIRED");
-        Set<String> allowed = new HashSet<>();
-        sampleTests.getTypeOfSampleTestsForSampleType(specimen.getTypeOfSample().getId())
-                .forEach(t -> allowed.add(t.getTestId()));
         var selected = ids.stream().map(tests::get).toList();
         if (selected.stream().anyMatch(t -> t == null || !t.isActive() || !Boolean.TRUE.equals(t.getOrderable())
                 || !allowed.contains(t.getId())))
             bad("MICROBIOLOGY_TEST_SAMPLE_MISMATCH");
         var existing = links.getAnalyses(caseId);
+        List<String> changedAnalysisIds = new ArrayList<>();
         for (var t : selected) {
-            if (existing.stream().anyMatch(a -> t.getId().equals(a.getTest().getId())))
+            var prior = existing.stream().filter(
+                    a -> t.getId().equals(a.getTest().getId()) && specimen.getId().equals(a.getSampleItem().getId()))
+                    .findFirst().orElse(null);
+            if (prior != null) {
+                var panel = selectedPanels.get(t.getId());
+                if (panel != null && prior.getPanel() == null) {
+                    prior.setPanel(panel);
+                    prior.setSysUserId(actor);
+                    analyses.update(prior);
+                    changedAnalysisIds.add(prior.getId());
+                    record(caseId, "TEST_PANEL_ASSIGNED", prior.getId(), actor);
+                } else if (panel != null && !panel.getId().equals(prior.getPanel().getId())) {
+                    bad("MICROBIOLOGY_INVALID_PANEL");
+                }
                 continue;
+            }
             Analysis a = new Analysis();
             a.setTest(t);
             a.setPanel(selectedPanels.get(t.getId()));
@@ -168,6 +188,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             a.setSysUserId(actor);
             a.setFhirUuid(UUID.randomUUID());
             a.setId(analyses.insert(a));
+            changedAnalysisIds.add(a.getId());
             var link = new MicroCaseAnalysis();
             link.setCaseId(caseId);
             link.setAnalysisId(a.getId());
@@ -175,6 +196,17 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             link.setSysUserId(actor);
             links.insert(link);
             record(caseId, "TEST_ADDED", a.getId(), actor);
+        }
+        if (!changedAnalysisIds.isEmpty()) {
+            var idsToPublish = List.copyOf(changedAnalysisIds);
+            afterCommit(() -> {
+                try {
+                    fhir.transformAnalysisByIds(idsToPublish);
+                } catch (org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException
+                        | org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException failure) {
+                    org.openelisglobal.common.log.LogEvent.logError(failure);
+                }
+            });
         }
         return getTests(caseId, actor);
     }
@@ -241,10 +273,14 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         updaters.add(acknowledgements.acknowledgementRecorder(alerts,
                 org.openelisglobal.result.valueholder.ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, actor));
+        // Compile cancellations before deletion; the async publisher cannot reload
+        // removed results or traverse their detached relationships after commit.
+        var clearedObservations = data.getDeletableResults().stream()
+                .map(observationTransform::transformResultToObservation).toList();
         persist.persistDataSet(data, updaters, actor);
         afterCommit(() -> {
             try {
-                fhir.transformPersistResultsEntryFhirObjects(data);
+                fhir.transformPersistResultsEntryFhirObjects(data, clearedObservations);
             } catch (org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException
                     | org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException failure) {
                 org.openelisglobal.common.log.LogEvent.logError(failure);

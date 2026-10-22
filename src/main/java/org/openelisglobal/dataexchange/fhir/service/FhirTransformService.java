@@ -55,6 +55,10 @@ public interface FhirTransformService {
     void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet)
             throws FhirTransformationException, FhirPersistanceException;
 
+    void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet,
+            List<org.hl7.fhir.r4.model.Observation> clearedObservations)
+            throws FhirTransformationException, FhirPersistanceException;
+
     Organization transformToOrganization(org.hl7.fhir.r4.model.Organization fhirOrganization)
             throws FhirTransformationException;
 

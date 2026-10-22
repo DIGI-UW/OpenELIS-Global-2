@@ -463,16 +463,39 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void clearingOneComponentPreservesItsSibling() {
-        workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
-        var edit = payload();
-        edit.components.get(1).value = "";
-        workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor));
-        em.flush();
-        em.clear();
-        var saved = results.getResultsByAnalysis(analyses.get(analysis.getId()));
-        assertEquals(1, saved.size());
-        assertEquals("12", saved.get(0).getValue());
+    public void clearingOneComponentPreservesItsSiblingAndCompilesCancellationBeforeDeletion() throws Exception {
+        var target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(workspace);
+        var original = org.springframework.test.util.ReflectionTestUtils.getField(target, "fhir");
+        var publisher = org.mockito.Mockito
+                .mock(org.openelisglobal.dataexchange.fhir.service.FhirTransformService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "fhir", publisher);
+        try {
+            workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+            var edit = payload();
+            String clearedComponent = edit.components.get(1).componentId;
+            var removed = results.getResultsByAnalysis(analysis).stream()
+                    .filter(r -> clearedComponent.equals(r.getTestResult().getComponentId())).findFirst().orElseThrow();
+            String removedId = removed.getId(), removedUuid = removed.getFhirUuidAsString();
+            edit.components.get(1).value = "";
+            workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor));
+            em.flush();
+            em.clear();
+            var saved = results.getResultsByAnalysis(analyses.get(analysis.getId()));
+            assertEquals(1, saved.size());
+            assertEquals("12", saved.get(0).getValue());
+            assertFalse(saved.stream().anyMatch(r -> removedId.equals(r.getId())));
+            org.mockito.Mockito.verifyZeroInteractions(publisher);
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().getLast()
+                    .afterCommit();
+            var captured = org.mockito.ArgumentCaptor.forClass(List.class);
+            org.mockito.Mockito.verify(publisher)
+                    .transformPersistResultsEntryFhirObjects(org.mockito.ArgumentMatchers.any(), captured.capture());
+            assertEquals(1, captured.getValue().size());
+            var snapshot = (org.hl7.fhir.r4.model.Observation) captured.getValue().get(0);
+            assertEquals(removedUuid, snapshot.getIdElement().getIdPart());
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(target, "fhir", original);
+        }
     }
 
     @Test
@@ -524,6 +547,19 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     @Test
     public void panelSelectionRetainsItsPanelOnTheAnalysis() {
         var follow = additionalTest();
+        var panel = panel(follow);
+        var selection = selection();
+        selection.panelIds = List.of(panel.getId());
+        workspace.addTests(microCase.getId(), selection, actor);
+        em.flush();
+        em.clear();
+        var added = links.getAnalyses(microCase.getId()).stream()
+                .filter(a -> follow.getId().equals(a.getTest().getId())).findFirst().orElseThrow();
+        assertEquals(panel.getId(), added.getPanel().getId());
+        assertEquals(2, workspace.addTests(microCase.getId(), selection, actor).size());
+    }
+
+    private org.openelisglobal.panel.valueholder.Panel panel(org.openelisglobal.test.valueholder.Test... members) {
         var panel = new org.openelisglobal.panel.valueholder.Panel();
         var localized = new org.openelisglobal.localization.valueholder.Localization();
         localized.setDescription("Culture panel");
@@ -536,21 +572,71 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         panel.setIsActive("Y");
         panel.setSysUserId(actor);
         em.persist(panel);
-        var item = new org.openelisglobal.panelitem.valueholder.PanelItem();
-        item.setPanel(panel);
-        item.setTest(follow);
-        item.setSysUserId(actor);
-        em.persist(item);
+        for (var test : members) {
+            var item = new org.openelisglobal.panelitem.valueholder.PanelItem();
+            item.setPanel(panel);
+            item.setTest(test);
+            item.setSysUserId(actor);
+            em.persist(item);
+        }
         em.flush();
+        return panel;
+    }
+
+    @Test
+    public void panelSelectionFiltersIneligibleMembersAndAssociatesExistingStandaloneTest() {
+        var follow = additionalTest();
+        var otherSpecimenTest = fixtures.createCatalogTest();
+        var inactive = additionalTest();
+        inactive.setIsActive("N");
+        em.merge(inactive);
+        var nonOrderable = additionalTest();
+        nonOrderable.setOrderable(false);
+        em.merge(nonOrderable);
+        var panel = panel(follow, otherSpecimenTest, inactive, nonOrderable);
         var selection = selection();
+        selection.testIds = List.of(follow.getId());
+        workspace.addTests(microCase.getId(), selection, actor);
+        String existingId = links.getAnalyses(microCase.getId()).stream()
+                .filter(a -> follow.getId().equals(a.getTest().getId())).findFirst().orElseThrow().getId();
+        selection.testIds = List.of();
         selection.panelIds = List.of(panel.getId());
         workspace.addTests(microCase.getId(), selection, actor);
         em.flush();
         em.clear();
-        var added = links.getAnalyses(microCase.getId()).stream()
-                .filter(a -> follow.getId().equals(a.getTest().getId())).findFirst().orElseThrow();
-        assertEquals(panel.getId(), added.getPanel().getId());
+        var saved = links.getAnalyses(microCase.getId());
+        assertEquals(2, saved.size());
+        var associated = saved.stream().filter(a -> existingId.equals(a.getId())).findFirst().orElseThrow();
+        assertEquals(panel.getId(), associated.getPanel().getId());
         assertEquals(2, workspace.addTests(microCase.getId(), selection, actor).size());
+    }
+
+    @Test
+    public void addedTestsPublishTheirStableIdsOnlyAfterCommit() throws Exception {
+        var target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(workspace);
+        var original = org.springframework.test.util.ReflectionTestUtils.getField(target, "fhir");
+        var publisher = org.mockito.Mockito
+                .mock(org.openelisglobal.dataexchange.fhir.service.FhirTransformService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "fhir", publisher);
+        try {
+            var follow = additionalTest();
+            var selection = selection();
+            selection.testIds = List.of(follow.getId());
+            workspace.addTests(microCase.getId(), selection, actor);
+            var added = links.getAnalyses(microCase.getId()).stream()
+                    .filter(a -> follow.getId().equals(a.getTest().getId())).findFirst().orElseThrow();
+            org.mockito.Mockito.verifyZeroInteractions(publisher);
+            var callbacks = org.springframework.transaction.support.TransactionSynchronizationManager
+                    .getSynchronizations();
+            callbacks.getLast().afterCommit();
+            org.mockito.Mockito.verify(publisher).transformAnalysisByIds(List.of(added.getId()));
+            int count = callbacks.size();
+            workspace.addTests(microCase.getId(), selection, actor);
+            assertEquals(count, org.springframework.transaction.support.TransactionSynchronizationManager
+                    .getSynchronizations().size());
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(target, "fhir", original);
+        }
     }
 
     @Test
