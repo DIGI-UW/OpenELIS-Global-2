@@ -360,4 +360,21 @@ public class AddonRegistryServiceTest extends BaseWebContextSensitiveTest {
                         .contains("DEV0001"));
         assertEquals(List.of("DEV0001"), tokens.authenticate(issued.token()).accessions());
     }
+
+    @Test
+    public void aSlotOpenToEveryoneNeverCarriesOrders() {
+        for (String slot : List.of(AddonCatalog.SLOT_TOP_NAV_ACTIONS, AddonCatalog.SLOT_APP_MENU)) {
+            String id = "reg-open-" + (slot.startsWith("top") ? "top" : "menu");
+            registry.install(AddonTestPackages.zip(AddonTestPackages
+                    .files(AddonTestPackages.manifest(id, "example", "[\"orders.read\",\"ai.context\"]", "[]")
+                            .replace("result-lookup-side-panel-slot", slot))),
+                    ADMIN);
+            registry.setEnabled(id, true);
+            AddonTokenService.IssuedToken issued = tokens.issue(id, slot,
+                    Map.of("page", "result-validation", "accessionNumbers", List.of("DEV0001"), "patientId", "1"),
+                    ADMIN, Set.of());
+            assertEquals(Map.of("page", "result-validation"), issued.context());
+            assertEquals(List.of(), tokens.authenticate(issued.token()).accessions());
+        }
+    }
 }

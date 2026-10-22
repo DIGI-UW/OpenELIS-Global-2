@@ -59,7 +59,9 @@ public class AddonTokenServiceImpl implements AddonTokenService {
             throw new TokenRefusedException(Refusal.ROLE);
         }
         List<String> scopes = addon.getScopeList();
-        Map<String, ?> withOrders = withPatientOrders(context);
+        // a slot every signed-in user can open never carries orders, whatever the
+        // browser sends
+        Map<String, ?> withOrders = known.withOrders() ? withPatientOrders(context) : pageOnly(context);
         Map<String, Object> filtered = AddonCatalog.filterContext(withOrders, scopes);
         List<String> accessions = AddonCatalog.contextOrders(withOrders, scopes);
         long ttl = settings.tokenTtlSeconds();
@@ -89,6 +91,10 @@ public class AddonTokenServiceImpl implements AddonTokenService {
             return new AddonToken.Claims(addon.getId(), null, addon.getScopeList(), null, Long.MAX_VALUE);
         }
         throw new IllegalArgumentException("token");
+    }
+
+    private static Map<String, ?> pageOnly(Map<String, ?> context) {
+        return context != null && context.get("page") != null ? Map.of("page", context.get("page")) : Map.of();
     }
 
     @Override

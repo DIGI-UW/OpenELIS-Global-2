@@ -331,7 +331,9 @@ to that frame's `contentWindow` only. The frame may send `resize` and
 
 Each slot lists the roles that may get a token for it (validation needs
 `VALIDATION` or `ADMIN`; the patient results page needs one of the roles that
-open it), so an add-on cannot widen what a user can already see.
+open it), so an add-on cannot widen what a user can already see. Slots open to every
+signed-in user (`app-menu-slot`, `top-nav-actions-slot`) never carry orders:
+their tokens hold only the page, whatever the browser sends.
 
 The Extensions page (Administration → Extensions) uploads a package, shows the
 provenance line ("Verified publisher: _name_", "Unverified publisher" with the
