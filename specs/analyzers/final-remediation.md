@@ -13,7 +13,7 @@ Bridge stack: #101 → #102 → #104 → #105 → #106 → #107 → #108 → #10
 
 OpenELIS #4798 records these candidate commits:
 
-- Bridge #113: `474f8f204408c5af2c80a64c1543efa9925dff96`.
+- Bridge #113: `521e733137984977e106386fe427bbe1af194b2a`.
 - Analyzer mock #62: `88b51f7c5ed50e953b8e80be5934162bcb138fd9`.
 
 The Bridge pin includes exclusion defaults, full sender matching/display, and
@@ -145,6 +145,13 @@ The queued-revision follow-up preserves the delivery profile reading before that
 profile is removed; a changed or unavailable source does not fabricate history.
 Its focused confirmation/reading/import suite passed 85 tests. Both published and
 source-build Compose configurations rendered consistent custom store passwords.
+
+Both stacks were rebased with `gh stack rebase` onto the current upstream
+branches. All 27 branch trees match their pre-rebase backups, and every stack
+parent is an ancestor of its child. Duplicate historical patches were removed
+from the encryption layer without changing its final tree. The OpenELIS tip
+records the rewritten Bridge tip. `gh stack push` publishes these updates with
+explicit per-branch force-with-lease checks.
 
 ## Remaining acceptance
 
