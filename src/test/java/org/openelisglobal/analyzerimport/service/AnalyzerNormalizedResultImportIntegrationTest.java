@@ -206,11 +206,15 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     }
 
     @Test
-    public void invalidProfileDoesNotCommitAReceipt() throws Exception {
+    public void anUnboundProfileIsReceiptedAndHeldForLocalMapping() throws Exception {
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_id = 'site.other-analyzer' WHERE id = ?", MAPPING_ID);
-        assertThrows(AnalyzerNormalizedResultImportException.class, () -> importService.importBundle(bundle, "1"));
-        assertEquals(Integer.valueOf(0),
+        AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST,
+                jdbc.queryForObject("SELECT import_issue_reason FROM clinlims.analyzer_results WHERE analyzer_id = ?",
+                        String.class, ANALYZER_ID));
+        assertEquals(Integer.valueOf(1),
                 jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_delivery_receipt WHERE connection_id = ?",
                         Integer.class, CONNECTION_ID));
     }

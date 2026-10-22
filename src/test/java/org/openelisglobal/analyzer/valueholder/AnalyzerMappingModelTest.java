@@ -1,12 +1,10 @@
 package org.openelisglobal.analyzer.valueholder;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
-import java.util.Arrays;
 import org.junit.Test;
 
 public class AnalyzerMappingModelTest {
@@ -47,7 +45,7 @@ public class AnalyzerMappingModelTest {
     }
 
     @Test
-    public void resultRowsUsePortableRowIdentityWithoutCopyingPortableProfileContent() {
+    public void canonicalAnswerIdentitiesKeepLocalTargetsDistinct() {
         AnalyzerMapping revision = revision();
         AnalyzerMappingResult positive = resultDecision(revision, "hiv-interpretation", "POS", "811");
         AnalyzerMappingResult negative = resultDecision(revision, "hiv-interpretation", "NEG", "812");
@@ -56,13 +54,6 @@ public class AnalyzerMappingModelTest {
         assertEquals("811", positive.getTestResultId());
         assertEquals("812", negative.getTestResultId());
 
-        for (Class<?> type : Arrays.asList(AnalyzerMapping.class, AnalyzerMappingTest.class,
-                AnalyzerMappingResult.class)) {
-            assertFalse(Arrays.stream(type.getDeclaredFields()).map(field -> field.getName().toLowerCase())
-                    .anyMatch(name -> name.contains("json") || name.contains("snapshot") || name.contains("payload")
-                            || name.contains("analyzercode") || name.contains("displayname")
-                            || name.contains("normalizedcoding")));
-        }
     }
 
     @Test

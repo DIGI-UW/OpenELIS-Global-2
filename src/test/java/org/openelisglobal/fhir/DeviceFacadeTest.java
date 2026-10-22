@@ -117,6 +117,34 @@ public class DeviceFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void retiredDeviceCannotBeRestoredByWritingItsFhirRepresentation() throws Exception {
+        Analyzer analyzer = analyzerByUuid(COBAS_UUID);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.RETIRED);
+        analyzer.setActive(false);
+        analyzerService.update(analyzer);
+        MockHttpServletResponse read = serve(buildFhirRequest("GET", "/Device/" + COBAS_UUID));
+        assertEquals("inactive", objectMapper.readTree(read.getContentAsString()).get("status").asText());
+
+        MockHttpServletRequest update = buildFhirRequest("PUT", "/Device/" + COBAS_UUID);
+        update.setContentType("application/fhir+json");
+        update.setContent(read.getContentAsByteArray());
+        assertEquals(422, serve(update).getStatus());
+        assertEquals(Analyzer.AnalyzerStatus.RETIRED, analyzerByUuid(COBAS_UUID).getStatus());
+    }
+
+    @Test
+    public void deletingARetiredDevicePreservesRetirement() throws Exception {
+        Analyzer analyzer = analyzerByUuid(COBAS_UUID);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.RETIRED);
+        analyzer.setActive(false);
+        analyzerService.update(analyzer);
+
+        assertEquals(204, serve(buildFhirRequest("DELETE", "/Device/" + COBAS_UUID)).getStatus());
+        assertEquals(Analyzer.AnalyzerStatus.RETIRED, analyzerByUuid(COBAS_UUID).getStatus());
+        assertFalse(analyzerByUuid(COBAS_UUID).isActive());
+    }
+
+    @Test
     public void deleteDevice_withUnknownFhirId_shouldReturn404() throws Exception {
 
         MockHttpServletResponse response = serve(buildFhirRequest("DELETE", "/Device/" + UNKNOWN_UUID));

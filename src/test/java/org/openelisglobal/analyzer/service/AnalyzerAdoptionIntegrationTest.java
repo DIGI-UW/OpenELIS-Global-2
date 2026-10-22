@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,7 +45,6 @@ import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
-import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportException;
 import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -326,7 +326,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
-    public void anUncodedOlderResultWithNoEstablishedLocalTargetStaysHeld() throws Exception {
+    public void aCanonicalOlderResultUsesTheConfirmedLocalTarget() throws Exception {
         analyzerOnRevisionOne();
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)), "1");
@@ -334,8 +334,9 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         bridgeOn(1);
         apply(adopted);
         importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A"), "1");
-        assertTrue(staged("ADOPT-A").isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, staged("ADOPT-A").getImportIssueReason());
+        assertFalse(staged("ADOPT-A").isReadOnly());
+        assertEquals(catalogTests.get(0), staged("ADOPT-A").getTestId());
+        assertEquals(Integer.valueOf(1), staged("ADOPT-A").getSourceProfileRevision());
     }
 
     private void bindLocalTargetsOnRevisionOne() {
@@ -349,13 +350,16 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
-    public void aResultFromAnotherProfileIsStillRefused() throws Exception {
+    public void aResultFromAnotherProfileIsRetainedForLocalMapping() throws Exception {
         analyzerOnRevisionOne();
 
-        AnalyzerNormalizedResultImportException refusal = assertThrows(AnalyzerNormalizedResultImportException.class,
-                () -> importService.importBundle(delivery("test.other-analyzer", 1, "ADOPT-A"), "1"));
+        importService.importBundle(delivery("test.other-analyzer", 1, "ADOPT-A"), "1");
 
-        assertEquals("analyzer.fhirImport.error.profileMismatch", refusal.getErrorKey());
+        AnalyzerResults held = staged("ADOPT-A");
+        assertTrue(held.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, held.getImportIssueReason());
+        assertNull(held.getTestId());
+        assertEquals("test.other-analyzer", held.getSourceProfileId());
     }
 
     private String overrideAdoptAOnAnotherTest(Analyzer analyzer) {
