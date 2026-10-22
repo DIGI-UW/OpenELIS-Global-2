@@ -55,7 +55,7 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
     private String mappingFingerprint;
 
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
-    @Column(name = "recognition_fingerprint", length = 71, nullable = false)
+    @Column(name = "recognition_fingerprint", length = 71)
     private String recognitionFingerprint;
 
     @Column(name = "confirmed_rows_json", columnDefinition = "TEXT", nullable = false, updatable = false)

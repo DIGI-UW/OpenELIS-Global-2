@@ -100,7 +100,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMappingView.TestRow first = view.tests().get(0);
         assertEquals("RAW-A", first.sourceRowKey());
         assertEquals("RAW-A", first.rawCode());
-        assertEquals(List.of("RAW-A1", "RAW-A2"), first.aliases());
+        assertTrue(first.aliases().isEmpty()); // Instrument aliases are Bridge parsing configuration.
         assertEquals("First result", first.testNameHint());
         assertEquals("94500-6", first.loinc());
         assertEquals(List.of(Coding.loinc("94500-6"), new Coding("CPHL", "SARS2", "SARS-CoV-2 RNA")), first.codings());
@@ -121,11 +121,8 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals("RAW-C", view.tests().get(2).sourceRowKey());
         assertNull(view.tests().get(2).suggestedTest());
 
-        assertEquals("RULES", view.controlRecognition().mode());
-        assertEquals("Specimen ID starts with QC-", view.controlRecognition().conditions().get(0).description());
-        assertEquals("SPECIMEN_ID_STARTS_WITH", view.controlRecognition().conditions().get(0).kind());
-        assertEquals("Specimen ID", view.controlRecognition().conditions().get(0).sourceLabel());
-        assertEquals("QC-", view.controlRecognition().conditions().get(0).value());
+        assertNull(view.controlRecognition());
+        verifyZeroInteractions(bridgeProfileCatalogService);
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, view.confirmation().state());
         verify(mappingService).findLatestByAnalyzerId("42");
     }
@@ -141,12 +138,41 @@ public class AnalyzerMappingEditorServiceTest {
         analyzerWithLatest(candidate);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(positive()));
-        when(confirmationService.confirm(candidate, recognitionFingerprint(), request, "17")).thenReturn(expected);
+        when(confirmationService.confirm(candidate, request, "17")).thenReturn(expected);
 
         AnalyzerMappingConfirmationView confirmed = service.confirmMapping("42", request, "17");
 
         assertEquals(expected, confirmed);
-        verify(confirmationService).confirm(candidate, recognitionFingerprint(), request, "17");
+        verify(confirmationService).confirm(candidate, request, "17");
+        verifyZeroInteractions(bridgeProfileCatalogService);
+    }
+
+    @Test
+    public void olderMappingCanBeViewedSavedAndConfirmedWithoutBridgeOrRecognitionMetadata() throws Exception {
+        AnalyzerMappingSnapshot current = currentMapping();
+        Analyzer analyzer = savableWithLatest(current);
+        current.mapping().setSourceDefinitionJson(null);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17")))
+                .thenReturn(current);
+
+        AnalyzerMappingView view = service.getMapping("42");
+        assertEquals(3, view.tests().size());
+        assertNull(view.controlRecognition());
+        AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(current);
+        service.saveMapping("42",
+                new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(), draft.tests(), draft.results()),
+                "17");
+        AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
+                current.mapping().getMappingFingerprint(),
+                List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
+                List.of(new AnalyzerMappingSourceRow("RAW-A", "NEG")));
+        service.confirmMapping("42", request, "17");
+
+        verify(mappingService).appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"));
+        verify(confirmationService).confirm(current, request, "17");
+        verifyZeroInteractions(bridgeProfileCatalogService);
     }
 
     @Test
@@ -305,6 +331,7 @@ public class AnalyzerMappingEditorServiceTest {
                 new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(), draft.tests(), draft.results()),
                 "17");
 
+        verifyZeroInteractions(bridgeProfileCatalogService);
         assertEquals(5, view.mappingRevision());
         assertEquals("sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 view.mappingFingerprint());
@@ -543,6 +570,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMapping mapping = revision("71", 1, "sha256:" + "f".repeat(64));
         mapping.setProfileId("site.viral-load");
         mapping.setProfileRevision(1);
+        mapping.setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(viralLoadRevision().profile())).toJson());
         AnalyzerMappingSnapshot latest = new AnalyzerMappingSnapshot(mapping,
                 List.of(testRow(mapping, "", null, "comp-call"), testRow(mapping, "&LOG", "comp-LOG", null)),
                 List.of());
@@ -551,7 +580,6 @@ public class AnalyzerMappingEditorServiceTest {
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
         when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
-        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
         when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"))).thenReturn(latest);
         viralLoadCatalog();
 
@@ -620,6 +648,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMapping mapping = revision("71", 1, "sha256:" + "f".repeat(64));
         mapping.setProfileId("site.viral-load");
         mapping.setProfileRevision(1);
+        mapping.setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(viralLoadRevision().profile())).toJson());
         AnalyzerMappingSnapshot latest = new AnalyzerMappingSnapshot(mapping,
                 List.of(testRow(mapping, "", null, "comp-call"), testRow(mapping, "&LOG", "comp-LOG", null)),
                 List.of());
@@ -628,7 +658,6 @@ public class AnalyzerMappingEditorServiceTest {
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
         when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
-        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
         when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"))).thenReturn(latest);
         viralLoadCatalog();
         AnalyzerResults held = new AnalyzerResults();
@@ -743,7 +772,8 @@ public class AnalyzerMappingEditorServiceTest {
         analyzer.setMapping(latest.mapping());
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
-        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        latest.mapping().setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(profileRevision().profile())).toJson());
         return analyzer;
     }
 
@@ -871,9 +901,11 @@ public class AnalyzerMappingEditorServiceTest {
                 List.of(result(revision, "RAW-A", "POS", AnalyzerMappingState.BOUND, "811"), excluded));
     }
 
-    private static AnalyzerMappingSnapshot savedMapping() {
+    private AnalyzerMappingSnapshot savedMapping() throws Exception {
         AnalyzerMapping revision = revision("62", 5,
                 "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+        revision.setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(profileRevision().profile())).toJson());
         return new AnalyzerMappingSnapshot(revision,
                 List.of(test(revision, "RAW-A", AnalyzerMappingState.BOUND, "9701"),
                         test(revision, "RAW-B", AnalyzerMappingState.EXCLUDED, null),

@@ -179,7 +179,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                     saved.mapping().getMappingFingerprint(),
                     List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
                     List.of());
-            confirmationService.confirm(saved, RECOGNITION_FINGERPRINT, request, TEST_SYS_USER_ID);
+            confirmationService.confirm(saved, request, TEST_SYS_USER_ID);
             var storedVerification = confirmationDAO.findByMappingId(saved.mapping().getId()).orElseThrow();
             analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
             analyzerDAO.update(analyzer);
@@ -221,6 +221,10 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             var storedConfirmation = confirmationDAO.findByMappingId(reloaded.mapping().getId()).orElseThrow();
             assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, confirmation.state());
             assertEquals(PROFILE_FINGERPRINT, storedConfirmation.getProfileRevisionFingerprint());
+            assertNull(storedConfirmation.getRecognitionFingerprint());
+            assertEquals(initial.mapping().getSourceDefinitionJson(), reloaded.mapping().getSourceDefinitionJson());
+            assertEquals("RAW-A",
+                    AnalyzerMappingDefinition.of(reloaded.mapping()).testDefinitions().get(0).analyzerCode());
             assertNotNull(storedConfirmation.getAuditEventId());
             assertEquals(TEST_SYS_USER_ID, confirmation.confirmedBy());
             assertEquals("Integration Reviewer", confirmation.confirmedByDisplayName());
@@ -389,7 +393,6 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         MappingSelectionFixture fixture = transaction.execute(status -> {
             Analyzer analyzer = insertAnalyzer("Mapping selection persistence test", Analyzer.AnalyzerStatus.SETUP);
-            // The confirmation service reads this profile from the test Bridge catalog.
             String profileId = "site.unknown-capable";
             String profileFingerprint = "sha256:" + "1".repeat(64);
             AnalyzerMapping initial = insertMapping(analyzer, 1, profileId, 3, profileFingerprint,
@@ -400,7 +403,6 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             analyzerDAO.update(analyzer);
 
             confirmationService.confirm(new AnalyzerMappingSnapshot(reviewed, List.of(), List.of()),
-                    "sha256:" + "2".repeat(64),
                     new AnalyzerMappingConfirmationRequest(reviewed.getMappingFingerprint(), List.of(), List.of()),
                     TEST_SYS_USER_ID);
             entityManager.flush();

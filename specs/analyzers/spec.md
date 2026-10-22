@@ -145,6 +145,12 @@ specification is not a claim that the new boundary has shipped.
     Delivered semantic identity, type and units must fit the approved local
     binding; changed meaning under a reused code cannot silently pass through.
 
+    Viewing, editing and confirming an existing local mapping does not contact
+    the Bridge or require a recognition-rule hash. Adoption retains canonical
+    output declarations for local editing; it does not copy parsing recipes.
+    Older mappings remain editable from their saved rows and received normalized
+    results. Named reviewer, timestamp, mapping decisions and audit remain required.
+
     Local mapping changes still require approval and stale-editor protection.
     Setup/profile changes remain authorized, validated administrative actions,
     with their effects shown at adoption. A parsing-only change does not

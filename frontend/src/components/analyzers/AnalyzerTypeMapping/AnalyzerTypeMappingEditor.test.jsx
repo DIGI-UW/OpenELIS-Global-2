@@ -952,6 +952,22 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("confirms local mappings without Bridge recognition metadata", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, controlRecognition: null }),
+    );
+    renderEditor();
+    const button = await screen.findByRole("button", {
+      name: "Confirm mappings",
+    });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(confirmAnalyzerMapping).toHaveBeenCalledTimes(1);
+    expect(confirmAnalyzerMapping.mock.calls[0][1]).not.toHaveProperty(
+      "recognitionFingerprint",
+    );
+  });
+
   it("confirms partial mappings without excluding unresolved rows", async () => {
     renderEditor();
     const button = await screen.findByRole("button", {

@@ -15,7 +15,7 @@ publication and full CI results must be recorded against the resulting commit.
 | A06 tabular interpretation | FILE/HTTP extraction preserves fields. Bridge interprets them once using retained decimal/failure settings; restart preserves the receipt decision. | Complete Bridge suite, receipt restart and HTTP regressions. |
 | A07 distinct runs | Delete timestamp/value suppression and raw-field held upsert. Receipt identity owns replay; separate runs remain visible and linked for review. Recovery updates the retained row by ID. | Equal-value/time, held-row independence and importer replay tests. |
 | A08 provenance | Result decoding does not require an opaque recognition hash to understand explicit classification. Consistency checks remain. | Missing-hash contract test. |
-| A09 local repair availability | Mapping editor still fetches the Bridge profile. Removing that dependency is pending separate approval for optional recognition provenance on new mapping confirmations. | Do not call this complete; named reviewer, timestamp, decisions and audit event must remain required. |
+| A09 local repair availability | Mapping repair reads saved canonical output declarations and held normalized results. Defaults/adoption still consult Bridge. New confirmations require the reviewer, timestamp, local decisions and audit event; no recognition hash. | View/edit/confirm tests assert no Bridge calls; all 11 database persistence tests and 30 editor tests pass. Final full CI pending. |
 | A10 tests and claims | Remove obsolete expectations and unused setup helper; seed no longer sends the deleted confirmation field. Replace claims with exact evidence. | Focused checks pass; final full CI and review reconciliation pending. |
 
 ## Manual boundary review

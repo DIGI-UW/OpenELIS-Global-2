@@ -35,6 +35,10 @@ records the eighteen original check areas and why each changes or stays.
 - Type readiness uses the same current local mapping assessment as activation.
   An approval audit record alone does not establish that local targets remain
   usable. Stale-editor protection and local mapping approval remain.
+- Existing mapping view, edit and confirmation use saved canonical declarations
+  and normalized held results without a live Bridge lookup or recognition hash.
+  Adoption/default previews still consult the Bridge. Historical hashes remain
+  readable; reviewer, timestamp, exact local decisions and audit remain required.
 - Mapping defaults no longer generate separate rows for translated vendor
   spellings. Raw text cannot override the canonical answer; obsolete spelling rows
   can be removed through the editor.
@@ -68,17 +72,21 @@ or bypass the trusted check. Required independent review remains separate.
 
 ## Validation and review evidence
 
-Focused cleanup validation:
+Focused follow-up validation:
 
-- Bridge: 1,221 tests, zero failures/errors, four skipped.
-- OpenELIS mapping/import/contract/adoption: 273 tests, zero failures/errors in the focused run. This includes
-  database-backed adoption/recovery and local target continuity.
-- Install-key tests: nine real-certificate tests, including site keystore rotation
-  with an existing or missing truststore and preservation of partner trust.
-- Affected frontend suites: 129 tests across fourteen files.
-- Formatting, whitespace and documentation link targets passed.
-- Updated analyzer browser suites collect successfully; execution is part of
-  complete CI, not established by test discovery.
+- Bridge: complete suite passed before the additional HTTP regression; the HTTP
+  subset then passed. Current reports contain 1,224 tests, four skipped.
+- OpenELIS: 103 focused import/contract/result tests passed. The manual boundary
+  checks deliberately restored raw-answer lookup, role guessing and equal-value
+  suppression in isolated copies; all three mutations failed their regression
+  tests while the unchanged baselines passed.
+- Local mapping: database migration and all eleven persistence tests passed,
+  including confirmation without a recognition hash and retained canonical
+  declarations. All 65 focused unit/ORM checks also pass.
+- Mapping editor: all 30 component tests pass, including confirmation without
+  Bridge recognition metadata.
+- Full local CI and GitHub results must still be checked on the final published
+  commit. Earlier test totals do not establish acceptance of these follow-up edits.
 
 Review fixes cover queued number-setting comparisons, historical arrival
 fallback, clinical answer coding, stale type readiness and older uncoded local

@@ -534,10 +534,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null,
                         row.getId().getSubIdentity()))
                 .toList();
-        confirmations.confirm(candidate, AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT,
-                new AnalyzerMappingConfirmationRequest(candidate.mapping().getMappingFingerprint(), confirmed,
-                        List.of()),
-                "1");
+        confirmations.confirm(candidate, new AnalyzerMappingConfirmationRequest(
+                candidate.mapping().getMappingFingerprint(), confirmed, List.of()), "1");
     }
 
     private void apply(AnalyzerMappingSnapshot adopted) {

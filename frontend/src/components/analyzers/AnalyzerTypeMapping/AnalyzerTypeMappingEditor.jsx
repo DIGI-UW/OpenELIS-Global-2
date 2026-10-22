@@ -1643,68 +1643,70 @@ const AnalyzerTypeMappingEditor = ({
             </section>
           )}
 
-          <section
-            className="analyzer-type-mapping__recognition"
-            aria-labelledby="analyzer-type-recognition"
-          >
-            <div className="analyzer-type-mapping__section-heading">
-              <div>
-                <h2 id="analyzer-type-recognition">
-                  <FormattedMessage id="analyzerType.mappingEditor.recognition.heading" />
-                </h2>
-                <p>
+          {mapping.controlRecognition && (
+            <section
+              className="analyzer-type-mapping__recognition"
+              aria-labelledby="analyzer-type-recognition"
+            >
+              <div className="analyzer-type-mapping__section-heading">
+                <div>
+                  <h2 id="analyzer-type-recognition">
+                    <FormattedMessage id="analyzerType.mappingEditor.recognition.heading" />
+                  </h2>
+                  <p>
+                    {formatRecognitionMode(
+                      intl,
+                      mapping.controlRecognition.mode,
+                      mapping.controlRecognition.conditions,
+                    )}
+                  </p>
+                </div>
+                <Tag type="blue">
                   {formatRecognitionMode(
                     intl,
                     mapping.controlRecognition.mode,
                     mapping.controlRecognition.conditions,
                   )}
-                </p>
+                </Tag>
               </div>
-              <Tag type="blue">
-                {formatRecognitionMode(
-                  intl,
-                  mapping.controlRecognition.mode,
-                  mapping.controlRecognition.conditions,
-                )}
-              </Tag>
-            </div>
-            {mapping.controlRecognition.mode === "NONE" ? (
-              <InlineNotification
-                kind="info"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage({
-                  id: "analyzerType.mappingEditor.recognition.none",
-                })}
-              />
-            ) : mapping.controlRecognition.conditions.length === 0 ? (
-              <InlineNotification
-                kind="warning"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage({
-                  id: "analyzerType.recognition.mode.unconfigured",
-                })}
-              />
-            ) : (
-              <ul>
-                {mapping.controlRecognition.conditions.map((condition) => (
-                  <li key={condition.key}>
-                    <strong>
-                      {formatRecognitionCondition(intl, condition)}
-                    </strong>
-                    {(condition.controlLevel || condition.controlType) && (
-                      <span>
-                        {[condition.controlLevel, condition.controlType]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+              {mapping.controlRecognition.mode === "NONE" ? (
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "analyzerType.mappingEditor.recognition.none",
+                  })}
+                />
+              ) : mapping.controlRecognition.conditions.length === 0 ? (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "analyzerType.recognition.mode.unconfigured",
+                  })}
+                />
+              ) : (
+                <ul>
+                  {mapping.controlRecognition.conditions.map((condition) => (
+                    <li key={condition.key}>
+                      <strong>
+                        {formatRecognitionCondition(intl, condition)}
+                      </strong>
+                      {(condition.controlLevel || condition.controlType) && (
+                        <span>
+                          {[condition.controlLevel, condition.controlType]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           {confirmation.state === "CURRENT" && (
             <InlineNotification

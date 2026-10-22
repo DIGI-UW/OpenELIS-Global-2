@@ -51,7 +51,7 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     @Override
     @Transactional
-    public AnalyzerMappingConfirmationView confirm(AnalyzerMappingSnapshot candidate, String recognitionFingerprint,
+    public AnalyzerMappingConfirmationView confirm(AnalyzerMappingSnapshot candidate,
             AnalyzerMappingConfirmationRequest request, String actor) {
         CandidateContext context = requireCandidate(candidate);
         String effectiveActor = requireText(actor, "actor");
@@ -87,7 +87,6 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         confirmation.setProfileRevision(context.profile.getProfileRevision());
         confirmation.setProfileRevisionFingerprint(context.profileRevisionFingerprint);
         confirmation.setMappingFingerprint(context.mappingFingerprint);
-        confirmation.setRecognitionFingerprint(recognitionFingerprint);
         confirmation.setConfirmedRowsJson(writeRows(confirmedRows));
         confirmation.setExcludedRowsJson(writeRows(excludedRows));
         confirmation.setConfirmedBy(effectiveActor);

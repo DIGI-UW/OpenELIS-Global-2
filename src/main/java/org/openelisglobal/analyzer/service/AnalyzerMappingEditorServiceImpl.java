@@ -49,10 +49,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     public AnalyzerMappingView getMapping(String analyzerId) {
         Analyzer analyzer = find(analyzerId);
         AnalyzerMappingSnapshot latest = latest(analyzer);
-        BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
-                .getProfile(latest.mapping().getProfileId(), latest.mapping().getProfileRevision());
-        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        return compose(analyzer, revision, profile, CurrentRows.of(latest),
+        AnalyzerMappingDefinition profile = AnalyzerMappingDefinition.of(latest.mapping());
+        return compose(analyzer, null, profile, CurrentRows.of(latest),
                 analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId()), latest);
     }
 
@@ -68,15 +66,13 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + analyzerId));
         Analyzer analyzer = find(analyzerId);
         AnalyzerMappingSnapshot current = latest(analyzer);
-        BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
-                .getProfile(current.mapping().getProfileId(), current.mapping().getProfileRevision());
-        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        AnalyzerMappingDefinition profile = AnalyzerMappingDefinition.of(current.mapping());
         validateLoadedFingerprint(current, update.baseMappingFingerprint());
         List<AnalyzerResults> observed = analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId());
         AnalyzerMappingDraft draft = withOrigins(current, validateUpdate(profile, current, observed, update));
-        draft.requireComponentTargets(profile);
+        draft.requireDeclaredComponentTargets(profile.testDefinitions());
         AnalyzerMappingSnapshot saved = mappingService.appendRevision(analyzer, draft, actor);
-        return compose(analyzer, revision, profile, CurrentRows.of(saved), observed, saved);
+        return compose(analyzer, null, profile, CurrentRows.of(saved), observed, saved);
     }
 
     @Override
@@ -85,14 +81,11 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
             String actor) {
         Analyzer analyzer = find(analyzerId);
         AnalyzerMappingSnapshot candidate = latest(analyzer);
-        BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
-                .getProfile(candidate.mapping().getProfileId(), candidate.mapping().getProfileRevision());
-        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        AnalyzerMappingDraft.of(candidate).requireComponentTargets(profile);
-        validateConfirmable(compose(analyzer, revision, profile, CurrentRows.of(candidate),
+        AnalyzerMappingDefinition profile = AnalyzerMappingDefinition.of(candidate.mapping());
+        AnalyzerMappingDraft.of(candidate).requireDeclaredComponentTargets(profile.testDefinitions());
+        validateConfirmable(compose(analyzer, null, profile, CurrentRows.of(candidate),
                 analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId()), candidate));
-        return confirmationService.confirm(candidate, revision.controlRecognitionSummary().recognitionFingerprint(),
-                request, actor);
+        return confirmationService.confirm(candidate, request, actor);
     }
 
     @Override
@@ -100,7 +93,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService.getProfile(profileId,
                 profileRevision);
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        return compose(null, revision, profile, CurrentRows.of(mappingDefaults.resolve(profile)), List.of(), null);
+        return compose(null, revision, AnalyzerMappingDefinition.from(profile),
+                CurrentRows.of(mappingDefaults.resolve(profile)), List.of(), null);
     }
 
     @Override
@@ -108,8 +102,9 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         Analyzer analyzer = find(analyzerId);
         BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
                 .getProfile(latest(analyzer).mapping().getProfileId(), profileRevision);
-        return compose(analyzer, revision, BridgeAnalyzerProfile.from(revision.profile()), CurrentRows.of(decisions),
-                List.of(), null);
+        return compose(analyzer, revision,
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(revision.profile())),
+                CurrentRows.of(decisions), List.of(), null);
     }
 
     private Analyzer find(String analyzerId) {
@@ -123,7 +118,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     }
 
     private AnalyzerMappingView compose(Analyzer analyzer, BridgeProfileCatalog.ProfileRevision revision,
-            BridgeAnalyzerProfile profile, CurrentRows current, List<AnalyzerResults> observed,
+            AnalyzerMappingDefinition profile, CurrentRows current, List<AnalyzerResults> observed,
             AnalyzerMappingSnapshot snapshot) {
         List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
         Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById = activeTests.stream()
@@ -152,7 +147,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 snapshot == null ? null : snapshot.mapping().getId(),
                 snapshot == null ? 0 : snapshot.mapping().getRevisionNumber(),
                 snapshot == null ? null : snapshot.mapping().getMappingFingerprint(), rows,
-                revision.controlRecognitionSummary(), confirmation);
+                revision == null ? null : revision.controlRecognitionSummary(), confirmation);
     }
 
     private static String deliveredAnswer(AnalyzerResults row) {
@@ -181,8 +176,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         }
     }
 
-    private static AnalyzerMappingDraft validateUpdate(BridgeAnalyzerProfile profile, AnalyzerMappingSnapshot current,
-            List<AnalyzerResults> observed, AnalyzerMappingUpdate update) {
+    private static AnalyzerMappingDraft validateUpdate(AnalyzerMappingDefinition profile,
+            AnalyzerMappingSnapshot current, List<AnalyzerResults> observed, AnalyzerMappingUpdate update) {
         AnalyzerMappingDraft draft = update.toDraft();
         Map<AnalyzerMappingRowKey, ReportedRecord> declared = declaredRecords(profile);
         Set<AnalyzerMappingRowKey> expectedTests = new LinkedHashSet<>(declared.keySet());
@@ -328,7 +323,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
      * Every record the profile declares: each test's main result, then its
      * components' records.
      */
-    private static Map<AnalyzerMappingRowKey, ReportedRecord> declaredRecords(BridgeAnalyzerProfile profile) {
+    private static Map<AnalyzerMappingRowKey, ReportedRecord> declaredRecords(AnalyzerMappingDefinition profile) {
         Map<AnalyzerMappingRowKey, ReportedRecord> records = new LinkedHashMap<>();
         for (var definition : profile.testDefinitions()) {
             records.put(AnalyzerMappingRowKey.main(definition.analyzerCode()), ReportedRecord.main(definition));
