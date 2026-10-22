@@ -550,12 +550,14 @@ public class LabUnitManagementRestController extends BaseRestController {
         public String name;
         public String domain;
         public boolean active;
+        public boolean orderable;
 
         public AssignedTestDto(Test test) {
             this.id = test.getId();
             this.name = org.openelisglobal.test.service.TestServiceImpl.getLocalizedTestNameWithType(test);
             this.domain = Domain.normalize(test.getDomain());
             this.active = "Y".equals(test.getIsActive());
+            this.orderable = Boolean.TRUE.equals(test.getOrderable());
         }
     }
 

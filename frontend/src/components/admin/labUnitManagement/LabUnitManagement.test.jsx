@@ -62,7 +62,32 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
           ],
         });
       } else if (endpoint === "/rest/lab-units-management/10/tests") {
-        callback([{ id: "30", name: "Configured Gram stain", isActive: true }]);
+        callback([
+          {
+            id: "30",
+            name: "Configured Gram stain",
+            active: true,
+            orderable: true,
+          },
+          {
+            id: "31",
+            name: "Inactive Gram stain",
+            active: false,
+            orderable: true,
+          },
+          {
+            id: "32",
+            name: "Non-orderable Gram stain",
+            active: true,
+            orderable: false,
+          },
+          {
+            id: "33",
+            name: "Unspecified orderability",
+            active: true,
+            orderable: null,
+          },
+        ]);
       } else if (endpoint.includes("/deactivation-impact")) {
         callback({
           success: true,
@@ -568,6 +593,15 @@ test("saves the lab's tracked-media requirement and configured Gram stain test",
       name: messages["microbiology.culture.gramTest"],
     }),
   );
+  expect(
+    screen.queryByRole("option", { name: "Inactive Gram stain" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Non-orderable Gram stain" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Unspecified orderability" }),
+  ).not.toBeInTheDocument();
   fireEvent.click(await screen.findByText("Configured Gram stain"));
   fireEvent.click(screen.getByText("Save"));
   expect(putToOpenElisServerFullResponse).toHaveBeenCalled();

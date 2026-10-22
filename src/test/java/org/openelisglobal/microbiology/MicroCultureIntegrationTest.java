@@ -40,6 +40,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCultureService service;
     @Autowired
+    private MicroCaseActivityDAO activities;
+    @Autowired
     private MicroCaseInoculationDAO cultures;
     @Autowired
     private MicroCaseDAO cases;
@@ -144,6 +146,15 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         return id;
     }
 
+    private void assertSingleClockAudit(String type) {
+        var events = activities.getByCaseId(microCase.getId()).stream()
+                .filter(event -> type.equals(event.getActivityType())).toList();
+        assertEquals(1, events.size());
+        assertEquals(actor, events.getFirst().getPerformedBy());
+        assertTrue(events.getFirst().getStructuredData().contains("\"old\""));
+        assertTrue(events.getFirst().getStructuredData().contains("\"new\""));
+    }
+
     @Test
     public void provisionsVocabularyWhenTheCategoryIsAbsent() {
         String name = "M4 missing " + UUID.randomUUID().toString().substring(0, 8);
@@ -236,6 +247,7 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         var edit = new MicroCultureRequestForm();
         edit.inoculatedAt = received;
         service.act(microCase.getId(), row.id, "inoculated-time", edit, actor);
+        assertSingleClockAudit("CULTURE_INOCULATED_TIME");
         var read = new MicroCultureRequestForm();
         read.readingId = code("Culture reading", 0);
         read.quantityId = code("Culture quantity", 0);
@@ -352,6 +364,7 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
                 "MICROBIOLOGY_CULTURE_POSITIVE_TIME");
         positive.positiveAt = received;
         service.act(microCase.getId(), row.id, "positive-time", positive, actor);
+        assertSingleClockAudit("CULTURE_POSITIVE_TIME");
         assertEquals(new BigDecimal("0.00"), reload().get(0).timeToPositivityHours);
     }
 

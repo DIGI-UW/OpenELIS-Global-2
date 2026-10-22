@@ -318,7 +318,8 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         }
         row.setSysUserId(actor);
         rows.update(row);
-        audit(caseId, "CULTURE_" + action.toUpperCase(Locale.ROOT).replace('-', '_'), rowId, r, actor);
+        if (!List.of("inoculated-time", "positive-time").contains(action))
+            audit(caseId, "CULTURE_" + action.toUpperCase(Locale.ROOT).replace('-', '_'), rowId, r, actor);
         return getRows(caseId);
     }
 

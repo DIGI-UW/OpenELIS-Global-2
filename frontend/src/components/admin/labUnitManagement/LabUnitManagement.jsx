@@ -1447,7 +1447,9 @@ function LabUnitManagement({ intl }) {
                                         id: "microbiology.culture.noGramTest",
                                       }),
                                     },
-                                    ...assignedTests,
+                                    ...assignedTests.filter(
+                                      (test) => test.active && test.orderable,
+                                    ),
                                   ]}
                                   itemToString={(item) =>
                                     item?.name || item?.testName || ""

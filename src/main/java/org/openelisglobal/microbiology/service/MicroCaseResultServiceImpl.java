@@ -204,9 +204,11 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var existing = links.getAnalyses(caseId);
         List<String> changedAnalysisIds = new ArrayList<>();
         for (var t : selected) {
-            var prior = existing.stream().filter(
-                    a -> t.getId().equals(a.getTest().getId()) && specimen.getId().equals(a.getSampleItem().getId())
-                            && Objects.equals(request.cultureId, links.getByCaseAndAnalysis(caseId, a.getId()).getCultureId()))
+            var prior = existing.stream()
+                    .filter(a -> t.getId().equals(a.getTest().getId())
+                            && specimen.getId().equals(a.getSampleItem().getId())
+                            && Objects.equals(request.cultureId,
+                                    links.getByCaseAndAnalysis(caseId, a.getId()).getCultureId()))
                     .findFirst().orElse(null);
             if (prior != null) {
                 var panel = selectedPanels.get(t.getId());
