@@ -145,16 +145,71 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void queuedNumericDeliveryDoesNotDependOnTheCurrentProfileRevision() throws IOException {
+    public void anUncodedOlderNumericDeliveryUsesAnUnchangedLocalTarget() throws IOException {
         analyzer = analyzer("site.mock-hematology", 2);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
                 .thenReturn(Optional.of(analyzer));
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
         when(profileCatalogService.getProfile(any(), anyInt()))
                 .thenThrow(new AssertionError("A completed result is independent of the current profile"));
+        sourceMappingBeforeAdoption("501");
 
-        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals(0, service.importBundle(uncodedNumericBundle(), "7").resultsHeld());
         assertEquals("7.5", capturedRow().getResult());
+    }
+
+    @Test
+    public void anUncodedOlderResultCannotFollowAReassignedLocalTarget() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "601")), List.of());
+        sourceMappingBeforeAdoption("501");
+        assertEquals(1, service.importBundle(uncodedNumericBundle(), "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, capturedRow().getImportIssueReason());
+    }
+
+    @Test
+    public void anUncodedOlderResultWithoutLocalSourceEvidenceStaysHeld() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        assertEquals(1, service.importBundle(uncodedNumericBundle(), "7").resultsHeld());
+    }
+
+    @Test
+    public void aCodedOlderResultDoesNotNeedHistoricalLocalMappings() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("501", "Count", "WBC",
+                        List.of(org.openelisglobal.terminology.Coding.loinc("6690-2")))));
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observations(bundle).findFirst().orElseThrow().getCode().addCoding().setSystem("http://loinc.org")
+                .setCode("6690-2");
+        assertEquals(0, service.importBundle(bundle, "7").resultsHeld());
+        verify(mappingService).findById(revision.getId());
+        org.mockito.Mockito.verifyNoMoreInteractions(mappingService);
+    }
+
+    private Bundle uncodedNumericBundle() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observations(bundle).forEach(observation -> observation.getCode().getCoding().removeIf(
+                coding -> !"https://openelis-global.org/fhir/CodeSystem/analyzer-raw-code".equals(coding.getSystem())));
+        return bundle;
+    }
+
+    private void sourceMappingBeforeAdoption(String testId) {
+        var source = new AnalyzerMapping();
+        source.setId("before-adoption");
+        source.setProfileId("site.mock-hematology");
+        source.setProfileRevision(1);
+        revision.setSupersedes(source);
+        when(mappingService.findById(source.getId())).thenReturn(
+                Optional.of(new AnalyzerMappingSnapshot(source, List.of(boundTest(source, "WBC", testId)), List.of())));
     }
 
     @Test

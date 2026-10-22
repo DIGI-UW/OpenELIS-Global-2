@@ -224,10 +224,42 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 binding.results().stream().collect(Collectors.toMap(
                         row -> new ResultKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()), row -> row)),
                 binding.results().stream().map(AnalyzerMappingRowKey::of).collect(Collectors.toSet()),
-                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding));
+                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding),
+                uncodedSourceTargets(contract, binding));
         boolean confirmed = confirmationService.hasMatchingConfirmation(binding);
         return contract.results().stream()
                 .flatMap(result -> toStagedResults(contract, result, analyzer, mapping, confirmed).stream()).toList();
+    }
+
+    /**
+     * Local target evidence for an uncoded delivery from a formerly selected
+     * profile revision.
+     */
+    private Map<AnalyzerMappingRowKey, AnalyzerMappingTest> uncodedSourceTargets(
+            AnalyzerNormalizedResultContract contract, AnalyzerMappingSnapshot binding) {
+        if (contract.results().stream().allMatch(result -> !result.testCodings().isEmpty())) {
+            return Map.of();
+        }
+        AnalyzerMappingSnapshot source = binding;
+        while (!contract.profileId().equals(source.mapping().getProfileId())
+                || contract.profileRevision() != source.mapping().getProfileRevision()) {
+            var previous = source.mapping().getSupersedes();
+            if (previous == null) {
+                return Map.of();
+            }
+            source = mappingService.findById(previous.getId()).orElse(null);
+            if (source == null) {
+                return Map.of();
+            }
+        }
+        return source.tests().stream().collect(Collectors.toMap(AnalyzerMappingRowKey::of, row -> row));
+    }
+
+    private static boolean sameLocalTarget(AnalyzerMappingTest current, AnalyzerMappingTest source) {
+        return source != null && source.getMappingState() == AnalyzerMappingState.BOUND
+                && Objects.equals(current.getTestId(), source.getTestId())
+                && Objects.equals(current.getComponentId(), source.getComponentId())
+                && Objects.equals(current.getCallComponentId(), source.getCallComponentId());
     }
 
     /**
@@ -253,7 +285,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return List.of();
         }
         if (testMapping.getMappingState() != AnalyzerMappingState.BOUND || !mapping.catalog().isCurrentBoundTest(record)
-                || !mapping.catalog().acceptsTestMeaning(testMapping.getTestId(), result.testCodings())) {
+                || !mapping.catalog().acceptsTestMeaning(testMapping.getTestId(), result.testCodings())
+                || (result.testCodings().isEmpty()
+                        && !sameLocalTarget(testMapping, mapping.uncodedSourceTargets().get(record)))) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
         }
         if (result.runFailed()) {
@@ -478,6 +512,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
     private record Mapping(Map<AnalyzerMappingRowKey, AnalyzerMappingTest> tests,
             Map<ResultKey, AnalyzerMappingResult> results, Set<AnalyzerMappingRowKey> recordsWithAnswers,
-            AnalyzerMappingCatalogState.Validation catalog) {
+            AnalyzerMappingCatalogState.Validation catalog,
+            Map<AnalyzerMappingRowKey, AnalyzerMappingTest> uncodedSourceTargets) {
     }
 }

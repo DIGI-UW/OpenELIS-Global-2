@@ -20,13 +20,16 @@ upstream-pin validation failing on GitHub. New implementation must receive its
 own validation; the baseline does not prove the planned boundary.
 
 Focused cleanup validation: Bridge `mvn test` passed 1,221 tests with four skipped;
-OE mapping/import/contract/adoption suites passed 264 tests; mapping editor, error-message and
+OE mapping/import/contract/adoption suites passed 268 tests (the corrected import suite was rerun separately); mapping editor, error-message and
 result-review frontend suites passed 129 tests. Formatting and whitespace checks
 passed. These are focused results, not full-stack acceptance; the candidate must
 pass complete local CI and current-head GitHub checkpoints before merge readiness.
 Review follow-ups preserve delivered clinical answer codings for local target
 validation, reject removed local components, and use the existing current mapping
 assessment for type readiness. The audit-only status shortcut was deleted.
+Uncoded older deliveries use the existing append-only local mapping history to
+verify target continuity; changed or unknown targets stay held. This adds no
+parser snapshots, Bridge lookups or persistence.
 
 ## Candidate and stack order
 

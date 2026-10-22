@@ -275,6 +275,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void oldDeliveredValuesUseLocalMappingsWhileRemovedCodesStayHeld() throws Exception {
         analyzerOnRevisionOne();
+        bindLocalTargetsOnRevisionOne();
         String testId = catalogTests.get(0);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", testId), "1");
@@ -298,10 +299,11 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void localMappingRecoveryDoesNotReinterpretOldValuesUsingNewProfileUnits() throws Exception {
         analyzerOnRevisionOne();
+        bindLocalTargetsOnRevisionOne();
         importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A", "ADOPT-D"),
                 "1");
         AnalyzerResults heldA = staged("ADOPT-A");
-        assertTrue("ADOPT-A has no test on revision 1", heldA.isReadOnly());
+        assertTrue("the local mapping has not been confirmed", heldA.isReadOnly());
         assertTrue(staged("ADOPT-D").isReadOnly());
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)),
@@ -321,6 +323,29 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertFalse("a later profile unit cannot change an already normalized result", otherUnit.isReadOnly());
         assertEquals(catalogTests.get(1), otherUnit.getTestId());
         assertEquals(Integer.valueOf(1), otherUnit.getSourceProfileRevision());
+    }
+
+    @Test
+    public void anUncodedOlderResultWithNoEstablishedLocalTargetStaysHeld() throws Exception {
+        analyzerOnRevisionOne();
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
+                bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)), "1");
+        confirm(adopted);
+        bridgeOn(1);
+        apply(adopted);
+        importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A"), "1");
+        assertTrue(staged("ADOPT-A").isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, staged("ADOPT-A").getImportIssueReason());
+    }
+
+    private void bindLocalTargetsOnRevisionOne() {
+        Analyzer analyzer = analyzerDAO.get(analyzerId).orElseThrow();
+        AnalyzerMappingSnapshot first = mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow();
+        AnalyzerMappingDraft draft = bind(bind(AnalyzerMappingDraft.of(first), "ADOPT-A", catalogTests.get(0)),
+                "ADOPT-D", catalogTests.get(1));
+        AnalyzerMappingSnapshot mapped = mappingService.appendRevision(analyzer, draft, "1");
+        new JdbcTemplate(dataSource).update("UPDATE analyzer SET mapping_id = ? WHERE id = ?",
+                Long.valueOf(mapped.mapping().getId()), Long.valueOf(analyzerId));
     }
 
     @Test
