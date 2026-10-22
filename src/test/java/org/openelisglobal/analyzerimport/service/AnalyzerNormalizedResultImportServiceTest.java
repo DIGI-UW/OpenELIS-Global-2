@@ -488,6 +488,41 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void contradictoryDeliveredAnswerMeaningCannotUseTheSavedLocalAnswer() throws IOException {
+        Bundle bundle = codedAnswer("260385009");
+        assertEquals(1, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING, capturedRow().getImportIssueReason());
+        verify(testResultService, never()).get("701");
+    }
+
+    @Test
+    public void matchingDeliveredAnswerMeaningUsesTheSavedLocalAnswer() throws IOException {
+        Bundle bundle = codedAnswer("10828004");
+        TestResult option = new TestResult();
+        option.setId("701");
+        option.setValue("9001");
+        option.setTestResultType("D");
+        when(testResultService.get("701")).thenReturn(option);
+        assertEquals(0, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    private Bundle codedAnswer(String code) throws IOException {
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "701")));
+        when(mappingCatalogService.getActiveResultOptions("601"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("701", "9001", "Positive",
+                        List.of(new org.openelisglobal.terminology.Coding("http://snomed.info/sct", "10828004")))));
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer",
+                new org.hl7.fhir.r4.model.StringType("POSITIVE"));
+        observation.setValue(new org.hl7.fhir.r4.model.CodeableConcept().setText("POSITIVE")
+                .addCoding(new org.hl7.fhir.r4.model.Coding("http://snomed.info/sct", code, null)));
+        return bundle;
+    }
+
+    @Test
     public void boundQualitativeValueUsesOnlyTheSelectedCatalogOption() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
                 List.of(boundResult("HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")));

@@ -20,6 +20,4 @@ public interface AnalyzerMappingConfirmationService {
 
     Optional<AnalyzerMappingConfirmation> findForMapping(String mappingId);
 
-    /** Whether this local mapping has an audited approval. */
-    boolean isConfirmed(String mappingId);
 }

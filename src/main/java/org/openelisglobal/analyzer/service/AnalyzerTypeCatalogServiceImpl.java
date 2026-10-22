@@ -26,17 +26,19 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     private final AnalyzerMappingDefaults mappingDefaults;
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final AnalyzerMappingConfirmationService confirmationService;
+    private final AnalyzerMappingService mappingService;
 
     @Autowired
     public AnalyzerTypeCatalogServiceImpl(BridgeProfileCatalogService bridgeCatalogService,
             AnalyzerMappingDAO mappingDAO, AnalyzerMappingDefaults mappingDefaults,
-            AnalyzerMappingCatalogService mappingCatalogService,
-            AnalyzerMappingConfirmationService confirmationService) {
+            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerMappingConfirmationService confirmationService,
+            AnalyzerMappingService mappingService) {
         this.bridgeCatalogService = bridgeCatalogService;
         this.mappingDAO = mappingDAO;
         this.mappingDefaults = mappingDefaults;
         this.mappingCatalogService = mappingCatalogService;
         this.confirmationService = confirmationService;
+        this.mappingService = mappingService;
     }
 
     @Override
@@ -114,7 +116,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         boolean newerMappingRevision = latest.getRevisionNumber() > inForce.getRevisionNumber();
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
                 inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision,
-                confirmationService.isConfirmed(inForce.getId()));
+                mappingService.findById(inForce.getId()).map(confirmationService::assessCurrent)
+                        .map(assessment -> assessment.currentConfirmation().isPresent()).orElse(false));
     }
 
     /**

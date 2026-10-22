@@ -287,7 +287,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             // below.
             AnalyzerMappingResult answer = result.call() != null ? null
                     : mapping.results().get(new ResultKey(record, result.rawValue()));
-            if (answer == null || bindAnswer(number, answer, record, result.rawValue(), mapping)) {
+            if (answer == null || bindAnswer(number, answer, record, result.rawValue(), mapping, List.of())) {
                 rows.add(number);
             }
         }
@@ -310,7 +310,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 // spellings.
                 // Surface that local conflict rather than silently selecting either decision.
                 hold(call, AnalyzerResults.IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING);
-            } else if (answer != null && !bindAnswer(call, answer, record, result.call(), mapping)) {
+            } else if (answer != null
+                    && !bindAnswer(call, answer, record, result.call(), mapping, result.answerCodings())) {
                 call = null;
             } else if (answer == null && mapping.recordsWithAnswers().contains(record)) {
                 hold(call, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
@@ -333,7 +334,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
      * that value, so the row is not staged at all.
      */
     private boolean bindAnswer(AnalyzerResults row, AnalyzerMappingResult answer, AnalyzerMappingRowKey record,
-            String value, Mapping mapping) {
+            String value, Mapping mapping, List<org.openelisglobal.terminology.Coding> deliveredCodings) {
         if (answer.getMappingState() == AnalyzerMappingState.EXCLUDED) {
             return false;
         }
@@ -341,7 +342,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             hold(row, AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY);
             return true;
         }
-        if (!mapping.catalog().isCurrentBoundResult(record, value)) {
+        if (!mapping.catalog().isCurrentBoundResult(record, value) || !mapping.catalog()
+                .acceptsAnswerMeaning(row.getTestId(), answer.getTestResultId(), deliveredCodings)) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
             return true;
         }

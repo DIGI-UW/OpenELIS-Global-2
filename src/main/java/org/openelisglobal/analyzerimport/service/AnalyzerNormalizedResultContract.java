@@ -257,7 +257,18 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 observation.getCode().getCoding().stream().filter(
                         coding -> !RAW_CODE_SYSTEM.equals(coding.getSystem()) && coding.hasSystem() && coding.hasCode())
                         .map(coding -> new org.openelisglobal.terminology.Coding(coding.getSystem(), coding.getCode()))
-                        .toList());
+                        .toList(),
+                answerCodings(observation));
+    }
+
+    private static List<org.openelisglobal.terminology.Coding> answerCodings(Observation observation) {
+        var concepts = observation.hasValueCodeableConcept()
+                ? java.util.stream.Stream.of(observation.getValueCodeableConcept())
+                : observation.getInterpretation().stream().filter(AnalyzerNormalizedResultContract::isCall);
+        return concepts.flatMap(concept -> concept.getCoding().stream())
+                .filter(coding -> coding.hasSystem() && coding.hasCode())
+                .map(coding -> new org.openelisglobal.terminology.Coding(coding.getSystem(), coding.getCode()))
+                .distinct().toList();
     }
 
     /**
@@ -441,7 +452,8 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
             boolean runFailed, String comparator, String subIdentity, String number, String call, String flags,
             String assayName, String assayVersion, String operator,
-            List<org.openelisglobal.terminology.Coding> testCodings) {
+            List<org.openelisglobal.terminology.Coding> testCodings,
+            List<org.openelisglobal.terminology.Coding> answerCodings) {
 
         /**
          * The number as OpenELIS records it: a comparator the instrument reported leads

@@ -303,6 +303,25 @@ public class AnalyzerNormalizedResultContractTest {
         assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
     }
 
+    @Test
+    public void preservesAnswerCodingsForBothQualitativeAndCombinedResults() throws IOException {
+        for (String name : java.util.List.of("normalized-unknown-value.fhir.json",
+                "normalized-explicit-parts.fhir.json")) {
+            Bundle bundle = fixture(name);
+            Observation observation = observation(bundle);
+            if (observation.hasValueQuantity()) {
+                observation.getInterpretationFirstRep().addCoding().setSystem("http://snomed.info/sct")
+                        .setCode("10828004");
+            } else {
+                observation.setValue(new org.hl7.fhir.r4.model.CodeableConcept().setText("POSITIVE")
+                        .addCoding(new org.hl7.fhir.r4.model.Coding("http://snomed.info/sct", "10828004", null)));
+            }
+            assertTrue(AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0).answerCodings().stream()
+                    .anyMatch(code -> code
+                            .sameAs(new org.openelisglobal.terminology.Coding("http://snomed.info/sct", "10828004"))));
+        }
+    }
+
     private static Bundle fixture(String name) throws IOException {
         return FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURES.resolve(name)));
     }

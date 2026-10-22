@@ -20,10 +20,13 @@ upstream-pin validation failing on GitHub. New implementation must receive its
 own validation; the baseline does not prove the planned boundary.
 
 Focused cleanup validation: Bridge `mvn test` passed 1,221 tests with four skipped;
-OE mapping/import/contract/adoption suites passed 260 tests; mapping editor and
-result-review frontend suites passed 113 tests. Formatting and whitespace checks
+OE mapping/import/contract/adoption suites passed 264 tests; mapping editor, error-message and
+result-review frontend suites passed 129 tests. Formatting and whitespace checks
 passed. These are focused results, not full-stack acceptance; the candidate must
-pass complete local CI and current-head GitHub checkpoints before review closure.
+pass complete local CI and current-head GitHub checkpoints before merge readiness.
+Review follow-ups preserve delivered clinical answer codings for local target
+validation, reject removed local components, and use the existing current mapping
+assessment for type readiness. The audit-only status shortcut was deleted.
 
 ## Candidate and stack order
 
@@ -231,11 +234,11 @@ profile; both are corrected. This is focused proof, not full CI acceptance.
 
 ## Delivery-contract proposal superseded
 
-The queued-settings and pre-confirmation findings remain open. Their replacement
+The queued-settings and pre-confirmation paths have been removed. Their replacement
 is the broader [interpret-once boundary](boundary-remediation.md), not a new
-OpenELIS decimal-history gate. Bridge must supply explicit normalized meaning,
-including qualitative calls, and preserve the receipt-time context across a
-restart before rendering. OpenELIS must recover from the retained normalized
+OpenELIS decimal-history gate. Bridge now supplies explicit normalized meaning,
+including qualitative calls, and preserves the receipt-time context across a
+restart before rendering. OpenELIS recovers from the retained normalized
 payload using its own local decisions. No blanket hold or general raw-message
 reprocessor is required for missing decimal metadata. Existing incomplete
 qualitative payloads need bounded compatibility handling and reviewed local

@@ -255,6 +255,15 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
+    public void aRemovedLocalComponentMakesTheAuditedMappingStale() throws Exception {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        candidate.tests().get(0).setComponentId("removed-component");
+        when(confirmationDAO.findByMappingId("61"))
+                .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
+        assertFalse(service.assessCurrent(candidate).mappingsCurrent());
+    }
+
+    @Test
     public void reportsAConfirmationAsStaleWhenItsResultOptionMovesToAnotherTest() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         when(confirmationDAO.findLatestByAnalyzerId("42"))

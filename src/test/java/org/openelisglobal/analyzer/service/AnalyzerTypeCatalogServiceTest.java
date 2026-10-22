@@ -42,6 +42,9 @@ public class AnalyzerTypeCatalogServiceTest {
     @Mock
     private TestResultService testResultService;
 
+    @Mock
+    private AnalyzerMappingService mappingService;
+
     private AnalyzerTypeCatalogService service;
 
     @Before
@@ -51,7 +54,7 @@ public class AnalyzerTypeCatalogServiceTest {
         when(testResultService.getActiveTestResultsByTest("100")).thenReturn(List.of(numericResult()));
         service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
                 new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService,
-                confirmationService);
+                confirmationService, mappingService);
     }
 
     @Test
@@ -288,7 +291,13 @@ public class AnalyzerTypeCatalogServiceTest {
         when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(List.of(confirmed, behind));
         when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
-        when(confirmationService.isConfirmed(org.mockito.ArgumentMatchers.eq("mapping-501"))).thenReturn(true);
+        var current = new AnalyzerMappingSnapshot(confirmed.getMapping(), List.of(), List.of());
+        var stale = new AnalyzerMappingSnapshot(behind.getMapping(), List.of(), List.of());
+        when(mappingService.findById("mapping-501")).thenReturn(Optional.of(current));
+        when(mappingService.findById("mapping-502")).thenReturn(Optional.of(stale));
+        var approval = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
+        when(confirmationService.assessCurrent(current)).thenReturn(AnalyzerMappingVerificationAssessment.current(approval));
+        when(confirmationService.assessCurrent(stale)).thenReturn(new AnalyzerMappingVerificationAssessment(false, approval));
 
         AnalyzerTypeCatalogView.TypeSummary type = service.getCatalog().types().get(0);
 

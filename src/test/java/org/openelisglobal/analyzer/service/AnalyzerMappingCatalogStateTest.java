@@ -25,6 +25,9 @@ public class AnalyzerMappingCatalogStateTest {
         when(catalog.getActiveResultOptions("t1")).thenReturn(List.of(
                 new AnalyzerMappingCatalogService.ResultOption("on-call", "1", "Detected", List.of(), "c-call"),
                 new AnalyzerMappingCatalogService.ResultOption("on-other", "2", "Detected", List.of(), "c-other")));
+        when(catalog.getActiveComponents("t1")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ComponentOption("c-call", "call", "Call"),
+                new AnalyzerMappingCatalogService.ComponentOption("c-other", "other", "Other")));
         AnalyzerMapping mapping = new AnalyzerMapping();
         mapping.setId("61");
         AnalyzerMappingTest main = new AnalyzerMappingTest();

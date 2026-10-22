@@ -17,7 +17,7 @@ public final class AnalyzerMappingCatalogState {
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final Map<String, AnalyzerMappingCatalogService.TestOption> activeTests;
     private final Map<String, Map<String, AnalyzerMappingCatalogService.ResultOption>> activeResultOptions = new HashMap<>();
-    private final Map<String, Set<String>> primaryComponents = new HashMap<>();
+    private final Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> activeComponents = new HashMap<>();
 
     private AnalyzerMappingCatalogState(AnalyzerMappingCatalogService mappingCatalogService) {
         this.mappingCatalogService = mappingCatalogService;
@@ -50,10 +50,7 @@ public final class AnalyzerMappingCatalogState {
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED).map(ResultSourceKey::of)
                 .collect(Collectors.toCollection(HashSet::new));
         return new Validation(currentBoundTests, currentExcludedTests, currentBoundResults, currentExcludedResults,
-                binding.tests().size(), binding.results().size(), activeTests,
-                binding.tests().stream().filter(row -> row.getTestId() != null).map(AnalyzerMappingTest::getTestId)
-                        .distinct().collect(Collectors.toMap(Function.identity(), id -> List.copyOf(Optional
-                                .ofNullable(mappingCatalogService.getActiveComponents(id)).orElse(List.of())))));
+                binding.tests().size(), binding.results().size(), activeTests, activeComponents, activeResultOptions);
     }
 
     private boolean isCurrentTest(AnalyzerMappingTest row) {
@@ -61,7 +58,18 @@ public final class AnalyzerMappingCatalogState {
             return true;
         }
         return row.getMappingState() == AnalyzerMappingState.BOUND && row.getTestId() != null
-                && activeTests.containsKey(row.getTestId());
+                && activeTests.containsKey(row.getTestId()) && hasComponent(row.getTestId(), row.getComponentId())
+                && hasComponent(row.getTestId(), row.getCallComponentId());
+    }
+
+    private List<AnalyzerMappingCatalogService.ComponentOption> componentsOf(String testId) {
+        return activeComponents.computeIfAbsent(testId, id -> List
+                .copyOf(Optional.ofNullable(mappingCatalogService.getActiveComponents(id)).orElse(List.of())));
+    }
+
+    private boolean hasComponent(String testId, String componentId) {
+        var components = componentsOf(testId);
+        return componentId == null || components.stream().anyMatch(component -> componentId.equals(component.id()));
     }
 
     private boolean isCurrentResult(AnalyzerMappingResult result, AnalyzerMappingTest test) {
@@ -86,11 +94,8 @@ public final class AnalyzerMappingCatalogState {
         if (target != null) {
             return target.equals(option.componentId());
         }
-        return option.componentId() == null || primaryComponents.computeIfAbsent(test.getTestId(),
-                testId -> Optional.ofNullable(mappingCatalogService.getActiveComponents(testId)).orElse(List.of())
-                        .stream().filter(AnalyzerMappingCatalogService.ComponentOption::primary)
-                        .map(AnalyzerMappingCatalogService.ComponentOption::id).collect(Collectors.toSet()))
-                .contains(option.componentId());
+        return option.componentId() == null || componentsOf(test.getTestId()).stream()
+                .anyMatch(component -> component.primary() && component.id().equals(option.componentId()));
     }
 
     /** One answer of one record: code, raw value and the record's sub-identity. */
@@ -118,11 +123,13 @@ public final class AnalyzerMappingCatalogState {
             Set<AnalyzerMappingRowKey> currentExcludedTestRows, Set<ResultSourceKey> currentBoundResultRows,
             Set<ResultSourceKey> currentExcludedResultRows, int testRows, int resultRows,
             Map<String, AnalyzerMappingCatalogService.TestOption> activeTests,
-            Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> components) {
+            Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> components,
+            Map<String, Map<String, AnalyzerMappingCatalogService.ResultOption>> answers) {
 
         public Validation {
             activeTests = Map.copyOf(activeTests);
             components = Map.copyOf(components);
+            answers = Map.copyOf(answers);
             currentBoundTestRows = currentBoundTestRows == null ? Set.of() : Set.copyOf(currentBoundTestRows);
             currentExcludedTestRows = currentExcludedTestRows == null ? Set.of() : Set.copyOf(currentExcludedTestRows);
             currentBoundResultRows = currentBoundResultRows == null ? Set.of() : Set.copyOf(currentBoundResultRows);
@@ -131,7 +138,7 @@ public final class AnalyzerMappingCatalogState {
         }
 
         static Validation empty() {
-            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0, Map.of(), Map.of());
+            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0, Map.of(), Map.of(), Map.of());
         }
 
         boolean isCurrentTest(AnalyzerMappingRowKey record) {
@@ -170,6 +177,13 @@ public final class AnalyzerMappingCatalogState {
                 return false;
             return !numeric || target.unit() == null || target.unit().isBlank()
                     || (unit != null && target.unit().trim().equals(unit.trim()));
+        }
+
+        public boolean acceptsAnswerMeaning(String testId, String answerId,
+                List<org.openelisglobal.terminology.Coding> delivered) {
+            var target = answers.getOrDefault(testId, Map.of()).get(answerId);
+            return target != null && (delivered.isEmpty() || target.codings().isEmpty()
+                    || delivered.stream().anyMatch(code -> target.codings().stream().anyMatch(code::sameAs)));
         }
 
         /** The main result of a code. */

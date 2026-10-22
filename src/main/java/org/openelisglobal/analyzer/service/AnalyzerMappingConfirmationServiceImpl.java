@@ -145,15 +145,6 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         return new AnalyzerMappingVerificationAssessment(mappingsCurrent, confirmation);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean isConfirmed(String mappingId) {
-        return confirmationDAO
-                .findByMappingId(mappingId).filter(confirmation -> hasText(confirmation.getConfirmedBy())
-                        && confirmation.getConfirmedAt() != null && hasText(confirmation.getAuditEventId()))
-                .isPresent();
-    }
-
     private static CandidateContext requireCandidate(AnalyzerMappingSnapshot candidate) {
         if (candidate == null || candidate.mapping() == null || candidate.mapping().getId() == null
                 || candidate.mapping().getAnalyzer() == null) {

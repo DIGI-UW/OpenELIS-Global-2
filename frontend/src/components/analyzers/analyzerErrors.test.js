@@ -7,7 +7,6 @@ const intl = createIntl({ locale: "en", messages });
 describe("analyzerErrorText", () => {
   it.each([
     "analyzer.mapping.error.changedSinceLoaded",
-    "analyzer.mapping.error.recognitionChanged",
     "analyzer.mapping.error.confirmBeforeApply",
     "analyzer.mapping.error.testNotCurrent",
     "analyzer.mapping.error.resultNotCurrent",
