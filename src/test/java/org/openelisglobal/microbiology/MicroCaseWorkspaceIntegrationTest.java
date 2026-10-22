@@ -137,6 +137,58 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void fullPatientNameSearchMatchesEitherOrderWithoutLeakingOtherUnits() {
+        var patient = fixtures.createPatient("M2-NAME");
+        var human = new org.openelisglobal.samplehuman.valueholder.SampleHuman();
+        human.setSampleId(own.getSampleId());
+        human.setPatientId(patient.getId());
+        human.setSysUserId(actor);
+        em.persist(human);
+        em.flush();
+        for (String name : List.of(patient.getPerson().getLastName() + " " + patient.getPerson().getFirstName(),
+                patient.getPerson().getFirstName() + " " + patient.getPerson().getLastName())) {
+            var q = new MicroCaseSearchForm();
+            q.q = name;
+            assertEquals(List.of(own.getId()), workspace.search(q, viewer).rows.stream().map(row -> row.id).toList());
+        }
+    }
+
+    @Test
+    public void accessionLookupRejectsBlanksAndPaginatesOnlyTheExactOrder() throws Exception {
+        var second = createCase(own.getSampleId(), own.getSampleTypeId(), source.getId());
+        em.flush();
+        Set<String> found = new HashSet<>();
+        for (int page = 1; page <= 2; page++) {
+            var response = mockMvc
+                    .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .get("/rest/microbiology/cases/by-accession")
+                            .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA,
+                                    sessionActor())
+                            .param("accessionNumber", workspaceAccession()).param("page", String.valueOf(page))
+                            .param("pageSize", "1"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.total")
+                            .value(2))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .jsonPath("$.rows.length()").value(1))
+                    .andReturn().getResponse().getContentAsString();
+            found.add(new com.fasterxml.jackson.databind.ObjectMapper().readTree(response).at("/rows/0/id").asText());
+        }
+        assertEquals(Set.of(own.getId(), second.getId()), found);
+        for (String accession : List.of("", "  "))
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .get("/rest/microbiology/cases/by-accession")
+                    .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
+                    .param("accessionNumber", accession)).andExpect(
+                            org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/rest/microbiology/cases/by-accession")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
+                .param("accessionNumber", workspaceAccession()).param("page", "0"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isBadRequest());
+    }
+
+    @Test
     public void httpQueriesScopeResultsAndAllowReadOnlyDirectLinks() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .get("/rest/microbiology/cases/search")

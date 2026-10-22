@@ -27,9 +27,16 @@ public class MicroCaseWorkspaceRestController extends MicrobiologyRestController
     }
 
     @GetMapping("/by-accession")
-    public MicroCaseSearchPageForm byAccession(@RequestParam String accessionNumber, HttpServletRequest request) {
+    public MicroCaseSearchPageForm byAccession(@RequestParam String accessionNumber,
+            @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int pageSize,
+            HttpServletRequest request) {
+        if (accessionNumber.isBlank())
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "Accession number is required");
         MicroCaseSearchForm query = new MicroCaseSearchForm();
         query.accessionNumber = accessionNumber;
+        query.page = page;
+        query.pageSize = pageSize;
         return workspace.search(query, authenticatedUserId(request));
     }
 

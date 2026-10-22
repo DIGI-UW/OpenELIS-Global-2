@@ -47,7 +47,9 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
         if (q.accessionNumber != null)
             hql += " and s.accessionNumber = :accession";
         if (q.q != null)
-            hql += " and (lower(s.accessionNumber) like :search or lower(person.lastName) like :search or lower(person.firstName) like :search)";
+            hql += " and (lower(s.accessionNumber) like :search or lower(person.lastName) like :search or lower(person.firstName) like :search"
+                    + " or lower(concat(coalesce(person.lastName, ''), ' ', coalesce(person.firstName, ''))) like :search"
+                    + " or lower(concat(coalesce(person.firstName, ''), ' ', coalesce(person.lastName, ''))) like :search)";
         return hql;
     }
 
