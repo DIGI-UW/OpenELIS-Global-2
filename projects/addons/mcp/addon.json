@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "id": "mcp",
+  "name": "MCP server for AI agents",
+  "version": "1.0.0",
+  "publisher": "openelis-vietnam",
+  "description": "Lets outside AI agents (Claude Code, Claude Desktop, other MCP clients) read this laboratory's orders, results, worklists, statistics and test catalog through the Model Context Protocol. Read-only. Each agent gets its own token from an administrator; patient names and identifiers only for tokens that are allowed them. Every call is rate limited and recorded.",
+  "image": {
+    "ref": "ghcr.io/digitalversion/openelis-addon-mcp@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "runtime": {
+    "port": 8080,
+    "eventsPath": "/events"
+  },
+  "scopes": [
+    "orders.read",
+    "results.read",
+    "orders.search",
+    "stats.read",
+    "catalog.read",
+    "patient.identity"
+  ],
+  "events": [],
+  "extensions": [
+    {
+      "name": "mcp-settings",
+      "slot": "addon-settings-page-slot",
+      "page": "admin.html",
+      "order": 10,
+      "meta": {
+        "title": {
+          "en": "MCP access",
+          "vi": "Truy cập MCP",
+          "fr": "Accès MCP"
+        }
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "ratePerMinute",
+      "type": "number",
+      "label": "Calls per agent token per minute",
+      "min": 1,
+      "max": 600,
+      "default": 30
+    },
+    {
+      "key": "ratePerDay",
+      "type": "number",
+      "label": "Calls per agent token per day",
+      "min": 1,
+      "max": 100000,
+      "default": 1000
+    },
+    {
+      "key": "auditRetentionDays",
+      "type": "number",
+      "label": "Days the add-on keeps its record of calls (local regulation may require longer)",
+      "min": 30,
+      "max": 3650,
+      "default": 180
+    },
+    {
+      "key": "timeZone",
+      "type": "string",
+      "label": "Time zone of the laboratory's day, for the daily limit (IANA name, e.g. Asia/Ho_Chi_Minh)",
+      "default": "UTC"
+    },
+    {
+      "key": "allowedOrigins",
+      "type": "string",
+      "label": "Browser origins allowed to call the MCP endpoint, comma separated (empty: the laboratory's own address)",
+      "default": ""
+    }
+  ]
+}
