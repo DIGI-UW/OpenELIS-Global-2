@@ -43,8 +43,9 @@ component-order canonicalization, activation-history protection, failed-restore
 compensation, frontend response fields, reporting menu text, and LOINC alias
 normalization. Focused backend validation: 115 tests passed. Seven real-certificate
 install/upgrade tests passed, including custom passwords and repeated startup.
-The browser expectations now follow shipped Mindray exclusions; combined browser
-validation is pending. The repository-wide TypeScript check reports missing Node
+Mindray browser validation distinguishes routine automated CBCs from the
+manual-count fixture; exclusions are explicit lab decisions, not shipped defaults.
+The corrected manual-count scenario is awaiting combined browser validation. The repository-wide TypeScript check reports missing Node
 ambient types across existing Playwright files; changed browser tests pass ESLint.
 
 Connection-code overrides are now part of the confirmed interpretation. Changing
@@ -60,22 +61,22 @@ by this progress record.
 The reviewed findings now have implementation changes in the stack tips.
 GitHub resolution is tracked separately from implementation and full CI.
 
-| Finding                     | Correction and focused evidence                                                                                                                     |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared certificates         | Both historical subjects and previously exported shared keys are replaced; seven real-certificate tests pass.                                       |
-| Store passwords             | Generation and every consumer, including the HTTP client's private-key password, use the configured values; defaults remain supported.              |
-| Removed readings            | Removed values/spellings differ; recovery rejects absent confirmed values.                                                                          |
-| Undeclared-code recovery    | Explicitly confirmed undeclared codes recover when parsing agrees; declared records with missing readings remain held. Browser proof is pending.    |
-| Connection overrides        | Changing/removing overrides requires reconfirmation even with an unchanged profile; unrelated host edits remain current.                            |
-| Unreadable profile          | Delivery waits for a baseline; reconfirmation fails without changing the saved confirmation.                                                        |
-| Component order             | Tuples are sorted by code/sub-identity before comparison.                                                                                           |
-| API response fields         | Both reading-change fields are present in the frontend response type.                                                                               |
-| Migrated activation history | A last activation date prevents permanent deletion.                                                                                                 |
-| Failed-restore retry        | Persistence failure preserves already-active runtime intent.                                                                                        |
-| Reporting navigation        | The optional qualification assertion matches the current description; its optional browser run is pending.                                          |
-| LOINC URI storage/import    | Known URIs normalize before validation; import copies preserve canonical aliases deterministically without mutating managed rows. Eight tests pass. |
-| ASTM sender delimiter       | Bridge honors the header's declared delimiter for HTTP and serial traffic.                                                                          |
-| Capacity refusal metric     | Bridge counts an admitted peer refused at the listener's session limit.                                                                             |
+| Finding                     | Correction and focused evidence                                                                                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared certificates         | Both historical subjects and previously exported shared keys are replaced; seven real-certificate tests pass.                                                                                                               |
+| Store passwords             | Generation and every consumer, including the HTTP client's private-key password, use the configured values; defaults remain supported.                                                                                      |
+| Removed readings            | Removed values/spellings differ; recovery rejects absent confirmed values.                                                                                                                                                  |
+| Undeclared-code recovery    | Explicitly confirmed undeclared codes recover when parsing agrees. GitHub run 39724746731 passed the mapping recovery scenario; explicit exclusion recovery is also covered by focused tests and awaits browser validation. |
+| Connection overrides        | Changing/removing overrides requires reconfirmation even with an unchanged profile; unrelated host edits remain current.                                                                                                    |
+| Unreadable profile          | Delivery waits for a baseline; reconfirmation fails without changing the saved confirmation.                                                                                                                                |
+| Component order             | Tuples are sorted by code/sub-identity before comparison.                                                                                                                                                                   |
+| API response fields         | Both reading-change fields are present in the frontend response type.                                                                                                                                                       |
+| Migrated activation history | A last activation date prevents permanent deletion.                                                                                                                                                                         |
+| Failed-restore retry        | Persistence failure preserves already-active runtime intent.                                                                                                                                                                |
+| Reporting navigation        | The optional qualification assertion matches the current description; its optional browser run is pending.                                                                                                                  |
+| LOINC URI storage/import    | Known URIs normalize before validation; import copies preserve canonical aliases deterministically without mutating managed rows. Eight tests pass.                                                                         |
+| ASTM sender delimiter       | Bridge honors the header's declared delimiter for HTTP and serial traffic.                                                                                                                                                  |
+| Capacity refusal metric     | Bridge counts an admitted peer refused at the listener's session limit.                                                                                                                                                     |
 
 Bridge's two threads are resolved. OpenELIS replies cite the pushed remediation
 commit and distinguish focused evidence from combined CI. The original drafts
@@ -83,6 +84,21 @@ remain backed up at `refs/codex/analyzer-remediation-drafts-20261021`; the
 candidate now includes their fixes.
 
 ## Subsequent review corrections
+
+- Connection decimal-separator changes and removal are part of confirmation and
+  arrival readings. A profile fingerprint match cannot bypass them; results parsed
+  under the old setting cannot recover under the new one. The combined confirmation,
+  interpretation and importer suite passes 90 tests.
+- Undeclared held codes accept an explicitly confirmed exclusion as well as an
+  explicit mapping, so applying that exclusion can remove the held row.
+- GitHub run 39724746731 passed undeclared-code mapping recovery. Its remaining
+  Mindray failure exposed an incorrect test assumption: `analysis-result` contains
+  the routine automated CBC; `manual-count` adds the technician's differential.
+  The corrected scenario uses `manual-count`, explicitly excludes the declared
+  manual codes, then clears the two undeclared codes through the mapping screen.
+  Browser proof for this corrected scenario remains pending.
+- Queued deliveries fetch the actual delivered profile revision, and held-result
+  dismissal preserves unsaved edits on other eligible result rows.
 
 - Value exclusions are documented as entries in `value_defaults`; only tests and
   parts use the `default` field directly.

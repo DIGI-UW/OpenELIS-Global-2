@@ -249,9 +249,12 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         JsonNode record = confirmed.get(new AnalyzerMappingSourceRow(code, null, sub));
         if (record == null) {
             // A code undeclared at arrival and confirmation has no profile reading on
-            // either side. It may recover only after an explicit mapping confirmation.
-            return arrived.get().byValue().isEmpty() && readRowsForView(confirmation.getConfirmedRowsJson())
-                    .contains(new AnalyzerMappingSourceRow(code, null, sub));
+            // either side. It may recover only after an explicit confirmed decision,
+            // including exclusion so the held row can leave review.
+            AnalyzerMappingSourceRow row = new AnalyzerMappingSourceRow(code, null, sub);
+            return arrived.get().byValue().isEmpty()
+                    && (readRowsForView(confirmation.getConfirmedRowsJson()).contains(row)
+                            || readRowsForView(confirmation.getExcludedRowsJson()).contains(row));
         }
         if (!record.equals(arrived.get().byValue().get(null))) {
             return false;
@@ -363,21 +366,32 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         if (connection == null) {
             throw new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unavailable");
         }
+        ObjectNode codes = objectMapper.createObjectNode();
         connection.path("values").path("codeOverrides").fields()
-                .forEachRemaining(entry -> overrides.put(entry.getKey(), entry.getValue().asText().trim()));
+                .forEachRemaining(entry -> codes.put(entry.getKey(), entry.getValue().asText().trim()));
+        if (!codes.isEmpty()) {
+            overrides.set("connection.codeOverrides", codes);
+        }
+        JsonNode numberFormat = connection.path("values").path("numberFormat");
+        if (numberFormat.isTextual()) {
+            overrides.set("connection.numberFormat", numberFormat);
+        }
         return overrides;
     }
 
     private JsonNode savedOverrides(JsonNode type) {
-        return type.has("connection.codeOverrides") ? type.path("connection.codeOverrides")
-                : objectMapper.createObjectNode();
+        ObjectNode overrides = objectMapper.createObjectNode();
+        for (String key : List.of("connection.codeOverrides", "connection.numberFormat")) {
+            if (type.has(key)) {
+                overrides.set(key, type.get(key));
+            }
+        }
+        return overrides;
     }
 
     private ServedReading withConnectionReading(ServedReading served, JsonNode overrides) {
         ObjectNode type = (ObjectNode) served.type().deepCopy();
-        if (!overrides.isEmpty()) {
-            type.set("connection.codeOverrides", overrides);
-        }
+        overrides.fields().forEachRemaining(entry -> type.set(entry.getKey(), entry.getValue()));
         return new ServedReading(served.fingerprint(), served.rows(), type);
     }
 

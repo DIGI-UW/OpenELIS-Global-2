@@ -731,6 +731,10 @@ public class AnalyzerMappingConfirmationServiceTest {
                 .putNull("rawValue").put("subIdentity", "");
         saved.setConfirmedRowsJson(rows.toString());
         assertTrue(service.readsAsConfirmed("61", "RSVX", null, arrival));
+        saved.setExcludedRowsJson(saved.getConfirmedRowsJson());
+        saved.setConfirmedRowsJson("[]");
+        assertTrue("an explicit exclusion must also let an undeclared held row leave review",
+                service.readsAsConfirmed("61", "RSVX", null, arrival));
         assertFalse("declared records cannot recover from missing arrival readings",
                 service.readsAsConfirmed("61", "RAW-A", null, arrival));
         saved.setTypeReadingJson("{\"configDefaults.numberFormat\":\",\"}");
@@ -776,6 +780,42 @@ public class AnalyzerMappingConfirmationServiceTest {
                 service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
         connection.with("values").with("codeOverrides").removeAll();
         assertTrue("removing an override also changes interpretation",
+                service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).typeChanged());
+    }
+
+    @Test
+    public void changingConnectionNumberFormatRequiresReconfirmationAndBlocksOldRecovery() {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        candidate.mapping().getAnalyzer().setBridgeConnectionId("bridge-42");
+        var connection = new ObjectMapper().createObjectNode();
+        connection.putObject("values").put("numberFormat", ".");
+        when(connectionClient.getConnection("bridge-42")).thenReturn(connection);
+        service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(), "17");
+        ArgumentCaptor<AnalyzerMappingConfirmation> capture = ArgumentCaptor
+                .forClass(AnalyzerMappingConfirmation.class);
+        verify(confirmationDAO).insert(capture.capture());
+        AnalyzerMappingConfirmation saved = capture.getValue();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(saved));
+        String arrival = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).arrival()
+                .forRecord("RAW-A", null);
+        assertTrue(service.readsAsConfirmed("61", "RAW-A", null, arrival));
+
+        connection.with("values").put("numberFormat", ",");
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).typeChanged());
+        assertEquals(AnalyzerMappingConfirmationView.State.STALE,
+                service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
+        assertFalse(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).recognitionCurrent());
+        service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(), "17");
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).isUnchanged());
+        assertFalse("results parsed with the old decimal separator cannot recover under the new one",
+                service.readsAsConfirmed("61", "RAW-A", null, arrival));
+
+        connection.with("values").put("host", "renamed-host");
+        assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
+                service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
+        connection.with("values").remove("numberFormat");
+        assertTrue("restoring the profile default also requires reconfirmation",
                 service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).typeChanged());
     }
 

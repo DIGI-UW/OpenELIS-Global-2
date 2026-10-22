@@ -12,7 +12,7 @@ const mockUrl =
 export type GeneXpertFixture = { assay: string; outcome: string };
 
 /** A message Mindray prints for the BC-5380 (Operator's Manual, appendix C.3.3). */
-export type Bc5380Fixture = "analysis-result" | "xr-qc";
+export type Bc5380Fixture = "analysis-result" | "manual-count" | "xr-qc";
 
 /**
  * The port of the shared Bridge listener this active connection receives on.
