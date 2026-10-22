@@ -57,7 +57,7 @@ by this progress record.
 
 ## Implemented review fixes
 
-All seventeen known findings now have implementation changes in the stack tips.
+All nineteen known findings now have implementation changes in the stack tips.
 GitHub resolution is tracked separately from implementation and full CI.
 
 | Finding                     | Correction and focused evidence                                                                                                                     |
@@ -140,6 +140,11 @@ The full run started on `380075460d` was stopped to include the additional
 HTTP-client private-key password correction. A new committed candidate must pass
 all sixteen local groups and the three required GitHub checkpoints. The trusted
 upstream-pin check remains blocked until the upstream dependency merges.
+
+The queued-revision follow-up preserves the delivery profile reading before that
+profile is removed; a changed or unavailable source does not fabricate history.
+Its focused confirmation/reading/import suite passed 85 tests. Both published and
+source-build Compose configurations rendered consistent custom store passwords.
 
 ## Remaining acceptance
 

@@ -25,6 +25,15 @@ public record AnalyzerArrivalReading(JsonNode type, Map<AnalyzerMappingSourceRow
         rows = Map.copyOf(rows);
     }
 
+    /** Snapshot the actual parsed profile while it is still available. */
+    public static AnalyzerArrivalReading from(BridgeAnalyzerProfile profile) {
+        Map<AnalyzerMappingSourceRow, JsonNode> rows = new LinkedHashMap<>();
+        AnalyzerRecordReading.rowReadings(profile)
+                .forEach((row, reading) -> rows.put(new AnalyzerMappingSourceRow(row.sourceRowKey(), row.rawValue(),
+                        Objects.toString(row.subIdentity(), "")), JSON.valueToTree(reading)));
+        return new AnalyzerArrivalReading(JSON.valueToTree(AnalyzerRecordReading.typeReading(profile)), rows);
+    }
+
     /** The type reading and the readings of one record and its values, as JSON. */
     public String forRecord(String code, String subIdentity) {
         String sub = subIdentity == null ? "" : subIdentity;

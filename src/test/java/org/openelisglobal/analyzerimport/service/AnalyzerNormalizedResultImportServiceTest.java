@@ -613,6 +613,60 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void anOlderQueuedRevisionKeepsItsReadingAndRecoversAfterThatProfileDisappears() throws IOException {
+        analyzer = analyzer("site.unknown-capable", 4);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
+        when(profileCatalogService.getProfile("site.unknown-capable", 3))
+                .thenReturn(profile("site.unknown-capable", 3, "copies/mL"));
+        when(profileCatalogService.getProfile("site.unknown-capable", 4))
+                .thenReturn(profile("site.unknown-capable", 4, "IU/mL"));
+        service.importBundle(stampedUnknownBundle("sha256:" + "3".repeat(64)), "7");
+        AnalyzerResults held = capturedRow();
+        assertTrue(held.isReadOnly());
+        assertTrue(held.getArrivalReading().contains("copies/mL"));
+        assertFalse(held.getArrivalReading().contains("IU/mL"));
+        held.setId("9001");
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        when(confirmationService.readsAsConfirmed(eq("revision-1"), eq("VENDOR-NEW-42"), any(),
+                eq(held.getArrivalReading()))).thenReturn(true);
+        org.mockito.Mockito.clearInvocations(profileCatalogService);
+        when(profileCatalogService.getProfile("site.unknown-capable", 3))
+                .thenThrow(new org.openelisglobal.analyzer.service.BridgeProfileCatalogException("removed"));
+        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
+        verify(profileCatalogService, never()).getProfile(any(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    public void anEditedOrUnavailableSourceDoesNotInventAnArrivalSnapshot() throws IOException {
+        analyzer = analyzer("site.unknown-capable", 3);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(), List.of());
+        when(profileCatalogService.getProfile("site.unknown-capable", 3))
+                .thenReturn(profile("site.unknown-capable", 3, "copies/mL"));
+        service.importBundle(stampedUnknownBundle("sha256:" + "4".repeat(64)), "7");
+        assertNull(capturedRow().getArrivalReading());
+        org.mockito.Mockito.clearInvocations(analyzerResultsService);
+        when(profileCatalogService.getProfile("site.unknown-capable", 3))
+                .thenThrow(new org.openelisglobal.analyzer.service.BridgeProfileCatalogException("removed"));
+        service.importBundle(stampedUnknownBundle("sha256:" + "3".repeat(64)), "7");
+        assertNull(capturedRow().getArrivalReading());
+    }
+
+    private Bundle stampedUnknownBundle(String fingerprint) throws IOException {
+        Bundle bundle = fixture("normalized-unknown-test.fhir.json");
+        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(org.hl7.fhir.r4.model.Device.class::isInstance).map(org.hl7.fhir.r4.model.Device.class::cast)
+                .findFirst().orElseThrow()
+                .addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-profile-fingerprint",
+                        new org.hl7.fhir.r4.model.StringType(fingerprint));
+        return bundle;
+    }
+
+    @Test
     public void aHeldResultRecoversOnlyWhereItArrivedReadingAsTheConfirmationDoes() throws IOException {
         AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
         held.setArrivalReading("{\"type\":{},\"rows\":[]}");

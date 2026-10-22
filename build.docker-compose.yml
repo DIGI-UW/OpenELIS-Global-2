@@ -9,9 +9,8 @@ services:
     # Gives the install its own TLS key on first start and keeps the stores built from it.
     entrypoint: ["/bin/sh", "/ensure-install-keys.sh"]
     environment:
-        # The webapp opens the stores with server.ssl.* from common.properties.
-        - KEYSTORE_PW=kspass
-        - TRUSTSTORE_PW=tspass
+        - KEYSTORE_PW=${SSL_KEYSTORE_PASSWORD:-kspass}
+        - TRUSTSTORE_PW=${SSL_TRUSTSTORE_PASSWORD:-tspass}
     networks:
         - default  
     volumes:
@@ -68,6 +67,8 @@ services:
         - DEFAULT_PW=adminADMIN!
         - TZ=${TZ:-UTC}
         - OE_ENCRYPTION_PASSWORD=${OE_ENCRYPTION_PASSWORD:-}
+        - SSL_KEYSTORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
+        - SSL_TRUSTSTORE_PASSWORD=${SSL_TRUSTSTORE_PASSWORD:-tspass}
         - SPRING_LIQUIBASE_CONTEXTS=test
         - ORG_OPENELISGLOBAL_UAT_SCENARIOS_ENABLED=${OE_UAT_SCENARIOS_ENABLED:-false}
         # The EQA scheduler sweep (deadline alerts, and the bridge that carries

@@ -273,11 +273,41 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return toStagedResults(contract, result, analyzer, mapping, confirmed).stream();
         }).toList();
         AnalyzerArrivalReading arrival = mapping.reading().arrival();
+        if (arrival == null && recovery == Recovery.NONE) {
+            arrival = arrivalReading(contract);
+        }
         if (arrival != null) {
+            AnalyzerArrivalReading captured = arrival;
             staged.forEach(
-                    row -> row.setArrivalReading(arrival.forRecord(row.getRawTestCode(), row.getRawSubIdentity())));
+                    row -> row.setArrivalReading(captured.forRecord(row.getRawTestCode(), row.getRawSubIdentity())));
         }
         return staged;
+    }
+
+    /**
+     * A queued delivery can have been parsed before the current pin. Preserve that
+     * profile's reading now, rather than requiring it again during later recovery.
+     * A different served fingerprint cannot reconstruct the historical reading.
+     */
+    private AnalyzerArrivalReading arrivalReading(AnalyzerNormalizedResultContract contract) {
+        if (contract.profileFingerprint() == null) {
+            return null;
+        }
+        try {
+            BridgeProfileCatalog.ProfileRevision revision = profileCatalogService.getProfile(contract.profileId(),
+                    contract.profileRevision());
+            if (revision == null) {
+                return null;
+            }
+            BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+            return contract.profileFingerprint().equals(profile.revisionFingerprint())
+                    ? AnalyzerArrivalReading.from(profile)
+                    : null;
+        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
+            LogEvent.logWarn(CLASS_NAME, "arrivalReading",
+                    "The delivery profile could not be read: " + exception.getMessage());
+            return null;
+        }
     }
 
     /**
