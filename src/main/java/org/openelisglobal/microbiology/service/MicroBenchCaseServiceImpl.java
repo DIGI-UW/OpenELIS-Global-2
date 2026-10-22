@@ -104,6 +104,11 @@ public class MicroBenchCaseServiceImpl implements MicroBenchCaseService {
                             row.receivedIsolate ? "RECEIVED_ISOLATE" : row.outcome == null ? "GROWTH" : row.outcome));
                     continue;
                 }
+                if ("NO_GROWTH".equals(request.action)
+                        && row.proposals.stream().anyMatch(p -> p.confirmedAt() == null)) {
+                    reply.skipped.add(new MicroBenchResultForm.Skip(id, row.containerIdentifier, "NEGATIVE_CONFIRM"));
+                    continue;
+                }
                 if ("NO_GROWTH".equals(request.action)) {
                     input.outcome = "NO_GROWTH";
                     input.proposalId = null;

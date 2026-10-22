@@ -13941,6 +13941,7 @@
   "microbiology.bench.action.INOCULATE": "Inoculate selected cases",
   "microbiology.bench.action.EXTEND": "Extend incubation by 24 hours",
   "microbiology.incoming.fail": "Mark as failed",
+  "microbiology.bench.skip.NEGATIVE_CONFIRM": "Open the culture row to confirm its instrument-negative proposal",
   "microbiology.bench.skip.GROWTH": "Growth observed",
   "microbiology.bench.skip.NO_GROWTH": "No growth already recorded",
   "microbiology.bench.skip.CONTAMINATED": "Contamination recorded",

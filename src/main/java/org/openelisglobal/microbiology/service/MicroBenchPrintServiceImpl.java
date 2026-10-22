@@ -19,21 +19,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class MicroBenchPrintServiceImpl implements MicroBenchPrintService {
     private final MicroBenchService bench;
-    private final MicroCultureService cultures;
     private final WorkplanPrintRecordDAO records;
     private final MicrobiologyCaseAccessService access;
     private final ObjectMapper json;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public MicroBenchPrintServiceImpl(MicroBenchService bench, MicroCultureService cultures,
-            WorkplanPrintRecordDAO records, MicrobiologyCaseAccessService access) {
-        this(bench, cultures, records, access, new ObjectMapper());
+    public MicroBenchPrintServiceImpl(MicroBenchService bench, WorkplanPrintRecordDAO records,
+            MicrobiologyCaseAccessService access) {
+        this(bench, records, access, new ObjectMapper());
     }
 
-    public MicroBenchPrintServiceImpl(MicroBenchService bench, MicroCultureService cultures,
-            WorkplanPrintRecordDAO records, MicrobiologyCaseAccessService access, ObjectMapper json) {
+    public MicroBenchPrintServiceImpl(MicroBenchService bench, WorkplanPrintRecordDAO records,
+            MicrobiologyCaseAccessService access, ObjectMapper json) {
         this.bench = bench;
-        this.cultures = cultures;
         this.records = records;
         this.access = access;
         this.json = json;
@@ -48,26 +46,11 @@ public class MicroBenchPrintServiceImpl implements MicroBenchPrintService {
                 actor);
         if (selected.stream().map(r -> r.caseId).distinct().count() != new HashSet<>(request.caseIds).size())
             throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
-        java.util.List<MicroBenchPageForm.Row> expanded = new ArrayList<>();
-        for (var row : selected) {
-            var cultureRows = cultures.getRows(row.caseId).stream().filter(c -> request.cultureIds == null
-                    || request.cultureIds.isEmpty() || request.cultureIds.contains(c.id)).toList();
-            if (cultureRows.isEmpty()) {
-                if (request.cultureIds == null || request.cultureIds.isEmpty())
-                    expanded.add(row);
-            } else
-                for (var culture : cultureRows) {
-                    var copy = json.convertValue(row, MicroBenchPageForm.Row.class);
-                    copy.culture = culture;
-                    copy.cultureId = culture.id;
-                    expanded.add(copy);
-                }
+        if (request.cultureIds != null && !request.cultureIds.isEmpty()) {
+            selected = selected.stream().filter(r -> request.cultureIds.contains(r.cultureId)).toList();
+            if (selected.stream().map(r -> r.cultureId).distinct().count() != new HashSet<>(request.cultureIds).size())
+                throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
         }
-        if (request.cultureIds != null && !request.cultureIds.isEmpty()
-                && expanded.stream().filter(r -> r.cultureId != null).map(r -> r.cultureId).distinct()
-                        .count() != new HashSet<>(request.cultureIds).size())
-            throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
-        selected = expanded;
         var record = new WorkplanPrintRecord();
         record.setLayout("MICROBIOLOGY_BENCH");
         record.setLabUnitId(request.labUnitId);

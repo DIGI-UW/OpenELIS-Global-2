@@ -57,11 +57,12 @@ public class MicroBenchPrintServiceTest {
     }
 
     @Test
-    public void batchUsesTheCultureAnalysisSpecimenAndOnlyItsTests() {
+    public void batchUsesTheCultureAnalysisSpecimenAndOnlyItsTests() throws Exception {
         var workspace = mock(MicroCaseWorkspaceService.class);
         var access = mock(MicrobiologyCaseAccessService.class);
         var analyses = mock(org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO.class);
-        var service = new MicroBenchServiceImpl(workspace, mock(MicroCultureService.class),
+        var cultures = mock(MicroCultureService.class);
+        var service = new MicroBenchServiceImpl(workspace, cultures,
                 mock(org.openelisglobal.microbiology.dao.MicroIncomingItemDAO.class), analyses,
                 mock(org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO.class), access,
                 mock(MicroBenchCaseService.class));
@@ -73,6 +74,7 @@ public class MicroBenchPrintServiceTest {
             var sample = new MicroCaseSpecimenForm();
             sample.sampleItemId = id;
             sample.sampleTypeId = id + "-type";
+            sample.specimenType = id + " specimen";
             shell.samples.add(sample);
         }
         when(workspace.get("case", "writer")).thenReturn(shell);
@@ -83,6 +85,30 @@ public class MicroBenchPrintServiceTest {
         assertEquals("culture-source", row.sampleItemId);
         assertEquals("culture-source-type", row.sampleTypeId);
         assertEquals(List.of("culture-test"), row.cultureTests.stream().map(t -> t.getId()).toList());
+        var first = new MicroCultureForm();
+        first.id = "culture-one";
+        first.sourceSampleItemId = "culture-source";
+        first.proposals = List.of();
+        var second = new MicroCultureForm();
+        second.id = "culture-two";
+        second.sourceSampleItemId = "another-source";
+        second.proposals = List.of();
+        when(cultures.getRows("case")).thenReturn(List.of(first, second));
+        var records = mock(WorkplanPrintRecordDAO.class);
+        var printer = new MicroBenchPrintServiceImpl(service, records, access);
+        var request = new MicroBenchPrintForm();
+        request.labUnitId = "unit";
+        request.caseIds = List.of("case");
+        request.cultureIds = List.of("culture-two");
+        printer.print(request, "writer");
+        var captured = ArgumentCaptor.forClass(WorkplanPrintRecord.class);
+        verify(records).insert(captured.capture());
+        var printed = new ObjectMapper().readTree(captured.getValue().getSnapshot()).get("rows");
+        assertEquals(1, printed.size());
+        assertEquals("culture-two", printed.get(0).get("cultureId").asText());
+        assertEquals("another-source", printed.get(0).get("sampleItemId").asText());
+        assertEquals("another-source specimen", printed.get(0).get("specimenType").asText());
+        assertEquals("other-test", printed.get(0).get("cultureTests").get(0).get("id").asText());
     }
 
     private org.openelisglobal.analysis.valueholder.Analysis cultureAnalysis(String sourceId, String testId) {
@@ -90,6 +116,7 @@ public class MicroBenchPrintServiceTest {
         sample.setId(sourceId);
         var test = new org.openelisglobal.test.valueholder.Test();
         test.setId(testId);
+        test.setName(testId);
         test.setMicrobiologyCaseRole("CULTURE");
         var analysis = new org.openelisglobal.analysis.valueholder.Analysis();
         analysis.setSampleItem(sample);
@@ -103,7 +130,7 @@ public class MicroBenchPrintServiceTest {
         var cultures = mock(MicroCultureService.class);
         var records = mock(WorkplanPrintRecordDAO.class);
         var access = mock(MicrobiologyCaseAccessService.class);
-        var service = new MicroBenchPrintServiceImpl(bench, cultures, records, access, new ObjectMapper());
+        var service = new MicroBenchPrintServiceImpl(bench, records, access, new ObjectMapper());
         when(access.canReadLabUnit("reader", "unit")).thenReturn(true);
         var row = new MicroBenchPageForm.Row();
         row.caseId = "case";

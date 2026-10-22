@@ -335,6 +335,30 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void batchNoGrowthLeavesInstrumentProposalsForIndividualConfirmation() throws Exception {
+        var row = create();
+        var signal = new MicroCultureRequestForm();
+        signal.signal = "Instrument negative after cycle";
+        service.act(microCase.getId(), row.id, "negative-proposal", signal, actor);
+        var request = new MicroBenchRequestForm();
+        request.action = "NO_GROWTH";
+        var reply = bench().apply(request, selection(row.id), actor);
+        assertTrue(reply.changed.isEmpty());
+        assertEquals("NEGATIVE_CONFIRM", reply.skipped.get(0).reason());
+        var retained = reload().get(0);
+        assertNull(retained.outcome);
+        assertNull(retained.proposals.get(0).confirmedAt());
+        var confirmation = new MicroCultureRequestForm();
+        confirmation.outcome = "NO_GROWTH";
+        confirmation.proposalId = retained.proposals.get(0).id();
+        service.act(microCase.getId(), row.id, "outcome", confirmation, actor);
+        var confirmed = reload().get(0);
+        assertEquals("NO_GROWTH", confirmed.outcome);
+        assertEquals(actor, confirmed.proposals.get(0).confirmedBy());
+        assertNotNull(confirmed.proposals.get(0).confirmedAt());
+    }
+
+    @Test
     public void batchExtensionKeepsOriginalClockAndUndoPreservesItsAudit() throws Exception {
         var row = create();
         var request = new MicroBenchRequestForm();
