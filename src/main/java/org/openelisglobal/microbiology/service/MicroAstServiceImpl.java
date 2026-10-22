@@ -1107,10 +1107,19 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private MicroBreakpointStandard resolveStandard(String requestedStandardId) {
+        if (requestedStandardId == null || requestedStandardId.isBlank()) {
+            var preferred = breakpointService.getDefaultStandard();
+            if (preferred != null && preferred.configured) {
+                if (!preferred.available) {
+                    throw new IllegalArgumentException("AST_BREAKPOINT_DEFAULT_NOT_AVAILABLE");
+                }
+                requestedStandardId = preferred.standardId;
+            }
+        }
         if (requestedStandardId != null && !requestedStandardId.isBlank()) {
             MicroBreakpointStandard selected = breakpointService.getStandard(requestedStandardId);
-            if (selected == null || "N".equals(selected.getIsActive())
-                    || "ARCHIVED".equals(selected.getLifecycleStatus())) {
+            if (selected == null || !"Y".equals(selected.getIsActive())
+                    || !"ACTIVE".equals(selected.getLifecycleStatus())) {
                 throw new IllegalArgumentException("AST_BREAKPOINT_STANDARD_NOT_AVAILABLE");
             }
             return selected;

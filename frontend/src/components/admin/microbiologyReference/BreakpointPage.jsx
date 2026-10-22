@@ -38,6 +38,8 @@ import {
   getBreakpointRules,
   getBreakpointStandard,
   getBreakpointStandards,
+  getDefaultBreakpointStandard,
+  setDefaultBreakpointStandard,
   getReferenceOptions,
   previewBreakpointImport,
   saveBreakpointRule,
@@ -63,6 +65,8 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
   const [rules, setRules] = useState({ rows: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [defaultStandard, setDefaultStandard] = useState(null);
+  const [savingDefault, setSavingDefault] = useState(false);
   const [effectiveDate, setEffectiveDate] = useState("");
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -99,6 +103,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
             }
           : await getBreakpointStandards(requestQuery, signal);
         setStandards(standardPage);
+        setDefaultStandard(await getDefaultBreakpointStandard(signal));
         if (standardId) {
           setRules(await getBreakpointRules(standardId, requestQuery, signal));
         }
@@ -272,6 +277,18 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
     }
   };
 
+  const makeDefault = async () => {
+    setSavingDefault(true);
+    setError("");
+    try {
+      setDefaultStandard(await setDefaultBreakpointStandard(standardId));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSavingDefault(false);
+    }
+  };
+
   const archive = async () => {
     try {
       await archiveBreakpointStandard(standardId);
@@ -394,6 +411,32 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
           hideCloseButton
           title={intl.formatMessage({ id: "microbiology.admin.error.title" })}
           subtitle={error}
+        />
+      )}
+      {defaultStandard && (
+        <InlineNotification
+          kind={
+            defaultStandard.configured && !defaultStandard.available
+              ? "warning"
+              : "info"
+          }
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "microbiology.admin.breakpoints.default.title",
+          })}
+          subtitle={intl.formatMessage(
+            {
+              id: !defaultStandard.configured
+                ? "microbiology.admin.breakpoints.default.unset"
+                : defaultStandard.available
+                  ? "microbiology.admin.breakpoints.default.selected"
+                  : "microbiology.admin.breakpoints.default.unavailable",
+            },
+            {
+              standard: `${defaultStandard.authority} ${defaultStandard.version}`,
+            },
+          )}
         />
       )}
       {selectedStandard?.configurationManaged && (
@@ -570,6 +613,19 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                 id: "microbiology.admin.breakpoints.back",
               })}
             </Button>
+            {selectedStandard?.lifecycleStatus === "ACTIVE" && (
+              <Button
+                kind="secondary"
+                onClick={makeDefault}
+                disabled={
+                  savingDefault || defaultStandard?.standardId === standardId
+                }
+              >
+                {intl.formatMessage({
+                  id: "microbiology.admin.breakpoints.default.use",
+                })}
+              </Button>
+            )}
             {selectedStandard?.lifecycleStatus === "LOADED" && (
               <Button
                 onClick={(event) => openEditor("activate", event.currentTarget)}

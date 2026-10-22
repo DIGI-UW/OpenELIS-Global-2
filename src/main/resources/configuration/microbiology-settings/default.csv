@@ -1,2 +1,4 @@
 name,value,domainName,valueType,description,instructionKey,group,encrypted,createOnly
 blockSelfValidation,false,resultConfiguration,boolean,Block self-validation,instructions.blockSelfValidation,0,false,true
+microbiologyDefaultBreakpointAuthority,,resultConfiguration,text,Default breakpoint authority,,0,false,true
+microbiologyDefaultBreakpointVersion,,resultConfiguration,text,Default breakpoint edition,,0,false,true

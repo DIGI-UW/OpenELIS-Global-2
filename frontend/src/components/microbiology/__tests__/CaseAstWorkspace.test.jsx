@@ -435,3 +435,26 @@ it("shows analyzer evidence and blocks validation until a QC hold is resolved", 
     }),
   ).toBeDisabled();
 });
+
+it.each([
+  [{ configured: true, available: true, standardId: "eucast" }, "eucast"],
+  [{ configured: false, available: false }, ""],
+  [{ configured: true, available: false, standardId: "old" }, ""],
+])(
+  "uses the configured default and never guesses from a multi-standard list (%j)",
+  async (defaultStandard, expected) => {
+    const data = workspace();
+    data.standards = [
+      { id: "clsi", label: "CLSI 2026" },
+      { id: "eucast", label: "EUCAST 2026-2026.1" },
+    ];
+    data.defaultStandard = defaultStandard;
+    show(data);
+    fireEvent.click(
+      await screen.findByRole("button", { name: t("action.start") }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint")),
+    ).toHaveValue(expected);
+  },
+);

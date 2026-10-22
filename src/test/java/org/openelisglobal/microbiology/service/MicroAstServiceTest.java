@@ -387,6 +387,37 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void configuredDefaultWinsOverAlphabeticalOrderAndIsSavedOnNewRuns() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        var preferred = new org.openelisglobal.microbiology.form.MicroBreakpointDefaultForm();
+        preferred.configured = true;
+        preferred.available = true;
+        preferred.standardId = "eucast-std";
+        when(breakpointService.getDefaultStandard()).thenReturn(preferred);
+
+        MicroAstRun run = service.startRun("iso-1", "panel-1", "1");
+
+        assertEquals("eucast-std", run.getBreakpointStandardId());
+        assertEquals("2025", run.getBreakpointVersion());
+    }
+
+    @Test
+    public void unavailableDefaultDoesNotSilentlyFallBackToAnotherActiveStandard() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        var preferred = new org.openelisglobal.microbiology.form.MicroBreakpointDefaultForm();
+        preferred.configured = true;
+        preferred.available = false;
+        when(breakpointService.getDefaultStandard()).thenReturn(preferred);
+        try {
+            service.startRun("iso-1", "panel-1", "1");
+            fail("An inactive configured edition must not be substituted");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("AST_BREAKPOINT_DEFAULT_NOT_AVAILABLE", expected.getMessage());
+        }
+        verify(runDAO, never()).insert(any(MicroAstRun.class));
+    }
+
+    @Test
     public void setupReturnsTheIdentifiedOrganismsOrderedPanel() {
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
 

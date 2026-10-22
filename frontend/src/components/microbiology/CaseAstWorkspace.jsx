@@ -155,7 +155,13 @@ export default function CaseAstWorkspace({
       readingId: reading?.id,
       antibioticId: antibioticId || reading?.antibioticId,
       panelId: isolate?.assignments?.[0]?.panelId || "",
-      breakpointStandardId: data.standards?.[0]?.id || "",
+      breakpointStandardId: data.defaultStandard?.configured
+        ? data.defaultStandard.available
+          ? data.defaultStandard.standardId
+          : ""
+        : data.standards?.length === 1
+          ? data.standards[0].id
+          : "",
       technique: run?.technique || techniques[0],
       rawValue: "",
       orderedAntibioticIds: null,
@@ -271,6 +277,13 @@ export default function CaseAstWorkspace({
       <h3>{t("ast")}</h3>
       {error && (
         <InlineNotification kind="error" title={errorMessage} hideCloseButton />
+      )}
+      {data?.defaultStandard?.configured && !data.defaultStandard.available && (
+        <InlineNotification
+          kind="warning"
+          hideCloseButton
+          title={t("error.AST_BREAKPOINT_DEFAULT_NOT_AVAILABLE")}
+        />
       )}
       {!data && !error && <InlineLoading description={t("loading")} />}
       {data?.isolates?.length === 0 && <p>{t("identifyFirst")}</p>}
