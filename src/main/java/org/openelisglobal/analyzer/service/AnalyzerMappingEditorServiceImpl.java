@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorService {
 
+    private static final ca.uhn.fhir.context.FhirContext FHIR = ca.uhn.fhir.context.FhirContext.forR4();
+
     private final AnalyzerService analyzerService;
     private final BridgeProfileCatalogService bridgeProfileCatalogService;
     private final AnalyzerMappingService mappingService;
@@ -126,14 +128,9 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
         Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById = activeTests.stream()
                 .collect(Collectors.toMap(AnalyzerMappingCatalogService.TestOption::id, Function.identity()));
-        Set<ResultSourceKey> observedHeldValues = observed.stream()
-                .filter(row -> !"N".equals(row.getResultType())
-                        || AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE.equals(row.getImportIssueReason())
-                        || AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY.equals(row.getImportIssueReason())
-                        || AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING.equals(row.getImportIssueReason()))
-                .filter(row -> row.getRawTestCode() != null && row.getRawResultValue() != null)
-                .map(row -> new ResultSourceKey(recordOf(row), row.getRawResultValue()))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<ResultSourceKey> observedHeldValues = observed.stream().filter(row -> row.getRawTestCode() != null)
+                .map(row -> new ResultSourceKey(recordOf(row), deliveredAnswer(row)))
+                .filter(key -> key.rawValue() != null).collect(Collectors.toCollection(LinkedHashSet::new));
 
         Map<AnalyzerMappingRowKey, ReportedRecord> records = declaredRecords(profile);
         for (AnalyzerResults row : observed) {
@@ -156,6 +153,17 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 snapshot == null ? 0 : snapshot.mapping().getRevisionNumber(),
                 snapshot == null ? null : snapshot.mapping().getMappingFingerprint(), rows,
                 revision.controlRecognitionSummary(), confirmation);
+    }
+
+    private static String deliveredAnswer(AnalyzerResults row) {
+        if (row.getSourcePayload() != null && !row.getSourcePayload().isBlank()) {
+            var observation = FHIR.newJsonParser().parseResource(org.hl7.fhir.r4.model.Observation.class,
+                    row.getSourcePayload());
+            return org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultContract
+                    .deliveredAnswer(observation);
+        }
+        // Older staged rows keep their delivered value separately from raw audit text.
+        return "N".equals(row.getResultType()) ? null : row.getResult();
     }
 
     private static void validateConfirmable(AnalyzerMappingView view) {
@@ -194,7 +202,6 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         Set<ResultSourceKey> expectedResults = declared.entrySet().stream().flatMap(
                 entry -> entry.getValue().values().stream().map(value -> new ResultSourceKey(entry.getKey(), value)))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        current.results().forEach(row -> expectedResults.add(ResultSourceKey.of(row)));
         Set<ResultSourceKey> actualResults = draft.results().stream()
                 .filter(row -> row != null && row.sourceRowKey() != null && row.rawValue() != null)
                 .map(row -> new ResultSourceKey(row.rowKey(), row.rawValue()))
@@ -204,7 +211,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         boolean hasUnknownTest = actualResults.stream().anyMatch(row -> !actualTests.contains(row.record()));
         if (hasDuplicateResults || omitsProfileDefault || hasUnknownTest) {
             throw new IllegalArgumentException(
-                    "Mapping update must retain declared and saved result rows and may add values only to included tests");
+                    "Mapping update must retain declared result rows and may add values only to included tests");
         }
         return draft;
     }

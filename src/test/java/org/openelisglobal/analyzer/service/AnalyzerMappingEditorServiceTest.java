@@ -189,6 +189,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("RAW-A");
         held.setRawResultValue("INDETERMINATE-VENDOR-X");
+        held.setResult("INDETERMINATE");
+        held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
         analyzerWithLatest(currentMapping());
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
@@ -199,7 +201,7 @@ public class AnalyzerMappingEditorServiceTest {
 
         assertEquals(3, view.tests().get(0).results().size());
         AnalyzerMappingView.ResultRow observed = view.tests().get(0).results().get(2);
-        assertEquals("INDETERMINATE-VENDOR-X", observed.rawValue());
+        assertEquals("INDETERMINATE", observed.rawValue());
         assertEquals(AnalyzerMappingState.UNRESOLVED, observed.mappingState());
     }
 
@@ -208,6 +210,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("VENDOR-NEW-42");
         held.setRawResultValue("INDETERMINATE");
+        held.setResult("INDETERMINATE");
+        held.setResultType("A");
         held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         analyzerWithLatest(currentMapping());
@@ -230,6 +234,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("VENDOR-NEW-42");
         held.setRawResultValue("INDETERMINATE");
+        held.setResult("INDETERMINATE");
+        held.setResultType("A");
         held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         analyzerWithLatest(currentMapping());
@@ -270,6 +276,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("NEW-NUMERIC");
         held.setRawResultValue("7.5");
+        held.setResult("7.5");
         held.setResultType("N");
         held.setUnits("mg/L");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
@@ -336,6 +343,26 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
+    public void localRepairCanRemoveAnObsoleteVendorSpellingMapping() throws Exception {
+        AnalyzerMappingSnapshot base = currentMapping();
+        var answers = new ArrayList<>(base.results());
+        answers.add(result(base.mapping(), "RAW-A", "VENDOR-POS", AnalyzerMappingState.BOUND, "812"));
+        AnalyzerMappingSnapshot current = new AnalyzerMappingSnapshot(base.mapping(), base.tests(), answers);
+        Analyzer analyzer = savableWithLatest(current);
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17")))
+                .thenReturn(savedMapping());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        AnalyzerMappingDraft canonical = validDraft();
+
+        service.saveMapping("42", new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(),
+                canonical.tests(), canonical.results()), "17");
+
+        ArgumentCaptor<AnalyzerMappingDraft> saved = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
+        verify(mappingService).appendRevision(eq(analyzer), saved.capture(), eq("17"));
+        assertFalse(saved.getValue().results().stream().anyMatch(row -> "VENDOR-POS".equals(row.rawValue())));
+    }
+
+    @Test
     public void saveAndReopenRetainsAnObservedTestAfterItsHeldRowsAreGone() throws Exception {
         AnalyzerMappingSnapshot current = currentMapping();
         AnalyzerMappingSnapshot savedBase = savedMapping();
@@ -349,6 +376,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("NEW-TEST");
         held.setRawResultValue("7.5");
+        held.setResult("7.5");
         held.setResultType("N");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         Analyzer analyzer = savableWithLatest(current);
@@ -609,6 +637,7 @@ public class AnalyzerMappingEditorServiceTest {
         held.setRawTestCode("HIVVL");
         held.setRawSubIdentity("HIV-1&EndPt");
         held.setRawResultValue("257.0");
+        held.setResult("257.0");
         held.setResultType("N");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));

@@ -254,7 +254,6 @@ if unresolved:
 else:
     print(json.dumps({
         "baseMappingFingerprint": mapping["mappingFingerprint"],
-        "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
         "confirmedRows": confirmed,
         "excludedRows": excluded,
     }))

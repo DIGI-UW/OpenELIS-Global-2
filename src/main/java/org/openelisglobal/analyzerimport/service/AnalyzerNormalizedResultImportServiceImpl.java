@@ -26,7 +26,6 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
@@ -95,7 +94,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return new AnalyzerNormalizedResultImportSummary(receipt.getId(), receipt.getAnalyzerId(),
                     receipt.getResultsStaged(), receipt.getResultsHeld(), receipt.getControlsProcessed());
         }
-        requireMatchingProfile(analyzer, contract);
 
         List<AnalyzerResults> staged = mapResults(contract, analyzer);
         if (!staged.isEmpty()) {
@@ -132,12 +130,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         }
         Analyzer analyzer = analyzerService.findByBridgeConnectionIdForUpdate(candidate.getBridgeConnectionId())
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
-        AnalyzerProfilePin pin = analyzer.getPinnedProfile();
         int recoveredCount = 0;
         // Retry the stored normalized observation using the current local mapping.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
-            if (pin == null || !Objects.equals(pin.getProfileId(), held.getSourceProfileId())
-                    || held.getSourceProfileRevision() == null
+            if (held.getSourceProfileRevision() == null
                     || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())
                     || held.getSourcePayload() == null) {
                 continue;
@@ -147,9 +143,18 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             // audit.
             Observation observation = fhirContext.newJsonParser().parseResource(Observation.class,
                     held.getSourcePayload());
-            var source = AnalyzerNormalizedResultContract.parseResult(observation,
-                    Map.of(observation.getSpecimen().getReference(), specimenIdOf(held)), Map.of(),
-                    observation.getDevice().getReference(), fhirContext);
+            // Early retained observations omitted the version; the accepted receipt still
+            // has it.
+            String version = receiptDAO.findByDelivery(held.getSourceConnectionId(), held.getSourceMessageId())
+                    .map(receipt -> fhirContext.newJsonParser().parseResource(Bundle.class, receipt.getBundleJson()))
+                    .map(AnalyzerNormalizedResultContract::versionOf).orElse(null);
+            var source = version == null
+                    ? AnalyzerNormalizedResultContract.parseResult(observation,
+                            Map.of(observation.getSpecimen().getReference(), specimenIdOf(held)), Map.of(),
+                            observation.getDevice().getReference(), fhirContext)
+                    : AnalyzerNormalizedResultContract.parseResult(observation,
+                            Map.of(observation.getSpecimen().getReference(), specimenIdOf(held)), Map.of(),
+                            observation.getDevice().getReference(), fhirContext, version);
             var contract = new AnalyzerNormalizedResultContract(held.getSourceMessageId(), held.getSourceConnectionId(),
                     held.getSourceProfileId(), held.getSourceProfileRevision(), held.getSourceProtocol(),
                     List.of(source), List.of());
@@ -219,61 +224,24 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         AnalyzerMappingSnapshot binding = mappingService.findById(analyzer.getMapping().getId()).orElseThrow(
                 () -> new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingMapping",
                         "Analyzer mapping does not exist"));
-        AnalyzerMappingSnapshot source = uncodedSourceMapping(contract, binding);
+        // Canonical record codes are scoped to their profile ID, not its parser
+        // revision.
+        // An unrelated profile needs its own approved binding; retain that work for
+        // mapping.
+        if (!Objects.equals(binding.mapping().getProfileId(), contract.profileId())) {
+            return contract.results().stream()
+                    .map(result -> held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST))
+                    .toList();
+        }
         Mapping mapping = new Mapping(
                 binding.tests().stream().collect(Collectors.toMap(AnalyzerMappingRowKey::of, row -> row)),
                 binding.results().stream().collect(Collectors.toMap(
                         row -> new ResultKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()), row -> row)),
                 binding.results().stream().map(AnalyzerMappingRowKey::of).collect(Collectors.toSet()),
-                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding),
-                source == null ? Map.of()
-                        : source.tests().stream().collect(Collectors.toMap(AnalyzerMappingRowKey::of, row -> row)),
-                source == null ? Map.of()
-                        : source.results().stream()
-                                .collect(Collectors.toMap(
-                                        row -> new ResultKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()),
-                                        row -> row)));
+                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding));
         boolean confirmed = confirmationService.hasMatchingConfirmation(binding);
         return contract.results().stream()
                 .flatMap(result -> toStagedResults(contract, result, analyzer, mapping, confirmed).stream()).toList();
-    }
-
-    /**
-     * Local target evidence for an uncoded delivery from a formerly selected
-     * profile revision.
-     */
-    private AnalyzerMappingSnapshot uncodedSourceMapping(AnalyzerNormalizedResultContract contract,
-            AnalyzerMappingSnapshot binding) {
-        boolean needsSource = contract.results().stream()
-                .anyMatch(result -> result.testCodings().isEmpty()
-                        || (result.answerCodings().isEmpty() && binding.results().stream()
-                                .anyMatch(row -> AnalyzerMappingRowKey.of(row)
-                                        .equals(new AnalyzerMappingRowKey(result.rawTestCode(), result.subIdentity()))
-                                        && Objects.equals(row.getId().getRawValue(),
-                                                result.call() != null ? result.call() : result.rawValue()))));
-        if (!needsSource) {
-            return null;
-        }
-        AnalyzerMappingSnapshot source = binding;
-        while (!contract.profileId().equals(source.mapping().getProfileId())
-                || contract.profileRevision() != source.mapping().getProfileRevision()) {
-            var previous = source.mapping().getSupersedes();
-            if (previous == null) {
-                return null;
-            }
-            source = mappingService.findById(previous.getId()).orElse(null);
-            if (source == null) {
-                return null;
-            }
-        }
-        return source;
-    }
-
-    private static boolean sameLocalTarget(AnalyzerMappingTest current, AnalyzerMappingTest source) {
-        return source != null && source.getMappingState() == AnalyzerMappingState.BOUND
-                && Objects.equals(current.getTestId(), source.getTestId())
-                && Objects.equals(current.getComponentId(), source.getComponentId())
-                && Objects.equals(current.getCallComponentId(), source.getCallComponentId());
     }
 
     /**
@@ -299,9 +267,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return List.of();
         }
         if (testMapping.getMappingState() != AnalyzerMappingState.BOUND || !mapping.catalog().isCurrentBoundTest(record)
-                || !mapping.catalog().acceptsTestMeaning(testMapping.getTestId(), result.testCodings())
-                || (result.testCodings().isEmpty()
-                        && !sameLocalTarget(testMapping, mapping.uncodedSourceTargets().get(record)))) {
+                || !mapping.catalog().acceptsTestMeaning(testMapping.getTestId(), result.testCodings())) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
         }
         if (result.runFailed()) {
@@ -319,10 +285,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         }
         String callTarget = testMapping.getCallComponentId() != null ? testMapping.getCallComponentId()
                 : testMapping.getComponentId();
-        if ((result.number() != null && !mapping.catalog().acceptsValue(testMapping.getTestId(),
-                testMapping.getComponentId(), true, result.units()))
+        if ((result.number() != null
+                && !mapping.catalog().acceptsValue(testMapping.getTestId(), testMapping.getComponentId(), true))
                 || (result.call() != null
-                        && !mapping.catalog().acceptsValue(testMapping.getTestId(), callTarget, false, null))) {
+                        && !mapping.catalog().acceptsValue(testMapping.getTestId(), callTarget, false))) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
         }
         List<AnalyzerResults> rows = new ArrayList<>();
@@ -331,13 +297,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             number.setTestId(testMapping.getTestId());
             number.setComponentId(testMapping.getComponentId());
             number.setResultType("N");
-            // With a call, the raw value is that call and is mapped on the call's row
-            // below.
-            AnalyzerMappingResult answer = result.call() != null ? null
-                    : mapping.results().get(new ResultKey(record, result.rawValue()));
-            if (answer == null || bindAnswer(number, answer, record, result.rawValue(), mapping, List.of())) {
-                rows.add(number);
-            }
+            rows.add(number);
         }
         if (result.call() != null) {
             // A record whose mapping names a call target always sends its call there, so a
@@ -349,17 +309,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             call.setComponentId(target);
             call.setResultType("A");
             AnalyzerMappingResult answer = mapping.results().get(new ResultKey(record, result.call()));
-            AnalyzerMappingResult formerSpelling = mapping.results().get(new ResultKey(record, result.rawValue()));
-            if (answer != null && formerSpelling != null
-                    && formerSpelling.getMappingState() != AnalyzerMappingState.UNRESOLVED
-                    && (answer.getMappingState() != formerSpelling.getMappingState()
-                            || !Objects.equals(answer.getTestResultId(), formerSpelling.getTestResultId()))) {
-                // Earlier installs could approve different local answers for two vendor
-                // spellings.
-                // Surface that local conflict rather than silently selecting either decision.
-                hold(call, AnalyzerResults.IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING);
-            } else if (answer != null
-                    && !bindAnswer(call, answer, record, result.call(), mapping, result.answerCodings())) {
+            if (answer != null && !bindAnswer(call, answer, record, result.call(), mapping, result.answerCodings())) {
                 call = null;
             } else if (answer == null && mapping.recordsWithAnswers().contains(record)) {
                 hold(call, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
@@ -394,14 +344,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 .acceptsAnswerMeaning(row.getTestId(), answer.getTestResultId(), deliveredCodings)) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
             return true;
-        }
-        if (deliveredCodings.isEmpty()) {
-            AnalyzerMappingResult source = mapping.uncodedSourceAnswers().get(new ResultKey(record, value));
-            if (source == null || source.getMappingState() != AnalyzerMappingState.BOUND
-                    || !Objects.equals(source.getTestResultId(), answer.getTestResultId())) {
-                hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
-                return true;
-            }
         }
         TestResult option = testResultService.get(answer.getTestResultId());
         if (option == null || option.getValue() == null || option.getTestResultType() == null) {
@@ -466,18 +408,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setInstrumentOperator(result.operator());
     }
 
-    /**
-     * Profile identity scopes the local code mappings; parser revisions are
-     * provenance.
-     */
-    private void requireMatchingProfile(Analyzer analyzer, AnalyzerNormalizedResultContract contract) {
-        AnalyzerProfilePin pinned = analyzer.getPinnedProfile();
-        if (pinned == null || !contract.profileId().equals(pinned.getProfileId())) {
-            throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.profileMismatch",
-                    "Normalized traffic profile does not match the analyzer pin");
-        }
-    }
-
     /** Record mapped controls against local QC targets. */
     private int processControls(List<AnalyzerResults> staged, Analyzer analyzer, String actor) {
         int recorded = 0;
@@ -534,8 +464,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
     private record Mapping(Map<AnalyzerMappingRowKey, AnalyzerMappingTest> tests,
             Map<ResultKey, AnalyzerMappingResult> results, Set<AnalyzerMappingRowKey> recordsWithAnswers,
-            AnalyzerMappingCatalogState.Validation catalog,
-            Map<AnalyzerMappingRowKey, AnalyzerMappingTest> uncodedSourceTargets,
-            Map<ResultKey, AnalyzerMappingResult> uncodedSourceAnswers) {
+            AnalyzerMappingCatalogState.Validation catalog) {
     }
 }

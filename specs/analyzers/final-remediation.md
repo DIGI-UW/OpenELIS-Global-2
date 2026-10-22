@@ -1,8 +1,9 @@
 # Analyzer stack final remediation
 
-Updated 22 October 2026. The coordinated cleanup is implemented and pushed.
-Focused validation passes; full local CI and the required GitHub checkpoints
-must pass on the final published commit. No merge or deployment is authorized.
+Updated 22 October 2026. Follow-up cleanup is in progress after the boundary
+re-audit disproved the previous completion claim. The cleanup inventory is the
+current work ledger. Final full local/GitHub checks and publication remain to be
+verified. Do not merge anything.
 
 ## Implemented boundary
 
@@ -28,16 +29,15 @@ records the eighteen original check areas and why each changes or stays.
 - Held recovery reapplies local mappings and placement to the stored normalized
   payload. It does not fetch Bridge profiles/connections or compare historical
   decimal settings, parsing recipes or recognition hashes.
-- Older uncoded results use existing append-only local mapping history to
-  establish unchanged test/component/answer targets. Changed or unknown targets stay
-  held. Coded results validate delivered terminology against local targets.
-  This adds no parser snapshots, Bridge lookups or persistence.
+- Canonical source identities remain stable within a profile across parser revisions.
+  Current approved local corrections apply without comparing old mapping targets.
+  A different source profile remains held as unresolved local work.
 - Type readiness uses the same current local mapping assessment as activation.
   An approval audit record alone does not establish that local targets remain
   usable. Stale-editor protection and local mapping approval remain.
 - Mapping defaults no longer generate separate rows for translated vendor
-  spellings. Conflicting existing local answer choices stay visible for a
-  local decision.
+  spellings. Raw text cannot override the canonical answer; obsolete spelling rows
+  can be removed through the editor.
 
 The [versioned contract](../../tools/openelis-analyzer-bridge/contracts/analyzer/v1/README.md#normalized-result-version-11-interpret-once)
 documents the coordinated OE2-first upgrade and legacy receipt behavior.
@@ -54,7 +54,7 @@ Bridge: #101 → #102 → #104 → #105 → #106 → #107 → #108 → #109 →
 Both stacks were rebased and published with `gh stack`; each parent is an
 ancestor of its child. OpenELIS #4798 records these candidate dependencies:
 
-- Bridge #113: `e5a9e33ffd8490e9190873bee7a641cf028bc7dd`.
+- Bridge #113: `162b73d3d92e123cea312677e9d0a21b693d269d`.
 - Analyzer mock #62: `88b51f7c5ed50e953b8e80be5934162bcb138fd9`.
 
 Standalone OpenELIS #4768 and Bridge #88 remain independent changes. Mock #62

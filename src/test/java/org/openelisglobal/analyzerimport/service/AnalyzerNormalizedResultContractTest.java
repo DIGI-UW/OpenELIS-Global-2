@@ -26,6 +26,38 @@ public class AnalyzerNormalizedResultContractTest {
     private static final FhirContext FHIR = FhirContext.forR4();
 
     @Test
+    public void newContractDoesNotGuessAnInterpretationRoleFromItsCode() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource).filter(Device.class::isInstance)
+                .map(Device.class::cast).findFirst().orElseThrow()
+                .addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-contract-version",
+                        new StringType("1.1"));
+        Observation observation = observation(bundle);
+        observation.addInterpretation().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("POS");
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
+    @Test
+    public void unsupportedValueCannotFallBackToRawEvidence() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observation(bundle).setValue(new org.hl7.fhir.r4.model.BooleanType(true));
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
+    @Test
+    public void recognitionFingerprintIsOptionalAuditEvidence() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observation(bundle)
+                .getExtensionByUrl("https://openelis-global.org/fhir/StructureDefinition/analyzer-control-recognition")
+                .getExtension().removeIf(extension -> "recognitionFingerprint".equals(extension.getUrl()));
+        var result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0);
+        assertEquals("PATIENT", result.classification());
+        assertEquals("7.5", result.number());
+        assertNull(result.recognitionFingerprint());
+    }
+
+    @Test
     public void parsesExactConnectionProfileAndRawPatientContext() throws IOException {
         AnalyzerNormalizedResultContract contract = AnalyzerNormalizedResultContract
                 .parse(fixture("normalized-known-test.fhir.json"), FHIR);

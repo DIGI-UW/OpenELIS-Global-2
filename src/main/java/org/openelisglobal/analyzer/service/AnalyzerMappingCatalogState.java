@@ -165,7 +165,7 @@ public final class AnalyzerMappingCatalogState {
          * Validate the delivered part against its local destination, without a Bridge
          * profile.
          */
-        public boolean acceptsValue(String testId, String componentId, boolean numeric, String unit) {
+        public boolean acceptsValue(String testId, String componentId, boolean numeric) {
             var active = components.getOrDefault(testId, List.of());
             var target = active.stream()
                     .filter(component -> componentId == null ? component.primary() : componentId.equals(component.id()))
@@ -175,8 +175,7 @@ public final class AnalyzerMappingCatalogState {
             if (target.resultType() != null && !target.resultType().isBlank()
                     && numeric != "N".equals(target.resultType()))
                 return false;
-            return !numeric || target.unit() == null || target.unit().isBlank()
-                    || (unit != null && target.unit().trim().equals(unit.trim()));
+            return true;
         }
 
         public boolean acceptsAnswerMeaning(String testId, String answerId,

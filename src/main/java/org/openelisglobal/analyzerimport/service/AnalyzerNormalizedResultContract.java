@@ -132,7 +132,8 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 .map(AnalyzerNormalizedResultContract::flagName).toList();
         List<Result> results = observations.stream()
                 .filter(observation -> !SAMPLE_FLAG.equals(optionalExtensionText(observation, CLASSIFICATION)))
-                .map(observation -> parseResult(observation, specimens, patients, deviceReference, fhirContext))
+                .map(observation -> parseResult(observation, specimens, patients, deviceReference, fhirContext,
+                        version))
                 .toList();
         if (results.isEmpty()) {
             throw new IllegalArgumentException("Normalized analyzer traffic requires at least one Observation");
@@ -152,8 +153,26 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 .orElseThrow(() -> new IllegalArgumentException("Every sample flag requires the instrument's code"));
     }
 
+    static String versionOf(Bundle bundle) {
+        return bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource).filter(Device.class::isInstance)
+                .map(Device.class::cast).map(device -> optionalExtensionText(device, CONTRACT_VERSION))
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
+    }
+
     static Result parseResult(Observation observation, Map<String, String> specimens,
             Map<String, InstrumentPatient> patients, String deviceReference, FhirContext fhirContext) {
+        return parseResult(observation, specimens, patients, deviceReference, fhirContext,
+                optionalExtensionText(observation, CONTRACT_VERSION));
+    }
+
+    static Result parseResult(Observation observation, Map<String, String> specimens,
+            Map<String, InstrumentPatient> patients, String deviceReference, FhirContext fhirContext, String version) {
+        if ("1.1".equals(version)) {
+            for (var interpretation : observation.getInterpretation()) {
+                requireText(optionalExtensionText(interpretation, RESULT_PART),
+                        "Version 1.1 interpretations require an explicit call or flag role");
+            }
+        }
         if (!observation.hasDevice() || !deviceReference.equals(observation.getDevice().getReference())) {
             throw new IllegalArgumentException("Every analyzer Observation must reference the bundle Device");
         }
@@ -188,8 +207,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 "Control-recognition mode is required");
         String recognitionOutcome = requireNestedExtensionText(recognition, "outcome",
                 "Control-recognition outcome is required");
-        String recognitionFingerprint = requireNestedExtensionText(recognition, "recognitionFingerprint",
-                "Control-recognition fingerprint is required");
+        String recognitionFingerprint = optionalExtensionText(recognition, "recognitionFingerprint");
         if (!Set.of("NONE", "RULES").contains(recognitionMode)
                 || !Set.of("MATCH", "NO_MATCH", "NOT_EVALUATED").contains(recognitionOutcome)
                 || ("NONE".equals(recognitionMode) && !"NOT_EVALUATED".equals(recognitionOutcome))
@@ -226,9 +244,9 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String canonicalAnswer = optionalExtensionText(observation, CANONICAL_ANSWER);
         String call = observation.hasDataAbsentReason() ? null
                 : canonicalAnswer != null ? canonicalAnswer
-                        : number != null ? callInterpretation(observation) : callValue(observation, rawValue);
+                        : number != null ? callInterpretation(observation) : callValue(observation);
         if (canonicalAnswer != null && (observation.hasDataAbsentReason() || !canonicalAnswer
-                .equals(number != null ? callInterpretation(observation) : callValue(observation, "")))) {
+                .equals(number != null ? callInterpretation(observation) : callValue(observation)))) {
             throw new IllegalArgumentException("Canonical answer contradicts the delivered result value");
         }
         String resultType = observation.hasValueQuantity() ? "N" : "A";
@@ -237,7 +255,12 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 : null;
         String lotNumber = optionalExtensionText(observation, LOT_NUMBER);
         String controlLevel = optionalExtensionText(observation, CONTROL_LEVEL);
-        String sourcePayload = fhirContext.newJsonParser().encodeResourceToString(observation);
+        Observation retained = observation.copy();
+        if (version != null) {
+            retained.getExtension().removeIf(extension -> CONTRACT_VERSION.equals(extension.getUrl()));
+            retained.addExtension(CONTRACT_VERSION, new org.hl7.fhir.r4.model.StringType(version));
+        }
+        String sourcePayload = fhirContext.newJsonParser().encodeResourceToString(retained);
         InstrumentPatient patient = observation.hasSubject() ? patients.get(observation.getSubject().getReference())
                 : null;
         String note = observation.getNote().stream().map(annotation -> annotation.getText())
@@ -259,6 +282,18 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                         .map(coding -> new org.openelisglobal.terminology.Coding(coding.getSystem(), coding.getCode()))
                         .toList(),
                 answerCodings(observation));
+    }
+
+    /**
+     * Read the delivered answer for local mapping; vendor raw text is never a
+     * mapping key.
+     */
+    public static String deliveredAnswer(Observation observation) {
+        if (observation.hasDataAbsentReason())
+            return null;
+        String canonical = optionalExtensionText(observation, CANONICAL_ANSWER);
+        return canonical != null ? canonical
+                : observation.hasValueQuantity() ? callInterpretation(observation) : callValue(observation);
     }
 
     private static List<org.openelisglobal.terminology.Coding> answerCodings(Observation observation) {
@@ -353,16 +388,18 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     }
 
     /**
-     * The call of a record without a number: its value as text, else the raw text.
+     * The explicit typed call; raw text is audit evidence and never supplies a
+     * value.
      */
-    private static String callValue(Observation observation, String rawValue) {
+    private static String callValue(Observation observation) {
         if (observation.hasValueStringType() && observation.getValueStringType().hasValue()) {
             return observation.getValueStringType().getValue().trim();
         }
         if (observation.hasValueCodeableConcept() && observation.getValueCodeableConcept().hasText()) {
             return observation.getValueCodeableConcept().getText().trim();
         }
-        return rawValue.isEmpty() ? null : rawValue;
+        throw new IllegalArgumentException(
+                "Analyzer result requires a quantity, text, coded answer or failed-run reason");
     }
 
     private static String nameOf(Patient patient) {
