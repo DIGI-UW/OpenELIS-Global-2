@@ -19,10 +19,12 @@ public class InstallTlsPropertiesTest {
         MockEnvironment environment = new MockEnvironment();
         environment.getPropertySources().addLast(new PropertiesPropertySource("install", properties));
         assertEquals("kspass", environment.getProperty("server.ssl.key-store-password"));
+        assertEquals("kspass", environment.getProperty("server.ssl.key-password"));
         assertEquals("tspass", environment.getProperty("server.ssl.trust-store-password"));
         environment.setProperty("SSL_KEYSTORE_PASSWORD", "custom-key-password");
         environment.setProperty("SSL_TRUSTSTORE_PASSWORD", "custom-trust-password");
         assertEquals("custom-key-password", environment.getProperty("server.ssl.key-store-password"));
+        assertEquals("custom-key-password", environment.getProperty("server.ssl.key-password"));
         assertEquals("custom-trust-password", environment.getProperty("server.ssl.trust-store-password"));
     }
 }
