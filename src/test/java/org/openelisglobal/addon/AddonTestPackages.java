@@ -88,6 +88,15 @@ public final class AddonTestPackages {
                 + "{\"key\":\"limit\",\"type\":\"number\",\"label\":\"Limit\",\"min\":1,\"max\":50,\"default\":5}]}";
     }
 
+    /**
+     * The manifest with a {@code network.egress} list and a secret config field
+     * {@code apiKey}.
+     */
+    public static String withEgressAndSecret(String manifest, String egressJson) {
+        return manifest.replace(",\"extensions\":", ",\"network\":{\"egress\":" + egressJson + "},\"extensions\":")
+                .replace("\"config\":[", "\"config\":[{\"key\":\"apiKey\",\"type\":\"secret\",\"label\":\"API key\"},");
+    }
+
     /** addon.json + ui/panel.html + ui/panel.js. */
     public static Map<String, byte[]> files(String manifest) {
         Map<String, byte[]> files = new LinkedHashMap<>();

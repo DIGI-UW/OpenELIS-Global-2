@@ -43,5 +43,7 @@
   <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
   <!-- Add-ons: registry, sandboxed UI assets, event outbox with triggers, delivery queue -->
   <include relativeToChangelogFile="true" file="024-addons.xml"/>
+  <!-- Add-ons: encrypted values of secret configuration fields -->
+  <include relativeToChangelogFile="true" file="025-addon-secret-config.xml"/>
 
 </databaseChangeLog>

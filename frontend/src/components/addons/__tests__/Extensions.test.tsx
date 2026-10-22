@@ -25,6 +25,7 @@ import {
   getCatalog,
   installAddon,
   listAddons,
+  saveAddonConfig,
   setAddonEnabled,
   type AddonView,
 } from "../addonApi";
@@ -174,5 +175,91 @@ describe("Extensions page", () => {
     expect(summary).toHaveTextContent("Signature does not match the contents");
     expect(summary).toHaveTextContent("oeak_secret");
     expect(summary).toHaveTextContent("whsec_secret");
+  });
+
+  it("shows where an add-on connects outside OpenELIS, or that it does not", async () => {
+    vi.mocked(listAddons).mockResolvedValue({
+      trustedPublishers: [],
+      addons: [
+        addon({ id: "net", egress: ["openrouter.ai", "api.openai.com:443"] }),
+        addon({ id: "local" }),
+      ],
+    });
+    renderPage();
+    expect(await screen.findByTestId("addon-egress-net")).toHaveTextContent(
+      "openrouter.ai",
+    );
+    expect(screen.getByTestId("addon-egress-net")).toHaveTextContent(
+      "api.openai.com:443",
+    );
+    expect(screen.getByTestId("addon-permissions-local")).toHaveTextContent(
+      "Nowhere: it needs nothing outside OpenELIS.",
+    );
+  });
+
+  it("never shows a saved secret and sends it only when it was typed", async () => {
+    vi.mocked(listAddons).mockResolvedValue({
+      trustedPublishers: [],
+      addons: [
+        addon({
+          configSchema: [
+            {
+              key: "model",
+              type: "string",
+              label: "Model",
+              required: false,
+              defaultValue: "m1",
+              options: [],
+              min: null,
+              max: null,
+            },
+            {
+              key: "apiKey",
+              type: "secret",
+              label: "API key",
+              required: false,
+              defaultValue: null,
+              options: [],
+              min: null,
+              max: null,
+            },
+          ],
+          config: { model: "m1" },
+          secretsSet: ["apiKey"],
+        }),
+      ],
+    });
+    vi.mocked(saveAddonConfig).mockResolvedValue({ model: "m1" });
+    renderPage();
+    const key = (await screen.findByLabelText("API key")) as HTMLInputElement;
+    expect(key.value).toBe("");
+    expect(
+      screen.getByText("A value is saved. Leave empty to keep it."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(saveAddonConfig).toHaveBeenCalledWith("hello", { model: "m1" }),
+    );
+
+    fireEvent.change(key, { target: { value: "sk-new" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(saveAddonConfig).toHaveBeenLastCalledWith("hello", {
+        model: "m1",
+        apiKey: "sk-new",
+      }),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clear the saved value" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(saveAddonConfig).toHaveBeenLastCalledWith("hello", {
+        model: "m1",
+        apiKey: "",
+      }),
+    );
   });
 });

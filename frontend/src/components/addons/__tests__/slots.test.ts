@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   extensionPagePath,
   extensionsForSlot,
+  pageOfPath,
   SLOT_APP_MENU,
   SLOT_PATIENT_RESULTS,
   withAddonMenu,
 } from "../slots";
 import { clampHeight, parseFrameMessage, stateKey } from "../bridge";
-import { initialConfig } from "../configForm";
+import { configToSave, initialConfig } from "../configForm";
 import type { AddonExtension, ConfigField } from "../addonApi";
 
 interface MenuItem {
@@ -147,5 +148,62 @@ describe("configuration form", () => {
       limit: 3,
       on: false,
     });
+  });
+});
+
+describe("header extensions", () => {
+  it("are told only the screen, as a kebab-case page name", () => {
+    expect(pageOfPath("/ResultValidation")).toBe("result-validation");
+    expect(pageOfPath("/PatientResults/42?x=1")).toBe("patient-results");
+    expect(pageOfPath("/")).toBe("home");
+    expect(pageOfPath("/k37/TraCuu")).toBe("k37");
+    expect(
+      pageOfPath("/a".repeat(3) + "x".repeat(60)).length,
+    ).toBeLessThanOrEqual(40);
+  });
+});
+
+describe("secret configuration fields", () => {
+  const schema: ConfigField[] = [
+    {
+      key: "model",
+      type: "string",
+      label: "Model",
+      required: false,
+      defaultValue: "m",
+      options: [],
+      min: null,
+      max: null,
+    },
+    {
+      key: "apiKey",
+      type: "secret",
+      label: "Key",
+      required: false,
+      defaultValue: null,
+      options: [],
+      min: null,
+      max: null,
+    },
+  ];
+
+  it("start empty whatever was saved", () => {
+    expect(initialConfig(schema, { model: "x", apiKey: "leak" })).toEqual({
+      model: "x",
+      apiKey: "",
+    });
+  });
+
+  it("are sent only when typed or cleared", () => {
+    expect(configToSave(schema, { model: "x", apiKey: "" })).toEqual({
+      model: "x",
+    });
+    expect(configToSave(schema, { model: "x", apiKey: "k" })).toEqual({
+      model: "x",
+      apiKey: "k",
+    });
+    expect(
+      configToSave(schema, { model: "x", apiKey: "" }, new Set(["apiKey"])),
+    ).toEqual({ model: "x", apiKey: "" });
   });
 });

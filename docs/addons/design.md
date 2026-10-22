@@ -170,11 +170,65 @@ administration page reads them from `GET /rest/addons/catalog`.
 | `orders.read`  | lab number, received date and test count of orders in its context     |
 | `results.read` | the results of those orders                                           |
 | `patient.read` | sex and date of birth of the patient of those orders; no name, no ids |
+| `ai.context`   | the de-identified context of those orders for decision support (below) |
 
 "In its context" means: for a UI token, the orders on the user's screen; for the
 service key, the orders the add-on was sent an event about, during the event
 retention period (7 days by default). An add-on never gets a general query over
 all orders.
+
+### `ai.context`: de-identified context for assistants
+
+An add-on that sends data to a language model or another outside service should
+not receive identifiers at all. With `ai.context` it gets, for the orders of a
+UI token:
+
+- `GET /rest/addon-api/v1/ai/context?view=cases|patient`: for each order (or, in
+  the `patient` view, for the newest day of one patient's orders) the patient's
+  sex and age in years (90 and over grouped), and each result's test code, LOINC,
+  name, value, unit, reference range and status; earlier results of the same
+  tests (3 per test in the `patient` view, 1 per case) with the number of days
+  before. `user` is the OpenELIS user of the token (for per-user limits) and
+  `subject` a pseudonym of the patient: stable for this add-on, not reversible,
+  different for another add-on.
+- `POST /rest/addon-api/v1/ai/deidentify` `{"text": …}`: the text without the
+  identifiers of the patients of those orders (names in any order, with or
+  without accents, national and other ids, phone numbers, address, e-mail, lab
+  numbers) and without identifier-like patterns (lab numbers, phone numbers,
+  e-mail addresses, absolute dates, long digit runs). Clinical numbers are kept.
+
+Nothing returned contains a name, a patient id, a lab number or a date. Free
+text inside results (test names, text results) goes through the same scrubber.
+Only UI tokens can use it (a service key has no screen). When the add-on has
+`ai.context` but not `orders.read`, the lab numbers inside its UI token are
+sealed (AES-GCM under a key derived from the token key): the frame and the
+service hold the token but cannot read them, and `whoami` does not list them.
+
+## Network access
+
+A manifest may declare the hosts outside OpenELIS its service connects to:
+
+```json
+"network": { "egress": ["openrouter.ai", "api.openai.com:443"] }
+```
+
+Lowercase DNS names with at least two labels, optionally `:port`; no IP address
+and no wildcard, at most 10. The list is shown on the permission screen ("Where
+it connects outside OpenELIS"), an upgrade that adds a host is turned off until
+reviewed, and the compose snippet carries it as a comment. OpenELIS does not run
+containers, so enforcing the list is the operator's: for example put the add-on
+on an internal network and give it `HTTPS_PROXY` pointing at an allowlisting
+forward proxy. An add-on without the field needs nothing outside OpenELIS.
+
+## Secret configuration values
+
+A configuration field of type `secret` (an API key, a token) is never sent back
+to the browser: the Extensions page only shows whether it is set, sends it only
+when the administrator types a new value (an empty value clears it), and stores
+it apart from the plain configuration, encrypted with `EncryptionConverter`
+(`addon.secret_config`, Liquibase `025-addon-secret-config.xml`). The add-on's
+service reads it with its key through `GET /rest/addon-api/v1/config`. A secret
+cannot have a default.
 
 ## Install, enable, disable
 
@@ -244,6 +298,7 @@ are kept 7 days (`addons.events.retentionDays`).
 | `result-validation-side-panel-slot` | right column of result validation                                        | `page`, `accessionNumbers` (rows on screen, at most 50) |
 | `result-lookup-side-panel-slot`     | patient results page (`/PatientResults`)                                 | `page`, `patientId` (see below)                         |
 | `app-menu-slot`                     | "Extensions" section of the main menu, opening `/extensions/{id}/{name}` | `page`                                                  |
+| `top-nav-actions-slot`              | a button in the top bar opening a panel on the right                     | `page` (the screen: first route segment, kebab-case)    |
 
 The patient results page shows one patient and has no list of lab numbers. It
 passes `patientId`; when issuing the token the server replaces it with that
@@ -252,6 +307,11 @@ never receives the patient id and the page cannot add lab numbers of its own.
 
 A slot with no extension renders nothing: pages look exactly as before for a
 laboratory without add-ons.
+
+`top-nav-actions-slot` extensions are header buttons (`meta.title`, and
+`meta.icon` one of `application`, `magic-wand`, `chat`, `help`, `idea`, `bot`).
+The panel they open is told only which screen is open, never the data on it:
+add-ons that need the orders on screen use the side-panel slots of those pages.
 
 The host page renders each extension as
 `<iframe sandbox="allow-scripts allow-forms">` (no `allow-same-origin`) with
@@ -336,8 +396,17 @@ in `nginx-prod.conf`:
 location /addons/hello/api/ {
     proxy_pass http://hello:8080/api/;
     proxy_set_header Cookie "";
+    # answers streamed as server-sent events reach the frame as they come
+    proxy_buffering off;
+    proxy_read_timeout 180s;
 }
 ```
+
+The frame has an opaque origin, so the add-on's own API answers CORS (any
+origin, no credentials). An add-on that streams (server-sent events read with
+`fetch`) still works behind a buffering proxy: the answer then arrives at once at
+the end. A non-streaming fallback (`?stream=0`, one JSON answer) is the
+add-on's to offer.
 
 Do not publish the backend's port 8443 to untrusted networks, or narrow
 `addons.api.allowedNetworks` to the compose subnet (`172.20.1.0/24` in the
@@ -363,12 +432,19 @@ In `common.properties` or `extra.properties`:
 2. **UI**: `ExtensionSlot` and the sandboxed frame host with the `postMessage`
    context, the three slots, and the Extensions page, with English strings in
    `en.json` and a Playwright test that runs an add-on page in the sandbox.
+3. **Core additions for assistants**: the `ai.context` scope (de-identified
+   context and text), sealed lab numbers in tokens, the `top-nav-actions-slot`
+   header slot, `network.egress` in the manifest and on the permission screen,
+   and `secret` configuration fields. The AI assistant add-on itself
+   (`projects/addons/assistant`) uses all of them and changes nothing in
+   OpenELIS.
 
 ## Not included
 
 - Starting or stopping containers from OpenELIS.
 - Write scopes. Add-ons read; anything they want to change goes through a
   person.
-- Network egress control for add-ons; this is the operator's network policy.
+- Enforcing network egress: the manifest declares it and the administrator
+  consents to it; the operator's network policy enforces it.
 - Per-extension display conditions and per-slot ordering configuration from
   OpenMRS 3; slots render all extensions of enabled add-ons by `order`.

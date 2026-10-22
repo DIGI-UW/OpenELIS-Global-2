@@ -9,6 +9,7 @@ import {
   InlineNotification,
   Modal,
   NumberInput,
+  PasswordInput,
   Select,
   SelectItem,
   Tag,
@@ -31,7 +32,7 @@ import {
   type Credentials,
   type InstallResult,
 } from "./addonApi";
-import { initialConfig } from "./configForm";
+import { configToSave, initialConfig } from "./configForm";
 import "./addons.scss";
 
 const breadcrumbs = [
@@ -334,6 +335,24 @@ export function PermissionReview({
           </ul>
         </>
       )}
+      <h4 className="addon-admin__section">
+        <FormattedMessage id="addon.permissions.network" />
+      </h4>
+      {addon.egress && addon.egress.length > 0 ? (
+        <ul data-testid={`addon-egress-${addon.id}`}>
+          {addon.egress.map((h) => (
+            <li key={h}>
+              <Tag size="sm" type="warm-gray">
+                {h}
+              </Tag>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>
+          <FormattedMessage id="addon.permissions.network.none" />
+        </p>
+      )}
       {addon.extensions.length > 0 && (
         <>
           <h4 className="addon-admin__section">
@@ -486,6 +505,7 @@ function ConfigForm({
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialConfig(addon.configSchema, addon.config),
   );
+  const [cleared, setCleared] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState<{
     kind: "success" | "error";
     text: string;
@@ -493,8 +513,16 @@ function ConfigForm({
   const set = (key: string, value: unknown) =>
     setValues((previous) => ({ ...previous, [key]: value }));
   const save = () =>
-    saveAddonConfig(addon.id, values)
+    saveAddonConfig(addon.id, configToSave(addon.configSchema, values, cleared))
       .then(() => {
+        setCleared(new Set());
+        setValues((previous) => {
+          const next = { ...previous };
+          addon.configSchema
+            .filter((f) => f.type === "secret")
+            .forEach((f) => (next[f.key] = ""));
+          return next;
+        });
         setMessage({
           kind: "success",
           text: intl.formatMessage({ id: "addon.config.saved" }),
@@ -550,6 +578,45 @@ function ConfigForm({
             ))}
           </Select>
         );
+      case "secret": {
+        const isSet =
+          !cleared.has(f.key) && (addon.secretsSet || []).includes(f.key);
+        return (
+          <div key={f.key} className="addon-admin__secret">
+            <PasswordInput
+              id={id}
+              labelText={f.label}
+              autoComplete="new-password"
+              helperText={intl.formatMessage({
+                id: isSet
+                  ? "addon.config.secret.set"
+                  : "addon.config.secret.unset",
+              })}
+              value={String(values[f.key] ?? "")}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                set(f.key, e.target.value);
+                setCleared((previous) => {
+                  const next = new Set(previous);
+                  next.delete(f.key);
+                  return next;
+                });
+              }}
+            />
+            {isSet && (
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => {
+                  set(f.key, "");
+                  setCleared((previous) => new Set(previous).add(f.key));
+                }}
+              >
+                <FormattedMessage id="addon.config.secret.clear" />
+              </Button>
+            )}
+          </div>
+        );
+      }
       default:
         return (
           <TextInput

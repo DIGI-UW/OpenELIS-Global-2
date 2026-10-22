@@ -59,13 +59,18 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
         boolean upgrade = addon != null;
         Credentials credentials = null;
         if (upgrade) {
+            List<String> oldEgress = AddonManifest.parse(addon.getManifest()).egress();
             boolean asksForMore = !new HashSet<>(addon.getScopeList()).containsAll(manifest.scopes())
-                    || !new HashSet<>(addon.getEventList()).containsAll(manifest.events());
+                    || !new HashSet<>(addon.getEventList()).containsAll(manifest.events())
+                    || !new HashSet<>(oldEgress).containsAll(manifest.egress());
             if ((asksForMore || weakerProvenance(addon, provenance)) && addon.isEnabled()) {
                 addon.setEnabled(false);
                 outboxDAO.dropPending(addon.getId());
             }
             addon.setConfig(carryOverConfig(manifest, addon.getConfig()));
+            Map<String, Object> secrets = new LinkedHashMap<>(parseObject(addon.getSecretConfig()));
+            secrets.keySet().retainAll(manifest.secretKeys());
+            addon.setSecretConfig(secrets.isEmpty() ? null : toJson(secrets));
         } else {
             addon = new Addon();
             addon.setId(manifest.id());
@@ -143,8 +148,19 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
             return Optional.empty();
         }
         Addon addon = found.get();
-        Map<String, Object> clean = AddonManifest.parse(addon.getManifest()).validateConfig(values);
+        AddonManifest manifest = AddonManifest.parse(addon.getManifest());
+        Map<String, Object> clean = manifest.validateConfig(values);
+        Map<String, Object> secrets = new LinkedHashMap<>(parseObject(addon.getSecretConfig()));
+        manifest.validateSecrets(values).forEach((k, v) -> {
+            if (v.isEmpty()) {
+                secrets.remove(k);
+            } else {
+                secrets.put(k, v);
+            }
+        });
+        secrets.keySet().retainAll(manifest.secretKeys());
         addon.setConfig(toJson(clean));
+        addon.setSecretConfig(secrets.isEmpty() ? null : toJson(secrets));
         addonDAO.save(addon);
         return Optional.of(clean);
     }
@@ -205,7 +221,7 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
             }
             for (AddonManifest.Extension e : AddonManifest.parse(addon.getManifest()).extensions()) {
                 out.add(new ExtensionView(addon.getId(), addon.getName(), addon.getVersion(), e.name(), e.slot(),
-                        e.page(), e.order(), e.title(), e.height()));
+                        e.page(), e.order(), e.title(), e.height(), e.icon()));
             }
         }
         out.sort(Comparator.comparing(ExtensionView::slot).thenComparingInt(ExtensionView::order)
@@ -232,7 +248,11 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> configOf(String id) {
-        return addonDAO.get(id).map(a -> parseObject(a.getConfig())).orElse(Map.of());
+        return addonDAO.get(id).map(a -> {
+            Map<String, Object> all = new LinkedHashMap<>(parseObject(a.getConfig()));
+            all.putAll(parseObject(a.getSecretConfig()));
+            return (Map<String, Object>) all;
+        }).orElse(Map.of());
     }
 
     // ----- helpers
@@ -243,6 +263,7 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
                 addon.getProvenance(), addon.getVerifiedPublisher(), addon.getDescription(), addon.getImage(),
                 addon.isEnabled(), addon.getEndpoint(), addon.getScopeList(), addon.getEventList(),
                 manifest.extensions(), manifest.config(), parseObject(addon.getConfig()),
+                new ArrayList<>(parseObject(addon.getSecretConfig()).keySet()), manifest.egress(),
                 addon.getInstalledAt() == null ? null : addon.getInstalledAt().toString(), addon.getInstalledBy(),
                 outboxDAO.countsByStatus(addon.getId()));
     }
@@ -295,7 +316,18 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
                 "      OPENELIS_API_URL: https://oe.openelis.org:8443/api/OpenELIS-Global/rest/addon-api/v1",
                 "      OPENELIS_API_KEY: " + credentials.apiKey(),
                 "      OPENELIS_WEBHOOK_SECRET: " + credentials.webhookSecret(), "    networks:", "      - default",
-                "");
+                egressNote(manifest.egress()), "");
+    }
+
+    /**
+     * What the add-on says about the network, for the operator's network policy.
+     */
+    static String egressNote(List<String> egress) {
+        if (egress.isEmpty()) {
+            return "    # network: needs nothing outside OpenELIS; an internal network is enough";
+        }
+        return "    # network: connects to " + String.join(", ", egress)
+                + " (allow only these, for example through an allowlisting proxy)";
     }
 
     @SuppressWarnings("unchecked")

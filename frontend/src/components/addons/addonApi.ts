@@ -21,13 +21,15 @@ export interface AddonExtension {
   order: number;
   title: string;
   height: number;
+  /** Header buttons: application | magic-wand | chat | help | idea | bot. */
+  icon?: string;
 }
 
 export type Provenance = "VERIFIED" | "UNVERIFIED" | "MISMATCH";
 
 export interface ConfigField {
   key: string;
-  type: "string" | "number" | "boolean" | "select";
+  type: "string" | "number" | "boolean" | "select" | "secret";
   label: string;
   required: boolean;
   defaultValue: string | number | boolean | null;
@@ -52,7 +54,12 @@ export interface AddonView {
   events: string[];
   extensions: { name: string; slot: string; page: string; title: string }[];
   configSchema: ConfigField[];
+  /** Plain values only; secrets are never sent back. */
   config: Record<string, unknown>;
+  /** Secret fields that have a value. */
+  secretsSet?: string[];
+  /** Hosts outside OpenELIS the add-on's service connects to. */
+  egress?: string[];
   installedAt?: string;
   deliveries: Record<string, number>;
 }

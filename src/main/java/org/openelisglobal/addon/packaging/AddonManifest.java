@@ -24,6 +24,7 @@ import org.openelisglobal.addon.AddonCatalog;
  *   "runtime": { "port": 8080, "eventsPath": "/events" },
  *   "scopes": ["orders.read", "results.read"],
  *   "events": ["result.validated"],
+ *   "network": { "egress": ["api.example.org"] },
  *   "extensions": [ { "name": "hello-panel", "slot": "result-lookup-side-panel-slot",
  *                     "page": "panel.html", "order": 10, "meta": { "title": "Hello", "height": 240 } } ],
  *   "config": [ { "key": "greeting", "type": "string", "label": "Greeting", "default": "Hi" } ]
@@ -54,10 +55,21 @@ public final class AddonManifest {
     private static final String CONFIG_KEY_PATTERN = "[A-Za-z][A-Za-z0-9_]{0,40}";
     private static final String SEMVER_PATTERN = "\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?";
     private static final String IMAGE_PATTERN = "[a-z0-9][a-z0-9._/:-]{0,180}@sha256:[0-9a-f]{64}";
-    private static final Set<String> CONFIG_TYPES = Set.of("string", "number", "boolean", "select");
+    private static final Set<String> CONFIG_TYPES = Set.of("string", "number", "boolean", "select", "secret");
+    /** Config type whose values are stored encrypted and never shown again. */
+    public static final String SECRET = "secret";
 
-    public record Extension(String name, String slot, String page, int order, String title, int height) {
+    /**
+     * {@code icon}: for a button slot ({@code top-nav-actions-slot}), one of
+     * {@link #ICONS}; anything else falls back to "application".
+     */
+    public record Extension(String name, String slot, String page, int order, String title, int height, String icon) {
     }
+
+    /**
+     * Icons a header button may use (named after Carbon icons the UI maps them to).
+     */
+    public static final Set<String> ICONS = Set.of("application", "magic-wand", "chat", "help", "idea", "bot");
 
     public record ConfigField(String key, String type, String label, boolean required, Object defaultValue,
             List<String> options, Double min, Double max) {
@@ -146,6 +158,22 @@ public final class AddonManifest {
         return strings(root.path("events"));
     }
 
+    /**
+     * Hosts outside OpenELIS the add-on's service says it connects to
+     * ({@code network.egress}). Shown for consent; enforcing it is the operator's
+     * network policy.
+     */
+    public List<String> egress() {
+        return strings(root.path("network").path("egress"));
+    }
+
+    /** Keys of the {@code secret} configuration fields. */
+    public Set<String> secretKeys() {
+        Set<String> out = new LinkedHashSet<>();
+        config().stream().filter(f -> SECRET.equals(f.type())).forEach(f -> out.add(f.key()));
+        return out;
+    }
+
     /** UI files of the package (paths relative to {@code ui/}). */
     public static Map<String, byte[]> uiFiles(Map<String, byte[]> files) {
         Map<String, byte[]> out = new LinkedHashMap<>();
@@ -166,9 +194,11 @@ public final class AddonManifest {
         List<Extension> out = new ArrayList<>();
         for (JsonNode e : root.path("extensions")) {
             JsonNode meta = e.path("meta");
+            String icon = meta.path("icon").asText("application");
             out.add(new Extension(e.path("name").asText(), e.path("slot").asText(), e.path("page").asText(),
                     e.path("order").asInt(100), meta.path("title").asText(name()),
-                    Math.max(80, Math.min(900, meta.path("height").asInt(240)))));
+                    Math.max(80, Math.min(900, meta.path("height").asInt(240))),
+                    ICONS.contains(icon) ? icon : "application"));
         }
         return out;
     }
@@ -239,6 +269,24 @@ public final class AddonManifest {
                 errs.add("event " + e + " needs scope " + needed);
             }
         }
+        JsonNode network = root.path("network");
+        if (!network.isMissingNode() && !network.isObject()) {
+            errs.add("network must be an object");
+        }
+        checkList(network, "egress", errs);
+        List<String> egress = egress();
+        if (egress.size() > AddonCatalog.MAX_EGRESS_HOSTS) {
+            errs.add("network.egress: at most " + AddonCatalog.MAX_EGRESS_HOSTS + " hosts");
+        }
+        if (new LinkedHashSet<>(egress).size() != egress.size()) {
+            errs.add("network.egress: a host is repeated");
+        }
+        for (String host : egress) {
+            if (!AddonCatalog.isEgressHost(host)) {
+                errs.add("network.egress: " + host
+                        + " is not a host name (lowercase DNS name, optional :port; no IP address, no wildcard)");
+            }
+        }
         Set<String> names = new LinkedHashSet<>();
         for (JsonNode x : root.path("extensions")) {
             String name = x.path("name").asText();
@@ -265,6 +313,9 @@ public final class AddonManifest {
             }
             if ("select".equals(type) && c.path("options").size() == 0) {
                 errs.add("config " + key + ": a select needs options");
+            }
+            if (SECRET.equals(type) && c.has("default")) {
+                errs.add("config " + key + ": a secret cannot have a default");
             }
         }
         for (String path : uiFiles(files).keySet()) {
@@ -299,6 +350,9 @@ public final class AddonManifest {
             }
         }
         for (ConfigField f : fields) {
+            if (SECRET.equals(f.type())) {
+                continue; // see validateSecrets
+            }
             Object v = values == null ? null : values.get(f.key());
             if (v == null || (v instanceof String s && s.isBlank() && !"string".equals(f.type()))) {
                 if (f.required() && f.defaultValue() == null) {
@@ -310,6 +364,33 @@ public final class AddonManifest {
                 continue;
             }
             out.put(f.key(), configValue(f, v));
+        }
+        return out;
+    }
+
+    /**
+     * The {@code secret} values among {@code values}: a non-empty string sets the
+     * secret, an empty string clears it, an absent key leaves it unchanged (the
+     * administration page never receives secrets back, so it only sends changed
+     * ones).
+     *
+     * @return key → new value, or key → "" to clear
+     * @throws IllegalArgumentException naming the first bad key
+     */
+    public Map<String, String> validateSecrets(Map<String, ?> values) {
+        Map<String, String> out = new LinkedHashMap<>();
+        if (values == null) {
+            return out;
+        }
+        for (String key : secretKeys()) {
+            if (!values.containsKey(key) || values.get(key) == null) {
+                continue;
+            }
+            String s = String.valueOf(values.get(key));
+            if (s.length() > 500) {
+                throw new IllegalArgumentException(key);
+            }
+            out.put(key, s.strip());
         }
         return out;
     }

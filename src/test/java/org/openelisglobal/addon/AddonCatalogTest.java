@@ -3,6 +3,7 @@ package org.openelisglobal.addon;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,5 +53,33 @@ public class AddonCatalogTest {
     @Test
     public void aBadPageNameIsDropped() {
         assertEquals(Map.of(), AddonCatalog.filterContext(Map.of("page", "<script>"), List.of()));
+    }
+
+    @Test
+    public void anAiContextAddonGetsTheOrdersInItsTokenButNotInItsFrame() {
+        Map<String, Object> context = Map.of("page", "result-validation", "accessionNumbers", List.of("DEV0001"));
+        List<String> ai = List.of(AddonCatalog.AI_CONTEXT);
+        assertEquals(Map.of("page", "result-validation"), AddonCatalog.filterContext(context, ai));
+        assertEquals(List.of("DEV0001"), AddonCatalog.contextOrders(context, ai));
+        assertEquals(List.of(), AddonCatalog.contextOrders(context, List.of(AddonCatalog.RESULTS_READ)));
+    }
+
+    @Test
+    public void egressHostsAreDnsNamesWithAnOptionalPort() {
+        for (String ok : List.of("openrouter.ai", "api.deepseek.com", "api.openai.com:443",
+                "host.containers.internal:4190")) {
+            assertTrue(ok, AddonCatalog.isEgressHost(ok));
+        }
+        for (String bad : List.of("", "localhost", "10.0.1.12", "10.0.1.12:4190", "*.openai.com", "OpenRouter.ai",
+                "https://openrouter.ai", "openrouter.ai/api", "a..b", "api.openai.com:0", "api.openai.com:70000",
+                "-bad.example.org")) {
+            assertFalse(bad, AddonCatalog.isEgressHost(bad));
+        }
+    }
+
+    @Test
+    public void theHeaderSlotIsOpenToEverySignedInUser() {
+        assertTrue(AddonCatalog.slot(AddonCatalog.SLOT_TOP_NAV_ACTIONS).roles().isEmpty());
+        assertTrue(AddonCatalog.isScope(AddonCatalog.AI_CONTEXT));
     }
 }

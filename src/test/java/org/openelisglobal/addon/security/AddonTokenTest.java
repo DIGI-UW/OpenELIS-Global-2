@@ -57,4 +57,30 @@ public class AddonTokenTest {
         }
         assertTrue(token(NOW + 1).startsWith(AddonToken.PREFIX));
     }
+
+    @Test
+    public void sealedLabNumbersAreUnreadableInThePayloadButVerify() {
+        String t = AddonToken.sign(KEY, new AddonToken.Claims("assistant", "7", List.of("ai.context"),
+                List.of("DEV01260000000000063"), NOW + 600), true);
+        String payload = new String(
+                Base64.getUrlDecoder().decode(t.substring(AddonToken.PREFIX.length(), t.lastIndexOf('.'))));
+        assertFalse(payload, payload.contains("DEV0126"));
+        assertFalse(payload, payload.contains("\"c\""));
+        AddonToken.Claims claims = AddonToken.verify(KEY, t, NOW);
+        assertEquals(List.of("DEV01260000000000063"), claims.accessions());
+        assertFalse(claims.isService());
+    }
+
+    @Test
+    public void aSealedTokenFromAnotherKeyIsRefused() {
+        String t = AddonToken.sign("another key, another key, 32 by".getBytes(),
+                new AddonToken.Claims("assistant", "7", List.of("ai.context"), List.of("A1"), NOW + 600), true);
+        assertThrows(IllegalArgumentException.class, () -> AddonToken.verify(KEY, t, NOW));
+    }
+
+    @Test
+    public void sealingTheSameOrdersTwiceGivesDifferentCiphertext() {
+        AddonToken.Claims c = new AddonToken.Claims("assistant", "7", List.of("ai.context"), List.of("A1"), NOW + 600);
+        assertFalse(AddonToken.sign(KEY, c, true).equals(AddonToken.sign(KEY, c, true)));
+    }
 }
