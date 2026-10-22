@@ -62,7 +62,7 @@ these drafts. The review inventory and recovery patch archive also retain them.
 
 ## Additional findings from the refreshed review
 
-Seven more threads arrived after the original inventory. These remain open for
+Ten more threads arrived after the original inventory. These remain open for
 final remediation; source inspection is not a passing regression test.
 
 - [ ] [Canonical LOINC URI storage (#4770)](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4770#discussion_r4342426345):
@@ -83,6 +83,33 @@ final remediation; source inspection is not a passing regression test.
 - [ ] [Migrated activation history (#4791)](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4791#discussion_r4342387827):
   preserve previously activated analyzers identified by `lastActivatedDate`, even
   without a durable activation-record row or received results.
+
+- [ ] [Reporting navigation assertion (#4794)](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4794#discussion_r4342586091):
+  update the optional `REPORTING_INSTANCE_NAV=true` qualification assertion for
+  the revised menu description; the default core lane does not exercise it.
+- [ ] [Failed-restore compensation (#4797)](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4797#discussion_r4342577027):
+  preserve prior active intent if the Bridge retry succeeds but saving the
+  OpenELIS activation state fails. Reproduce before changing compensation.
+- [ ] [Undeclared-code recovery (#4798)](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4798#discussion_r4342887378):
+  an undeclared code has an empty arrival-reading row set and no profile-derived
+  confirmed record. The current null check prevents recovery after explicit
+  mapping and confirmation. The combined GeneXpert browser scenario reproduces
+  this; keep rejection of genuinely missing confirmed readings covered.
+
+## Remaining fingerprint gate
+
+The normal path compares saved interpretations, but two legacy paths still use
+whole-file equality when a confirmation has no saved readings:
+`AnalyzerMappingConfirmationServiceImpl.readingOnDelivery` and `readingAgainst`.
+The test `aConfirmationFromBeforeReadingsHoldsTheAnalyzerOnceItsFileChanged`
+explicitly expects a hold when only the fingerprint changes and interpretation
+stays identical. This is an incomplete implementation of the no-whole-file-gate
+requirement, not a Bridge requirement or the CI fixture failure fixed below.
+
+- [ ] Replace this fallback as part of the missing-baseline/reconfirmation work.
+  Treat unknown historical interpretation explicitly; do not invent it from the
+  current file, and do not use a changed hash as proof of changed meaning. The
+  reviewer suggestion in thread 4342432773 does not override this requirement.
 
 ## Baseline corrections and evidence
 
@@ -114,10 +141,34 @@ final remediation; source inspection is not a passing regression test.
 - Full local CI and GitHub checks must be inspected on the pushed candidate.
   Check every stack layer; a green tip does not establish a green stack.
 
+## Combined validation snapshot
+
+Executable candidate `2a4fad086f` passes the GitHub backend and frontend
+checkpoints, Bridge/mock contracts, Bridge acceptance, all four core Playwright
+shards, both Cypress groups, and analyzer shard 2. The
+[analyzer shard 1 run](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/39691617412/job/119539089516)
+fails three scenarios: undeclared-code recovery above, and two Mindray scenarios
+that still expect 32 staged records although default exclusions leave 13.
+
+- [ ] Update the two Mindray scenarios to verify the shipped exclusion defaults
+  and operator decisions. Do not remove the exclusion behavior to satisfy the
+  obsolete expectations.
+- [ ] Pass the undeclared-code recovery scenario after its production fix.
+
+Full local validation is not green: backend, frontend and contract lanes passed;
+core browser lanes had empty-table/disabled-control failures that did not recur
+in GitHub; analyzer lanes failed before tests on Docker Hub metadata requests
+returning Bad Gateway. Cypress stalled at its first spec for over 70 minutes and
+was stopped with the runner's owned cleanup; its independent group did not run.
+Retain and diagnose these local failures without claiming they are proven
+analyzer regressions. The trusted upstream-pin gate remains expected to fail
+until the candidate dependencies merge. No release acceptance is claimed.
+
 ## Final acceptance
 
-- [ ] Implement and validate the original five groups and the additional seven
-  findings above, then reply to and resolve their thirteen GitHub threads. Historical bot summaries are not current status.
+- [ ] Implement and validate the original five groups and the additional ten
+  findings above, plus the legacy fingerprint gate, then reply to and resolve
+  their sixteen GitHub threads. Historical bot summaries are not current status.
 - [ ] Exercise exclusions and sender identity through the combined candidate.
 - [ ] Add host-query harness acceptance using native mock traffic; keep the
   separate pending-orders feature outside this transport acceptance.
