@@ -7,6 +7,7 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 public class MicroCaseTestForm {
     public String analysisId;
     public String testId;
+    public String sampleItemId;
     public String testName;
     public String placement;
     public String status;

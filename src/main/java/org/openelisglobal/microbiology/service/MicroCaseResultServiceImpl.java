@@ -40,6 +40,10 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.fhir.service.ObservationTransformService observationTransform;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.samplehuman.service.SampleHumanService sampleHumans;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.panel.service.PanelService panelCatalog;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.typeofsample.service.TypeOfSamplePanelService samplePanels;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -101,6 +105,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             MicroCaseTestForm f = new MicroCaseTestForm();
             f.analysisId = a.getId();
             f.testId = a.getTest().getId();
+            f.sampleItemId = a.getSampleItem().getId();
             f.testName = a.getTest().getName();
             f.placement = "ADDITIONAL".equals(link.getPlacement()) ? "ADDITIONAL" : "INITIAL";
             f.status = state(a);
@@ -124,6 +129,29 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     }
 
     @Override
+    public MicroCaseTestCatalogForm getCatalog(String caseId, String sampleTypeId, String actor) {
+        var c = cases.get(caseId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS))
+            throw new AccessDeniedException("Case lab unit access required");
+        MicroCaseMutationGuard.requireMutable(c);
+        if (search.getSamples(caseId).stream().noneMatch(s -> !s.isRejected()
+                && sampleTypeId.equals(s.getTypeOfSampleId())))
+            bad("MICROBIOLOGY_SAMPLE_CASE_MISMATCH");
+        var catalog = new MicroCaseTestCatalogForm();
+        catalog.tests = sampleTests.getTypeOfSampleTestsForSampleType(sampleTypeId).stream()
+                .map(mapping -> tests.get(mapping.getTestId())).filter(Objects::nonNull)
+                .filter(t -> t.isActive() && Boolean.TRUE.equals(t.getOrderable()))
+                .map(t -> new MicroCaseTestCatalogForm.Option(t.getId(), t.getName())).toList();
+        var allowed = catalog.tests.stream().map(MicroCaseTestCatalogForm.Option::id).toList();
+        catalog.panels = samplePanels.getTypeOfSamplePanelsForSampleType(sampleTypeId).stream()
+                .map(mapping -> panelCatalog.getPanelById(mapping.getPanelId())).filter(Objects::nonNull)
+                .filter(p -> "Y".equals(p.getIsActive()) && panels.getPanelItemsForPanel(p.getId()).stream()
+                        .anyMatch(item -> allowed.contains(item.getTest().getId())))
+                .map(p -> new MicroCaseTestCatalogForm.Option(p.getId(), p.getPanelName())).toList();
+        return catalog;
+    }
+
+    @Override
     @Transactional
     public List<MicroCaseTestForm> addTests(String caseId, MicroCaseAddTestsForm request, String actor) {
         var c = writeCase(caseId, actor, Constants.ROLE_RESULTS);
@@ -138,7 +166,12 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         sampleTests.getTypeOfSampleTestsForSampleType(specimen.getTypeOfSample().getId())
                 .forEach(t -> allowed.add(t.getTestId()));
         Map<String, org.openelisglobal.panel.valueholder.Panel> selectedPanels = new LinkedHashMap<>();
+        var allowedPanels = samplePanels.getTypeOfSamplePanelsForSampleType(specimen.getTypeOfSampleId()).stream()
+                .map(org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel::getPanelId).toList();
         for (String panel : request.panelIds == null ? List.<String>of() : request.panelIds) {
+            var requestedPanel = panelCatalog.getPanelById(panel);
+            if (requestedPanel == null || !"Y".equals(requestedPanel.getIsActive()) || !allowedPanels.contains(panel))
+                bad("MICROBIOLOGY_INVALID_PANEL");
             var items = panels
                     .getPanelItemsForPanel(panel).stream().filter(item -> allowed.contains(item.getTest().getId())
                             && item.getTest().isActive() && Boolean.TRUE.equals(item.getTest().getOrderable()))
@@ -266,6 +299,15 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             throw new MicroCaseResultAcknowledgementException(
                     acknowledgements.refusalBody(alerts.stream().filter(alert -> !alert.isAcknowledged()).toList()));
         ResultUtil.createResultsFromItems(data, false, false, true, "", httpRequest);
+        // The case editor submits one analysis note, not one copy per component.
+        // ResultUtil compiles a note from each component carrying that text.
+        Set<List<String>> noteKeys = new HashSet<>();
+        data.getNoteList().removeIf(note -> !noteKeys.add(Arrays.asList(note.getReferenceId(),
+                note.getReferenceTableId(), note.getNoteType(), note.getSubject(), note.getText())));
+        // Notes can retain a blank component in modifiedItems. Never reload a result
+        // that this same save deletes; its cancellation is published separately.
+        var clearedIds = data.getDeletableResults().stream().map(r -> r.getId()).toList();
+        data.getModifiedResults().removeIf(result -> clearedIds.contains(result.result.getId()));
         // Case entry always awaits expert review, including sites that auto-validate
         // ordinary results.
         for (var modified : data.getModifiedAnalysis())

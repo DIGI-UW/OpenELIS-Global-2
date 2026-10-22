@@ -26,6 +26,13 @@ public class MicroCaseResultRestController extends MicrobiologyRestControllerSup
         this.resultService = resultService;
     }
 
+    @GetMapping("/catalog")
+    public ResponseEntity<org.openelisglobal.microbiology.form.MicroCaseTestCatalogForm> getCatalog(
+            @PathVariable String caseId, @org.springframework.web.bind.annotation.RequestParam String sampleType,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(resultService.getCatalog(caseId, sampleType, authenticatedUserId(request)));
+    }
+
     @PostMapping
     public ResponseEntity<List<MicroCaseTestForm>> addTests(@PathVariable String caseId,
             @RequestBody org.openelisglobal.microbiology.form.MicroCaseAddTestsForm body, HttpServletRequest request) {

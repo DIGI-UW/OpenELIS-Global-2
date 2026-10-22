@@ -595,7 +595,11 @@ export default function CaseTestingWorkspace({ detail, service }) {
             isReadOnly={adding}
             titleId="microbiology.testing.addTests"
             helperId="microbiology.testing.chooserHelp"
-            excludedTestIds={tests.map((test) => test.testId)}
+            cataloguePath={`/rest/microbiology/cases/${detail.id}/analyses/catalog`}
+            excludedTestIdsBySample={tests.reduce((bySample, test) => {
+              (bySample[test.sampleItemId] ||= []).push(String(test.testId));
+              return bySample;
+            }, {})}
           />
           <Button
             onClick={addTests}

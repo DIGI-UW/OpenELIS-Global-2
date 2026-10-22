@@ -464,6 +464,15 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void clearingOneComponentPreservesItsSiblingAndCompilesCancellationBeforeDeletion() throws Exception {
+        assertClearComponent(null);
+    }
+
+    @Test
+    public void clearingWithANoteDoesNotReloadTheDeletedResult() throws Exception {
+        assertClearComponent("Corrected the optional component");
+    }
+
+    private void assertClearComponent(String note) throws Exception {
         var target = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(workspace);
         var original = org.springframework.test.util.ReflectionTestUtils.getField(target, "fhir");
         var publisher = org.mockito.Mockito
@@ -477,6 +486,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
                     .filter(r -> clearedComponent.equals(r.getTestResult().getComponentId())).findFirst().orElseThrow();
             String removedId = removed.getId(), removedUuid = removed.getFhirUuidAsString();
             edit.components.get(1).value = "";
+            edit.note = note;
             workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor));
             em.flush();
             em.clear();
@@ -488,8 +498,12 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().getLast()
                     .afterCommit();
             var captured = org.mockito.ArgumentCaptor.forClass(List.class);
+            var savedData = org.mockito.ArgumentCaptor.forClass(
+                    org.openelisglobal.result.action.util.ResultsUpdateDataSet.class);
             org.mockito.Mockito.verify(publisher)
-                    .transformPersistResultsEntryFhirObjects(org.mockito.ArgumentMatchers.any(), captured.capture());
+                    .transformPersistResultsEntryFhirObjects(savedData.capture(), captured.capture());
+            assertFalse(savedData.getValue().getModifiedResults().stream()
+                    .anyMatch(r -> removedId.equals(r.result.getId())));
             assertEquals(1, captured.getValue().size());
             var snapshot = (org.hl7.fhir.r4.model.Observation) captured.getValue().get(0);
             assertEquals(removedUuid, snapshot.getIdElement().getIdPart());
@@ -559,6 +573,37 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(2, workspace.addTests(microCase.getId(), selection, actor).size());
     }
 
+    @Test
+    public void resultsCatalogWorksWithoutReceptionAndRejectsOtherUnits() throws Exception {
+        var follow = additionalTest();
+        var panel = panel(follow);
+        assertTrue(workspace.getCatalog(microCase.getId(), microCase.getSampleTypeId(), actor).tests.stream()
+                .anyMatch(t -> follow.getId().equals(t.id())));
+        mockMvc.perform(get("/rest/microbiology/cases/" + microCase.getId() + "/analyses/catalog")
+                .param("sampleType", microCase.getSampleTypeId())
+                .requestAttr(IActionConstants.USER_SESSION_DATA, session(actor)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.panels[0].id").value(panel.getId()));
+        assertThrows(AccessDeniedException.class,
+                () -> workspace.getCatalog(microCase.getId(), microCase.getSampleTypeId(), outsider));
+        assertThrows(IllegalArgumentException.class,
+                () -> workspace.getCatalog(microCase.getId(), "-12345", actor));
+    }
+
+    @Test
+    public void deactivatedPanelCannotBeSubmittedFromAStaleCatalog() {
+        var panel = panel(additionalTest());
+        assertTrue(workspace.getCatalog(microCase.getId(), microCase.getSampleTypeId(), actor).panels.stream()
+                .anyMatch(p -> panel.getId().equals(p.id())));
+        panel.setIsActive("N");
+        em.merge(panel);
+        var selection = selection();
+        selection.panelIds = List.of(panel.getId());
+        var error = assertThrows(IllegalArgumentException.class,
+                () -> workspace.addTests(microCase.getId(), selection, actor));
+        assertEquals("MICROBIOLOGY_INVALID_PANEL", error.getMessage());
+        assertTrue(workspace.getCatalog(microCase.getId(), microCase.getSampleTypeId(), actor).panels.isEmpty());
+    }
+
     private org.openelisglobal.panel.valueholder.Panel panel(org.openelisglobal.test.valueholder.Test... members) {
         var panel = new org.openelisglobal.panel.valueholder.Panel();
         var localized = new org.openelisglobal.localization.valueholder.Localization();
@@ -572,6 +617,11 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         panel.setIsActive("Y");
         panel.setSysUserId(actor);
         em.persist(panel);
+        var samplePanel = new org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel();
+        samplePanel.setPanelId(panel.getId());
+        samplePanel.setTypeOfSampleId(microCase.getSampleTypeId());
+        samplePanel.setSysUserId(actor);
+        em.persist(samplePanel);
         for (var test : members) {
             var item = new org.openelisglobal.panelitem.valueholder.PanelItem();
             item.setPanel(panel);

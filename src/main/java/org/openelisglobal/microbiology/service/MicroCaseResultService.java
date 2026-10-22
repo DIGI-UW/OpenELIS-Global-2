@@ -5,6 +5,8 @@ import java.util.List;
 import org.openelisglobal.microbiology.form.*;
 
 public interface MicroCaseResultService {
+    MicroCaseTestCatalogForm getCatalog(String caseId, String sampleTypeId, String userId);
+
     List<MicroCaseTestForm> getTests(String caseId, String userId);
 
     List<MicroCaseTestForm> addTests(String caseId, MicroCaseAddTestsForm request, String userId);

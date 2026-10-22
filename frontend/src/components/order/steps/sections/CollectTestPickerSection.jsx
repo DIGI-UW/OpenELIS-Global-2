@@ -29,6 +29,8 @@ const CollectTestPickerSection = ({
   titleId = "collect.addTests.title",
   helperId = "collect.addTests.helper",
   excludedTestIds = [],
+  excludedTestIdsBySample = {},
+  cataloguePath = "/rest/sample-type-tests",
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -44,13 +46,25 @@ const CollectTestPickerSection = ({
     };
   }, []);
 
+  const cataloguePathRef = useRef(cataloguePath);
+  useEffect(() => {
+    cataloguePathRef.current = cataloguePath;
+    fetchedTypesRef.current = {};
+    setCatalogue({});
+    setFailedTypes({});
+  }, [cataloguePath]);
+
   const loadCatalogue = (sampleTypeId) => {
+    const requestedPath = cataloguePath;
     fetchedTypesRef.current[sampleTypeId] = true;
     setFailedTypes((prev) => ({ ...prev, [sampleTypeId]: false }));
     getFromOpenElisServer(
-      `/rest/sample-type-tests?sampleType=${sampleTypeId}`,
+      `${cataloguePath}?sampleType=${encodeURIComponent(sampleTypeId)}`,
       (response) => {
-        if (!componentMounted.current) {
+        if (
+          !componentMounted.current ||
+          requestedPath !== cataloguePathRef.current
+        ) {
           return;
         }
         if (!response) {
@@ -76,7 +90,7 @@ const CollectTestPickerSection = ({
       }
       loadCatalogue(sampleTypeId);
     });
-  }, [samples]);
+  }, [samples, cataloguePath]);
 
   const updateSample = (sampleIndex, changes) =>
     setSamples(
@@ -237,7 +251,11 @@ const CollectTestPickerSection = ({
                 ))}
                 {matching(
                   options.tests.filter(
-                    (test) => !excludedTestIds.includes(String(test.id)),
+                    (test) =>
+                      !excludedTestIds.includes(String(test.id)) &&
+                      !(
+                        excludedTestIdsBySample[sample.sampleItemId] || []
+                      ).includes(String(test.id)),
                   ),
                   term,
                 ).map((test) => (
