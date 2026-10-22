@@ -437,8 +437,8 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         f.proposals = row.getProposals().stream().map(p -> new MicroCultureForm.Proposal(p.getId(), p.getSignal(),
                 p.getRecordedAt(), p.getConfirmedBy(), p.getConfirmedAt())).toList();
         boolean incubating = f.outcome == null || "GROWTH".equals(f.outcome);
-        f.canEditInoculatedAt = f.sourceSampleItemId != null && !f.sourceSampleItemId.isBlank()
-                && f.readings.isEmpty() && incubating;
+        f.canEditInoculatedAt = f.sourceSampleItemId != null && !f.sourceSampleItemId.isBlank() && f.readings.isEmpty()
+                && incubating;
         if (f.duration != null && f.durationUnit != null) {
             long extensionMillis = row.getExtensions().stream()
                     .mapToLong(e -> MicroCultureTiming.milliseconds(e.getExtendBy(), e.getUnit())).sum();

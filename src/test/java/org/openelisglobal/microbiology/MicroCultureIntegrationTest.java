@@ -514,8 +514,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         row.setSourceSampleItemId(null);
         em.flush();
         em.clear();
-        assertFalse(service.getRows(microCase.getId()).stream().filter(r -> r.id.equals(created.id))
-                .findFirst().orElseThrow().canEditInoculatedAt);
+        assertFalse(service.getRows(microCase.getId()).stream().filter(r -> r.id.equals(created.id)).findFirst()
+                .orElseThrow().canEditInoculatedAt);
     }
 
     @Test
