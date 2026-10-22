@@ -6,9 +6,17 @@ import { Router, Route } from "react-router-dom";
 import { createMemoryHistory } from "history";
 import CaseWorklist from "../CaseWorklist";
 import CaseViewShell from "../CaseViewShell";
+import {
+  MICROBIOLOGY_CASE_READY_MARK,
+  markMicrobiologyReady,
+} from "../MicrobiologyPerformance";
 import messages from "../../../languages/en.json";
 
 vi.mock("../CaseTestingWorkspace", () => ({ default: () => null }));
+vi.mock("../MicrobiologyPerformance", async (importOriginal) => ({
+  ...(await importOriginal()),
+  markMicrobiologyReady: vi.fn(),
+}));
 
 const renderPage = (component, path = "/Microbiology/worklist") => {
   const history = createMemoryHistory({ initialEntries: [path] });
@@ -46,6 +54,39 @@ const shell = {
 };
 
 describe("MVP microbiology case workspace", () => {
+  test("marks case ready only after a successful shell load", async () => {
+    markMicrobiologyReady.mockClear();
+    let finish;
+    const service = {
+      getCase: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    };
+    renderPage(
+      <CaseViewShell service={service} caseId="case-1" />,
+      "/Microbiology/cases/case-1?view=workbench",
+    );
+    expect(markMicrobiologyReady).not.toHaveBeenCalled();
+    await act(async () => finish(shell));
+    expect(screen.getByText("Test Patient")).toBeVisible();
+    expect(markMicrobiologyReady).toHaveBeenCalledWith(
+      MICROBIOLOGY_CASE_READY_MARK,
+    );
+  });
+  test("failed case loads never emit the ready mark", async () => {
+    markMicrobiologyReady.mockClear();
+    const service = {
+      getCase: vi.fn().mockRejectedValue(new Error("unavailable")),
+    };
+    await act(async () =>
+      renderPage(<CaseViewShell service={service} caseId="case-1" />),
+    );
+    expect(markMicrobiologyReady).not.toHaveBeenCalled();
+    expect(screen.queryByText("Test Patient")).not.toBeInTheDocument();
+  });
   test("lists cases and keeps filters when opening the shell", async () => {
     const service = {
       searchCases: vi.fn().mockResolvedValue({

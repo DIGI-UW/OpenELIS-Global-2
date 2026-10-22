@@ -1,4 +1,8 @@
 import { labTimestamp } from "./MicrobiologyTime";
+import {
+  MICROBIOLOGY_CASE_READY_MARK,
+  markMicrobiologyReady,
+} from "./MicrobiologyPerformance";
 import React, { useEffect, useState, useRef } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -146,6 +150,11 @@ export default function CaseViewShell({
       live = false;
     };
   }, [id, service]);
+  useEffect(() => {
+    if (!loading && !error && detail?.id === id) {
+      markMicrobiologyReady(MICROBIOLOGY_CASE_READY_MARK);
+    }
+  }, [loading, error, detail, id]);
   const transfer = () => {
     const requestedVisit = visitGeneration.current;
     setSaving(true);
