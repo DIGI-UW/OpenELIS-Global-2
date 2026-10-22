@@ -117,7 +117,7 @@ test("culture filters request culture-grain rows and show due reasons", async ()
       expect.stringContaining("cultureFilter=CHECK_DUE"),
     ),
   );
-  expect(screen.getByText("Culture check due")).toBeVisible();
+  expect(await screen.findByText("Culture check due")).toBeVisible();
 });
 
 test("batch inoculation keeps the test selection outside the culture request", async () => {
@@ -152,6 +152,7 @@ test("batch inoculation keeps the test selection outside the culture request", a
     screen.getByLabelText(messages["microbiology.culture.title"]),
     { target: { value: "AWAITING_INOCULATION" } },
   );
+  await screen.findByText("OWNED-001");
   fireEvent.click(screen.getAllByRole("checkbox").at(-1));
   fireEvent.click(
     screen.getByRole("button", { name: "Inoculate selected cases" }),
@@ -193,6 +194,78 @@ test("batch inoculation keeps the test selection outside the culture request", a
   expect(
     screen.getByRole("button", { name: "Inoculate selected cases" }),
   ).toBeDisabled();
+});
+
+test("a pending bench filter cannot select stale rows or run their actions", async () => {
+  let finishSearch;
+  const firstRow = {
+    id: "case-1:row-1",
+    caseId: "case-1",
+    cultureId: "row-1",
+    accessionNumber: "OWNED-001",
+    canWrite: true,
+    attention: ["CHECK_DUE"],
+    culture: { containerIdentifier: "Plate A" },
+  };
+  const service = {
+    searchBench: vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [firstRow], labUnits: [], total: 1 })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishSearch = resolve;
+          }),
+      ),
+  };
+  renderPage(<CultureWorklist service={service} />);
+  await screen.findByText("Plate A");
+  fireEvent.click(screen.getByRole("checkbox", { name: "Select row" }));
+  expect(
+    screen.getByRole("button", { name: "Print bench sheet" }),
+  ).toBeEnabled();
+
+  fireEvent.change(
+    screen.getByLabelText(messages["microbiology.culture.title"]),
+    {
+      target: { value: "FINAL_READ_DUE" },
+    },
+  );
+  expect(screen.queryByText("Plate A")).toBeNull();
+  expect(screen.queryByRole("checkbox", { name: "Select row" })).toBeNull();
+  expect(
+    screen.getByRole("checkbox", { name: "Select all rows" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("button", { name: "Print bench sheet" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("button", { name: "Record no growth" }),
+  ).toBeDisabled();
+
+  finishSearch({
+    rows: [
+      {
+        ...firstRow,
+        id: "case-1:row-2",
+        cultureId: "row-2",
+        culture: { containerIdentifier: "Plate B" },
+      },
+    ],
+    labUnits: [],
+    total: 1,
+  });
+  await screen.findByText("Plate B");
+  expect(
+    screen.getByRole("checkbox", { name: "Select row" }),
+  ).not.toBeChecked();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Select row" }));
+  expect(
+    screen.getByRole("button", { name: "Print bench sheet" }),
+  ).toBeEnabled();
+  expect(
+    screen.getByRole("button", { name: "Record no growth" }),
+  ).toBeEnabled();
 });
 
 test("a culture worklist deep link preserves its accession search", async () => {

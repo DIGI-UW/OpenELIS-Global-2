@@ -296,7 +296,10 @@ export default function CultureWorklist({ service }) {
       )}
       <DataTable
         key={`${filter}-${refresh}-${(data?.rows || []).map((row) => row.id).join(",")}`}
-        rows={(data?.rows || []).map((r) => ({ ...r, disabled: false }))}
+        rows={(loading || error ? [] : data?.rows || []).map((r) => ({
+          ...r,
+          disabled: false,
+        }))}
         headers={[
           { key: "accessionNumber", header: t("common.labNumber") },
           { key: "patientName", header: t("common.patient") },
@@ -371,7 +374,10 @@ export default function CultureWorklist({ service }) {
               <Table aria-label={t("microbiology.worklist.title")}>
                 <TableHead>
                   <TableRow>
-                    <TableSelectAll {...getSelectionProps()} />
+                    <TableSelectAll
+                      {...getSelectionProps()}
+                      disabled={loading || error || !rows.length}
+                    />
                     {headers.map((h) => (
                       <TableHeader
                         {...getHeaderProps({ header: h })}
