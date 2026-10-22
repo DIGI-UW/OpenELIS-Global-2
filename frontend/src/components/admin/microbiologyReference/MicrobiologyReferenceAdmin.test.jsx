@@ -621,8 +621,8 @@ describe("microbiology reference administration", () => {
             method: "MIC",
             organismName: "Synthetic organism",
             antibioticName: "Synthetic agent",
-            susceptibleValue: 1,
-            resistantValue: 4,
+            susceptibleValue: 0.0001,
+            resistantValue: 0.0001,
             resistantInclusive: false,
             seeded: true,
           },
@@ -640,7 +640,7 @@ describe("microbiology reference administration", () => {
       await screen.findByText(
         messages["microbiology.admin.breakpoints.configurationManaged.title"],
       );
-      expect(await screen.findByText("> 4")).toBeInTheDocument();
+      expect(await screen.findByText("> 0.0001")).toBeInTheDocument();
       expect(
         screen.queryByLabelText(messages["microbiology.admin.field.notes"]),
       ).not.toBeInTheDocument();

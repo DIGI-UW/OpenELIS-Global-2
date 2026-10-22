@@ -375,7 +375,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       rule.resistantValue == null
         ? "—"
         : rule.resistantInclusive === false
-          ? `${rule.method === "MIC" ? ">" : "<"} ${intl.formatNumber(rule.resistantValue)}`
+          ? `${rule.method === "MIC" ? ">" : "<"} ${intl.formatNumber(rule.resistantValue, { maximumFractionDigits: 4 })}`
           : rule.resistantValue,
     source: rule.locallyCustomized
       ? "LOCAL"
