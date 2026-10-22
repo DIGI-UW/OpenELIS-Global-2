@@ -274,6 +274,27 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void failedRestoreKeepsActiveIntentWhenRetainingOrUpdatingLocalStateFails() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenThrow(new IllegalStateException("retain failed"));
+        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+        org.mockito.Mockito.doReturn(retained).when(activationRecordService).retain(analyzer, snapshot.mapping(),
+                confirmation, activationAcknowledgement, "ACTIVE", ACTOR);
+        doThrow(new IllegalStateException("update failed")).when(analyzerService).update(analyzer);
+        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
+        assertTrue(analyzer.isActive());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), eq("DEACTIVATE"), any());
+    }
+
+    @Test
     public void deactivatesTheExactSavedBridgeConnectionRevision() throws Exception {
         ObjectNode deactivationAcknowledgement = fixture("connection-deactivate-ack.json");
         analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);

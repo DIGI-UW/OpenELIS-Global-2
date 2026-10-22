@@ -220,3 +220,18 @@ can report zero transferred bytes; that alone does not prove an empty archive.
 If Maven explicitly reports an empty or damaged JAR, identify that artifact and
 recover only the affected cache entry. Do not prune all Docker or Maven caches
 as routine setup. Automatic Bridge cache repair is separate follow-up work.
+
+### Install-owned TLS stores
+
+The published Compose stack generates a private TLS key on first start and
+reuses it on later starts. The upgrade script replaces both historical shared
+certgen certificate subjects (DIGI-UW and I-TECH-UW), including a shared key
+previously exported into the install directory. Genuine site keys, separate
+proxy certificates, and extra truststore entries are preserved.
+
+Set `SSL_KEYSTORE_PASSWORD` and `SSL_TRUSTSTORE_PASSWORD` consistently in
+`.env`. Compose passes these to certificate generation, Tomcat, FHIR, Bridge,
+and the OpenELIS Spring properties. Defaults remain `kspass` and `tspass`;
+custom passwords are supported. Changing the variables does not re-encrypt
+existing stores: the script preserves an unreadable store and logs a warning.
+Keep the passwords that were used to create existing stores when upgrading.

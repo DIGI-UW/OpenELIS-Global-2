@@ -262,6 +262,8 @@ export interface AnalyzerTypeMappingView {
     confirmedAt?: string | null;
     confirmedRows: AnalyzerMappingSourceRow[];
     excludedRows: AnalyzerMappingSourceRow[];
+    typeReadingChanged: boolean;
+    rowsReadDifferently: AnalyzerMappingSourceRow[];
   };
 }
 

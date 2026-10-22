@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingConfirmationDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
@@ -46,15 +47,18 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final BridgeProfileCatalogService profileCatalogService;
     private final ObjectMapper objectMapper;
+    private final BridgeAnalyzerConnectionClient connectionClient;
 
     public AnalyzerMappingConfirmationServiceImpl(AnalyzerMappingConfirmationDAO confirmationDAO,
             AuditTrailService auditTrailService, SystemUserService systemUserService,
-            AnalyzerMappingCatalogService mappingCatalogService, BridgeProfileCatalogService profileCatalogService) {
+            AnalyzerMappingCatalogService mappingCatalogService, BridgeProfileCatalogService profileCatalogService,
+            BridgeAnalyzerConnectionClient connectionClient) {
         this.confirmationDAO = confirmationDAO;
         this.auditTrailService = auditTrailService;
         this.systemUserService = systemUserService;
         this.mappingCatalogService = mappingCatalogService;
         this.profileCatalogService = profileCatalogService;
+        this.connectionClient = connectionClient;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -84,11 +88,13 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
                     "Confirmation rows must exactly match the current mapping decisions");
         }
 
-        Optional<ServedReading> served = servedIfReadable(context.profile);
+        Optional<ServedReading> served = servedIfReadable(context.profile, candidate.mapping().getAnalyzer());
         Optional<AnalyzerMappingConfirmation> existing = confirmationDAO.findByMappingId(candidate.mapping().getId());
         if (existing.isPresent()) {
-            return served.map(reading -> confirmAgain(existing.get(), context, reading, effectiveActor))
-                    .orElseGet(() -> toView(existing.get(), AnalyzerMappingConfirmationView.State.CURRENT));
+            ServedReading reading = served.orElseThrow(() -> new AnalyzerRequestException(
+                    "analyzer.mapping.error.profileUnavailable",
+                    "The analyzer profile could not be read. Retry confirmation when the Bridge is available."));
+            return confirmAgain(existing.get(), context, reading, effectiveActor);
         }
 
         AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
@@ -121,7 +127,8 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     public AnalyzerMappingConfirmationView getStatus(AnalyzerMappingSnapshot candidate, String recognitionFingerprint) {
         CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
         return confirmationDAO.findLatestByAnalyzerId(candidate.mapping().getAnalyzer().getId()).map(confirmation -> {
-            AnalyzerConfirmationReading reading = currentReading(context.profile, confirmation);
+            AnalyzerConfirmationReading reading = currentReading(context.profile, confirmation,
+                    candidate.mapping().getAnalyzer());
             boolean current = isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
                     && hasExactSavedRows(candidate, confirmation) && reading.isUnchanged();
             return withReading(toView(confirmation, current ? AnalyzerMappingConfirmationView.State.CURRENT
@@ -156,7 +163,8 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         }
         AnalyzerMappingConfirmation confirmation = stored.get();
         boolean durableCandidateMatch = isDurableCandidateMatch(candidate, context, confirmation);
-        AnalyzerConfirmationReading reading = currentReading(context.profile, confirmation);
+        AnalyzerConfirmationReading reading = currentReading(context.profile, confirmation,
+                candidate.mapping().getAnalyzer());
         boolean mappingsCurrent = durableCandidateMatch && hasCurrentCatalogBindings(candidate)
                 && hasExactSavedRows(candidate, confirmation) && reading.changedRows().isEmpty();
         boolean recognitionCurrent = durableCandidateMatch && !reading.typeChanged()
@@ -174,7 +182,16 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         }
         AnalyzerMappingConfirmation confirmation = found.get();
         String readFrom = confirmation.getReadingsFingerprint();
+        JsonNode overrides;
+        try {
+            overrides = connectionOverrides(binding.mapping().getAnalyzer());
+        } catch (BridgeAnalyzerConnectionException exception) {
+            return AnalyzerConfirmationReading.typeReadingChanged();
+        }
         if (readFrom != null && readFrom.equals(deliveredProfileFingerprint)) {
+            if (!savedOverrides(readTree(confirmation.getTypeReadingJson())).equals(overrides)) {
+                return AnalyzerConfirmationReading.typeReadingChanged();
+            }
             return AnalyzerConfirmationReading.unchanged().arrivingAs(new AnalyzerArrivalReading(
                     readTree(confirmation.getTypeReadingJson()), readRowReadings(confirmation.getRowReadingsJson())));
         }
@@ -183,12 +200,11 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         // Bridge serves, and how it arrived stays unknown.
         ServedReading served;
         try {
-            served = served(binding.mapping().getProfilePin());
+            served = withConnectionReading(served(binding.mapping().getProfilePin()), overrides);
         } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
             LogEvent.logWarn(getClass().getSimpleName(), "readingOnDelivery",
                     "The served profile could not be read: " + exception.getMessage());
-            return readFrom == null ? AnalyzerConfirmationReading.unchanged()
-                    : AnalyzerConfirmationReading.typeReadingChanged();
+            return AnalyzerConfirmationReading.typeReadingChanged();
         }
         AnalyzerArrivalReading arrival = served.fingerprint().equals(deliveredProfileFingerprint)
                 ? new AnalyzerArrivalReading(served.type(), served.rows())
@@ -224,12 +240,18 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         String sub = subIdentity == null ? "" : subIdentity;
         Map<AnalyzerMappingSourceRow, JsonNode> confirmed = readRowReadings(confirmation.getRowReadingsJson());
         JsonNode record = confirmed.get(new AnalyzerMappingSourceRow(code, null, sub));
-        if (record == null || !record.equals(arrived.get().byValue().get(null))) {
+        if (record == null) {
+            // A code undeclared at arrival and confirmation has no profile reading on
+            // either side. It may recover only after an explicit mapping confirmation.
+            return arrived.get().byValue().isEmpty() && readRowsForView(confirmation.getConfirmedRowsJson())
+                    .contains(new AnalyzerMappingSourceRow(code, null, sub));
+        }
+        if (!record.equals(arrived.get().byValue().get(null))) {
             return false;
         }
         return arrived.get().byValue().entrySet().stream().filter(entry -> entry.getKey() != null).allMatch(entry -> {
             JsonNode now = confirmed.get(new AnalyzerMappingSourceRow(code, entry.getKey(), sub));
-            return now == null || now.equals(entry.getValue());
+            return entry.getValue().equals(now);
         });
     }
 
@@ -240,8 +262,11 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
             return false;
         }
         ServedReading reading = servedFrom(served);
-        return confirmationDAO.findByMappingId(mappingId).filter(confirmation -> hasText(confirmation.getAuditEventId())
-                && readingAgainst(reading, confirmation).isUnchanged()).isPresent();
+        return confirmationDAO.findByMappingId(mappingId)
+                .filter(confirmation -> hasText(confirmation.getAuditEventId()) && readingAgainst(
+                        withConnectionReading(reading, connectionOverrides(confirmation.getMapping().getAnalyzer())),
+                        confirmation).isUnchanged())
+                .isPresent();
     }
 
     /**
@@ -274,11 +299,12 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
      * The served profile against a confirmation, without writing; an unreadable
      * profile changes nothing, so a Bridge outage never undoes a verification.
      */
-    private AnalyzerConfirmationReading currentReading(AnalyzerProfilePin pin,
-            AnalyzerMappingConfirmation confirmation) {
+    private AnalyzerConfirmationReading currentReading(AnalyzerProfilePin pin, AnalyzerMappingConfirmation confirmation,
+            Analyzer analyzer) {
         try {
-            return readingAgainst(served(pin), confirmation);
-        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
+            return readingAgainst(withConnectionReading(served(pin), connectionOverrides(analyzer)), confirmation);
+        } catch (BridgeProfileCatalogException | BridgeAnalyzerConnectionException
+                | IllegalArgumentException exception) {
             return AnalyzerConfirmationReading.unchanged();
         }
     }
@@ -287,7 +313,8 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         if (confirmation.getReadingsFingerprint() == null) {
             return AnalyzerConfirmationReading.unchanged();
         }
-        if (served.fingerprint().equals(confirmation.getReadingsFingerprint())) {
+        if (served.fingerprint().equals(confirmation.getReadingsFingerprint())
+                && savedOverrides(served.type()).equals(savedOverrides(readTree(confirmation.getTypeReadingJson())))) {
             return AnalyzerConfirmationReading.unchanged();
         }
         return compare(confirmation, served);
@@ -302,14 +329,42 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         return new AnalyzerConfirmationReading(typeChanged, changed);
     }
 
-    private Optional<ServedReading> servedIfReadable(AnalyzerProfilePin pin) {
+    private Optional<ServedReading> servedIfReadable(AnalyzerProfilePin pin, Analyzer analyzer) {
         try {
-            return Optional.of(served(pin));
-        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
+            return Optional.of(withConnectionReading(served(pin), connectionOverrides(analyzer)));
+        } catch (BridgeProfileCatalogException | BridgeAnalyzerConnectionException
+                | IllegalArgumentException exception) {
             LogEvent.logWarn(getClass().getSimpleName(), "servedIfReadable",
                     "The served profile could not be read: " + exception.getMessage());
             return Optional.empty();
         }
+    }
+
+    private JsonNode connectionOverrides(Analyzer analyzer) {
+        ObjectNode overrides = objectMapper.createObjectNode();
+        if (analyzer == null || !hasText(analyzer.getBridgeConnectionId())) {
+            return overrides;
+        }
+        ObjectNode connection = connectionClient.getConnection(analyzer.getBridgeConnectionId());
+        if (connection == null) {
+            throw new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unavailable");
+        }
+        connection.path("values").path("codeOverrides").fields()
+                .forEachRemaining(entry -> overrides.put(entry.getKey(), entry.getValue().asText().trim()));
+        return overrides;
+    }
+
+    private JsonNode savedOverrides(JsonNode type) {
+        return type.has("connection.codeOverrides") ? type.path("connection.codeOverrides")
+                : objectMapper.createObjectNode();
+    }
+
+    private ServedReading withConnectionReading(ServedReading served, JsonNode overrides) {
+        ObjectNode type = (ObjectNode) served.type().deepCopy();
+        if (!overrides.isEmpty()) {
+            type.set("connection.codeOverrides", overrides);
+        }
+        return new ServedReading(served.fingerprint(), served.rows(), type);
     }
 
     private ServedReading served(AnalyzerProfilePin pin) {

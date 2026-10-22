@@ -21,6 +21,7 @@ PROXY_KEY=/etc/ssl/private/apache-selfsigned.key
 # The self-signed certificate the public certgen image ships; it is rebuilt from time
 # to time, so it is known by its name rather than its fingerprint.
 IMAGE_SUBJECT="CN=localhost,OU=DIGI,O=I-TECH-UW,L=Seattle,ST=WA,C=US"
+REPOSITORY_IMAGE_SUBJECT="CN=localhost,OU=DIGI,O=DIGI-UW,L=Seattle,ST=WA,C=US"
 export KEYSTORE_PW="${KEYSTORE_PW:-kspass}"
 export TRUSTSTORE_PW="${TRUSTSTORE_PW:-tspass}"
 DAYS="${CERT_VALIDITY_DAYS:-3650}"
@@ -35,7 +36,8 @@ is_image_cert() {
   [ -n "$pem" ] || return 1
   subject=$(printf '%s\n' "$pem" | openssl x509 -noout -subject -nameopt RFC2253 2>/dev/null | sed 's/^subject= *//')
   issuer=$(printf '%s\n' "$pem" | openssl x509 -noout -issuer -nameopt RFC2253 2>/dev/null | sed 's/^issuer= *//')
-  [ "$subject" = "$IMAGE_SUBJECT" ] && [ "$issuer" = "$IMAGE_SUBJECT" ]
+  [ "$subject" = "$issuer" ] || return 1
+  [ "$subject" = "$IMAGE_SUBJECT" ] || [ "$subject" = "$REPOSITORY_IMAGE_SUBJECT" ]
 }
 
 keystore_opens() {
@@ -70,7 +72,7 @@ if [ -s "$STORES/keystore" ] && ! keystore_opens; then
   exit 0
 fi
 
-if [ ! -s "$KEY" ] || [ ! -s "$CERT" ]; then
+if [ ! -s "$KEY" ] || [ ! -s "$CERT" ] || is_image_cert <"$CERT"; then
   if [ -s "$STORES/keystore" ] && ! keystore_cert | is_image_cert; then
     echo "Keeping the certificate this install's keystore already holds"
     (umask 077 && openssl pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -nocerts -nodes \

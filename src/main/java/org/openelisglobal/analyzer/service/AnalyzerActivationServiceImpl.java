@@ -131,7 +131,11 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             return AnalyzerActivationResult.activated(analyzer);
         } catch (RuntimeException exception) {
             previousState.restore(analyzer);
-            compensateIfApplied(context, acknowledgement, "DEACTIVATE", deactivationCommandIdSupplier, exception);
+            // Retrying a failed restore fulfills an already-active runtime intent. A
+            // local persistence failure must not switch that connection off.
+            if (previousState.status() != Analyzer.AnalyzerStatus.ACTIVE && !previousState.active()) {
+                compensateIfApplied(context, acknowledgement, "DEACTIVATE", deactivationCommandIdSupplier, exception);
+            }
             throw exception;
         }
     }

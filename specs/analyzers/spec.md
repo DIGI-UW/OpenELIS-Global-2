@@ -125,7 +125,11 @@ is listed in [roadmap.md](roadmap.md).
     flags. When an
     analyzer's mapping is confirmed,
     OpenELIS keeps the reading each mapped row was confirmed against and the
-    type's reading. When the profile the Bridge serves reads differently:
+    type's reading, including that connection's instrument-code overrides.
+    Changing or removing `codeOverrides` requires reconfirmation; unrelated connection
+    settings do not. Overrides have already been applied to a delivered canonical
+    code, so recovery compares its parsed meaning, not the former override map.
+    When the profile the Bridge serves reads differently:
     - a mapped row whose reading changed, or whose code is gone, holds its
       results with that reason until a person confirms the row again;
     - a change to the type's reading holds the analyzer's results until a
@@ -137,6 +141,13 @@ is listed in [roadmap.md](roadmap.md).
     fingerprint. This establishes a baseline from that point forward; it cannot
     reconstruct historical interpretation. Read-only verification does not
     invent a historical reading or invalidate a confirmation from a hash change.
+    If no baseline exists and the served profile cannot be read, deliveries wait
+    until the interpretation can be established. Reconfirmation requires a readable
+    profile and reports failure if that read fails. Reordering component declarations
+    does not change their meaning. An undeclared code with no record reading at
+    arrival or confirmation can recover after an explicit mapping confirmation;
+    a previously declared record or value that is missing from the confirmation
+    cannot.
 
     Everything else in a profile changes nothing: names, hints, codings and
     LOINC, connection fields and defaults, capabilities, a new assay. The

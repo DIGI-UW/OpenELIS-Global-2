@@ -18,7 +18,6 @@ import {
   activateShippedAnalyzer,
   activateShippedBc5380,
   activateShippedGeneXpert,
-  excludeCodes,
 } from "../../../helpers/analyzer-setup-flow";
 import { FLUOROCYCLER, QUANTSTUDIO } from "../../../helpers/shipped-profiles";
 import { csrfToken, withAuthedPage } from "../../../helpers/api-session";
@@ -29,12 +28,7 @@ import {
   type Order,
 } from "../../../helpers/analyzer-review";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import {
-  applyMappings,
-  confirmMapping,
-  doNotReceive,
-  saveMapping,
-} from "../../../helpers/analyzer-mapping-page";
+
 import {
   openFirstWaiting,
   openValidationQueue,
@@ -755,13 +749,13 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
   });
 
   test(
-    "its microscope exam is held until the lab marks those codes Do not receive, then the CBC is accepted",
+    "its shipped microscope exclusions stay visible and the CBC is accepted",
     { tag: ["@evidence", "@hl7", "@exceptions"] },
     async ({ page }, testInfo) => {
       const demo = createDemoPresentation(page, testInfo);
       await demo.intro(
         "Mindray BC-5380: a microscope exam the lab does not do",
-        "The instrument reports a manual differential with every CBC. This lab decides not to receive it.",
+        "The instrument reports a manual differential with every CBC. The shipped mapping excludes those records by default.",
       );
       await demo.caption(
         "Off screen: a CBC is ordered on whole blood, and the BC-5380 sends its message, microscope exam included.",
@@ -778,50 +772,19 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
         worklistFor<WorklistRow>(page, analyzer.id, order.accession);
       await expect
         .poll(async () => (await staged()).length)
-        .toBe(REPORTED.length + MICROSCOPE_EXAM.length);
-      const held = (await staged()).filter((row) => row.importIssueReason);
-      expect(held.map((row) => row.rawTestCode).sort()).toEqual(
-        [...MICROSCOPE_EXAM].sort(),
-      );
-      expect(new Set(held.map((row) => row.importIssueReason))).toEqual(
-        new Set(["unknown_analyzer_test"]),
-      );
-
-      await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
-        waitUntil: "domcontentloaded",
-      });
-      await expect(
-        page.getByText(
-          `${MICROSCOPE_EXAM.length} analyzer results need attention`,
+        .toBe(REPORTED.length);
+      expect(
+        (await staged()).some((row) =>
+          MICROSCOPE_EXAM.includes(row.rawTestCode),
         ),
-      ).toBeVisible();
-      const firstHeld = page.getByTestId(`held-analyzer-result-${held[0].id}`);
+      ).toBe(false);
+      await page.goto(`/analyzers/${analyzer.id}/mapping`);
       await demo.caption(
-        `The CBC's ${REPORTED.length} values wait for review. The ${MICROSCOPE_EXAM.length} microscope-exam records are held: the profile declares them, but this lab's mapping has no decision for them yet, since no catalog test carries their codes.`,
-      );
-      await demo.highlight(firstHeld);
-      await demo.caption("A held row leads to this analyzer's mapping page.");
-      await firstHeld
-        .getByRole("link", { name: "Review analyzer mapping" })
-        .click();
-      await expect(page).toHaveURL(
-        new RegExp(`/analyzers/${analyzer.id}/mapping`),
-      );
-      await demo.caption(
-        "The lab does its differentials by hand, so each microscope-exam code is marked Do not receive.",
+        "The shipped mapping marks each microscope-exam code Do not receive. The lab can see and change these decisions on its own analyzer.",
       );
       for (const code of MICROSCOPE_EXAM) {
-        await doNotReceive(page, code);
+        await expect(page.locator(`#exclude-test-${code}`)).toBeChecked();
       }
-      await demo.caption(
-        "Save, confirm, and apply: the held records are retried against the mapping, and records the lab does not receive are cleared.",
-      );
-      await saveMapping(page);
-      await confirmMapping(page);
-      await applyMappings(page);
-      await expect
-        .poll(async () => (await staged()).length)
-        .toBe(REPORTED.length);
       expect((await staged()).filter((row) => row.importIssueReason)).toEqual(
         [],
       );
@@ -833,7 +796,7 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
         page.getByText(/analyzer results? needs? attention/),
       ).toHaveCount(0);
       await demo.caption(
-        "Nothing is held. The reviewer accepts the CBC; the next CBC arrives without the microscope exam.",
+        "Nothing is held. The reviewer accepts the CBC; excluded microscope records never entered the worklist.",
       );
       await acceptAll(page, analyzer, [order.accession], {
         onScreen: true,
@@ -848,7 +811,7 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
       }
       await demo.verified(
         `The CBC on ${order.accession} is saved; the microscope exam never became a result`,
-        `${MICROSCOPE_EXAM.length} records were held, then cleared by the lab's own decision on the mapping page.`,
+        `${MICROSCOPE_EXAM.length} microscope records were excluded by the shipped mapping, whose decisions remain visible to the lab.`,
       );
     },
   );
@@ -866,8 +829,7 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
         `Results BC-5380 ${run}`,
         senderId,
       );
-      // The lab's first CBC brought the microscope exam codes, held for its
-      // decision; it excluded them on the analyzer's mapping page.
+      // Shipped exclusions keep microscope records out of the first CBC too.
       const { order } = await orderCbc(page);
       await sendBc5380Fixture(
         page,
@@ -876,14 +838,6 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
         "analysis-result",
         senderId,
       );
-      await expect
-        .poll(
-          async () =>
-            (await worklistFor<WorklistRow>(page, active.id, order.accession))
-              .length,
-        )
-        .toBe(REPORTED.length + MICROSCOPE_EXAM.length);
-      await excludeCodes(page, active.id, MICROSCOPE_EXAM);
       await expect
         .poll(
           async () =>

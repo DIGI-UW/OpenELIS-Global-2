@@ -33,7 +33,8 @@ public interface AnalyzerMappingConfirmationService {
     /**
      * Whether a held result's record, as it read on arrival, reads the way the
      * mapping's confirmation does: its parsing, the record itself and every value
-     * both know.
+     * known on arrival. An undeclared record requires explicit mapping
+     * confirmation.
      */
     boolean readsAsConfirmed(String mappingId, String code, String subIdentity, String arrivalReading);
 

@@ -132,6 +132,18 @@ public class AnalyzerLifecycleServiceTest {
         assertEquals("analyzer.lifecycle.error.inUse", refused.messageKey());
     }
 
+    @Test
+    public void migratedActivationDatePreventsDeletionWithoutNewActivationRecords() {
+        Analyzer migrated = analyzer(Analyzer.AnalyzerStatus.INACTIVE);
+        migrated.setLastActivatedDate(new java.util.Date(1234));
+        given(migrated);
+        AnalyzerRequestException refused = assertThrows(AnalyzerRequestException.class,
+                () -> service.delete("42", "17"));
+        assertEquals("analyzer.lifecycle.error.inUse", refused.messageKey());
+        verify(mappingDAO, never()).deleteAnalyzerWithItsMappings(any());
+        verify(auditTrailService, never()).saveHistory(any(), any(), any(), any(), any());
+    }
+
     private void given(Analyzer analyzer) {
         when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));

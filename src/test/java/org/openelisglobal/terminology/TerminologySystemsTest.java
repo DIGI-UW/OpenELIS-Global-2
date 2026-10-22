@@ -31,6 +31,14 @@ public class TerminologySystemsTest {
     }
 
     @Test
+    public void canonicalUrisUseTheirStorageAliasesBeforeTheLengthLimit() {
+        for (String source : new String[] { "LOINC", "SNOMED", "CIEL", "OCL" }) {
+            assertEquals(source, TerminologySystems.sourceOf(TerminologySystems.urlOf(source)));
+        }
+        assertEquals("LOINC", TerminologySystems.sourceOf(" http://loinc.org "));
+    }
+
+    @Test
     public void aKnownSourceIsRecognizedWhateverTheServersLocale() {
         java.util.Locale before = java.util.Locale.getDefault();
         try {

@@ -24,6 +24,31 @@ public class AnalyzerRecordReadingTest {
     }
 
     @Test
+    public void removingAValueOrSpellingChangesOnlyItsRecord() throws Exception {
+        String kept = "{\"test_code\":\"GLU\",\"loinc\":\"2345-7\",\"unit\":\"mg/dL\"}";
+        BridgeAnalyzerProfile arrived = profile(
+                "{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"values\":[\"POS\",\"NEG\"],"
+                        + "\"translations\":{\"NEG\":[\"NEGATIF\"]}}",
+                kept);
+        for (String current : new String[] { "{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"values\":[\"POS\"]}",
+                "{\"test_code\":\"HBSAG\",\"loinc\":\"5196-1\",\"values\":[\"POS\",\"NEG\"]}" }) {
+            Set<AnalyzerMappingRowKey> alike = AnalyzerRecordReading.readAlike(arrived, profile(current, kept));
+            assertFalse(alike.contains(AnalyzerMappingRowKey.main("HBSAG")));
+            assertTrue("unrelated results still read alike", alike.contains(AnalyzerMappingRowKey.main("GLU")));
+        }
+    }
+
+    @Test
+    public void removingAComponentValueChangesOnlyThatComponent() throws Exception {
+        String test = "{\"test_code\":\"MTB\",\"loinc\":\"38379-4\",\"components\":[{\"code\":\"call\","
+                + "\"sub_identity\":\"MTB&Call\",\"values\":[%s]}]}";
+        Set<AnalyzerMappingRowKey> alike = AnalyzerRecordReading
+                .readAlike(profile(String.format(test, "\"POS\",\"NEG\"")), profile(String.format(test, "\"POS\"")));
+        assertFalse(alike.contains(new AnalyzerMappingRowKey("MTB", "MTB&Call")));
+        assertTrue(alike.contains(AnalyzerMappingRowKey.main("MTB")));
+    }
+
+    @Test
     public void aChangedUnitOrResultTypeReadsDifferently() throws Exception {
         assertFalse(AnalyzerRecordReading
                 .readAlike(profile("{\"test_code\":\"GLU\",\"loinc\":\"2345-7\",\"unit\":\"mg/dL\"}"),
@@ -155,6 +180,17 @@ public class AnalyzerRecordReadingTest {
 
         assertEquals(AnalyzerRecordReading.typeReading(base), AnalyzerRecordReading.typeReading(renamed));
         assertNotEquals(AnalyzerRecordReading.typeReading(base), AnalyzerRecordReading.typeReading(rerouted));
+    }
+
+    @Test
+    public void reorderingComponentsDoesNotChangeTheReading() throws Exception {
+        String first = "{\"code\":\"call\"}";
+        String second = "{\"code\":\"ct\",\"sub_identity\":\"HIV-1&Ct\"}";
+        String test = "{\"test_code\":\"HIVVL\",\"loinc\":\"20447-9\",\"components\":[%s,%s]}";
+        BridgeAnalyzerProfile before = profile(String.format(test, first, second));
+        BridgeAnalyzerProfile after = profile(String.format(test, second, first));
+        assertEquals(AnalyzerRecordReading.rowReadings(before), AnalyzerRecordReading.rowReadings(after));
+        assertTrue(AnalyzerRecordReading.readAlike(before, after).contains(AnalyzerMappingRowKey.main("HIVVL")));
     }
 
     private static BridgeAnalyzerProfile typeProfile(String fields) throws Exception {

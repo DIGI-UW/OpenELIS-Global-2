@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,14 +41,16 @@ public final class AnalyzerRecordReading {
      * The type reading sections that route a message to its analyzer; a result
      * already parsed does not depend on them.
      */
-    static final List<String> ROUTING_SECTIONS = List.of("identifier_pattern", "msh3_pattern");
+    static final List<String> ROUTING_SECTIONS = List.of("identifier_pattern", "msh3_pattern",
+            "connection.codeOverrides");
 
     private AnalyzerRecordReading() {
     }
 
     /**
      * The records both profiles declare and read the same way: the record itself
-     * and every value or spelling both declare for it.
+     * and every value or spelling declared by the arrival profile (one). A new
+     * value in the current profile (other) is allowed; a removed one is not.
      */
     public static Set<AnalyzerMappingRowKey> readAlike(BridgeAnalyzerProfile one, BridgeAnalyzerProfile other) {
         if (!parsing(typeReading(one)).equals(parsing(typeReading(other)))) {
@@ -55,9 +58,8 @@ public final class AnalyzerRecordReading {
         }
         Map<AnalyzerMappingSourceRow, Object> mine = rowReadings(one);
         Map<AnalyzerMappingSourceRow, Object> theirs = rowReadings(other);
-        Set<AnalyzerMappingRowKey> differing = mine.entrySet().stream()
-                .filter(entry -> entry.getKey().rawValue() != null && theirs.containsKey(entry.getKey())
-                        && !entry.getValue().equals(theirs.get(entry.getKey())))
+        Set<AnalyzerMappingRowKey> differing = mine.entrySet().stream().filter(
+                entry -> entry.getKey().rawValue() != null && !entry.getValue().equals(theirs.get(entry.getKey())))
                 .map(entry -> recordOf(entry.getKey())).collect(Collectors.toSet());
         return mine.entrySet().stream()
                 .filter(entry -> entry.getKey().rawValue() == null
@@ -81,6 +83,8 @@ public final class AnalyzerRecordReading {
             JsonNode document = documents.getOrDefault(test.analyzerCode(), MissingNode.getInstance());
             List<List<String>> parts = test.components().stream()
                     .map(component -> List.of(component.code(), Objects.toString(component.subIdentity(), "")))
+                    .sorted(Comparator.<List<String>, String>comparing(part -> part.get(0))
+                            .thenComparing(part -> part.get(1)))
                     .toList();
             readings.put(new AnalyzerMappingSourceRow(test.analyzerCode(), null, ""),
                     List.of(sorted(test.aliases()), Objects.toString(test.unit(), ""),

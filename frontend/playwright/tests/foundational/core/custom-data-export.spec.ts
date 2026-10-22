@@ -1416,7 +1416,7 @@ test("menu administration saves database icons and identifies instance-controlle
   });
   await expect(
     form.getByText(
-      "Update menu visibility, section headings and icons. Settings managed by this instance are read-only here.",
+      "Update menu visibility, section headings and icons. A change made here stays when the menu configuration file is applied again at the next start.",
     ),
   ).toBeVisible();
   await form

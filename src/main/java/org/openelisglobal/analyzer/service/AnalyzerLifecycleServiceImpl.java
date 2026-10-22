@@ -56,7 +56,8 @@ public class AnalyzerLifecycleServiceImpl implements AnalyzerLifecycleService {
     @Transactional
     public void delete(String analyzerId, String actor) {
         Analyzer analyzer = find(analyzerId);
-        if (!analyzerResultsService.getResultsbyAnalyzer(analyzer.getId()).isEmpty()
+        if (analyzer.getLastActivatedDate() != null
+                || !analyzerResultsService.getResultsbyAnalyzer(analyzer.getId()).isEmpty()
                 || !activationRecordService.findByAnalyzerId(analyzer.getId()).isEmpty()) {
             throw inUse();
         }

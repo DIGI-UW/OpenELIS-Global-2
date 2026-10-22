@@ -109,9 +109,17 @@ public class TerminologyConfigurationHandler extends AbstractCatalogCsvHandler {
         }
 
         Map<String, TestTerminologyMapping> byKey = new LinkedHashMap<>();
-        for (TestTerminologyMapping existing : terminologyService.getActiveByTestId(test.getId())) {
-            byKey.put(key(existing.getComponentId(), existing.getSampleTypeId(), existing.getSource(),
-                    existing.getCode()), existing);
+        // Prefer the persisted alias when historical URI and alias rows coexist.
+        // Work on copies so Hibernate never rewrites a managed row's natural key.
+        for (TestTerminologyMapping existing : terminologyService.getActiveByTestId(test.getId()).stream()
+                .sorted(java.util.Comparator.comparing(
+                        mapping -> !mapping.getSource().equals(TerminologySystems.sourceOf(mapping.getSource()))))
+                .toList()) {
+            TestTerminologyMapping desired = new TestTerminologyMapping();
+            org.springframework.beans.BeanUtils.copyProperties(existing, desired);
+            desired.setSource(TerminologySystems.sourceOf(existing.getSource()));
+            byKey.putIfAbsent(key(existing.getComponentId(), existing.getSampleTypeId(), existing.getSource(),
+                    existing.getCode()), desired);
         }
         List<Boolean> createdFlags = new ArrayList<>();
         for (CsvRow row : group) {

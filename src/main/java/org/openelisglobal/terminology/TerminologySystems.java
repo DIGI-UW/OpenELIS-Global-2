@@ -65,6 +65,13 @@ public final class TerminologySystems {
             return null;
         }
         String trimmed = raw.trim();
+        // Canonical URIs use the same persisted aliases as their short names.
+        // Normalize before the column limit because CIEL's URI is longer than it.
+        for (String known : new String[] { "LOINC", "SNOMED", "CIEL", "OCL" }) {
+            if (urlOf(known).equals(trimmed)) {
+                return known;
+            }
+        }
         if (trimmed.length() > MAX_SOURCE_LENGTH) {
             return null;
         }
