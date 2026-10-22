@@ -1,6 +1,6 @@
 # Analyzer cleanup inventory
 
-Status: cleanup implemented in the coordinated stack tips; validation and stack publication are in progress. Audit source baseline: OpenELIS `fde241e1a6`, Bridge `b8618f9ad5`. The detailed audit covers 18 check areas in the active receipt-to-import, recovery and setup paths. These ten work items group those findings without losing the checks that must stay.
+Status: cleanup implemented and pushed in the coordinated stack tips; focused validation passes and full-stack acceptance is in progress. Audit source baseline: OpenELIS `fde241e1a6`, Bridge `b8618f9ad5`. The detailed audit covers 18 check areas in the active receipt-to-import, recovery and setup paths. These ten work items group those findings without losing the checks that must stay.
 
 **Why this happened:** parsing-configuration comparisons were introduced as mapping protection. Confirmation, readiness and recovery then acquired machinery to keep those comparisons working. The correction is to finish the Bridge’s normalized output and remove that coupling, not to preserve it with more historical metadata.
 
