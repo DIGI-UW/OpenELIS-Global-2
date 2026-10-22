@@ -262,11 +262,18 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
             return false;
         }
         ServedReading reading = servedFrom(served);
-        return confirmationDAO.findByMappingId(mappingId)
-                .filter(confirmation -> hasText(confirmation.getAuditEventId()) && readingAgainst(
-                        withConnectionReading(reading, connectionOverrides(confirmation.getMapping().getAnalyzer())),
-                        confirmation).isUnchanged())
-                .isPresent();
+        try {
+            return confirmationDAO
+                    .findByMappingId(
+                            mappingId)
+                    .filter(confirmation -> hasText(confirmation.getAuditEventId())
+                            && readingAgainst(withConnectionReading(reading,
+                                    connectionOverrides(confirmation.getMapping().getAnalyzer())), confirmation)
+                                    .isUnchanged())
+                    .isPresent();
+        } catch (BridgeAnalyzerConnectionException exception) {
+            return false;
+        }
     }
 
     /**

@@ -57,7 +57,7 @@ by this progress record.
 
 ## Implemented review fixes
 
-All nineteen known findings now have implementation changes in the stack tips.
+All twenty known findings now have implementation changes in the stack tips.
 GitHub resolution is tracked separately from implementation and full CI.
 
 | Finding                     | Correction and focused evidence                                                                                                                     |
@@ -152,6 +152,10 @@ parent is an ancestor of its child. Duplicate historical patches were removed
 from the encryption layer without changing its final tree. The OpenELIS tip
 records the rewritten Bridge tip. `gh stack push` publishes these updates with
 explicit per-branch force-with-lease checks.
+
+A missing or unavailable individual Bridge connection now marks that analyzer
+unconfirmed in the type catalog instead of failing the whole request. The
+38-test confirmation suite passes, including both missing and failed reads.
 
 ## Remaining acceptance
 

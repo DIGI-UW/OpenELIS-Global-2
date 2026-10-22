@@ -658,6 +658,18 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
+    public void anUnavailableIndividualConnectionDoesNotBreakTheTypeCatalog() {
+        AnalyzerMappingConfirmation saved = confirmed();
+        saved.getMapping().getAnalyzer().setBridgeConnectionId("missing-connection");
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        BridgeProfileCatalog.ProfileRevision profile = served(PROFILE_FINGERPRINT, "copies/mL", "DETECTED", "MOCK");
+        assertFalse(service.standsAsServed("61", profile));
+        when(connectionClient.getConnection("missing-connection"))
+                .thenThrow(new BridgeAnalyzerConnectionException("connection unavailable"));
+        assertFalse(service.standsAsServed("61", profile));
+    }
+
+    @Test
     public void changingInstrumentCodeOverridesRequiresReconfirmationEvenWhenProfileIsUnchanged() {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         candidate.mapping().getAnalyzer().setBridgeConnectionId("bridge-42");
