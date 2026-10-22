@@ -20,6 +20,9 @@ import org.springframework.security.access.AccessDeniedException;
 public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicrobiologyTestFixtures fixtures;
+
+    @Autowired
+    private MicroBreakpointAdminService breakpointAdminService;
     @Autowired
     private MicroCaseDAO cases;
     @Autowired
@@ -104,6 +107,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         rule.setSusceptibleValue(new BigDecimal("8"));
         rule.setResistantValue(new BigDecimal("32"));
         rules.insert(rule);
+        breakpointAdminService.activate(reference.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
         isolate = isolate("ISO-1");
         em.flush();
     }

@@ -29,6 +29,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicrobiologyTestFixtures fixtures;
+
+    @Autowired
+    private MicroBreakpointAdminService breakpointAdminService;
     @Autowired
     private MicroIsolateWorkspaceService workspace;
     @Autowired
@@ -541,6 +544,8 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     public void reidentificationLeavesReviewedSusceptibilityReadingsAndSelectionUntouched() {
         String id = pick();
         var ref = fixtures.createReferenceData(method);
+        breakpointAdminService.activate(ref.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
         workspace.act(c.getId(), id, "identify", identification(id, ref.organism().getId()), writer);
         var run = ast.startRun(id, ref.panel().getId(), ref.standard().getId(), writer);
         ast.recordReading(run.getId(), ref.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"), writer);
