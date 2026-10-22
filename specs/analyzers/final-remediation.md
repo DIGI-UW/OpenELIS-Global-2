@@ -13,7 +13,7 @@ Bridge stack: #101 → #102 → #104 → #105 → #106 → #107 → #108 → #10
 
 OpenELIS #4798 records these candidate commits:
 
-- Bridge #113: `521e733137984977e106386fe427bbe1af194b2a`.
+- Bridge #113: `b8618f9ad562f1ec270419909396b388b9950120`.
 - Analyzer mock #62: `88b51f7c5ed50e953b8e80be5934162bcb138fd9`.
 
 The Bridge pin includes exclusion defaults, full sender matching/display, and
@@ -45,7 +45,9 @@ normalization. Focused backend validation: 115 tests passed. Seven real-certific
 install/upgrade tests passed, including custom passwords and repeated startup.
 Mindray browser validation distinguishes routine automated CBCs from the
 manual-count fixture; exclusions are explicit lab decisions, not shipped defaults.
-The corrected manual-count scenario is awaiting combined browser validation. The repository-wide TypeScript check reports missing Node
+The corrected manual-count scenario passed analyzer shard 1 (40 tests);
+analyzer shard 2 passed all 20 tests after narrowing its microbiology action
+assertion to the relevant event row. These focused runs do not establish full CI. The repository-wide TypeScript check reports missing Node
 ambient types across existing Playwright files; changed browser tests pass ESLint.
 
 Connection-code overrides are now part of the confirmed interpretation. Changing
@@ -103,7 +105,7 @@ candidate now includes their fixes.
   the routine automated CBC; `manual-count` adds the technician's differential.
   The corrected scenario uses `manual-count`, explicitly excludes the declared
   manual codes, then clears the two undeclared codes through the mapping screen.
-  Browser proof for this corrected scenario remains pending.
+  The corrected scenario passed in the 40-test analyzer shard 1.
 - Queued deliveries fetch the actual delivered profile revision, and held-result
   dismissal preserves unsaved edits on other eligible result rows.
 
@@ -191,14 +193,27 @@ A missing or unavailable individual Bridge connection now marks that analyzer
 unconfirmed in the type catalog instead of failing the whole request. The
 38-test confirmation suite passes, including both missing and failed reads.
 
+## Delivery-contract proposal under review
+
+Two subsequent findings remain open: queued results currently use the connection's
+present decimal setting, and pre-confirmation arrival snapshots omit it. The
+proposed correction carries the actual rendering-time setting in the bundle.
+It is not implemented. Existing rendered bundles lack that history; ordinary
+Retry resends them unchanged. A hold-and-reprocess policy therefore also needs
+an explicit, audited recovery operation, not an assumption that Retry already
+re-renders. The user is reviewing the proposal and will examine and merge the
+upstream dependencies separately.
+
 ## Remaining acceptance
 
 - [ ] Finish GitHub replies/resolutions and refresh for new findings.
 - [ ] Pass combined analyzer scenarios, including undeclared recovery, exclusions
       and sender identity, and retain logs/screenshots.
 - [ ] Run the optional reporting navigation qualification.
-- [ ] Confirm native mock host-query transport acceptance; the separate
-      pending-orders feature remains outside this work.
+- [x] Confirm native mock host-query transport acceptance: two queries on one
+      connection received addressed no-orders replies from the real Bridge. All
+      seven isolated transport groups passed. The separate pending-orders feature
+      remains outside this work.
 - [ ] Pass full local CI and every required GitHub checkpoint on the final commit.
 - [ ] Merge upstream dependencies after approval, replace candidate pins with the
       actual merged commits, and pass the trusted submodule check.
