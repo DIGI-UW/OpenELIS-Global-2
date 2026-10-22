@@ -231,7 +231,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism source code")).getId();
         } else if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
             String requestedGroup = requiredText(organismValue.substring("group:".length()), "organism group");
-            row.organismGroup = organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
+            row.organismGroup = organismDAO.getAll().stream().map(MicroOrganism::getOrganismGroup)
                     .filter(group -> group != null && group.equalsIgnoreCase(requestedGroup)).findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism group: " + requestedGroup));
         } else {
@@ -300,7 +300,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 .filter(java.util.Objects::nonNull).toList();
         // An explicit empty rule blocks fallback and yields NO_BREAKPOINT in V2.
         if (!values.isEmpty() && (row.susceptibleValue == null || row.resistantValue == null)) {
-            throw new IllegalArgumentException("Both susceptible and resistant thresholds are required for a nonempty rule");
+            throw new IllegalArgumentException(
+                    "Both susceptible and resistant thresholds are required for a nonempty rule");
         }
         for (BigDecimal value : values) {
             if (value.signum() <= 0 || value.stripTrailingZeros().scale() > 4
@@ -310,7 +311,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
         if (row.susceptibleValue != null && row.resistantValue != null) {
             int comparison = row.susceptibleValue.compareTo(row.resistantValue);
-            if ("MIC".equals(row.method) ? comparison > 0 : comparison < 0) {
+            if (("MIC".equals(row.method) ? comparison > 0 : comparison < 0)
+                    || (comparison == 0 && row.resistantInclusive)) {
                 throw new IllegalArgumentException("Thresholds are out of order");
             }
         }

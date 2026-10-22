@@ -59,7 +59,7 @@ public class MicroBreakpointImportServiceTest {
         organism.setOrganismGroup("Enterobacterales");
         when(organismDAO.findByDisplayNameIgnoreCase("Escherichia coli")).thenReturn(Optional.of(organism));
         when(organismDAO.findByDisplayNameIgnoreCase("Missing organism")).thenReturn(Optional.empty());
-        when(organismDAO.getActiveOrganisms()).thenReturn(List.of(organism));
+        when(organismDAO.getAll()).thenReturn(List.of(organism));
         MicroAntibiotic antibiotic = new MicroAntibiotic();
         antibiotic.setId("cip");
         antibiotic.setWhonetCode("CIP");
@@ -214,13 +214,40 @@ public class MicroBreakpointImportServiceTest {
 
     @Test
     public void partialTerminalRulesAreRejectedInsteadOfSilentlyBecomingNoBreakpoint() {
-        for (String fields : List.of("MIC,,MIC,1,,,,ug/mL", "MIC,,MIC,,,,4,ug/mL",
-                "MIC,,MIC,,2,3,,ug/mL", "ZONE,,ZONE,22,,,,mm", "ZONE,,ZONE,,,,18,mm")) {
+        for (String fields : List.of("MIC,,MIC,1,,,,ug/mL", "MIC,,MIC,,,,4,ug/mL", "MIC,,MIC,,2,3,,ug/mL",
+                "ZONE,,ZONE,22,,,,mm", "ZONE,,ZONE,,,,18,mm")) {
             var preview = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
             assertEquals(fields, 0, preview.validRows);
             assertTrue(fields, preview.errors.get(0).message.contains("Both susceptible and resistant"));
         }
         verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void equalTerminalThresholdsRequireStrictResistanceForBothMethods() {
+        for (String fields : List.of("MIC,,MIC,1,,,1,ug/mL", "ZONE,,ZONE,20,,,20,mm")) {
+            var inclusive = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            assertEquals(fields, 0, inclusive.validRows);
+            assertTrue(fields, inclusive.errors.get(0).message.contains("Thresholds are out of order"));
+            String strict = csv("EUCAST,2026,Escherichia coli,CIP," + fields + ",false\n")
+                    .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
+            assertEquals(fields, 1, service.preview(strict).validRows);
+        }
+    }
+
+    @Test
+    public void groupIdentityRemainsImportableWhenItsOrganismsAreLocallyInactive() {
+        var inactive = new MicroOrganism();
+        inactive.setId("inactive");
+        inactive.setOrganismGroup("Enterobacterales");
+        inactive.setIsActive("N");
+        when(organismDAO.getAll()).thenReturn(List.of(inactive));
+        var preview = service.preview(csv("CLSI,SYNTH-2026,group:Enterobacterales,CIP,MIC,,MIC,1,,,4,ug/mL\n"));
+        assertEquals(1, preview.validRows);
+        assertEquals(1, service.apply(preview.previewToken, "42").importedRows);
+        assertEquals("N", inactive.getIsActive());
+        verify(organismDAO, never()).getActiveOrganisms();
+        verify(organismDAO, never()).update(org.mockito.ArgumentMatchers.any());
     }
 
     @Test
