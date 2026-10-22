@@ -154,8 +154,7 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         r.origin = orderDetail == null ? null : orderDetail.getPatientOrigin();
         var shell = c;
         r.canWrite = shell.canWrite;
-        var cultureAnalyses = analyses.getAnalyses(c.id).stream()
-                .filter(a -> !a.getSampleItem().isRejected())
+        var cultureAnalyses = analyses.getAnalyses(c.id).stream().filter(a -> !a.getSampleItem().isRejected())
                 .filter(a -> "CULTURE".equals(a.getTest().getMicrobiologyCaseRole())
                         || analyses.getByCaseAndAnalysis(c.id, a.getId()).getCaseRole() == MicroCaseRole.CULTURE)
                 .toList();
@@ -169,13 +168,11 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         }
         cultureAnalyses.stream().filter(a -> Objects.equals(r.sampleItemId, a.getSampleItem().getId())).findFirst()
                 .ifPresent(a -> r.sampleTypeId = a.getSampleItem().getTypeOfSampleId());
-        shell.samples.stream().filter(s -> Objects.equals(s.sampleItemId, r.sampleItemId)).findFirst()
-                .ifPresent(s -> {
-                    r.sampleTypeId = s.sampleTypeId;
-                    r.specimenType = s.specimenType;
-                });
-        r.cultureTests = cultureAnalyses.stream()
-                .filter(a -> Objects.equals(r.sampleItemId, a.getSampleItem().getId()))
+        shell.samples.stream().filter(s -> Objects.equals(s.sampleItemId, r.sampleItemId)).findFirst().ifPresent(s -> {
+            r.sampleTypeId = s.sampleTypeId;
+            r.specimenType = s.specimenType;
+        });
+        r.cultureTests = cultureAnalyses.stream().filter(a -> Objects.equals(r.sampleItemId, a.getSampleItem().getId()))
                 .map(a -> new IdValuePair(a.getTest().getId(), a.getTest().getName())).distinct().toList();
         return r;
     }
