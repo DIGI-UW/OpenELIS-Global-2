@@ -54,4 +54,11 @@ public interface AddonTokenService {
      * @throws IllegalArgumentException if refused, without saying why
      */
     AddonToken.Claims authenticate(String bearer);
+
+    /**
+     * A stable pseudonym of {@code value} (for example a patient id) for one
+     * add-on: the same value gives the same pseudonym to the same add-on, cannot be
+     * reversed, and differs between add-ons.
+     */
+    String opaqueId(String addonId, String value);
 }

@@ -9,6 +9,22 @@ import type { AddonExtension } from "./addonApi";
 export const SLOT_RESULT_VALIDATION = "result-validation-side-panel-slot";
 export const SLOT_PATIENT_RESULTS = "result-lookup-side-panel-slot";
 export const SLOT_APP_MENU = "app-menu-slot";
+export const SLOT_TOP_NAV_ACTIONS = "top-nav-actions-slot";
+
+/**
+ * The page name a header extension is told about: the first segment of the
+ * route in kebab-case ("/ResultValidation" → "result-validation"); "home" for
+ * the root. Nothing else of the URL (ids, query) is passed on.
+ */
+export function pageOfPath(pathname: string): string {
+  const first = (pathname || "").split("/").filter(Boolean)[0] || "home";
+  const kebab = first
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .toLowerCase()
+    .replace(/^-+|-+$/g, "");
+  return (kebab || "home").slice(0, 40);
+}
 
 export function extensionsForSlot(
   all: AddonExtension[],

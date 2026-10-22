@@ -27,22 +27,24 @@ public interface AddonRegistryService {
     record InstallResult(AddonView addon, boolean upgraded, Credentials credentials, String composeSnippet) {
     }
 
-    /** One add-on as the administration page shows it. */
     /**
-     * {@code publisher}: the name the manifest claims. {@code provenance}:
-     * VERIFIED, UNVERIFIED or MISMATCH; {@code verifiedPublisher} is set only when
-     * VERIFIED. The UI must show the claimed name as unverified otherwise.
+     * One add-on as the administration page shows it. {@code publisher}: the name
+     * the manifest claims. {@code provenance}: VERIFIED, UNVERIFIED or MISMATCH;
+     * {@code verifiedPublisher} is set only when VERIFIED. The UI must show the
+     * claimed name as unverified otherwise. {@code config} holds no secret:
+     * {@code secretsSet} names the secret fields that have a value. {@code egress}:
+     * hosts outside OpenELIS the add-on says it connects to.
      */
     record AddonView(String id, String name, String version, String publisher, String provenance,
             String verifiedPublisher, String description, String image, boolean enabled, String endpoint,
             List<String> scopes, List<String> events, List<AddonManifest.Extension> extensions,
-            List<AddonManifest.ConfigField> configSchema, Map<String, Object> config, String installedAt,
-            String installedBy, Map<String, Integer> deliveries) {
+            List<AddonManifest.ConfigField> configSchema, Map<String, Object> config, List<String> secretsSet,
+            List<String> egress, String installedAt, String installedBy, Map<String, Integer> deliveries) {
     }
 
     /** A UI extension of an enabled add-on, for the frontend's slots. */
     record ExtensionView(String addonId, String addonName, String version, String name, String slot, String page,
-            int order, String title, int height) {
+            int order, String title, int height, String icon) {
     }
 
     /**
@@ -50,9 +52,9 @@ public interface AddonRegistryService {
      * establishes provenance; unsigned packages install too), and registers or
      * upgrades the add-on. A new add-on is registered disabled: turning it on is
      * the administrator's consent to its permissions. An upgrade is turned off as
-     * well when it asks for more scopes or events, or when its provenance is weaker
-     * than the installed version's (a verified add-on replaced by an unverified or
-     * mismatched package).
+     * well when it asks for more scopes, events or outside hosts, or when its
+     * provenance is weaker than the installed version's (a verified add-on replaced
+     * by an unverified or mismatched package).
      *
      * @throws org.openelisglobal.addon.packaging.AddonPackageException when the zip
      *                                                                  or the
@@ -74,7 +76,13 @@ public interface AddonRegistryService {
      */
     boolean setEnabled(String id, boolean enabled);
 
-    /** @throws IllegalArgumentException naming a bad key */
+    /**
+     * Saves the configuration. Secret fields: a non-empty value sets the secret, an
+     * empty string clears it, an absent key keeps it.
+     *
+     * @return the plain configuration (never the secrets)
+     * @throws IllegalArgumentException naming a bad key
+     */
     Optional<Map<String, Object>> saveConfig(String id, Map<String, ?> values);
 
     /** @throws IllegalArgumentException if the URL is not http(s) */
@@ -91,6 +99,9 @@ public interface AddonRegistryService {
 
     List<Map<String, Object>> deliveries(String id, int limit);
 
-    /** Configuration values, as the add-on API serves them to the add-on itself. */
+    /**
+     * Configuration values including secrets, as the add-on API serves them to the
+     * add-on itself.
+     */
     Map<String, Object> configOf(String id);
 }

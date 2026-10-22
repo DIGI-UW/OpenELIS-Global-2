@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.Test;
+import org.openelisglobal.addon.ai.AiContextService;
 import org.openelisglobal.addon.controller.rest.AddonApiRestController;
 import org.openelisglobal.addon.security.AddonToken;
 import org.openelisglobal.addon.service.AddonDataService;
@@ -51,6 +53,8 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
     private static final String API = "/rest/addon-api/v1";
     private static final String USER_TOKEN = "oeat.user";
     private static final String SERVICE_KEY = "oeak_service";
+    private static final String AI_TOKEN = "oeat.ai";
+    private static final String AI_SERVICE_KEY = "oeak_ai";
 
     private static RequestPostProcessor bearer(String credential) {
         return request -> {
@@ -119,6 +123,35 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    public void theAiContextNeedsItsScopeAndAScreen() throws Exception {
+        mockMvc.perform(get(API + "/ai/context").with(bearer(USER_TOKEN))).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("scope"));
+        mockMvc.perform(get(API + "/ai/context").with(bearer(AI_SERVICE_KEY))).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("context"));
+        mockMvc.perform(get(API + "/ai/context?view=patient").with(bearer(AI_TOKEN))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.view").value("patient"));
+    }
+
+    @Test
+    public void textIsDeidentifiedForTheAiScopeOnly() throws Exception {
+        mockMvc.perform(post(API + "/ai/deidentify").with(bearer(AI_TOKEN)).contentType("application/json")
+                .content("{\"text\":\"is Jane Doe G3a?\"}")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value("is [removed] G3a?")).andExpect(jsonPath("$.changed").value(true));
+        mockMvc.perform(post(API + "/ai/deidentify").with(bearer(USER_TOKEN)).contentType("application/json")
+                .content("{\"text\":\"x\"}")).andExpect(status().isForbidden());
+        mockMvc.perform(post(API + "/ai/deidentify").with(bearer(AI_TOKEN)).contentType("application/json")
+                .content("{\"text\":3}")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void anAiTokenDoesNotRevealItsLabNumbers() throws Exception {
+        mockMvc.perform(get(API + "/whoami").with(bearer(AI_TOKEN))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessionNumbers").doesNotExist());
+        mockMvc.perform(get(API + "/orders/DEV0001").with(bearer(AI_TOKEN))).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("scope"));
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
@@ -142,9 +175,30 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
                     if (SERVICE_KEY.equals(bearer)) {
                         return new AddonToken.Claims("hello", null, List.of("orders.read"), null, Long.MAX_VALUE);
                     }
+                    if (AI_TOKEN.equals(bearer)) {
+                        return new AddonToken.Claims("assistant", "7", List.of("ai.context"), List.of("DEV0001"),
+                                Long.MAX_VALUE);
+                    }
+                    if (AI_SERVICE_KEY.equals(bearer)) {
+                        return new AddonToken.Claims("assistant", null, List.of("ai.context"), null, Long.MAX_VALUE);
+                    }
                     throw new IllegalArgumentException("token");
                 }
+
+                @Override
+                public String opaqueId(String addonId, String value) {
+                    return "x";
+                }
             };
+        }
+
+        @Bean
+        AiContextService aiContextService() {
+            AiContextService ai = mock(AiContextService.class);
+            when(ai.context(any(), anyString())).thenAnswer(i -> Map.of("view", i.getArgument(1)));
+            when(ai.deidentify(any(), anyString()))
+                    .thenAnswer(i -> ((String) i.getArgument(1)).replace("Jane Doe", "[removed]"));
+            return ai;
         }
 
         @Bean

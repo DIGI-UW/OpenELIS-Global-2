@@ -1,14 +1,19 @@
 package org.openelisglobal.addon.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.openelisglobal.addon.AddonCatalog;
 import org.openelisglobal.addon.dao.AddonDAO;
 import org.openelisglobal.addon.dao.AddonSecretDAO;
@@ -54,12 +59,14 @@ public class AddonTokenServiceImpl implements AddonTokenService {
             throw new TokenRefusedException(Refusal.ROLE);
         }
         List<String> scopes = addon.getScopeList();
-        Map<String, Object> filtered = AddonCatalog.filterContext(withPatientOrders(context), scopes);
-        @SuppressWarnings("unchecked")
-        List<String> accessions = (List<String>) filtered.getOrDefault("accessionNumbers", List.of());
+        Map<String, ?> withOrders = withPatientOrders(context);
+        Map<String, Object> filtered = AddonCatalog.filterContext(withOrders, scopes);
+        List<String> accessions = AddonCatalog.contextOrders(withOrders, scopes);
         long ttl = settings.tokenTtlSeconds();
+        // without orders.read the add-on may not see lab numbers: they travel sealed
         String token = AddonToken.sign(tokenKey(),
-                new AddonToken.Claims(addon.getId(), userId, scopes, accessions, Instant.now().getEpochSecond() + ttl));
+                new AddonToken.Claims(addon.getId(), userId, scopes, accessions, Instant.now().getEpochSecond() + ttl),
+                !scopes.contains(AddonCatalog.ORDERS_READ));
         return new IssuedToken(token, ttl, scopes, filtered);
     }
 
@@ -82,6 +89,19 @@ public class AddonTokenServiceImpl implements AddonTokenService {
             return new AddonToken.Claims(addon.getId(), null, addon.getScopeList(), null, Long.MAX_VALUE);
         }
         throw new IllegalArgumentException("token");
+    }
+
+    @Override
+    public String opaqueId(String addonId, String value) {
+        byte[] mac;
+        try {
+            Mac m = Mac.getInstance("HmacSHA256");
+            m.init(new SecretKeySpec(tokenKey(), "HmacSHA256"));
+            mac = m.doFinal((addonId + "\n" + value).getBytes(StandardCharsets.UTF_8));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException(e);
+        }
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(Arrays.copyOf(mac, 16));
     }
 
     /**

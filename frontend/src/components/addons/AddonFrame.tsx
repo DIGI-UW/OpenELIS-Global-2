@@ -21,10 +21,15 @@ export default function AddonFrame({
   extension,
   state,
   fill = false,
+  frameHeight,
+  showTitle = true,
 }: {
   extension: AddonExtension;
   state?: Record<string, unknown>;
   fill?: boolean;
+  /** CSS height of the frame when it fills its container. */
+  frameHeight?: string;
+  showTitle?: boolean;
 }) {
   const intl = useIntl();
   const frame = useRef<HTMLIFrameElement>(null);
@@ -93,12 +98,14 @@ export default function AddonFrame({
       data-extension-name={extension.name}
       aria-label={extension.title}
     >
-      <header className="addon-frame__title">
-        <span>{extension.title}</span>
-        <small>
-          {extension.addonName} {extension.version}
-        </small>
-      </header>
+      {showTitle && (
+        <header className="addon-frame__title">
+          <span>{extension.title}</span>
+          <small>
+            {extension.addonName} {extension.version}
+          </small>
+        </header>
+      )}
       {!ready && !failed && (
         <InlineLoading
           description={intl.formatMessage({ id: "addon.frame.loading" })}
@@ -118,7 +125,9 @@ export default function AddonFrame({
         src={uiUrl(config.serverBaseUrl, extension)}
         sandbox="allow-scripts allow-forms"
         referrerPolicy="no-referrer"
-        style={{ height: fill ? "calc(100vh - 220px)" : height }}
+        style={{
+          height: fill ? frameHeight || "calc(100vh - 220px)" : height,
+        }}
       />
     </section>
   );

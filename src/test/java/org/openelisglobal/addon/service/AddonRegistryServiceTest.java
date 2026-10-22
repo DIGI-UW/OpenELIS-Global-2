@@ -22,6 +22,8 @@ import org.openelisglobal.addon.security.AddonToken;
 import org.openelisglobal.addon.service.AddonRegistryService.InstallResult;
 import org.openelisglobal.addon.service.AddonTokenService.Refusal;
 import org.openelisglobal.addon.service.AddonTokenService.TokenRefusedException;
+import org.openelisglobal.addon.valueholder.Addon;
+import org.openelisglobal.security.converter.EncryptionConverter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -287,5 +289,75 @@ public class AddonRegistryServiceTest extends BaseWebContextSensitiveTest {
                 "SELECT count(*) FROM clinlims.addon_asset WHERE addon_id = 'reg-gone'", Integer.class));
         assertFalse(registry.uninstall("reg-gone"));
         assertNotNull(registry.list());
+    }
+
+    private static Class<?> converterOf(String field) {
+        try {
+            return Addon.class.getDeclaredField(field).getAnnotation(jakarta.persistence.Convert.class).converter();
+        } catch (NoSuchFieldException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static byte[] withEgress(String id, String egressJson) {
+        return AddonTestPackages.zip(AddonTestPackages.files(AddonTestPackages.withEgressAndSecret(
+                AddonTestPackages.manifest(id, "example", "[\"orders.read\"]", "[\"order.created\"]"), egressJson)));
+    }
+
+    @Test
+    public void secretsAreStoredEncryptedNeverShownAndServedToTheAddon() {
+        registry.install(withEgress("reg-secret", "[\"openrouter.ai\"]"), ADMIN);
+        registry.saveConfig("reg-secret", Map.of("greeting", "Hi", "limit", 5, "apiKey", "sk-or-very-secret"));
+        AddonRegistryService.AddonView view = registry.get("reg-secret").orElseThrow();
+        assertFalse(view.config().containsKey("apiKey"));
+        assertEquals(List.of("apiKey"), view.secretsSet());
+        assertEquals(List.of("openrouter.ai"), view.egress());
+        assertEquals("sk-or-very-secret", registry.configOf("reg-secret").get("apiKey"));
+        // encrypted at rest with EncryptionConverter, like the webhook secret (the test
+        // context's encryptor is a stub)
+        assertEquals(EncryptionConverter.class, converterOf("secretConfig"));
+        assertEquals(converterOf("eventSecret"), converterOf("secretConfig"));
+
+        // absent: kept; empty: cleared
+        registry.saveConfig("reg-secret", Map.of("greeting", "Hello"));
+        assertEquals("sk-or-very-secret", registry.configOf("reg-secret").get("apiKey"));
+        registry.saveConfig("reg-secret", Map.of("apiKey", ""));
+        assertFalse(registry.configOf("reg-secret").containsKey("apiKey"));
+        assertEquals(List.of(), registry.get("reg-secret").orElseThrow().secretsSet());
+    }
+
+    @Test
+    public void anUpgradeThatConnectsToMoreHostsIsTurnedOff() {
+        registry.install(withEgress("reg-net", "[\"openrouter.ai\"]"), ADMIN);
+        registry.setEnabled("reg-net", true);
+        assertTrue("same hosts: stays on",
+                registry.install(withEgress("reg-net", "[\"openrouter.ai\"]"), ADMIN).addon().enabled());
+        InstallResult more = registry.install(withEgress("reg-net", "[\"openrouter.ai\",\"api.deepseek.com\"]"), ADMIN);
+        assertFalse(more.addon().enabled());
+        registry.setEnabled("reg-net", true);
+        assertTrue("fewer hosts: stays on", registry.install(withEgress("reg-net", "[]"), ADMIN).addon().enabled());
+    }
+
+    @Test
+    public void theComposeSnippetSaysWhereTheAddonConnects() {
+        assertTrue(registry.install(withEgress("reg-snip", "[\"openrouter.ai\"]"), ADMIN).composeSnippet()
+                .contains("# network: connects to openrouter.ai"));
+        assertTrue(install("reg-snip2").composeSnippet().contains("needs nothing outside OpenELIS"));
+    }
+
+    @Test
+    public void anAiContextTokenCarriesItsOrdersSealed() {
+        registry.install(AddonTestPackages.zip(
+                AddonTestPackages.files(AddonTestPackages.manifest("reg-ai", "example", "[\"ai.context\"]", "[]"))),
+                ADMIN);
+        registry.setEnabled("reg-ai", true);
+        AddonTokenService.IssuedToken issued = tokens.issue("reg-ai", AddonCatalog.SLOT_RESULT_LOOKUP_SIDE_PANEL,
+                CONTEXT, ADMIN, RESULTS_USER);
+        assertFalse("the frame does not get the lab numbers", issued.context().containsKey("accessionNumbers"));
+        assertFalse(issued.token(),
+                new String(java.util.Base64.getUrlDecoder()
+                        .decode(issued.token().substring(AddonToken.PREFIX.length(), issued.token().lastIndexOf('.'))))
+                        .contains("DEV0001"));
+        assertEquals(List.of("DEV0001"), tokens.authenticate(issued.token()).accessions());
     }
 }

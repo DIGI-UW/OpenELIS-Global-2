@@ -1,6 +1,7 @@
 package org.openelisglobal.addon.packaging;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -101,5 +102,43 @@ public class AddonManifestTest {
                 assertThrows(IllegalArgumentException.class, () -> m.validateConfig(Map.of("limit", 51))).getMessage());
         assertEquals("other",
                 assertThrows(IllegalArgumentException.class, () -> m.validateConfig(Map.of("other", 1))).getMessage());
+    }
+
+    @Test
+    public void egressHostsAreDeclaredAndChecked() {
+        String m = AddonTestPackages.withEgressAndSecret(valid(), "[\"openrouter.ai\",\"api.deepseek.com:443\"]");
+        assertEquals(List.of(), problems(m));
+        assertEquals(List.of("openrouter.ai", "api.deepseek.com:443"), AddonManifest.parse(m).egress());
+        assertEquals(List.of(), AddonManifest.parse(valid()).egress());
+        List<String> p = problems(AddonTestPackages.withEgressAndSecret(valid(), "[\"*.openai.com\",\"10.0.0.1\"]"));
+        assertEquals(p.toString(), 2, p.stream().filter(x -> x.startsWith("network.egress:")).count());
+        assertTrue(problems(AddonTestPackages.withEgressAndSecret(valid(), "[\"a.example.org\",\"a.example.org\"]"))
+                .contains("network.egress: a host is repeated"));
+        assertTrue(problems(AddonTestPackages.withEgressAndSecret(valid(), "\"openrouter.ai\""))
+                .contains("egress must be a list"));
+    }
+
+    @Test
+    public void secretsAreValidatedApartAndNeverDefaulted() {
+        String m = AddonTestPackages.withEgressAndSecret(valid(), "[]");
+        AddonManifest manifest = AddonManifest.parse(m);
+        assertEquals(java.util.Set.of("apiKey"), manifest.secretKeys());
+        Map<String, Object> plain = manifest.validateConfig(Map.of("apiKey", "sk-123", "greeting", "Yo"));
+        assertFalse("secrets are not plain configuration", plain.containsKey("apiKey"));
+        assertEquals(Map.of("apiKey", "sk-123"),
+                manifest.validateSecrets(Map.of("apiKey", " sk-123 ", "greeting", "Yo")));
+        assertEquals(Map.of("apiKey", ""), manifest.validateSecrets(Map.of("apiKey", "")));
+        assertEquals(Map.of(), manifest.validateSecrets(Map.of("greeting", "Yo")));
+        assertTrue(problems(m.replace("\"label\":\"API key\"}", "\"label\":\"API key\",\"default\":\"x\"}"))
+                .contains("config apiKey: a secret cannot have a default"));
+    }
+
+    @Test
+    public void aHeaderButtonIconIsOneOfTheKnownIcons() {
+        String m = valid().replace("\"meta\":{\"title\":\"Hello\",",
+                "\"meta\":{\"title\":\"Hello\",\"icon\":\"magic-wand\",");
+        assertEquals("magic-wand", AddonManifest.parse(m).extensions().get(0).icon());
+        assertEquals("application",
+                AddonManifest.parse(m.replace("magic-wand", "javascript:alert(1)")).extensions().get(0).icon());
     }
 }

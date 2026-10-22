@@ -76,6 +76,14 @@ public class Addon extends BaseObject<String> {
     @Column(name = "config", nullable = false)
     private String config = "{}";
 
+    /**
+     * Values of {@code secret} configuration fields, a JSON object, encrypted at
+     * rest.
+     */
+    @Column(name = "secret_config")
+    @Convert(converter = EncryptionConverter.class)
+    private String secretConfig;
+
     @Column(name = "installed_at", nullable = false)
     private OffsetDateTime installedAt;
 
@@ -210,6 +218,14 @@ public class Addon extends BaseObject<String> {
 
     public void setConfig(String config) {
         this.config = config;
+    }
+
+    public String getSecretConfig() {
+        return secretConfig;
+    }
+
+    public void setSecretConfig(String secretConfig) {
+        this.secretConfig = secretConfig;
     }
 
     public OffsetDateTime getInstalledAt() {

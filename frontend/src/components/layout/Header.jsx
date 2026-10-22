@@ -41,6 +41,7 @@ import { getBranding } from "../utils/BrandingUtils";
 import config from "../../config.json";
 import { useExtensions } from "../addons/ExtensionSlot";
 import { withAddonMenu } from "../addons/slots";
+import HeaderActionsSlot from "../addons/HeaderActionsSlot";
 
 function OEHeader({
   onChangeLanguage,
@@ -359,6 +360,7 @@ function OEHeader({
               {userSessionDetails.authenticated && (
                 <>
                   {searchBar && <SearchBar />}
+                  <HeaderActionsSlot />
                   <HeaderGlobalAction
                     id="search-Icon"
                     aria-label={intl.formatMessage({
