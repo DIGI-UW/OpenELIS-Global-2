@@ -463,6 +463,69 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void legacyManualReadingUsesFallbackAuthorityWithMissingStandardId() {
+        prepareLegacyInterpretation(null, true);
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.06"),
+                "1");
+        assertEquals("INTERMEDIATE", reading.getInterpretation());
+        assertEquals("fallback-rule", reading.getBreakpointRuleId());
+        verify(breakpointService, never()).getStandard(any());
+    }
+
+    @Test
+    public void legacyManualReadingUsesFallbackAuthorityWithBlankStandardId() {
+        prepareLegacyInterpretation("  ", true);
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.06"),
+                "1");
+        assertEquals("INTERMEDIATE", reading.getInterpretation());
+        verify(breakpointService, never()).getStandard(any());
+    }
+
+    @Test
+    public void legacyReadingWithoutAnAvailableDefaultSavesNoBreakpoint() {
+        prepareLegacyInterpretation(null, false);
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.06"),
+                "1");
+        assertEquals("NO_BREAKPOINT", reading.getInterpretation());
+        verify(breakpointService, never()).getStandard(any());
+    }
+
+    @Test
+    public void legacyAnalyzerReadingUsesTheSameFallbackAuthorityAsRuleSelection() {
+        prepareLegacyInterpretation(null, true);
+        service.applyAnalyzerResults(new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", "v9.02",
+                "org-analyzer", "E. coli", new BigDecimal("99.5"), List.of(), "qc-1", true, new Timestamp(1000),
+                new Timestamp(2000), List.of(),
+                List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("0.06"), "ug/mL", "SUSCEPTIBLE", "r-1"))),
+                "1");
+        ArgumentCaptor<MicroAstReading> reading = ArgumentCaptor.forClass(MicroAstReading.class);
+        verify(readingDAO).insert(reading.capture());
+        assertEquals("INTERMEDIATE", reading.getValue().getInterpretation());
+        assertEquals("fallback-rule", reading.getValue().getBreakpointRuleId());
+        verify(breakpointService, never()).getStandard(any());
+    }
+
+    private void prepareLegacyInterpretation(String standardId, boolean availableDefault) {
+        MicroAstRun run = awaitingAnalyzerRun();
+        run.setBreakpointStandardId(standardId);
+        run.setTechnique(null);
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "interpretationService",
+                new MicroAstInterpretationServiceImpl());
+        if (availableDefault) {
+            when(breakpointService.getActiveStandard("CLSI", "2026"))
+                    .thenReturn(standard("fallback-std", "CLSI", "2026"));
+            MicroBreakpointRule rule = new MicroBreakpointRule();
+            rule.setId("fallback-rule");
+            rule.setSusceptibleValue(new BigDecimal("0.06"));
+            rule.setResistantValue(new BigDecimal("0.25"));
+            when(breakpointService.findBreakpointRule("fallback-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
+                    .thenReturn(rule);
+        }
+    }
+
+    @Test
     public void genericStandardRuleIsNotRecordedAsAMissingBreakpoint() {
         MicroAstRun run = new MicroAstRun();
         run.setId("run-1");

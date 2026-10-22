@@ -789,7 +789,10 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private MicroAstInterpretation interpretReading(MicroAstRun run, MicroBreakpointRule rule, MicroAstMethod method,
             BigDecimal rawValue) {
-        MicroBreakpointStandard standard = breakpointService.getStandard(run.getBreakpointStandardId());
+        String standardId = run.getBreakpointStandardId();
+        MicroBreakpointStandard standard = standardId == null || standardId.isBlank()
+                ? breakpointService.getActiveStandard(defaultBreakpointAuthority, defaultBreakpointVersion)
+                : breakpointService.getStandard(standardId);
         if (standard != null && "CLSI".equals(standard.getAuthority())) {
             return interpretationService.interpret(rule, method, rawValue, standard.getAuthority());
         }
