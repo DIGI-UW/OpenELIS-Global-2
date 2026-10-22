@@ -25,6 +25,10 @@ public class MicroIncomingReflexPolicyTest {
         assertTrue(policy.alreadyOnCaseOrWaiting("trigger", "12"));
         assertFalse(policy.alreadyOnCaseOrWaiting("trigger", "13"));
         assertFalse(policy.alreadyOnCaseOrWaiting("other-case-trigger", "12"));
+        waiting.setState("NEEDS_AMENDMENT");
+        assertTrue(policy.alreadyOnCaseOrWaiting("trigger", "12"));
+        waiting.setState("FAILED");
+        assertFalse(policy.alreadyOnCaseOrWaiting("trigger", "12"));
         waiting.setState("PLACED");
         assertFalse(policy.alreadyOnCaseOrWaiting("trigger", "12"));
         var analysis = new org.openelisglobal.analysis.valueholder.Analysis();

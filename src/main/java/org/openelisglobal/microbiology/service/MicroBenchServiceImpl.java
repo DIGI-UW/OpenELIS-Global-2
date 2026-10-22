@@ -154,23 +154,30 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         r.origin = orderDetail == null ? null : orderDetail.getPatientOrigin();
         var shell = c;
         r.canWrite = shell.canWrite;
-        r.cultureTests = cultureTests(c.id);
-        if (!shell.samples.isEmpty()) {
-            r.sampleItemId = shell.samples.get(0).sampleItemId;
-            r.sampleTypeId = shell.samples.get(0).sampleTypeId;
-        }
+        var cultureAnalyses = analyses.getAnalyses(c.id).stream()
+                .filter(a -> !a.getSampleItem().isRejected())
+                .filter(a -> "CULTURE".equals(a.getTest().getMicrobiologyCaseRole())
+                        || analyses.getByCaseAndAnalysis(c.id, a.getId()).getCaseRole() == MicroCaseRole.CULTURE)
+                .toList();
         if (culture != null) {
             r.sampleItemId = culture.sourceSampleItemId;
             attention(r, culture);
+        } else if (!cultureAnalyses.isEmpty()) {
+            r.sampleItemId = cultureAnalyses.get(0).getSampleItem().getId();
+        } else if (!shell.samples.isEmpty()) {
+            r.sampleItemId = shell.samples.get(0).sampleItemId;
         }
-        return r;
-    }
-
-    private List<IdValuePair> cultureTests(String id) {
-        return analyses.getAnalyses(id).stream()
-                .filter(a -> "CULTURE".equals(a.getTest().getMicrobiologyCaseRole())
-                        || analyses.getByCaseAndAnalysis(id, a.getId()).getCaseRole() == MicroCaseRole.CULTURE)
+        cultureAnalyses.stream().filter(a -> Objects.equals(r.sampleItemId, a.getSampleItem().getId())).findFirst()
+                .ifPresent(a -> r.sampleTypeId = a.getSampleItem().getTypeOfSampleId());
+        shell.samples.stream().filter(s -> Objects.equals(s.sampleItemId, r.sampleItemId)).findFirst()
+                .ifPresent(s -> {
+                    r.sampleTypeId = s.sampleTypeId;
+                    r.specimenType = s.specimenType;
+                });
+        r.cultureTests = cultureAnalyses.stream()
+                .filter(a -> Objects.equals(r.sampleItemId, a.getSampleItem().getId()))
                 .map(a -> new IdValuePair(a.getTest().getId(), a.getTest().getName())).distinct().toList();
+        return r;
     }
 
     private void attention(MicroBenchPageForm.Row r, MicroCultureForm c) {

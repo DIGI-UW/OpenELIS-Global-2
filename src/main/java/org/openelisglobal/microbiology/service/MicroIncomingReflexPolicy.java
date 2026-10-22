@@ -21,6 +21,6 @@ public class MicroIncomingReflexPolicy {
             return false;
         return links.getAnalyses(owner.getCaseId()).stream().anyMatch(a -> testId.equals(a.getTest().getId()))
                 || incoming.forCase(owner.getCaseId()).stream()
-                        .anyMatch(i -> testId.equals(i.getTestId()) && !"PLACED".equals(i.getState()));
+                        .anyMatch(i -> testId.equals(i.getTestId()) && ("WAITING".equals(i.getState()) || "NEEDS_AMENDMENT".equals(i.getState())));
     }
 }
