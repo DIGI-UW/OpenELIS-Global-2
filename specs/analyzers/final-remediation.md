@@ -4,6 +4,21 @@ Baseline synchronized on 21 October 2026. This checklist separates saved review
 work from the branch synchronization needed to finish it. It does not certify a
 release or authorize deployment.
 
+## Current direction — interpret once
+
+The 22 October audit supersedes the decimal-metadata/reprocessing proposal.
+Follow [the boundary remediation plan](boundary-remediation.md): complete and
+preserve Bridge normalization, then remove OE's duplicate parsing checks from
+confirmation, delivery, recovery, adoption and readiness. Retain local mapping
+approval, compatibility, placement, QC, receipts and audit. The historical
+progress below describes current code, including gates now slated for removal;
+it is not the target architecture. Runtime simplification is not implemented yet.
+
+Baseline `fde241e1a6` passed all 16 full local CI groups (9,203 backend tests,
+zero failures/errors, nine skipped). The audit refresh found only the expected
+upstream-pin validation failing on GitHub. New implementation must receive its
+own validation; the baseline does not prove the planned boundary.
+
 ## Candidate and stack order
 
 OpenELIS stack: #4770 → #4781 → #4784 → #4786 → #4787 → #4788 → #4789 →
@@ -208,19 +223,22 @@ integration, 42 confirmation unit and 21 mapping unit tests. The first focused
 attempt exposed an incorrect cleanup reflection overload and missing QC test
 profile; both are corrected. This is focused proof, not full CI acceptance.
 
-## Delivery-contract proposal under review
+## Delivery-contract proposal superseded
 
-Two subsequent findings remain open: queued results currently use the connection's
-present decimal setting, and pre-confirmation arrival snapshots omit it. The
-proposed correction carries the actual rendering-time setting in the bundle.
-It is not implemented. Existing rendered bundles lack that history; ordinary
-Retry resends them unchanged. A hold-and-reprocess policy therefore also needs
-an explicit, audited recovery operation, not an assumption that Retry already
-re-renders. The user is reviewing the proposal and will examine and merge the
-upstream dependencies separately.
+The queued-settings and pre-confirmation findings remain open. Their replacement
+is the broader [interpret-once boundary](boundary-remediation.md), not a new
+OpenELIS decimal-history gate. Bridge must supply explicit normalized meaning,
+including qualitative calls, and preserve the receipt-time context across a
+restart before rendering. OpenELIS must recover from the retained normalized
+payload using its own local decisions. No blanket hold or general raw-message
+reprocessor is required for missing decimal metadata. Existing incomplete
+qualitative payloads need bounded compatibility handling and reviewed local
+resolution, preserving receipts and finalized/dismissed results.
 
 ## Remaining acceptance
 
+- [x] Audit duplicated interpretation checks and record the revised boundary.
+- [ ] Implement and validate the six steps in the boundary remediation plan.
 - [ ] Finish GitHub replies/resolutions and refresh for new findings.
 - [ ] Pass combined analyzer scenarios, including undeclared recovery, exclusions
       and sender identity, and retain logs/screenshots.
