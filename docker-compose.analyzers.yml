@@ -24,6 +24,7 @@ services:
       - bridge-state:/data/openelis-analyzer-bridge
     environment:
       - TZ=${TZ:-UTC}
+      - SERVER_SSL_KEY_STORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
       # OpenELIS pairs with this code on startup. Without one, the Bridge logs a
       # generated code for a Global Admin to enter on the Analyzers page.
       - BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
