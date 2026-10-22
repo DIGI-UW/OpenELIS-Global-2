@@ -105,37 +105,4 @@ public class MicrobiologyCaseAccessServiceTest {
         when(userRoles.userInRole("7",Constants.ROLE_GLOBAL_ADMIN)).thenReturn(true);
         assertTrue(access.canReadLabUnit("7","10"));assertFalse(access.canAccessCase("missing","7",true));
     }
-
-    @org.junit.After
-    public void clearRequest() {
-        org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();
-    }
-
-    @Test
-    public void samlAndOauthUseRoleSpecificSessionUnitsWithoutDatabaseAssignments() {
-        for (Object principal : List.of(
-                new org.springframework.security.saml2.provider.service.authentication.DefaultSaml2AuthenticatedPrincipal(
-                        "sso-user", Map.of("name", List.of("sso-user"))),
-                new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
-                        List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("oeg-Results-Culture")),
-                        Map.of("name", "sso-user"), "name"))) {
-            var request = new org.springframework.mock.web.MockHttpServletRequest();
-            var user = new org.openelisglobal.login.valueholder.UserSessionData();
-            user.setSytemUserId(7);
-            request.getSession().setAttribute("userSessionData", user);
-            var context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-                    principal, null, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("oeg-Results-Culture"))));
-            request.getSession().setAttribute(
-                    org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
-            org.springframework.web.context.request.RequestContextHolder.setRequestAttributes(
-                    new org.springframework.web.context.request.ServletRequestAttributes(request));
-            when(users.getUserTestSections("7", "r")).thenReturn(List.of(new org.openelisglobal.common.util.IdValuePair("10", "Culture")));
-            assertTrue(access.hasLabUnitRole("7", "10", Constants.ROLE_RESULTS));
-            assertFalse(access.hasLabUnitRole("7", "11", Constants.ROLE_RESULTS));
-            assertFalse(access.hasLabUnitRole("7", "10", Constants.ROLE_VALIDATION));
-            assertFalse(access.hasLabUnitRole("8", "10", Constants.ROLE_RESULTS));
-            verify(users, never()).getUserTestSections(eq("8"), anyString());
-        }
-    }
 }

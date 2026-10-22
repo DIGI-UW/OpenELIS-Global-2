@@ -55,29 +55,7 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
                 }
             }
         }
-        if (isCurrentSingleSignOnUser(userId)) {
-            users.getUserTestSections(userId, role.getId()).forEach(unit -> ids.add(unit.getId()));
-        }
         return ids;
-    }
-
-    private boolean isCurrentSingleSignOnUser(String userId) {
-        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
-        if (!(attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet))
-            return false;
-        var session = servlet.getRequest().getSession(false);
-        if (session == null || !(session.getAttribute("userSessionData")
-                instanceof org.openelisglobal.login.valueholder.UserSessionData user)
-                || !userId.equals(String.valueOf(user.getSystemUserId())))
-            return false;
-        var context = session.getAttribute(
-                org.springframework.security.web.context.HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
-        if (!(context instanceof org.springframework.security.core.context.SecurityContext security)
-                || security.getAuthentication() == null || !security.getAuthentication().isAuthenticated())
-            return false;
-        var principal = security.getAuthentication().getPrincipal();
-        return principal instanceof org.springframework.security.saml2.provider.service.authentication.DefaultSaml2AuthenticatedPrincipal
-                || principal instanceof org.springframework.security.oauth2.core.user.DefaultOAuth2User;
     }
 
     private boolean isAdministrator(String userId) {
