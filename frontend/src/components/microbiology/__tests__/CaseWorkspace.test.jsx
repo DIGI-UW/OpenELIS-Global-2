@@ -226,3 +226,14 @@ describe("MVP microbiology case workspace", () => {
     expect(screen.queryByText("Test Patient")).toBeNull();
   });
 });
+
+test("related cases retain worklist filters but discard the previous case's action target", async () => {
+  const service = { getCase: vi.fn().mockResolvedValue(shell) };
+  renderPage(
+    <CaseViewShell service={service} caseId="case-1" />,
+    "/Microbiology/cases/case-1?labUnitId=10&scope=CRITICAL&action=log-critical&targetType=CASE&targetId=case-1&astView=reviewed&astRunId=run-1",
+  );
+  expect(
+    await screen.findByRole("link", { name: /M2-001 · TB lab/ }),
+  ).toHaveAttribute("href", "/Microbiology/cases/case-2?labUnitId=10");
+});

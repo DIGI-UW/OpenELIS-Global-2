@@ -284,3 +284,45 @@ it("loads analyzer choices when the session has analyzer import rights", async (
   );
   await waitFor(() => expect(service.getAnalyzers).toHaveBeenCalled());
 });
+
+it("closes an editor and disables mutations when entering reviewed mode", async () => {
+  const data = workspace();
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(data),
+    astAction: vi.fn(),
+  };
+  const view = (readOnly) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+        readOnly={readOnly}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view(false));
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.select") }),
+  );
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  rerender(view(true));
+  expect(await screen.findByText("Ampicillin")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  for (const action of [
+    "assign",
+    "start",
+    "select",
+    "repeat",
+    "retest",
+    "reading",
+    "review",
+  ])
+    expect(
+      screen.queryByRole("button", { name: t(`action.${action}`) }),
+    ).not.toBeInTheDocument();
+  expect(service.astAction).not.toHaveBeenCalled();
+  rerender(view(false));
+  expect(
+    await screen.findByRole("button", { name: t("action.select") }),
+  ).toBeEnabled();
+});

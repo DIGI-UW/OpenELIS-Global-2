@@ -731,6 +731,8 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "CRITICAL" && (
         <CriticalCommunicationPanel
+          key={`${detail.id}-${scanParams.get("action")}-${scanParams.get("targetType")}-${scanParams.get("targetId")}`}
+          onEntryComplete={() => onScopeChange?.("CRITICAL")}
           caseId={detail.id}
           sampleItemId={detail.samples?.[0]?.sampleItemId}
           isolates={auxiliaryIsolates}
@@ -786,6 +788,7 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "AST" && (
         <CaseAstWorkspace
+          readOnly={scanParams.get("astView") === "reviewed"}
           renderNotes={renderNotes}
           detail={detail}
           service={service}

@@ -63,6 +63,7 @@ export default function CaseAstWorkspace({
   service,
   onChanged,
   renderNotes,
+  readOnly = false,
 }) {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -98,6 +99,9 @@ export default function CaseAstWorkspace({
       live = false;
     };
   }, [draft?.action, draft?.adjustPanel, service]);
+  useEffect(() => {
+    setDraft(null);
+  }, [detail.id, readOnly]);
   const current = useRef(detail);
   current.current = detail;
   useEffect(() => {
@@ -136,8 +140,8 @@ export default function CaseAstWorkspace({
       live = false;
     };
   }, [detail.id, data, service, canListAnalyzers]);
-  const canEnter = detail.canWrite && data?.canEnter;
-  const canValidate = detail.canValidate && data?.canValidate;
+  const canEnter = !readOnly && detail.canWrite && data?.canEnter;
+  const canValidate = !readOnly && detail.canValidate && data?.canValidate;
   const open = (action, isolate, run, reading, antibioticId) => {
     setError(false);
     setSelectedLots({});
@@ -161,6 +165,7 @@ export default function CaseAstWorkspace({
     });
   };
   const submit = async () => {
+    if (readOnly || !draft) return;
     const validating =
       validationActions.includes(draft.action) || draft.action === "resolve";
     if (!(validating ? current.current.canValidate : current.current.canWrite))

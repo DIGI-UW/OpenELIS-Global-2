@@ -87,36 +87,42 @@ test.describe("Microbiology analyzer AST review", () => {
       );
     });
 
-    const astCard = page.getByTestId("microbiology-ast-card");
+    const astTestId = `ast-run-${seeded.astRunId}`;
+    const astCard = page.getByTestId(astTestId);
     await expect(astCard).toBeVisible();
     await expect(astCard.getByText("Analyzer QC failed")).toBeVisible();
     await expect(astCard.getByText(SOURCE_ANALYZER)).toBeVisible();
     await expect(astCard.getByText(/UAT-AST-CARD-/)).toBeVisible();
     await expect(
-      page.getByRole("cell", { name: "Ciprofloxacin (UAT)", exact: true }),
+      astCard.getByRole("cell", { name: /^Ciprofloxacin \(UAT\)(?:\s|$)/ }),
     ).toBeVisible();
     await expect(page.getByText("Analyzer: Susceptible")).toBeVisible();
-    await frameBelowHeader(page, "microbiology-ast-card");
+    await frameBelowHeader(page, astTestId);
     await testInfo.attach("analyzer-ast-qc-failed", {
       body: await page.screenshot(),
       contentType: "image/png",
     });
 
-    const reason = page.getByLabel("Reason and corrective action");
-    await reason.fill("QC control investigated; supervisor accepts this run");
-    const overrideQc = page.getByRole("button", { name: "Override QC flag" });
-    await expect(overrideQc).toBeEnabled();
-    await overrideQc.click();
+    await astCard
+      .getByRole("button", { name: "Override quality control hold" })
+      .click();
+    let modal = page.getByRole("dialog");
+    await modal
+      .getByLabel("Reason", { exact: true })
+      .fill("QC control investigated; supervisor accepts this run");
+    await modal.getByRole("button", { name: "Save", exact: true }).click();
     await expect(
-      page.getByText("Analyzer results ready for review"),
+      astCard.getByText("Analyzer results ready for review"),
     ).toBeVisible();
-    const accept = page.getByRole("button", { name: "Accept results" });
-    await expect(accept).toBeEnabled();
-    await accept.click();
-    await expect(page.getByTestId("microbiology-ast-run-status")).toContainText(
-      "Reviewed",
-    );
-    await frameBelowHeader(page, "microbiology-ast-card");
+    await astCard
+      .getByRole("button", { name: "Validate run", exact: true })
+      .click();
+    modal = page.getByRole("dialog");
+    await modal.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      astCard.getByRole("button", { name: /Validated/ }),
+    ).toBeVisible();
+    await frameBelowHeader(page, astTestId);
     await testInfo.attach("analyzer-ast-reviewed", {
       body: await page.screenshot(),
       contentType: "image/png",

@@ -57,6 +57,7 @@ export default function CaseViewShell({
       "section",
       "action",
       "row",
+      "astView",
       "astRunId",
       "astIsolateId",
       "targetType",
@@ -496,7 +497,7 @@ export default function CaseViewShell({
                   {detail.relatedCases.map((c) => (
                     <li key={c.id}>
                       <RouterLink
-                        to={`${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(c.id)}${location.search}`}
+                        to={`${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(c.id)}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
                       >
                         {c.accessionNumber} · {c.labUnit} · {c.specimenType}
                       </RouterLink>

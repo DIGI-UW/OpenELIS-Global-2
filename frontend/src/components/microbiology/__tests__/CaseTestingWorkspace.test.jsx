@@ -5,7 +5,8 @@ import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import CaseTestingWorkspace from "../CaseTestingWorkspace";
 import messages from "../../../languages/en.json";
-vi.mock("../../utils/Utils", () => ({
+vi.mock("../../utils/Utils", async () => ({
+  ...(await vi.importActual("../../utils/Utils")),
   getFromOpenElisServer: vi.fn((url, cb) =>
     cb(
       url === "/rest/users"
@@ -590,4 +591,87 @@ it("honors the worklist setup action through the shared chooser and records the 
   );
   expect(changed).toHaveBeenCalledTimes(1);
   expect(navigate).toHaveBeenCalledWith("CULTURE");
+});
+
+test("reviewed AST entry remains read-only for a writer and validator", async () => {
+  const api = service();
+  api.getAstWorkspace = vi.fn().mockResolvedValue({
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { drugs: [] },
+    isolates: [
+      {
+        id: "i1",
+        label: "ISO-1",
+        assignments: [],
+        panels: [],
+        runs: [],
+        choices: [],
+      },
+    ],
+  });
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=ast&astView=reviewed"
+      />
+    </IntlProvider>,
+  );
+  expect(await screen.findByText(/ISO-1/)).toBeVisible();
+  expect(
+    screen.queryByRole("button", {
+      name: messages["microbiology.m6.action.start"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", {
+      name: messages["microbiology.m6.action.assign"],
+    }),
+  ).not.toBeInTheDocument();
+});
+
+test("consumes a critical communication target after saving and unlocks the next entry", async () => {
+  const api = service();
+  api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
+  api.logCriticalCommunication = vi
+    .fn()
+    .mockResolvedValue({ id: "communication-1" });
+  const navigate = vi.fn();
+  const view = (search) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch={search}
+        onScopeChange={navigate}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(
+    view(
+      "?scope=CRITICAL&action=log-critical&targetType=SAMPLE_ITEM&targetId=sample-1",
+    ),
+  );
+  expect(await screen.findByLabelText("Critical result target")).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Recipient"), {
+    target: { value: "Provider" },
+  });
+  fireEvent.change(screen.getByLabelText("Message"), {
+    target: { value: "Critical result called" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Log communication" }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith("CRITICAL"));
+  expect(api.logCriticalCommunication).toHaveBeenCalledWith(
+    "case-1",
+    expect.objectContaining({
+      targetType: "SAMPLE_ITEM",
+      targetId: "sample-1",
+    }),
+  );
+  rerender(view("?scope=CRITICAL"));
+  expect(await screen.findByLabelText("Critical result target")).toBeEnabled();
+  expect(screen.getByLabelText("Critical result target")).toHaveValue("CASE");
 });
