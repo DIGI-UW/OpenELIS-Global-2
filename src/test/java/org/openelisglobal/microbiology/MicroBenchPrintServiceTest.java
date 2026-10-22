@@ -109,6 +109,19 @@ public class MicroBenchPrintServiceTest {
         assertEquals("another-source", printed.get(0).get("sampleItemId").asText());
         assertEquals("another-source specimen", printed.get(0).get("specimenType").asText());
         assertEquals("other-test", printed.get(0).get("cultureTests").get(0).get("id").asText());
+        shell.samples.removeIf(s -> "another-source".equals(s.sampleItemId));
+        shell.specimenType = "Unrelated case specimen";
+        var sources = mock(org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "inoculations", sources);
+        var type = new org.openelisglobal.typeofsample.valueholder.TypeOfSample();
+        type.setId("aliquot-type");
+        type.setDescription("Aliquot specimen");
+        other.getSampleItem().setTypeOfSample(type);
+        when(sources.getSources("case")).thenReturn(List.of(other.getSampleItem()));
+        var aliquot = service.selectedCases("unit", List.of("case"), "writer").get(1);
+        assertEquals("another-source", aliquot.sampleItemId);
+        assertEquals("aliquot-type", aliquot.sampleTypeId);
+        assertEquals("Aliquot specimen", aliquot.specimenType);
     }
 
     private org.openelisglobal.analysis.valueholder.Analysis cultureAnalysis(String sourceId, String testId) {

@@ -178,6 +178,14 @@ public class MicroBenchServiceImpl implements MicroBenchService {
             r.sampleTypeId = s.sampleTypeId;
             r.specimenType = s.specimenType;
         });
+        if (culture != null && shell.samples.stream().noneMatch(s -> Objects.equals(s.sampleItemId, r.sampleItemId))) {
+            r.specimenType = null;
+            inoculations.getSources(c.id).stream().filter(s -> Objects.equals(s.getId(), r.sampleItemId)).findFirst()
+                    .ifPresent(s -> {
+                        r.sampleTypeId = s.getTypeOfSampleId();
+                        r.specimenType = s.getTypeOfSample() == null ? null : s.getTypeOfSample().getDescription();
+                    });
+        }
         r.cultureTests = cultureAnalyses.stream().filter(a -> Objects.equals(r.sampleItemId, a.getSampleItem().getId()))
                 .map(a -> new IdValuePair(a.getTest().getId(), a.getTest().getName())).distinct().toList();
         return r;
