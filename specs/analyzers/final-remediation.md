@@ -96,20 +96,20 @@ final remediation; source inspection is not a passing regression test.
   mapping and confirmation. The combined GeneXpert browser scenario reproduces
   this; keep rejection of genuinely missing confirmed readings covered.
 
-## Remaining fingerprint gate
+## Legacy fingerprint gate removed
 
-The normal path compares saved interpretations, but two legacy paths still use
-whole-file equality when a confirmation has no saved readings:
-`AnalyzerMappingConfirmationServiceImpl.readingOnDelivery` and `readingAgainst`.
-The test `aConfirmationFromBeforeReadingsHoldsTheAnalyzerOnceItsFileChanged`
-explicitly expects a hold when only the fingerprint changes and interpretation
-stays identical. This is an incomplete implementation of the no-whole-file-gate
-requirement, not a Bridge requirement or the CI fixture failure fixed below.
-
-- [ ] Replace this fallback as part of the missing-baseline/reconfirmation work.
-  Treat unknown historical interpretation explicitly; do not invent it from the
-  current file, and do not use a changed hash as proof of changed meaning. The
-  reviewer suggestion in thread 4342432773 does not override this requirement.
+- [x] Remove the whole-file fingerprint fallback from legacy delivery and
+  verification. Older confirmations without readings begin tracking the served
+  interpretation on their first readable delivery, irrespective of the old
+  fingerprint. This is a forward baseline, not a reconstruction of history.
+  Read-only status, assessment and served-profile checks do not write readings.
+- Later changes to stored interpretation still hold the affected rows or type.
+  The replacement regressions cover changed-fingerprint legacy delivery,
+  verification, and a subsequent unit change. Missing-baseline/outage and
+  reconfirmation findings above remain separate work.
+- Validation: both new regressions failed before the fix; all 104 focused
+  confirmation, activation, interpretation, catalog and import tests pass after
+  it. Formatting and whitespace checks pass. Full CI remains separate.
 
 ## Baseline corrections and evidence
 
@@ -167,7 +167,7 @@ until the candidate dependencies merge. No release acceptance is claimed.
 ## Final acceptance
 
 - [ ] Implement and validate the original five groups and the additional ten
-  findings above, plus the legacy fingerprint gate, then reply to and resolve
+  findings above, then reply to and resolve
   their sixteen GitHub threads. Historical bot summaries are not current status.
 - [ ] Exercise exclusions and sender identity through the combined candidate.
 - [ ] Add host-query harness acceptance using native mock traffic; keep the

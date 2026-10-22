@@ -132,6 +132,12 @@ is listed in [roadmap.md](roadmap.md).
       person confirms the type's reading again, once for the analyzer;
     - a new code is an unmapped row, as any undeclared code is.
 
+    A confirmation created before readings were stored starts tracking the
+    served reading on its first readable delivery, regardless of its old file
+    fingerprint. This establishes a baseline from that point forward; it cannot
+    reconstruct historical interpretation. Read-only verification does not
+    invent a historical reading or invalidate a confirmation from a hash change.
+
     Everything else in a profile changes nothing: names, hints, codings and
     LOINC, connection fields and defaults, capabilities, a new assay. The
     confirmation stands, connections restore and keep running, and nothing

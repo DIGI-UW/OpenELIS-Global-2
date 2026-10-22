@@ -92,8 +92,8 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         }
 
         AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
-        // Without the served profile the confirmation takes its readings later, from
-        // the file it confirmed.
+        // Without a served profile, start tracking readings on the first readable
+        // delivery.
         served.ifPresent(reading -> keep(confirmation, reading));
         confirmation.setMapping(candidate.mapping());
         confirmation.setProfileId(context.profile.getProfileId());
@@ -194,11 +194,8 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
                 ? new AnalyzerArrivalReading(served.type(), served.rows())
                 : null;
         if (readFrom == null) {
-            // A confirmation from before readings were kept: it takes them from the file it
-            // confirmed.
-            if (!served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())) {
-                return AnalyzerConfirmationReading.typeReadingChanged().arrivingAs(arrival);
-            }
+            // No historical reading exists to compare. Start tracking the served reading
+            // from this delivery; a whole-file hash cannot establish a semantic change.
             keep(confirmation, served);
             confirmationDAO.update(confirmation);
             return AnalyzerConfirmationReading.unchanged().arrivingAs(arrival);
@@ -288,9 +285,7 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     private AnalyzerConfirmationReading readingAgainst(ServedReading served, AnalyzerMappingConfirmation confirmation) {
         if (confirmation.getReadingsFingerprint() == null) {
-            return served.fingerprint().equals(confirmation.getProfileRevisionFingerprint())
-                    ? AnalyzerConfirmationReading.unchanged()
-                    : AnalyzerConfirmationReading.typeReadingChanged();
+            return AnalyzerConfirmationReading.unchanged();
         }
         if (served.fingerprint().equals(confirmation.getReadingsFingerprint())) {
             return AnalyzerConfirmationReading.unchanged();

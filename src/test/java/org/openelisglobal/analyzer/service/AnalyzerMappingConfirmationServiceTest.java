@@ -398,7 +398,7 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void aConfirmationFromBeforeReadingsGainsThemWhileItsFileIsUnchanged() throws Exception {
+    public void aConfirmationFromBeforeReadingsGainsThemOnItsNextDelivery() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation legacy = storedConfirmation(candidate, exactRequest());
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(legacy));
@@ -412,14 +412,47 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void aConfirmationFromBeforeReadingsHoldsTheAnalyzerOnceItsFileChanged() throws Exception {
+    public void aLegacyConfirmationStartsTrackingReadingsWithoutAWholeFileFingerprintGate() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
-        when(confirmationDAO.findByMappingId("61"))
-                .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
+        AnalyzerMappingConfirmation legacy = storedConfirmation(candidate, exactRequest());
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(legacy));
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK"));
 
-        assertTrue(service.readingOnDelivery(candidate, EDITED_FINGERPRINT).typeChanged());
+        AnalyzerConfirmationReading first = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+
+        assertTrue(first.isUnchanged());
+        assertEquals(EDITED_FINGERPRINT, legacy.getReadingsFingerprint());
+        assertTrue(legacy.getRowReadingsJson().contains("RAW-A"));
+        verify(confirmationDAO).update(legacy);
+
+        // Once readings exist, a later unit change still holds just the affected test.
+        String laterFingerprint = "sha256:" + "f".repeat(64);
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
+                .thenReturn(served(laterFingerprint, "IU/mL", "DETECTED", "MOCK"));
+        AnalyzerConfirmationReading changed = service.readingOnDelivery(candidate, laterFingerprint);
+        assertFalse(changed.typeChanged());
+        assertEquals(java.util.Set.of(new AnalyzerMappingSourceRow("RAW-A", null, "")), changed.changedRows());
+        assertEquals(EDITED_FINGERPRINT, legacy.getReadingsFingerprint());
+    }
+
+    @Test
+    public void aLegacyConfirmationIsNotInvalidatedByAChangedServedFingerprint() throws Exception {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerMappingConfirmation legacy = storedConfirmation(candidate, exactRequest());
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(legacy));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(legacy));
+        BridgeProfileCatalog.ProfileRevision edited = served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK");
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(edited);
+
+        AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
+        assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, status.state());
+        assertFalse(status.typeReadingChanged());
+        assertTrue(status.rowsReadDifferently().isEmpty());
+        assertTrue(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation().isPresent());
+        assertTrue(service.standsAsServed("61", edited));
+        assertNull("read-only checks must not manufacture historical readings", legacy.getReadingsFingerprint());
+        verify(confirmationDAO, never()).update(any());
     }
 
     @Test
