@@ -498,10 +498,10 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().getLast()
                     .afterCommit();
             var captured = org.mockito.ArgumentCaptor.forClass(List.class);
-            var savedData = org.mockito.ArgumentCaptor.forClass(
-                    org.openelisglobal.result.action.util.ResultsUpdateDataSet.class);
-            org.mockito.Mockito.verify(publisher)
-                    .transformPersistResultsEntryFhirObjects(savedData.capture(), captured.capture());
+            var savedData = org.mockito.ArgumentCaptor
+                    .forClass(org.openelisglobal.result.action.util.ResultsUpdateDataSet.class);
+            org.mockito.Mockito.verify(publisher).transformPersistResultsEntryFhirObjects(savedData.capture(),
+                    captured.capture());
             assertFalse(savedData.getValue().getModifiedResults().stream()
                     .anyMatch(r -> removedId.equals(r.result.getId())));
             assertEquals(1, captured.getValue().size());
@@ -581,12 +581,11 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
                 .anyMatch(t -> follow.getId().equals(t.id())));
         mockMvc.perform(get("/rest/microbiology/cases/" + microCase.getId() + "/analyses/catalog")
                 .param("sampleType", microCase.getSampleTypeId())
-                .requestAttr(IActionConstants.USER_SESSION_DATA, session(actor)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.panels[0].id").value(panel.getId()));
+                .requestAttr(IActionConstants.USER_SESSION_DATA, session(actor))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.panels[0].id").value(panel.getId()));
         assertThrows(AccessDeniedException.class,
                 () -> workspace.getCatalog(microCase.getId(), microCase.getSampleTypeId(), outsider));
-        assertThrows(IllegalArgumentException.class,
-                () -> workspace.getCatalog(microCase.getId(), "-12345", actor));
+        assertThrows(IllegalArgumentException.class, () -> workspace.getCatalog(microCase.getId(), "-12345", actor));
     }
 
     @Test

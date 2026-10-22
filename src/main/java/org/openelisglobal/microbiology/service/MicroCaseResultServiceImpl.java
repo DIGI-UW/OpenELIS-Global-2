@@ -134,8 +134,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (!access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS))
             throw new AccessDeniedException("Case lab unit access required");
         MicroCaseMutationGuard.requireMutable(c);
-        if (search.getSamples(caseId).stream().noneMatch(s -> !s.isRejected()
-                && sampleTypeId.equals(s.getTypeOfSampleId())))
+        if (search.getSamples(caseId).stream()
+                .noneMatch(s -> !s.isRejected() && sampleTypeId.equals(s.getTypeOfSampleId())))
             bad("MICROBIOLOGY_SAMPLE_CASE_MISMATCH");
         var catalog = new MicroCaseTestCatalogForm();
         catalog.tests = sampleTests.getTypeOfSampleTestsForSampleType(sampleTypeId).stream()
