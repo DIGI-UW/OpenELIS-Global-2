@@ -1,0 +1,183 @@
+/* Carbon-like look (IBM Plex is the OpenELIS font; system fonts as fallback). */
+:root {
+  --text: #161616;
+  --text-2: #525252;
+  --border: #e0e0e0;
+  --layer: #f4f4f4;
+  --interactive: #0f62fe;
+  --error: #da1e28;
+  --warning-bg: #fcf4d6;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family:
+    "IBM Plex Sans",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.43;
+  color: var(--text);
+  background: #fff;
+}
+.mcp {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px;
+  max-width: 1100px;
+}
+.mcp[data-state="loading"] .mcp__section {
+  opacity: 0.5;
+}
+.mcp__section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.mcp__note {
+  margin: 4px 0;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.mcp__label {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.mcp__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mcp__code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  background: var(--layer);
+  padding: 6px 8px;
+  overflow-wrap: anywhere;
+}
+.mcp__copy {
+  flex: 1;
+  min-width: 240px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid #8d8d8d;
+  background: var(--layer);
+}
+.mcp__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 520px;
+}
+.mcp__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.mcp__field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.mcp__field input,
+.mcp__field select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid #8d8d8d;
+  background: var(--layer);
+}
+.mcp__check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mcp__warning {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--warning-bg);
+  font-size: 12px;
+}
+.mcp__button {
+  align-self: flex-start;
+  font: inherit;
+  border: 0;
+  padding: 8px 16px;
+  background: var(--interactive);
+  color: #fff;
+  cursor: pointer;
+}
+.mcp__button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.mcp__button--ghost {
+  background: none;
+  color: var(--interactive);
+  padding: 6px 8px;
+}
+.mcp__button--danger {
+  background: none;
+  color: var(--error);
+  padding: 2px 4px;
+}
+.mcp__button--danger.is-armed {
+  background: var(--error);
+  color: #fff;
+}
+.mcp__created {
+  padding: 8px 12px;
+  background: #defbe6;
+}
+.mcp__created p {
+  margin: 0 0 6px;
+}
+.mcp__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mcp__table th {
+  text-align: left;
+  font-weight: 600;
+  background: #e0e0e0;
+  padding: 6px 8px;
+}
+.mcp__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.mcp__table .is-muted td {
+  color: var(--text-2);
+}
+.mcp__outcome--ok {
+  color: #198038;
+}
+.mcp__outcome--bad {
+  color: var(--error);
+}
+.mcp__error {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--error);
+  background: #fff1f1;
+}
