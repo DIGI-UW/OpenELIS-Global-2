@@ -28,14 +28,17 @@ public class AnalyzerNormalizedResultContractTest {
     @Test
     public void newContractDoesNotGuessAnInterpretationRoleFromItsCode() throws IOException {
         Bundle bundle = fixture("normalized-known-test.fhir.json");
-        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource).filter(Device.class::isInstance)
-                .map(Device.class::cast).findFirst().orElseThrow()
-                .addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-contract-version",
-                        new StringType("1.1"));
+        Device device = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Device.class::isInstance).map(Device.class::cast).findFirst().orElseThrow();
+        String versionUrl = "https://openelis-global.org/fhir/StructureDefinition/analyzer-contract-version";
+        device.getExtension().removeIf(extension -> versionUrl.equals(extension.getUrl()));
+        device.addExtension(versionUrl, new StringType("1.1"));
         Observation observation = observation(bundle);
         observation.addInterpretation().addCoding()
                 .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("POS");
-        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+        assertEquals("Version 1.1 interpretations require an explicit call or flag role",
+                assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR))
+                        .getMessage());
     }
 
     @Test

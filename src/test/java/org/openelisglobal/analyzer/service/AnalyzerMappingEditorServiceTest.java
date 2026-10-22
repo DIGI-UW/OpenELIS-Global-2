@@ -212,7 +212,6 @@ public class AnalyzerMappingEditorServiceTest {
         held.setRawResultValue("INDETERMINATE");
         held.setResult("INDETERMINATE");
         held.setResultType("A");
-        held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         analyzerWithLatest(currentMapping());
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
@@ -235,7 +234,6 @@ public class AnalyzerMappingEditorServiceTest {
         held.setRawTestCode("VENDOR-NEW-42");
         held.setRawResultValue("INDETERMINATE");
         held.setResult("INDETERMINATE");
-        held.setResultType("A");
         held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         analyzerWithLatest(currentMapping());
