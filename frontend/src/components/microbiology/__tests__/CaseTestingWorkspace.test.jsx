@@ -73,6 +73,26 @@ const enter = (name, value) =>
     { target: { value } },
   );
 describe("case testing workspace", () => {
+  test("rejected specimens are excluded from the test picker", async () => {
+    const api = service();
+    show(api, {
+      ...detail,
+      samples: [
+        ...detail.samples,
+        {
+          sampleItemId: "rejected",
+          sampleTypeId: "type-2",
+          specimenType: "Rejected urine",
+          sampleRejected: true,
+        },
+      ],
+    });
+    await screen.findByText("Two-component assay");
+    expect(screen.getByRole("button", { name: /Sputum/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rejected urine/ }),
+    ).not.toBeInTheDocument();
+  });
   test("edits components independently and submits the current version", async () => {
     const api = service();
     show(api);

@@ -338,6 +338,7 @@ export default function CaseTestingWorkspace({ detail, service }) {
     setSelection(
       (detail.samples || []).map((s) => ({
         sampleItemId: s.sampleItemId,
+        sampleRejected: s.sampleRejected,
         sampleTypeId: s.sampleTypeId,
         sampleTypeName: s.specimenType,
         tests: [],

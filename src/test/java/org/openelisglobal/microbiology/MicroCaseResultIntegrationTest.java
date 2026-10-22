@@ -46,6 +46,8 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     @Autowired
     private MicroCaseResultService workspace;
     @Autowired
+    private MicroCaseWorkspaceService caseWorkspace;
+    @Autowired
     private MicroCaseTimelineService timeline;
     @Autowired
     private MicroCaseDAO cases;
@@ -413,8 +415,53 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         var validated = workspace.validateResult(microCase.getId(), analysis.getId(), saved.version, validator).get(0);
         assertEquals("Finalized", validated.status);
         assertFalse(validated.canEdit);
+        assertEquals(statuses.getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Finished),
+                em.createQuery("select s.statusId from Sample s where s.id = :id", String.class)
+                        .setParameter("id", microCase.getSampleId()).getSingleResult());
         assertThrows(ResponseStatusException.class,
                 () -> workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor)));
+    }
+
+    @Test
+    public void caseSpecimenSummaryPreservesRejectionState() {
+        analysis.getSampleItem().setRejected(true);
+        em.merge(analysis.getSampleItem());
+        em.flush();
+        var specimen = caseWorkspace.get(microCase.getId(), actor).samples.stream()
+                .filter(s -> analysis.getSampleItem().getId().equals(s.sampleItemId)).findFirst().orElseThrow();
+        assertTrue(specimen.sampleRejected);
+    }
+
+    @Test
+    public void validationDoesNotFinishSampleWithOutstandingAnalysis() {
+        var sibling = fixtures.createAnalysis(analysis.getSampleItem(), fixtures.createCatalogTest());
+        sibling.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
+        em.merge(sibling);
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor)).get(0);
+        workspace.validateResult(microCase.getId(), analysis.getId(), saved.version, validator);
+        assertNotEquals(statuses.getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Finished),
+                em.createQuery("select s.statusId from Sample s where s.id = :id", String.class)
+                        .setParameter("id", microCase.getSampleId()).getSingleResult());
+    }
+
+    @Test
+    public void clearingExternalProvenanceLeavesPerformerUnsetUntilLocalResult() {
+        var p = new MicroCaseTestedElsewhereRequestForm();
+        p.version = payload().version;
+        p.testedElsewhere = true;
+        p.performingUserId = validator;
+        p.performedAt = "2026-10-01";
+        var external = workspace.setTestedElsewhere(microCase.getId(), analysis.getId(), p, actor).get(0);
+        p.version = external.version;
+        p.testedElsewhere = false;
+        var local = workspace.setTestedElsewhere(microCase.getId(), analysis.getId(), p, actor).get(0);
+        assertFalse(local.testedElsewhere);
+        assertNull(local.performingUserId);
+        assertNull(local.performingLabId);
+        assertNull(local.performedAt);
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor)).get(0);
+        assertEquals(actor, saved.performingUserId);
+        assertNotNull(saved.performedAt);
     }
 
     @Test

@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 public class MicroCaseSpecimenForm {
     public String id;
     public String sampleItemId;
+    public boolean sampleRejected;
     public String label;
     public String sampleTypeId;
     public String specimenType;
