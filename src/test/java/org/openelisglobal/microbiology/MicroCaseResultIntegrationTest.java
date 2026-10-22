@@ -259,6 +259,37 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void malformedSelectionGroupingIsRejectedBeforePersistence() {
+        configureSelection("M");
+        var selection = workspace.getTests(microCase.getId(), actor).get(0).components.stream()
+                .filter(r -> "M".equals(r.getResultType())).findFirst().orElseThrow();
+        for (String key : List.of("x", "2147483648")) {
+            var submission = payload();
+            var selected = submission.components.stream()
+                    .filter(c -> selection.getTestResultComponentId().equals(c.componentId)).findFirst().orElseThrow();
+            selected.value = "";
+            selected.multiSelectResultValues = "{\"" + key + "\":\"" + selection.getDictionaryResults().get(0).getId()
+                    + "\"}";
+            var failure = assertThrows(IllegalArgumentException.class, () -> workspace.saveResults(microCase.getId(),
+                    analysis.getId(), submission, actor, request(actor)));
+            assertEquals("MICROBIOLOGY_INVALID_RESULT_OPTION", failure.getMessage());
+            assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+        }
+    }
+
+    @Test
+    public void qualifiedScientificFormsUseTheSharedNumericNormalization() {
+        for (String value : List.of("<1.5×10⁵", ">10⁻³")) {
+            var submission = payload();
+            submission.components.get(0).value = value;
+            var saved = workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor))
+                    .get(0);
+            assertEquals("TechnicalAcceptance", saved.status);
+            assertEquals(2, results.getResultsByAnalysis(analysis).size());
+        }
+    }
+
+    @Test
     public void rejectsEmptyMultiselectWithoutAdvancingAnalysis() {
         rejectEmptySelection("M");
     }
@@ -551,6 +582,14 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
                     captured.capture());
             assertFalse(savedData.getValue().getModifiedResults().stream()
                     .anyMatch(r -> removedId.equals(r.result.getId())));
+            if (note != null) {
+                var notes = em
+                        .createQuery("from Note n where n.referenceId = :id and n.text = :text",
+                                org.openelisglobal.note.valueholder.Note.class)
+                        .setParameter("id", analysis.getId()).setParameter("text", note).getResultList();
+                assertEquals(1, notes.size());
+                assertNull(notes.get(0).getTestResultComponentId());
+            }
             assertEquals(1, captured.getValue().size());
             var snapshot = (org.hl7.fhir.r4.model.Observation) captured.getValue().get(0);
             assertEquals(removedUuid, snapshot.getIdElement().getIdPart());

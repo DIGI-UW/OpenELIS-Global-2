@@ -301,6 +301,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         ResultUtil.createResultsFromItems(data, false, false, true, "", httpRequest);
         // The case editor submits one analysis note, not one copy per component.
         // ResultUtil compiles a note from each component carrying that text.
+        data.getNoteList().forEach(note -> note.setTestResultComponentId(null));
         Set<List<String>> noteKeys = new HashSet<>();
         data.getNoteList().removeIf(note -> !noteKeys.add(Arrays.asList(note.getReferenceId(),
                 note.getReferenceTableId(), note.getNoteType(), note.getSubject(), note.getText())));
@@ -432,9 +433,11 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
                 if (groups == null || !groups.isObject())
                     bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
                 boolean selected = false;
-                var values = groups.elements();
+                var values = groups.fields();
                 while (values.hasNext()) {
-                    var group = values.next();
+                    var entry = values.next();
+                    Integer.parseInt(entry.getKey());
+                    var group = entry.getValue();
                     if (!group.isTextual())
                         bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
                     for (String id : group.asText().split(",")) {
@@ -451,14 +454,14 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
                     row.setResultValue("");
                     row.setMultiSelectResultValues(null);
                 }
-            } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
+            } catch (com.fasterxml.jackson.core.JsonProcessingException | NumberFormatException invalid) {
                 bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
             }
         }
         if ("N".equals(row.getResultType()) && !value.isEmpty()) {
             try {
-                String normalized = org.openelisglobal.common.util.StringUtil.normalizeScientificNotation(value)
-                        .replaceFirst("^[<>]=?\\s*", "");
+                String normalized = org.openelisglobal.common.util.StringUtil
+                        .normalizeScientificNotation(value.replaceFirst("^[<>]=?\\s*", ""));
                 new java.math.BigDecimal(normalized); // Validate the entire number, including its exponent.
                 int exponent = Math.max(normalized.indexOf('e'), normalized.indexOf('E'));
                 String mantissa = exponent < 0 ? normalized : normalized.substring(0, exponent);

@@ -39,7 +39,7 @@ function valid(row) {
   if (row.resultType === "N")
     return Number.isFinite(
       Number(
-        normalizeScientificNotation(row.resultValue).replace(/^[<>]=?\s*/, ""),
+        normalizeScientificNotation(row.resultValue.replace(/^[<>]=?\s*/, "")),
       ),
     );
   if (row.resultType === "D")

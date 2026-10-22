@@ -184,6 +184,30 @@ describe("case testing workspace", () => {
     await openEditor();
     expect(screen.getByRole("button", { name: "Save results" })).toBeDisabled();
   });
+  test.each(["<1.5×10⁵", ">10⁻³"])(
+    "accepts qualified scientific notation %s",
+    async (value) => {
+      const api = service();
+      show(api);
+      await openEditor();
+      enter("MTB", value);
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).toBeEnabled();
+      fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+      await waitFor(() =>
+        expect(api.saveResults).toHaveBeenCalledWith(
+          "case-1",
+          "20",
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ componentId: "primary", value }),
+            ]),
+          }),
+        ),
+      );
+    },
+  );
   test("invalid precision blocks saving and failed saves preserve both fields", async () => {
     const api = service();
     api.saveResults.mockRejectedValue(new Error("stale"));
