@@ -227,6 +227,82 @@ public class AnalyzerNormalizedResultContractTest {
                 .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
     }
 
+    @Test
+    public void explicitCallRoleDoesNotDependOnAStandardVocabulary() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer",
+                new StringType("REACTIVE"));
+        var call = observation.addInterpretation().setText("REACTIVE");
+        call.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-result-part",
+                new StringType("call"));
+        var flag = observation.addInterpretation().setText("Instrument warning");
+        flag.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-result-part",
+                new StringType("flag"));
+
+        var result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0);
+        assertEquals("7.5", result.number());
+        assertEquals("REACTIVE", result.call());
+        assertEquals("Instrument warning", result.flags());
+    }
+
+    @Test
+    public void canonicalAnswerIsUsedWhileVendorTextRemainsEvidence() throws IOException {
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer",
+                new StringType("INDETERMINATE"));
+        observation.setValue(new StringType("INDETERMINATE"));
+        var result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0);
+        assertEquals("INDETERMINATE", result.call());
+        assertEquals("INDETERMINATE-VENDOR-X", result.rawValue());
+    }
+
+    @Test
+    public void aResultCannotClaimBothAValueAndAFailedRun() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.getDataAbsentReason().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/data-absent-reason").setCode("error");
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
+    @Test
+    public void readsTheSharedVersion11FixtureWithExplicitRoles() throws IOException {
+        var result = AnalyzerNormalizedResultContract.parse(fixture("normalized-explicit-parts.fhir.json"), FHIR)
+                .results().get(0);
+        assertEquals("7.5", result.number());
+        assertEquals("REACTIVE", result.call());
+        assertEquals("Instrument warning", result.flags());
+    }
+
+    @Test
+    public void rejectsAContradictoryCanonicalAnswer() throws IOException {
+        Bundle bundle = fixture("normalized-explicit-parts.fhir.json");
+        observation(bundle).getInterpretationFirstRep().setText("NONREACTIVE");
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
+    @Test
+    public void rejectsAnUnknownRoleInsteadOfGuessingCallOrFlag() throws IOException {
+        Bundle bundle = fixture("normalized-explicit-parts.fhir.json");
+        observation(bundle).getInterpretationFirstRep().getExtensionFirstRep()
+                .setValue(new org.hl7.fhir.r4.model.CodeType("other"));
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
+    @Test
+    public void patientClassificationCannotContradictMatchedControlEvidence() throws IOException {
+        Bundle bundle = fixture("normalized-qc.fhir.json");
+        observation(bundle).getExtension().stream()
+                .filter(extension -> extension.getUrl().endsWith("/analyzer-result-classification")).findFirst()
+                .orElseThrow().setValue(new org.hl7.fhir.r4.model.CodeType("PATIENT"));
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
     private static Bundle fixture(String name) throws IOException {
         return FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURES.resolve(name)));
     }

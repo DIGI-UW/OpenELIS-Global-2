@@ -29,7 +29,6 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String RETIRED_BLOCKER = "analyzer.activation.blocker.retired";
     private static final String LAB_UNIT_BLOCKER = "analyzer.activation.blocker.labUnit";
     private static final String MAPPINGS_BLOCKER = "analyzer.activation.blocker.mappings";
-    private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
     private static final String BRIDGE_PROFILE_UNAVAILABLE = "analyzer.connection.readiness.profileUnavailable";
     /**
@@ -242,26 +241,18 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         AnalyzerMappingSnapshot snapshot = null;
         AnalyzerMappingConfirmation confirmation = null;
         String bindingRevisionId = analyzer.getMapping() == null ? null : analyzer.getMapping().getId();
-        String recognitionFingerprint = profileRevision == null || profileRevision.controlRecognitionSummary() == null
-                ? null
-                : profileRevision.controlRecognitionSummary().recognitionFingerprint();
-        if (bindingRevisionId != null && recognitionFingerprint != null) {
+        if (bindingRevisionId != null) {
             snapshot = mappingService.findById(bindingRevisionId).orElse(null);
             if (snapshot != null) {
-                AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
-                        recognitionFingerprint);
+                AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot);
                 if (!assessment.mappingsCurrent()) {
                     blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
-                }
-                if (!assessment.recognitionCurrent()) {
-                    blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
                 }
                 confirmation = assessment.currentConfirmation().orElse(null);
             }
         }
         if (snapshot == null) {
             blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
-            blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
         }
 
         ConnectionReference connection = null;

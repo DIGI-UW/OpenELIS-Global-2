@@ -62,6 +62,10 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
     "unknown_analyzer_result_value",
     "result_mapping_not_ready",
     "invalid_result_mapping",
+    "conflicting_answer_mapping",
+    "reading_changed",
+    "type_reading_changed",
+    "arrived_under_other_revision",
   ];
   if (
     !mappingIssues.includes(row.importIssueReason) ||
@@ -533,37 +537,10 @@ const AnalyserResults = (props) => {
             )}
           </>
         )}
-        {(row.importIssueReason === "reading_changed" ||
-          row.importIssueReason === "type_reading_changed") && (
-          <>
-            <div>
-              <FormattedMessage
-                id={
-                  row.importIssueReason === "reading_changed"
-                    ? "analyzer.results.held.readingChanged"
-                    : "analyzer.results.held.typeReadingChanged"
-                }
-              />
-            </div>
-            {props.analyzerId && (
-              <CarbonLink
-                as={RouterLink}
-                to={`/analyzers?setup=verify&analyzerId=${encodeURIComponent(props.analyzerId)}`}
-              >
-                <FormattedMessage id="analyzer.results.held.confirmAgain" />
-              </CarbonLink>
-            )}
-          </>
-        )}
-        {row.importIssueReason === "arrived_under_other_revision" && (
+
+        {row.importIssueReason === "conflicting_answer_mapping" && (
           <div>
-            <FormattedMessage
-              id="analyzer.results.held.otherRevision"
-              values={{
-                revision: row.sourceProfileRevision,
-                profile: row.sourceProfileId,
-              }}
-            />
+            <FormattedMessage id="analyzer.results.held.conflictingAnswerMapping" />
           </div>
         )}
         {row.importIssueReason === "qc_target_missing" && (

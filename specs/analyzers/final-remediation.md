@@ -7,17 +7,23 @@ release or authorize deployment.
 ## Current direction — interpret once
 
 The 22 October audit supersedes the decimal-metadata/reprocessing proposal.
-Follow [the boundary remediation plan](boundary-remediation.md): complete and
-preserve Bridge normalization, then remove OE's duplicate parsing checks from
+Follow [the boundary remediation plan](boundary-remediation.md): remove OE's duplicate parsing checks and preserve Bridge normalization across
 confirmation, delivery, recovery, adoption and readiness. Retain local mapping
 approval, compatibility, placement, QC, receipts and audit. The historical
-progress below describes current code, including gates now slated for removal;
-it is not the target architecture. Runtime simplification is not implemented yet.
+progress below records the previous baseline, including gates now removed.
+The replacement is implemented; its focused and full-stack validation must be
+reported separately from that baseline. See the numbered cleanup inventory.
 
 Baseline `fde241e1a6` passed all 16 full local CI groups (9,203 backend tests,
 zero failures/errors, nine skipped). The audit refresh found only the expected
 upstream-pin validation failing on GitHub. New implementation must receive its
 own validation; the baseline does not prove the planned boundary.
+
+Focused cleanup validation: Bridge `mvn test` passed 1,221 tests with four skipped;
+OE mapping/import/contract/adoption suites passed 260 tests; mapping editor and
+result-review frontend suites passed 113 tests. Formatting and whitespace checks
+passed. These are focused results, not full-stack acceptance; the candidate must
+pass complete local CI and current-head GitHub checkpoints before review closure.
 
 ## Candidate and stack order
 
@@ -28,7 +34,7 @@ Bridge stack: #101 → #102 → #104 → #105 → #106 → #107 → #108 → #10
 
 OpenELIS #4798 records these candidate commits:
 
-- Bridge #113: `b8618f9ad562f1ec270419909396b388b9950120`.
+- Bridge #113: `e5a9e33ffd8490e9190873bee7a641cf028bc7dd`.
 - Analyzer mock #62: `88b51f7c5ed50e953b8e80be5934162bcb138fd9`.
 
 The Bridge pin includes exclusion defaults, full sender matching/display, and

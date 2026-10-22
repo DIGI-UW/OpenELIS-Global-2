@@ -635,43 +635,6 @@ describe("AnalyzerTypeMappingEditor", () => {
       });
     });
 
-    it("shows a translation under the value it translates", async () => {
-      getAnalyzerMapping.mockImplementation((_id, callback) =>
-        callback({
-          ...viralLoadMapping,
-          tests: [
-            {
-              ...viralLoadMapping.tests[0],
-              results: [
-                ...viralLoadMapping.tests[0].results,
-                {
-                  rawValue: "NON DÉTECTÉ",
-                  mappingState: "UNRESOLVED",
-                  resultOptionId: null,
-                  selectedOption: null,
-                  translationOf: "NOT DETECTED",
-                },
-              ],
-            },
-            viralLoadMapping.tests[1],
-          ],
-        }),
-      );
-      renderEditor();
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Cepheid GeneXpert MTB/RIF mappings",
-      });
-
-      const main = rowFor("HIVVL");
-      expect(
-        within(main).getByText("Translation of NOT DETECTED"),
-      ).toBeVisible();
-      expect(
-        within(main).queryByText("Translation of NON DÉTECTÉ"),
-      ).not.toBeInTheDocument();
-    });
-
     it("lets the operator place a received record the profile does not declare", async () => {
       getAnalyzerMapping.mockImplementation((_id, callback) =>
         callback({
@@ -784,7 +747,7 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mappings",
       }),
     ).toBeInTheDocument();
     await waitFor(() =>
@@ -924,45 +887,6 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("names the confirmed rows the analyzer type now reads differently", async () => {
-    getAnalyzerMapping.mockImplementation((_id, callback) =>
-      callback({
-        ...mapping,
-        confirmation: {
-          ...unconfirmed,
-          state: "STALE",
-          rowsReadDifferently: [
-            { sourceRowKey: "MTB", rawValue: null, subIdentity: "" },
-            { sourceRowKey: "RIF", rawValue: "DETECTED", subIdentity: "" },
-          ],
-        },
-      }),
-    );
-    renderEditor();
-
-    expect(
-      await screen.findByText(/reads these differently.*MTB, RIF: DETECTED/),
-    ).toBeVisible();
-  });
-
-  it("says when the whole analyzer type now reads differently", async () => {
-    getAnalyzerMapping.mockImplementation((_id, callback) =>
-      callback({
-        ...mapping,
-        confirmation: {
-          ...unconfirmed,
-          state: "STALE",
-          typeReadingChanged: true,
-        },
-      }),
-    );
-    renderEditor();
-
-    expect(
-      await screen.findByText(/now reads every result differently/),
-    ).toBeVisible();
-  });
-
   it.each(["UNCONFIRMED", "STALE"])(
     "does not apply a %s mapping to held results",
     async (state) => {
@@ -1031,7 +955,7 @@ describe("AnalyzerTypeMappingEditor", () => {
   it("confirms partial mappings without excluding unresolved rows", async () => {
     renderEditor();
     const button = await screen.findByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mappings",
     });
     expect(button).toBeEnabled();
     expect(
@@ -1367,7 +1291,7 @@ describe("AnalyzerTypeMappingEditor", () => {
 
     expect(screen.getByText("Mappings saved")).toBeVisible();
     const confirm = screen.getByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mappings",
     });
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
@@ -1377,7 +1301,6 @@ describe("AnalyzerTypeMappingEditor", () => {
         "501",
         {
           baseMappingFingerprint: saved.mappingFingerprint,
-          recognitionFingerprint: recognition.recognitionFingerprint,
           confirmedRows: [
             { sourceRowKey: "RAW-A", subIdentity: "", rawValue: null },
             { sourceRowKey: "RAW-A", subIdentity: "", rawValue: "DETECTED" },
@@ -1445,7 +1368,7 @@ describe("AnalyzerTypeMappingEditor", () => {
       screen.getByRole("checkbox", { name: "Do not receive RAW-A" }),
     ).toBeChecked();
     const confirm = screen.getByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mappings",
     });
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
@@ -1619,7 +1542,7 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mappings",
       }),
     ).not.toBeInTheDocument();
     expect(

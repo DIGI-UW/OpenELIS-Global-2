@@ -19,10 +19,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Observation;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -84,12 +83,10 @@ public class AnalyzerNormalizedResultImportServiceTest {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
                 testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
-                mappingCatalogService, placementService, profileCatalogService);
+                mappingCatalogService, placementService);
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);
-        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any()))
-                .thenReturn(org.openelisglobal.analyzer.service.AnalyzerConfirmationReading.unchanged());
+        when(confirmationService.hasMatchingConfirmation(any())).thenReturn(true);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("501", "Numeric test", "NUM", List.of()),
                         new AnalyzerMappingCatalogService.TestOption("601", "Qualitative test", "QUAL", List.of())));
@@ -99,6 +96,83 @@ public class AnalyzerNormalizedResultImportServiceTest {
         analyzer = analyzer("site.mock-hematology", 1);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
                 .thenReturn(Optional.of(analyzer));
+    }
+
+    @Test
+    public void deliveredUnitMustMatchTheLocalNumericComponent() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Count", true, "N", "mg/L")));
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, capturedRow().getImportIssueReason());
+    }
+
+    @Test
+    public void aQuantityCannotLandOnAQualitativeLocalComponent() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Call", true, "D", null)));
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+    }
+
+    @Test
+    public void compatibleDeliveredQuantityKeepsItsUnitsWithoutConversion() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.getActiveComponents("501")).thenReturn(List
+                .of(new AnalyzerMappingCatalogService.ComponentOption("51", "MAIN", "Count", true, "N", "10*3/uL")));
+        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals("7.5", capturedRow().getResult());
+        assertEquals("10*3/uL", capturedRow().getUnits());
+    }
+
+    @Test
+    public void removedLocalComponentCannotReceiveAResult() throws IOException {
+        var target = boundTest("WBC", "501");
+        target.setComponentId("retired");
+        arrangeBinding(List.of(target), List.of());
+        assertEquals(1, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+    }
+
+    @Test
+    public void normalizedDeliveryDoesNotConsultCurrentParsingConfiguration() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(profileCatalogService.getProfile(any(), anyInt()))
+                .thenThrow(new AssertionError("Delivery must not fetch a live profile"));
+
+        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals("7.5", capturedRow().getResult());
+        verify(profileCatalogService, never()).getProfile(any(), anyInt());
+    }
+
+    @Test
+    public void queuedNumericDeliveryDoesNotDependOnTheCurrentProfileRevision() throws IOException {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(profileCatalogService.getProfile(any(), anyInt()))
+                .thenThrow(new AssertionError("A completed result is independent of the current profile"));
+
+        assertEquals(0, service.importBundle(fixture("normalized-known-test.fhir.json"), "7").resultsHeld());
+        assertEquals("7.5", capturedRow().getResult());
+    }
+
+    @Test
+    public void localMappingRecoveryDoesNotRecheckHistoricalParsingSnapshots() throws IOException {
+        arrangeBinding(List.of(), List.of());
+        service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+        AnalyzerResults held = capturedRow();
+        held.setId("9001");
+        held.setArrivalReading("{\"type\":{\"connection.numberFormat\":\",\"},\"rows\":[]}");
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+
+        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
+        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
+        verify(analyzerResultsService).update(updated.capture());
+        assertEquals("7.5", updated.getValue().getResult());
+        assertEquals("9001", updated.getValue().getId());
     }
 
     @Test
@@ -125,51 +199,6 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("7.5", row.getRawResultValue());
         assertEquals("PATIENT", row.getResultClassification());
         assertFalse(row.getSourcePayload().isBlank());
-    }
-
-    @Test
-    public void aConfirmedTestTheServedProfileNowReadsDifferentlyIsHeldUntilItIsConfirmedAgain() throws IOException {
-        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any()))
-                .thenReturn(new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(false, java.util.Set
-                        .of(new org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow("WBC", null, ""))));
-
-        AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"),
-                "7");
-
-        assertEquals(1, summary.resultsHeld());
-        AnalyzerResults row = capturedRow();
-        assertTrue(row.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_READING_CHANGED, row.getImportIssueReason());
-    }
-
-    @Test
-    public void aChangedTypeReadingHoldsEveryResultOfTheAnalyzer() throws IOException {
-        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any())).thenReturn(
-                new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(true, java.util.Set.of()));
-
-        AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"),
-                "7");
-
-        assertEquals(1, summary.resultsHeld());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_TYPE_READING_CHANGED, capturedRow().getImportIssueReason());
-    }
-
-    @Test
-    public void theFingerprintTheBundleWasReadWithIsWhatTheConfirmationIsCheckedAgainst() throws IOException {
-        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        Bundle bundle = fixture("normalized-known-test.fhir.json");
-        String fingerprint = "sha256:" + "f".repeat(64);
-        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
-                .filter(org.hl7.fhir.r4.model.Device.class::isInstance).map(org.hl7.fhir.r4.model.Device.class::cast)
-                .findFirst().orElseThrow()
-                .addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-profile-fingerprint",
-                        new org.hl7.fhir.r4.model.StringType(fingerprint));
-
-        service.importBundle(bundle, "7");
-
-        verify(confirmationService).readingOnDelivery(any(), eq("site.mock-hematology"), eq(1), eq(fingerprint));
     }
 
     @Test
@@ -277,7 +306,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
     @Test
     public void incomingResultIsHeldUntilItsSelectedMappingIsConfirmed() throws IOException {
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
+        when(confirmationService.hasMatchingConfirmation(any())).thenReturn(false);
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
@@ -319,7 +348,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, held.getImportIssueReason());
 
         arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
+        when(confirmationService.hasMatchingConfirmation(any())).thenReturn(false);
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
 
@@ -425,6 +454,37 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals(0, summary.resultsStaged());
         assertEquals(0, summary.resultsHeld());
         verify(analyzerResultsService, never()).insertAnalyzerResults(anyList(), eq("7"));
+    }
+
+    @Test
+    public void aReusedVendorCodeCannotOverrideAContradictoryClinicalMeaning() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("501", "Different test", "OTHER",
+                        List.of(org.openelisglobal.terminology.Coding.loinc("99999-9")))));
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.getCode().addCoding().setSystem("http://loinc.org").setCode("6690-2");
+        assertEquals(1, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, capturedRow().getImportIssueReason());
+    }
+
+    @Test
+    public void contradictoryLegacySpellingMappingsRequireALocalDecision() throws IOException {
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
+                List.of(boundResult("HIV-INTERP", "INDETERMINATE-VENDOR-X", "701"),
+                        boundResult("HIV-INTERP", "INDETERMINATE", "702")));
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        Observation observation = (Observation) bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).findFirst().orElseThrow();
+        observation.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer",
+                new org.hl7.fhir.r4.model.StringType("INDETERMINATE"));
+        observation.setValue(new org.hl7.fhir.r4.model.StringType("INDETERMINATE"));
+
+        assertEquals(1, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, capturedRow().getImportIssueReason());
+        org.mockito.Mockito.verifyZeroInteractions(testResultService);
     }
 
     @Test
@@ -560,188 +620,6 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("analyzer.fhirImport.error.unknownConnection", error.getErrorKey());
         verify(analyzerResultsService, never()).insertAnalyzerResults(anyList(), eq("7"));
         verify(mappingService, never()).findById(any());
-    }
-
-    @Test
-    public void aRowHeldUnderTheTypeTheAnalyzerLeftRecoversWhereBothTypesReadItAlike() throws IOException {
-        AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
-        when(profileCatalogService.getProfile("cepheid-genexpert-astm", 1))
-                .thenReturn(profile("cepheid-genexpert-astm", 1, "copies/mL"));
-
-        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
-        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
-        verify(analyzerResultsService).update(updated.capture());
-        assertEquals(held.getId(), updated.getValue().getId());
-        assertEquals("501", updated.getValue().getTestId());
-        assertFalse(updated.getValue().isReadOnly());
-    }
-
-    @Test
-    public void aRowHeldUnderTheTypeTheAnalyzerLeftStaysHeldWhereTheTypesReadItDifferently() throws IOException {
-        AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
-        when(profileCatalogService.getProfile("cepheid-genexpert-astm", 1))
-                .thenReturn(profile("cepheid-genexpert-astm", 1, "IU/mL"));
-
-        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
-        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
-        verify(analyzerResultsService).update(updated.capture());
-        assertEquals(held.getId(), updated.getValue().getId());
-        assertTrue(updated.getValue().isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, updated.getValue().getImportIssueReason());
-    }
-
-    @Test
-    public void aHeldResultKeepsHowItsRecordReadOnArrival() throws IOException {
-        analyzer = analyzer("site.unknown-capable", 3);
-        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
-                .thenReturn(Optional.of(analyzer));
-        arrangeBinding(List.of(), List.of());
-        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
-        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any()))
-                .thenReturn(
-                        new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(false, Set.of(),
-                                new org.openelisglobal.analyzer.service.AnalyzerArrivalReading(
-                                        json.createObjectNode(), Map.of(
-                                                new org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow(
-                                                        "VENDOR-NEW-42", null, ""),
-                                                json.valueToTree(List.of("copies/mL"))))));
-
-        service.importBundle(fixture("normalized-unknown-test.fhir.json"), "7");
-
-        AnalyzerResults held = capturedRow();
-        assertTrue(held.isReadOnly());
-        assertTrue(held.getArrivalReading().contains("copies/mL"));
-    }
-
-    @Test
-    public void anOlderQueuedRevisionKeepsItsReadingAndRecoversAfterThatProfileDisappears() throws IOException {
-        analyzer = analyzer("site.unknown-capable", 4);
-        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
-                .thenReturn(Optional.of(analyzer));
-        arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
-        when(profileCatalogService.getProfile("site.unknown-capable", 3))
-                .thenReturn(profile("site.unknown-capable", 3, "copies/mL"));
-        when(profileCatalogService.getProfile("site.unknown-capable", 4))
-                .thenReturn(profile("site.unknown-capable", 4, "IU/mL"));
-        service.importBundle(stampedUnknownBundle("sha256:" + "3".repeat(64)), "7");
-        verify(confirmationService).readingOnDelivery(any(), eq("site.unknown-capable"), eq(3),
-                eq("sha256:" + "3".repeat(64)));
-        AnalyzerResults held = capturedRow();
-        assertTrue(held.isReadOnly());
-        assertTrue(held.getArrivalReading().contains("copies/mL"));
-        assertFalse(held.getArrivalReading().contains("IU/mL"));
-        held.setId("9001");
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
-        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
-        when(confirmationService.readsAsConfirmed(eq("revision-1"), eq("VENDOR-NEW-42"), any(),
-                eq(held.getArrivalReading()))).thenReturn(true);
-        org.mockito.Mockito.clearInvocations(profileCatalogService);
-        when(profileCatalogService.getProfile("site.unknown-capable", 3))
-                .thenThrow(new org.openelisglobal.analyzer.service.BridgeProfileCatalogException("removed"));
-        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
-        verify(profileCatalogService, never()).getProfile(any(), org.mockito.ArgumentMatchers.anyInt());
-    }
-
-    @Test
-    public void anEditedOrUnavailableSourceDoesNotInventAnArrivalSnapshot() throws IOException {
-        analyzer = analyzer("site.unknown-capable", 3);
-        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
-                .thenReturn(Optional.of(analyzer));
-        arrangeBinding(List.of(), List.of());
-        when(profileCatalogService.getProfile("site.unknown-capable", 3))
-                .thenReturn(profile("site.unknown-capable", 3, "copies/mL"));
-        service.importBundle(stampedUnknownBundle("sha256:" + "4".repeat(64)), "7");
-        assertNull(capturedRow().getArrivalReading());
-        org.mockito.Mockito.clearInvocations(analyzerResultsService);
-        when(profileCatalogService.getProfile("site.unknown-capable", 3))
-                .thenThrow(new org.openelisglobal.analyzer.service.BridgeProfileCatalogException("removed"));
-        service.importBundle(stampedUnknownBundle("sha256:" + "3".repeat(64)), "7");
-        assertNull(capturedRow().getArrivalReading());
-    }
-
-    private Bundle stampedUnknownBundle(String fingerprint) throws IOException {
-        Bundle bundle = fixture("normalized-unknown-test.fhir.json");
-        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
-                .filter(org.hl7.fhir.r4.model.Device.class::isInstance).map(org.hl7.fhir.r4.model.Device.class::cast)
-                .findFirst().orElseThrow()
-                .addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-profile-fingerprint",
-                        new org.hl7.fhir.r4.model.StringType(fingerprint));
-        return bundle;
-    }
-
-    @Test
-    public void aHeldResultRecoversOnlyWhereItArrivedReadingAsTheConfirmationDoes() throws IOException {
-        AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
-        held.setArrivalReading("{\"type\":{},\"rows\":[]}");
-        when(confirmationService.readsAsConfirmed(eq("revision-1"), eq("VENDOR-NEW-42"), any(),
-                eq(held.getArrivalReading()))).thenReturn(false);
-
-        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
-        verify(analyzerResultsService, never()).update(any(AnalyzerResults.class));
-        verify(profileCatalogService, never()).getProfile("site.unknown-capable", 3);
-    }
-
-    @Test
-    public void aRecoveredResultStandsOnTheTypeTheAnalyzerIsConfirmedOnNow() throws IOException {
-        AnalyzerResults held = heldUnderTheTypeTheAnalyzerLeft();
-        held.setArrivalReading("{\"type\":{},\"rows\":[]}");
-        when(confirmationService.readsAsConfirmed(eq("revision-1"), eq("VENDOR-NEW-42"), any(),
-                eq(held.getArrivalReading()))).thenReturn(true);
-        String currentRecognition = "sha256:" + "c".repeat(64);
-        org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation confirmation = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
-        confirmation.setRecognitionFingerprint(currentRecognition);
-        when(confirmationService.findForMapping("revision-1")).thenReturn(Optional.of(confirmation));
-        when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
-        when(confirmationService.hasMatchingConfirmation(any(), eq(currentRecognition))).thenReturn(true);
-
-        assertEquals(1, service.recoverHeldMappingResults("42", "7"));
-        ArgumentCaptor<AnalyzerResults> updated = ArgumentCaptor.forClass(AnalyzerResults.class);
-        verify(analyzerResultsService).update(updated.capture());
-        assertEquals("501", updated.getValue().getTestId());
-        assertFalse(updated.getValue().isReadOnly());
-        assertEquals(held.getArrivalReading(), updated.getValue().getArrivalReading());
-    }
-
-    /**
-     * A row held before the lab set the analyzer up again on another type: same
-     * connection, same code, sent under the type it left.
-     */
-    private AnalyzerResults heldUnderTheTypeTheAnalyzerLeft() throws IOException {
-        analyzer = analyzer("site.unknown-capable", 3);
-        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
-                .thenReturn(Optional.of(analyzer));
-        arrangeBinding(List.of(), List.of());
-        service.importBundle(fixture("normalized-unknown-test.fhir.json"), "7");
-        AnalyzerResults held = capturedRow();
-        held.setId("9001");
-        assertEquals("site.unknown-capable", held.getSourceProfileId());
-
-        analyzer = analyzer("cepheid-genexpert-astm", 1);
-        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
-                .thenReturn(Optional.of(analyzer));
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
-        arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
-        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
-        when(profileCatalogService.getProfile("site.unknown-capable", 3))
-                .thenReturn(profile("site.unknown-capable", 3, "copies/mL"));
-        return held;
-    }
-
-    /**
-     * A published profile declaring VENDOR-NEW-42 as a number in the given unit.
-     */
-    private static org.openelisglobal.analyzer.service.BridgeProfileCatalog.ProfileRevision profile(String id,
-            int revision, String unit) {
-        com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
-        com.fasterxml.jackson.databind.node.ObjectNode document = json.createObjectNode();
-        document.putObject("profileMeta").put("id", id).put("displayName", id);
-        document.putObject("catalog").put("revision", revision).put("revisionFingerprint", "sha256:" + "3".repeat(64))
-                .put("source", "SHIPPED").put("status", "ACTIVE");
-        document.putObject("protocol").put("name", "ASTM");
-        document.putArray("default_test_mappings").addObject().put("test_code", "VENDOR-NEW-42").put("loinc", "20447-9")
-                .put("unit", unit).put("result_type", "numeric");
-        return new org.openelisglobal.analyzer.service.BridgeProfileCatalog.ProfileRevision(document,
-                json.createObjectNode());
     }
 
     @Test

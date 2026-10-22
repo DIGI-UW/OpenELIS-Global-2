@@ -93,7 +93,7 @@ public class AnalyzerActivationServiceTest {
         when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
         when(mappingService.findById(snapshot.mapping().getId())).thenReturn(Optional.of(snapshot));
-        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+        when(confirmationService.assessCurrent(snapshot))
                 .thenReturn(AnalyzerMappingVerificationAssessment.current(confirmation));
         TestSection activeUnit = new TestSection();
         activeUnit.setId("4");
@@ -226,13 +226,13 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
-    public void requiresCurrentLocalMappingAndRecognitionVerification() {
-        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(new AnalyzerMappingVerificationAssessment(false, false, confirmation));
+    public void requiresCurrentLocalMappingApproval() {
+        when(confirmationService.assessCurrent(snapshot))
+                .thenReturn(new AnalyzerMappingVerificationAssessment(false, confirmation));
 
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
-        assertEquals(List.of("analyzer.activation.blocker.mappings", "analyzer.activation.blocker.recognition"),
+        assertEquals(List.of("analyzer.activation.blocker.mappings"),
                 result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
         verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
     }

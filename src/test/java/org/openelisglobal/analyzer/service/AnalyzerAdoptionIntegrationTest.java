@@ -90,7 +90,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     private String analyzerId;
     private BridgeAnalyzerConnectionClient realBridge;
-    private BridgeAnalyzerConnectionClient realConfirmationBridge;
     /**
      * Active catalog tests of this class's own; other suites may leave the catalog
      * empty.
@@ -99,12 +98,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     @Before
     public void createCatalogTests() {
-        Object confirmationService = AopTestUtils.getUltimateTargetObject(confirmations);
-        realConfirmationBridge = (BridgeAnalyzerConnectionClient) ReflectionTestUtils.getField(confirmationService,
-                "connectionClient");
-        BridgeAnalyzerConnectionClient bridge = mock(BridgeAnalyzerConnectionClient.class);
-        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection(1));
-        ReflectionTestUtils.setField(confirmationService, "connectionClient", bridge);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         for (String id : catalogTests) {
             jdbc.update(
@@ -116,8 +109,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     @After
     public void deleteAnalyzer() {
-        ReflectionTestUtils.setField(AopTestUtils.<Object>getUltimateTargetObject(confirmations), "connectionClient",
-                realConfirmationBridge);
         if (realBridge != null) {
             useBridge(realBridge);
         }
@@ -282,7 +273,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
-    public void aResultStampedWithTheOldRevisionMapsWhenTheNewOneReadsItAlikeAndIsHeldWhenNot() throws Exception {
+    public void oldDeliveredValuesUseLocalMappingsWhileRemovedCodesStayHeld() throws Exception {
         analyzerOnRevisionOne();
         String testId = catalogTests.get(0);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
@@ -300,12 +291,12 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(Integer.valueOf(1), fixed.getSourceProfileRevision());
         AnalyzerResults dropped = staged("ADOPT-C");
         assertTrue(dropped.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, dropped.getImportIssueReason());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, dropped.getImportIssueReason());
         assertEquals(Integer.valueOf(1), dropped.getSourceProfileRevision());
     }
 
     @Test
-    public void resultsHeldOnTheOldRevisionRecoverOnApplyWhenTheNewOneReadsThemAlike() throws Exception {
+    public void localMappingRecoveryDoesNotReinterpretOldValuesUsingNewProfileUnits() throws Exception {
         analyzerOnRevisionOne();
         importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A", "ADOPT-D"),
                 "1");
@@ -327,8 +318,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(catalogTests.get(0), recovered.getTestId());
         assertEquals(Integer.valueOf(1), recovered.getSourceProfileRevision());
         AnalyzerResults otherUnit = staged("ADOPT-D");
-        assertTrue("revision 2 reports ADOPT-D in another unit", otherUnit.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, otherUnit.getImportIssueReason());
+        assertFalse("a later profile unit cannot change an already normalized result", otherUnit.isReadOnly());
+        assertEquals(catalogTests.get(1), otherUnit.getTestId());
         assertEquals(Integer.valueOf(1), otherUnit.getSourceProfileRevision());
     }
 
@@ -518,11 +509,10 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null,
                         row.getId().getSubIdentity()))
                 .toList();
-        confirmations
-                .confirm(candidate, AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT,
-                        new AnalyzerMappingConfirmationRequest(candidate.mapping().getMappingFingerprint(),
-                                AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT, confirmed, List.of()),
-                        "1");
+        confirmations.confirm(candidate, AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT,
+                new AnalyzerMappingConfirmationRequest(candidate.mapping().getMappingFingerprint(), confirmed,
+                        List.of()),
+                "1");
     }
 
     private void apply(AnalyzerMappingSnapshot adopted) {

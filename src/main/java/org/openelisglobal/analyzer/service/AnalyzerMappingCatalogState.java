@@ -50,7 +50,10 @@ public final class AnalyzerMappingCatalogState {
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED).map(ResultSourceKey::of)
                 .collect(Collectors.toCollection(HashSet::new));
         return new Validation(currentBoundTests, currentExcludedTests, currentBoundResults, currentExcludedResults,
-                binding.tests().size(), binding.results().size());
+                binding.tests().size(), binding.results().size(), activeTests,
+                binding.tests().stream().filter(row -> row.getTestId() != null).map(AnalyzerMappingTest::getTestId)
+                        .distinct().collect(Collectors.toMap(Function.identity(), id -> List.copyOf(Optional
+                                .ofNullable(mappingCatalogService.getActiveComponents(id)).orElse(List.of())))));
     }
 
     private boolean isCurrentTest(AnalyzerMappingTest row) {
@@ -113,9 +116,13 @@ public final class AnalyzerMappingCatalogState {
 
     public record Validation(Set<AnalyzerMappingRowKey> currentBoundTestRows,
             Set<AnalyzerMappingRowKey> currentExcludedTestRows, Set<ResultSourceKey> currentBoundResultRows,
-            Set<ResultSourceKey> currentExcludedResultRows, int testRows, int resultRows) {
+            Set<ResultSourceKey> currentExcludedResultRows, int testRows, int resultRows,
+            Map<String, AnalyzerMappingCatalogService.TestOption> activeTests,
+            Map<String, List<AnalyzerMappingCatalogService.ComponentOption>> components) {
 
         public Validation {
+            activeTests = Map.copyOf(activeTests);
+            components = Map.copyOf(components);
             currentBoundTestRows = currentBoundTestRows == null ? Set.of() : Set.copyOf(currentBoundTestRows);
             currentExcludedTestRows = currentExcludedTestRows == null ? Set.of() : Set.copyOf(currentExcludedTestRows);
             currentBoundResultRows = currentBoundResultRows == null ? Set.of() : Set.copyOf(currentBoundResultRows);
@@ -124,7 +131,7 @@ public final class AnalyzerMappingCatalogState {
         }
 
         static Validation empty() {
-            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0);
+            return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0, Map.of(), Map.of());
         }
 
         boolean isCurrentTest(AnalyzerMappingRowKey record) {
@@ -133,6 +140,36 @@ public final class AnalyzerMappingCatalogState {
 
         public boolean isCurrentBoundTest(AnalyzerMappingRowKey record) {
             return currentBoundTestRows.contains(record);
+        }
+
+        /**
+         * Known delivered and local clinical codings must agree; uncoded vendor
+         * identities use the approved mapping.
+         */
+        public boolean acceptsTestMeaning(String testId, List<org.openelisglobal.terminology.Coding> delivered) {
+            var target = activeTests.get(testId);
+            if (target == null)
+                return false;
+            return delivered.isEmpty() || target.codings().isEmpty()
+                    || delivered.stream().anyMatch(code -> target.codings().stream().anyMatch(code::sameAs));
+        }
+
+        /**
+         * Validate the delivered part against its local destination, without a Bridge
+         * profile.
+         */
+        public boolean acceptsValue(String testId, String componentId, boolean numeric, String unit) {
+            var active = components.getOrDefault(testId, List.of());
+            var target = active.stream()
+                    .filter(component -> componentId == null ? component.primary() : componentId.equals(component.id()))
+                    .findFirst().orElse(null);
+            if (target == null)
+                return componentId == null;
+            if (target.resultType() != null && !target.resultType().isBlank()
+                    && numeric != "N".equals(target.resultType()))
+                return false;
+            return !numeric || target.unit() == null || target.unit().isBlank()
+                    || (unit != null && target.unit().trim().equals(unit.trim()));
         }
 
         /** The main result of a code. */

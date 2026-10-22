@@ -53,7 +53,8 @@ public class AnalyzerMappingCatalogServiceTest {
     @Before
     public void setUp() {
         service = new AnalyzerMappingCatalogServiceImpl(testService, testResultService, terminologyService,
-                dictionaryService, sampleTypes, sampleTypeTests, componentService, answerTerminology);
+                dictionaryService, sampleTypes, sampleTypeTests, componentService, answerTerminology,
+                org.mockito.Mockito.mock(org.openelisglobal.unitofmeasure.service.UnitOfMeasureService.class));
     }
 
     @Test

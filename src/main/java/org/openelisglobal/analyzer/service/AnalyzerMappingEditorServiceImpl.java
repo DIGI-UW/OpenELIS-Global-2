@@ -149,8 +149,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                         current.results(), observedHeldValues, activeTests, activeTestsById))
                 .toList();
         AnalyzerMappingConfirmationView confirmation = snapshot == null ? AnalyzerMappingConfirmationView.unconfirmed()
-                : confirmationService.getStatus(snapshot,
-                        revision.controlRecognitionSummary().recognitionFingerprint());
+                : confirmationService.getStatus(snapshot);
         return new AnalyzerMappingView(analyzer == null ? null : analyzer.getId(), profile.profileId(),
                 profile.revision(), profile.revisionFingerprint(), profile.displayName(), profile.protocol(),
                 snapshot == null ? null : snapshot.mapping().getId(),
@@ -305,7 +304,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
             }
             results.add(new AnalyzerMappingView.ResultRow(rawValue, resultState, resultOrigin, optionId,
                     optionId == null ? null : activeResults.get(optionId), suggestedOption, reason,
-                    observedHeldValues.contains(resultKey), record.translationOf().get(rawValue)));
+                    observedHeldValues.contains(resultKey)));
         }
         return new AnalyzerMappingView.TestRow(definition.analyzerCode(), definition.analyzerCode(),
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
@@ -335,47 +334,25 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     }
 
     /**
-     * One record a test reports. Each declared value is followed by its
-     * translations; a translation answers with its value's code.
+     * One record a test reports. Each declared value is followed by its canonical
+     * answer identities emitted by the Bridge.
      */
     private record ReportedRecord(BridgeAnalyzerProfile.TestDefinition test, String componentCode, String unit,
-            String resultType, List<String> values, Map<String, List<Coding>> valueCodes,
-            Map<String, String> translationOf) {
-
+            String resultType, List<String> values, Map<String, List<Coding>> valueCodes) {
         static ReportedRecord main(BridgeAnalyzerProfile.TestDefinition test) {
-            return translated(test, null, test.unit(), test.resultType(), test.resultValues(), test.valueCodes(),
-                    test.translations());
+            return new ReportedRecord(test, null, test.unit(), test.resultType(), test.resultValues(),
+                    test.valueCodes());
         }
 
         static ReportedRecord of(BridgeAnalyzerProfile.TestDefinition test,
                 BridgeAnalyzerProfile.ComponentDefinition component) {
-            return translated(test, component.code(), component.unit(), component.resultType(),
-                    component.resultValues(), component.valueCodes(), component.translations());
+            return new ReportedRecord(test, component.code(), component.unit(), component.resultType(),
+                    component.resultValues(), component.valueCodes());
         }
 
         static ReportedRecord undeclared(AnalyzerMappingRowKey key) {
             return new ReportedRecord(new BridgeAnalyzerProfile.TestDefinition(key.sourceRowKey(), List.of(), null,
-                    List.of(), null, null, List.of(), Map.of()), null, null, null, List.of(), Map.of(), Map.of());
-        }
-
-        private static ReportedRecord translated(BridgeAnalyzerProfile.TestDefinition test, String componentCode,
-                String unit, String resultType, List<String> declared, Map<String, List<Coding>> codes,
-                Map<String, List<String>> translations) {
-            List<String> values = new ArrayList<>();
-            Map<String, List<Coding>> valueCodes = new LinkedHashMap<>(codes);
-            Map<String, String> translationOf = new LinkedHashMap<>();
-            for (String value : declared) {
-                values.add(value);
-                for (String text : translations.getOrDefault(value, List.of())) {
-                    values.add(text);
-                    translationOf.put(text, value);
-                    if (codes.containsKey(value)) {
-                        valueCodes.put(text, codes.get(value));
-                    }
-                }
-            }
-            return new ReportedRecord(test, componentCode, unit, resultType, List.copyOf(values), valueCodes,
-                    translationOf);
+                    List.of(), null, null, List.of(), Map.of()), null, null, null, List.of(), Map.of());
         }
     }
 

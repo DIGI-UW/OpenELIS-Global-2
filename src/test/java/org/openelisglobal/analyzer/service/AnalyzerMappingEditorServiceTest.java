@@ -16,7 +16,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -82,7 +81,7 @@ public class AnalyzerMappingEditorServiceTest {
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", recognitionFingerprint(),
                 "16", "Grace Hopper", null, List.of(), List.of());
         analyzerWithLatest(current);
-        when(confirmationService.getStatus(current, recognitionFingerprint())).thenReturn(confirmation);
+        when(confirmationService.getStatus(current)).thenReturn(confirmation);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
@@ -135,7 +134,7 @@ public class AnalyzerMappingEditorServiceTest {
     public void confirmMappingKeepsUnresolvedRowsSeparateFromConfirmedDecisions() throws Exception {
         AnalyzerMappingSnapshot candidate = currentMapping();
         AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
-                candidate.mapping().getMappingFingerprint(), recognitionFingerprint(),
+                candidate.mapping().getMappingFingerprint(),
                 List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
                 List.of(new AnalyzerMappingSourceRow("RAW-A", "NEG")));
         AnalyzerMappingConfirmationView expected = AnalyzerMappingConfirmationView.unconfirmed();
@@ -553,7 +552,7 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
-    public void aTranslationIsShownRightAfterTheValueItTranslates() throws Exception {
+    public void onlyCanonicalAnswersNeedLocalMappings() throws Exception {
         BridgeProfileCatalog.ProfileRevision revision = viralLoadRevision();
         var viralLoad = (com.fasterxml.jackson.databind.node.ObjectNode) revision.profile()
                 .path("default_test_mappings").get(0);
@@ -566,10 +565,8 @@ public class AnalyzerMappingEditorServiceTest {
         List<AnalyzerMappingView.ResultRow> results = recordRow(service.getDefaults("site.viral-load", 1), "")
                 .results();
 
-        assertEquals(List.of("DETECTED", "DÉTECTÉ", "NOT DETECTED", "NON DÉTECTÉ"),
+        assertEquals(List.of("DETECTED", "NOT DETECTED"),
                 results.stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
-        assertEquals(Arrays.asList(null, "DETECTED", null, "NOT DETECTED"),
-                results.stream().map(AnalyzerMappingView.ResultRow::translationOf).toList());
     }
 
     @Test

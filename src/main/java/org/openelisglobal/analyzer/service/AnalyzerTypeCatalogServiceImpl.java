@@ -2,11 +2,9 @@ package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
@@ -80,12 +78,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
             List<Analyzer> analyzers, List<AnalyzerMappingCatalogService.TestOption> activeTests) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        // Each revision the analyzers are pinned to is read from the Bridge once; the
-        // one listed here is already in hand.
-        Map<String, Optional<BridgeProfileCatalog.ProfileRevision>> served = new HashMap<>();
-        served.put(pinKey(profile.profileId(), profile.revision()), Optional.of(revision));
         List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers = analyzers.stream()
-                .map(analyzer -> affectedAnalyzer(analyzer, profile, served)).toList();
+                .map(analyzer -> affectedAnalyzer(analyzer, profile)).toList();
         String status = profile.status();
         AnalyzerMappingDraft defaults = mappingDefaults.resolve(profile, activeTests);
         // Both figures count rows of the defaults: a test and each of its parts, and
@@ -110,8 +104,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         return mappingDAO.findAnalyzersInForceOnProfile(profileId);
     }
 
-    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer, BridgeAnalyzerProfile profile,
-            Map<String, Optional<BridgeProfileCatalog.ProfileRevision>> served) {
+    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer,
+            BridgeAnalyzerProfile profile) {
         AnalyzerMapping inForce = analyzer.getMapping();
         AnalyzerMapping latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElse(inForce);
         // A saved adoption already targets the latest mapping's revision; it waits for
@@ -120,22 +114,7 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         boolean newerMappingRevision = latest.getRevisionNumber() > inForce.getRevisionNumber();
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
                 inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision,
-                confirmationService.standsAsServed(inForce.getId(),
-                        served.computeIfAbsent(pinKey(inForce.getProfileId(), inForce.getProfileRevision()),
-                                key -> servedRevision(inForce.getProfileId(), inForce.getProfileRevision()))
-                                .orElse(null)));
-    }
-
-    private Optional<BridgeProfileCatalog.ProfileRevision> servedRevision(String profileId, int revision) {
-        try {
-            return Optional.ofNullable(bridgeCatalogService.getProfile(profileId, revision));
-        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
-            return Optional.empty();
-        }
-    }
-
-    private static String pinKey(String profileId, int revision) {
-        return profileId + "#" + revision;
+                confirmationService.isConfirmed(inForce.getId()));
     }
 
     /**

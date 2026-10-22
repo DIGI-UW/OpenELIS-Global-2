@@ -10,7 +10,7 @@ is listed in [roadmap.md](roadmap.md).
 ## Boundary implementation status — 22 October 2026
 
 The interpret-once boundary below is the revised engineering decision requested
-by the user. Current code still has duplicated interpretation checks and
+by the user. The coordinated stack cleanup removes duplicated interpretation checks and
 incomplete qualitative normalization. The [boundary audit and implementation
 plan](boundary-remediation.md) records those gaps and the removal order; this
 specification is not a claim that the new boundary has shipped.

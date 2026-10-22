@@ -6,12 +6,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -47,15 +43,12 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow;
 import org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionClient;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -102,20 +95,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private PlatformTransactionManager transactionManager;
 
     private JdbcTemplate jdbc;
-    private BridgeAnalyzerConnectionClient realConfirmationBridge;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        Object confirmationService = AopTestUtils.getUltimateTargetObject(confirmations);
-        realConfirmationBridge = (BridgeAnalyzerConnectionClient) ReflectionTestUtils.getField(confirmationService,
-                "connectionClient");
-        BridgeAnalyzerConnectionClient bridge = mock(BridgeAnalyzerConnectionClient.class);
-        ObjectNode connection = new ObjectMapper().createObjectNode();
-        connection.put("connectionId", CONNECTION_ID).putObject("values");
-        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection);
-        ReflectionTestUtils.setField(confirmationService, "connectionClient", bridge);
         jdbc = new JdbcTemplate(dataSource);
         cleanup();
         jdbc.update("INSERT INTO clinlims.analyzer (id, name, is_active, bridge_connection_id, last_updated)"
@@ -131,8 +115,6 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @After
     public void tearDown() {
-        ReflectionTestUtils.setField(AopTestUtils.<Object>getUltimateTargetObject(confirmations), "connectionClient",
-                realConfirmationBridge);
         cleanup();
     }
 
@@ -989,12 +971,10 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                     .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), row.getId().getRawValue(),
                             row.getId().getSubIdentity()))
                     .forEach(tests::add);
-            assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
-                    confirmations
-                            .confirm(binding, fingerprint, new AnalyzerMappingConfirmationRequest(
-                                    binding.mapping().getMappingFingerprint(), fingerprint, tests, List.of()), "1")
-                            .state());
-            assertTrue(confirmations.assessCurrent(binding, fingerprint).currentConfirmation().isPresent());
+            assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, confirmations.confirm(binding, fingerprint,
+                    new AnalyzerMappingConfirmationRequest(binding.mapping().getMappingFingerprint(), tests, List.of()),
+                    "1").state());
+            assertTrue(confirmations.assessCurrent(binding).currentConfirmation().isPresent());
         });
     }
 

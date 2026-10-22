@@ -42,7 +42,11 @@ public interface AnalyzerMappingCatalogService {
         }
     }
 
-    record ComponentOption(String id, String code, String label, boolean primary) {
+    record ComponentOption(String id, String code, String label, boolean primary, String resultType, String unit) {
+        public ComponentOption(String id, String code, String label, boolean primary) {
+            this(id, code, label, primary, null, null);
+        }
+
         public ComponentOption(String id, String code, String label) {
             this(id, code, label, false);
         }

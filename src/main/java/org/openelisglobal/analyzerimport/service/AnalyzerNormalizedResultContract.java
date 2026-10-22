@@ -41,6 +41,9 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String PROFILE_ID = EXTENSION_ROOT + "analyzer-profile-id";
     private static final String PROFILE_REVISION = EXTENSION_ROOT + "analyzer-profile-revision";
     private static final String PROFILE_FINGERPRINT = EXTENSION_ROOT + "analyzer-profile-fingerprint";
+    private static final String CONTRACT_VERSION = EXTENSION_ROOT + "analyzer-contract-version";
+    private static final String RESULT_PART = EXTENSION_ROOT + "analyzer-result-part";
+    private static final String CANONICAL_ANSWER = EXTENSION_ROOT + "analyzer-canonical-answer";
     private static final String SOURCE_PROTOCOL = EXTENSION_ROOT + "analyzer-source-protocol";
     private static final String CLASSIFICATION = EXTENSION_ROOT + "analyzer-result-classification";
     private static final String CONTROL_RECOGNITION = EXTENSION_ROOT + "analyzer-control-recognition";
@@ -92,6 +95,10 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             throw new IllegalArgumentException("Normalized analyzer traffic requires one Bridge connection ID");
         }
 
+        String version = optionalExtensionText(device, CONTRACT_VERSION);
+        if (version != null && !"1.0".equals(version) && !"1.1".equals(version)) {
+            throw new IllegalArgumentException("Unsupported analyzer result contract version: " + version);
+        }
         String profileId = requireExtensionText(device, PROFILE_ID,
                 "Normalized analyzer traffic requires a profile ID");
         int profileRevision = requirePositiveIntegerExtension(device, PROFILE_REVISION,
@@ -183,6 +190,21 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 "Control-recognition outcome is required");
         String recognitionFingerprint = requireNestedExtensionText(recognition, "recognitionFingerprint",
                 "Control-recognition fingerprint is required");
+        if (!Set.of("NONE", "RULES").contains(recognitionMode)
+                || !Set.of("MATCH", "NO_MATCH", "NOT_EVALUATED").contains(recognitionOutcome)
+                || ("NONE".equals(recognitionMode) && !"NOT_EVALUATED".equals(recognitionOutcome))
+                || "CONTROL".equals(classification) != "MATCH".equals(recognitionOutcome)) {
+            throw new IllegalArgumentException("Result classification contradicts its delivered recognition evidence");
+        }
+        if (observation.hasDataAbsentReason() && observation.getDataAbsentReason().getCoding().stream().noneMatch(
+                coding -> "http://terminology.hl7.org/CodeSystem/data-absent-reason".equals(coding.getSystem())
+                        && "error".equals(coding.getCode()))) {
+            throw new IllegalArgumentException(
+                    "Unsupported absent-value reason; only an explicit failed run is supported");
+        }
+        if (observation.getInterpretation().stream().filter(AnalyzerNormalizedResultContract::isCall).count() > 1) {
+            throw new IllegalArgumentException("An analyzer result has at most one qualitative call");
+        }
 
         // The quantity becomes the stored number through toPlainString, which writes
         // out every digit an exponent implies; stored numbers are also read back
@@ -198,7 +220,17 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String number = observation.hasValueQuantity() && observation.getValueQuantity().hasValue()
                 ? observation.getValueQuantity().getValue().toPlainString()
                 : null;
-        String call = number != null ? callInterpretation(observation) : callValue(observation, rawValue);
+        if (observation.hasDataAbsentReason() && observation.hasValue()) {
+            throw new IllegalArgumentException("An analyzer result cannot contain a value and an absent-value reason");
+        }
+        String canonicalAnswer = optionalExtensionText(observation, CANONICAL_ANSWER);
+        String call = observation.hasDataAbsentReason() ? null
+                : canonicalAnswer != null ? canonicalAnswer
+                        : number != null ? callInterpretation(observation) : callValue(observation, rawValue);
+        if (canonicalAnswer != null && (observation.hasDataAbsentReason() || !canonicalAnswer
+                .equals(number != null ? callInterpretation(observation) : callValue(observation, "")))) {
+            throw new IllegalArgumentException("Canonical answer contradicts the delivered result value");
+        }
         String resultType = observation.hasValueQuantity() ? "N" : "A";
         Timestamp completed = observation.hasEffectiveDateTimeType()
                 ? new Timestamp(observation.getEffectiveDateTimeType().getValue().getTime())
@@ -216,10 +248,16 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
                 completed, sourcePayload, patient == null ? null : patient.identifier(),
                 patient == null ? null : patient.name(), note.isEmpty() ? null : note,
-                observation.hasDataAbsentReason(), comparator, subIdentityOf(observation), number, call,
-                flagsOf(observation), assayNameOf(observation),
+                observation.hasDataAbsentReason() && observation.getDataAbsentReason().getCoding().stream()
+                        .anyMatch(coding -> "http://terminology.hl7.org/CodeSystem/data-absent-reason"
+                                .equals(coding.getSystem()) && "error".equals(coding.getCode())),
+                comparator, subIdentityOf(observation), number, call, flagsOf(observation), assayNameOf(observation),
                 observation.hasMethod() ? optionalExtensionText(observation.getMethod(), ASSAY_VERSION) : null,
-                operatorOf(observation));
+                operatorOf(observation),
+                observation.getCode().getCoding().stream().filter(
+                        coding -> !RAW_CODE_SYSTEM.equals(coding.getSystem()) && coding.hasSystem() && coding.hasCode())
+                        .map(coding -> new org.openelisglobal.terminology.Coding(coding.getSystem(), coding.getCode()))
+                        .toList());
     }
 
     /**
@@ -227,14 +265,26 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
      * call. OpenELIS shows them and does not interpret them.
      */
     private static String flagsOf(Observation observation) {
-        return joined(observation.getInterpretation().stream()
-                .filter(concept -> concept.getCoding().stream().noneMatch(
-                        coding -> INTERPRETATION.equals(coding.getSystem()) && CALL_CODES.contains(coding.getCode())))
+        return joined(observation.getInterpretation().stream().filter(concept -> !isCall(concept))
                 .map(concept -> concept.hasText() ? concept.getText()
                         : concept.getCoding().stream().findFirst()
                                 .map(coding -> coding.hasDisplay() ? coding.getDisplay() : coding.getCode())
                                 .orElse(null)),
                 ", ");
+    }
+
+    private static boolean isCall(org.hl7.fhir.r4.model.CodeableConcept concept) {
+        String role = optionalExtensionText(concept, RESULT_PART);
+        if (role != null) {
+            if (!"call".equals(role) && !"flag".equals(role)) {
+                throw new IllegalArgumentException("Unknown analyzer result part: " + role);
+            }
+            return "call".equals(role);
+        }
+        // Version 1.0 encoded the role in these standard codes. Decode only that old
+        // wire representation; never consult a profile or classify vendor spellings.
+        return concept.getCoding().stream()
+                .anyMatch(coding -> INTERPRETATION.equals(coding.getSystem()) && CALL_CODES.contains(coding.getCode()));
     }
 
     /** The assay that produced the result ({@code Observation.method}). */
@@ -283,9 +333,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
      * the instrument wrote it.
      */
     private static String callInterpretation(Observation observation) {
-        return observation.getInterpretation().stream()
-                .filter(concept -> concept.getCoding().stream().anyMatch(
-                        coding -> INTERPRETATION.equals(coding.getSystem()) && CALL_CODES.contains(coding.getCode())))
+        return observation.getInterpretation().stream().filter(AnalyzerNormalizedResultContract::isCall)
                 .map(concept -> concept.hasText() ? concept.getText()
                         : concept.getCoding().stream().filter(coding -> INTERPRETATION.equals(coding.getSystem()))
                                 .findFirst().map(coding -> coding.hasDisplay() ? coding.getDisplay() : coding.getCode())
@@ -392,7 +440,8 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
             String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
             boolean runFailed, String comparator, String subIdentity, String number, String call, String flags,
-            String assayName, String assayVersion, String operator) {
+            String assayName, String assayVersion, String operator,
+            List<org.openelisglobal.terminology.Coding> testCodings) {
 
         /**
          * The number as OpenELIS records it: a comparator the instrument reported leads

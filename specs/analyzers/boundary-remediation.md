@@ -1,6 +1,6 @@
 # Analyzer boundary remediation: interpret once
 
-Decision date: 22 October 2026. Status: revised engineering decision and implementation plan; runtime changes are not implemented by this document.
+Decision date: 22 October 2026. Status: runtime cleanup implemented; focused and full-stack validation tracked in the cleanup inventory and candidate evidence.
 
 The user directed an audit of duplicated decisions and a simpler boundary: the Bridge decides what the instrument reported once; OpenELIS handles its own laboratory responsibilities. This supersedes the decimal-setting-in-every-bundle proposal and its blanket historical-reprocessing requirement.
 
@@ -45,7 +45,7 @@ Source abbreviations below refer to the linked source index, not new components.
 
 ## Required bundle contract
 
-Define a versioned FHIR contract with executable Bridge/OE fixtures before deleting the gates. Reuse existing FHIR fields where their meaning is sufficient; add only missing semantics. Exact extension/schema changes belong to that implementation contract, not an ad hoc list of duplicated profile fields.
+The versioned FHIR contract and executable Bridge/OE fixtures document the replacement after deletion of the duplicated gates. Reuse existing FHIR fields where their meaning is sufficient; add only missing semantics. Exact extension/schema changes belong to that implementation contract, not an ad hoc list of duplicated profile fields.
 
 A delivered result must identify its source connection/message and specimen; its interpreted test and component identities; its typed value, comparator and units; canonical qualitative answer when known; patient/control classification; failed-run versus result versus informational outcome; and original instrument text as audit evidence. Carry standard codings where the profile supplies them. A stable profile-defined identity is permitted where no standard code exists; unknown input must remain explicitly unresolved. A raw string alone must not claim that two different semantic results are the same test. Never invent a standard code or infer clinical equivalence from a display label.
 
@@ -53,7 +53,9 @@ Do not ship the entire parser recipe to OE for re-execution or equality gating. 
 
 Example: the Bridge interprets a comma-formatted number and a translated qualitative answer, then delivers numeric `1.23` and the canonical answer identity, with the raw text preserved. OE chooses the approved local test and answer option and the matching sample/order. Changing either input language or number format afterward cannot change or block this bundle. Changing the local target mapping is a separate audited lab action and may require confirmation before local recovery.
 
-## Implementation order and acceptance
+## Implemented boundary and remaining acceptance
+
+The user-directed execution order was deletion first, replacement tests second, and remaining contract/local-validation gaps third. The following groups describe the final responsibilities, not approval prerequisites.
 
 1. **Contract and fixtures — Bridge + OE.** Inventory existing emitted fields for ASTM, HL7, FILE and HTTP tabular traffic. Define the smallest versioned normalized result contract and supported old/new combinations. Add producer/consumer fixtures for quantity, call, combined number/call, components, control, failure, flags and unknown values. Do not assume existing qualitative payloads are already complete.
 2. **Bridge normalization and durable receipt.** Canonicalize aliases/translations/part roles consistently; validate numeric grammar rather than guessing commas/thousands. Preserve an immutable decoding context at receipt and final bundle at rendering. Test interruption after durable receipt but before rendering, concurrent settings edits, restart and ordinary retry. FILE's retained context is useful existing behavior, not proof that other transports have it. Keep local mapping IDs out of Bridge.
@@ -79,11 +81,12 @@ Example: the Bridge interprets a comma-formatted number and a translated qualita
 
 Paths are relative to this repository. Bridge paths are within its recorded submodule.
 
-- [OE interpretation inventory](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerRecordReading.java): `TYPE_READING_SECTIONS`, `TYPE_READING_DEFAULTS`, `rowReadings`, `readAlike`, `parsing`.
-- [OE confirmation](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingConfirmationServiceImpl.java): `confirm`, `getStatus`, `assessCurrent`, `readingOnDelivery`, `readsAsConfirmed`, `standsAsServed`, `connectionOverrides`, `isCurrent`.
-- [OE import/recovery](../../src/main/java/org/openelisglobal/analyzerimport/service/AnalyzerNormalizedResultImportServiceImpl.java): `importBundle`, `recoverHeldMappingResults`, `mapResults`, `arrivalReading`, `toStagedResults`, `requireMatchingProfile`, `readsAlike`, `processControls`.
-- [OE delivered contract](../../src/main/java/org/openelisglobal/analyzerimport/service/AnalyzerNormalizedResultContract.java): `parseResult`, `callInterpretation`, `callValue`, `flagsOf`.
-- [OE defaults](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingDefaults.java): `translated`; [editor](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingEditorServiceImpl.java); [adoption](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingAdoption.java): `definitions`; [activation](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerActivationServiceImpl.java): `assessCurrent` caller; [type status](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerTypeCatalogServiceImpl.java): `standsAsServed` caller.
+- Deleted `AnalyzerRecordReading`, `AnalyzerArrivalReading` and `AnalyzerConfirmationReading`; the audit table above records their former responsibilities.
+- [OE confirmation](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingConfirmationServiceImpl.java): local mapping fingerprint, exact rows and audit only.
+- [OE import/recovery](../../src/main/java/org/openelisglobal/analyzerimport/service/AnalyzerNormalizedResultImportServiceImpl.java): normalized payload plus current local mapping, receipts and placement.
+- [OE delivered contract](../../src/main/java/org/openelisglobal/analyzerimport/service/AnalyzerNormalizedResultContract.java): explicit roles, canonical values and payload consistency; bounded 1.0 wire decoding.
+- [OE local catalog](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingCatalogState.java): active targets, clinical codings, component result type and units. Unspecified local type/unit metadata is not invented; no unit conversion is performed.
+- [OE defaults](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingDefaults.java), [editor](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingEditorServiceImpl.java), [adoption](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerMappingAdoption.java), [activation](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerActivationServiceImpl.java), [type status](../../src/main/java/org/openelisglobal/analyzer/service/AnalyzerTypeCatalogServiceImpl.java): canonical mapping rows and local approval, separate from Bridge setup validation.
 - [Bridge reading](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/profile/ResultReading.java): `canonicalNumber`, `profileCode`, `isRunFailure`; [renderer](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/routing/NormalizedBundleRenderer.java): `render`, `renderSegments`, `renderTabular`.
 - [Bridge FHIR slots](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/fhir/RecordSlots.java): `apply`, `call`, `flag`; [bundle builder](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/fhir/FhirBundleBuilder.java): `buildBaseBundle`, recognition evidence.
 - [Bridge receipt-to-render path](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/routing/HttpForwardingRouter.java); [dispatcher](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/outbox/OutboxDispatcher.java): `renderRecovered`; [stored entry](../../tools/openelis-analyzer-bridge/src/main/java/org/itech/ahb/outbox/OutboxEntry.java).

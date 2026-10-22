@@ -354,14 +354,13 @@ public class AnalyzerMappingDefaultsTest {
     // Cepheid 303-0251 §3: a French-language instrument sends NON DÉTECTÉ for NOT
     // DETECTED.
     @Test
-    public void aTranslatedValueBindsToTheSameAnswerAsItsValue() throws Exception {
+    public void onlyTheCanonicalAnswerNeedsALocalMapping() throws Exception {
         viralLoadCatalog(List.of("call", "LOG", "HIV-1"));
 
         var draft = defaults.resolve(viralLoadProfile());
 
         assertEquals("opt-call-NOT DETECTED", answer(draft, "", "NOT DETECTED").testResultId());
-        assertEquals("opt-call-NOT DETECTED", answer(draft, "", "NON DÉTECTÉ").testResultId());
-        assertEquals(AnalyzerMappingState.BOUND, answer(draft, "", "NON DÉTECTÉ").mappingState());
+        assertTrue(draft.results().stream().noneMatch(row -> "NON DÉTECTÉ".equals(row.rawValue())));
     }
 
     private void viralLoadCatalog(List<String> componentCodes) {

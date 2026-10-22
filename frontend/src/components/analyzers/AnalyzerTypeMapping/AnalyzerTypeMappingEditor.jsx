@@ -759,8 +759,6 @@ const AnalyzerTypeMappingEditor = ({
       analyzerId,
       {
         baseMappingFingerprint: mapping.mappingFingerprint,
-        recognitionFingerprint:
-          mapping.controlRecognition.recognitionFingerprint,
         confirmedRows,
         excludedRows,
       },
@@ -1345,11 +1343,7 @@ const AnalyzerTypeMappingEditor = ({
                     null;
                   return (
                     <div
-                      className={
-                        result.translationOf
-                          ? "analyzer-type-mapping__result-row analyzer-type-mapping__result-row--translation"
-                          : "analyzer-type-mapping__result-row"
-                      }
+                      className="analyzer-type-mapping__result-row"
                       key={`${key}:${result.rawValue}`}
                       ref={
                         test.rawCode === focusTest &&
@@ -1368,16 +1362,6 @@ const AnalyzerTypeMappingEditor = ({
                               />
                             </span>
                           )}
-                        {result.translationOf && (
-                          <span className="analyzer-type-mapping__translation-of">
-                            <FormattedMessage
-                              id="analyzerType.mappingEditor.translationOf"
-                              values={{
-                                value: result.translationOf,
-                              }}
-                            />
-                          </span>
-                        )}
                         {result.origin === "OVERRIDE" && (
                           <Tag type="blue" size="sm">
                             <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
@@ -1755,7 +1739,6 @@ const AnalyzerTypeMappingEditor = ({
               title={intl.formatMessage({
                 id: "analyzerType.mappingEditor.confirmation.stale",
               })}
-              subtitle={readingChangeText(confirmation, intl)}
             />
           )}
 
@@ -1871,31 +1854,5 @@ const AnalyzerTypeMappingEditor = ({
     </>
   );
 };
-
-/**
- * What the analyzer's type file now reads differently from how its mapping was
- * confirmed: the whole type, or the confirmed rows by code, part and value.
- */
-function readingChangeText(confirmation, intl) {
-  if (confirmation.typeReadingChanged) {
-    return intl.formatMessage({
-      id: "analyzerType.mappingEditor.confirmation.readingChanged.type",
-    });
-  }
-  const rows = confirmation.rowsReadDifferently || [];
-  if (rows.length === 0) {
-    return undefined;
-  }
-  const names = rows.map((row) => {
-    const record = row.subIdentity
-      ? `${row.sourceRowKey} (${row.subIdentity})`
-      : row.sourceRowKey;
-    return row.rawValue ? `${record}: ${row.rawValue}` : record;
-  });
-  return intl.formatMessage(
-    { id: "analyzerType.mappingEditor.confirmation.readingChanged.rows" },
-    { rows: names.join(", ") },
-  );
-}
 
 export default AnalyzerTypeMappingEditor;

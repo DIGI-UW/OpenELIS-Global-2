@@ -48,14 +48,11 @@ public class AnalyzerMappingDefaults {
                 // does not run, so it starts off; the operator turns it on if it does.
                 tests.add(reason == AnalyzerUnresolvedReason.NO_MATCH ? resolution.draft().withAssay(false)
                         : resolution.draft());
-                definition.resultValues().forEach(raw -> results
-                        .addAll(translated(unresolvedAnswer(definition, raw, reason), definition.translations())));
+                definition.resultValues().forEach(raw -> results.add(unresolvedAnswer(definition, raw, reason)));
                 for (var component : definition.recordComponents()) {
                     tests.add(unresolvedRecord(definition, component, reason));
-                    component.resultValues()
-                            .forEach(raw -> results.addAll(translated(
-                                    unresolvedAnswer(definition.analyzerCode(), component.subIdentity(), raw, reason),
-                                    component.translations())));
+                    component.resultValues().forEach(raw -> results
+                            .add(unresolvedAnswer(definition.analyzerCode(), component.subIdentity(), raw, reason)));
                 }
                 continue;
             }
@@ -67,41 +64,29 @@ public class AnalyzerMappingDefaults {
             if (definition.callComponent() != null && callTarget == null) {
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.UNRESOLVED, null,
                         AnalyzerUnresolvedReason.NO_MATCH));
-                definition.resultValues()
-                        .forEach(raw -> results
-                                .addAll(translated(unresolvedAnswer(definition, raw, AnalyzerUnresolvedReason.NO_MATCH),
-                                        definition.translations())));
+                definition.resultValues().forEach(
+                        raw -> results.add(unresolvedAnswer(definition, raw, AnalyzerUnresolvedReason.NO_MATCH)));
             } else {
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
                         null, null, null, "", callTarget));
                 var mainOptions = callTarget == null ? primaryOptions(resolution.options(), components)
                         : optionsOf(resolution.options(), callTarget);
-                definition.resultValues().forEach(raw -> results
-                        .addAll(translated(resolveAnswer(definition, raw, mainOptions), definition.translations())));
+                definition.resultValues().forEach(raw -> results.add(resolveAnswer(definition, raw, mainOptions)));
             }
 
             for (var component : definition.recordComponents()) {
                 String componentId = componentId(components, component.code());
                 if (componentId == null) {
                     tests.add(unresolvedRecord(definition, component, AnalyzerUnresolvedReason.NO_MATCH));
-                    component.resultValues()
-                            .forEach(
-                                    raw -> results
-                                            .addAll(translated(
-                                                    unresolvedAnswer(definition.analyzerCode(), component.subIdentity(),
-                                                            raw, AnalyzerUnresolvedReason.NO_MATCH),
-                                                    component.translations())));
+                    component.resultValues().forEach(raw -> results.add(unresolvedAnswer(definition.analyzerCode(),
+                            component.subIdentity(), raw, AnalyzerUnresolvedReason.NO_MATCH)));
                     continue;
                 }
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
                         componentId, null, null, component.subIdentity(), null));
                 var componentOptions = optionsOf(resolution.options(), componentId);
-                component.resultValues()
-                        .forEach(
-                                raw -> results.addAll(translated(
-                                        resolveAnswer(definition.analyzerCode(), component.subIdentity(),
-                                                component.valueCodes(), raw, componentOptions),
-                                        component.translations())));
+                component.resultValues().forEach(raw -> results.add(resolveAnswer(definition.analyzerCode(),
+                        component.subIdentity(), component.valueCodes(), raw, componentOptions)));
             }
         }
         return excludedByDefault(profile, new AnalyzerMappingDraft(tests, results));
@@ -109,8 +94,8 @@ public class AnalyzerMappingDefaults {
 
     /**
      * Rows the profile says a new analyzer starts without: a test or part marked
-     * {@code "default": "EXCLUDED"}, and each value in its {@code value_defaults},
-     * with that value's translations.
+     * {@code "default": "EXCLUDED"}, and each canonical value in
+     * {@code value_defaults}.
      */
     private static AnalyzerMappingDraft excludedByDefault(BridgeAnalyzerProfile profile, AnalyzerMappingDraft draft) {
         Set<AnalyzerMappingRowKey> records = new HashSet<>();
@@ -151,8 +136,6 @@ public class AnalyzerMappingDefaults {
         owner.path("value_defaults").fields().forEachRemaining(entry -> {
             if ("EXCLUDED".equals(entry.getValue().asText())) {
                 values.add(List.of(code, subIdentity, entry.getKey()));
-                owner.path("translations").path(entry.getKey())
-                        .forEach(text -> values.add(List.of(code, subIdentity, text.asText())));
             }
         });
     }
@@ -192,21 +175,6 @@ public class AnalyzerMappingDefaults {
         }
         return new AnalyzerMappingResultDraft(code, rawValue, AnalyzerMappingState.BOUND, matches.get(0).id(), null,
                 null, subIdentity);
-    }
-
-    /**
-     * A declared value's row, followed by one row per translation of it carrying
-     * the same decision, so an instrument binds whatever language it runs.
-     */
-    private static List<AnalyzerMappingResultDraft> translated(AnalyzerMappingResultDraft row,
-            Map<String, List<String>> translations) {
-        List<AnalyzerMappingResultDraft> rows = new ArrayList<>();
-        rows.add(row);
-        for (String text : translations.getOrDefault(row.rawValue(), List.of())) {
-            rows.add(new AnalyzerMappingResultDraft(row.sourceRowKey(), text, row.mappingState(), row.testResultId(),
-                    row.unresolvedReason(), row.origin(), row.subIdentity()));
-        }
-        return rows;
     }
 
     private static String componentId(List<AnalyzerMappingCatalogService.ComponentOption> components, String code) {

@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalogService {
 
+    private final org.openelisglobal.unitofmeasure.service.UnitOfMeasureService units;
     private final TestService testService;
     private final TestResultService testResultService;
     private final TestTerminologyMappingService terminologyService;
@@ -40,7 +41,9 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     public AnalyzerMappingCatalogServiceImpl(TestService testService, TestResultService testResultService,
             TestTerminologyMappingService terminologyService, DictionaryService dictionaryService,
             TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests,
-            TestResultComponentService componentService, DictionaryTerminologyMappingService answerTerminology) {
+            TestResultComponentService componentService, DictionaryTerminologyMappingService answerTerminology,
+            org.openelisglobal.unitofmeasure.service.UnitOfMeasureService units) {
+        this.units = units;
         this.testService = testService;
         this.testResultService = testResultService;
         this.terminologyService = terminologyService;
@@ -116,8 +119,15 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     public List<ComponentOption> getActiveComponents(String testId) {
         return componentService.getActiveComponentsByTestId(testId).stream()
                 .map(component -> new ComponentOption(component.getId(), component.getCode(), component.getLabel(),
-                        component.getIsPrimary()))
+                        component.getIsPrimary(), component.getResultType(), unitName(component.getUomId())))
                 .toList();
+    }
+
+    private String unitName(String id) {
+        if (id == null)
+            return null;
+        var unit = units.getUnitOfMeasureById(id);
+        return unit == null ? null : unit.getUnitOfMeasureName();
     }
 
     private static boolean matches(TestOption option, String query) {

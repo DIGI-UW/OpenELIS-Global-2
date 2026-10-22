@@ -163,8 +163,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             when(servedProfiles.getProfile(profileId, 1)).thenReturn(new BridgeProfileCatalog.ProfileRevision(
                     profile(profileId), new ObjectMapper().createObjectNode()));
             AnalyzerMappingConfirmationService confirmationService = new AnalyzerMappingConfirmationServiceImpl(
-                    confirmationDAO, auditTrailService, systemUserService, mappingCatalogService, servedProfiles,
-                    mock(BridgeAnalyzerConnectionClient.class));
+                    confirmationDAO, auditTrailService, systemUserService, mappingCatalogService);
 
             Analyzer analyzer = insertAnalyzer("Persistence analyzer", Analyzer.AnalyzerStatus.VALIDATION);
             AnalyzerMappingSnapshot initial = mappingService.assignProfile(analyzer, profileId, 1, TEST_SYS_USER_ID);
@@ -177,7 +176,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             analyzer.setMapping(saved.mapping());
             analyzerDAO.update(analyzer);
             AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
-                    saved.mapping().getMappingFingerprint(), RECOGNITION_FINGERPRINT,
+                    saved.mapping().getMappingFingerprint(),
                     List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
                     List.of());
             confirmationService.confirm(saved, RECOGNITION_FINGERPRINT, request, TEST_SYS_USER_ID);
@@ -218,8 +217,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             assertEquals(AnalyzerMappingOrigin.DEFAULT, firstRevision.tests().get(0).getOrigin());
             assertEquals(AnalyzerUnresolvedReason.NO_MATCH, firstRevision.tests().get(0).getUnresolvedReason());
 
-            AnalyzerMappingConfirmationView confirmation = confirmationService.getStatus(reloaded,
-                    RECOGNITION_FINGERPRINT);
+            AnalyzerMappingConfirmationView confirmation = confirmationService.getStatus(reloaded);
             var storedConfirmation = confirmationDAO.findByMappingId(reloaded.mapping().getId()).orElseThrow();
             assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, confirmation.state());
             assertEquals(PROFILE_FINGERPRINT, storedConfirmation.getProfileRevisionFingerprint());
@@ -402,8 +400,8 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             analyzerDAO.update(analyzer);
 
             confirmationService.confirm(new AnalyzerMappingSnapshot(reviewed, List.of(), List.of()),
-                    "sha256:" + "2".repeat(64), new AnalyzerMappingConfirmationRequest(reviewed.getMappingFingerprint(),
-                            "sha256:" + "2".repeat(64), List.of(), List.of()),
+                    "sha256:" + "2".repeat(64),
+                    new AnalyzerMappingConfirmationRequest(reviewed.getMappingFingerprint(), List.of(), List.of()),
                     TEST_SYS_USER_ID);
             entityManager.flush();
             return new MappingSelectionFixture(analyzer.getId(), reviewed.getId(), reviewed.getMappingFingerprint());
@@ -485,7 +483,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                             new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
                                     "No automated control recognition", true, List.of())));
             when(mappingService.findById(revision.getId())).thenReturn(java.util.Optional.of(snapshot));
-            when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+            when(confirmationService.assessCurrent(snapshot))
                     .thenReturn(AnalyzerMappingVerificationAssessment.current(confirmation));
             when(confirmationService.findForMapping(revision.getId())).thenReturn(java.util.Optional.of(confirmation));
             TestSection activeUnit = new TestSection();
@@ -661,7 +659,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                             new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
                                     "No automated control recognition", true, List.of())));
             when(mappingService.findById(fixture.revision().getId())).thenReturn(java.util.Optional.of(snapshot));
-            when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+            when(confirmationService.assessCurrent(snapshot))
                     .thenReturn(AnalyzerMappingVerificationAssessment.current(fixture.confirmation()));
             TestSection activeUnit = new TestSection();
             activeUnit.setId("1");

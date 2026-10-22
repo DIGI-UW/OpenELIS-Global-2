@@ -1,6 +1,6 @@
 # Analyzer cleanup inventory
 
-Status: audited and planned; runtime cleanup not implemented. Source baseline: OpenELIS `fde241e1a6`, Bridge `b8618f9ad5`. The detailed audit covers 18 check areas in the active receipt-to-import, recovery and setup paths. These ten work items group those findings without losing the checks that must stay.
+Status: cleanup implemented in the coordinated stack tips; validation and stack publication are in progress. Audit source baseline: OpenELIS `fde241e1a6`, Bridge `b8618f9ad5`. The detailed audit covers 18 check areas in the active receipt-to-import, recovery and setup paths. These ten work items group those findings without losing the checks that must stay.
 
 **Why this happened:** parsing-configuration comparisons were introduced as mapping protection. Confirmation, readiness and recovery then acquired machinery to keep those comparisons working. The correction is to finish the Bridge’s normalized output and remove that coupling, not to preserve it with more historical metadata.
 
@@ -19,9 +19,13 @@ Status: audited and planned; runtime cleanup not implemented. Source baseline: O
 
 ## Order and completion evidence
 
-1. Define/test the explicit result contract; complete C02/C03 and retained receipt context C08.
-2. Remove the duplicated gates C01/C04/C05/C06, preserving C09 throughout.
-3. Clean up setup/status C07 and replace old tests/machinery C10. Reconcile existing contradictory translation mappings explicitly; do not guess.
-4. Test all supported old/new payload combinations, real analyzer scenarios and full CI. Resolve review findings only after those tests pass.
+1. Removed the duplicate interpretation classes and their delivery, recovery, approval and UI callers first (C01/C04/C05/C06/C07).
+2. Replaced obsolete gate tests with tests of local approval/recovery and canonical results. Bridge now canonicalizes answers, labels calls/flags, emits declared terminology, and retains decoding context with raw receipts (C02/C03/C08).
+3. Filled the local validation gaps using delivered clinical meaning and the actual local component/type/unit, without reading Bridge configuration (C09). Contradictory older spelling mappings remain visible for an explicit local decision.
+4. Validate the shared 1.0/1.1 contract, all Bridge tests, database-backed recovery/adoption, frontend tests and complete local/GitHub CI; then reconcile review threads (C10). Full CI results must identify the tested commit.
 
-Every item is verified from current code and linked by audit row to the [source-backed audit and plan](boundary-remediation.md). Runtime behavior of the replacement is not yet verified. This is comprehensive for the listed active analyzer paths, not a claim that every unrelated legacy analyzer plugin or production dataset has been audited. No bulk historical reprocessing or offline/deployed PNG migration is part of this cleanup.
+The deleted classes are `AnalyzerRecordReading`, `AnalyzerArrivalReading` and `AnalyzerConfirmationReading`. Historical database fields remain audit data only. No replacement parser snapshot gate or blanket old-bundle hold was introduced.
+
+The [versioned contract](../../tools/openelis-analyzer-bridge/contracts/analyzer/v1/README.md#normalized-result-version-11-interpret-once) documents the coordinated upgrade and legacy raw-receipt Retry behavior. Existing 1.0 quantities remain usable; missing qualitative meaning is never guessed.
+
+Every item is verified from current code and linked by audit row to the [source-backed audit and plan](boundary-remediation.md). Focused validation is recorded with the candidate; full-stack acceptance remains a separate gate. This is comprehensive for the listed active analyzer paths, not a claim that every unrelated legacy analyzer plugin or production dataset has been audited. No bulk historical reprocessing or offline/deployed PNG migration is part of this cleanup.
