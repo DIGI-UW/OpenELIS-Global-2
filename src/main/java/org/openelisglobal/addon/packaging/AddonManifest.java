@@ -52,6 +52,7 @@ public final class AddonManifest {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String ID_PATTERN = "[a-z][a-z0-9-]{1,30}";
     private static final String EXTENSION_NAME_PATTERN = "[a-z][a-z0-9-]{1,40}";
+    private static final String LOCALE_PATTERN = "[a-z]{2,3}(?:[-_][A-Za-z]{2})?";
     private static final String CONFIG_KEY_PATTERN = "[A-Za-z][A-Za-z0-9_]{0,40}";
     private static final String SEMVER_PATTERN = "\\d+\\.\\d+\\.\\d+([-+][0-9A-Za-z.-]+)?";
     private static final String IMAGE_PATTERN = "[a-z0-9][a-z0-9._/:-]{0,180}@sha256:[0-9a-f]{64}";
@@ -61,9 +62,13 @@ public final class AddonManifest {
 
     /**
      * {@code icon}: for a button slot ({@code top-nav-actions-slot}), one of
-     * {@link #ICONS}; anything else falls back to "application".
+     * {@link #ICONS}; anything else falls back to "application". {@code meta.title}
+     * is a string or a map by locale ({@code {"en": "AI assistant", "vi": "Trợ lý
+     * AI"}}); {@code title} is then the English one (or the first), and the UI
+     * picks from {@code titles} by the user's locale.
      */
-    public record Extension(String name, String slot, String page, int order, String title, int height, String icon) {
+    public record Extension(String name, String slot, String page, int order, String title, int height, String icon,
+            Map<String, String> titles) {
     }
 
     /**
@@ -195,10 +200,20 @@ public final class AddonManifest {
         for (JsonNode e : root.path("extensions")) {
             JsonNode meta = e.path("meta");
             String icon = meta.path("icon").asText("application");
+            Map<String, String> titles = new LinkedHashMap<>();
+            JsonNode t = meta.path("title");
+            if (t.isObject()) {
+                t.fields().forEachRemaining(f -> {
+                    if (f.getKey().matches(LOCALE_PATTERN) && f.getValue().isTextual()) {
+                        titles.put(f.getKey(), f.getValue().asText());
+                    }
+                });
+            }
+            String title = t.isTextual() ? t.asText()
+                    : titles.getOrDefault("en", titles.isEmpty() ? name() : titles.values().iterator().next());
             out.add(new Extension(e.path("name").asText(), e.path("slot").asText(), e.path("page").asText(),
-                    e.path("order").asInt(100), meta.path("title").asText(name()),
-                    Math.max(80, Math.min(900, meta.path("height").asInt(240))),
-                    ICONS.contains(icon) ? icon : "application"));
+                    e.path("order").asInt(100), title, Math.max(80, Math.min(900, meta.path("height").asInt(240))),
+                    ICONS.contains(icon) ? icon : "application", titles));
         }
         return out;
     }
@@ -295,6 +310,18 @@ public final class AddonManifest {
             }
             if (AddonCatalog.slot(x.path("slot").asText()) == null) {
                 errs.add("extension " + name + ": unknown slot " + x.path("slot").asText());
+            }
+            JsonNode title = x.path("meta").path("title");
+            if (title.isObject()) {
+                title.fields().forEachRemaining(f -> {
+                    if (!f.getKey().matches(LOCALE_PATTERN) || !f.getValue().isTextual()
+                            || f.getValue().asText().length() > 120) {
+                        errs.add("extension " + name + ": meta.title." + f.getKey()
+                                + " must be a locale (en, vi, fr-CA…) with a text of at most 120 characters");
+                    }
+                });
+            } else if (!title.isMissingNode() && !title.isTextual()) {
+                errs.add("extension " + name + ": meta.title must be a text or a map by locale");
             }
             String page = x.path("page").asText();
             if (page.isEmpty() || !files.containsKey(UI_DIR + page)) {

@@ -20,6 +20,8 @@ export interface AddonExtension {
   page: string;
   order: number;
   title: string;
+  /** meta.title by locale ("en", "vi", "fr-CA"…), when the manifest gives several. */
+  titles?: Record<string, string>;
   height: number;
   /** Header buttons: application | magic-wand | chat | help | idea | bot. */
   icon?: string;

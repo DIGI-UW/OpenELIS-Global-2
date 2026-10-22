@@ -44,7 +44,7 @@ public interface AddonRegistryService {
 
     /** A UI extension of an enabled add-on, for the frontend's slots. */
     record ExtensionView(String addonId, String addonName, String version, String name, String slot, String page,
-            int order, String title, int height, String icon) {
+            int order, String title, int height, String icon, Map<String, String> titles) {
     }
 
     /**

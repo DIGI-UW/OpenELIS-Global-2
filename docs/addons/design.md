@@ -165,11 +165,11 @@ administration page reads them from `GET /rest/addons/catalog`.
 
 ## Permissions
 
-| Scope          | Allows                                                                |
-| -------------- | --------------------------------------------------------------------- |
-| `orders.read`  | lab number, received date and test count of orders in its context     |
-| `results.read` | the results of those orders                                           |
-| `patient.read` | sex and date of birth of the patient of those orders; no name, no ids |
+| Scope          | Allows                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| `orders.read`  | lab number, received date and test count of orders in its context      |
+| `results.read` | the results of those orders                                            |
+| `patient.read` | sex and date of birth of the patient of those orders; no name, no ids  |
 | `ai.context`   | the de-identified context of those orders for decision support (below) |
 
 "In its context" means: for a UI token, the orders on the user's screen; for the
@@ -185,12 +185,12 @@ UI token:
 
 - `GET /rest/addon-api/v1/ai/context?view=cases|patient`: for each order (or, in
   the `patient` view, for the newest day of one patient's orders) the patient's
-  sex and age in years (90 and over grouped), and each result's test code, LOINC,
-  name, value, unit, reference range and status; earlier results of the same
-  tests (3 per test in the `patient` view, 1 per case) with the number of days
-  before. `user` is the OpenELIS user of the token (for per-user limits) and
-  `subject` a pseudonym of the patient: stable for this add-on, not reversible,
-  different for another add-on.
+  sex and age in years (90 and over grouped), and each result's test code,
+  LOINC, name, value, unit, reference range and status; earlier results of the
+  same tests (3 per test in the `patient` view, 1 per case) with the number of
+  days before. `user` is the OpenELIS user of the token (for per-user limits)
+  and `subject` a pseudonym of the patient: stable for this add-on, not
+  reversible, different for another add-on.
 - `POST /rest/addon-api/v1/ai/deidentify` `{"text": …}`: the text without the
   identifiers of the patients of those orders (names in any order, with or
   without accents, national and other ids, phone numbers, address, e-mail, lab
@@ -308,6 +308,10 @@ never receives the patient id and the page cannot add lab numbers of its own.
 A slot with no extension renders nothing: pages look exactly as before for a
 laboratory without add-ons.
 
+An extension's `meta.title` is a text or a map by locale
+(`{"en": "AI assistant", "vi": "Trợ lý AI"}`); the UI shows the user's locale,
+then the language, then English.
+
 `top-nav-actions-slot` extensions are header buttons (`meta.title`, and
 `meta.icon` one of `application`, `magic-wand`, `chat`, `help`, `idea`, `bot`).
 The panel they open is told only which screen is open, never the data on it:
@@ -331,9 +335,9 @@ to that frame's `contentWindow` only. The frame may send `resize` and
 
 Each slot lists the roles that may get a token for it (validation needs
 `VALIDATION` or `ADMIN`; the patient results page needs one of the roles that
-open it), so an add-on cannot widen what a user can already see. Slots open to every
-signed-in user (`app-menu-slot`, `top-nav-actions-slot`) never carry orders:
-their tokens hold only the page, whatever the browser sends.
+open it), so an add-on cannot widen what a user can already see. Slots open to
+every signed-in user (`app-menu-slot`, `top-nav-actions-slot`) never carry
+orders: their tokens hold only the page, whatever the browser sends.
 
 The Extensions page (Administration → Extensions) uploads a package, shows the
 provenance line ("Verified publisher: _name_", "Unverified publisher" with the
@@ -406,8 +410,8 @@ location /addons/hello/api/ {
 
 The frame has an opaque origin, so the add-on's own API answers CORS (any
 origin, no credentials). An add-on that streams (server-sent events read with
-`fetch`) still works behind a buffering proxy: the answer then arrives at once at
-the end. A non-streaming fallback (`?stream=0`, one JSON answer) is the
+`fetch`) still works behind a buffering proxy: the answer then arrives at once
+at the end. A non-streaming fallback (`?stream=0`, one JSON answer) is the
 add-on's to offer.
 
 Do not publish the backend's port 8443 to untrusted networks, or narrow

@@ -1,16 +1,17 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Column, Grid, Heading, Section } from "@carbon/react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { useSlot } from "./ExtensionSlot";
 import AddonFrame from "./AddonFrame";
-import { SLOT_APP_MENU } from "./slots";
+import { SLOT_APP_MENU, titleFor } from "./slots";
 
 const breadcrumbs = [{ label: "home.label", link: "/" }];
 
 /** The page behind a menu entry an add-on contributes (app-menu-slot). */
 export default function ExtensionPage() {
+  const intl = useIntl();
   const { addonId, extension } = useParams<{
     addonId: string;
     extension: string;
@@ -24,7 +25,7 @@ export default function ExtensionPage() {
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>
           <Section>
-            <Heading>{found ? found.title : addonId}</Heading>
+            <Heading>{found ? titleFor(found, intl.locale) : addonId}</Heading>
           </Section>
           {found ? (
             <AddonFrame

@@ -14,7 +14,7 @@ import {
 } from "@carbon/icons-react";
 import AddonFrame from "./AddonFrame";
 import { useSlot } from "./ExtensionSlot";
-import { pageOfPath, SLOT_TOP_NAV_ACTIONS } from "./slots";
+import { pageOfPath, SLOT_TOP_NAV_ACTIONS, titleFor } from "./slots";
 
 const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   application: Application,
@@ -54,7 +54,7 @@ export default function HeaderActionsSlot() {
         return (
           <HeaderGlobalAction
             key={keyOf(e)}
-            aria-label={e.title}
+            aria-label={titleFor(e, intl.locale)}
             isActive={active}
             data-extension-slot-name={SLOT_TOP_NAV_ACTIONS}
             data-addon-id={e.addonId}
@@ -69,17 +69,17 @@ export default function HeaderActionsSlot() {
           <Theme theme="white">
             <aside
               className="addon-header-panel"
-              aria-label={current.title}
+              aria-label={titleFor(current, intl.locale)}
               data-testid="addon-header-panel"
             >
               <header className="addon-header-panel__head">
-                <span>{current.title}</span>
+                <span>{titleFor(current, intl.locale)}</span>
                 <button
                   type="button"
                   className="addon-header-panel__close"
                   aria-label={intl.formatMessage(
                     { id: "addon.header.close" },
-                    { title: current.title },
+                    { title: titleFor(current, intl.locale) },
                   )}
                   onClick={() => setOpen(null)}
                 >

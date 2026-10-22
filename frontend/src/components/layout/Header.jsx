@@ -139,8 +139,14 @@ function OEHeader({
     userSessionDetails.authenticated === true,
   );
   const mainMenus = React.useMemo(
-    () => withAddonMenu(menus.menu, addonExtensions, "addon.admin.title"),
-    [menus.menu, addonExtensions],
+    () =>
+      withAddonMenu(
+        menus.menu,
+        addonExtensions,
+        "addon.admin.title",
+        intl.locale,
+      ),
+    [menus.menu, addonExtensions, intl.locale],
   );
 
   const handleMenuItems = (tag, res) => {
