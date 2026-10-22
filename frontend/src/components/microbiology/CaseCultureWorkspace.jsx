@@ -633,35 +633,53 @@ export default function CaseCultureWorkspace({
                       {t("action.positive-time")}
                     </Button>
                   )}
-                  {(!row.outcome || row.outcome === "GROWTH") && options.sources.some(
-                    (source) => source.sampleItemId === row.sourceSampleItemId,
-                  ) && (
-                    <>
-                      {!row.receivedIsolate &&
-                        row.outcome === "GROWTH" &&
-                        onPickIsolate && (
-                          <Button
-                            kind="tertiary"
-                            onClick={() => onPickIsolate(row)}
-                          >
-                            {intl.formatMessage({
-                              id: "microbiology.isolateWorkspace.pick",
-                            })}
-                          </Button>
-                        )}
-                      <Button
-                        kind="tertiary"
-                        onClick={() => open("inoculate", row)}
-                      >
-                        {t("subculture")}
-                      </Button>
-                      <Button
-                        kind="tertiary"
-                        onClick={() =>
-                          onChooseTests(
-                            {
-                              ...row,
-                              source: options.sources.find(
+                  {(!row.outcome || row.outcome === "GROWTH") &&
+                    options.sources.some(
+                      (source) =>
+                        source.sampleItemId === row.sourceSampleItemId,
+                    ) && (
+                      <>
+                        {!row.receivedIsolate &&
+                          row.outcome === "GROWTH" &&
+                          onPickIsolate && (
+                            <Button
+                              kind="tertiary"
+                              onClick={() => onPickIsolate(row)}
+                            >
+                              {intl.formatMessage({
+                                id: "microbiology.isolateWorkspace.pick",
+                              })}
+                            </Button>
+                          )}
+                        <Button
+                          kind="tertiary"
+                          onClick={() => open("inoculate", row)}
+                        >
+                          {t("subculture")}
+                        </Button>
+                        <Button
+                          kind="tertiary"
+                          onClick={() =>
+                            onChooseTests(
+                              {
+                                ...row,
+                                source: options.sources.find(
+                                  (s) =>
+                                    s.sampleItemId === row.sourceSampleItemId,
+                                ),
+                              },
+                              null,
+                            )
+                          }
+                        >
+                          {t("testOnCulture")}
+                        </Button>
+                        <Button
+                          kind="tertiary"
+                          disabled={
+                            !options.gramStainTest ||
+                            !options.gramStainSampleTypeIds?.includes(
+                              options.sources.find(
                                 (s) =>
                                   s.sampleItemId === row.sourceSampleItemId,
                               )?.sampleTypeId,
