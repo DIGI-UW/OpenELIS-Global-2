@@ -345,8 +345,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         var type = sampleTypes.get(typeId);
         if (type == null || !type.getIsActive() || !type.isMicrobiologyIsolate())
             bad("SAMPLE_TYPE");
-        // Serialize order-wide item numbering as well as isolate idempotency.
-        cases.lockOrder(origin.getSample().getId());
+        // writeCase already holds the order lock, serializing item numbering.
         var sample = new SampleItem();
         sample.setSample(origin.getSample());
         sample.setParentSampleItem(origin);
@@ -370,6 +369,15 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
     }
 
     private MicroCase writeCase(String id, String actor, String role) {
+        var original = requireCase(id);
+        String orderId = original.getSampleId();
+        if (orderId == null && original.getSampleItemId() != null) {
+            orderId = sampleItems.get(original.getSampleItemId()).getSample().getId();
+        }
+        // Routing also locks the order before a case. Keep this ordering to avoid
+        // deadlocks when an isolate child sample and routed order are saved together.
+        if (orderId != null)
+            cases.lockOrder(orderId);
         var c = cases.getForUpdate(id);
         if (c == null)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
@@ -448,7 +456,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
     }
 
     private static String status(String value) {
-        return "CONFIRMED".equals(value) ? "FINAL" : value;
+        return value == null || value.isBlank() ? "PENDING" : "CONFIRMED".equals(value) ? "FINAL" : value;
     }
 
     private static String significance(String value) {

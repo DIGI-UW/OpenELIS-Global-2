@@ -202,12 +202,30 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         var i = form.isolates.getFirst();
         assertEquals(second, i.id());
         assertEquals("ISO-2", i.label());
+        assertEquals("PENDING", i.status());
         assertEquals(source.getId(), i.sourceSampleItemId());
         assertEquals("COLONIZER", i.significance());
         assertEquals(writer, i.createdBy());
         assertEquals("Smooth colonies", i.colonyMorphology());
         assertNull(i.sampleItemId());
         assertNotNull(i.cultureId());
+    }
+
+    @Test
+    public void missingHistoricalIdentificationStatusIsPending() {
+        String id = pick();
+        var event = new MicroIsolateIdentificationEvent();
+        event.setIsolateId(id);
+        event.setEventType("AMENDMENT_REVERTED");
+        event.setReason("Identification reverted");
+        event.setChangedBy(validator);
+        event.setChangedAt(Timestamp.from(Instant.now()));
+        event.setEventSequence(1);
+        event.setSysUserId(validator);
+        history.insert(event);
+        var isolate = reload().isolates.getFirst();
+        assertEquals("PENDING", isolate.status());
+        assertEquals("PENDING", isolate.history().getFirst().status());
     }
 
     @Test
