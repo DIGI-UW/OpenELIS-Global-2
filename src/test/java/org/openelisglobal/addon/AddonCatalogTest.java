@@ -51,6 +51,23 @@ public class AddonCatalogTest {
     }
 
     @Test
+    public void laboratoryWideScopesAreKnownAndIdentityIsMarked() {
+        for (String scope : List.of("orders.search", "patient.identity", "stats.read", "catalog.read")) {
+            assertEquals(scope, true, AddonCatalog.isScope(scope));
+        }
+        assertEquals(java.util.Set.of("patient.identity"), AddonCatalog.IDENTIFYING_SCOPES);
+    }
+
+    @Test
+    public void theSettingsPageSlotIsForAdministratorsAndCarriesNoOrders() {
+        AddonCatalog.Slot slot = AddonCatalog.slot("addon-settings-page-slot");
+        assertEquals(java.util.Set.of("ADMIN"), slot.roles());
+        assertEquals(false, slot.withOrders());
+        Map<String, Object> context = Map.of("page", "extensions", "accessionNumbers", List.of("DEV0001"));
+        assertEquals(Map.of("page", "extensions"), AddonCatalog.filterContext(context, List.of("orders.search")));
+    }
+
+    @Test
     public void aBadPageNameIsDropped() {
         assertEquals(Map.of(), AddonCatalog.filterContext(Map.of("page", "<script>"), List.of()));
     }

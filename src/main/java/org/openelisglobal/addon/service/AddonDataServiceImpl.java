@@ -46,7 +46,8 @@ public class AddonDataServiceImpl implements AddonDataService {
             return false;
         }
         if (claims.isService()) {
-            return outboxDAO.wasNotified(claims.addonId(), accessionNumber);
+            return claims.scopes().contains(AddonCatalog.ORDERS_SEARCH)
+                    || outboxDAO.wasNotified(claims.addonId(), accessionNumber);
         }
         return claims.accessions().contains(accessionNumber);
     }
@@ -82,6 +83,8 @@ public class AddonDataServiceImpl implements AddonDataService {
             row.put("testCode", test == null ? null : test.getLocalCode());
             row.put("loinc", test == null ? null : test.getLoinc());
             row.put("testName", test == null ? null : test.getName());
+            row.put("section",
+                    analysis.getTestSection() == null ? null : analysis.getTestSection().getTestSectionName());
             row.put("value", result == null ? null : resultService.getResultValue(result, ", ", true, false));
             row.put("unit", test == null || test.getUnitOfMeasure() == null ? null
                     : test.getUnitOfMeasure().getUnitOfMeasureName());

@@ -1,8 +1,12 @@
 package org.openelisglobal.security;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,11 +18,16 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.Test;
 import org.openelisglobal.addon.ai.AiContextService;
 import org.openelisglobal.addon.controller.rest.AddonApiRestController;
+import org.openelisglobal.addon.dao.AddonAccessLogDAO;
+import org.openelisglobal.addon.security.AddonAccessLogInterceptor;
 import org.openelisglobal.addon.security.AddonToken;
+import org.openelisglobal.addon.service.AddonAccessLogService;
 import org.openelisglobal.addon.service.AddonDataService;
+import org.openelisglobal.addon.service.AddonQueryService;
 import org.openelisglobal.addon.service.AddonRegistryService;
 import org.openelisglobal.addon.service.AddonSettings;
 import org.openelisglobal.addon.service.AddonTokenService;
@@ -41,6 +50,8 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * The add-on API chain as SecurityConfig builds it: bearer credentials only, no
@@ -55,6 +66,11 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
     private static final String SERVICE_KEY = "oeak_service";
     private static final String AI_TOKEN = "oeat.ai";
     private static final String AI_SERVICE_KEY = "oeak_ai";
+    private static final String MCP_KEY = "oeak_mcp";
+    private static final String MCP_KEY_NO_IDENTITY = "oeak_mcp_noid";
+    private static final String SETTINGS_TOKEN = "oeat.settings";
+
+    static final List<AddonAccessLogDAO.Entry> LOGGED = new CopyOnWriteArrayList<>();
 
     private static RequestPostProcessor bearer(String credential) {
         return request -> {
@@ -152,10 +168,171 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
                 .andExpect(jsonPath("$.code").value("scope"));
     }
 
+    @Test
+    public void whoamiNamesTheUserAndTheSlotOfAUiToken() throws Exception {
+        mockMvc.perform(get(API + "/whoami").with(bearer(SETTINGS_TOKEN))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("user")).andExpect(jsonPath("$.userId").value("1"))
+                .andExpect(jsonPath("$.slot").value("addon-settings-page-slot"));
+        mockMvc.perform(get(API + "/whoami").with(bearer(MCP_KEY))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.slot").doesNotExist()).andExpect(jsonPath("$.userId").doesNotExist());
+    }
+
+    @Test
+    public void listingOrdersNeedsOrdersSearch() throws Exception {
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-02").with(bearer(SERVICE_KEY)))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.scope").value("orders.search"));
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-02").with(bearer(MCP_KEY)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.orders[0].accessionNumber").value("DEV0009"));
+    }
+
+    @Test
+    public void searchesAreBounded() throws Exception {
+        // 31 days at most, both ends, in order
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-11-01").with(bearer(MCP_KEY)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("range"));
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-31").with(bearer(MCP_KEY)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(API + "/orders?from=2026-10-05&to=2026-10-01").with(bearer(MCP_KEY)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get(API + "/orders?to=2026-10-01").with(bearer(MCP_KEY))).andExpect(status().isBadRequest());
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-02&limit=101").with(bearer(MCP_KEY)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.param").value("limit"));
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-02&status=all").with(bearer(MCP_KEY)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.param").value("status"));
+        mockMvc.perform(get(API + "/worklist?stage=entry").with(bearer(MCP_KEY))).andExpect(status().isBadRequest());
+        mockMvc.perform(get(API + "/stats/tat?from=2026-10-01&to=2026-10-02&groupBy=patient").with(bearer(MCP_KEY)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.param").value("groupBy"));
+        mockMvc.perform(get(API + "/patients?q=a").with(bearer(MCP_KEY))).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void patientsNeedTheIdentityScope() throws Exception {
+        mockMvc.perform(get(API + "/patients?q=Nguyen").with(bearer(MCP_KEY_NO_IDENTITY)))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.scope").value("patient.identity"));
+        mockMvc.perform(get(API + "/patients/12").with(bearer(MCP_KEY_NO_IDENTITY))).andExpect(status().isForbidden());
+        mockMvc.perform(get(API + "/patients/12/orders").with(bearer(MCP_KEY_NO_IDENTITY)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get(API + "/patients?q=Nguyen").with(bearer(MCP_KEY))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.patients[0].fullName").value("Nguyen An"));
+    }
+
+    @Test
+    public void anOrderNamesItsPatientOnlyWithTheIdentityScope() throws Exception {
+        mockMvc.perform(get(API + "/orders/DEV0009").with(bearer(MCP_KEY))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.patient.fullName").value("Nguyen An"));
+        mockMvc.perform(get(API + "/orders/DEV0009").with(bearer(MCP_KEY_NO_IDENTITY))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.patient").doesNotExist());
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-02").with(bearer(MCP_KEY_NO_IDENTITY)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.orders[0].patient").doesNotExist());
+    }
+
+    @Test
+    public void anAddonMayNarrowButNeverWidenItsScopesPerRequest() throws Exception {
+        // an agent without the identifiers switch: the add-on drops patient.identity
+        String narrow = "orders.read,results.read,orders.search";
+        mockMvc.perform(get(API + "/orders/DEV0009").with(bearer(MCP_KEY)).header("X-Addon-Scopes", narrow))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.patient").doesNotExist());
+        mockMvc.perform(get(API + "/patients?q=Nguyen").with(bearer(MCP_KEY)).header("X-Addon-Scopes", narrow))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.scope").value("patient.identity"));
+        mockMvc.perform(get(API + "/orders?from=2026-10-01&to=2026-10-02").with(bearer(MCP_KEY))
+                .header("X-Addon-Scopes", narrow)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.orders[0].patient").doesNotExist());
+        // a scope the add-on was not granted stays out of reach
+        mockMvc.perform(get(API + "/stats/tat?from=2026-10-01&to=2026-10-02").with(bearer(MCP_KEY_NO_IDENTITY))
+                .header("X-Addon-Scopes", "orders.read,stats.read")).andExpect(status().isForbidden());
+        mockMvc.perform(get(API + "/whoami").with(bearer(MCP_KEY)).header("X-Addon-Scopes", "catalog.read"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.scopes.length()").value(1));
+    }
+
+    @Test
+    public void statisticsAndTheCatalogNeedTheirScopes() throws Exception {
+        mockMvc.perform(get(API + "/stats/orders?from=2026-10-01&to=2026-10-02").with(bearer(SERVICE_KEY)))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.scope").value("stats.read"));
+        mockMvc.perform(get(API + "/stats/tat?from=2026-10-01&to=2026-10-02").with(bearer(MCP_KEY)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.groupBy").value("section"));
+        mockMvc.perform(get(API + "/catalog/tests").with(bearer(SERVICE_KEY))).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.scope").value("catalog.read"));
+        mockMvc.perform(get(API + "/catalog/tests?active=any").with(bearer(MCP_KEY))).andExpect(status().isOk());
+        mockMvc.perform(get(API + "/catalog/tests?active=maybe").with(bearer(MCP_KEY)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void everyAuthenticatedRequestIsLogged() throws Exception {
+        LOGGED.clear();
+        mockMvc.perform(get(API + "/orders/DEV0009/results").with(bearer(MCP_KEY))
+                .header("X-Addon-Actor", "agent:a7f3 Claude Code \u2014 Dr Lan\n")
+                .header("X-Addon-Purpose", "get_order")).andExpect(status().isOk());
+        mockMvc.perform(get(API + "/patients?q=Nguyen").with(bearer(MCP_KEY_NO_IDENTITY)).header("X-Addon-Purpose",
+                "find patients; drop table")).andExpect(status().isForbidden());
+        mockMvc.perform(get(API + "/whoami")).andExpect(status().isUnauthorized());
+        assertEquals(LOGGED.toString(), 2, LOGGED.size());
+        AddonAccessLogDAO.Entry read = LOGGED.get(0);
+        assertEquals("mcp", read.addonId());
+        assertEquals("service", read.credential());
+        assertEquals("/orders/{accession}/results", read.endpoint());
+        assertEquals("order", read.subjectType());
+        assertEquals("DEV0009", read.subject());
+        assertEquals(200, read.status());
+        assertEquals("get_order", read.purpose());
+        // the firewall refuses a header with a line break or non-ASCII text; the read
+        // is logged anyway
+        assertEquals("(header refused)", read.actor());
+        assertEquals(Integer.valueOf(1), read.rows());
+        AddonAccessLogDAO.Entry refused = LOGGED.get(1);
+        assertEquals(403, refused.status());
+        assertEquals("/patients", refused.endpoint());
+        assertNull("a purpose that is not a plain name is dropped", refused.purpose());
+        assertEquals("query", refused.subjectType());
+        assertEquals("patients Nguyen", refused.subject());
+        mockMvc.perform(
+                get(API + "/orders/DEV0009").with(bearer(MCP_KEY)).header("X-Addon-Actor", "agent:a7f3 Claude Code"))
+                .andExpect(status().isOk());
+        assertEquals("agent:a7f3 Claude Code", LOGGED.get(2).actor());
+    }
+
     @Configuration
     @EnableWebMvc
     @EnableWebSecurity
-    static class TestConfig {
+    static class TestConfig implements WebMvcConfigurer {
+
+        @Override
+        public void addInterceptors(InterceptorRegistry registry) {
+            registry.addInterceptor(addonAccessLogInterceptor()).addPathPatterns(SecurityConfig.ADDON_API_PATHS);
+        }
+
+        @Bean
+        AddonAccessLogInterceptor addonAccessLogInterceptor() {
+            return new AddonAccessLogInterceptor();
+        }
+
+        @Bean
+        AddonAccessLogService addonAccessLogService() {
+            AddonAccessLogService log = mock(AddonAccessLogService.class);
+            doAnswer(i -> LOGGED.add(i.getArgument(0))).when(log).record(any());
+            return log;
+        }
+
+        @Bean
+        AddonQueryService addonQueryService() {
+            Map<String, Object> patient = Map.of("patientId", "12", "fullName", "Nguyen An");
+            AddonQueryService q = mock(AddonQueryService.class);
+            when(q.orders(any(), any(), anyString(), any(), anyInt(), anyInt(), anyBoolean())).thenAnswer(i -> {
+                Map<String, Object> order = new java.util.LinkedHashMap<>();
+                order.put("accessionNumber", "DEV0009");
+                if (Boolean.TRUE.equals(i.getArgument(6))) {
+                    order.put("patient", patient);
+                }
+                return Map.of("orders", List.of(order));
+            });
+            when(q.findPatients(anyString())).thenReturn(Map.of("patients", List.of(patient)));
+            when(q.patientOfOrder(anyString())).thenReturn(Optional.of(patient));
+            when(q.turnaround(any(), any(), anyString()))
+                    .thenAnswer(i -> Map.of("groupBy", (Object) i.getArgument(2), "rows", List.of()));
+            when(q.orderCounts(any(), any(), anyString())).thenReturn(Map.of("rows", List.of()));
+            when(q.tests(any(), any())).thenReturn(Map.of("tests", List.of()));
+            return q;
+        }
 
         @Bean
         AddonTokenService addonTokenService() {
@@ -178,6 +355,19 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
                     if (AI_TOKEN.equals(bearer)) {
                         return new AddonToken.Claims("assistant", "7", List.of("ai.context"), List.of("DEV0001"),
                                 Long.MAX_VALUE);
+                    }
+                    if (MCP_KEY.equals(bearer)) {
+                        return new AddonToken.Claims("mcp", null, List.of("orders.read", "results.read",
+                                "orders.search", "stats.read", "catalog.read", "patient.identity"), null,
+                                Long.MAX_VALUE);
+                    }
+                    if (MCP_KEY_NO_IDENTITY.equals(bearer)) {
+                        return new AddonToken.Claims("mcp", null,
+                                List.of("orders.read", "results.read", "orders.search"), null, Long.MAX_VALUE);
+                    }
+                    if (SETTINGS_TOKEN.equals(bearer)) {
+                        return new AddonToken.Claims("mcp", "1", List.of("orders.read"), List.of(), Long.MAX_VALUE,
+                                "addon-settings-page-slot");
                     }
                     if (AI_SERVICE_KEY.equals(bearer)) {
                         return new AddonToken.Claims("assistant", null, List.of("ai.context"), null, Long.MAX_VALUE);
@@ -219,6 +409,8 @@ public class AddonApiSecurityTest extends SecuritySliceMockMvcTest {
                     .thenAnswer(i -> ((AddonToken.Claims) i.getArgument(0)).accessions() == null
                             || ((AddonToken.Claims) i.getArgument(0)).accessions().contains(i.getArgument(1)));
             when(data.order(anyString())).thenAnswer(i -> Optional.of(Map.of("accessionNumber", i.getArgument(0))));
+            when(data.results(anyString())).thenAnswer(i -> Optional.of(Map.of("accessionNumber",
+                    (Object) i.getArgument(0), "results", List.of(Map.of("testCode", "GLU")))));
             return data;
         }
 

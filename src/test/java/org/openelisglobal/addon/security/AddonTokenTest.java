@@ -30,6 +30,14 @@ public class AddonTokenTest {
     }
 
     @Test
+    public void theSlotTravelsSignedInTheToken() {
+        String token = AddonToken.sign(KEY,
+                new AddonToken.Claims("mcp", "1", List.of(), List.of(), NOW + 600, "addon-settings-page-slot"));
+        assertEquals("addon-settings-page-slot", AddonToken.verify(KEY, token, NOW).slot());
+        assertEquals(null, AddonToken.verify(KEY, token(NOW + 600), NOW).slot());
+    }
+
+    @Test
     public void anExpiredTokenIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> AddonToken.verify(KEY, token(NOW), NOW));
     }

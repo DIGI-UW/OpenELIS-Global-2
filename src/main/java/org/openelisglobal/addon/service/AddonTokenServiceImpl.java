@@ -66,9 +66,8 @@ public class AddonTokenServiceImpl implements AddonTokenService {
         List<String> accessions = AddonCatalog.contextOrders(withOrders, scopes);
         long ttl = settings.tokenTtlSeconds();
         // without orders.read the add-on may not see lab numbers: they travel sealed
-        String token = AddonToken.sign(tokenKey(),
-                new AddonToken.Claims(addon.getId(), userId, scopes, accessions, Instant.now().getEpochSecond() + ttl),
-                !scopes.contains(AddonCatalog.ORDERS_READ));
+        String token = AddonToken.sign(tokenKey(), new AddonToken.Claims(addon.getId(), userId, scopes, accessions,
+                Instant.now().getEpochSecond() + ttl, slot), !scopes.contains(AddonCatalog.ORDERS_READ));
         return new IssuedToken(token, ttl, scopes, filtered);
     }
 
@@ -83,7 +82,7 @@ public class AddonTokenServiceImpl implements AddonTokenService {
                     .orElseThrow(() -> new IllegalArgumentException("token"));
             List<String> effective = claims.scopes().stream().filter(addon.getScopeList()::contains).toList();
             return new AddonToken.Claims(claims.addonId(), claims.userId(), effective, claims.accessions(),
-                    claims.expiresAt());
+                    claims.expiresAt(), claims.slot());
         }
         if (bearer.startsWith(AddonRegistryServiceImpl.API_KEY_PREFIX)) {
             Addon addon = addonDAO.findByApiKeyHash(AddonSignature.sha256Hex(bearer.getBytes()))

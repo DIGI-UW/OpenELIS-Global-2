@@ -19,9 +19,10 @@ import javax.crypto.spec.SecretKeySpec;
 /**
  * Short-lived token given to one add-on's UI frame instead of the user's
  * session: {@code oeat.<payload>.<mac>}. The payload names the add-on, the
- * user, the scopes and the lab numbers on the user's screen, and the expiry;
- * the MAC is HMAC-SHA256 with a key that never leaves the server. The token is
- * only accepted by the add-on API ({@code /rest/addon-api/v1}).
+ * user, the slot the frame is in, the scopes and the lab numbers on the user's
+ * screen, and the expiry; the MAC is HMAC-SHA256 with a key that never leaves
+ * the server. The token is only accepted by the add-on API
+ * ({@code /rest/addon-api/v1}).
  *
  * <p>
  * The payload is readable by whoever holds the token (the add-on's frame and
@@ -40,10 +41,15 @@ public final class AddonToken {
      * {@code accessions} null means a service credential (no screen context);
      * {@code userId} null for the same.
      */
-    public record Claims(String addonId, String userId, List<String> scopes, List<String> accessions, long expiresAt) {
+    public record Claims(String addonId, String userId, List<String> scopes, List<String> accessions, long expiresAt,
+            String slot) {
         public Claims {
             scopes = scopes == null ? List.of() : List.copyOf(scopes);
             accessions = accessions == null ? null : List.copyOf(accessions);
+        }
+
+        public Claims(String addonId, String userId, List<String> scopes, List<String> accessions, long expiresAt) {
+            this(addonId, userId, scopes, accessions, expiresAt, null);
         }
 
         public boolean isService() {
@@ -74,6 +80,9 @@ public final class AddonToken {
             o.set("c", JSON.valueToTree(accessions));
         }
         o.put("e", claims.expiresAt());
+        if (claims.slot() != null) {
+            o.put("l", claims.slot());
+        }
         String payload = B64.encodeToString(o.toString().getBytes(StandardCharsets.UTF_8));
         return PREFIX + payload + "." + B64.encodeToString(hmac(key, payload));
     }
@@ -123,7 +132,8 @@ public final class AddonToken {
             }
         }
         orders.forEach(n -> accessions.add(n.asText()));
-        return new Claims(o.path("a").asText(), o.path("u").asText(null), scopes, accessions, o.path("e").asLong());
+        return new Claims(o.path("a").asText(), o.path("u").asText(null), scopes, accessions, o.path("e").asLong(),
+                o.path("l").asText(null));
     }
 
     private static final SecureRandom RANDOM = new SecureRandom();

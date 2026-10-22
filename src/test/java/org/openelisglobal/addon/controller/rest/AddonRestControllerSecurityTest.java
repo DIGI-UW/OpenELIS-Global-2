@@ -23,7 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.Test;
+import org.openelisglobal.addon.dao.AddonAccessLogDAO;
 import org.openelisglobal.addon.packaging.AddonPackageException;
+import org.openelisglobal.addon.service.AddonAccessLogService;
 import org.openelisglobal.addon.service.AddonRegistryService;
 import org.openelisglobal.addon.service.AddonSettings;
 import org.openelisglobal.addon.service.AddonTokenService;
@@ -64,6 +66,23 @@ public class AddonRestControllerSecurityTest extends SecuritySliceMockMvcTest {
         MockHttpSession session = new MockHttpSession();
         session.setAttribute(IActionConstants.USER_SESSION_DATA, data);
         return session;
+    }
+
+    @Test
+    public void theAccessLogIsForAdministratorsAndItsCsvIsSafeForSpreadsheets() throws Exception {
+        mockMvc.perform(get("/rest/addons/mcp/access-log").with(user("r").roles("RESULTS")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/rest/addons/mcp/access-log").with(user("a").roles("ADMIN"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].subject").value("=HYPERLINK(1)"))
+                .andExpect(jsonPath("$.retentionDays").value(180))
+                .andExpect(jsonPath("$.entries[0].at").value("2026-10-22T08:00:00Z"));
+        String csv = mockMvc.perform(get("/rest/addons/mcp/access-log?format=csv").with(user("a").roles("ADMIN")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.junit.Assert.assertTrue(csv, csv.contains("\"'=HYPERLINK(1)\""));
+        mockMvc.perform(get("/rest/addons/mcp/access-log?from=yesterday").with(user("a").roles("ADMIN")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/rest/addons/mcp/access-log?limit=6000").with(user("a").roles("ADMIN")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -167,6 +186,16 @@ public class AddonRestControllerSecurityTest extends SecuritySliceMockMvcTest {
             when(registry.asset("hello", "panel.html")).thenReturn(Optional.of(page));
             when(registry.asset("hello", "missing.js")).thenReturn(Optional.empty());
             return registry;
+        }
+
+        @Bean
+        AddonAccessLogService addonAccessLogService() {
+            AddonAccessLogService log = mock(AddonAccessLogService.class);
+            when(log.find(anyString(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt()))
+                    .thenReturn(List.of(new AddonAccessLogDAO.Entry(java.time.Instant.parse("2026-10-22T08:00:00Z"),
+                            "mcp", "service", null, "agent:a1", "find_patients", "GET", "/patients", "query",
+                            "=HYPERLINK(1)", 200, 1)));
+            return log;
         }
 
         @Bean

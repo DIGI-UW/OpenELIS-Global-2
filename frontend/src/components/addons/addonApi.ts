@@ -80,6 +80,8 @@ export interface InstallResult {
 
 export interface Catalog {
   scopes: { key: string; description: string }[];
+  /** Scopes that let an add-on see who a patient is; shown with a warning. */
+  identifyingScopes?: string[];
   events: { type: string; scope: string; description: string }[];
   slots: { name: string; description: string }[];
 }
@@ -234,6 +236,43 @@ export const saveAddonConfig = (
 
 export const rotateCredentials = (addonId: string) =>
   post<Credentials>(`${id(addonId)}/credentials`, {});
+
+/** One request an add-on made to the add-on API (AddonAccessLogInterceptor). */
+export interface AccessLogEntry {
+  at: string;
+  addonId: string;
+  credential: "service" | "user";
+  userId?: string | null;
+  /** As reported by the add-on (X-Addon-Actor). */
+  actor?: string | null;
+  /** As reported by the add-on (X-Addon-Purpose). */
+  purpose?: string | null;
+  method: string;
+  endpoint: string;
+  subjectType: "order" | "patient" | "query" | "none";
+  subject?: string | null;
+  status: number;
+  rows?: number | null;
+}
+
+export const accessLogPath = (
+  addonId: string,
+  params: { actor?: string; subject?: string; limit?: number; format?: string },
+) => {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") query.set(k, String(v));
+  });
+  return `${id(addonId)}/access-log?${query.toString()}`;
+};
+
+export const getAccessLog = (
+  addonId: string,
+  params: { actor?: string; subject?: string; limit?: number } = {},
+) =>
+  get<{ addon: string; retentionDays: number; entries: AccessLogEntry[] }>(
+    accessLogPath(addonId, { limit: 200, ...params }),
+  );
 
 export const removeAddon = (addonId: string) =>
   new Promise<void>((resolve, reject) =>
