@@ -28,8 +28,9 @@ import java.util.stream.Collectors;
 public final class AnalyzerRecordReading {
 
     /** The profile sections that decide how every result of a type is read. */
-    static final List<String> TYPE_READING_SECTIONS = List.of("identifier_pattern", "msh3_pattern", "column_mapping",
-            "sheet_detection", "result_value_order", "test_code_values", "controlResultRecognition", "sample_flags");
+    static final List<String> TYPE_READING_SECTIONS = List.of("protocol", "identifier_pattern", "msh3_pattern",
+            "column_mapping", "sheet_detection", "result_value_order", "test_code_values", "controlResultRecognition",
+            "sample_flags");
 
     /**
      * The connection defaults the Bridge parses with: where each part of a record

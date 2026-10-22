@@ -137,8 +137,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.25rem;
+  gap: spacing.$spacing-02;
+  margin-top: spacing.$spacing-02;
 }
 
 .analyzer-setup__connect-fields {

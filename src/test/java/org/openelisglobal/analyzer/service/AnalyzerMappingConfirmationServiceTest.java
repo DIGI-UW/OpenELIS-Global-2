@@ -363,6 +363,55 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
+    public void aQueuedDeliveryCannotBorrowReadingsFromANewerEditOfItsRevision() {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerMappingConfirmation saved = confirmed();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        String newerFingerprint = "sha256:" + "f".repeat(64);
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2))
+                .thenReturn(served(newerFingerprint, "copies/mL", "DETECTED", "MOCK"));
+
+        AnalyzerConfirmationReading queued = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+
+        assertTrue(queued.typeChanged());
+        assertNull(queued.arrival());
+        assertEquals(PROFILE_FINGERPRINT, saved.getReadingsFingerprint());
+        verify(confirmationDAO, never()).update(any());
+
+        saved.setReadingsFingerprint(null);
+        saved.setTypeReadingJson(null);
+        saved.setRowReadingsJson(null);
+        assertTrue(service.readingOnDelivery(candidate, EDITED_FINGERPRINT).typeChanged());
+        assertNull("a mismatched source cannot establish a legacy baseline", saved.getReadingsFingerprint());
+        verify(confirmationDAO, never()).update(any());
+    }
+
+    @Test
+    public void changingTheFileProtocolFormatRequiresReconfirmationAndPreventsRecovery() {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        BridgeProfileCatalog.ProfileRevision csv = served(PROFILE_FINGERPRINT, "copies/mL", "DETECTED", "MOCK");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) csv.profile()).putObject("protocol").put("name", "FILE")
+                .put("format", "CSV");
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(csv);
+        AnalyzerMappingConfirmation saved = confirmed();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(saved));
+        BridgeProfileCatalog.ProfileRevision xlsx = served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) xlsx.profile()).putObject("protocol").put("name", "FILE")
+                .put("format", "XLSX");
+        when(profileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(xlsx);
+
+        AnalyzerConfirmationReading changed = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+
+        assertTrue(changed.typeChanged());
+        assertEquals(PROFILE_FINGERPRINT, saved.getReadingsFingerprint());
+        assertFalse(service.readsAsConfirmed("61", "RAW-A", null, changed.arrival().forRecord("RAW-A", null)));
+        assertFalse(service.standsAsServed("61", xlsx));
+        assertEquals(AnalyzerMappingConfirmationView.State.STALE,
+                service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
+    }
+
+    @Test
     public void aUnitChangeHoldsOnlyThatTest() {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation saved = confirmed();

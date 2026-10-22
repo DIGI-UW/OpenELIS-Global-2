@@ -57,7 +57,7 @@ by this progress record.
 
 ## Implemented review fixes
 
-All twenty known findings now have implementation changes in the stack tips.
+The reviewed findings now have implementation changes in the stack tips.
 GitHub resolution is tracked separately from implementation and full CI.
 
 | Finding                     | Correction and focused evidence                                                                                                                     |
@@ -81,6 +81,17 @@ Bridge's two threads are resolved. OpenELIS replies cite the pushed remediation
 commit and distinguish focused evidence from combined CI. The original drafts
 remain backed up at `refs/codex/analyzer-remediation-drafts-20261021`; the
 candidate now includes their fixes.
+
+## Subsequent review corrections
+
+- Value exclusions are documented as entries in `value_defaults`; only tests and
+  parts use the `default` field directly.
+- A delivery with an identified source waits if the currently served profile is a
+  different edit of that revision. Its readings and legacy baseline cannot be
+  reconstructed from another edit. This does not restore the removed comparison
+  against the old confirmation's whole-file fingerprint.
+- Protocol settings are included in the saved interpretation, so changing file
+  format requires reconfirmation and cannot recover a result under the old format.
 
 ## Legacy fingerprint gate removed
 

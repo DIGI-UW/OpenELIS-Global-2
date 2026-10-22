@@ -206,6 +206,11 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
                     "The served profile could not be read: " + exception.getMessage());
             return AnalyzerConfirmationReading.typeReadingChanged();
         }
+        // Compare the profile that actually parsed this delivery, never a newer edit
+        // served under the same revision number.
+        if (deliveredProfileFingerprint != null && !served.fingerprint().equals(deliveredProfileFingerprint)) {
+            return AnalyzerConfirmationReading.typeReadingChanged();
+        }
         AnalyzerArrivalReading arrival = served.fingerprint().equals(deliveredProfileFingerprint)
                 ? new AnalyzerArrivalReading(served.type(), served.rows())
                 : null;
