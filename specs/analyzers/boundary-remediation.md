@@ -6,6 +6,8 @@ The user directed an audit of duplicated decisions and a simpler boundary: the B
 
 Audited source: OpenELIS `fde241e1a6892f1e4ff6851766e1f48814c4cc79`, Bridge `b8618f9ad562f1ec270419909396b388b9950120`. Scope: Bridge receipt, routing, parsing, rendering, outbox and retry; OpenELIS bundle validation, mapping defaults/editor, confirmation, activation, adoption, import, held recovery, placement and QC routing. This is a source audit, not a production incident or frequency assessment. No runtime tests were run for this documentation change.
 
+For the numbered work list, owners and reasons, start with the [cleanup inventory](cleanup-inventory.md).
+
 ## Decision
 
 **Interpret once in the Bridge; deliver the preserved outcome; map and place it in OpenELIS.**
