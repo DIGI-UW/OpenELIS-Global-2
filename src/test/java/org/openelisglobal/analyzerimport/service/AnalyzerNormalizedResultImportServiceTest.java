@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -87,7 +88,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);
-        when(confirmationService.readingOnDelivery(any(), any()))
+        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any()))
                 .thenReturn(org.openelisglobal.analyzer.service.AnalyzerConfirmationReading.unchanged());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("501", "Numeric test", "NUM", List.of()),
@@ -129,7 +130,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Test
     public void aConfirmedTestTheServedProfileNowReadsDifferentlyIsHeldUntilItIsConfirmedAgain() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        when(confirmationService.readingOnDelivery(any(), any()))
+        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any()))
                 .thenReturn(new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(false, java.util.Set
                         .of(new org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow("WBC", null, ""))));
 
@@ -145,7 +146,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Test
     public void aChangedTypeReadingHoldsEveryResultOfTheAnalyzer() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
-        when(confirmationService.readingOnDelivery(any(), any())).thenReturn(
+        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any())).thenReturn(
                 new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(true, java.util.Set.of()));
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"),
@@ -168,7 +169,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
         service.importBundle(bundle, "7");
 
-        verify(confirmationService).readingOnDelivery(any(), eq(fingerprint));
+        verify(confirmationService).readingOnDelivery(any(), eq("site.mock-hematology"), eq(1), eq(fingerprint));
     }
 
     @Test
@@ -596,7 +597,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
                 .thenReturn(Optional.of(analyzer));
         arrangeBinding(List.of(), List.of());
         com.fasterxml.jackson.databind.ObjectMapper json = new com.fasterxml.jackson.databind.ObjectMapper();
-        when(confirmationService.readingOnDelivery(any(), any()))
+        when(confirmationService.readingOnDelivery(any(), any(), anyInt(), any()))
                 .thenReturn(
                         new org.openelisglobal.analyzer.service.AnalyzerConfirmationReading(false, Set.of(),
                                 new org.openelisglobal.analyzer.service.AnalyzerArrivalReading(
@@ -623,6 +624,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         when(profileCatalogService.getProfile("site.unknown-capable", 4))
                 .thenReturn(profile("site.unknown-capable", 4, "IU/mL"));
         service.importBundle(stampedUnknownBundle("sha256:" + "3".repeat(64)), "7");
+        verify(confirmationService).readingOnDelivery(any(), eq("site.unknown-capable"), eq(3),
+                eq("sha256:" + "3".repeat(64)));
         AnalyzerResults held = capturedRow();
         assertTrue(held.isReadOnly());
         assertTrue(held.getArrivalReading().contains("copies/mL"));

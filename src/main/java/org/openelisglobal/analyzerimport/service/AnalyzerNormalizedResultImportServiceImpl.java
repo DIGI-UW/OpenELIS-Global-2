@@ -259,7 +259,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 recovery == Recovery.READS_AS_CONFIRMED ? record -> true
                         : readsAlike(contract, binding.mapping().getProfilePin()),
                 recovery == Recovery.READS_AS_CONFIRMED ? AnalyzerConfirmationReading.unchanged()
-                        : confirmationService.readingOnDelivery(binding, contract.profileFingerprint()));
+                        : confirmationService.readingOnDelivery(binding, contract.profileId(),
+                                contract.profileRevision(), contract.profileFingerprint()));
         // A result whose reading was compared with the confirmation stands on the type
         // the analyzer is confirmed on now, not the one it arrived under.
         String confirmedRecognition = recovery == Recovery.NONE ? null

@@ -339,7 +339,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation saved = confirmed();
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
 
-        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, PROFILE_FINGERPRINT);
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                PROFILE_FINGERPRINT);
 
         assertFalse(reading.typeChanged());
         assertTrue(reading.changedRows().isEmpty());
@@ -354,12 +355,31 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK"));
 
-        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                EDITED_FINGERPRINT);
 
         assertFalse(reading.typeChanged());
         assertTrue(reading.changedRows().isEmpty());
         assertEquals(EDITED_FINGERPRINT, saved.getReadingsFingerprint());
         verify(confirmationDAO).update(saved);
+    }
+
+    @Test
+    public void anOlderQueuedRevisionIsComparedWithTheConfirmedReadingBeforeItIsHeld() {
+        AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerMappingConfirmation saved = confirmed();
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
+        BridgeProfileCatalog.ProfileRevision older = served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) older.profile().path("catalog")).put("revision", 1);
+        when(profileCatalogService.getProfile("site.mock-analyzer", 1)).thenReturn(older);
+
+        AnalyzerConfirmationReading queued = service.readingOnDelivery(candidate, "site.mock-analyzer", 1,
+                EDITED_FINGERPRINT);
+
+        assertTrue("an older equivalent reading does not require operator recovery", queued.isUnchanged());
+        assertTrue(queued.arrival().forRecord("RAW-A", null).contains("copies/mL"));
+        verify(profileCatalogService).getProfile("site.mock-analyzer", 1);
+        verify(profileCatalogService, never()).getProfile("site.mock-analyzer", 2);
     }
 
     @Test
@@ -371,7 +391,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(newerFingerprint, "copies/mL", "DETECTED", "MOCK"));
 
-        AnalyzerConfirmationReading queued = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+        AnalyzerConfirmationReading queued = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                EDITED_FINGERPRINT);
 
         assertTrue(queued.typeChanged());
         assertNull(queued.arrival());
@@ -381,7 +402,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         saved.setReadingsFingerprint(null);
         saved.setTypeReadingJson(null);
         saved.setRowReadingsJson(null);
-        assertTrue(service.readingOnDelivery(candidate, EDITED_FINGERPRINT).typeChanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).typeChanged());
         assertNull("a mismatched source cannot establish a legacy baseline", saved.getReadingsFingerprint());
         verify(confirmationDAO, never()).update(any());
     }
@@ -401,7 +422,8 @@ public class AnalyzerMappingConfirmationServiceTest {
                 .put("format", "XLSX");
         when(profileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(xlsx);
 
-        AnalyzerConfirmationReading changed = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+        AnalyzerConfirmationReading changed = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                EDITED_FINGERPRINT);
 
         assertTrue(changed.typeChanged());
         assertEquals(PROFILE_FINGERPRINT, saved.getReadingsFingerprint());
@@ -419,7 +441,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "IU/mL", "DETECTED", "MOCK"));
 
-        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                EDITED_FINGERPRINT);
 
         assertFalse(reading.typeChanged());
         assertEquals(java.util.Set.of(new AnalyzerMappingSourceRow("RAW-A", null, "")), reading.changedRows());
@@ -433,7 +456,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "POSITIVE", "MOCK"));
 
-        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                EDITED_FINGERPRINT);
 
         assertEquals(java.util.Set.of(new AnalyzerMappingSourceRow("RAW-A", "Detected", "")), reading.changedRows());
     }
@@ -446,7 +470,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "OTHER"));
 
-        assertTrue(service.readingOnDelivery(candidate, EDITED_FINGERPRINT).typeChanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).typeChanged());
     }
 
     @Test
@@ -455,7 +479,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation legacy = storedConfirmation(candidate, exactRequest());
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(legacy));
 
-        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, PROFILE_FINGERPRINT);
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                PROFILE_FINGERPRINT);
 
         assertFalse(reading.typeChanged());
         assertEquals(PROFILE_FINGERPRINT, legacy.getReadingsFingerprint());
@@ -471,7 +496,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK"));
 
-        AnalyzerConfirmationReading first = service.readingOnDelivery(candidate, EDITED_FINGERPRINT);
+        AnalyzerConfirmationReading first = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                EDITED_FINGERPRINT);
 
         assertTrue(first.isUnchanged());
         assertEquals(EDITED_FINGERPRINT, legacy.getReadingsFingerprint());
@@ -482,7 +508,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         String laterFingerprint = "sha256:" + "f".repeat(64);
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(laterFingerprint, "IU/mL", "DETECTED", "MOCK"));
-        AnalyzerConfirmationReading changed = service.readingOnDelivery(candidate, laterFingerprint);
+        AnalyzerConfirmationReading changed = service.readingOnDelivery(candidate, "site.mock-analyzer", 2,
+                laterFingerprint);
         assertFalse(changed.typeChanged());
         assertEquals(java.util.Set.of(new AnalyzerMappingSourceRow("RAW-A", null, "")), changed.changedRows());
         assertEquals(EDITED_FINGERPRINT, legacy.getReadingsFingerprint());
@@ -562,7 +589,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "IU/mL", "DETECTED", "MOCK"));
 
-        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, null);
+        AnalyzerConfirmationReading reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, null);
 
         assertEquals(java.util.Set.of(new AnalyzerMappingSourceRow("RAW-A", null, "")), reading.changedRows());
         assertNull("how it arrived is not known", reading.arrival());
@@ -573,15 +600,16 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation saved = confirmed();
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
-        String arrivedAsConfirmed = service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).arrival()
-                .forRecord("RAW-A", null);
+        String arrivedAsConfirmed = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT)
+                .arrival().forRecord("RAW-A", null);
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "IU/mL", "DETECTED", "MOCK"));
-        String arrivedInIu = service.readingOnDelivery(candidate, EDITED_FINGERPRINT).arrival().forRecord("RAW-A",
-                null);
+        String arrivedInIu = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).arrival()
+                .forRecord("RAW-A", null);
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "OTHER"));
-        String arrivedRoutedElsewhere = service.readingOnDelivery(candidate, EDITED_FINGERPRINT).arrival()
+        String arrivedRoutedElsewhere = service
+                .readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).arrival()
                 .forRecord("RAW-A", null);
 
         assertTrue(service.readsAsConfirmed("61", "RAW-A", null, arrivedAsConfirmed));
@@ -601,7 +629,8 @@ public class AnalyzerMappingConfirmationServiceTest {
                 .profile().path("default_test_mappings").get(0);
         test.withArray("values").add("Removed");
         when(profileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(arrival);
-        String reading = service.readingOnDelivery(candidate, EDITED_FINGERPRINT).arrival().forRecord("RAW-A", null);
+        String reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).arrival()
+                .forRecord("RAW-A", null);
 
         assertFalse(service.readsAsConfirmed("61", "RAW-A", null, reading));
     }
@@ -611,7 +640,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation saved = confirmed();
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
-        String reading = service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).arrival().forRecord("RAW-A", null);
+        String reading = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).arrival()
+                .forRecord("RAW-A", null);
         ObjectMapper json = new ObjectMapper();
         com.fasterxml.jackson.databind.node.ObjectNode withMissingSpelling = (com.fasterxml.jackson.databind.node.ObjectNode) json
                 .readTree(reading);
@@ -665,12 +695,12 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
         when(profileCatalogService.getProfile("site.mock-analyzer", 2))
                 .thenThrow(new BridgeProfileCatalogException("offline"));
-        assertTrue(service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).typeChanged());
-        assertTrue(service.readingOnDelivery(candidate, EDITED_FINGERPRINT).typeChanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).typeChanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).typeChanged());
         verify(confirmationDAO, never()).update(any());
         org.mockito.Mockito.doReturn(served(EDITED_FINGERPRINT, "copies/mL", "DETECTED", "MOCK"))
                 .when(profileCatalogService).getProfile("site.mock-analyzer", 2);
-        assertTrue(service.readingOnDelivery(candidate, EDITED_FINGERPRINT).isUnchanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, EDITED_FINGERPRINT).isUnchanged());
     }
 
     @Test
@@ -693,7 +723,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation saved = confirmed();
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
-        String arrival = service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).arrival().forRecord("RSVX", null);
+        String arrival = service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).arrival()
+                .forRecord("RSVX", null);
         assertFalse(service.readsAsConfirmed("61", "RSVX", null, arrival));
         var rows = new ObjectMapper().readTree(saved.getConfirmedRowsJson());
         ((com.fasterxml.jackson.databind.node.ArrayNode) rows).addObject().put("sourceRowKey", "RSVX")
@@ -732,20 +763,20 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation saved = capture.getValue();
         when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(saved));
         when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(saved));
-        assertTrue(service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).isUnchanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).isUnchanged());
         connection.with("values").with("codeOverrides").put("RAW-A", "INST-2");
-        assertTrue(service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).typeChanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).typeChanged());
         assertEquals(AnalyzerMappingConfirmationView.State.STALE,
                 service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
         assertFalse(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).recognitionCurrent());
         service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(), "17");
-        assertTrue(service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).isUnchanged());
+        assertTrue(service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).isUnchanged());
         connection.with("values").put("host", "renamed-host");
         assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
                 service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
         connection.with("values").with("codeOverrides").removeAll();
         assertTrue("removing an override also changes interpretation",
-                service.readingOnDelivery(candidate, PROFILE_FINGERPRINT).typeChanged());
+                service.readingOnDelivery(candidate, "site.mock-analyzer", 2, PROFILE_FINGERPRINT).typeChanged());
     }
 
     /** A first confirmation of the complete candidate, as saved. */

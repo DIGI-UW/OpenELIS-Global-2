@@ -174,8 +174,8 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     @Override
     @Transactional
-    public AnalyzerConfirmationReading readingOnDelivery(AnalyzerMappingSnapshot binding,
-            String deliveredProfileFingerprint) {
+    public AnalyzerConfirmationReading readingOnDelivery(AnalyzerMappingSnapshot binding, String deliveredProfileId,
+            int deliveredRevision, String deliveredProfileFingerprint) {
         Optional<AnalyzerMappingConfirmation> found = confirmationDAO.findByMappingId(binding.mapping().getId());
         if (found.isEmpty()) {
             return AnalyzerConfirmationReading.unchanged();
@@ -200,7 +200,9 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         // Bridge serves, and how it arrived stays unknown.
         ServedReading served;
         try {
-            served = withConnectionReading(served(binding.mapping().getProfilePin()), overrides);
+            served = withConnectionReading(
+                    served(new AnalyzerProfilePin(deliveredProfileId, deliveredRevision, deliveredProfileFingerprint)),
+                    overrides);
         } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
             LogEvent.logWarn(getClass().getSimpleName(), "readingOnDelivery",
                     "The served profile could not be read: " + exception.getMessage());
