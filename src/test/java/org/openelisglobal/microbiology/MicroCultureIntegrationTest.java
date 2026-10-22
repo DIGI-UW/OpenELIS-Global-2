@@ -492,10 +492,30 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
             positive.positiveAt = received;
             rejects(() -> service.act(microCase.getId(), row.id, "positive-time", positive, actor),
                     "MICROBIOLOGY_CULTURE_CONCLUDED");
+            var child = request();
+            child.parentId = row.id;
+            child.subculturePurpose = "CLINICAL_DIAGNOSTIC";
+            rejects(() -> service.inoculate(microCase.getId(), child, actor), "MICROBIOLOGY_CULTURE_CONCLUDED");
+            var selection = new MicroCaseAddTestsForm();
+            selection.placement = "CULTURE";
+            selection.cultureId = row.id;
+            selection.sampleItemId = specimen.getId();
+            rejects(() -> results.addTests(microCase.getId(), selection, actor), "MICROBIOLOGY_CULTURE_CONCLUDED");
             var saved = reload().stream().filter(r -> r.id.equals(row.id)).findFirst().orElseThrow();
             assertEquals(outcome, saved.outcome);
             assertNull(saved.positiveAt);
         }
+    }
+
+    @Test
+    public void historicalSourceLessRowDoesNotOfferClockEditing() {
+        var created = create();
+        var row = cultures.getRows(microCase.getId()).get(0);
+        row.setSourceSampleItemId(null);
+        em.flush();
+        em.clear();
+        assertFalse(service.getRows(microCase.getId()).stream().filter(r -> r.id.equals(created.id))
+                .findFirst().orElseThrow().canEditInoculatedAt);
     }
 
     @Test

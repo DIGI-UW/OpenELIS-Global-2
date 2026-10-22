@@ -367,3 +367,17 @@ it.each([null, "missing-source"])(
     ).toBeEnabled();
   },
 );
+
+it.each(["NO_GROWTH", "CONTAMINATED"])(
+  "hides new culture work for %s",
+  async (outcome) => {
+    show(api([{ ...row, outcome, canEditInoculatedAt: false }]));
+    await screen.findByText("PLATE-1");
+    expect(
+      screen.queryByRole("button", { name: "Subculture", exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Test on culture", exact: true }),
+    ).not.toBeInTheDocument();
+  },
+);

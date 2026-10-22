@@ -169,6 +169,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
                     .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_CULTURE_REQUIRED"));
             if (!caseId.equals(culture.getCaseId()) || !request.sampleItemId.equals(culture.getSourceSampleItemId()))
                 bad("MICROBIOLOGY_CULTURE_SOURCE");
+            if ("NO_GROWTH".equals(culture.getOutcome()) || "CONTAMINATED".equals(culture.getOutcome()))
+                bad("MICROBIOLOGY_CULTURE_CONCLUDED");
         } else if (request.cultureId != null)
             bad("MICROBIOLOGY_CULTURE_PLACEMENT");
         if (specimen.isRejected())

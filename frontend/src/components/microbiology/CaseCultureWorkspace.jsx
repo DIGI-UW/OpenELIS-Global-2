@@ -615,60 +615,63 @@ export default function CaseCultureWorkspace({
                       {t("action.positive-time")}
                     </Button>
                   )}
-                  {options.sources.some(
-                    (source) => source.sampleItemId === row.sourceSampleItemId,
-                  ) && (
-                    <>
-                      <Button
-                        kind="tertiary"
-                        onClick={() => open("inoculate", row)}
-                      >
-                        {t("subculture")}
-                      </Button>
-                      <Button
-                        kind="tertiary"
-                        onClick={() =>
-                          onChooseTests(
-                            {
-                              ...row,
-                              source: options.sources.find(
+                  {(!row.outcome || row.outcome === "GROWTH") &&
+                    options.sources.some(
+                      (source) =>
+                        source.sampleItemId === row.sourceSampleItemId,
+                    ) && (
+                      <>
+                        <Button
+                          kind="tertiary"
+                          onClick={() => open("inoculate", row)}
+                        >
+                          {t("subculture")}
+                        </Button>
+                        <Button
+                          kind="tertiary"
+                          onClick={() =>
+                            onChooseTests(
+                              {
+                                ...row,
+                                source: options.sources.find(
+                                  (s) =>
+                                    s.sampleItemId === row.sourceSampleItemId,
+                                ),
+                              },
+                              null,
+                            )
+                          }
+                        >
+                          {t("testOnCulture")}
+                        </Button>
+                        <Button
+                          kind="tertiary"
+                          disabled={
+                            !options.gramStainTest ||
+                            !options.gramStainSampleTypeIds?.includes(
+                              options.sources.find(
                                 (s) =>
                                   s.sampleItemId === row.sourceSampleItemId,
-                              ),
-                            },
-                            null,
-                          )
-                        }
-                      >
-                        {t("testOnCulture")}
-                      </Button>
-                      <Button
-                        kind="tertiary"
-                        disabled={
-                          !options.gramStainTest ||
-                          !options.gramStainSampleTypeIds?.includes(
-                            options.sources.find(
-                              (s) => s.sampleItemId === row.sourceSampleItemId,
-                            )?.sampleTypeId,
-                          )
-                        }
-                        onClick={() =>
-                          onChooseTests(
-                            {
-                              ...row,
-                              source: options.sources.find(
-                                (s) =>
-                                  s.sampleItemId === row.sourceSampleItemId,
-                              ),
-                            },
-                            options.gramStainTest,
-                          )
-                        }
-                      >
-                        {t("gramStain")}
-                      </Button>
-                    </>
-                  )}
+                              )?.sampleTypeId,
+                            )
+                          }
+                          onClick={() =>
+                            onChooseTests(
+                              {
+                                ...row,
+                                source: options.sources.find(
+                                  (s) =>
+                                    s.sampleItemId === row.sourceSampleItemId,
+                                ),
+                              },
+                              options.gramStainTest,
+                            )
+                          }
+                        >
+                          {t("gramStain")}
+                        </Button>
+                      </>
+                    )}
                 </Stack>
               )}
               {log(row)}

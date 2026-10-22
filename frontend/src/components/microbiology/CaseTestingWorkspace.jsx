@@ -665,7 +665,9 @@ export default function CaseTestingWorkspace({ detail, service }) {
                       (placement === "CULTURE" ? cultureId : ""),
                   )
                   .reduce((bySample, test) => {
-                    (bySample[test.sampleItemId] ||= []).push(String(test.testId));
+                    (bySample[test.sampleItemId] ||= []).push(
+                      String(test.testId),
+                    );
                     return bySample;
                   }, {})}
               />

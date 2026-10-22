@@ -160,6 +160,8 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         row.setSourceSampleItemId(r.sourceSampleItemId);
         if (r.parentId != null && !r.parentId.isBlank()) {
             var parent = requireRow(caseId, r.parentId);
+            if ("NO_GROWTH".equals(parent.getOutcome()) || "CONTAMINATED".equals(parent.getOutcome()))
+                bad("CONCLUDED");
             if (!Objects.equals(parent.getSourceSampleItemId(), r.sourceSampleItemId))
                 bad("PARENT_SOURCE");
             if (r.inoculatedAt.before(parent.getOccurredAt()))
@@ -435,7 +437,8 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         f.proposals = row.getProposals().stream().map(p -> new MicroCultureForm.Proposal(p.getId(), p.getSignal(),
                 p.getRecordedAt(), p.getConfirmedBy(), p.getConfirmedAt())).toList();
         boolean incubating = f.outcome == null || "GROWTH".equals(f.outcome);
-        f.canEditInoculatedAt = f.readings.isEmpty() && incubating;
+        f.canEditInoculatedAt = f.sourceSampleItemId != null && !f.sourceSampleItemId.isBlank()
+                && f.readings.isEmpty() && incubating;
         if (f.duration != null && f.durationUnit != null) {
             long extensionMillis = row.getExtensions().stream()
                     .mapToLong(e -> MicroCultureTiming.milliseconds(e.getExtendBy(), e.getUnit())).sum();
