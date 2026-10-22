@@ -43,9 +43,11 @@ public final class AddonCatalog {
 
     /**
      * A UI slot. {@code roles}: a user needs one of them for the slot's add-on
-     * frames to get a token (empty = any signed-in user).
+     * frames to get a token (empty = any signed-in user). {@code withOrders}: the
+     * page passes the orders on screen; a slot open to every signed-in user never
+     * does, so its tokens carry no orders whatever the browser sends.
      */
-    public record Slot(String name, Set<String> roles, String description) {
+    public record Slot(String name, Set<String> roles, String description, boolean withOrders) {
     }
 
     public static final List<Scope> SCOPES = List.of(
@@ -64,11 +66,11 @@ public final class AddonCatalog {
 
     public static final List<Slot> SLOTS = List.of(
             new Slot(SLOT_RESULT_VALIDATION_SIDE_PANEL, Set.of("VALIDATION", "ADMIN"),
-                    "Side panel of the result validation page"),
+                    "Side panel of the result validation page", true),
             new Slot(SLOT_RESULT_LOOKUP_SIDE_PANEL, Set.of("RECEPTION", "RESULTS", "VALIDATION", "REPORTS", "ADMIN"),
-                    "Side panel of the patient results page"),
-            new Slot(SLOT_APP_MENU, Set.of(), "Entry in the main menu, opening a full page"),
-            new Slot(SLOT_TOP_NAV_ACTIONS, Set.of(), "Button in the top navigation bar, opening a side panel"));
+                    "Side panel of the patient results page", true),
+            new Slot(SLOT_APP_MENU, Set.of(), "Entry in the main menu, opening a full page", false),
+            new Slot(SLOT_TOP_NAV_ACTIONS, Set.of(), "Button in the top navigation bar, opening a side panel", false));
 
     /** At most this many lab numbers travel in a UI context or a token. */
     public static final int MAX_CONTEXT_ACCESSIONS = 50;
