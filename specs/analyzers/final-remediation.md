@@ -58,7 +58,8 @@ Bridge: #101 → #102 → #104 → #105 → #106 → #107 → #108 → #109 →
 Both stacks were rebased and published with `gh stack`; each parent is an
 ancestor of its child. OpenELIS #4798 records these candidate dependencies:
 
-- Bridge #113: `162b73d3d92e123cea312677e9d0a21b693d269d`.
+- Bridge #113: the committed `tools/openelis-analyzer-bridge` gitlink, kept at the
+  published stack head.
 - Analyzer mock #62: `88b51f7c5ed50e953b8e80be5934162bcb138fd9`.
 
 Standalone OpenELIS #4768 and Bridge #88 remain independent changes. Mock #62
@@ -77,8 +78,9 @@ Focused follow-up validation:
 - Bridge: complete suite passed before the additional HTTP regression; the HTTP
   subset then passed. Current reports contain 1,224 tests, four skipped.
 - OpenELIS: 103 focused import/contract/result tests passed. The manual boundary
-  checks deliberately restored raw-answer lookup, role guessing and equal-value
-  suppression in isolated copies; all three mutations failed their regression
+  checks deliberately restored raw-answer lookup, role guessing, equal-value
+  suppression and a live Bridge lookup during local mapping repair in isolated
+  copies; all four mutations failed their regression
   tests while the unchanged baselines passed.
 - Local mapping: database migration and all eleven persistence tests passed,
   including confirmation without a recognition hash and retained canonical
@@ -94,6 +96,12 @@ target continuity. The later answer-target and certificate-rotation findings
 also have fixes and regression coverage. GitHub replies/resolutions must cite
 their published commits; the PR summaries carry the latest thread counts.
 Refresh after CI because later reviews may introduce new findings.
+
+Follow-up CI and review fixes preserve retirement through the FHIR Device API,
+select the database encryption key by a format marker, reset configuration-menu
+state on navigation, and make accession previews non-mutating. Certificate
+startup fails on mismatched store passwords without modifying existing key
+material. Focused regressions passed; full-candidate validation remains required.
 
 Full local browser validation also exposed a billing-menu test that filled its
 URL before the initial settings request completed. The test now waits for loaded
