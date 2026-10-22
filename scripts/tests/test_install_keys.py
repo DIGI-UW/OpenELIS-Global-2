@@ -141,6 +141,49 @@ class InstallKeysTest(unittest.TestCase):
         self.assertEqual(cert.read_bytes(), self.proxy.read_bytes())
         self.assertEqual(key.read_bytes(), self.proxy_key.read_bytes())
 
+    def check_rotated_site_key(self, missing_truststore=False):
+        self.upgrade()
+        encryption = (self.stores / "install/encryption.key").read_bytes()
+        proxy = self.proxy.read_bytes()
+        client_store = (self.stores / "client_facing_keystore").read_bytes()
+        cert, key = self.certificate("/O=Site/CN=rotated.lab.example", "rotated")
+        self.command("openssl", "pkcs12", "-inkey", key, "-in", cert, "-export",
+                     "-out", self.stores / "keystore", "-passout", "env:KEYSTORE_PW")
+        if missing_truststore:
+            (self.stores / "truststore").unlink()
+        else:
+            partner, _ = self.certificate("/O=Partner/CN=partner.example", "partner")
+            self.command("keytool", "-importcert", "-noprompt", "-alias", "partner", "-file", partner,
+                         "-keystore", self.stores / "truststore", "-storetype", "pkcs12",
+                         "-storepass:env", "TRUSTSTORE_PW")
+        keystore = (self.stores / "keystore").read_bytes()
+        self.upgrade()
+        self.assertEqual(self.fingerprint(cert), self.fingerprint(self.stores / "install/server.crt"))
+        self.assertEqual(self.command("openssl", "pkey", "-in", key, "-pubout"),
+                         self.command("openssl", "pkey", "-in", self.stores / "install/server.key", "-pubout"))
+        trusted = self.command("keytool", "-exportcert", "-rfc", "-alias", "oeCert",
+                               "-keystore", self.stores / "truststore", "-storetype", "pkcs12",
+                               "-storepass:env", "TRUSTSTORE_PW")
+        self.assertEqual(self.fingerprint(cert), self.command("openssl", "x509", "-noout",
+                         "-fingerprint", "-sha256", input=trusted))
+        if not missing_truststore:
+            self.command("keytool", "-list", "-alias", "partner", "-keystore", self.stores / "truststore",
+                         "-storepass:env", "TRUSTSTORE_PW")
+        self.assertEqual(keystore, (self.stores / "keystore").read_bytes())
+        self.assertEqual(client_store, (self.stores / "client_facing_keystore").read_bytes())
+        self.assertEqual(proxy, self.proxy.read_bytes())
+        self.assertEqual(encryption, (self.stores / "install/encryption.key").read_bytes())
+        stable = {p: p.read_bytes() for p in (self.stores / "install").iterdir()}
+        self.upgrade()
+        for path, contents in stable.items():
+            self.assertEqual(contents, path.read_bytes(), path.name)
+
+    def test_rotated_site_keystore_updates_install_and_existing_trust(self):
+        self.check_rotated_site_key()
+
+    def test_rotated_site_keystore_recreates_missing_trust(self):
+        self.check_rotated_site_key(missing_truststore=True)
+
     def test_unreadable_stores_are_preserved_with_a_warning(self):
         self.install_old_stores("/O=Site/CN=lab.example")
         before = {p: p.read_bytes() for p in self.stores.iterdir()}

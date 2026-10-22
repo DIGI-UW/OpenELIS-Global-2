@@ -72,19 +72,23 @@ if [ -s "$STORES/keystore" ] && ! keystore_opens; then
   exit 0
 fi
 
-if [ ! -s "$KEY" ] || [ ! -s "$CERT" ] || is_image_cert <"$CERT"; then
-  if [ -s "$STORES/keystore" ] && ! keystore_cert | is_image_cert; then
+# The private keystore is authoritative, including after an operator rotates it.
+if [ -s "$STORES/keystore" ] && ! keystore_cert | is_image_cert; then
+  if [ ! -s "$KEY" ] || [ ! -s "$CERT" ] || [ "$(keystore_cert | fingerprint)" != "$(fingerprint <"$CERT")" ]; then
     echo "Keeping the certificate this install's keystore already holds"
     (umask 077 && openssl pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -nocerts -nodes \
       -out "$KEY.tmp" 2>/dev/null)
     keystore_cert | openssl x509 -out "$CERT.tmp"
-  else
-    echo "Generating this install's TLS key and certificate"
-    openssl req -x509 -nodes -newkey rsa:2048 -days "$DAYS" \
-      -keyout "$KEY.tmp" -out "$CERT.tmp" \
-      -subj "/O=OpenELIS Global/CN=localhost" \
-      -addext "subjectAltName=DNS:localhost,DNS:*.openelis.org,DNS:*.openelis-global.org,IP:127.0.0.1" 2>/dev/null
+    chmod 600 "$KEY.tmp"
+    mv "$KEY.tmp" "$KEY"
+    mv "$CERT.tmp" "$CERT"
   fi
+elif [ ! -s "$KEY" ] || [ ! -s "$CERT" ] || is_image_cert <"$CERT"; then
+  echo "Generating this install's TLS key and certificate"
+  openssl req -x509 -nodes -newkey rsa:2048 -days "$DAYS" \
+    -keyout "$KEY.tmp" -out "$CERT.tmp" \
+    -subj "/O=OpenELIS Global/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,DNS:*.openelis.org,DNS:*.openelis-global.org,IP:127.0.0.1" 2>/dev/null
   chmod 600 "$KEY.tmp"
   mv "$KEY.tmp" "$KEY"
   mv "$CERT.tmp" "$CERT"
@@ -97,13 +101,11 @@ if [ ! -s "$STORES/keystore" ] || keystore_cert | is_image_cert; then
   openssl pkcs12 -export -inkey "$KEY" -in "$CERT" -out "$STORES/keystore.tmp" -passout env:KEYSTORE_PW
   mv "$STORES/keystore.tmp" "$STORES/keystore"
   cp "$STORES/keystore" "$STORES/client_facing_keystore"
-elif [ "$(keystore_cert | fingerprint)" != "$current" ]; then
-  echo "The keystore holds a certificate of the site's own; it is kept"
 fi
 
 if [ -s "$STORES/truststore" ] && ! truststore_opens; then
   echo "WARNING: the truststore does not open with TRUSTSTORE_PW; it is left as it is" >&2
-elif [ ! -s "$STORES/truststore" ] || [ -z "$(truststore_cert)" ] || truststore_cert | is_image_cert; then
+elif [ ! -s "$STORES/truststore" ] || [ "$(truststore_cert | fingerprint)" != "$current" ]; then
   echo "Trusting this install's certificate in the truststore"
   rm -f "$STORES/truststore.tmp"
   if [ -s "$STORES/truststore" ]; then

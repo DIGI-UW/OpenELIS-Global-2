@@ -597,6 +597,69 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void anOlderUncodedAnswerCannotFollowAReassignedLocalOption() throws IOException {
+        olderUncodedAnswer("702");
+        assertEquals(1, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING, capturedRow().getImportIssueReason());
+        verify(testResultService, never()).get("701");
+    }
+
+    @Test
+    public void anOlderUncodedAnswerUsesAnUnchangedLocalOption() throws IOException {
+        olderUncodedAnswer("701");
+        assertEquals(0, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    @Test
+    public void anOlderUncodedAnswerWithoutASourceOptionStaysHeld() throws IOException {
+        olderUncodedAnswer(null);
+        assertEquals(1, service.importBundle(fixture("normalized-unknown-value.fhir.json"), "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING, capturedRow().getImportIssueReason());
+    }
+
+    @Test
+    public void anOlderCodedAnswerUsesDeliveredMeaningInsteadOfTheFormerAnswerTarget() throws IOException {
+        olderUncodedAnswer("702");
+        assertEquals(0, service.importBundle(codedAnswer("10828004"), "7").resultsHeld());
+        assertEquals("9001", capturedRow().getResult());
+    }
+
+    @Test
+    public void aCodedTestDoesNotHideAnUncodedAnswerTargetChange() throws IOException {
+        olderUncodedAnswer("702");
+        var coding = new org.openelisglobal.terminology.Coding("urn:test:local", "qualitative-test");
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List
+                .of(new AnalyzerMappingCatalogService.TestOption("601", "Qualitative test", "QUAL", List.of(coding))));
+        Bundle bundle = fixture("normalized-unknown-value.fhir.json");
+        observations(bundle).forEach(
+                observation -> observation.getCode().addCoding().setSystem(coding.system()).setCode(coding.code()));
+        assertEquals(1, service.importBundle(bundle, "7").resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING, capturedRow().getImportIssueReason());
+    }
+
+    private void olderUncodedAnswer(String sourceOption) {
+        analyzer = analyzer("site.mock-hematology", 2);
+        when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-7f3c"))
+                .thenReturn(Optional.of(analyzer));
+        arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
+                List.of(boundResult("HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")));
+        var source = new AnalyzerMapping();
+        source.setId("before-adoption");
+        source.setProfileId("site.mock-hematology");
+        source.setProfileRevision(1);
+        revision.setSupersedes(source);
+        when(mappingService.findById(source.getId())).thenReturn(Optional.of(new AnalyzerMappingSnapshot(source,
+                List.of(boundTest(source, "HIV-INTERP", "601")), sourceOption == null ? List.of()
+                        : List.of(boundResult(source, "HIV-INTERP", "INDETERMINATE-VENDOR-X", sourceOption)))));
+        TestResult option = new TestResult();
+        option.setId("701");
+        option.setValue("9001");
+        option.setTestResultType("D");
+        when(testResultService.get("701")).thenReturn(option);
+    }
+
+    @Test
     public void incomingResultKeepsTheMappingInForceWhileANewerDraftExists() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
         AnalyzerMapping acknowledgedRevision = revision;

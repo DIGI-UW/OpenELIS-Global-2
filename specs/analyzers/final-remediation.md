@@ -29,7 +29,7 @@ records the eighteen original check areas and why each changes or stays.
   payload. It does not fetch Bridge profiles/connections or compare historical
   decimal settings, parsing recipes or recognition hashes.
 - Older uncoded results use existing append-only local mapping history to
-  establish unchanged test/component targets. Changed or unknown targets stay
+  establish unchanged test/component/answer targets. Changed or unknown targets stay
   held. Coded results validate delivered terminology against local targets.
   This adds no parser snapshots, Bridge lookups or persistence.
 - Type readiness uses the same current local mapping assessment as activation.
@@ -71,19 +71,25 @@ or bypass the trusted check. Required independent review remains separate.
 Focused cleanup validation:
 
 - Bridge: 1,221 tests, zero failures/errors, four skipped.
-- OpenELIS mapping/import/contract/adoption: 268 tests, zero failures/errors,
-  across the focused run and corrected import-fixture rerun. This includes
+- OpenELIS mapping/import/contract/adoption: 273 tests, zero failures/errors in the focused run. This includes
   database-backed adoption/recovery and local target continuity.
+- Install-key tests: nine real-certificate tests, including site keystore rotation
+  with an existing or missing truststore and preservation of partner trust.
 - Affected frontend suites: 129 tests across fourteen files.
 - Formatting, whitespace and documentation link targets passed.
 - Updated analyzer browser suites collect successfully; execution is part of
   complete CI, not established by test discovery.
 
-Five follow-up review findings were fixed, replied to and resolved: queued
-number-setting comparisons, historical arrival fallback, clinical answer coding,
-stale type readiness and older uncoded target reassignment. The latest refresh
-found no open review threads across the thirty in-scope PRs. Refresh again after
-CI because later reviews may introduce new findings.
+Review fixes cover queued number-setting comparisons, historical arrival
+fallback, clinical answer coding, stale type readiness and older uncoded local
+target continuity. The later answer-target and certificate-rotation findings
+also have fixes and regression coverage. GitHub replies/resolutions must cite
+their published commits; the PR summaries carry the latest thread counts.
+Refresh after CI because later reviews may introduce new findings.
+
+Full local browser validation also exposed a billing-menu test that filled its
+URL before the initial settings request completed. The test now waits for loaded
+settings; browser execution of that correction remains an acceptance check.
 
 Full local CI and GitHub checks are running on the published candidate. Earlier
 baseline `fde241e1a6` passed all sixteen local groups; that does not certify the
@@ -96,6 +102,9 @@ candidate rather than recording a self-referential commit hash here.
 The stack also contains the preceding fixes for terminology/LOINC aliases,
 held-result dismissal, analyzer lifecycle/audit, failed-restore compensation,
 reporting navigation, private install keys and consistent keystore passwords.
+A preserved site keystore now updates install certificate/key files and the
+internal trust alias after rotation, retaining unrelated trust entries and
+separate proxy certificates.
 Bridge retains its sender-delimiter, listener-capacity, connection and delivery
 corrections. These remain covered by complete candidate validation.
 
@@ -110,7 +119,8 @@ in Git history; they are not acceptance requirements for this cleanup.
 - [x] Implement retained receipt interpretation and normalized contract 1.1.
 - [x] Replace obsolete tests and pass focused backend, frontend and Bridge suites.
 - [x] Rebase and push both stacks with `gh stack`; synchronize the dependency pin.
-- [x] Reply to and resolve the reviewed findings after publishing their fixes.
+- [ ] Refresh replies/resolutions after the final fixes are published; verify
+      no open review threads remain.
 - [ ] Pass all sixteen full local CI groups on the final published commit,
       including analyzer recovery/exclusions/sender identity, and inspect reports.
 - [ ] Pass the three required GitHub checkpoints on that commit; verify every
