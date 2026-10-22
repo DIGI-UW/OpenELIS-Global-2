@@ -132,7 +132,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         f.sources = cultures.getSources(caseId).stream().filter(s -> !s.isRejected())
                 .map(s -> new MicroIsolateWorkspaceForm.Source(s.getId(), label(s), s.getTypeOfSampleId())).toList();
         f.tests = units.getTestsInSection(c.getLabUnitId()).stream()
-                .filter(t -> t.isActive() && !Boolean.FALSE.equals(t.getOrderable()))
+                .filter(t -> t.isActive() && Boolean.TRUE.equals(t.getOrderable()))
                 .map(t -> new MicroIsolateWorkspaceForm.Test(t.getId(), t.getName(),
                         sampleTests.getTypeOfSampleTestsForTest(t.getId()).stream()
                                 .map(org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest::getTypeOfSampleId)

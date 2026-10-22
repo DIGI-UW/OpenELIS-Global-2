@@ -169,6 +169,24 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         return workspace.pick(c.getId(), r, writer).isolates.getLast().id();
     }
 
+    @Test
+    public void pickerExcludesUnsetAndFalseOrderability() {
+        var allowed = fixtures.createCatalogTest();
+        var unset = fixtures.createCatalogTest();
+        var disabled = fixtures.createCatalogTest();
+        for (var test : List.of(allowed, unset, disabled)) {
+            test.setTestSection(units.get(c.getLabUnitId()));
+            test.setOrderable(test == allowed ? Boolean.TRUE : test == disabled ? Boolean.FALSE : null);
+            tests.update(test);
+        }
+        em.flush();
+        em.clear();
+        var ids = workspace.options(c.getId()).tests.stream().map(t -> t.id()).toList();
+        assertTrue(ids.contains(allowed.getId()));
+        assertFalse(ids.contains(unset.getId()));
+        assertFalse(ids.contains(disabled.getId()));
+    }
+
     private MicroIsolateWorkspaceForm reload() {
         em.flush();
         em.clear();
