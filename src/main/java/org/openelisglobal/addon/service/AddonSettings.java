@@ -22,6 +22,8 @@ import org.springframework.stereotype.Component;
  * <li>{@code addons.token.ttlSeconds} (600),
  * {@code addons.events.retentionDays} (7), {@code addons.dispatcher.enabled}
  * (true).</li>
+ * <li>{@code addons.accessLog.retentionDays} (180): how long the access log of
+ * the add-on API is kept. Local rules on audit trails may ask for longer.</li>
  * </ul>
  */
 @Component
@@ -41,6 +43,9 @@ public class AddonSettings {
 
     @Value("${addons.dispatcher.enabled:true}")
     private boolean dispatcherEnabled;
+
+    @Value("${addons.accessLog.retentionDays:180}")
+    private int accessLogRetentionDays;
 
     /**
      * Publisher name → raw Ed25519 public key. A malformed setting verifies nobody.
@@ -74,5 +79,9 @@ public class AddonSettings {
 
     public boolean dispatcherEnabled() {
         return dispatcherEnabled;
+    }
+
+    public int accessLogRetentionDays() {
+        return Math.max(1, accessLogRetentionDays);
     }
 }

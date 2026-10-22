@@ -40,4 +40,16 @@ public class AddonApiAuthenticationFilterTest {
     public void aMalformedRangeMatchesNothing() {
         assertFalse(AddonApiAuthenticationFilter.fromAllowedNetwork(from("172.20.1.130"), List.of("not-a-cidr")));
     }
+
+    @org.junit.Test
+    public void scopesCanBeNarrowedNeverWidened() {
+        AddonToken.Claims key = new AddonToken.Claims("mcp", null, java.util.List.of("orders.read", "patient.identity"),
+                null, Long.MAX_VALUE);
+        org.junit.Assert.assertEquals(java.util.List.of("orders.read", "patient.identity"),
+                AddonApiAuthenticationFilter.narrowed(key, null).scopes());
+        org.junit.Assert.assertEquals(java.util.List.of("orders.read"),
+                AddonApiAuthenticationFilter.narrowed(key, "orders.read, stats.read").scopes());
+        org.junit.Assert.assertEquals(java.util.List.of(), AddonApiAuthenticationFilter.narrowed(key, "").scopes());
+        org.junit.Assert.assertTrue(AddonApiAuthenticationFilter.narrowed(key, "orders.read").isService());
+    }
 }

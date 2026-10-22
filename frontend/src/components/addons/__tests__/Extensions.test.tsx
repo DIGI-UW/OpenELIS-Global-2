@@ -18,11 +18,15 @@ vi.mock("../addonApi", async (importOriginal) => {
     removeAddon: vi.fn(),
     rotateCredentials: vi.fn(),
     invalidateExtensions: vi.fn(),
+    loadExtensions: vi.fn(() => Promise.resolve([])),
+    getAccessLog: vi.fn(),
   };
 });
 
 import {
+  getAccessLog,
   getCatalog,
+  loadExtensions,
   installAddon,
   listAddons,
   saveAddonConfig,
@@ -64,6 +68,98 @@ const renderPage = () =>
       </MemoryRouter>
     </IntlProvider>,
   );
+
+describe("Extensions page: identities, access log, settings page", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(loadExtensions).mockResolvedValue([]);
+    vi.mocked(getCatalog).mockResolvedValue({
+      scopes: [],
+      events: [],
+      slots: [],
+      identifyingScopes: ["patient.identity"],
+    });
+  });
+
+  it("warns when an add-on may see who patients are", async () => {
+    vi.mocked(listAddons).mockResolvedValue({
+      trustedPublishers: [],
+      addons: [
+        addon({ id: "mcp", scopes: ["orders.search", "patient.identity"] }),
+        addon({ id: "plain", scopes: ["orders.read"] }),
+      ],
+    });
+    renderPage();
+    expect(
+      await screen.findByTestId("addon-identifying-mcp"),
+    ).toHaveTextContent("see who patients are");
+    expect(screen.queryByTestId("addon-identifying-plain")).toBeNull();
+  });
+
+  it("shows the access log with what the add-on reported", async () => {
+    vi.mocked(listAddons).mockResolvedValue({
+      trustedPublishers: [],
+      addons: [addon({ id: "mcp", enabled: true })],
+    });
+    vi.mocked(getAccessLog).mockResolvedValue({
+      addon: "mcp",
+      retentionDays: 180,
+      entries: [
+        {
+          at: "2026-10-22T08:15:02Z",
+          addonId: "mcp",
+          credential: "service",
+          actor: "agent:a7f3 Claude Code",
+          purpose: "get_order",
+          method: "GET",
+          endpoint: "/orders/{accession}/results",
+          subjectType: "order",
+          subject: "0221026-0004",
+          status: 200,
+          rows: 12,
+        },
+      ],
+    });
+    renderPage();
+    fireEvent.click(await screen.findByTestId("addon-access-log-toggle-mcp"));
+    const log = await screen.findByTestId("addon-access-log-mcp");
+    await waitFor(() =>
+      expect(log).toHaveTextContent("agent:a7f3 Claude Code"),
+    );
+    expect(log).toHaveTextContent("0221026-0004");
+    expect(log).toHaveTextContent("Kept 180 days");
+    expect(getAccessLog).toHaveBeenCalledWith("mcp", {
+      actor: "",
+      subject: "",
+    });
+  });
+
+  it("offers the settings page only when the add-on has one and is on", async () => {
+    vi.mocked(loadExtensions).mockResolvedValue([
+      {
+        addonId: "mcp",
+        addonName: "MCP",
+        version: "1.0.0",
+        name: "mcp-settings",
+        slot: "addon-settings-page-slot",
+        page: "admin.html",
+        order: 10,
+        title: "MCP access",
+        height: 600,
+      },
+    ]);
+    vi.mocked(listAddons).mockResolvedValue({
+      trustedPublishers: [],
+      addons: [
+        addon({ id: "mcp", enabled: true }),
+        addon({ id: "hello", enabled: true }),
+      ],
+    });
+    renderPage();
+    expect(await screen.findByTestId("addon-settings-open-mcp")).toBeVisible();
+    expect(screen.queryByTestId("addon-settings-open-hello")).toBeNull();
+  });
+});
 
 describe("Extensions page", () => {
   beforeEach(() => {

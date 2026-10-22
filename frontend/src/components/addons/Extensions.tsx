@@ -33,6 +33,10 @@ import {
   type InstallResult,
 } from "./addonApi";
 import { configToSave, initialConfig } from "./configForm";
+import AccessLog from "./AccessLog";
+import AddonFrame from "./AddonFrame";
+import { useSlot } from "./ExtensionSlot";
+import { SLOT_ADDON_SETTINGS } from "./slots";
 import "./addons.scss";
 
 const breadcrumbs = [
@@ -310,11 +314,23 @@ export function PermissionReview({
       </h4>
       {addon.scopes.length ? (
         <ul>
-          {addon.scopes.map((s) => (
-            <li key={s}>
-              {scopeText(s)} <Tag size="sm">{s}</Tag>
-            </li>
-          ))}
+          {addon.scopes.map((s) =>
+            catalog?.identifyingScopes?.includes(s) ? (
+              <li key={s} data-testid={`addon-identifying-${addon.id}`}>
+                <strong>{scopeText(s)}</strong>{" "}
+                <Tag size="sm" type="red">
+                  {s}
+                </Tag>
+                <div className="addon-admin__warning">
+                  <FormattedMessage id="addon.permissions.identifying" />
+                </div>
+              </li>
+            ) : (
+              <li key={s}>
+                {scopeText(s)} <Tag size="sm">{s}</Tag>
+              </li>
+            ),
+          )}
         </ul>
       ) : (
         <p>
@@ -449,6 +465,11 @@ function AddonCard({
 }) {
   const intl = useIntl();
   const delivered = addon.deliveries || {};
+  const [showLog, setShowLog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsPage = useSlot(SLOT_ADDON_SETTINGS).find(
+    (e) => e.addonId === addon.id,
+  );
   return (
     <article className="addon-admin__card" data-testid={`addon-${addon.id}`}>
       <div className="addon-admin__head">
@@ -482,6 +503,45 @@ function AddonCard({
       {addon.configSchema.length > 0 && (
         <ConfigForm addon={addon} onSaved={onSaved} />
       )}
+      {addon.enabled && settingsPage && (
+        <div className="addon-admin__section">
+          <Button
+            kind="secondary"
+            size="sm"
+            onClick={() => setShowSettings(!showSettings)}
+            data-testid={`addon-settings-open-${addon.id}`}
+          >
+            <FormattedMessage
+              id={
+                showSettings
+                  ? "addon.settingsPage.hide"
+                  : "addon.settingsPage.open"
+              }
+            />
+          </Button>
+          {showSettings && (
+            <AddonFrame
+              extension={settingsPage}
+              state={{ page: "extensions" }}
+              fill
+              frameHeight="720px"
+            />
+          )}
+        </div>
+      )}
+      <div className="addon-admin__section">
+        <Button
+          kind="tertiary"
+          size="sm"
+          onClick={() => setShowLog(!showLog)}
+          data-testid={`addon-access-log-toggle-${addon.id}`}
+        >
+          <FormattedMessage
+            id={showLog ? "addon.accessLog.hide" : "addon.accessLog.show"}
+          />
+        </Button>
+        {showLog && <AccessLog addonId={addon.id} />}
+      </div>
       <div className="addon-admin__section">
         <Button kind="tertiary" size="sm" onClick={onRotate}>
           <FormattedMessage id="addon.credentials.rotate" />

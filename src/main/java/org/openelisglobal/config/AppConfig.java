@@ -14,6 +14,7 @@ import java.util.Properties;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.openelisglobal.addon.security.AddonAccessLogInterceptor;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -76,6 +77,8 @@ public class AppConfig implements WebMvcConfigurer {
     LocaleChangeInterceptor localeChangeInterceptor;
     @Autowired
     LocaleResolver localResolver;
+    @Autowired
+    AddonAccessLogInterceptor addonAccessLogInterceptor;
 
     @Bean
     public ViewResolver internalResourceViewResolver() {
@@ -109,6 +112,7 @@ public class AppConfig implements WebMvcConfigurer {
         // .excludePathPatterns(SecurityConfig.REST_CONTROLLERS);
         registry.addInterceptor(urlLocatedErrorsInterceptor).addPathPatterns("/**");
         registry.addInterceptor(pageAttributesInterceptor).addPathPatterns("/**");
+        registry.addInterceptor(addonAccessLogInterceptor).addPathPatterns(SecurityConfig.ADDON_API_PATHS);
     }
 
     @Override

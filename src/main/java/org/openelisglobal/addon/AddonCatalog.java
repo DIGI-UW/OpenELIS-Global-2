@@ -23,6 +23,10 @@ public final class AddonCatalog {
     public static final String RESULTS_READ = "results.read";
     public static final String PATIENT_READ = "patient.read";
     public static final String AI_CONTEXT = "ai.context";
+    public static final String ORDERS_SEARCH = "orders.search";
+    public static final String PATIENT_IDENTITY = "patient.identity";
+    public static final String STATS_READ = "stats.read";
+    public static final String CATALOG_READ = "catalog.read";
 
     public static final String EVENT_ORDER_CREATED = "order.created";
     public static final String EVENT_RESULT_VALIDATED = "result.validated";
@@ -32,6 +36,7 @@ public final class AddonCatalog {
     public static final String SLOT_RESULT_LOOKUP_SIDE_PANEL = "result-lookup-side-panel-slot";
     public static final String SLOT_APP_MENU = "app-menu-slot";
     public static final String SLOT_TOP_NAV_ACTIONS = "top-nav-actions-slot";
+    public static final String SLOT_ADDON_SETTINGS_PAGE = "addon-settings-page-slot";
 
     /** A permission an add-on can be granted. */
     public record Scope(String key, String description) {
@@ -57,7 +62,36 @@ public final class AddonCatalog {
             new Scope(AI_CONTEXT,
                     "De-identified results of the orders in its context, for decision support: sex, age in years,"
                             + " results with reference ranges, earlier results of the same tests (as days before);"
-                            + " no name, identifier, lab number or date"));
+                            + " no name, identifier, lab number or date"),
+            new Scope(ORDERS_SEARCH,
+                    "Find and list any order of the laboratory by received date (31 days at most), status and"
+                            + " section, and the worklists of tests awaiting results or validation; with orders.read"
+                            + " and results.read, read those orders and their results"),
+            new Scope(PATIENT_IDENTITY,
+                    "Patient names and identifiers (patient id, national id, subject number), date of birth and"
+                            + " sex; find patients by name or identifier and list their orders"),
+            new Scope(STATS_READ,
+                    "Counts of orders and tests and turnaround times, by day, section, status or test;"
+                            + " aggregates only, nothing about a single patient"),
+            new Scope(CATALOG_READ, "The test catalog: codes, names, LOINC, sections, sample types and units"));
+
+    /**
+     * Scopes that let an add-on see who a patient is. The administration page shows
+     * them with a warning, apart from the others.
+     */
+    public static final Set<String> IDENTIFYING_SCOPES = Set.of(PATIENT_IDENTITY);
+
+    /**
+     * At most this many days between {@code from} and {@code to} in a search or
+     * statistics request.
+     */
+    public static final int MAX_RANGE_DAYS = 31;
+
+    /** At most this many rows in a list. */
+    public static final int MAX_LIST_ROWS = 100;
+
+    /** At most this many patients in a search answer. */
+    public static final int MAX_PATIENT_MATCHES = 20;
 
     public static final List<EventType> EVENTS = List.of(
             new EventType(EVENT_ORDER_CREATED, ORDERS_READ, "A new order (sample) is saved"),
@@ -70,7 +104,9 @@ public final class AddonCatalog {
             new Slot(SLOT_RESULT_LOOKUP_SIDE_PANEL, Set.of("RECEPTION", "RESULTS", "VALIDATION", "REPORTS", "ADMIN"),
                     "Side panel of the patient results page", true),
             new Slot(SLOT_APP_MENU, Set.of(), "Entry in the main menu, opening a full page", false),
-            new Slot(SLOT_TOP_NAV_ACTIONS, Set.of(), "Button in the top navigation bar, opening a side panel", false));
+            new Slot(SLOT_TOP_NAV_ACTIONS, Set.of(), "Button in the top navigation bar, opening a side panel", false),
+            new Slot(SLOT_ADDON_SETTINGS_PAGE, Set.of("ADMIN"),
+                    "The add-on's own settings page, opened from the Extensions page (administrators only)", false));
 
     /** At most this many lab numbers travel in a UI context or a token. */
     public static final int MAX_CONTEXT_ACCESSIONS = 50;
@@ -168,6 +204,7 @@ public final class AddonCatalog {
     public static Map<String, Object> describe() {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("scopes", SCOPES);
+        out.put("identifyingScopes", IDENTIFYING_SCOPES);
         out.put("events", EVENTS);
         out.put("slots", SLOTS.stream().map(s -> Map.of("name", s.name(), "description", s.description())).toList());
         return out;

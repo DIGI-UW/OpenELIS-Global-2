@@ -19,7 +19,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * ({@code addons.api.allowedNetworks}) and that did not pass through a reverse
  * proxy (no {@code Forwarded} / {@code X-Forwarded-*} header). A browser that
  * holds a frame token therefore cannot use it here. Then the bearer credential
- * is checked; a request without a valid one stays anonymous and gets 401.
+ * is checked; a request without a valid one stays anonymous and gets 401. The
+ * add-on may narrow (never widen) the credential's scopes for the request with
+ * {@link #SCOPES_HEADER}.
  */
 public class AddonApiAuthenticationFilter extends OncePerRequestFilter {
 
@@ -44,13 +46,35 @@ public class AddonApiAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             try {
-                AddonToken.Claims claims = tokens.getObject().authenticate(header.substring(7).trim());
+                AddonToken.Claims claims = narrowed(tokens.getObject().authenticate(header.substring(7).trim()),
+                        request.getHeader(SCOPES_HEADER));
                 SecurityContextHolder.getContext().setAuthentication(new AddonAuthenticationToken(claims));
             } catch (IllegalArgumentException e) {
                 // stays anonymous: the entry point answers 401
             }
         }
         chain.doFilter(request, response);
+    }
+
+    /**
+     * An add-on that acts for several principals (agents, users of its own) may
+     * narrow its scopes for one request with {@code X-Addon-Scopes: a,b}: the
+     * request then has only the scopes both granted and listed. It can never widen
+     * them. An empty or malformed header narrows to nothing listed.
+     */
+    public static final String SCOPES_HEADER = "X-Addon-Scopes";
+
+    static AddonToken.Claims narrowed(AddonToken.Claims claims, String header) {
+        if (header == null) {
+            return claims;
+        }
+        java.util.Set<String> asked = new java.util.HashSet<>();
+        for (String s : header.split(",")) {
+            asked.add(s.trim());
+        }
+        List<String> scopes = claims.scopes().stream().filter(asked::contains).toList();
+        return new AddonToken.Claims(claims.addonId(), claims.userId(), scopes, claims.accessions(), claims.expiresAt(),
+                claims.slot());
     }
 
     static boolean fromAllowedNetwork(HttpServletRequest request, List<String> networks) {

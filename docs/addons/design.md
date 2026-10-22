@@ -174,8 +174,51 @@ administration page reads them from `GET /rest/addons/catalog`.
 
 "In its context" means: for a UI token, the orders on the user's screen; for the
 service key, the orders the add-on was sent an event about, during the event
-retention period (7 days by default). An add-on never gets a general query over
-all orders.
+retention period (7 days by default). Without one of the laboratory-wide scopes
+below, an add-on never gets a general query over all orders.
+
+### Laboratory-wide reads
+
+Some add-ons work for the laboratory as a whole rather than next to a screen:
+an MCP server that lets the laboratory's own AI agents look up orders, a
+dashboard, an export. Four narrow scopes cover that, each listed separately on
+the permission screen. They apply to the service key.
+
+| Scope              | Allows                                                                                                                                                                             | Endpoints                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `orders.search`    | list orders by received date (31 days at most), status and section, and the worklists of tests awaiting a result or validation; read any order with `orders.read` / `results.read` | `orders?from&to&status&section&limit&offset`, `worklist?stage=result-entry\|validation&section` |
+| `patient.identity` | patient names and identifiers (patient id, national id, subject number), date of birth and sex; find patients by name or identifier; list a patient's orders                       | `patients?q=`, `patients/{id}`, `patients/{id}/orders`; orders then name their patient          |
+| `stats.read`       | counts of orders and tests by day, section or status; turnaround time (sample received to result released: count, median, 90th percentile) by section or test                      | `stats/orders?from&to&groupBy`, `stats/tat?from&to&groupBy`                                     |
+| `catalog.read`     | the test catalog: codes, names, LOINC, sections, sample types, units                                                                                                               | `catalog/tests?section&active`                                                                  |
+
+Lists hold at most 100 rows, patient searches at most 20 matches, date ranges
+at most 31 days; anything wider is a 400. Statistics are aggregates only.
+`patient.identity` is the only scope that reveals who a patient is; the
+permission screen shows it apart, with a warning, and the catalog lists it in
+`identifyingScopes`.
+
+### Access log
+
+Every authenticated request to the add-on API is recorded in
+`addon_access_log` (Liquibase `026-addon-access-log.xml`): when, which add-on,
+which credential (service key or a user's frame token, with the user), the
+endpoint as a route template, the order, patient or search it was about, the
+answer's status and the number of rows. An add-on that acts for someone else
+(an AI agent, a user of its own) names them in `X-Addon-Actor` (100 printable
+characters) and the reason in `X-Addon-Purpose` (64, `[A-Za-z0-9._:-]`); both
+are stored as reported by the add-on and shown as such. A header the request
+firewall refuses is recorded as `(header refused)`: nothing an add-on sends
+keeps its request out of the log.
+
+An add-on that acts for several principals can also narrow its scopes for one
+request with `X-Addon-Scopes: orders.read,results.read` (never widen them): the
+MCP add-on drops `patient.identity` for an agent that may not see identities,
+so OpenELIS itself returns no name or identifier for that agent's requests.
+
+Administrators read it on the Extensions page ("Show access log", with a CSV
+download) or at `GET /rest/addons/{id}/access-log?from&to&actor&subject&limit&format=csv`.
+It is kept `addons.accessLog.retentionDays` days (180 by default); local rules
+on audit trails may require longer.
 
 ### `ai.context`: de-identified context for assistants
 
@@ -311,12 +354,13 @@ are kept 7 days (`addons.events.retentionDays`).
 
 ## UI slots
 
-| Slot                                | Where                                                                    | `state`                                                 |
-| ----------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
-| `result-validation-side-panel-slot` | right column of result validation                                        | `page`, `accessionNumbers` (rows on screen, at most 50) |
-| `result-lookup-side-panel-slot`     | patient results page (`/PatientResults`)                                 | `page`, `patientId` (see below)                         |
-| `app-menu-slot`                     | "Extensions" section of the main menu, opening `/extensions/{id}/{name}` | `page`                                                  |
-| `top-nav-actions-slot`              | a button in the top bar opening a panel on the right                     | `page` (the screen: first route segment, kebab-case)    |
+| Slot                                | Where                                                                       | `state`                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `result-validation-side-panel-slot` | right column of result validation                                           | `page`, `accessionNumbers` (rows on screen, at most 50) |
+| `result-lookup-side-panel-slot`     | patient results page (`/PatientResults`)                                    | `page`, `patientId` (see below)                         |
+| `app-menu-slot`                     | "Extensions" section of the main menu, opening `/extensions/{id}/{name}`    | `page`                                                  |
+| `top-nav-actions-slot`              | a button in the top bar opening a panel on the right                        | `page` (the screen: first route segment, kebab-case)    |
+| `addon-settings-page-slot`          | the add-on's own settings page, opened from its card on the Extensions page | `page` (administrators only)                            |
 
 The patient results page shows one patient and has no list of lab numbers. It
 passes `patientId`; when issuing the token the server replaces it with that
@@ -357,6 +401,12 @@ open it), so an add-on cannot widen what a user can already see. Slots open to
 every signed-in user (`app-menu-slot`, `top-nav-actions-slot`) never carry
 orders: their tokens hold only the page, whatever the browser sends.
 
+A UI token also names the slot it was issued for, and `whoami` returns it with
+the user id. An add-on can therefore trust a request from its
+`addon-settings-page-slot` page as coming from an administrator (only
+administrators get a token for that slot) without ever seeing the session; it
+checks the token by calling `whoami` with it.
+
 The Extensions page (Administration → Extensions) uploads a package, shows the
 provenance line ("Verified publisher: _name_", "Unverified publisher" with the
 name the package claims, or a prominent "Signature does not match the
@@ -378,8 +428,8 @@ holds, so removing a scope or disabling the add-on applies at once.
 
 The add-on API is `/rest/addon-api/v1`: `whoami`, `config`,
 `orders/{lab number}`, `orders/{lab number}/results`,
-`orders/{lab number}/patient`. Each read needs its scope (403) and an order the
-credential may read (403).
+`orders/{lab number}/patient`, and the laboratory-wide reads above. Each read
+needs its scope (403) and an order the credential may read (403).
 
 It is internal. Its own security filter chain accepts only bearer credentials
 (no session, no CSRF, stateless), and only from `addons.api.allowedNetworks`
@@ -440,13 +490,14 @@ default compose file).
 
 In `common.properties` or `extra.properties`:
 
-| Property                      | Default                     | Meaning                                                    |
-| ----------------------------- | --------------------------- | ---------------------------------------------------------- |
-| `addons.trustedPublishers`    | empty (nothing is verified) | `name=base64 Ed25519 key[,…]`, for the verified badge only |
-| `addons.api.allowedNetworks`  | private and loopback ranges | who may call the add-on API                                |
-| `addons.token.ttlSeconds`     | 600                         | UI token lifetime                                          |
-| `addons.events.retentionDays` | 7                           | outbox retention                                           |
-| `addons.dispatcher.enabled`   | true                        | turn event delivery off for the server                     |
+| Property                         | Default                     | Meaning                                                    |
+| -------------------------------- | --------------------------- | ---------------------------------------------------------- |
+| `addons.trustedPublishers`       | empty (nothing is verified) | `name=base64 Ed25519 key[,…]`, for the verified badge only |
+| `addons.api.allowedNetworks`     | private and loopback ranges | who may call the add-on API                                |
+| `addons.token.ttlSeconds`        | 600                         | UI token lifetime                                          |
+| `addons.events.retentionDays`    | 7                           | outbox retention                                           |
+| `addons.dispatcher.enabled`      | true                        | turn event delivery off for the server                     |
+| `addons.accessLog.retentionDays` | 180                         | days the access log is kept                                |
 
 ## Delivery
 

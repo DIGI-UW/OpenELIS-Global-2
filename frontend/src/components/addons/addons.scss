@@ -110,3 +110,12 @@
   align-items: flex-start;
   gap: $spacing-02;
 }
+
+.addon-admin__warning {
+  color: var(--cds-text-error, #da1e28);
+  font-size: 0.875rem;
+}
+
+.addon-admin__filters {
+  align-items: end;
+}

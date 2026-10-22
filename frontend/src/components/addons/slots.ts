@@ -10,6 +10,8 @@ export const SLOT_RESULT_VALIDATION = "result-validation-side-panel-slot";
 export const SLOT_PATIENT_RESULTS = "result-lookup-side-panel-slot";
 export const SLOT_APP_MENU = "app-menu-slot";
 export const SLOT_TOP_NAV_ACTIONS = "top-nav-actions-slot";
+/** The add-on's own settings page, shown on the Extensions page (administrators). */
+export const SLOT_ADDON_SETTINGS = "addon-settings-page-slot";
 
 /**
  * The page name a header extension is told about: the first segment of the

@@ -45,5 +45,7 @@
   <include relativeToChangelogFile="true" file="024-addons.xml"/>
   <!-- Add-ons: encrypted values of secret configuration fields -->
   <include relativeToChangelogFile="true" file="025-addon-secret-config.xml"/>
+  <!-- Add-ons: access log of the add-on API -->
+  <include relativeToChangelogFile="true" file="026-addon-access-log.xml"/>
 
 </databaseChangeLog>

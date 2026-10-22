@@ -2,12 +2,18 @@ package org.openelisglobal.addon.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.addon.AddonCatalog;
+import org.openelisglobal.addon.dao.AddonAccessLogDAO;
 import org.openelisglobal.addon.packaging.AddonPackageException;
 import org.openelisglobal.addon.packaging.AddonPackageReader;
+import org.openelisglobal.addon.service.AddonAccessLogService;
 import org.openelisglobal.addon.service.AddonRegistryService;
 import org.openelisglobal.addon.service.AddonRegistryService.AddonView;
 import org.openelisglobal.addon.service.AddonRegistryService.Credentials;
@@ -43,6 +49,8 @@ public class AddonAdminRestController extends BaseRestController {
     private AddonRegistryService registry;
     @Autowired
     private AddonSettings settings;
+    @Autowired
+    private AddonAccessLogService accessLog;
 
     /**
      * Scopes, events and slots; read by the administration page and the UI slots.
@@ -118,6 +126,89 @@ public class AddonAdminRestController extends BaseRestController {
     }
 
     /** New API key and webhook secret; the old ones stop working at once. */
+    /**
+     * The access log of one add-on: every authenticated request it made to the
+     * add-on API, newest first. {@code actor} and {@code purpose} are what the
+     * add-on reported. {@code format=csv} downloads it.
+     */
+    @GetMapping("/{id}/access-log")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> accessLog(@PathVariable String id, @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to, @RequestParam(required = false) String actor,
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false, defaultValue = "200") int limit,
+            @RequestParam(required = false, defaultValue = "json") String format) {
+        Instant f;
+        Instant t;
+        try {
+            f = from == null || from.isBlank() ? null
+                    : LocalDate.parse(from).atStartOfDay(ZoneId.systemDefault()).toInstant();
+            t = to == null || to.isBlank() ? null
+                    : LocalDate.parse(to).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("code", "range"));
+        }
+        if (limit < 1 || limit > 5000) {
+            return ResponseEntity.badRequest().body(Map.of("code", "param", "param", "limit"));
+        }
+        List<AddonAccessLogDAO.Entry> entries = accessLog.find(id, f, t, blank(actor), blank(subject), limit);
+        if ("csv".equals(format)) {
+            StringBuilder csv = new StringBuilder(
+                    "at,addon,credential,user,actor,purpose,method,endpoint,subjectType,subject,status,rows\n");
+            for (AddonAccessLogDAO.Entry e : entries) {
+                csv.append(String.join(",", csvCell(String.valueOf(e.at())), csvCell(e.addonId()),
+                        csvCell(e.credential()), csvCell(e.userId()), csvCell(e.actor()), csvCell(e.purpose()),
+                        csvCell(e.method()), csvCell(e.endpoint()), csvCell(e.subjectType()), csvCell(e.subject()),
+                        String.valueOf(e.status()), e.rows() == null ? "" : String.valueOf(e.rows()))).append('\n');
+            }
+            return ResponseEntity.ok().header("Content-Type", "text/csv; charset=UTF-8")
+                    .header("Content-Disposition", "attachment; filename=\"" + id + "-access-log.csv\"")
+                    .body(csv.toString());
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("addon", id);
+        out.put("retentionDays", settings.accessLogRetentionDays());
+        out.put("entries", entries.stream().map(AddonAdminRestController::entryView).toList());
+        return ResponseEntity.ok(out);
+    }
+
+    /**
+     * An entry for the page: the time as an ISO-8601 instant, absent values as
+     * null.
+     */
+    static Map<String, Object> entryView(AddonAccessLogDAO.Entry e) {
+        Map<String, Object> v = new LinkedHashMap<>();
+        v.put("at", e.at() == null ? null : e.at().toString());
+        v.put("addonId", e.addonId());
+        v.put("credential", e.credential());
+        v.put("userId", e.userId());
+        v.put("actor", e.actor());
+        v.put("purpose", e.purpose());
+        v.put("method", e.method());
+        v.put("endpoint", e.endpoint());
+        v.put("subjectType", e.subjectType());
+        v.put("subject", e.subject());
+        v.put("status", e.status());
+        v.put("rows", e.rows());
+        return v;
+    }
+
+    private static String blank(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    /** A CSV cell; a leading formula character is neutralised for spreadsheets. */
+    static String csvCell(String value) {
+        if (value == null) {
+            return "";
+        }
+        String v = value;
+        if (!v.isEmpty() && "=+-@".indexOf(v.charAt(0)) >= 0) {
+            v = "'" + v;
+        }
+        return "\"" + v.replace("\"", "\"\"") + "\"";
+    }
+
     @PostMapping("/{id}/credentials")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Credentials> rotateCredentials(@PathVariable String id) {
