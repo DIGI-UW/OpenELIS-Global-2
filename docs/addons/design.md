@@ -260,6 +260,24 @@ Secrets: the webhook secret is encrypted at rest with the existing
 `EncryptionConverter`; the API key is stored as its SHA-256 only;
 `POST /rest/addons/{id}/credentials` issues new ones.
 
+### Secrets at rest
+
+Every add-on secret goes through `EncryptionConverter`, that is, the general
+`TextEncryptor` bean every other database secret uses (external connection and
+delivery channel passwords, site settings marked encrypted). Add-ons add no key
+and no cipher of their own, so when that bean changes key the add-on secrets
+follow it. The encrypted add-on columns are:
+
+| Column                         | Holds                                   |
+| ------------------------------ | --------------------------------------- |
+| `clinlims.addon.event_secret`  | webhook signing secret                  |
+| `clinlims.addon.secret_config` | values of `secret` configuration fields |
+| `clinlims.addon_secret.value`  | server-side keys (UI token signing key) |
+
+A job that re-encrypts database secrets column by column must list these three.
+`AddonEncryptedColumnsTest` fails when an encrypted add-on column is added or
+removed, so the list cannot drift silently.
+
 ## Events
 
 | Type               | When                                   | Data                                        |
