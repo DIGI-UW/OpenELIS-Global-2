@@ -13598,5 +13598,6 @@
   "microbiology.enum.RESULT_ENTERED": "Result entered",
   "microbiology.enum.RESULT_VALIDATED": "Result validated",
   "microbiology.enum.TEST_ADDED": "Test added",
+  "microbiology.enum.TEST_PANEL_ASSIGNED": "Test assigned to panel",
   "microbiology.enum.TESTED_ELSEWHERE": "Tested elsewhere"
 }
