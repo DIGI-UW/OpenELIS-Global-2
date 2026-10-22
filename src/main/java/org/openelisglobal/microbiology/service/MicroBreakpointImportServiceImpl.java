@@ -299,6 +299,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 .of(row.susceptibleValue, row.intermediateLowerValue, row.intermediateUpperValue, row.resistantValue)
                 .filter(java.util.Objects::nonNull).toList();
         // An explicit empty rule blocks fallback and yields NO_BREAKPOINT in V2.
+        if (!values.isEmpty() && (row.susceptibleValue == null || row.resistantValue == null)) {
+            throw new IllegalArgumentException("Both susceptible and resistant thresholds are required for a nonempty rule");
+        }
         for (BigDecimal value : values) {
             if (value.signum() <= 0 || value.stripTrailingZeros().scale() > 4
                     || value.precision() - value.scale() > 8) {

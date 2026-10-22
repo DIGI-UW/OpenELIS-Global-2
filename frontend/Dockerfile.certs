@@ -7,9 +7,9 @@ FROM ubuntu:focal AS build
 ##
 # Prerequesites
 #
-RUN sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' \
-        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true \
-    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
+# Keep the base image's Ubuntu repositories. The forced Azure mirror stalled
+# package downloads and exhausted all three shared-build attempts.
+RUN apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
         --allow-releaseinfo-change -y update \
     && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
         -y upgrade \

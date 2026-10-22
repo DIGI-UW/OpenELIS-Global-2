@@ -213,6 +213,17 @@ public class MicroBreakpointImportServiceTest {
     }
 
     @Test
+    public void partialTerminalRulesAreRejectedInsteadOfSilentlyBecomingNoBreakpoint() {
+        for (String fields : List.of("MIC,,MIC,1,,,,ug/mL", "MIC,,MIC,,,,4,ug/mL",
+                "MIC,,MIC,,2,3,,ug/mL", "ZONE,,ZONE,22,,,,mm", "ZONE,,ZONE,,,,18,mm")) {
+            var preview = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            assertEquals(fields, 0, preview.validRows);
+            assertTrue(fields, preview.errors.get(0).message.contains("Both susceptible and resistant"));
+        }
+        verify(ruleDAO, never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     public void explicitEmptyRuleCanBeImportedAsNoBreakpoint() {
         var preview = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP,MIC,,MIC,,,,,ug/mL\n"));
         assertEquals(1, preview.validRows);
