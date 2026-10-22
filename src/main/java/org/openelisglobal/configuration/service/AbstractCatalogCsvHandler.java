@@ -1,7 +1,7 @@
 package org.openelisglobal.configuration.service;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,8 +64,8 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
-        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
-        String headerLine = reader.readLine();
+        LineNumberReader reader = new LineNumberReader(CsvParsingUtil.openCsvReader(inputStream));
+        String headerLine = CsvParsingUtil.readCsvRecord(reader);
         if (headerLine == null) {
             throw new IllegalArgumentException(getDomainName() + " configuration file " + fileName + " is empty");
         }
@@ -81,13 +81,14 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
         List<CsvRow> rows = new ArrayList<>();
         String line;
-        int lineNumber = 1;
-        while ((line = reader.readLine()) != null) {
-            lineNumber++;
+        int lineNumber = reader.getLineNumber() + 1;
+        while ((line = CsvParsingUtil.readCsvRecord(reader)) != null) {
             if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                lineNumber = reader.getLineNumber() + 1;
                 continue;
             }
             rows.add(new CsvRow(columns, CsvParsingUtil.parseCsvLine(line), lineNumber, headerText));
+            lineNumber = reader.getLineNumber() + 1;
         }
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);

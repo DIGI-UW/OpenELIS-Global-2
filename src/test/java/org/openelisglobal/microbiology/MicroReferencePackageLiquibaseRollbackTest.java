@@ -13,6 +13,35 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 public class MicroReferencePackageLiquibaseRollbackTest {
     @Test
+    public void lookupIndexMigrationAndRollbackPreserveRules() throws Exception {
+        try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
+            postgres.start();
+            try (Connection connection = postgres.createConnection("")) {
+                try (var sql = connection.createStatement()) {
+                    sql.execute("CREATE SCHEMA clinlims");
+                    sql.execute("CREATE TABLE clinlims.micro_breakpoint_rule (id varchar(36) PRIMARY KEY, "
+                            + "standard_id varchar(36), antibiotic_id varchar(36), organism_id varchar(36))");
+                    sql.execute(
+                            "INSERT INTO clinlims.micro_breakpoint_rule VALUES ('rule','edition','agent','organism')");
+                }
+                var database = DatabaseFactory.getInstance()
+                        .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+                try (var migration = new Liquibase("liquibase/3.5.x.x/141-amr-breakpoint-lookup-index.xml",
+                        new ClassLoaderResourceAccessor(), database)) {
+                    migration.update(new Contexts());
+                    assertEquals("1", scalar(connection, "SELECT count(*) FROM pg_indexes WHERE schemaname='clinlims' "
+                            + "AND indexname='idx_micro_breakpoint_rule_lookup'"));
+                    migration.rollback(1, "");
+                    assertEquals("0", scalar(connection, "SELECT count(*) FROM pg_indexes WHERE schemaname='clinlims' "
+                            + "AND indexname='idx_micro_breakpoint_rule_lookup'"));
+                    assertEquals("organism", scalar(connection,
+                            "SELECT organism_id FROM clinlims.micro_breakpoint_rule WHERE id='rule'"));
+                }
+            }
+        }
+    }
+
+    @Test
     public void rollbackWorksBeforeImportAndRefusesToLosePackageSemantics() throws Exception {
         try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
             postgres.start();

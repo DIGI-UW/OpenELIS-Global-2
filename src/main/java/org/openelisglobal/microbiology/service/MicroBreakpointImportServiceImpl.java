@@ -102,7 +102,11 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         Map<String, String> configurationHashes = new LinkedHashMap<>();
         editionRows.forEach((key, rows) -> configurationHashes.put(key,
                 hash(rows.stream().sorted().collect(java.util.stream.Collectors.joining("\n")))));
+        var checkedEditions = new java.util.HashSet<String>();
         for (ImportRow row : preview.validRows) {
+            if (!checkedEditions.add(editionKey(row))) {
+                continue;
+            }
             var existing = standardDAO.findByAuthorityAndVersion(row.authority, row.version);
             if (existing.isPresent()
                     && !configurationHashes.get(editionKey(row)).equals(existing.get().getConfigurationHash())) {
@@ -140,6 +144,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             if (existingHash.isPresent()) {
                 unchanged++;
                 unchangedLines.add(row.rowNumber);
+                ruleDAO.evict(existingHash.get());
                 continue;
             }
             Optional<MicroBreakpointRule> existingRule = ruleDAO.findByNaturalKey(standard.getId(), row.organismId,
@@ -148,6 +153,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 preview.errors.add(error(row.rowNumber,
                         "A locally customized breakpoint exists for this organism, antibiotic, and method",
                         row.sourceRow));
+                ruleDAO.evict(existingRule.get());
                 continue;
             }
             MicroBreakpointRule rule = toRule(row, standard.getId(), actorId,
@@ -157,6 +163,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             } else {
                 ruleDAO.insert(rule);
             }
+            // BaseDAO flushes each write. Completed rules must not remain in the
+            // persistence context and be dirty-checked again for every later row.
+            ruleDAO.evict(rule);
             imported++;
             importedLines.add(row.rowNumber);
         }
@@ -173,10 +182,12 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             validateHeaders(parser.getHeaderMap());
             ImportPreview preview = new ImportPreview();
             List<ImportRow> parsedRows = new ArrayList<>();
+            Map<List<String>, Optional<MicroOrganism>> organisms = new java.util.HashMap<>();
+            Map<List<String>, Optional<MicroAntibiotic>> antibiotics = new java.util.HashMap<>();
             for (CSVRecord record : parser) {
                 preview.totalRows++;
                 try {
-                    parsedRows.add(parseRow(record));
+                    parsedRows.add(parseRow(record, organisms, antibiotics));
                 } catch (IllegalArgumentException exception) {
                     preview.errors.add(error((int) record.getRecordNumber() + 1, exception.getMessage(),
                             CSVFormat.DEFAULT.format(record.values())));
@@ -201,7 +212,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
     }
 
-    private ImportRow parseRow(CSVRecord record) {
+    private ImportRow parseRow(CSVRecord record, Map<List<String>, Optional<MicroOrganism>> organisms,
+            Map<List<String>, Optional<MicroAntibiotic>> antibiotics) {
         ImportRow row = new ImportRow();
         row.rowNumber = (int) record.getRecordNumber() + 1;
         row.sourceRow = CSVFormat.DEFAULT.format(record.values());
@@ -213,8 +225,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
 
         String organismValue = required(record, "organism_or_group");
         if (record.isMapped("organism_code") && !record.get("organism_code").isBlank()) {
-            row.organismId = organismDAO
-                    .findByReference(required(record, "organism_source"), required(record, "organism_code"))
+            var key = List.of(required(record, "organism_source"), required(record, "organism_code"));
+            row.organismId = organisms
+                    .computeIfAbsent(key, ignored -> organismDAO.findByReference(key.get(0), key.get(1)))
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism source code")).getId();
         } else if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
             String requestedGroup = requiredText(organismValue.substring("group:".length()), "organism group");
@@ -228,12 +241,16 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
 
         String antibioticCode = required(record, "antibiotic_whonet_code").toUpperCase(Locale.ROOT);
-        MicroAntibiotic antibiotic = record.isMapped("antibiotic_code") && !record.get("antibiotic_code").isBlank()
-                ? antibioticDAO
-                        .findByReference(required(record, "antibiotic_source"), required(record, "antibiotic_code"))
-                        .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic source code"))
-                : antibioticDAO.findByWhonetCodeIgnoreCase(antibioticCode)
-                        .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic code: " + antibioticCode));
+        MicroAntibiotic antibiotic;
+        if (record.isMapped("antibiotic_code") && !record.get("antibiotic_code").isBlank()) {
+            var key = List.of(required(record, "antibiotic_source"), required(record, "antibiotic_code"));
+            antibiotic = antibiotics
+                    .computeIfAbsent(key, ignored -> antibioticDAO.findByReference(key.get(0), key.get(1)))
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic source code"));
+        } else {
+            antibiotic = antibioticDAO.findByWhonetCodeIgnoreCase(antibioticCode)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic code: " + antibioticCode));
+        }
         row.antibioticId = antibiotic.getId();
 
         String rawMethod = required(record, "method").toUpperCase(Locale.ROOT);

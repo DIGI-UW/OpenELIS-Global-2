@@ -223,4 +223,26 @@ public class MicroBreakpointImportServiceTest {
                 new MicroAstInterpretationServiceImpl().interpret(captured.getValue(),
                         org.openelisglobal.microbiology.valueholder.MicroAstMethod.MIC, java.math.BigDecimal.ONE));
     }
+
+    @Test
+    public void referenceLookupsAreReusedWithinAnImportButRefreshedForTheNextImport() {
+        String content = csv("EUCAST,2025,Escherichia coli,CIP,MIC,,MIC,1,,,4,mg/L,AMR,ECO,AMR,CIP\n"
+                + "EUCAST,2026,Escherichia coli,CIP,MIC,,MIC,1,,,4,mg/L,AMR,ECO,AMR,CIP\n")
+                .replace("resistant_value,units\n",
+                        "resistant_value,units,organism_source,organism_code,antibiotic_source,antibiotic_code\n");
+        MicroOrganism organism = new MicroOrganism();
+        organism.setId("eco");
+        MicroAntibiotic antibiotic = new MicroAntibiotic();
+        antibiotic.setId("cip");
+        when(organismDAO.findByReference("AMR", "ECO")).thenReturn(Optional.of(organism));
+        when(antibioticDAO.findByReference("AMR", "CIP")).thenReturn(Optional.of(antibiotic));
+
+        assertEquals(2, service.preview(content).validRows);
+        verify(organismDAO).findByReference("AMR", "ECO");
+        verify(antibioticDAO).findByReference("AMR", "CIP");
+
+        when(organismDAO.findByReference("AMR", "ECO")).thenReturn(Optional.empty());
+        assertEquals(0, service.preview(content).validRows);
+        verify(organismDAO, org.mockito.Mockito.times(2)).findByReference("AMR", "ECO");
+    }
 }

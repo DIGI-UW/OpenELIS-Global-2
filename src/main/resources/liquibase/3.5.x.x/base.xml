@@ -695,4 +695,5 @@
 <include file="123-amr-v2-ast-reporting.xml" relativeToChangelogFile="true"/>
     <include file="124-amr-v2-automation-bench-labels.xml" relativeToChangelogFile="true"/>
   <include file="140-amr-reference-package.xml" relativeToChangelogFile="true"/>
+  <include file="141-amr-breakpoint-lookup-index.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
