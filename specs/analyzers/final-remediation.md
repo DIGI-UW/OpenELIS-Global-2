@@ -63,22 +63,22 @@ by this progress record.
 The reviewed findings now have implementation changes in the stack tips.
 GitHub resolution is tracked separately from implementation and full CI.
 
-| Finding                     | Correction and focused evidence                                                                                                                                                                                             |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared certificates         | Both historical subjects and previously exported shared keys are replaced; seven real-certificate tests pass.                                                                                                               |
-| Store passwords             | Generation and every consumer, including the HTTP client's private-key password, use the configured values; defaults remain supported.                                                                                      |
-| Removed readings            | Removed values/spellings differ; recovery rejects absent confirmed values.                                                                                                                                                  |
-| Undeclared-code recovery    | Explicitly confirmed undeclared codes recover when parsing agrees. GitHub run 39724746731 passed the mapping recovery scenario; explicit exclusion recovery is also covered by focused tests and awaits browser validation. |
-| Connection overrides        | Changing/removing overrides requires reconfirmation even with an unchanged profile; unrelated host edits remain current.                                                                                                    |
-| Unreadable profile          | Delivery waits for a baseline; reconfirmation fails without changing the saved confirmation.                                                                                                                                |
-| Component order             | Tuples are sorted by code/sub-identity before comparison.                                                                                                                                                                   |
-| API response fields         | Both reading-change fields are present in the frontend response type.                                                                                                                                                       |
-| Migrated activation history | A last activation date prevents permanent deletion.                                                                                                                                                                         |
-| Failed-restore retry        | Persistence failure preserves already-active runtime intent.                                                                                                                                                                |
-| Reporting navigation        | The optional qualification assertion matches the current description; its optional browser run is pending.                                                                                                                  |
-| LOINC URI storage/import    | Known URIs normalize before validation; import copies preserve canonical aliases deterministically without mutating managed rows. Eight tests pass.                                                                         |
-| ASTM sender delimiter       | Bridge honors the header's declared delimiter for HTTP and serial traffic.                                                                                                                                                  |
-| Capacity refusal metric     | Bridge counts an admitted peer refused at the listener's session limit.                                                                                                                                                     |
+| Finding                     | Correction and focused evidence                                                                                                                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared certificates         | Both historical subjects and previously exported shared keys are replaced; seven real-certificate tests pass.                                                                                                 |
+| Store passwords             | Generation and every consumer, including the HTTP client's private-key password, use the configured values; defaults remain supported.                                                                        |
+| Removed readings            | Removed values/spellings differ; recovery rejects absent confirmed values.                                                                                                                                    |
+| Undeclared-code recovery    | Explicitly confirmed undeclared codes recover when parsing agrees. GitHub run 39724746731 passed the mapping recovery scenario; explicit exclusion recovery also passed the corrected 40-test analyzer shard. |
+| Connection overrides        | Changing/removing overrides requires reconfirmation even with an unchanged profile; unrelated host edits remain current.                                                                                      |
+| Unreadable profile          | Delivery waits for a baseline; reconfirmation fails without changing the saved confirmation.                                                                                                                  |
+| Component order             | Tuples are sorted by code/sub-identity before comparison.                                                                                                                                                     |
+| API response fields         | Both reading-change fields are present in the frontend response type.                                                                                                                                         |
+| Migrated activation history | A last activation date prevents permanent deletion.                                                                                                                                                           |
+| Failed-restore retry        | Persistence failure preserves already-active runtime intent.                                                                                                                                                  |
+| Reporting navigation        | The optional qualification assertion matches the current description; its separate reporting-profile browser qualification passed on `89e02a629c`.                                                            |
+| LOINC URI storage/import    | Known URIs normalize before validation; import copies preserve canonical aliases deterministically without mutating managed rows. Eight tests pass.                                                           |
+| ASTM sender delimiter       | Bridge honors the header's declared delimiter for HTTP and serial traffic.                                                                                                                                    |
+| Capacity refusal metric     | Bridge counts an admitted peer refused at the listener's session limit.                                                                                                                                       |
 
 Bridge's two threads are resolved. OpenELIS replies cite the pushed remediation
 commit and distinguish focused evidence from combined CI. The original drafts
@@ -193,6 +193,21 @@ A missing or unavailable individual Bridge connection now marks that analyzer
 unconfirmed in the type catalog instead of failing the whole request. The
 38-test confirmation suite passes, including both missing and failed reads.
 
+## Database integration correction — 22 October
+
+Full local validation on `89e02a629c` found a detached analyzer proxy when a
+mapping loaded by ID reached confirmation. The DAO now fetches the mapping's
+analyzer within its transaction, as the latest-mapping query already did. The
+adoption integration test exercises that detached service boundary directly.
+The adoption/import integration fixtures now supply readable Bridge connection
+settings, and the test catalog includes the profile named by the QC fixture.
+Production handling of unavailable Bridge settings is unchanged.
+
+All 104 focused tests pass: 10 adoption integration, 31 normalized import
+integration, 42 confirmation unit and 21 mapping unit tests. The first focused
+attempt exposed an incorrect cleanup reflection overload and missing QC test
+profile; both are corrected. This is focused proof, not full CI acceptance.
+
 ## Delivery-contract proposal under review
 
 Two subsequent findings remain open: queued results currently use the connection's
@@ -209,7 +224,10 @@ upstream dependencies separately.
 - [ ] Finish GitHub replies/resolutions and refresh for new findings.
 - [ ] Pass combined analyzer scenarios, including undeclared recovery, exclusions
       and sender identity, and retain logs/screenshots.
-- [ ] Run the optional reporting navigation qualification.
+- [x] Run the optional reporting navigation qualification. The reporting instance
+      menu passed on `89e02a629c` with the normal admin session (one test).
+      The unrelated participant setup was excluded after failing against an
+      obsolete container name; this is focused qualification, not full CI.
 - [x] Confirm native mock host-query transport acceptance: two queries on one
       connection received addressed no-orders replies from the real Bridge. All
       seven isolated transport groups passed. The separate pending-orders feature

@@ -20,6 +20,14 @@ public class AnalyzerMappingDAOImpl extends BaseDAOImpl<AnalyzerMapping, String>
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<AnalyzerMapping> get(String id) {
+        String hql = "FROM AnalyzerMapping m JOIN FETCH m.analyzer WHERE m.id = :id";
+        return entityManager.unwrap(Session.class).createQuery(hql, AnalyzerMapping.class).setParameter("id", id)
+                .getResultList().stream().findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<AnalyzerMapping> findLatestByAnalyzerId(String analyzerId) {
         if (analyzerId == null || analyzerId.trim().isEmpty()) {
             return Optional.empty();

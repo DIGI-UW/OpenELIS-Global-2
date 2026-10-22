@@ -90,6 +90,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     private String analyzerId;
     private BridgeAnalyzerConnectionClient realBridge;
+    private BridgeAnalyzerConnectionClient realConfirmationBridge;
     /**
      * Active catalog tests of this class's own; other suites may leave the catalog
      * empty.
@@ -98,6 +99,12 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     @Before
     public void createCatalogTests() {
+        Object confirmationService = AopTestUtils.getUltimateTargetObject(confirmations);
+        realConfirmationBridge = (BridgeAnalyzerConnectionClient) ReflectionTestUtils.getField(confirmationService,
+                "connectionClient");
+        BridgeAnalyzerConnectionClient bridge = mock(BridgeAnalyzerConnectionClient.class);
+        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection(1));
+        ReflectionTestUtils.setField(confirmationService, "connectionClient", bridge);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         for (String id : catalogTests) {
             jdbc.update(
@@ -109,6 +116,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     @After
     public void deleteAnalyzer() {
+        ReflectionTestUtils.setField(AopTestUtils.<Object>getUltimateTargetObject(confirmations), "connectionClient",
+                realConfirmationBridge);
         if (realBridge != null) {
             useBridge(realBridge);
         }
@@ -502,6 +511,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     private void confirm(AnalyzerMappingSnapshot adopted) {
         AnalyzerMappingSnapshot candidate = mappingService.findById(adopted.mapping().getId()).orElseThrow();
+        assertEquals("a detached mapping snapshot includes the analyzer's connection", CONNECTION_ID,
+                candidate.mapping().getAnalyzer().getBridgeConnectionId());
         List<AnalyzerMappingSourceRow> confirmed = candidate.tests().stream()
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
                 .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null,
