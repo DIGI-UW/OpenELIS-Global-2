@@ -15,11 +15,12 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 
 public class MicroIncomingAnalyzerAdapterTest {
     private final MicroCaseDAO cases = mock(MicroCaseDAO.class);
+    private final MicroCaseAnalysisDAO links = mock(MicroCaseAnalysisDAO.class);
     private final MicroIncomingResultService incoming = mock(MicroIncomingResultService.class);
     private final AnalyzerResultPlacementService placement = mock(AnalyzerResultPlacementService.class);
     private final AnalyzerResultsService staging = mock(AnalyzerResultsService.class);
     private final MicroIncomingAnalyzerAdapter adapter = new MicroIncomingAnalyzerAdapter(cases, incoming, placement,
-            staging, mock(MicroIncomingItemDAO.class));
+            staging, mock(MicroIncomingItemDAO.class), links);
 
     private AnalyzerResults row(String component) {
         var r = new AnalyzerResults();
@@ -44,6 +45,9 @@ public class MicroIncomingAnalyzerAdapterTest {
             new AnalyzerResultPlacement.PatientCheck(patient,"patient",null,null)));
         var c = new MicroCase(); c.setId("case"); c.setLabUnitId("unit");
         when(cases.getBySampleItem("tube")).thenReturn(List.of(c));
+        var owner = new org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis();
+        owner.setCaseId("case"); owner.setAnalysisId("analysis");
+        when(links.getActiveByAnalysisId("analysis")).thenReturn(owner);
         var reply = new MicroIncomingForm(); reply.id="incoming"; reply.state="PLACED";
         when(incoming.receive(anyString(),anyString(),anyString(),anyString(),anyString(),anyString(),any(),anyBoolean(),anyString())).thenReturn(reply);
     }
@@ -60,6 +64,49 @@ public class MicroIncomingAnalyzerAdapterTest {
         assertEquals("Keep instrument evidence", payload.getValue().note);
         order.verify(staging).delete("one", "actor");
         order.verify(staging).delete("two", "actor");
+    }
+
+    @Test
+    public void existingAnalysisSelectsItsOwnerAmongRelatedCasesSharingTheSpecimen() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        var owner = new MicroCase();
+        owner.setId("case");
+        owner.setLabUnitId("unit");
+        var related = new MicroCase();
+        related.setId("related");
+        related.setLabUnitId("other-unit");
+        when(cases.getBySampleItem("tube")).thenReturn(List.of(related, owner));
+        adapter.route(List.of(row("one")), "actor");
+        verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(), any(),
+                eq(true), eq("actor"));
+        verify(staging).delete("one", "actor");
+    }
+
+    @Test
+    public void existingAnalysisWithoutActiveOwnershipStaysInSharedReview() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        when(links.getActiveByAnalysisId("analysis")).thenReturn(null);
+        adapter.route(List.of(row("one")), "actor");
+        verifyZeroInteractions(incoming, staging);
+    }
+
+    @Test
+    public void unorderedTestWithMultipleCaseOwnersStaysInSharedReview() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        when(placement.place("tube", "12", "patient", null))
+                .thenReturn(new AnalyzerResultPlacement(AnalyzerResultPlacement.State.UNORDERED_ONE_FITS,
+                        AnalyzerResultPlacement.Match.TUBE, "LAB-1", List.of(), List.of(), "tube", null,
+                        new AnalyzerResultPlacement.PatientCheck(AnalyzerResultPlacement.PatientStatus.MATCH, "patient",
+                                null, null)));
+        var first = new MicroCase();
+        first.setId("case");
+        first.setLabUnitId("unit");
+        var second = new MicroCase();
+        second.setId("related");
+        second.setLabUnitId("other-unit");
+        when(cases.getBySampleItem("tube")).thenReturn(List.of(first, second));
+        adapter.route(List.of(row("one")), "actor");
+        verifyZeroInteractions(incoming, staging, links);
     }
 
     @Test

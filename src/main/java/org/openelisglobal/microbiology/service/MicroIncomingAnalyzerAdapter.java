@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroIncomingAnalyzerAdapter {
     private final MicroCaseDAO cases;
+    private final org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO links;
     private final MicroIncomingResultService incoming;
     private final AnalyzerResultPlacementService placement;
     private final AnalyzerResultsService staging;
@@ -24,8 +25,10 @@ public class MicroIncomingAnalyzerAdapter {
 
     public MicroIncomingAnalyzerAdapter(MicroCaseDAO cases, MicroIncomingResultService incoming,
             AnalyzerResultPlacementService placement, AnalyzerResultsService staging,
-            org.openelisglobal.microbiology.dao.MicroIncomingItemDAO queue) {
+            org.openelisglobal.microbiology.dao.MicroIncomingItemDAO queue,
+            org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO links) {
         this.cases = cases;
+        this.links = links;
         this.incoming = incoming;
         this.placement = placement;
         this.staging = staging;
@@ -64,6 +67,12 @@ public class MicroIncomingAnalyzerAdapter {
                 continue;
             var owners = cases.getBySampleItem(match.proposedSampleItemId()).stream()
                     .filter(c -> c.getLabUnitId() != null).toList();
+            if (match.proposedAnalysisId() != null) {
+                var owner = links.getActiveByAnalysisId(match.proposedAnalysisId());
+                if (owner == null)
+                    continue;
+                owners = owners.stream().filter(c -> c.getId().equals(owner.getCaseId())).toList();
+            }
             if (owners.size() != 1)
                 continue;
             var payload = new MicroCaseResultRequestForm();
