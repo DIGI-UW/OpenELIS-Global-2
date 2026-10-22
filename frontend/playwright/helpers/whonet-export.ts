@@ -68,9 +68,11 @@ export const buildWhonetExportQuery = (
   params
     .getAll("significance")
     .forEach((value) => canonical.append("significance", value));
-  ["includeScreening", "includeUnspecified"].forEach((key) =>
-    canonical.set(key, params.get(key) || "false"),
-  );
+  [
+    "includeScreening",
+    "includeUnspecified",
+    "includeEnvironmentalIsolates",
+  ].forEach((key) => canonical.set(key, params.get(key) || "false"));
   [
     "dedup",
     "dedupBasis",
