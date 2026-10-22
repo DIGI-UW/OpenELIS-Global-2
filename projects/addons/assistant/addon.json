@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "id": "assistant",
+  "name": "AI assistant",
+  "version": "1.0.0",
+  "publisher": "openelis-vietnam",
+  "description": "Answers questions about the results on screen with a language model, from de-identified data only. Computes KDIGO kidney stages itself, checks every answer against them, and ends every answer with a disclaimer. Daily question limit per user.",
+  "image": {
+    "ref": "ghcr.io/digitalversion/openelis-addon-assistant@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "runtime": {
+    "port": 8080,
+    "eventsPath": "/events"
+  },
+  "scopes": [
+    "ai.context"
+  ],
+  "events": [],
+  "network": {
+    "egress": [
+      "openrouter.ai",
+      "api.deepseek.com",
+      "api.openai.com"
+    ]
+  },
+  "extensions": [
+    {
+      "name": "assistant",
+      "slot": "top-nav-actions-slot",
+      "page": "panel.html",
+      "order": 10,
+      "meta": {
+        "title": {
+          "en": "AI assistant",
+          "vi": "Trợ lý AI",
+          "fr": "Assistant IA"
+        },
+        "icon": "magic-wand"
+      }
+    },
+    {
+      "name": "assistant-validation",
+      "slot": "result-validation-side-panel-slot",
+      "page": "panel.html",
+      "order": 50,
+      "meta": {
+        "title": {
+          "en": "AI assistant",
+          "vi": "Trợ lý AI",
+          "fr": "Assistant IA"
+        },
+        "height": 460
+      }
+    },
+    {
+      "name": "assistant-results",
+      "slot": "result-lookup-side-panel-slot",
+      "page": "panel.html",
+      "order": 50,
+      "meta": {
+        "title": {
+          "en": "AI assistant",
+          "vi": "Trợ lý AI",
+          "fr": "Assistant IA"
+        },
+        "height": 460
+      }
+    }
+  ],
+  "config": [
+    {
+      "key": "language",
+      "type": "select",
+      "label": "Language of the rules and answers",
+      "options": [
+        "en",
+        "vi"
+      ],
+      "default": "en"
+    },
+    {
+      "key": "labName",
+      "type": "string",
+      "label": "Laboratory name (used in the rules)",
+      "default": ""
+    },
+    {
+      "key": "productName",
+      "type": "string",
+      "label": "Product name (used in the rules)",
+      "default": "OpenELIS"
+    },
+    {
+      "key": "provider",
+      "type": "select",
+      "label": "Model provider",
+      "options": [
+        "openai-compatible",
+        "claude-runner"
+      ],
+      "default": "openai-compatible"
+    },
+    {
+      "key": "fallbackProvider",
+      "type": "select",
+      "label": "Fallback provider",
+      "options": [
+        "none",
+        "openai-compatible",
+        "claude-runner"
+      ],
+      "default": "none"
+    },
+    {
+      "key": "endpoint",
+      "type": "string",
+      "label": "OpenAI-compatible API base URL (its host must be one this add-on may connect to)",
+      "default": "https://openrouter.ai/api/v1"
+    },
+    {
+      "key": "model",
+      "type": "string",
+      "label": "Model",
+      "default": "deepseek/deepseek-chat"
+    },
+    {
+      "key": "apiKey",
+      "type": "secret",
+      "label": "API key for that endpoint"
+    },
+    {
+      "key": "runnerUrl",
+      "type": "string",
+      "label": "Claude runner URL (claude-runner provider)",
+      "default": ""
+    },
+    {
+      "key": "runnerToken",
+      "type": "secret",
+      "label": "Claude runner token"
+    },
+    {
+      "key": "dailyQuestionLimit",
+      "type": "number",
+      "label": "Questions per user per day",
+      "min": 1,
+      "max": 500,
+      "default": 20
+    },
+    {
+      "key": "timeZone",
+      "type": "string",
+      "label": "Time zone of the laboratory's day (IANA name, e.g. Asia/Ho_Chi_Minh)",
+      "default": "UTC"
+    }
+  ]
+}
