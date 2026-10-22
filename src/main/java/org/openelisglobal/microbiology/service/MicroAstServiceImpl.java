@@ -387,7 +387,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                 org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         MicroBreakpointRule rule = findRule(run, isolate, microCase, antibioticId, method);
-        MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
+        MicroAstInterpretation interpretation = interpretReading(run, rule, method, rawValue);
 
         MicroAstReading reading = new MicroAstReading();
         reading.setAstRunId(runId);
@@ -787,6 +787,15 @@ public class MicroAstServiceImpl implements MicroAstService {
         return List.copyOf(latestByAntibiotic.values());
     }
 
+    private MicroAstInterpretation interpretReading(MicroAstRun run, MicroBreakpointRule rule, MicroAstMethod method,
+            BigDecimal rawValue) {
+        MicroBreakpointStandard standard = breakpointService.getStandard(run.getBreakpointStandardId());
+        if (standard != null && "CLSI".equals(standard.getAuthority())) {
+            return interpretationService.interpret(rule, method, rawValue, standard.getAuthority());
+        }
+        return interpretationService.interpret(rule, method, rawValue);
+    }
+
     private void appendAnalyzerReading(MicroAstRun run, MicroIsolate isolate, MicroCase microCase,
             MicroAstAnalyzerReading analyzerReading, String performedBy) {
         MicroCaseServiceImpl.requireText(analyzerReading.antibioticId(), "antibioticId");
@@ -801,7 +810,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setMethod(method.name());
         reading.setRawValue(analyzerReading.rawValue());
         reading.setRawText(analyzerReading.rawValue() == null ? null : analyzerReading.rawValue().toPlainString());
-        reading.setInterpretation(interpretationService.interpret(rule, method, analyzerReading.rawValue()).name());
+        reading.setInterpretation(interpretReading(run, rule, method, analyzerReading.rawValue()).name());
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
         reading.setSource("ANALYZER_AUTO");
         reading.setMatchedBy(matchedBy(rule));

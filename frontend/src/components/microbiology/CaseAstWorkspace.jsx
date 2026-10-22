@@ -316,6 +316,51 @@ export default function CaseAstWorkspace({
                       rowId={run.id}
                       service={service}
                     />
+                    {run.analyzerInstrumentId && (
+                      <Stack gap={2}>
+                        <strong>
+                          {analyzers.find(
+                            (a) => a.id === run.analyzerInstrumentId,
+                          )?.name || run.analyzerInstrumentId}
+                        </strong>
+                        <p>
+                          {intl.formatMessage(
+                            { id: "microbiology.ast.analyzerProvenance" },
+                            {
+                              card: run.analyzerCardId || t("none"),
+                              version: run.analyzerSoftwareVersion || t("none"),
+                            },
+                          )}
+                        </p>
+                      </Stack>
+                    )}
+                    {run.status === "QC_FAILED" && (
+                      <InlineNotification
+                        kind="error"
+                        title={intl.formatMessage({
+                          id: "microbiology.ast.qcFailed",
+                        })}
+                        subtitle={intl.formatMessage(
+                          { id: "microbiology.ast.qcFailedDetail" },
+                          {
+                            reference: run.instrumentQcReference || t("none"),
+                          },
+                        )}
+                        hideCloseButton
+                      />
+                    )}
+                    {run.status === "RESULTS_IN" && (
+                      <InlineNotification
+                        kind="info"
+                        title={intl.formatMessage({
+                          id: "microbiology.ast.resultsReady",
+                        })}
+                        subtitle={intl.formatMessage({
+                          id: "microbiology.ast.resultsReadyDetail",
+                        })}
+                        hideCloseButton
+                      />
+                    )}
                     <TableContainer>
                       <Table
                         size="sm"
@@ -367,6 +412,20 @@ export default function CaseAstWorkspace({
                                     <>
                                       {t(
                                         `interpretation.${reading.overrideInterpretation || reading.interpretation}`,
+                                      )}
+                                      {reading.instrumentInterpretation && (
+                                        <p>
+                                          {intl.formatMessage(
+                                            {
+                                              id: "microbiology.ast.instrumentInterpretation",
+                                            },
+                                            {
+                                              interpretation: t(
+                                                `interpretation.${reading.instrumentInterpretation}`,
+                                              ),
+                                            },
+                                          )}
+                                        </p>
                                       )}
                                       {reading.overrideInterpretation && (
                                         <Tag type="purple">{t("manual")}</Tag>

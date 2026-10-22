@@ -60,6 +60,7 @@ District → Sub-District → Village).
 Configuration files are loaded automatically during application startup:
 
 1. **Files are discovered** from:
+
    - Classpath: `src/main/resources/configuration/{domain}/*.csv`
    - Filesystem: `/var/lib/openelis-global/configuration/backend/{domain}/*.csv`
      (mapped from `./configuration/backend/{domain}/` in Docker)

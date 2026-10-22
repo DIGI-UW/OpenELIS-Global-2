@@ -474,7 +474,10 @@ public class MicroAstServiceTest {
         rule.setId("generic-rule");
         when(breakpointService.findBreakpointRule("clsi-std", "org-1", null, "abx-1", "MIC", null, "MIC"))
                 .thenReturn(rule);
-        when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
+        MicroBreakpointStandard clsi = new MicroBreakpointStandard();
+        clsi.setAuthority("CLSI");
+        when(breakpointService.getStandard("clsi-std")).thenReturn(clsi);
+        when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4"), "CLSI"))
                 .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
         MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
@@ -849,7 +852,11 @@ public class MicroAstServiceTest {
         when(runDAO.get("run-1")).thenReturn(Optional.of(run));
         when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
         when(runDAO.update(run)).thenReturn(run);
-        when(interpretationService.interpret(any(), any(), any())).thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+        MicroBreakpointStandard clsi = new MicroBreakpointStandard();
+        clsi.setAuthority("CLSI");
+        when(breakpointService.getStandard(run.getBreakpointStandardId())).thenReturn(clsi);
+        when(interpretationService.interpret(any(), any(), any(), org.mockito.ArgumentMatchers.eq("CLSI")))
+                .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
 
         service.applyAnalyzerResults(new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", "v9.02",
                 "org-analyzer", "E. coli", new BigDecimal("99.5"), List.of("ESBL"), "qc-1", true, new Timestamp(1000),

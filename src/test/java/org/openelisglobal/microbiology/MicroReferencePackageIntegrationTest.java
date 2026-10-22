@@ -343,14 +343,24 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertFalse(reload(false).hasErrors());
         var organism = organisms.findByReference("AMR", "B_ESCHR_COLI").orElseThrow();
         assertEquals("Escherichia coli", organism.getDisplayName());
-        for (String edition : java.util.List.of("2025-2026.1", "2026-2026.1")) {
-            var standard = standards.findByAuthorityAndVersion("EUCAST", edition).orElseThrow();
+        com.fasterxml.jackson.databind.JsonNode manifest;
+        try (var zip = new java.util.zip.ZipFile(path)) {
+            manifest = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readTree(zip.getInputStream(zip.getEntry("manifest.json")));
+        }
+        var editions = new java.util.HashMap<String, MicroBreakpointStandard>();
+        for (var edition : manifest.get("standards")) {
+            String authority = edition.get("publisher").asText();
+            String version = edition.get("version").asText();
+            var standard = standards.findByAuthorityAndVersion(authority, version).orElseThrow();
+            editions.put(authority + "|" + version, standard);
             assertEquals("LOADED", standard.getLifecycleStatus());
             assertEquals("N", standard.getIsActive());
             assertTrue(rules.countByStandardId(standard.getId()) > 0);
-            assertTrue(rules.getByStandardId(standard.getId()).stream()
-                    .noneMatch(MicroBreakpointRule::isResistantInclusive));
         }
+        var loadedOrganisms = new java.util.HashMap<String, MicroOrganism>();
+        var loadedAgents = new java.util.HashMap<String, MicroAntibiotic>();
+        var selectedRules = new java.util.HashMap<String, MicroBreakpointRule>();
         int compared = 0;
         try (var zip = new java.util.zip.ZipFile(path);
                 var input = new java.io.InputStreamReader(
@@ -359,24 +369,30 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                 var vectors = org.apache.commons.csv.CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true)
                         .build().parse(input)) {
             for (var vector : vectors) {
-                var org = organisms.findByReference("AMR", vector.get("organism_code")).orElseThrow();
-                var agent = antibiotics.findByReference("AMR", vector.get("antibiotic_code")).orElseThrow();
-                var edition = standards.findByAuthorityAndVersion(vector.get("publisher"), vector.get("version"))
-                        .orElseThrow();
-                var rule = rules.findBestRule(edition.getId(), org.getId(), org.getOrganismGroup(), agent.getId(),
-                        "MIC", null, "MIC");
+                var org = loadedOrganisms.computeIfAbsent(vector.get("organism_code"),
+                        code -> organisms.findByReference("AMR", code).orElseThrow());
+                var agent = loadedAgents.computeIfAbsent(vector.get("antibiotic_code"),
+                        code -> antibiotics.findByReference("AMR", code).orElseThrow());
+                var edition = editions.get(vector.get("publisher") + "|" + vector.get("version"));
+                String method = vector.get("method");
+                String key = edition.getId() + "|" + org.getId() + "|" + agent.getId() + "|" + method;
+                var rule = selectedRules.computeIfAbsent(key, ignored -> rules.findBestRule(edition.getId(),
+                        org.getId(), org.getOrganismGroup(), agent.getId(), method, null, method));
+                assertNotNull("Every source context must resolve to an explicit rule: " + key, rule);
                 var expected = switch (vector.get("expected")) {
                 case "S" -> MicroAstInterpretation.SUSCEPTIBLE;
                 case "I" -> MicroAstInterpretation.INTERMEDIATE;
                 case "R" -> MicroAstInterpretation.RESISTANT;
+                case "NO_BREAKPOINT" -> MicroAstInterpretation.NO_BREAKPOINT;
                 default -> throw new AssertionError("Unexpected interpretation");
                 };
-                assertEquals(vector.toString(), expected,
-                        interpreter.interpret(rule, MicroAstMethod.MIC, new BigDecimal(vector.get("value"))));
+                assertEquals(vector.toString(), expected, interpreter.interpret(rule, MicroAstMethod.valueOf(method),
+                        new BigDecimal(vector.get("value")), edition.getAuthority()));
                 compared++;
             }
         }
-        assertEquals(1746, compared);
+        assertEquals(manifest.get("files").get("evidence/interpretation-vectors.csv").get("rows").asInt(), compared);
+        assertTrue(compared > 0);
     }
 
     private MicroBreakpointStandard standard(ReferencePackageFixture fixture) {

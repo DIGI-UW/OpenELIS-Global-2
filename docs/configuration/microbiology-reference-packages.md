@@ -60,6 +60,12 @@ prevents matching from falling through to a broader numeric rule. Intermediate
 intervals must not overlap susceptible or resistant ranges. Imported notes are
 part of the rule content and edition identity.
 
+CLSI MIC interpretation rounds observations up to the conventional dilution
+ladder used by AMR for R; the original measured value stays on the reading.
+EUCAST MIC and disk diameters are not rounded by this rule. The run's
+snapshotted standard determines the publisher for both manual and instrument
+results.
+
 ## Independently published metadata
 
 The AMR exporter supplies normal configuration folders plus provenance,

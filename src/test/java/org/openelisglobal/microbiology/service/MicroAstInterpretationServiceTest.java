@@ -80,4 +80,27 @@ public class MicroAstInterpretationServiceTest {
     public void overrideRequiresReason() {
         service.validateOverride(MicroAstInterpretation.RESISTANT, " ");
     }
+
+    @Test
+    public void clsiRoundsOnlyMicObservationsUpToConventionalDilutions() {
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        rule.setSusceptibleValue(new BigDecimal("1"));
+        rule.setResistantValue(new BigDecimal("4"));
+        rule.setResistantInclusive(true);
+        assertEquals(MicroAstInterpretation.RESISTANT,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("3"), "CLSI"));
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("3"), "EUCAST"));
+        rule.setSusceptibleValue(new BigDecimal("0.016"));
+        rule.setResistantValue(new BigDecimal("0.064"));
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.015"), "CLSI"));
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.017"), "CLSI"));
+        rule.setSusceptibleValue(new BigDecimal("22"));
+        rule.setResistantValue(new BigDecimal("18"));
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                service.interpret(rule, MicroAstMethod.ZONE, new BigDecimal("20"), "CLSI"));
+    }
+
 }
