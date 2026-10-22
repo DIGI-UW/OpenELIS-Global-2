@@ -42,13 +42,11 @@ export async function activateShippedAnalyzer(
   ).json()) as { confirmation: { state: string } };
   if (mapping.confirmation.state !== "CURRENT") {
     const confirm = page.getByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mappings",
     });
     await expect(confirm).toBeEnabled();
     await confirm.click();
-    await expect(
-      page.getByText("Mappings and control recognition confirmed"),
-    ).toBeVisible();
+    await expect(page.getByText("Mappings confirmed")).toBeVisible();
   }
   await setup.continueToConnect();
   if ("senderId" in connection) {

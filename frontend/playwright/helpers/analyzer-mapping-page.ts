@@ -7,16 +7,14 @@ export async function saveMapping(page: Page) {
   await expect(page.getByText("Mappings saved")).toBeVisible();
 }
 
-/** Confirms the saved mapping and control recognition as the ones in force. */
+/** Confirms the saved local mapping decisions. */
 export async function confirmMapping(page: Page) {
   const confirm = page.getByRole("button", {
-    name: "Confirm mappings and control recognition",
+    name: "Confirm mappings",
   });
   await expect(confirm).toBeEnabled();
   await confirm.click();
-  await expect(
-    page.getByText("Mappings and control recognition confirmed"),
-  ).toBeVisible();
+  await expect(page.getByText("Mappings confirmed")).toBeVisible();
 }
 
 /** Applies the confirmed mapping to the analyzer, which retries what it holds. */
