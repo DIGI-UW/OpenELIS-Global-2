@@ -27,10 +27,10 @@ publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_
 ```
 
 Optional columns are `resistant_inclusive`, `organism_source`, `organism_code`,
-`antibiotic_source`, `antibiotic_code` and `notes`. Source codes resolve concepts
-without installation-specific IDs. `resistant_inclusive=false` preserves strict
-resistance boundaries; omission retains the existing inclusive convention.
-Imports validate supported measurements and exact storage precision.
+`antibiotic_source`, `antibiotic_code` and `notes`. Source codes resolve
+concepts without installation-specific IDs. `resistant_inclusive=false`
+preserves strict resistance boundaries; omission retains the existing inclusive
+convention. Imports validate supported measurements and exact storage precision.
 
 ## Import, preview and reload
 
@@ -44,15 +44,21 @@ concepts before breakpoint files.
 A failed file rolls back its writes and is not marked successfully loaded.
 Previously successful concept files may remain when a later breakpoint file
 fails. Each breakpoint file is atomic: it cannot leave half an edition loaded.
-Provide the complete edition in one file; do not split it across files.
-New editions load inactive. An authorized administrator explicitly activates one.
-An application's HTTP health alone does not demonstrate a successful import.
+Provide the complete edition in one file; do not split it across files. New
+editions load inactive. An authorized administrator explicitly activates one. An
+application's HTTP health alone does not demonstrate a successful import.
 
 Configuration-managed editions reject changed content under the same identity
 and cannot be edited through the rule editor or an administrator CSV upload.
-Identity checks use the normalized configuration CSV, not ZIP bytes or unrelated
-release evidence. A correction must use a new edition version. Reloads preserve
+Identity checks use the normalized rows of each edition, independently of file
+ordering, other editions in the same CSV, ZIP bytes or unrelated release
+evidence. A correction must use a new edition version. Reloads preserve
 activation and existing IDs. Retain historical editions referenced by results.
+
+An explicit rule with empty thresholds is valid: it yields “No breakpoint” and
+prevents matching from falling through to a broader numeric rule. Intermediate
+intervals must not overlap susceptible or resistant ranges. Imported notes are
+part of the rule content and edition identity.
 
 ## Independently published metadata
 
@@ -65,8 +71,8 @@ The deployment owns acquisition and pinning. PNG's initializer uses the generic
 `prepare-configuration-packages.py` adapter: HTTPS URL, package identity/version
 and reviewed SHA-256 in deployment configuration; verified offline cache; safe
 installation into existing configuration folders without overwriting site files.
-The adapter accepts metadata from any publisher using the documented layout.
-No AMR dataset, R runtime or source-repository dependency is bundled into OE2.
+The adapter accepts metadata from any publisher using the documented layout. No
+AMR dataset, R runtime or source-repository dependency is bundled into OE2.
 
 The first AMR candidate covers selected EUCAST 2025/2026 MIC contexts. It does
 not provide complete PNG testing coverage. Review its exclusions and compatible

@@ -196,4 +196,31 @@ public class MicroBreakpointImportServiceTest {
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,"
                 + "resistant_value,units\n" + rows;
     }
+
+    @Test
+    public void intermediateIntervalsCannotOverrideSusceptibleOrResistantResults() {
+        for (String fields : List.of("MIC,,MIC,1,0.5,2,4,ug/mL", "MIC,,MIC,1,1,2,4,ug/mL", "MIC,,MIC,1,2,4,4,ug/mL",
+                "ZONE,,ZONE,22,20,22,18,mm", "ZONE,,ZONE,22,18,20,18,mm")) {
+            var result = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP," + fields + "\n"));
+            assertEquals(fields, 0, result.validRows);
+            assertTrue(fields, result.errors.get(0).message.contains("overlap"));
+        }
+        for (String fields : List.of("MIC,,MIC,1,2,4,4,ug/mL", "ZONE,,ZONE,22,18,20,18,mm")) {
+            String content = csv("EUCAST,2026,Escherichia coli,CIP," + fields + ",false\n")
+                    .replace("resistant_value,units\n", "resistant_value,units,resistant_inclusive\n");
+            assertEquals(fields, 1, service.preview(content).validRows);
+        }
+    }
+
+    @Test
+    public void explicitEmptyRuleCanBeImportedAsNoBreakpoint() {
+        var preview = service.preview(csv("CLSI,SYNTH-2026,Escherichia coli,CIP,MIC,,MIC,,,,,ug/mL\n"));
+        assertEquals(1, preview.validRows);
+        assertEquals(1, service.apply(preview.previewToken, "42").importedRows);
+        var captured = ArgumentCaptor.forClass(MicroBreakpointRule.class);
+        verify(ruleDAO).insert(captured.capture());
+        assertEquals(org.openelisglobal.microbiology.valueholder.MicroAstInterpretation.NO_BREAKPOINT,
+                new MicroAstInterpretationServiceImpl().interpret(captured.getValue(),
+                        org.openelisglobal.microbiology.valueholder.MicroAstMethod.MIC, java.math.BigDecimal.ONE));
+    }
 }

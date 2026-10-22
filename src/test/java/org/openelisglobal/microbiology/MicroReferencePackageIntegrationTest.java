@@ -254,6 +254,72 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void addingEditionToConfigurationPreservesExistingEditionAndRejectsItsMutation() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.1", "MULTI_EDITION");
+        load(fixture);
+        var first = standard(fixture);
+        var originalRule = rules.getByStandardId(first.getId()).get(0);
+        String csv = fixture.files.get("breakpoints.csv");
+        String next = csv.lines().skip(1).findFirst().orElseThrow().replace(fixture.edition, fixture.edition + "-next");
+        fixture.files.put("breakpoints.csv", csv.lines().findFirst().orElseThrow() + "\n" + next + "\n"
+                + csv.lines().skip(1).findFirst().orElseThrow() + "\n");
+        writeFiles(fixture);
+        assertFalse(reload(false).hasErrors());
+        assertEquals(first.getConfigurationHash(), standard(fixture).getConfigurationHash());
+        assertEquals(originalRule.getId(), rules.getByStandardId(first.getId()).get(0).getId());
+        var added = standards.findByAuthorityAndVersion("EUCAST", fixture.edition + "-next").orElseThrow();
+        assertEquals("N", added.getIsActive());
+        assertNotEquals(first.getConfigurationHash(), added.getConfigurationHash());
+        fixture.files.compute("breakpoints.csv",
+                (key, content) -> content.replace("Synthetic evidence", "Changed note"));
+        writeFiles(fixture);
+        assertTrue(reload(false).hasErrors());
+        assertEquals("Synthetic evidence", rules.getByStandardId(first.getId()).get(0).getNotes());
+    }
+
+    @Test
+    public void administratorImportAppliesNoteOnlyCorrectionsWithoutReplacingRuleId() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.1", "NOTE_UPDATE");
+        load(fixture);
+        String edition = fixture.edition + "-manual";
+        String csv = fixture.files.get("breakpoints.csv").replace(fixture.edition, edition);
+        var preview = importer.preview(csv);
+        assertEquals(1, importer.apply(preview.previewToken, "1").importedRows);
+        String standardId = standards.findByAuthorityAndVersion("EUCAST", edition).orElseThrow().getId();
+        var before = rules.getByStandardId(standardId).get(0);
+        var corrected = importer.preview(csv.replace("Synthetic evidence", "Corrected evidence"));
+        assertEquals(1, importer.apply(corrected.previewToken, "1").importedRows);
+        var after = rules.getByStandardId(standardId).get(0);
+        assertEquals(before.getId(), after.getId());
+        assertEquals("Corrected evidence", after.getNotes());
+        assertNotEquals(before.getSourceRowHash(), after.getSourceRowHash());
+    }
+
+    @Test
+    public void explicitNoBreakpointOverridesNumericGroupFallback() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.1", "BLOCK_FALLBACK");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        organism.setOrganismGroup("Synthetic blocking group");
+        organism.setSysUserId("1");
+        organisms.update(organism);
+        String edition = fixture.edition + "-blocking";
+        String csv = "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
+                + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units\n"
+                + "EUCAST," + edition + ",group:Synthetic blocking group," + fixture.antibiotic
+                + ",MIC,,MIC,1,,,4,mg/L\n" + "EUCAST," + edition + "," + organism.getDisplayName() + ","
+                + fixture.antibiotic + ",MIC,,MIC,,,,,mg/L\n";
+        assertEquals(2, importer.applyConfiguration(csv, "1").importedRows);
+        var standard = standards.findByAuthorityAndVersion("EUCAST", edition).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var selected = rules.findBestRule(standard.getId(), organism.getId(), organism.getOrganismGroup(),
+                antibiotic.getId(), "MIC", null, "MIC");
+        assertEquals(organism.getId(), selected.getOrganismId());
+        assertEquals(MicroAstInterpretation.NO_BREAKPOINT,
+                interpreter.interpret(selected, MicroAstMethod.MIC, BigDecimal.ONE));
+    }
+
+    @Test
     public void realPublishedCandidatePassesReceivingApplicationAndSourceVectors() throws Exception {
         String path = System.getProperty("amr.reference.artifact");
         org.junit.Assume.assumeTrue("Supply -Damr.reference.artifact for the generated-package contract test",

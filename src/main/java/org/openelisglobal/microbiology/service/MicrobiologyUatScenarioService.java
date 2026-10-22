@@ -1158,7 +1158,7 @@ public class MicrobiologyUatScenarioService {
         String csv = "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,"
                 + "breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,"
                 + "resistant_value,units\n"
-                + "CLSI,SYNTH-UAT-LOADED,group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L\n";
+                + "CLSI,SYNTH-UAT-LOADED,group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,mg/L\n";
         MicroBreakpointImportPreviewForm preview = breakpointImportService.preview(csv);
         breakpointImportService.apply(preview.previewToken, performedBy);
 
