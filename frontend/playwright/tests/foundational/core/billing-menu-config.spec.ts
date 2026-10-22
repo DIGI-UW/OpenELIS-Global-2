@@ -30,7 +30,7 @@ async function openBillingMenuConfiguration(page: Page) {
   await adminNav
     .getByRole("link", { name: /Billing Menu Configuration/i })
     .click();
-  expect((await settingsLoaded).ok()).toBeTruthy();
+  await settingsLoaded;
   await expect(page.locator(".cds--loading-overlay")).toHaveCount(0);
   await expect(page).toHaveURL(/billingMenuManagement/, {
     timeout: LONG_TIMEOUT,

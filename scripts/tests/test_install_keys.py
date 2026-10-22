@@ -184,13 +184,18 @@ class InstallKeysTest(unittest.TestCase):
     def test_rotated_site_keystore_recreates_missing_trust(self):
         self.check_rotated_site_key(missing_truststore=True)
 
-    def test_unreadable_stores_are_preserved_with_a_warning(self):
-        self.install_old_stores("/O=Site/CN=lab.example")
-        before = {p: p.read_bytes() for p in self.stores.iterdir()}
-        self.env["KEYSTORE_PW"] = "wrong-password"
-        self.assertIn("WARNING", self.upgrade())
-        for path, contents in before.items():
-            self.assertEqual(contents, path.read_bytes())
+    def test_changed_store_password_fails_without_modifying_existing_material(self):
+        self.upgrade()
+        before = {p: p.read_bytes() for p in self.stores.rglob("*") if p.is_file()}
+        for setting in ("KEYSTORE_PW", "TRUSTSTORE_PW"):
+            with self.subTest(setting=setting):
+                changed = dict(self.env, **{setting: "wrong-password"})
+                result = subprocess.run(["sh", str(self.script)], env=changed,
+                                        capture_output=True, text=True, timeout=60)
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(setting, result.stderr)
+                for path, contents in before.items():
+                    self.assertEqual(contents, path.read_bytes(), str(path))
 
 
 if __name__ == "__main__":

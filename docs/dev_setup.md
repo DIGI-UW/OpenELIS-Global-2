@@ -233,5 +233,6 @@ Set `SSL_KEYSTORE_PASSWORD` and `SSL_TRUSTSTORE_PASSWORD` consistently in
 `.env`. Compose passes these to certificate generation, Tomcat, FHIR, Bridge,
 and the OpenELIS Spring properties. Defaults remain `kspass` and `tspass`;
 custom passwords are supported. Changing the variables does not re-encrypt
-existing stores: the script preserves an unreadable store and logs a warning.
-Keep the passwords that were used to create existing stores when upgrading.
+existing stores: the script preserves an unreadable store and fails certificate
+setup before dependent services start. Keep the passwords that were used to
+create existing stores when upgrading.

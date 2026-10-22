@@ -7,7 +7,7 @@
 # generates the install's key and certificate under /etc/openelis-global/install and
 # rebuilds the stores and the proxy certificate that still hold the image's. A keystore
 # that holds a certificate of the site's own is kept, and its key becomes the install's.
-# A store that does not open with KEYSTORE_PW or TRUSTSTORE_PW is left as it is. The
+# A store that does not open with KEYSTORE_PW or TRUSTSTORE_PW stops startup unchanged. The
 # proxy's certificate files are written only when they are missing or still hold the
 # image's certificate, so a Let's Encrypt or locally issued one is kept.
 set -eu
@@ -57,6 +57,15 @@ truststore_cert() {
     -storepass:env TRUSTSTORE_PW 2>/dev/null
 }
 
+if [ -s "$STORES/keystore" ] && ! keystore_opens; then
+  echo "ERROR: KEYSTORE_PW cannot open the existing keystore; restore its configured password before restarting" >&2
+  exit 1
+fi
+if [ -s "$STORES/truststore" ] && ! truststore_opens; then
+  echo "ERROR: TRUSTSTORE_PW cannot open the existing truststore; restore its configured password before restarting" >&2
+  exit 1
+fi
+
 mkdir -p "$INSTALL"
 chmod 700 "$INSTALL"
 
@@ -67,10 +76,6 @@ if [ ! -s "$INSTALL/encryption.key" ]; then
   mv "$INSTALL/encryption.key.tmp" "$INSTALL/encryption.key"
 fi
 
-if [ -s "$STORES/keystore" ] && ! keystore_opens; then
-  echo "WARNING: the keystore does not open with KEYSTORE_PW; the TLS stores are left as they are" >&2
-  exit 0
-fi
 
 # The private keystore is authoritative, including after an operator rotates it.
 if [ -s "$STORES/keystore" ] && ! keystore_cert | is_image_cert; then
@@ -103,9 +108,7 @@ if [ ! -s "$STORES/keystore" ] || keystore_cert | is_image_cert; then
   cp "$STORES/keystore" "$STORES/client_facing_keystore"
 fi
 
-if [ -s "$STORES/truststore" ] && ! truststore_opens; then
-  echo "WARNING: the truststore does not open with TRUSTSTORE_PW; it is left as it is" >&2
-elif [ ! -s "$STORES/truststore" ] || [ "$(truststore_cert | fingerprint)" != "$current" ]; then
+if [ ! -s "$STORES/truststore" ] || [ "$(truststore_cert | fingerprint)" != "$current" ]; then
   echo "Trusting this install's certificate in the truststore"
   rm -f "$STORES/truststore.tmp"
   if [ -s "$STORES/truststore" ]; then
