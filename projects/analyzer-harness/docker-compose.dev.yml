@@ -41,7 +41,7 @@ services:
         condition: service_healthy
     restart: always
     environment:
-      CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+      CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       JDK_JAVA_OPTIONS: -Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
       - key_trust-store-volume:/etc/openelis-global
@@ -81,10 +81,10 @@ services:
         -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
-        -Djavax.net.ssl.trustStorePassword=tspass
+        -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
         -Djavax.net.ssl.trustStoreType=pkcs12
         -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
-        -Djavax.net.ssl.keyStorePassword=kspass
+        -Djavax.net.ssl.keyStorePassword=${SSL_KEYSTORE_PASSWORD:-kspass}
         -Djavax.net.ssl.keyStoreType=pkcs12"
     volumes:
       - key_trust-store-volume:/etc/openelis-global
