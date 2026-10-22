@@ -444,6 +444,7 @@ const AnalyserResults = (props) => {
         if (succeeded) {
           props.refreshResults?.(
             Number(props.results?.paging?.currentPage) || 1,
+            { ...draftEdits.current },
           );
         }
       },

@@ -59,6 +59,7 @@ const mappedQualitativeResult = {
 const renderResults = (
   resultList = [heldResult],
   sampleGroup = [resultList[0]],
+  extraProps = {},
 ) => {
   const history = createMemoryHistory({
     initialEntries: ["/AnalyzerResults?id=2001"],
@@ -80,6 +81,7 @@ const renderResults = (
               results={{ resultList: resultList.map((row) => ({ ...row })) }}
               sampleGroup={sampleGroup}
               analyzerId="2001"
+              {...extraProps}
             />
           </NotificationContext.Provider>
         </ConfigurationContext.Provider>
@@ -484,6 +486,31 @@ describe("AnalyserResults", () => {
             "The held result is removed from review. The audit trail keeps it.",
         }),
       ),
+    );
+  });
+
+  it("preserves other rows' unsaved choices when removing a held result", async () => {
+    const refreshResults = vi.fn();
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 204 }),
+    );
+    const mapped = matched("1005", 2);
+    renderResults([heldResult, mapped], [heldResult, mapped], {
+      refreshResults,
+    });
+    fireEvent.click(document.getElementById("resultList1005.isAccepted"));
+    fireEvent.change(document.getElementById("resultList1005.note"), {
+      target: { value: "Checked with the ward" },
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(refreshResults).toHaveBeenCalledWith(1, {
+        1005: { isAccepted: true, note: "Checked with the ward" },
+      }),
     );
   });
 

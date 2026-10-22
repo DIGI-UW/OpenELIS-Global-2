@@ -110,17 +110,18 @@ const Index = () => {
    * Rereads the worklist the address bar names, after a write changes it, and
    * reopens the page the user was on when the reread worklist still has it.
    */
-  const refreshResults = (pageToReopen) => {
+  const refreshResults = (pageToReopen, pendingEdits) => {
     if (!url) {
       return;
     }
     setIsLoading(true);
+    const applyResults = (data) => handleResults(data, pendingEdits);
     getFromOpenElisServer(url, (data) => {
       const totalPages = Number(data?.paging?.totalPages) || 1;
       if (pageToReopen > 1 && pageToReopen <= totalPages) {
-        getFromOpenElisServer(url + "&page=" + pageToReopen, handleResults);
+        getFromOpenElisServer(url + "&page=" + pageToReopen, applyResults);
       } else {
-        handleResults(data);
+        applyResults(data);
       }
     });
   };
@@ -190,10 +191,12 @@ const Index = () => {
     });
   };
 
-  const handleResults = (data) => {
+  const handleResults = (data, pendingEdits) => {
     if (data) {
+      const editsToRestore =
+        pendingEdits ?? (restoringDraft ? worklistDraft.edits : null);
       const applied = {};
-      const restoredList = restoringDraft
+      const restoredList = editsToRestore
         ? data.resultList.map((row) => {
             if (
               row.importIssueReason &&
@@ -201,7 +204,7 @@ const Index = () => {
             ) {
               return row;
             }
-            const edits = worklistDraft.edits?.[String(row.id)];
+            const edits = editsToRestore[String(row.id)];
             if (!edits) return row;
             const restored = { ...row };
             restorableResultFields.forEach((field) => {
@@ -216,12 +219,12 @@ const Index = () => {
             return restored;
           })
         : data.resultList;
-      const resultList = restoringDraft
+      const resultList = editsToRestore
         ? moveTestActionsToHeads(restoredList, data.resultList, applied)
         : restoredList;
       setRestoredEdits(applied);
       setResults({ ...data, resultList });
-      if (restoringDraft) {
+      if (restoringDraft && pendingEdits === undefined) {
         const remainingState = { ...location.state };
         delete remainingState.worklistDraft;
         history.replace({
