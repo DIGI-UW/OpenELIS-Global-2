@@ -1181,7 +1181,13 @@ const AnalyzerTypeMappingEditor = ({
                 test.mappingState === "UNRESOLVED" ? null : selectedTest
               }
               disabled={readOnly || test.mappingState === "EXCLUDED"}
-              onChange={({ selectedItem }) => selectTest(key, selectedItem)}
+              onChange={({ selectedItem }) => {
+                // Clearing a saved excluded target also fires Carbon's onChange.
+                // A disabled picker must not undo the saved decision.
+                if (!readOnly && test.mappingState !== "EXCLUDED") {
+                  selectTest(key, selectedItem);
+                }
+              }}
             />
             {test.mappingState === "BOUND" && takesComponent(test) && (
               <Dropdown

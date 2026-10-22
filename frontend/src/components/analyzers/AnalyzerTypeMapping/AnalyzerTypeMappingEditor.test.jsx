@@ -1402,6 +1402,65 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(screen.getByText("Current confirmation")).toBeVisible();
   });
 
+  it("keeps a saved exclusion checked when the server clears its previous target", async () => {
+    const saved = {
+      ...mapping,
+      mappingFingerprint: `sha256:${"d".repeat(64)}`,
+      tests: mapping.tests.map((test) =>
+        test.sourceRowKey === "RAW-A"
+          ? {
+              ...test,
+              mappingState: "EXCLUDED",
+              testId: null,
+              selectedTest: null,
+              componentId: null,
+              callComponentId: null,
+              results: test.results.map((result) => ({
+                ...result,
+                mappingState: "EXCLUDED",
+                resultOptionId: null,
+                selectedOption: null,
+              })),
+            }
+          : test,
+      ),
+      confirmation: { ...unconfirmed, state: "STALE" },
+    };
+    saveAnalyzerMapping.mockImplementation((_id, _request, callback) =>
+      callback(saved),
+    );
+    renderEditor();
+    const excluded = await screen.findByRole("checkbox", {
+      name: "Do not receive RAW-A",
+    });
+    await userEvent.click(excluded);
+    await userEvent.click(screen.getByRole("button", { name: "Save mapping" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Save changes",
+      }),
+    );
+    await screen.findByText("Mappings saved");
+    expect(
+      screen.getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    ).toBeChecked();
+    const confirm = screen.getByRole("button", {
+      name: "Confirm mappings and control recognition",
+    });
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+    expect(confirmAnalyzerMapping).toHaveBeenCalledWith(
+      "501",
+      expect.objectContaining({
+        baseMappingFingerprint: saved.mappingFingerprint,
+        excludedRows: expect.arrayContaining([
+          { sourceRowKey: "RAW-A", subIdentity: "", rawValue: null },
+        ]),
+      }),
+      expect.any(Function),
+    );
+  });
+
   it("keeps the selections of an excluded test so that un-excluding restores them", async () => {
     renderEditor();
     await screen.findByRole("heading", {

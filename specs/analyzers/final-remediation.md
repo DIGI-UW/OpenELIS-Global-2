@@ -85,6 +85,13 @@ candidate now includes their fixes.
 
 ## Subsequent review corrections
 
+- Local browser validation found that saving an excluded mapped test clears its
+  target correctly on the server, but Carbon emits a selection-change callback
+  while the disabled picker updates. The callback wrongly restored UNRESOLVED in
+  the browser and disabled confirmation. Disabled excluded pickers now ignore
+  that callback. The regression failed before the correction; all 32 mapping-editor
+  tests pass afterward. One pre-existing effect-state lint error remains unchanged.
+
 - Connection decimal-separator changes and removal are part of confirmation and
   arrival readings. A profile fingerprint match cannot bypass them; results parsed
   under the old setting cannot recover under the new one. The combined confirmation,
