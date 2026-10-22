@@ -3,6 +3,7 @@ import { useIntl } from "react-intl";
 import { InlineLoading, InlineNotification } from "@carbon/react";
 import config from "../../config.json";
 import { apiBase, requestToken, uiUrl, type AddonExtension } from "./addonApi";
+import { titleFor } from "./slots";
 import {
   clampHeight,
   contextMessage,
@@ -37,6 +38,7 @@ export default function AddonFrame({
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const key = stateKey(state);
+  const title = titleFor(extension, intl.locale);
 
   const sendContext = useCallback(async () => {
     const target = frame.current?.contentWindow;
@@ -96,11 +98,11 @@ export default function AddonFrame({
       className="addon-frame"
       data-addon-id={extension.addonId}
       data-extension-name={extension.name}
-      aria-label={extension.title}
+      aria-label={title}
     >
       {showTitle && (
         <header className="addon-frame__title">
-          <span>{extension.title}</span>
+          <span>{title}</span>
           <small>
             {extension.addonName} {extension.version}
           </small>
@@ -121,7 +123,7 @@ export default function AddonFrame({
       )}
       <iframe
         ref={frame}
-        title={extension.title}
+        title={title}
         src={uiUrl(config.serverBaseUrl, extension)}
         sandbox="allow-scripts allow-forms"
         referrerPolicy="no-referrer"

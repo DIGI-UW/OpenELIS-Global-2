@@ -3,6 +3,7 @@ import {
   extensionPagePath,
   extensionsForSlot,
   pageOfPath,
+  titleFor,
   SLOT_APP_MENU,
   SLOT_PATIENT_RESULTS,
   withAddonMenu,
@@ -205,5 +206,19 @@ describe("secret configuration fields", () => {
     expect(
       configToSave(schema, { model: "x", apiKey: "" }, new Set(["apiKey"])),
     ).toEqual({ model: "x", apiKey: "" });
+  });
+});
+
+describe("extension titles", () => {
+  const e = {
+    title: "AI assistant",
+    titles: { en: "AI assistant", vi: "Trợ lý AI", "fr-CA": "Assistant IA" },
+  };
+  it("follow the user's locale, falling back to English then the default", () => {
+    expect(titleFor(e, "vi")).toBe("Trợ lý AI");
+    expect(titleFor(e, "vi-VN")).toBe("Trợ lý AI");
+    expect(titleFor(e, "fr-CA")).toBe("Assistant IA");
+    expect(titleFor(e, "es")).toBe("AI assistant");
+    expect(titleFor({ title: "Hello" }, "vi")).toBe("Hello");
   });
 });

@@ -141,4 +141,19 @@ public class AddonManifestTest {
         assertEquals("application",
                 AddonManifest.parse(m.replace("magic-wand", "javascript:alert(1)")).extensions().get(0).icon());
     }
+
+    @Test
+    public void aTitleCanBeGivenPerLocale() {
+        String m = valid().replace("\"meta\":{\"title\":\"Hello\",",
+                "\"meta\":{\"title\":{\"en\":\"AI assistant\",\"vi\":\"Trợ lý AI\"},");
+        assertEquals(List.of(), problems(m));
+        AddonManifest.Extension e = AddonManifest.parse(m).extensions().get(0);
+        assertEquals("AI assistant", e.title());
+        assertEquals(Map.of("en", "AI assistant", "vi", "Trợ lý AI"), e.titles());
+        assertEquals(Map.of(), AddonManifest.parse(valid()).extensions().get(0).titles());
+        assertTrue(problems(m.replace("\"vi\":", "\"not a locale\":")).stream()
+                .anyMatch(p -> p.contains("meta.title.not a locale")));
+        assertTrue(problems(valid().replace("\"title\":\"Hello\"", "\"title\":7")).stream()
+                .anyMatch(p -> p.contains("meta.title must be a text or a map by locale")));
+    }
 }

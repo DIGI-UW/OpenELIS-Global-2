@@ -221,7 +221,7 @@ public class AddonRegistryServiceImpl implements AddonRegistryService {
             }
             for (AddonManifest.Extension e : AddonManifest.parse(addon.getManifest()).extensions()) {
                 out.add(new ExtensionView(addon.getId(), addon.getName(), addon.getVersion(), e.name(), e.slot(),
-                        e.page(), e.order(), e.title(), e.height(), e.icon()));
+                        e.page(), e.order(), e.title(), e.height(), e.icon(), e.titles()));
             }
         }
         out.sort(Comparator.comparing(ExtensionView::slot).thenComparingInt(ExtensionView::order)

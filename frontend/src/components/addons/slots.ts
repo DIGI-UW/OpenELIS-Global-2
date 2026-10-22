@@ -40,6 +40,23 @@ export function extensionsForSlot(
     );
 }
 
+/**
+ * The extension's title in the user's locale: exact match ("fr-CA"), then the
+ * language ("fr"), then English, then the manifest's default title.
+ */
+export function titleFor(
+  e: { title: string; titles?: Record<string, string> },
+  locale?: string,
+): string {
+  const t = e.titles || {};
+  const loc = (locale || "en").replace("_", "-");
+  const lang = loc.split("-")[0].toLowerCase();
+  const exact = Object.keys(t).find(
+    (k) => k.replace("_", "-").toLowerCase() === loc.toLowerCase(),
+  );
+  return (exact && t[exact]) || t[lang] || t.en || e.title;
+}
+
 /** Route of the full page that an app-menu-slot extension opens. */
 export const extensionPagePath = (e: { addonId: string; name: string }) =>
   `/extensions/${encodeURIComponent(e.addonId)}/${encodeURIComponent(e.name)}`;
@@ -58,6 +75,7 @@ export function withAddonMenu<T extends MenuItem>(
   menus: T[] | undefined,
   all: AddonExtension[],
   sectionKey: string,
+  locale?: string,
 ): T[] | undefined {
   const items = extensionsForSlot(all, SLOT_APP_MENU);
   if (!menus || !items.length) {
@@ -75,7 +93,7 @@ export function withAddonMenu<T extends MenuItem>(
       menu: {
         id: `menu_addon_${e.addonId}_${e.name}`,
         elementId: `menu_addon_${e.addonId}_${e.name}`,
-        displayKey: e.title,
+        displayKey: titleFor(e, locale),
         actionURL: extensionPagePath(e),
         isActive: true,
         presentationOrder: i,
