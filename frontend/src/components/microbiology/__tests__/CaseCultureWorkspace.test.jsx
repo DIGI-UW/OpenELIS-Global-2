@@ -410,7 +410,13 @@ test.each([{}, { atmosphereId: "air", temperature: 37 }])(
     fireEvent.click(
       await screen.findByRole("button", { name: "Inoculate culture" }),
     );
-    change("Medium", "11");
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Medium", exact: true }),
+      { target: { value: "Unlinked" } },
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: "Unlinked medium · Lot not tracked" }),
+    );
     for (const key of ["duration", "checkIntervalHours", "loopVolume"])
       expect(
         screen.getByLabelText(messages[`microbiology.culture.${key}`]),
