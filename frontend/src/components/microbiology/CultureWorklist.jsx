@@ -82,6 +82,21 @@ export default function CultureWorklist({ service }) {
       live = false;
     };
   }, [service, filter, attention, units, search, page, size, refresh]);
+  const inoculationTests = (items) => {
+    if (
+      !items.length ||
+      !items[0]?.sampleTypeId ||
+      items.some((item) => item?.sampleTypeId !== items[0].sampleTypeId)
+    )
+      return [];
+    return (items[0].cultureTests || []).filter((test) =>
+      items.every((item) =>
+        item.cultureTests?.some((candidate) => candidate.id === test.id),
+      ),
+    );
+  };
+  const selectedItems = (selected) =>
+    selected.map((row) => data.rows.find((item) => item.id === row.id));
   const begin = async (kind, selected) => {
     const selectedRows = selected.map((r) =>
       data.rows.find((item) => item.id === r.id),
@@ -106,6 +121,13 @@ export default function CultureWorklist({ service }) {
     }
   };
   const save = async () => {
+    if (
+      action === "INOCULATE" &&
+      !inoculationTests(selection).some(
+        (test) => test.id === input.cultureTestId,
+      )
+    )
+      return;
     setSaving(true);
     setError(false);
     const grouped = new Map();
@@ -278,7 +300,9 @@ export default function CultureWorklist({ service }) {
                         ) ||
                         navigator.onLine === false ||
                         (kind === "INOCULATE"
-                          ? filter !== "AWAITING_INOCULATION"
+                          ? filter !== "AWAITING_INOCULATION" ||
+                            !inoculationTests(selectedItems(selectedRows))
+                              .length
                           : !filter || filter === "AWAITING_INOCULATION")
                       }
                       onClick={() => begin(kind, selectedRows)}
@@ -306,6 +330,16 @@ export default function CultureWorklist({ service }) {
                   </Button>
                 </Column>
               </Grid>
+              {filter === "AWAITING_INOCULATION" &&
+                selectedRows.length > 0 &&
+                !inoculationTests(selectedItems(selectedRows)).length && (
+                  <InlineNotification
+                    kind="info"
+                    lowContrast
+                    hideCloseButton
+                    title={t("microbiology.bench.inoculationPairRequired")}
+                  />
+                )}
               <Table aria-label={t("microbiology.worklist.title")}>
                 <TableHead>
                   <TableRow>
@@ -394,7 +428,11 @@ export default function CultureWorklist({ service }) {
           <h3>{t(`microbiology.bench.action.${action}`)}</h3>
           {action === "INOCULATE" && (
             <>
-              {choice("cultureTestId", "test.name", selection[0].cultureTests)}
+              {choice(
+                "cultureTestId",
+                "test.name",
+                inoculationTests(selection),
+              )}
               {choice(
                 "mediumItemId",
                 "microbiology.bench.medium",
@@ -441,7 +479,14 @@ export default function CultureWorklist({ service }) {
             onChange={(e) => setInput({ ...input, note: e.target.value })}
           />
           <Button
-            disabled={saving || navigator.onLine === false}
+            disabled={
+              saving ||
+              navigator.onLine === false ||
+              (action === "INOCULATE" &&
+                !inoculationTests(selection).some(
+                  (test) => test.id === input.cultureTestId,
+                ))
+            }
             onClick={save}
           >
             {t("common.save")}

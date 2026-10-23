@@ -62,6 +62,11 @@ public class MicroIncomingAnalyzerAdapter {
             if (match.patient().status() == AnalyzerResultPlacement.PatientStatus.MISMATCH
                     && (decision.getNote() == null || decision.getNote().isBlank()))
                 continue;
+            var destinations = group.stream().map(r -> r.decision().getChosenAnalysisId())
+                    .map(id -> id == null || id.isBlank() ? match.proposedAnalysisId() : id)
+                    .collect(java.util.stream.Collectors.toSet());
+            if (destinations.size() > 1)
+                throw new IllegalArgumentException("MICROBIOLOGY_ANALYZER_COMPONENT_PLACEMENT_CONFLICT");
             String sampleId = match.proposedSampleItemId();
             String analysisId = match.proposedAnalysisId();
             boolean awaiting = match.state() == AnalyzerResultPlacement.State.RESOLVED;

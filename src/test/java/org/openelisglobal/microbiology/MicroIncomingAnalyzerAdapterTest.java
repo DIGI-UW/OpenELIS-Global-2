@@ -63,6 +63,32 @@ public class MicroIncomingAnalyzerAdapterTest {
         assertEquals("Keep instrument evidence\nReviewed value", payload.getValue().note);
     }
 
+    @Test
+    public void conflictingReviewedDestinationsDoNotSaveOrDeleteAnyComponent() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        var first = decision(row("one"));
+        var second = decision(row("two"));
+        first.setChosenAnalysisId("analysis");
+        second.setChosenAnalysisId("another-analysis");
+        try {
+            adapter.acceptReviewed(List.of(first, second), "reviewer");
+            fail("Conflicting component destinations must remain staged");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("MICROBIOLOGY_ANALYZER_COMPONENT_PLACEMENT_CONFLICT", expected.getMessage());
+        }
+        verifyZeroInteractions(incoming);
+        verify(staging, never()).delete(anyString(), anyString());
+    }
+
+    @Test
+    public void explicitAndAutomaticChoicesForTheSameAnalysisRemainCompatible() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        var first = decision(row("one"));
+        var second = decision(row("two"));
+        first.setChosenAnalysisId("analysis");
+        assertEquals(Set.of("one", "two"), adapter.acceptReviewed(List.of(first, second), "reviewer"));
+    }
+
     private AnalyzerResults row(String component) {
         var r = new AnalyzerResults();
         r.setId(component);

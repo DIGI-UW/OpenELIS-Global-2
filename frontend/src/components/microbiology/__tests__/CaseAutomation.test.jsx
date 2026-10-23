@@ -214,3 +214,78 @@ test("a culture worklist deep link preserves its accession search", async () => 
     ),
   );
 });
+
+test.each([
+  ["urine", ["common"], false],
+  ["blood", ["different"], false],
+  ["blood", ["common", "second-only"], true],
+])(
+  "inoculation selection requires a shared specimen and test: %s %j",
+  async (sampleType, tests, allowed) => {
+    const row = (id, sampleTypeId, ids) => ({
+      id,
+      caseId: id,
+      sampleItemId: id + "-tube",
+      sampleTypeId,
+      accessionNumber: id,
+      canWrite: true,
+      attention: [],
+      cultureTests: ids.map((id) => ({ id, value: id })),
+    });
+    const service = {
+      searchBench: vi.fn().mockResolvedValue({
+        rows: [
+          row("case-one", "blood", ["common", "first-only"]),
+          row("case-two", sampleType, tests),
+        ],
+        labUnits: [],
+        total: 2,
+      }),
+      getCultureOptions: vi
+        .fn()
+        .mockResolvedValue({ media: [], atmospheres: [] }),
+    };
+    renderPage(
+      <CultureWorklist service={service} />,
+      "/Microbiology/worklist?cultureFilter=AWAITING_INOCULATION",
+    );
+    await screen.findByText("case-two");
+    fireEvent.change(document.getElementById("bench-filter"), {
+      target: { value: "AWAITING_INOCULATION" },
+    });
+    await waitFor(() =>
+      expect(service.searchBench).toHaveBeenLastCalledWith(
+        expect.stringContaining("cultureFilter=AWAITING_INOCULATION"),
+      ),
+    );
+    screen
+      .getAllByRole("checkbox")
+      .slice(-2)
+      .forEach((checkbox) => fireEvent.click(checkbox));
+    const action = screen.getByRole("button", {
+      name: "Inoculate selected cases",
+    });
+    if (!allowed) {
+      expect(action).toBeDisabled();
+      expect(
+        screen.getByText(
+          messages["microbiology.bench.inoculationPairRequired"],
+        ),
+      ).toBeVisible();
+      expect(service.getCultureOptions).not.toHaveBeenCalled();
+    } else {
+      expect(action).toBeEnabled();
+      fireEvent.click(action);
+      await screen.findByRole("option", { name: "common" });
+      expect(
+        screen.queryByRole("option", { name: "first-only" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "second-only" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Save", exact: true }),
+      ).toBeDisabled();
+    }
+  },
+);
