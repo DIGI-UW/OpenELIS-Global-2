@@ -27,18 +27,19 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
     private final MicrobiologyCaseAccessService access;
     private final MicroCaseResultService results;
     private final TestService tests;
+    private final org.openelisglobal.analysis.service.AnalysisService analyses;
     private final ObjectMapper json;
 
     @org.springframework.beans.factory.annotation.Autowired
     public MicroIncomingResultServiceImpl(MicroIncomingItemDAO incoming, MicroCaseDAO cases, MicroCaseAnalysisDAO links,
             MicroCaseActivityDAO activities, MicrobiologyCaseAccessService access, MicroCaseResultService results,
-            TestService tests) {
-        this(incoming, cases, links, activities, access, results, tests, new ObjectMapper());
+            TestService tests, org.openelisglobal.analysis.service.AnalysisService analyses) {
+        this(incoming, cases, links, activities, access, results, tests, analyses, new ObjectMapper());
     }
 
     public MicroIncomingResultServiceImpl(MicroIncomingItemDAO incoming, MicroCaseDAO cases, MicroCaseAnalysisDAO links,
             MicroCaseActivityDAO activities, MicrobiologyCaseAccessService access, MicroCaseResultService results,
-            TestService tests, ObjectMapper json) {
+            TestService tests, org.openelisglobal.analysis.service.AnalysisService analyses, ObjectMapper json) {
         this.incoming = incoming;
         this.cases = cases;
         this.links = links;
@@ -46,6 +47,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         this.access = access;
         this.results = results;
         this.tests = tests;
+        this.analyses = analyses;
         this.json = json;
     }
 
@@ -58,6 +60,12 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
     @Transactional
     public MicroIncomingForm receive(String caseId, String sampleItemId, String testId, String source, String key,
             String raw, MicroCaseResultRequestForm result, boolean exactPlacement, String actor) {
+        return receive(caseId, sampleItemId, testId, source, key, raw, result, exactPlacement, actor, null);
+    }
+
+    @Transactional
+    public MicroIncomingForm receive(String caseId, String sampleItemId, String testId, String source, String key,
+            String raw, MicroCaseResultRequestForm result, boolean exactPlacement, String actor, String analyzerId) {
         if (!List.of("ANALYZER", "REFERRAL").contains(source) || key == null || key.isBlank() || key.length() > 500
                 || result == null || result.components == null || result.components.isEmpty()
                 || tests.get(testId) == null)
@@ -76,7 +84,12 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         item.setSampleItemId(sampleItemId);
         item.setRunSourceKey(key);
         item.setRawResultValue(raw);
-        item.setStructuredResult(encode(result));
+        var stored = new StoredResult();
+        stored.version = result.version;
+        stored.note = result.note;
+        stored.components = result.components;
+        stored.analyzerId = "ANALYZER".equals(source) ? analyzerId : null;
+        item.setStructuredResult(encode(stored));
         item.setReceivedAt(Timestamp.from(Instant.now()));
         item.setState("WAITING");
         item.setSysUserId(actor);
@@ -92,6 +105,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
                 .toList();
         // Only an exact, unambiguous instrument match can attach to an existing row.
         if (exactPlacement && "WAITING".equals(item.getState()) && matches.size() == 1) {
+            retainAnalyzer(matches.get(0), stored.analyzerId, actor);
             results.receiveResult(caseId, matches.get(0).getId(), result, actor);
             markPlaced(item, matches.get(0).getId(), actor);
         }
@@ -142,8 +156,8 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
                         });
             }
         }
-        payload.version = MicroCaseResultServiceImpl.version(candidates.get(0),
-                links.getByCaseAndAnalysis(target, analysisId));
+        var analysis = retainAnalyzer(candidates.get(0), payload.analyzerId, actor);
+        payload.version = MicroCaseResultServiceImpl.version(analysis, links.getByCaseAndAnalysis(target, analysisId));
         results.saveResults(target, analysisId, payload, actor, http);
         item.setMicroCase(cases.get(target).orElseThrow());
         item.setSampleItemId(request.sampleItemId);
@@ -210,9 +224,24 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         }
     }
 
-    private MicroCaseResultRequestForm decode(String value) {
+    // Only trusted ingestion supplies this metadata. Placement forms carry result
+    // acknowledgements, never a replacement instrument identity.
+    private static class StoredResult extends MicroCaseResultRequestForm {
+        public String analyzerId;
+    }
+
+    private org.openelisglobal.analysis.valueholder.Analysis retainAnalyzer(
+            org.openelisglobal.analysis.valueholder.Analysis analysis, String analyzerId, String actor) {
+        if (analyzerId == null)
+            return analysis;
+        analysis.setAnalyzerId(analyzerId);
+        analysis.setSysUserId(actor);
+        return analyses.update(analysis);
+    }
+
+    private StoredResult decode(String value) {
         try {
-            return json.readValue(value, MicroCaseResultRequestForm.class);
+            return json.readValue(value, StoredResult.class);
         } catch (Exception e) {
             throw new IllegalStateException("Stored incoming payload is invalid", e);
         }
@@ -235,7 +264,11 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         f.placedBy = i.getPlacedBy();
         f.placementTarget = i.getPlacementTarget();
         f.failureReason = i.getFailureReason();
-        f.result = decode(i.getStructuredResult());
+        var stored = decode(i.getStructuredResult());
+        f.result = new MicroCaseResultRequestForm();
+        f.result.version = stored.version;
+        f.result.note = stored.note;
+        f.result.components = stored.components;
         return f;
     }
 }

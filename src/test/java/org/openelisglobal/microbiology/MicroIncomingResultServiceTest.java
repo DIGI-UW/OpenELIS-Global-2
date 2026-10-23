@@ -28,7 +28,7 @@ public class MicroIncomingResultServiceTest {
     @Before
     public void setup() {
         service = new MicroIncomingResultServiceImpl(queue, cases, links, activities, access, results, tests,
-                new ObjectMapper());
+                mock(org.openelisglobal.analysis.service.AnalysisService.class), new ObjectMapper());
         c = new MicroCase();
         c.setId("case");
         c.setLabUnitId("unit");
@@ -47,11 +47,14 @@ public class MicroIncomingResultServiceTest {
 
     @Test
     public void newUnorderedResultWaitsWithoutCreatingAnalysis() {
-        var f = service.receive("case", "tube", "12", "ANALYZER", "source-run", "3", payload, true, "1");
+        var f = service.receive("case", "tube", "12", "ANALYZER", "source-run", "3", payload, true, "1", "77");
+        var stored = org.mockito.ArgumentCaptor.forClass(MicroIncomingItem.class);
+        verify(queue).insert(stored.capture());
+        assertTrue(stored.getValue().getStructuredResult().contains("\"analyzerId\":\"77\""));
+        assertFalse(new ObjectMapper().valueToTree(f.result).has("analyzerId"));
         assertEquals("WAITING", f.state);
         assertEquals("3", f.result.components.get(0).value);
         verifyZeroInteractions(results);
-        verify(queue).insert(any(MicroIncomingItem.class));
     }
 
     @Test

@@ -309,6 +309,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void placementAcknowledgementCannotReplaceTheStagedResult() {
+        String instrumentId = analyzer();
         var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
         mapping.setTypeOfSampleId(microCase.getSampleTypeId());
         mapping.setTestId(analysis.getTest().getId());
@@ -317,7 +318,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         var original = payload();
         original.note = "Original analyzer note";
         var queued = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
-                "ANALYZER", "acknowledgement-integrity", "12 / 34", original, false, actor);
+                "ANALYZER", "acknowledgement-integrity", "12 / 34", original, false, actor, instrumentId);
         var placement = new org.openelisglobal.microbiology.form.MicroIncomingPlacementForm();
         placement.sampleItemId = microCase.getSampleItemId();
         placement.result = payload();
@@ -342,25 +343,43 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
                 em.createQuery("select count(n) from Note n where n.referenceId = :id and n.text = :text", Long.class)
                         .setParameter("id", analysis.getId()).setParameter("text", "Replacement client note")
                         .getSingleResult());
+        em.flush();
+        em.clear();
+        assertEquals(instrumentId, analyses.get(analysis.getId()).getAnalyzerId());
         assertEquals("Original analyzer note", placed.result.note);
         assertEquals("12", placed.result.components.getFirst().value);
     }
 
     @Test
     public void analyzerArrivalAttachesComponentsOnceAndNeverFinalizes() {
+        String instrumentId = analyzer();
         var p = payload();
         var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
-                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor);
+                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor, instrumentId);
         assertEquals("PLACED", arrived.state);
         assertEquals(analysis.getId(), arrived.placementTarget);
         assertEquals("TechnicalAcceptance", workspace.getTests(microCase.getId(), actor).get(0).status);
         assertEquals(Set.of("12", "34"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
                 .collect(java.util.stream.Collectors.toSet()));
         var retry = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
-                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor);
+                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor, instrumentId);
         assertEquals(arrived.id, retry.id);
         assertEquals(1, incomingItems.forCase(microCase.getId()).size());
         assertEquals(2, results.getResultsByAnalysis(analysis).size());
+        em.flush();
+        em.clear();
+        assertEquals(instrumentId, analyses.get(analysis.getId()).getAnalyzerId());
+    }
+
+    private String analyzer() {
+        var instrument = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        instrument.setName("AMR provenance " + UUID.randomUUID());
+        instrument.setActive(true);
+        instrument.setFhirUuid(UUID.randomUUID());
+        instrument.setSysUserId(actor);
+        em.persist(instrument);
+        em.flush();
+        return instrument.getId();
     }
 
     @Test
