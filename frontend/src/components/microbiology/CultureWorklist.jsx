@@ -175,6 +175,7 @@ export default function CultureWorklist({ service }) {
         labUnitId: selectedRows[0].labUnitId,
         caseIds: [...new Set(selectedRows.map((r) => r.caseId))],
         cultureIds: selectedRows.map((r) => r.cultureId).filter(Boolean),
+        awaitingInoculation: filter === "AWAITING_INOCULATION",
       });
       setSheet(s);
     } catch {

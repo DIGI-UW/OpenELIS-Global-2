@@ -32,7 +32,7 @@ public class MicroCaseInoculationDAOImpl extends BaseDAOImpl<MicroCaseInoculatio
     @Transactional(readOnly = true)
     public List<MicroCaseInoculation> getByContainerIdentifier(String containerIdentifier) {
         Query<MicroCaseInoculation> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroCaseInoculation i where i.containerIdentifier = :containerIdentifier order by i.id",
+                "from MicroCaseInoculation i where i.containerIdentifier = :containerIdentifier and i.cancelledAt is null order by i.id",
                 MicroCaseInoculation.class);
         query.setParameter("containerIdentifier", containerIdentifier);
         return query.list();

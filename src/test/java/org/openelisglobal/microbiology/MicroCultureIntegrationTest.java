@@ -451,6 +451,25 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void undoneInoculationNoLongerMatchesContainerEvents() throws Exception {
+        pendingCulture(specimen);
+        var analysis = caseAnalyses.getAnalyses(microCase.getId()).getFirst();
+        var request = new MicroBenchRequestForm();
+        request.action = "INOCULATE";
+        request.sampleTypeId = specimen.getTypeOfSampleId();
+        request.cultureTestId = analysis.getTest().getId();
+        request.culture = request();
+        var reply = bench().apply(request, selection(), actor);
+        var created = cultures.get(reply.changed.getFirst()).orElseThrow();
+        String container = created.getContainerIdentifier();
+        assertEquals(1, cultures.getByContainerIdentifier(container).size());
+        bench().undo(microCase.getId(), reply.actionId, actor);
+        em.flush();
+        em.clear();
+        assertTrue(cultures.getByContainerIdentifier(container).isEmpty());
+    }
+
+    @Test
     public void batchExtensionKeepsOriginalClockAndUndoPreservesItsAudit() throws Exception {
         var row = create();
         var request = new MicroBenchRequestForm();

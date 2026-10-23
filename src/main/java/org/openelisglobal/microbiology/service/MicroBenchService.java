@@ -8,5 +8,8 @@ public interface MicroBenchService {
 
     List<MicroBenchPageForm.Row> selectedCases(String labUnitId, List<String> caseIds, String actor);
 
+    List<MicroBenchPageForm.Row> selectedCases(String labUnitId, List<String> caseIds, String actor,
+            boolean awaitingInoculation);
+
     List<MicroBenchResultForm> apply(MicroBenchRequestForm request, String actor);
 }

@@ -289,3 +289,42 @@ test.each([
     }
   },
 );
+
+test("printing awaiting inoculation retains the pending specimen grain", async () => {
+  const service = {
+    searchBench: vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: "case-1",
+          caseId: "case-1",
+          labUnitId: "unit",
+          sampleItemId: "pending-tube",
+          accessionNumber: "PENDING-001",
+          attention: [],
+          cultureTests: [],
+        },
+      ],
+      labUnits: [],
+      total: 1,
+    }),
+    printBench: vi.fn().mockResolvedValue({ id: "sheet", labUnitId: "unit" }),
+  };
+  renderPage(<CultureWorklist service={service} />);
+  await screen.findByText("PENDING-001");
+  fireEvent.change(
+    screen.getByLabelText(messages["microbiology.culture.title"]),
+    {
+      target: { value: "AWAITING_INOCULATION" },
+    },
+  );
+  fireEvent.click(screen.getAllByRole("checkbox").at(-1));
+  fireEvent.click(screen.getByRole("button", { name: "Print bench sheet" }));
+  await waitFor(() =>
+    expect(service.printBench).toHaveBeenCalledWith({
+      labUnitId: "unit",
+      caseIds: ["case-1"],
+      cultureIds: [],
+      awaitingInoculation: true,
+    }),
+  );
+});

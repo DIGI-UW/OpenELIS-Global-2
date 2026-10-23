@@ -103,6 +103,12 @@ public class MicroBenchServiceImpl implements MicroBenchService {
 
     @Transactional(readOnly = true)
     public List<MicroBenchPageForm.Row> selectedCases(String labUnitId, List<String> caseIds, String actor) {
+        return selectedCases(labUnitId, caseIds, actor, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MicroBenchPageForm.Row> selectedCases(String labUnitId, List<String> caseIds, String actor,
+            boolean awaitingInoculation) {
         if (labUnitId == null || !access.canReadLabUnit(actor, labUnitId))
             throw new org.springframework.security.access.AccessDeniedException("Lab unit rights required");
         if (caseIds == null || caseIds.isEmpty() || caseIds.size() > 100)
@@ -113,7 +119,12 @@ public class MicroBenchServiceImpl implements MicroBenchService {
             if (!labUnitId.equals(shell.labUnitId))
                 throw new org.springframework.security.access.AccessDeniedException("Case lab unit access required");
             var cultureRows = cultures.getRows(caseId).stream().filter(row -> !row.receivedIsolate).toList();
-            if (cultureRows.isEmpty()) {
+            if (awaitingInoculation) {
+                var pending = row(shell, null, List.of(), actor, cultureRows);
+                if (pending.cultureTests.isEmpty())
+                    throw new IllegalArgumentException("MICROBIOLOGY_BENCH_SELECTION");
+                selected.add(pending);
+            } else if (cultureRows.isEmpty()) {
                 selected.add(row(shell, null, List.of(), actor));
             } else {
                 for (var culture : cultureRows)

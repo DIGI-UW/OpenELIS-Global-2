@@ -43,25 +43,38 @@ public class MicroContainerLabelServiceImpl implements MicroContainerLabelServic
         var match = CODE.matcher(code == null ? "" : code);
         if (!match.matches())
             throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
-        String kind = match.group(1), caseId = match.group(2), rowId = match.group(3), owner;
-        switch (kind) {
-        case "PLT" -> {
-            var row = cultures.get(rowId).orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN"));
-            if (row.getCancelledAt() != null || "RECEIVED_ISOLATE".equals(row.getPositiveSource()))
-                throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
-            owner = row.getCaseId();
-        }
-        case "ISO" -> owner = isolates.get(rowId)
-                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN")).getCaseId();
-        case "AST" -> owner = isolates.get(runs.get(rowId)
-                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN")).getIsolateId())
-                .orElseThrow().getCaseId();
-        default -> throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
-        }
-        if (!caseId.equals(owner))
+        String kind = match.group(1), caseId = match.group(2), rowId = match.group(3);
+        var target = container(kind, rowId);
+        if (!caseId.equals(target.caseId()))
             throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
         return new MicroContainerLabelForm.Target(caseId, rowId,
                 "PLT".equals(kind) ? "CULTURE" : "ISO".equals(kind) ? "ISOLATES" : "AST");
+    }
+
+    private record Container(String caseId, String sampleItemId) {
+    }
+
+    private Container container(String kind, String rowId) {
+        if ("PLT".equals(kind)) {
+            var row = cultures.get(rowId).orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN"));
+            if (row.getCancelledAt() != null || "RECEIVED_ISOLATE".equals(row.getPositiveSource()))
+                throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
+            return new Container(row.getCaseId(), row.getSourceSampleItemId());
+        }
+        String isolateId = rowId;
+        if ("AST".equals(kind)) {
+            var run = runs.get(rowId).orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN"));
+            if ("CANCELLED".equals(run.getStatus()))
+                throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
+            isolateId = run.getIsolateId();
+        } else if (!"ISO".equals(kind)) {
+            throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
+        }
+        var isolate = isolates.get(isolateId)
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN"));
+        if (isolate.getCancelledAt() != null)
+            throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
+        return new Container(isolate.getCaseId(), isolate.getSourceSampleItemId());
     }
 
     public byte[] print(MicroContainerLabelForm request, String actor) {
@@ -70,6 +83,11 @@ public class MicroContainerLabelServiceImpl implements MicroContainerLabelServic
         var c = workspace.get(request.caseId, actor);
         if (!c.canWrite)
             throw new AccessDeniedException("Case lab unit Results rights required");
+        var target = container(request.kind, request.rowId);
+        String specimenType = cultures.getSources(request.caseId).stream()
+                .filter(sample -> java.util.Objects.equals(sample.getId(), target.sampleItemId()))
+                .map(sample -> sample.getTypeOfSample() == null ? "" : sample.getTypeOfSample().getDescription())
+                .filter(java.util.Objects::nonNull).findFirst().orElse(null);
         var preset = request.presetId == null ? null : presets.get(request.presetId);
         if (preset == null || !Boolean.TRUE.equals(preset.getIsActive())
                 || !Boolean.TRUE.equals(preset.getPrintsPerContainer()) || request.quantity < 1
@@ -110,7 +128,7 @@ public class MicroContainerLabelServiceImpl implements MicroContainerLabelServic
                             : org.openelisglobal.common.util.DateUtil.convertTimestampToStringDateAndTime(c.birthDate);
                     case PATIENT_SEX -> c.gender;
                     case CASE_NUMBER -> c.id;
-                    case SPECIMEN_TYPE -> c.specimenType;
+                    case SPECIMEN_TYPE -> specimenType;
                     default -> null;
                     };
                     text.append("\n")
