@@ -116,6 +116,14 @@ public class MicroIncomingResultServiceTest {
     }
 
     @Test
+    public void reviewedUnorderedDeliveryRequiresOwningUnitRightsBeforeQueueing() {
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> service
+                .receiveReviewed("case", "tube", "12", "ANALYZER", "source-run", "3", payload, null, "outsider", "77"));
+        verify(queue, never()).insert(any());
+        verifyZeroInteractions(results);
+    }
+
+    @Test
     public void placementRequiresResultsRightsBeforeAddingAnyTests() {
         var request = new MicroIncomingPlacementForm();
         request.sampleItemId = "tube";

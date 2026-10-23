@@ -13,6 +13,10 @@ public interface MicroIncomingResultService {
     MicroIncomingForm receive(String caseId, String sampleItemId, String testId, String source, String sourceKey,
             String raw, MicroCaseResultRequestForm result, boolean exactPlacement, String actor, String analyzerId);
 
+    MicroIncomingForm receiveReviewed(String caseId, String sampleItemId, String testId, String source,
+            String sourceKey, String raw, MicroCaseResultRequestForm result, String analysisId, String actor,
+            String analyzerId);
+
     MicroIncomingForm fail(String caseId, String id, String reason, String actor);
 
     MicroIncomingForm place(String caseId, String id, MicroIncomingPlacementForm request, String actor,

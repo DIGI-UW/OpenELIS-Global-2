@@ -56,8 +56,8 @@ public class MicroIncomingAnalyzerAdapterTest {
         item.setInvalidResultConfirmed(true);
         assertEquals(Set.of("one"), adapter.acceptReviewed(List.of(item), "reviewer"));
         var payload = ArgumentCaptor.forClass(MicroCaseResultRequestForm.class);
-        verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(),
-                payload.capture(), eq(true), eq("reviewer"), eq("77"));
+        verify(incoming).receiveReviewed(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(),
+                payload.capture(), eq("analysis"), eq("reviewer"), eq("77"));
         assertEquals("18", payload.getValue().components.get(0).value);
         assertTrue(payload.getValue().components.get(0).criticalAcknowledged);
         assertTrue(payload.getValue().components.get(0).invalidResultConfirmed);
@@ -118,7 +118,7 @@ public class MicroIncomingAnalyzerAdapterTest {
         owner.setCaseId("case"); owner.setAnalysisId("analysis");
         when(links.getActiveByAnalysisId("analysis")).thenReturn(owner);
         var reply = new MicroIncomingForm(); reply.id="incoming"; reply.state="PLACED";
-        when(incoming.receive(anyString(),anyString(),anyString(),anyString(),anyString(),anyString(),any(),anyBoolean(),anyString(), eq("77"))).thenReturn(reply);
+        when(incoming.receiveReviewed(anyString(),anyString(),anyString(),anyString(),anyString(),anyString(),any(),nullable(String.class),anyString(), eq("77"))).thenReturn(reply);
     }
 
     @Test
@@ -127,8 +127,9 @@ public class MicroIncomingAnalyzerAdapterTest {
         accept(List.of(row("one"), row("two")), "actor");
         var payload = ArgumentCaptor.forClass(MicroCaseResultRequestForm.class);
         var order = inOrder(incoming, staging);
-        order.verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), eq("connection:run-1:tube:12"),
-                eq("12 raw | 12 raw"), payload.capture(), eq(true), eq("actor"), eq("77"));
+        order.verify(incoming).receiveReviewed(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"),
+                eq("connection:run-1:tube:12"), eq("12 raw | 12 raw"), payload.capture(), eq("analysis"), eq("actor"),
+                eq("77"));
         assertEquals(2, payload.getValue().components.size());
         assertEquals("Keep instrument evidence", payload.getValue().note);
         order.verify(staging).delete("one", "actor");
@@ -146,8 +147,8 @@ public class MicroIncomingAnalyzerAdapterTest {
         related.setLabUnitId("other-unit");
         when(cases.getBySampleItem("tube")).thenReturn(List.of(related, owner));
         accept(List.of(row("one")), "actor");
-        verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(), any(),
-                eq(true), eq("actor"), eq("77"));
+        verify(incoming).receiveReviewed(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(),
+                any(), eq("analysis"), eq("actor"), eq("77"));
         verify(staging).delete("one", "actor");
     }
 
@@ -189,10 +190,25 @@ public class MicroIncomingAnalyzerAdapterTest {
     }
 
     @Test
+    public void retestChoiceKeepsTheSelectedAnalysisInsteadOfBecomingUnordered() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        when(placement.place("tube", "12", "patient", null)).thenReturn(new AnalyzerResultPlacement(
+                AnalyzerResultPlacement.State.RETEST_CHOICE, AnalyzerResultPlacement.Match.TUBE, "LAB-1", List.of(),
+                List.of(new AnalyzerResultPlacement.Candidate("analysis", "tube", "accepted", false)), "tube",
+                "analysis", AnalyzerResultPlacement.PatientCheck.NOT_REPORTED));
+        var item = decision(row("one"));
+        item.setChosenAnalysisId("analysis");
+        assertEquals(Set.of("one"), adapter.acceptReviewed(List.of(item), "actor"));
+        verify(incoming).receiveReviewed(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(),
+                any(), eq("analysis"), eq("actor"), eq("77"));
+    }
+
+    @Test
     public void rejectedPersistenceNeverDeletesSourceEvidence() {
         match(AnalyzerResultPlacement.PatientStatus.MATCH);
-        when(incoming.receive(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(),
-                anyBoolean(), anyString(), eq("77"))).thenThrow(new IllegalArgumentException("invalid components"));
+        when(incoming.receiveReviewed(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
+                any(), nullable(String.class), anyString(), eq("77")))
+                .thenThrow(new IllegalArgumentException("invalid components"));
         try {
             accept(List.of(row("one")), "actor");
             fail("Must propagate transaction failure");

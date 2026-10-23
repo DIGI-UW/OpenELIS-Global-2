@@ -69,13 +69,11 @@ public class MicroIncomingAnalyzerAdapter {
                 throw new IllegalArgumentException("MICROBIOLOGY_ANALYZER_COMPONENT_PLACEMENT_CONFLICT");
             String sampleId = match.proposedSampleItemId();
             String analysisId = match.proposedAnalysisId();
-            boolean awaiting = match.state() == AnalyzerResultPlacement.State.RESOLVED;
             var chosen = match.analyses().stream().filter(a -> a.analysisId().equals(decision.getChosenAnalysisId()))
                     .findFirst();
             if (chosen.isPresent()) {
                 sampleId = chosen.get().sampleItemId();
                 analysisId = chosen.get().analysisId();
-                awaiting = chosen.get().awaitingResult();
             }
             if (sampleId == null)
                 continue;
@@ -109,10 +107,10 @@ public class MicroIncomingAnalyzerAdapter {
                         .getMessage("note.analyzer.sampleFlags", new String[] { flags });
             String sourceKey = String.join(":", String.valueOf(first.getSourceConnectionId()),
                     first.getSourceMessageId(), String.valueOf(tube), first.getTestId());
-            incoming.receive(owners.get(0).getId(), sampleId, first.getTestId(), "ANALYZER", sourceKey,
+            incoming.receiveReviewed(owners.get(0).getId(), sampleId, first.getTestId(), "ANALYZER", sourceKey,
                     group.stream().map(r -> String.valueOf(r.source().getRawResultValue()))
                             .collect(java.util.stream.Collectors.joining(" | ")),
-                    payload, awaiting, actor, first.getAnalyzerId());
+                    payload, analysisId, actor, first.getAnalyzerId());
             for (var reviewed : group) {
                 staging.delete(reviewed.source().getId(), actor);
                 consumed.add(reviewed.source().getId());

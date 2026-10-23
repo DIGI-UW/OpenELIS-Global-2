@@ -219,6 +219,23 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void analyzerReviewAcceptanceTransfersComponentsOnlyAfterTheUserAccepts() {
+        verifyAnalyzerReview(false, false);
+    }
+
+    @Test
+    public void acceptedAnalyzerRetestCorrectsTheSelectedAnalysisWithoutLeavingAnUnplaceableItem() {
+        verifyAnalyzerReview(true, false);
+    }
+
+    @Test
+    public void analyzerReviewWithoutTheOwningLabUnitRightsLeavesSourceRowsAndResultsUntouched() {
+        verifyAnalyzerReview(false, true);
+    }
+
+    private void verifyAnalyzerReview(boolean retest, boolean denied) {
+        if (retest)
+            workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+        String priorRevision = analyses.get(analysis.getId()).getRevision();
         var patient = fixtures.createPatient("M7PAT");
         var human = new org.openelisglobal.samplehuman.valueholder.SampleHuman();
         human.setSampleId(analysis.getSampleItem().getSample().getId());
@@ -240,8 +257,8 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             row.setTestId(analysis.getTest().getId());
             row.setTestName(analysis.getTest().getName());
             row.setComponentId(component.componentId);
-            row.setResult(component.value);
-            row.setRawResultValue(component.value);
+            row.setResult(retest ? "56" : component.value);
+            row.setRawResultValue(row.getResult());
             row.setResultType("N");
             row.setCompleteDate(Timestamp.from(Instant.now()));
             row.setSourceConnectionId("M7-review-connection");
@@ -260,10 +277,21 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             return item;
         }).toList();
         analyzerAcceptance.acceptAndPersist(decisions, actor);
-        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+        assertEquals(retest ? 2 : 0, results.getResultsByAnalysis(analysis).size());
         assertTrue(incomingItems.forCase(microCase.getId()).isEmpty());
         stagedRows.forEach(row -> assertNotNull(analyzerStaging.get(row.getId())));
-        decisions.forEach(item -> item.setIsAccepted(true));
+        decisions.forEach(item -> {
+            item.setIsAccepted(true);
+            if (retest)
+                item.setChosenAnalysisId(analysis.getId());
+        });
+        if (denied) {
+            assertThrows(AccessDeniedException.class, () -> analyzerAcceptance.acceptAndPersist(decisions, outsider));
+            assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+            assertTrue(incomingItems.forCase(microCase.getId()).isEmpty());
+            stagedRows.forEach(row -> assertNotNull(analyzerStaging.get(row.getId())));
+            return;
+        }
         analyzerAcceptance.acceptAndPersist(decisions, actor);
         em.flush();
         assertEquals(2, results.getResultsByAnalysis(analysis).size());
@@ -272,6 +300,13 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(1, received.size());
         assertEquals("PLACED", received.getFirst().getState());
         assertEquals(actor, received.getFirst().getPlacedBy());
+        assertEquals(analysis.getId(), received.getFirst().getPlacementTarget());
+        if (retest) {
+            assertTrue(
+                    Integer.parseInt(analyses.get(analysis.getId()).getRevision()) > Integer.parseInt(priorRevision));
+            assertEquals(Set.of("56"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                    .collect(java.util.stream.Collectors.toSet()));
+        }
         assertEquals(Long.valueOf(0),
                 em.createQuery("select count(r) from AnalyzerResults r where r.id in :ids", Long.class)
                         .setParameter("ids", stagedRows.stream().map(row -> row.getId()).toList()).getSingleResult());
@@ -392,6 +427,34 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
                 () -> incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
                         "ANALYZER", "second-run", "99", replacement, true, actor));
         assertEquals("12", workspace.getTests(microCase.getId(), actor).get(0).components.get(0).getResultValue());
+    }
+
+    @Test
+    public void reviewedLateResultKeepsItsTargetForPlacementDuringAmendment() {
+        workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+        microCase.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(microCase);
+        var replacement = payload();
+        replacement.components.get(0).value = "56";
+        var queued = incoming.receiveReviewed(microCase.getId(), microCase.getSampleItemId(),
+                analysis.getTest().getId(), "ANALYZER", "reviewed-late-result", "56", replacement, analysis.getId(),
+                actor, analyzer());
+        assertEquals("NEEDS_AMENDMENT", queued.state);
+        assertEquals("12",
+                workspace.getTests(microCase.getId(), actor).getFirst().components.getFirst().getResultValue());
+        // The amendment boundary unlocks case work before this explicit placement.
+        microCase.setStage("AMENDED");
+        microCase.setFinalReleaseState("AMENDMENT_IN_PROGRESS");
+        cases.update(microCase);
+        em.flush();
+        em.clear();
+        var placement = new MicroIncomingPlacementForm();
+        placement.sampleItemId = microCase.getSampleItemId();
+        var placed = incoming.place(microCase.getId(), queued.id, placement, actor, request(actor));
+        assertEquals("PLACED", placed.state);
+        assertEquals(analysis.getId(), placed.placementTarget);
+        assertEquals("56",
+                workspace.getTests(microCase.getId(), actor).getFirst().components.getFirst().getResultValue());
     }
 
     @Test
