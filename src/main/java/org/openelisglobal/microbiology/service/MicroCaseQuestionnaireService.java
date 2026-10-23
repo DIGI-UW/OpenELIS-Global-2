@@ -76,9 +76,10 @@ public class MicroCaseQuestionnaireService {
                 || !Objects.equals(current.version, input.version))
             throw new IllegalArgumentException("MICROBIOLOGY_QUESTIONNAIRE_CHANGED");
         // Program answers belong to the order; all cases sharing them must be writable.
-        for (var sibling : cases.getByOrder(c.getSampleId()))
-            if (Objects.equals(sibling.getProgramId(), c.getProgramId()))
-                authorization.requireWrite(sibling.getId(), actor, Constants.ROLE_RESULTS);
+        var affected = cases.getByOrder(c.getSampleId()).stream()
+                .filter(sibling -> Objects.equals(sibling.getProgramId(), c.getProgramId())).toList();
+        for (var sibling : affected)
+            authorization.requireWrite(sibling.getId(), actor, Constants.ROLE_RESULTS);
         var parser = FhirContext.forR4Cached().newJsonParser();
         var questionnaire = parser.parseResource(Questionnaire.class, current.questionnaireJson);
         QuestionnaireResponse submitted;
@@ -113,13 +114,16 @@ public class MicroCaseQuestionnaireService {
         association.setSysUserId(actor);
         associations.save(association);
         storage.saveQuestionnaireResponse(response);
-        var event = new MicroCaseActivity();
-        event.setCaseId(caseId);
-        event.setActivityType("QUESTIONNAIRE_UPDATED");
-        event.setPerformedBy(actor);
-        event.setOccurredAt(MicroCaseServiceImpl.now());
-        event.setSysUserId(actor);
-        activities.insert(event);
+        var occurredAt = MicroCaseServiceImpl.now();
+        for (var sibling : affected) {
+            var event = new MicroCaseActivity();
+            event.setCaseId(sibling.getId());
+            event.setActivityType("QUESTIONNAIRE_UPDATED");
+            event.setPerformedBy(actor);
+            event.setOccurredAt(occurredAt);
+            event.setSysUserId(actor);
+            activities.insert(event);
+        }
         return get(caseId);
     }
 

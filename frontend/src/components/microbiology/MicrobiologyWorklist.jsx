@@ -767,6 +767,8 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 onClick={() => {
                   const next = new URLSearchParams(location.search);
                   const keys = [
+                    "from",
+                    "to",
                     "status",
                     "stage",
                     "due",

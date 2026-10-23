@@ -136,6 +136,31 @@ public class MicroCaseQuestionnaireServiceTest {
     }
 
     @Test
+    public void recordsSharedQuestionnaireChangesOnEveryAffectedCaseOnly() {
+        var sibling = new MicroCase();
+        sibling.setId("sibling");
+        sibling.setProgramId("program");
+        var other = new MicroCase();
+        other.setId("other");
+        other.setProgramId("different-program");
+        when(cases.getByOrder("order")).thenReturn(List.of(c, sibling, other));
+        service.save("case", input(), "actor");
+        var events = org.mockito.ArgumentCaptor
+                .forClass(org.openelisglobal.microbiology.valueholder.MicroCaseActivity.class);
+        verify(activities, times(2)).insert(events.capture());
+        assertEquals(Set.of("case", "sibling"),
+                events.getAllValues().stream().map(e -> e.getCaseId()).collect(java.util.stream.Collectors.toSet()));
+        events.getAllValues().forEach(e -> {
+            assertEquals("QUESTIONNAIRE_UPDATED", e.getActivityType());
+            assertEquals("actor", e.getPerformedBy());
+            assertNotNull(e.getOccurredAt());
+        });
+        verify(authorization).requireWrite(eq("sibling"), eq("actor"), anyString());
+        verify(authorization, never()).requireWrite(eq("other"), anyString(), anyString());
+        verify(storage).saveQuestionnaireResponse(any());
+    }
+
+    @Test
     public void doesNotChangeOrderAnswersWhenSiblingCaseIsReadOnly() {
         var sibling = new MicroCase();
         sibling.setId("sibling");
