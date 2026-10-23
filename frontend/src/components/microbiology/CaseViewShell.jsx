@@ -3,7 +3,7 @@ import {
   MICROBIOLOGY_CASE_READY_MARK,
   markMicrobiologyReady,
 } from "./MicrobiologyPerformance";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import { useIntl } from "react-intl";
 import {
   useParams,
@@ -32,6 +32,8 @@ import {
   TableCell,
   TableContainer,
 } from "@carbon/react";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../utils/Utils";
 import "./CaseWorkspace.scss";
 import "./MicrobiologyCaseView.css";
 import CaseQuestionnaire from "./CaseQuestionnaire";
@@ -50,6 +52,8 @@ export default function CaseViewShell({
   caseId: providedId,
 }) {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
   const [infoOpen, setInfoOpen] = useState(true);
   const params = useParams();
   const location = useLocation();
@@ -476,7 +480,7 @@ export default function CaseViewShell({
                   </TableBody>
                 </Table>
               </TableContainer>
-              {detail.canWrite && detail.orderId && (
+              {detail.canWrite && canCorrectSamples && detail.orderId && (
                 <RouterLink
                   to={`/ModifyOrder?accessionNumber=${encodeURIComponent(detail.accessionNumber)}`}
                 >

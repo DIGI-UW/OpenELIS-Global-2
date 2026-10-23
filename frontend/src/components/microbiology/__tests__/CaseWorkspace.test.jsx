@@ -10,6 +10,8 @@ import {
   MICROBIOLOGY_CASE_READY_MARK,
   markMicrobiologyReady,
 } from "../MicrobiologyPerformance";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { Roles } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
 vi.mock("../CaseTestingWorkspace", () => ({ default: () => null }));
@@ -278,3 +280,34 @@ test("related cases retain worklist filters but discard the previous case's acti
     await screen.findByRole("link", { name: /M2-001 · TB lab/ }),
   ).toHaveAttribute("href", "/Microbiology/cases/case-2?labUnitId=10");
 });
+
+test.each([
+  [[Roles.RESULTS], false],
+  [[Roles.RESULTS, Roles.RECEPTION], true],
+  [[Roles.GLOBAL_ADMIN], false],
+])(
+  "sample correction follows the Reception route gate for roles %j",
+  async (roles, allowed) => {
+    const service = {
+      getCase: vi.fn().mockResolvedValue({ ...shell, orderId: "42" }),
+    };
+    renderPage(
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles } }}
+      >
+        <CaseViewShell service={service} caseId="case-1" />
+      </UserSessionDetailsContext.Provider>,
+      "/Microbiology/cases/case-1",
+    );
+    await screen.findByText("Test Patient");
+    const link = screen.queryByRole("link", {
+      name: messages["microbiology.case.correctSample"],
+    });
+    if (allowed)
+      expect(link).toHaveAttribute(
+        "href",
+        "/ModifyOrder?accessionNumber=M2-001",
+      );
+    else expect(link).not.toBeInTheDocument();
+  },
+);
