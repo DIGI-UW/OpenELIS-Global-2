@@ -690,4 +690,7 @@
   <!-- A held analyzer result keeps how its record read on arrival (spec point 13). -->
   <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
   <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
+
+  <!-- Issue #4414: Configure RetroCI DBS sample type via site setting -->
+  <include relativeToChangelogFile="true" file="144-retroci-dbs-sample-type-config.xml"/>
 </databaseChangeLog>

@@ -51,14 +51,14 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
-import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
-import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -73,12 +73,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     private static final String REJECT_VALUE = "XXXX";
     private static final String RESULT_SUBJECT = "Analyzer Result Note";
-    private static final Set<String> DICTIONARY_OPTION_TYPES = Set.of("D", "M", "Q", "C");
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
-    @Autowired
-    private AnalyzerResultPlacementService placementService;
     @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
@@ -98,8 +95,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     @Autowired
     private TestResultService testResultService;
     @Autowired
-    private TestResultComponentService testResultComponentService;
-    @Autowired
     private TypeOfSampleService typeOfSampleService;
     @Autowired
     private TypeOfSampleTestService typeOfSampleTestService;
@@ -113,6 +108,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private IStatusService statusService;
     @Autowired
     private ResultLimitService resultLimitService;
+    @Autowired
+    private SiteInformationService siteInformationService;
 
     // ---------------------------------------------------------------
     // Public entry point
@@ -129,16 +126,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
         retainResolvableResults(actionableResults);
-        applyRedirects(actionableResults, sysUserId);
         keepGroupingsOnOneOrder(actionableResults);
 
-        if (actionableResults.isEmpty()) {
-            return;
-        }
-
-        // A result whose specimen ID matches several analyses has no placement
-        // until the reviewer chooses one; its row stays staged, the rest proceed.
-        holdRowsAwaitingPlacement(actionableResults, sysUserId);
         if (actionableResults.isEmpty()) {
             return;
         }
@@ -152,7 +141,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             return;
         }
 
-        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults);
+        // Remove actionable items from the remaining list so we can detect
+        // childless controls among the leftovers.
+        List<AnalyzerResultItem> remaining = new ArrayList<>(allResults);
+        remaining.removeAll(actionableResults);
+
+        List<AnalyzerResultItem> childlessControls = extractChildlessControls(remaining);
+        retainResolvableResults(childlessControls);
+        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
+                childlessControls);
 
         List<SampleGrouping> sampleGroupList = new ArrayList<>();
         buildSampleGroupings(actionableResults, sampleGroupList, sysUserId);
@@ -227,13 +224,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 item.setReadOnly(false);
                 return false;
             }
-            if (AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(staged.getImportIssueReason())
-                    && (item.getIsAccepted() || item.getIsRejected()) && staged.getTestId() != null
-                    && Objects.equals(staged.getTestId(), item.getTestId())) {
-                restoreStagedIdentity(item, staged);
-                item.setReadOnly(false);
-                return false;
-            }
             if (staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
                     || GenericValidator.isBlankOrNull(staged.getTestId())) {
                 return true;
@@ -241,26 +231,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             restoreStagedIdentity(item, staged);
             return false;
         });
-    }
-
-    /**
-     * The internal notes an accepted result takes: the reviewer's note, and the
-     * warnings the instrument raised about its sample, each as its own note.
-     */
-    private List<Note> notesFor(Analysis analysis, AnalyzerResultItem resultItem, String sysUserId) {
-        List<Note> notes = new ArrayList<>();
-        if (!GenericValidator.isBlankOrNull(resultItem.getNote())) {
-            notes.add(noteService.createSavableNote(analysis, NoteServiceImpl.NoteType.INTERNAL, resultItem.getNote(),
-                    RESULT_SUBJECT, sysUserId));
-        }
-        if (!GenericValidator.isBlankOrNull(resultItem.getInstrumentSampleFlags())) {
-            notes.add(
-                    noteService.createSavableNote(analysis, NoteServiceImpl.NoteType.INTERNAL,
-                            MessageUtil.getMessage("note.analyzer.sampleFlags",
-                                    new String[] { resultItem.getInstrumentSampleFlags() }),
-                            RESULT_SUBJECT, sysUserId));
-        }
-        return notes;
     }
 
     /**
@@ -272,10 +242,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      */
     private void restoreStagedIdentity(AnalyzerResultItem item, AnalyzerResults staged) {
         item.setAccessionNumber(staged.getAccessionNumber());
-        item.setInstrumentSpecimenId(staged.getInstrumentSpecimenId());
-        item.setInstrumentPatientId(staged.getInstrumentPatientId());
-        item.setInstrumentPatientName(staged.getInstrumentPatientName());
-        item.setInstrumentSampleFlags(staged.getInstrumentSampleFlags());
         item.setTestId(staged.getTestId());
         item.setComponentId(staged.getComponentId());
         item.setIsControl(staged.getIsControl());
@@ -287,20 +253,13 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setManual(false);
     }
 
-    @Override
-    public String significantDigitsFor(AnalyzerResults staged) {
+    /** As the review page derives it: the test's first active result definition. */
+    private String significantDigitsFor(AnalyzerResults staged) {
         if (staged.getTestId() == null || GenericValidator.isBlankOrNull(staged.getResult())) {
             return null;
         }
-        if (staged.getComponentId() != null) {
-            return testResultComponentService.getMatch("id", staged.getComponentId())
-                    .map(TestResultComponent::getSignificantDigits).map(String::valueOf).orElse(null);
-        }
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(staged.getTestId());
-        if (testResults == null || testResults.isEmpty()) {
-            return null;
-        }
-        return filterTestResultsByComponent(testResults, null).get(0).getSignificantDigits();
+        return testResults == null || testResults.isEmpty() ? null : testResults.get(0).getSignificantDigits();
     }
 
     /**
@@ -320,102 +279,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                             + ", not its grouping's order " + order + "; it stays staged.");
             return true;
         });
-    }
-
-    // ---------------------------------------------------------------
-    // Placement hold
-    // ---------------------------------------------------------------
-
-    /**
-     * Removes each patient result whose analysis cannot be told without a choice:
-     * several analyses match its specimen ID and the reviewer chose none of them,
-     * or the instrument's patient is not the order's patient and the reviewer gave
-     * no note saying why. The staged row keeps its place in review, flagged
-     * {@code awaiting_placement}.
-     */
-    private void holdRowsAwaitingPlacement(List<AnalyzerResultItem> actionableResults, String sysUserId) {
-        List<AnalyzerResultItem> held = actionableResults.stream()
-                .filter(item -> !item.getIsControl() && !GenericValidator.isBlankOrNull(item.getTestId()))
-                .filter(item -> awaitsPlacement(item)).toList();
-        holdForPlacement(actionableResults, held, sysUserId);
-    }
-
-    private void holdForPlacement(List<AnalyzerResultItem> actionableResults, List<AnalyzerResultItem> held,
-            String sysUserId) {
-        actionableResults.removeAll(held);
-        for (AnalyzerResultItem item : held) {
-            AnalyzerResults stagedRow = analyzerResultsService.get(item.getId());
-            if (stagedRow != null) {
-                stagedRow.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT);
-                stagedRow.setSysUserId(sysUserId);
-                analyzerResultsService.update(stagedRow);
-            }
-            LogEvent.logWarn(this.getClass().getSimpleName(), "holdForPlacement",
-                    "holding specimen " + specimenIdOf(item) + " test " + item.getTestId()
-                            + " awaiting placement: its analysis is not determined");
-        }
-    }
-
-    /**
-     * The reviewer placed a grouping's results on another existing order, the way
-     * to correct a specimen ID the instrument misread. It takes a reason, which is
-     * recorded on each analysis, and an order that exists; without either, the
-     * grouping's rows stay staged instead of guessing.
-     */
-    private void applyRedirects(List<AnalyzerResultItem> actionableResults, String sysUserId) {
-        Map<Integer, AnalyzerResultItem> requests = new HashMap<>();
-        for (AnalyzerResultItem item : actionableResults) {
-            if (!item.getIsControl() && !GenericValidator.isBlankOrNull(item.getRedirectAccession())) {
-                requests.putIfAbsent(item.getSampleGroupingNumber(), item);
-            }
-        }
-        if (requests.isEmpty()) {
-            return;
-        }
-        List<AnalyzerResultItem> held = new ArrayList<>();
-        for (AnalyzerResultItem item : actionableResults) {
-            AnalyzerResultItem request = requests.get(item.getSampleGroupingNumber());
-            if (request == null || item.getIsControl()) {
-                continue;
-            }
-            String target = request.getRedirectAccession().trim();
-            if (GenericValidator.isBlankOrNull(request.getRedirectReason())
-                    || sampleService.getSampleByAccessionNumber(target) == null) {
-                held.add(item);
-                continue;
-            }
-            String reported = specimenIdOf(item);
-            String note = "Instrument reported specimen ID " + reported + "; the reviewer placed it on order " + target
-                    + ": " + request.getRedirectReason().trim();
-            item.setNote(GenericValidator.isBlankOrNull(item.getNote()) ? note : item.getNote() + " " + note);
-            item.setAccessionNumber(target);
-            item.setInstrumentSpecimenId(target);
-        }
-        holdForPlacement(actionableResults, held, sysUserId);
-    }
-
-    private boolean awaitsPlacement(AnalyzerResultItem item) {
-        AnalyzerResultPlacement placed = placementOf(item);
-        boolean unchosen = placed.state() == AnalyzerResultPlacement.State.MULTI_TUBE
-                && !isCandidate(placed, item.getChosenAnalysisId());
-        boolean unexplainedPatient = placed.patient().status() == AnalyzerResultPlacement.PatientStatus.MISMATCH
-                && GenericValidator.isBlankOrNull(item.getNote());
-        return unchosen || unexplainedPatient;
-    }
-
-    private static boolean isCandidate(AnalyzerResultPlacement placed, String analysisId) {
-        return !GenericValidator.isBlankOrNull(analysisId)
-                && placed.analyses().stream().anyMatch(candidate -> candidate.analysisId().equals(analysisId));
-    }
-
-    private AnalyzerResultPlacement placementOf(AnalyzerResultItem item) {
-        return placementService.place(specimenIdOf(item), item.getTestId(), item.getInstrumentPatientId(),
-                item.getInstrumentPatientName());
-    }
-
-    private static String specimenIdOf(AnalyzerResultItem item) {
-        return GenericValidator.isBlankOrNull(item.getInstrumentSpecimenId()) ? item.getAccessionNumber()
-                : item.getInstrumentSpecimenId();
     }
 
     // ---------------------------------------------------------------
@@ -548,7 +411,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * on the accession pins one of the candidates, and no special-case rule
      * (RetroCI LDBS→DBS) applies.
      */
-    private boolean needsSpecimenChoice(AnalyzerResultItem item) {
+    boolean needsSpecimenChoice(AnalyzerResultItem item) {
         if (item.getIsControl() || GenericValidator.isBlankOrNull(item.getTestId())) {
             return false;
         }
@@ -557,9 +420,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 .anyMatch(candidate -> candidate.getTypeOfSampleId().equals(item.getTypeOfSampleId()))) {
             return false;
         }
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && item.getAccessionNumber() != null
+        String dbsSampleTypeId = resolveDbsSampleTypeId();
+        if (isRetroCi() && dbsSampleTypeId != null && item.getAccessionNumber() != null
                 && item.getAccessionNumber().startsWith("LDBS")
-                && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
+                && candidates.stream().anyMatch(c -> dbsSampleTypeId.equals(c.getTypeOfSampleId()))) {
             return false;
         }
         Sample sample = sampleService.getSampleByAccessionNumber(item.getAccessionNumber());
@@ -579,32 +443,41 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Extraction helpers
     // ---------------------------------------------------------------
 
-    /**
-     * Applies the reviewer's decisions. Accept, retest and ignore are decided per
-     * test on each tube: a test's components follow its decision, and the other
-     * tests, and the same test on another tube of the order, keep their own. Every
-     * row of a grouping takes its specimen's accession.
-     */
     List<AnalyzerResultItem> extractActionableResult(List<AnalyzerResultItem> resultItemList) {
         List<AnalyzerResultItem> actionableResultList = new ArrayList<>();
-        Map<DecisionKey, AnalyzerResultItem> selectedActions = new HashMap<>();
+        Map<Integer, AnalyzerResultItem> selectedActions = new HashMap<>();
         for (AnalyzerResultItem item : resultItemList) {
             if (item.getIsAccepted() || item.getIsRejected() || item.getIsDeleted()) {
-                selectedActions.putIfAbsent(DecisionKey.of(item), item);
+                selectedActions.putIfAbsent(item.getSampleGroupingNumber(), item);
             }
         }
 
-        Map<Integer, String> accessionByGrouping = new HashMap<>();
-        for (AnalyzerResultItem resultItem : resultItemList) {
-            String accessionNumber = accessionByGrouping.computeIfAbsent(resultItem.getSampleGroupingNumber(),
-                    grouping -> resultItem.getAccessionNumber());
-            AnalyzerResultItem action = selectedActions.getOrDefault(DecisionKey.of(resultItem), resultItem);
-            resultItem.setAccessionNumber(accessionNumber);
-            resultItem.setIsAccepted(action.getIsAccepted());
-            resultItem.setIsRejected(action.getIsRejected());
-            resultItem.setIsDeleted(action.getIsDeleted());
+        int currentSampleGrouping = 0;
+        boolean acceptResult = false;
+        boolean rejectResult = false;
+        boolean deleteResult = false;
+        String accessionNumber = null;
 
-            if (resultItem.getIsAccepted() || resultItem.getIsRejected() || resultItem.getIsDeleted()) {
+        for (AnalyzerResultItem resultItem : resultItemList) {
+
+            if (currentSampleGrouping != resultItem.getSampleGroupingNumber()) {
+                currentSampleGrouping = resultItem.getSampleGroupingNumber();
+                AnalyzerResultItem action = selectedActions.getOrDefault(currentSampleGrouping, resultItem);
+                acceptResult = action.getIsAccepted();
+                rejectResult = action.getIsRejected();
+                deleteResult = action.getIsDeleted();
+                accessionNumber = resultItem.getAccessionNumber();
+                resultItem.setIsAccepted(acceptResult);
+                resultItem.setIsRejected(rejectResult);
+                resultItem.setIsDeleted(deleteResult);
+            } else {
+                resultItem.setAccessionNumber(accessionNumber);
+                resultItem.setIsAccepted(acceptResult);
+                resultItem.setIsRejected(rejectResult);
+                resultItem.setIsDeleted(deleteResult);
+            }
+
+            if (acceptResult || rejectResult || deleteResult) {
                 actionableResultList.add(resultItem);
             }
         }
@@ -612,31 +485,54 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return actionableResultList;
     }
 
-    /**
-     * One test on one tube. A row staged without a tube id counts as its
-     * accession's tube, as staging and placement count it.
-     */
-    private record DecisionKey(int grouping, String testId, String tube) {
+    List<AnalyzerResultItem> extractChildlessControls(List<AnalyzerResultItem> resultItemList) {
+        /*
+         * A childless control is a control which is adjacent to another control. It is
+         * the first set of controls which will be removed. For that reason we're going
+         * through the list backwards.
+         */
+        List<AnalyzerResultItem> childLessControlList = new ArrayList<>();
+        int sampleGroupingNumber = 0;
+        boolean lastGroupIsControl = false;
+        boolean inControlGroup = true; // covers the bottom control has no children
 
-        static DecisionKey of(AnalyzerResultItem item) {
-            String tube = GenericValidator.isBlankOrNull(item.getInstrumentSpecimenId()) ? item.getAccessionNumber()
-                    : item.getInstrumentSpecimenId();
-            return new DecisionKey(item.getSampleGroupingNumber(), item.getTestId(), tube);
+        for (int i = resultItemList.size() - 1; i >= 0; i--) {
+            AnalyzerResultItem resultItem = resultItemList.get(i);
+
+            if (sampleGroupingNumber != resultItem.getSampleGroupingNumber()) {
+                lastGroupIsControl = inControlGroup;
+                inControlGroup = resultItem.getIsControl();
+                sampleGroupingNumber = resultItem.getSampleGroupingNumber();
+            }
+
+            if (lastGroupIsControl && resultItem.getIsControl()) {
+                childLessControlList.add(resultItem);
+            }
         }
+
+        return childLessControlList;
     }
 
-    /**
-     * The staged rows a save removes: only those the reviewer acted on. A row
-     * nobody acted on, such as a control waiting for the QC module, stays.
-     */
-    List<AnalyzerResults> getRemovableAnalyzerResults(List<AnalyzerResultItem> actionableResults) {
+    List<AnalyzerResults> getRemovableAnalyzerResults(List<AnalyzerResultItem> actionableResults,
+            List<AnalyzerResultItem> childlessControls) {
+
         Set<AnalyzerResults> deletableAnalyzerResults = new HashSet<>();
+
         for (AnalyzerResultItem resultItem : actionableResults) {
             AnalyzerResults result = new AnalyzerResults();
             result.setId(resultItem.getId());
             deletableAnalyzerResults.add(result);
         }
-        return new ArrayList<>(deletableAnalyzerResults);
+
+        for (AnalyzerResultItem resultItem : childlessControls) {
+            AnalyzerResults result = new AnalyzerResults();
+            result.setId(resultItem.getId());
+            deletableAnalyzerResults.add(result);
+        }
+
+        List<AnalyzerResults> resultList = new ArrayList<>();
+        resultList.addAll(deletableAnalyzerResults);
+        return resultList;
     }
 
     // ---------------------------------------------------------------
@@ -748,7 +644,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<Analysis> analysisList = new ArrayList<>();
         List<Result> resultList = new ArrayList<>();
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<List<Note>> noteList = new ArrayList<>();
+        List<Note> noteList = new ArrayList<>();
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
@@ -824,7 +720,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<Analysis> analysisList = new ArrayList<>();
         List<Result> resultList = new ArrayList<>();
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<List<Note>> noteList = new ArrayList<>();
+        List<Note> noteList = new ArrayList<>();
 
         Patient patient = sampleHumanService.getPatientForSample(sample);
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
@@ -856,16 +752,24 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<Analysis> analysisList = new ArrayList<>();
         List<Result> resultList = new ArrayList<>();
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<List<Note>> noteList = new ArrayList<>();
+        List<Note> noteList = new ArrayList<>();
 
         // New analyses are persisted on the grouping's sample item; an existing
         // analysis keeps its own, which serves only when nothing new is added.
         SampleItem newAnalysisSampleItem = null;
         SampleItem existingAnalysisSampleItem = null;
+        List<Analysis> dBAnalysisList = analysisService.getAnalysesBySampleId(sample.getId());
         Patient patient = sampleHumanService.getPatientForSample(sample);
 
         for (AnalyzerResultItem resultItem : groupedAnalyzerResultItems) {
-            Analysis analysis = getExistingAnalysis(resultItem);
+            Analysis analysis = null;
+
+            for (Analysis dbAnalysis : dBAnalysisList) {
+                if (dbAnalysis.getTest().getId().equals(resultItem.getTestId())) {
+                    analysis = dbAnalysis;
+                    break;
+                }
+            }
 
             if (analysis == null) {
                 Test test = testService.get(resultItem.getTestId());
@@ -885,6 +789,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 }
                 analysis.setSampleItem(newAnalysisSampleItem);
             } else {
+                dBAnalysisList.remove(analysis);
                 if (existingAnalysisSampleItem == null) {
                     existingAnalysisSampleItem = analysis.getSampleItem();
                     existingAnalysisSampleItem.setSysUserId(sysUserId);
@@ -900,7 +805,13 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
             resultList.add(result);
 
-            noteList.add(notesFor(analysis, resultItem, sysUserId));
+            if (GenericValidator.isBlankOrNull(resultItem.getNote())) {
+                noteList.add(null);
+            } else {
+                Note note = noteService.createSavableNote(analysis, NoteServiceImpl.NoteType.INTERNAL,
+                        resultItem.getNote(), RESULT_SUBJECT, sysUserId);
+                noteList.add(note);
+            }
         }
         recordResultsOnOrder(sample, resultList, true, sysUserId);
 
@@ -982,7 +893,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<Analysis> analysisList = new ArrayList<>();
         List<Result> resultList = new ArrayList<>();
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<List<Note>> noteList = new ArrayList<>();
+        List<Note> noteList = new ArrayList<>();
 
         sample.setAccessionNumber(groupedAnalyzerResultItems.get(0).getAccessionNumber());
         sample.setDomain("H");
@@ -1022,7 +933,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     private void createAndAddItems_Analysis_Results(List<AnalyzerResultItem> groupedAnalyzerResultItems,
             List<Analysis> analysisList, List<Result> resultList, Map<Result, String> resultToUserSelectionMap,
-            List<List<Note>> noteList, List<String> skippedResultIds, Patient patient, String sysUserId) {
+            List<Note> noteList, List<String> skippedResultIds, Patient patient, String sysUserId) {
 
         for (AnalyzerResultItem resultItem : groupedAnalyzerResultItems) {
             Analysis analysis = getExistingAnalysis(resultItem);
@@ -1049,7 +960,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                                 : AnalysisStatus.TechnicalRejected);
                 analysis.setStatusId(statusId);
                 analysis.setAnalyzerId(resultItem.getAnalyzerId());
-                analysis.setRevision(nextRevision(analysis));
             }
 
             analysis.setSysUserId(sysUserId);
@@ -1058,7 +968,13 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             Result result = getResult(analysis, patient, resultItem, sysUserId);
             resultList.add(result);
             resultToUserSelectionMap.put(result, resultItem.getReflexSelectionId());
-            noteList.add(notesFor(analysis, resultItem, sysUserId));
+            if (GenericValidator.isBlankOrNull(resultItem.getNote())) {
+                noteList.add(null);
+            } else {
+                Note note = noteService.createSavableNote(analysis, NoteServiceImpl.NoteType.INTERNAL,
+                        resultItem.getNote(), RESULT_SUBJECT, sysUserId);
+                noteList.add(note);
+            }
         }
     }
 
@@ -1079,20 +995,11 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return match;
     }
 
-    /**
-     * The one analysis this result lands on: the single match, or the reviewer's
-     * pick among several. Null when the test is not ordered. Never the first of
-     * many.
-     */
     private Analysis getExistingAnalysis(AnalyzerResultItem resultItem) {
-        AnalyzerResultPlacement placed = placementOf(resultItem);
-        String chosen = resultItem.getChosenAnalysisId();
-        if (isCandidate(placed, chosen)) {
-            return analysisService.get(chosen);
-        }
-        return placed.proposedAnalysisId() != null && placed.analyses().size() == 1
-                ? analysisService.get(placed.proposedAnalysisId())
-                : null;
+        List<Analysis> analysisList = analysisService.getAnalysisByAccessionAndTestId(resultItem.getAccessionNumber(),
+                resultItem.getTestId());
+
+        return analysisList.isEmpty() ? null : analysisList.get(0);
     }
 
     private Result getResult(Analysis analysis, Patient patient, AnalyzerResultItem resultItem, String sysUserId) {
@@ -1115,7 +1022,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 } else {
                     result.setValue(resultValue);
                 }
-                applySignificantDigits(result, resultItem, "getResult");
                 result.setSysUserId(sysUserId);
 
                 setAnalyte(result);
@@ -1145,28 +1051,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             result.setValue(rawValue);
             result.setResultType(resultItem.getTestResultType());
         }
-        applySignificantDigits(result, resultItem, "createNewResult");
+        if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
+            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
+                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+            } else {
+                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "createNewResult",
+                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
+            }
+        }
 
         addMinMaxNormal(result, resultItem, patient);
         result.setSysUserId(sysUserId);
 
         return result;
-    }
-
-    /**
-     * The current configuration's precision. A blank one clears what a replaced
-     * result carried, so it is reported as a new result under the same
-     * configuration would be.
-     */
-    private static void applySignificantDigits(Result result, AnalyzerResultItem resultItem, String caller) {
-        if (GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            result.clearSignificantDigits();
-        } else if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
-            result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
-        } else {
-            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), caller,
-                    "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
-        }
     }
 
     private void populateAnalysis(AnalyzerResultItem resultItem, Analysis analysis, Test test) {
@@ -1180,24 +1077,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             analysis.setTest(test);
             analysis.setTestSection(test.getTestSection());
             analysis.setIsReportable(test.getIsReportable());
-            analysis.setRevision(nextRevision(analysis));
+            analysis.setRevision("0");
             analysis.setAnalyzerId(resultItem.getAnalyzerId());
         }
-    }
-
-    /**
-     * A first result leaves the revision alone ("0" for a new analysis). Saving a
-     * result over one the analysis already holds is a correction, so the revision
-     * rises above 1, which validation reads as modified and reports as corrected.
-     */
-    private String nextRevision(Analysis analysis) {
-        boolean replacing = analysis.getId() != null && !resultService.getResultsByAnalysis(analysis).isEmpty();
-        if (!replacing) {
-            return GenericValidator.isBlankOrNull(analysis.getRevision()) ? "0" : analysis.getRevision();
-        }
-        int current = StringUtil.isInteger(analysis.getRevision()) ? Integer.parseInt(analysis.getRevision().trim())
-                : 0;
-        return String.valueOf(Math.max(current, 1) + 1);
     }
 
     private void setAnalyte(Result result) {
@@ -1218,15 +1100,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<TestResult> candidates = filterTestResultsByComponent(all, resultItem.getComponentId());
         boolean hasDictCandidates = candidates.stream().anyMatch(c -> "D".equals(c.getTestResultType()));
         if (hasDictCandidates) {
-            // Another component of the test can offer the same answer, so the answer is
-            // matched among this record's own options, never test-wide.
-            TestResult testResult = null;
-            if (StringUtil.isInteger(resultItem.getResult())) {
-                String answer = resultItem.getResult().trim();
-                testResult = candidates.stream()
-                        .filter(candidate -> DICTIONARY_OPTION_TYPES.contains(candidate.getTestResultType())
-                                && answer.equals(candidate.getValue()))
-                        .findFirst().orElse(null);
+            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
+                    resultItem.getResult());
+            // Only trust the test-scoped dictionary match when it belongs to the target
+            // component; otherwise fall through to the component-filtered candidates.
+            String resolvedTestResultId = testResult == null ? null : testResult.getId();
+            boolean belongsToComponent = candidates.stream()
+                    .anyMatch(candidate -> candidate.getId().equals(resolvedTestResultId));
+            if (testResult != null && !belongsToComponent) {
+                testResult = null;
             }
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
                 String desired = resultItem.getResult().trim();
@@ -1250,26 +1132,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * Keep only the test_result rows belonging to the resolved component. A main
-     * result (null) takes the rows on no component or on the test's primary
-     * component, never another component's: the rows come back in no set order.
-     * Falls back to the full list when no row matches, so a test whose test_result
-     * rows predate components still works.
+     * Keep only the test_result rows belonging to the resolved component (null =
+     * PRIMARY / legacy component_id-null rows). Falls back to the full list when no
+     * row matches, so a test whose test_result rows predate components still works.
      */
     private List<TestResult> filterTestResultsByComponent(List<TestResult> candidates, String componentId) {
         List<TestResult> filtered = new ArrayList<>();
         for (TestResult candidate : candidates) {
             String candidateComponentId = candidate.getComponentId();
-            if (componentId == null ? onMainRecord(candidateComponentId) : componentId.equals(candidateComponentId)) {
+            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
                 filtered.add(candidate);
             }
         }
         return filtered.isEmpty() ? candidates : filtered;
-    }
-
-    private boolean onMainRecord(String componentId) {
-        return componentId == null || testResultComponentService.getMatch("id", componentId)
-                .map(TestResultComponent::getIsPrimary).orElse(false);
     }
 
     private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {
@@ -1305,10 +1180,11 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
     }
 
-    private String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")
-                && typeOfSampleIds.contains(DBS_SAMPLE_TYPE_ID)) {
-            return DBS_SAMPLE_TYPE_ID;
+    String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
+        String dbsSampleTypeId = resolveDbsSampleTypeId();
+        if (isRetroCi() && dbsSampleTypeId != null && accessionNumber != null && accessionNumber.startsWith("LDBS")
+                && typeOfSampleIds.contains(dbsSampleTypeId)) {
+            return dbsSampleTypeId;
         }
         if (typeOfSampleIds.size() > 1) {
             // Accepted ambiguous groups are intercepted by the FR-8 hold; this
@@ -1367,33 +1243,84 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Configuration constants (copied from controller)
     // ---------------------------------------------------------------
 
-    private static final boolean IS_RETROCI = org.openelisglobal.common.util.ConfigurationProperties.getInstance()
-            .isPropertyValueEqual(org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName,
-                    "CI_GENERAL");
+    public static final String RETROCI_DBS_SAMPLE_TYPE_CONFIG = "retroci.dbs.sampleType";
 
-    private final String DBS_SAMPLE_TYPE_ID;
+    private Boolean retroCiOverride = null;
 
-    /**
-     * Resolves the DBS sample type ID when running in RetroCI mode. The type is
-     * matched on its local abbreviation first because a catalog import can rewrite
-     * the description; a missing type must not stop the application from starting.
-     */
-    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
-        DBS_SAMPLE_TYPE_ID = IS_RETROCI ? resolveDbsSampleTypeId(typeOfSampleService) : null;
+    private boolean isRetroCi() {
+        if (retroCiOverride != null) {
+            return retroCiOverride;
+        }
+        try {
+            org.openelisglobal.common.util.ConfigurationProperties config = org.openelisglobal.common.util.ConfigurationProperties
+                    .getInstance();
+            return config != null && config.isPropertyValueEqual(
+                    org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName, "CI_GENERAL");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    private static String resolveDbsSampleTypeId(TypeOfSampleService typeOfSampleService) {
-        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("DBS",
-                Domain.CLINICAL.name());
+    void setRetroCiForTesting(Boolean retroCi) {
+        this.retroCiOverride = retroCi;
+    }
+
+    public AnalyzerResultsAcceptServiceImpl() {
+    }
+
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
+        this.typeOfSampleService = typeOfSampleService;
+    }
+
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService,
+            SiteInformationService siteInformationService) {
+        this.typeOfSampleService = typeOfSampleService;
+        this.siteInformationService = siteInformationService;
+    }
+
+    /**
+     * Resolves the DBS sample type ID dynamically when running in RetroCI mode. The
+     * type is identified by a configured site setting (ID or abbreviation, falling
+     * back to description). Reading the setting at result processing time ensures
+     * catalog changes take effect without restarting the server. If the setting is
+     * missing or the referenced sample type cannot be found, a warning is logged
+     * and null is returned (LDBS accessions will not default to DBS).
+     */
+    String resolveDbsSampleTypeId() {
+        if (!isRetroCi()) {
+            return null;
+        }
+        if (siteInformationService == null || typeOfSampleService == null) {
+            return null;
+        }
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(RETROCI_DBS_SAMPLE_TYPE_CONFIG);
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            siteInfo = siteInformationService.getSiteInformationByName("retrociDbsSampleType");
+        }
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
+                    "No RetroCI DBS sample type configured; LDBS accessions will not default to DBS");
+            return null;
+        }
+        String configValue = siteInfo.getValue().trim();
+        TypeOfSample typeOfSample = null;
+        if (configValue.matches("\\d+")) {
+            typeOfSample = typeOfSampleService.getTypeOfSampleById(configValue);
+        }
+        if (typeOfSample == null) {
+            typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(configValue,
+                    Domain.CLINICAL.name());
+        }
         if (typeOfSample == null) {
             TypeOfSample searchType = new TypeOfSample();
-            searchType.setDescription("DBS");
+            searchType.setDescription(configValue);
             searchType.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, false);
         }
         if (typeOfSample == null) {
             LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
-                    "No clinical DBS sample type found; LDBS accessions will not default to DBS");
+                    "Configured RetroCI DBS sample type '" + configValue
+                            + "' not found; LDBS accessions will not default to DBS");
             return null;
         }
         return typeOfSample.getId();
