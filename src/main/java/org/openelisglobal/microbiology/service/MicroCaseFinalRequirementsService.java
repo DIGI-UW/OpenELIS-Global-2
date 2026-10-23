@@ -106,7 +106,7 @@ public class MicroCaseFinalRequirementsService {
         }
     }
 
-    private static void collect(List<QuestionnaireResponse.QuestionnaireResponseItemComponent> items,
+    static void collect(List<QuestionnaireResponse.QuestionnaireResponseItemComponent> items,
             Map<String, List<org.hl7.fhir.r4.model.Type>> answers) {
         for (var item : items) {
             for (var answer : item.getAnswer()) {

@@ -100,7 +100,12 @@ public class MicroCaseQuestionnaireService {
                 : parser.parseResource(QuestionnaireResponse.class, current.responseJson);
         response.setId(association.getQuestionnaireResponseUuid().toString());
         response.setQuestionnaire("Questionnaire/" + questionnaire.getIdElement().getIdPart());
-        response.setStatus(QuestionnaireResponse.QuestionnaireResponseStatus.INPROGRESS);
+        var answers = new HashMap<String, List<org.hl7.fhir.r4.model.Type>>();
+        MicroCaseFinalRequirementsService.collect(submitted.getItem(), answers);
+        var missing = new ArrayList<String>();
+        MicroCaseFinalRequirementsService.required(questionnaire.getItem(), answers, missing);
+        response.setStatus(missing.isEmpty() ? QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED
+                : QuestionnaireResponse.QuestionnaireResponseStatus.INPROGRESS);
         response.setAuthored(new Date());
         // The authenticated local user is recorded in the activity; no Practitioner
         // resource is implied.

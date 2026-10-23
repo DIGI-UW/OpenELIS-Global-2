@@ -71,7 +71,7 @@ public class MicroCaseQuestionnaireServiceTest {
         var before = input();
         var result = service.save("case", before, "actor");
         assertEquals(responseId.toString(), saved.getIdElement().getIdPart());
-        assertEquals(QuestionnaireResponse.QuestionnaireResponseStatus.INPROGRESS, saved.getStatus());
+        assertEquals(QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED, saved.getStatus());
         assertFalse(saved.getItemFirstRep().getAnswerFirstRep().getValueBooleanType().booleanValue());
         assertNotEquals(before.version, result.version);
         verify(associations).save(association);
@@ -81,6 +81,32 @@ public class MicroCaseQuestionnaireServiceTest {
         MicroCaseFinalRequirementsService.required(questionnaire.getItem(), answers, blockers);
         assertTrue(blockers.isEmpty());
         verify(activities).insert(any());
+    }
+
+    @Test
+    public void editingCompleteAnswersDoesNotDowngradeCompletedResponse() {
+        saved = new QuestionnaireResponse().setStatus(QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED);
+        service.save("case", input(), "actor");
+        assertEquals(QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED, saved.getStatus());
+    }
+
+    @Test
+    public void incompleteAnswersRemainInProgressRegardlessOfSubmittedStatus() {
+        var form = input();
+        form.responseJson = "{\"resourceType\":\"QuestionnaireResponse\",\"status\":\"completed\",\"item\":[]}";
+        service.save("case", form, "actor");
+        assertEquals(QuestionnaireResponse.QuestionnaireResponseStatus.INPROGRESS, saved.getStatus());
+        service.save("case", input(), "actor");
+        assertEquals(QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED, saved.getStatus());
+    }
+
+    @Test
+    public void disabledRequiredQuestionDoesNotKeepResponseInProgress() {
+        questionnaire.addItem().setLinkId("exposureDetails").setType(Questionnaire.QuestionnaireItemType.STRING)
+                .setRequired(true).addEnableWhen().setQuestion("exposure")
+                .setOperator(Questionnaire.QuestionnaireItemOperator.EQUAL).setAnswer(new BooleanType(true));
+        service.save("case", input(), "actor");
+        assertEquals(QuestionnaireResponse.QuestionnaireResponseStatus.COMPLETED, saved.getStatus());
     }
 
     @Test
