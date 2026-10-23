@@ -100,12 +100,16 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
     }
 
     private String benchWhere(org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> fields, List<String> questionnaireIds) {
+            List<String> fields, List<String> attentionCaseIds) {
         String hql = where(q, ids);
         if ("AWAITING_INOCULATION".equals(q.cultureFilter)) {
-            hql += " and r.id is null and exists (select link.id from MicroCaseAnalysis link, Analysis a"
+            hql += " and exists (select link.id from MicroCaseAnalysis link, Analysis a"
                     + " where link.caseId = c.id and link.analysisId = a.id and link.cancelledAt is null"
-                    + " and (link.caseRole = org.openelisglobal.microbiology.valueholder.MicroCaseRole.CULTURE or a.test.microbiologyCaseRole = 'CULTURE'))";
+                    + " and (a.sampleItem.rejected is null or a.sampleItem.rejected = false)"
+                    + " and (link.caseRole = org.openelisglobal.microbiology.valueholder.MicroCaseRole.CULTURE or a.test.microbiologyCaseRole = 'CULTURE')"
+                    + " and not exists (select inoculation.id from MicroCaseInoculation inoculation"
+                    + " where inoculation.caseId = c.id and inoculation.sourceSampleItemId = a.sampleItem.id"
+                    + " and inoculation.cancelledAt is null and (inoculation.positiveSource is null or inoculation.positiveSource <> 'RECEIVED_ISOLATE')))";
         } else if (cultureGrain(q)) {
             hql += " and " + ACTIVE + " and " + ("CHECK_DUE".equals(q.cultureFilter) ? CHECK : END) + " <= "
                     + epoch("cast(:benchNow as timestamp)");
@@ -119,8 +123,6 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
             reasons.add(
                     "exists (select proposal.id from MicroCultureProposal proposal where proposal.inoculation.id = r.id and proposal.confirmedAt is null)");
             reasons.add(
-                    "exists (select ref.id from Referral ref, MicroCaseSample ms where ms.caseId = c.id and ms.splitOutAt is null and ref.analysis.sampleItem.id = ms.sampleItemId and ref.status = org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED and (ref.reconciled is null or ref.reconciled = false))");
-            reasons.add(
                     "not exists (select ps.id from ProgramSample ps where ps.sample.id = s.id and ps.program.showOnMicroCase = true)");
             for (String field : fields) {
                 // Names come only from the final-requirements service's validated allowlist.
@@ -130,46 +132,76 @@ public class MicroCaseSearchDAOImpl implements MicroCaseSearchDAO {
                 reasons.add("not exists (select d.id from MicroCaseOrderDetail d where d.caseId = c.id and not "
                         + missing + ")");
             }
-            if (!questionnaireIds.isEmpty())
-                reasons.add("c.id in (:questionnaireIds)");
+            if (!attentionCaseIds.isEmpty())
+                reasons.add("c.id in (:attentionCaseIds)");
             hql += " and (" + String.join(" or ", reasons) + ")";
         }
         return hql;
     }
 
     private void bindBench(Query<?> query, org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> questionnaireIds, Timestamp now) {
+            List<String> attentionCaseIds, Timestamp now) {
         bind(query, q, ids);
         if (cultureGrain(q) || q.needsAttention)
             query.setParameter("benchNow", now);
-        if (q.needsAttention && !questionnaireIds.isEmpty())
-            query.setParameterList("questionnaireIds", questionnaireIds);
+        if (q.needsAttention && !attentionCaseIds.isEmpty())
+            query.setParameterList("attentionCaseIds", attentionCaseIds);
     }
 
     @Override
     public List<Object[]> benchPage(org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> fields, List<String> questionnaireIds, Timestamp now) {
+            List<String> fields, List<String> attentionCaseIds, Timestamp now) {
         if (ids != null && ids.isEmpty())
             return List.of();
         String rowId = cultureGrain(q) ? "r.id" : "c.id";
         String group = " group by c.id, c.priority" + (cultureGrain(q) ? ", r.id" : "");
         var query = session().createQuery("select c.id, " + rowId + ", min(" + DUE + ") as dueAt" + FROM + CULTURES
-                + benchWhere(q, ids, fields, questionnaireIds) + group
+                + benchWhere(q, ids, fields, attentionCaseIds) + group
                 + " order by case when c.priority = 'STAT' then 0 else 1 end, dueAt asc nulls last, c.id, " + rowId,
                 Object[].class);
-        bindBench(query, q, ids, questionnaireIds, now);
+        bindBench(query, q, ids, attentionCaseIds, now);
         return query.setFirstResult((q.page - 1) * q.pageSize).setMaxResults(q.pageSize).list();
     }
 
     @Override
     public long benchCount(org.openelisglobal.microbiology.form.MicroBenchQueryForm q, Set<String> ids,
-            List<String> fields, List<String> questionnaireIds, Timestamp now) {
+            List<String> fields, List<String> attentionCaseIds, Timestamp now) {
         if (ids != null && ids.isEmpty())
             return 0;
         var query = session().createQuery("select count(distinct " + (cultureGrain(q) ? "r.id" : "c.id") + ")" + FROM
-                + CULTURES + benchWhere(q, ids, fields, questionnaireIds), Long.class);
-        bindBench(query, q, ids, questionnaireIds, now);
+                + CULTURES + benchWhere(q, ids, fields, attentionCaseIds), Long.class);
+        bindBench(query, q, ids, attentionCaseIds, now);
         return query.uniqueResult();
+    }
+
+    @Override
+    public List<String> referralAttentionCases() {
+        var frontier = new java.util.LinkedHashSet<>(session().createQuery(
+                "select distinct ref.analysis.sampleItem.id from Referral ref where ref.status = org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED and (ref.reconciled is null or ref.reconciled = false)",
+                String.class).list());
+        Set<String> visited = new java.util.HashSet<>();
+        Set<String> cases = new java.util.LinkedHashSet<>();
+        while (!frontier.isEmpty()) {
+            visited.addAll(frontier);
+            var members = session().createQuery(
+                    "select m.caseId, m.sampleItemId from MicroCaseSample m where m.sampleItemId in (:sources) and m.splitOutAt is null",
+                    Object[].class).setParameterList("sources", frontier).list();
+            for (var member : members) {
+                cases.add((String) member[0]);
+            }
+            // A descendant assigned to another case is that case's source, not
+            // its ancestor's. This mirrors MicroCaseInoculationDAO.getSources.
+            members.forEach(member -> frontier.remove((String) member[1]));
+            if (frontier.isEmpty())
+                break;
+            var parents = session().createQuery(
+                    "select distinct s.parentSampleItem.id from SampleItem s where s.id in (:sources) and s.parentSampleItem is not null",
+                    String.class).setParameterList("sources", frontier).list();
+            frontier.clear();
+            frontier.addAll(parents);
+            frontier.removeAll(visited);
+        }
+        return List.copyOf(cases);
     }
 
     @Override

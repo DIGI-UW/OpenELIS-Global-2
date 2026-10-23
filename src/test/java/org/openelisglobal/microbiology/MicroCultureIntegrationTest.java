@@ -48,6 +48,10 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCaseSearchDAO benchSearch;
     @Autowired
+    private MicroBenchService benchWorkspace;
+    @Autowired
+    private MicroCaseAnalysisDAO caseAnalyses;
+    @Autowired
     private MicroCaseMembershipService membership;
     @Autowired
     private MicroCaseResultService results;
@@ -209,6 +213,94 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
 
     private MicroCultureForm create() {
         return service.inoculate(microCase.getId(), request(), actor).get(0);
+    }
+
+    private SampleItem additionalSource(SampleItem parent, int order) {
+        var source = new SampleItem();
+        source.setSample(specimen.getSample());
+        source.setParentSampleItem(parent);
+        source.setTypeOfSample(specimen.getTypeOfSample());
+        source.setReceivedDate(received);
+        source.setSortOrder(Integer.toString(order));
+        source.setStatusId(specimen.getStatusId());
+        source.setSysUserId(actor);
+        sampleItems.insert(source);
+        return source;
+    }
+
+    private void pendingCulture(SampleItem source) {
+        var test = fixtures.createCatalogTest();
+        var analysis = fixtures.createAnalysis(source, test);
+        var link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        link.setSysUserId(actor);
+        caseAnalyses.insert(link);
+    }
+
+    @Test
+    public void awaitingInoculationKeepsTheRemainingSpecimenAndSelectsIt() {
+        var second = additionalSource(null, 2);
+        membership.addSample(microCase.getId(), second.getId(), actor);
+        pendingCulture(specimen);
+        pendingCulture(second);
+        var query = new MicroBenchQueryForm();
+        query.cultureFilter = "AWAITING_INOCULATION";
+        query.labUnitIds = List.of(microCase.getLabUnitId());
+        assertEquals(1, benchWorkspace.search(query, actor).total);
+        create();
+        var remaining = benchWorkspace.search(query, actor);
+        assertEquals(1, remaining.total);
+        assertEquals(second.getId(), remaining.rows.getFirst().sampleItemId);
+        var next = request();
+        next.sourceSampleItemId = second.getId();
+        service.inoculate(microCase.getId(), next, actor);
+        assertEquals(0, benchWorkspace.search(query, actor).total);
+    }
+
+    @Test
+    public void completedReferralOnGrandchildSourceIsIncludedBeforeAttentionPagination() {
+        var aliquot = additionalSource(specimen, 2);
+        var descendant = additionalSource(aliquot, 3);
+        var analysis = fixtures.createAnalysis(descendant, fixtures.createCatalogTest());
+        var referralType = new org.openelisglobal.referral.valueholder.ReferralType();
+        referralType.setName("Bench-" + UUID.randomUUID().toString().substring(0, 8));
+        em.persist(referralType);
+        var referral = new org.openelisglobal.referral.valueholder.Referral();
+        referral.setReferralTypeId(referralType.getId());
+        referral.setAnalysis(analysis);
+        referral.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED);
+        referral.setReconciled(false);
+        referral.setRequestDate(new Timestamp(System.currentTimeMillis()));
+        referral.setFhirUuid(UUID.randomUUID());
+        referral.setSysUserId(actor);
+        em.persist(referral);
+        var program = new org.openelisglobal.program.valueholder.Program();
+        program.setCode("BENCH_" + UUID.randomUUID().toString().substring(0, 8));
+        program.setProgramName("Bench referral fixture");
+        program.setManuallyChanged(true);
+        program.setShowOnMicroCase(true);
+        em.persist(program);
+        var association = new org.openelisglobal.program.valueholder.ProgramSample();
+        association.setProgram(program);
+        association.setSample(specimen.getSample());
+        em.persist(association);
+        microCase.setProgramId(program.getId());
+        cases.update(microCase);
+        em.flush();
+        var attention = benchSearch.referralAttentionCases();
+        assertTrue(attention.contains(microCase.getId()));
+        var query = new MicroBenchQueryForm();
+        query.needsAttention = true;
+        var now = new Timestamp(System.currentTimeMillis());
+        var units = Set.of(microCase.getLabUnitId());
+        assertEquals(1, benchSearch.benchCount(query, units, List.of(), attention, now));
+        assertEquals(microCase.getId(), benchSearch.benchPage(query, units, List.of(), attention, now).getFirst()[0]);
+        referral.setReconciled(true);
+        em.flush();
+        assertFalse(benchSearch.referralAttentionCases().contains(microCase.getId()));
+        assertEquals(0, benchSearch.benchCount(query, units, List.of(), benchSearch.referralAttentionCases(), now));
     }
 
     @Test

@@ -62,18 +62,20 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         if (query.cultureFilter != null
                 && !Set.of("", "AWAITING_INOCULATION", "CHECK_DUE", "FINAL_READ_DUE").contains(query.cultureFilter))
             throw new IllegalArgumentException("MICROBIOLOGY_BENCH_FILTER");
-        // Conditional FHIR questionnaire answers cannot be evaluated in HQL. Only
-        // the explicit attention filter needs those candidates; ordinary pages do not.
-        List<String> questionnaireIds = query.needsAttention
-                ? search.questionnaireCases(query, allowed).stream()
-                        .filter(id -> requirements.blockers(id).stream()
-                                .anyMatch(reason -> reason.contains("QUESTION")))
-                        .toList()
-                : List.of();
+        // Resolve recursive referral ownership and conditional questionnaire
+        // answers only for the explicit attention filter, before pagination.
+        var attentionCaseIds = new LinkedHashSet<String>();
+        if (query.needsAttention) {
+            attentionCaseIds.addAll(search.referralAttentionCases());
+            search.questionnaireCases(query, allowed).stream()
+                    .filter(id -> requirements.blockers(id).stream().anyMatch(reason -> reason.contains("QUESTION")))
+                    .forEach(attentionCaseIds::add);
+        }
+        var attentionIds = List.copyOf(attentionCaseIds);
         // Bind now through the same JDBC timestamp conversion as inoculation times.
         var now = new java.sql.Timestamp(System.currentTimeMillis());
-        result.total = search.benchCount(query, allowed, requirements.requiredFields(), questionnaireIds, now);
-        var selected = search.benchPage(query, allowed, requirements.requiredFields(), questionnaireIds, now);
+        result.total = search.benchCount(query, allowed, requirements.requiredFields(), attentionIds, now);
+        var selected = search.benchPage(query, allowed, requirements.requiredFields(), attentionIds, now);
         var shells = new HashMap<String, MicroCaseShellForm>();
         var culturesByCase = new HashMap<String, List<MicroCultureForm>>();
         var attentionByCase = new HashMap<String, List<String>>();
@@ -88,7 +90,8 @@ public class MicroBenchServiceImpl implements MicroBenchService {
             var culture = cultureGrain
                     ? cultureRows.stream().filter(r -> r.id.equals(selection[1])).findFirst().orElse(null)
                     : null;
-            var row = row(shell, culture, base, actor);
+            var row = row(shell, culture, base, actor,
+                    "AWAITING_INOCULATION".equals(query.cultureFilter) ? cultureRows : null);
             if (!cultureGrain)
                 for (var item : cultureRows)
                     attention(row, item);
@@ -142,6 +145,11 @@ public class MicroBenchServiceImpl implements MicroBenchService {
 
     private MicroBenchPageForm.Row row(MicroCaseShellForm c, MicroCultureForm culture, List<String> base,
             String actor) {
+        return row(c, culture, base, actor, null);
+    }
+
+    private MicroBenchPageForm.Row row(MicroCaseShellForm c, MicroCultureForm culture, List<String> base, String actor,
+            List<MicroCultureForm> existingCultures) {
         var r = new MicroBenchPageForm.Row();
         r.id = culture == null ? c.id : c.id + ":" + culture.id;
         r.caseId = c.id;
@@ -163,6 +171,8 @@ public class MicroBenchServiceImpl implements MicroBenchService {
         var cultureAnalyses = analyses.getAnalyses(c.id).stream().filter(a -> !a.getSampleItem().isRejected())
                 .filter(a -> "CULTURE".equals(a.getTest().getMicrobiologyCaseRole())
                         || analyses.getByCaseAndAnalysis(c.id, a.getId()).getCaseRole() == MicroCaseRole.CULTURE)
+                .filter(a -> existingCultures == null || existingCultures.stream()
+                        .noneMatch(row -> Objects.equals(row.sourceSampleItemId, a.getSampleItem().getId())))
                 .toList();
         if (culture != null) {
             r.sampleItemId = culture.sourceSampleItemId;
