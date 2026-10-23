@@ -184,10 +184,16 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             List<ImportRow> parsedRows = new ArrayList<>();
             Map<List<String>, Optional<MicroOrganism>> organisms = new java.util.HashMap<>();
             Map<List<String>, Optional<MicroAntibiotic>> antibiotics = new java.util.HashMap<>();
+            Map<String, String> groups = new java.util.HashMap<>();
+            for (MicroOrganism organism : organismDAO.getAll()) {
+                String group = organism.getOrganismGroup();
+                if (group != null)
+                    groups.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
+            }
             for (CSVRecord record : parser) {
                 preview.totalRows++;
                 try {
-                    parsedRows.add(parseRow(record, organisms, antibiotics));
+                    parsedRows.add(parseRow(record, organisms, antibiotics, groups));
                 } catch (IllegalArgumentException exception) {
                     preview.errors.add(error((int) record.getRecordNumber() + 1, exception.getMessage(),
                             CSVFormat.DEFAULT.format(record.values())));
@@ -213,7 +219,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     }
 
     private ImportRow parseRow(CSVRecord record, Map<List<String>, Optional<MicroOrganism>> organisms,
-            Map<List<String>, Optional<MicroAntibiotic>> antibiotics) {
+            Map<List<String>, Optional<MicroAntibiotic>> antibiotics, Map<String, String> groups) {
         ImportRow row = new ImportRow();
         row.rowNumber = (int) record.getRecordNumber() + 1;
         row.sourceRow = CSVFormat.DEFAULT.format(record.values());
@@ -231,9 +237,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism source code")).getId();
         } else if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
             String requestedGroup = requiredText(organismValue.substring("group:".length()), "organism group");
-            row.organismGroup = organismDAO.getAll().stream().map(MicroOrganism::getOrganismGroup)
-                    .filter(group -> group != null && group.equalsIgnoreCase(requestedGroup)).findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown organism group: " + requestedGroup));
+            row.organismGroup = groups.get(requestedGroup.toLowerCase(Locale.ROOT));
+            if (row.organismGroup == null)
+                throw new IllegalArgumentException("Unknown organism group: " + requestedGroup);
         } else {
             MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(organismValue)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism: " + organismValue));

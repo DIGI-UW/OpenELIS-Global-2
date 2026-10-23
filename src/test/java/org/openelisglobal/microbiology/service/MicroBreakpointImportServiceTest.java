@@ -148,6 +148,20 @@ public class MicroBreakpointImportServiceTest {
     }
 
     @Test
+    public void groupLookupIsLoadedOncePerPreviewAndRefreshesBetweenImports() {
+        String rows = csv("CLSI,SYNTH-2025,group:enterobacterales,CIP,MIC,,MIC,1,2,3,4,ug/mL\n"
+                + "CLSI,SYNTH-2026,group:Enterobacterales,CIP,MIC,,MIC,1,2,3,4,ug/mL\n"
+                + "CLSI,SYNTH-2026,group:Unknown,CIP,MIC,,MIC,1,2,3,4,ug/mL\n");
+        var preview = service.preview(rows);
+        assertEquals(2, preview.validRows);
+        assertEquals(1, preview.skippedRows);
+        verify(organismDAO).getAll();
+        when(organismDAO.getAll()).thenReturn(List.of());
+        assertEquals(0, service.preview(rows).validRows);
+        verify(organismDAO, org.mockito.Mockito.times(2)).getAll();
+    }
+
+    @Test
     public void previewRejectsUnknownOrganismGroupsAndSpecimenTypes() {
         String invalidContextCsv = csv("CLSI,SYNTH-2026,group:Enterobactrales,CIP,MIC,,MIC,1,2,3,4,ug/mL\n"
                 + "CLSI,SYNTH-2026,group:Enterobacterales,CIP,MIC,999,MIC,1,2,3,4,ug/mL\n");
