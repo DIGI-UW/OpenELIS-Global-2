@@ -240,10 +240,11 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
     location.search,
     referenceNow,
   );
-  const canonicalWorklistUrl = getMicrobiologyWorklistUrl(
-    filters,
-    referenceNow,
-  );
+  const scopeFiltersReset =
+    new URLSearchParams(location.search).get("scopeFiltersReset") === "true";
+  const canonicalWorklistUrl =
+    getMicrobiologyWorklistUrl(filters, referenceNow) +
+    (scopeFiltersReset ? "&scopeFiltersReset=true" : "");
   const isAstGrain = filters.grain === "ast";
   const canExportWhonet = [
     Roles.GLOBAL_ADMIN,
@@ -407,6 +408,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   };
 
   const hasFilters = Boolean(
+    filters.labUnitIds.length > 0 ||
     filters.status ||
     filters.stage ||
     filters.urgency ||
@@ -789,8 +791,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
             ))}
           </Stack>
         )}
-        {new URLSearchParams(location.search).get("scopeFiltersReset") ===
-          "true" && (
+        {scopeFiltersReset && (
           <InlineNotification
             kind="info"
             hideCloseButton
@@ -996,7 +997,10 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
               disabled={!hasFilters}
               onClick={() =>
                 history.push(
-                  getMicrobiologyWorklistUrl({ grain: filters.grain }),
+                  getMicrobiologyWorklistUrl(
+                    { grain: filters.grain },
+                    referenceNow,
+                  ),
                 )
               }
             >

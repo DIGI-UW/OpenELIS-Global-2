@@ -835,3 +835,43 @@ describe("MicrobiologyWorklist", () => {
     );
   });
 });
+
+test("retains the scope notice through canonicalization and clears a lab-unit-only filter", async () => {
+  const service = {
+    getWorklistRows: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+  };
+  renderWorklist(
+    service,
+    "/Microbiology/worklist?grain=ast&labUnitIds=lab-1&scopeFiltersReset=true",
+  );
+  await waitFor(() =>
+    expect(service.getWorklistRows).toHaveBeenCalledWith(
+      expect.objectContaining({ labUnitIds: ["lab-1"] }),
+    ),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "from=2026-08-01",
+    ),
+  );
+  expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+    "scopeFiltersReset=true",
+  );
+  expect(
+    screen.getByText(messages["microbiology.worklist.scopeFiltersReset"]),
+  ).toBeVisible();
+  const clear = screen.getByRole("button", {
+    name: messages["microbiology.worklist.clearFilters"],
+  });
+  expect(clear).toBeEnabled();
+  await userEvent.click(clear);
+  await waitFor(() =>
+    expect(service.getWorklistRows).toHaveBeenLastCalledWith(
+      expect.objectContaining({ labUnitIds: [] }),
+    ),
+  );
+  expect(clear).toBeDisabled();
+  expect(screen.getByTestId("microbiology-current-url")).not.toHaveTextContent(
+    "labUnitIds",
+  );
+});
