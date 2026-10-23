@@ -816,6 +816,21 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void legacyNullStatusReferralRemainsOpenAndBlocksAnotherDraft() {
+        var request = minimalReferralRequest();
+        String isolateId = pick();
+        workspace.act(c.getId(), isolateId, "referral", request, writer);
+        var created = reload().referrals.getFirst();
+        var referral = em.find(org.openelisglobal.referral.valueholder.Referral.class, created.id());
+        referral.setStatus(null);
+        assertTrue(reload().referred);
+        assertEquals("MICROBIOLOGY_ISOLATE_REFERRAL_EXISTS", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), isolateId, "referral", request, writer)).getMessage());
+        assertEquals(1, reload().referrals.size());
+        assertEquals(created.id(), reload().referrals.getFirst().id());
+    }
+
+    @Test
     public void referralReasonOptionsUseTheSessionLocale() {
         var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
         reason.setName("M5 untranslated " + UUID.randomUUID().toString().substring(0, 8));

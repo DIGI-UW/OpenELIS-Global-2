@@ -105,7 +105,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                     validator && mismatch(i), version(i), history);
         }).toList();
         var linked = referrals.getWorkspaceReferrals(sources.stream().map(SampleItem::getId).distinct().toList());
-        form.referred = linked.stream().anyMatch(r -> r.getStatus() != null && !r.getStatus().isTerminal());
+        form.referred = linked.stream().anyMatch(r -> r.getStatus() == null || !r.getStatus().isTerminal());
         form.referrals = linked.stream()
                 .map(r -> new MicroIsolateWorkspaceForm.Referral(r.getId(), r.getAnalysis().getSampleItem().getId(),
                         r.getAnalysis().getTest().getName(),
@@ -320,8 +320,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         text(item.getCocContactEmail(), 255, false);
         var analysis = addTest(c.getId(), r.sampleItemId, r.testId, actor);
         if (referrals.getWorkspaceReferrals(List.of(r.sampleItemId)).stream()
-                .anyMatch(f -> analysis.getId().equals(f.getAnalysis().getId()) && f.getStatus() != null
-                        && !f.getStatus().isTerminal()))
+                .anyMatch(f -> analysis.getId().equals(f.getAnalysis().getId())
+                        && (f.getStatus() == null || !f.getStatus().isTerminal())))
             bad("REFERRAL_EXISTS");
         item.setReferralId(null);
         item.setReferredTestId(r.testId);
