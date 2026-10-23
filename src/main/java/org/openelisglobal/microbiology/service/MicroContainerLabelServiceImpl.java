@@ -47,7 +47,7 @@ public class MicroContainerLabelServiceImpl implements MicroContainerLabelServic
         switch (kind) {
         case "PLT" -> {
             var row = cultures.get(rowId).orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN"));
-            if (row.getCancelledAt() != null)
+            if (row.getCancelledAt() != null || "RECEIVED_ISOLATE".equals(row.getPositiveSource()))
                 throw new IllegalArgumentException("MICROBIOLOGY_LABEL_UNKNOWN");
             owner = row.getCaseId();
         }

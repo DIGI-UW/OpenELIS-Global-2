@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.*;
 import org.junit.After;
 import org.junit.Before;
@@ -75,6 +77,10 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     private MicroIncomingResultService incoming;
     @Autowired
     private MicroIncomingItemDAO incomingItems;
+    @Autowired
+    private org.openelisglobal.analyzerresults.service.AnalyzerResultsService analyzerStaging;
+    @Autowired
+    private org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService analyzerAcceptance;
     private MicroCase microCase;
     private Analysis analysis;
     private String actor, validator, outsider, oldBlock;
@@ -209,6 +215,66 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             p.components.add(c);
         }
         return p;
+    }
+
+    @Test
+    public void analyzerReviewAcceptanceTransfersComponentsOnlyAfterTheUserAccepts() {
+        var patient = fixtures.createPatient("M7PAT");
+        var human = new org.openelisglobal.samplehuman.valueholder.SampleHuman();
+        human.setSampleId(analysis.getSampleItem().getSample().getId());
+        human.setPatientId(patient.getId());
+        human.setSysUserId(actor);
+        em.persist(human);
+        var analyzer = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        analyzer.setName("M7 acceptance " + UUID.randomUUID());
+        analyzer.setActive(true);
+        analyzer.setSysUserId(actor);
+        em.persist(analyzer);
+        var stagedRows = new ArrayList<org.openelisglobal.analyzerresults.valueholder.AnalyzerResults>();
+        for (var component : payload().components) {
+            var row = new org.openelisglobal.analyzerresults.valueholder.AnalyzerResults();
+            row.setAnalyzerId(analyzer.getId());
+            row.setAccessionNumber(analysis.getSampleItem().getSample().getAccessionNumber());
+            row.setInstrumentSpecimenId(row.getAccessionNumber());
+            row.setInstrumentPatientId(patient.getExternalId());
+            row.setTestId(analysis.getTest().getId());
+            row.setTestName(analysis.getTest().getName());
+            row.setComponentId(component.componentId);
+            row.setResult(component.value);
+            row.setRawResultValue(component.value);
+            row.setResultType("N");
+            row.setCompleteDate(Timestamp.from(Instant.now()));
+            row.setSourceConnectionId("M7-review-connection");
+            row.setSourceMessageId("M7-review-delivery");
+            stagedRows.add(row);
+        }
+        analyzerStaging.insertAnalyzerResults(stagedRows, "1");
+        em.flush();
+        var decisions = stagedRows.stream().map(row -> {
+            var item = new org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem();
+            item.setId(row.getId());
+            item.setTestId(row.getTestId());
+            item.setAccessionNumber(row.getAccessionNumber());
+            item.setInstrumentSpecimenId(row.getInstrumentSpecimenId());
+            item.setResult(row.getResult());
+            return item;
+        }).toList();
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+        assertTrue(incomingItems.forCase(microCase.getId()).isEmpty());
+        stagedRows.forEach(row -> assertNotNull(analyzerStaging.get(row.getId())));
+        decisions.forEach(item -> item.setIsAccepted(true));
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        assertEquals(2, results.getResultsByAnalysis(analysis).size());
+        assertEquals("TechnicalAcceptance", workspace.getTests(microCase.getId(), actor).getFirst().status);
+        var received = incomingItems.forCase(microCase.getId());
+        assertEquals(1, received.size());
+        assertEquals("PLACED", received.getFirst().getState());
+        assertEquals(actor, received.getFirst().getPlacedBy());
+        assertEquals(Long.valueOf(0),
+                em.createQuery("select count(r) from AnalyzerResults r where r.id in :ids", Long.class)
+                        .setParameter("ids", stagedRows.stream().map(row -> row.getId()).toList()).getSingleResult());
     }
 
     @Test

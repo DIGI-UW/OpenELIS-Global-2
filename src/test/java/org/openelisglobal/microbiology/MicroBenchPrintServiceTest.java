@@ -35,7 +35,8 @@ public class MicroBenchPrintServiceTest {
     public void selectedCasesReadOnlyRequestedIdsAndRejectChangedOwnership() {
         var workspace = mock(MicroCaseWorkspaceService.class);
         var access = mock(MicrobiologyCaseAccessService.class);
-        var service = new MicroBenchServiceImpl(workspace, mock(MicroCultureService.class),
+        var cultures = mock(MicroCultureService.class);
+        var service = new MicroBenchServiceImpl(workspace, cultures,
                 mock(org.openelisglobal.microbiology.dao.MicroIncomingItemDAO.class),
                 mock(org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO.class),
                 mock(org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO.class), access,
@@ -49,6 +50,14 @@ public class MicroBenchPrintServiceTest {
                 service.selectedCases("unit", List.of("case"), "reader").stream().map(r -> r.caseId).toList());
         verify(workspace).get("case", "reader");
         verify(workspace, never()).search(any(), anyString());
+        var received = new MicroCultureForm();
+        received.id = "received-provenance";
+        received.receivedIsolate = true;
+        when(cultures.getRows("case")).thenReturn(List.of(received));
+        var selected = service.selectedCases("unit", List.of("case"), "reader");
+        assertEquals(1, selected.size());
+        assertNull(selected.get(0).cultureId);
+        assertNull(selected.get(0).culture);
         shell.labUnitId = "transferred";
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> service.selectedCases("unit", List.of("case"), "reader"));

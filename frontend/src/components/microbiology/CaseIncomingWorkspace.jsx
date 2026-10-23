@@ -18,11 +18,16 @@ import {
   InlineLoading,
 } from "@carbon/react";
 
+import ResultAlertModal, {
+  acknowledgementRefusal,
+} from "../resultPage/ResultAlertModal";
+
 export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
   const intl = useIntl();
   const t = (id) => intl.formatMessage({ id });
   const [rows, setRows] = useState([]),
     [error, setError] = useState(false),
+    [alerts, setAlerts] = useState(null),
     [loading, setLoading] = useState(true),
     [selected, setSelected] = useState(null),
     [sample, setSample] = useState(""),
@@ -81,6 +86,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
     setLoading(true);
     setError(false);
     setSelected(null);
+    setAlerts(null);
     service
       .getIncoming(detail.id)
       .then((data) => {
@@ -96,7 +102,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
       live = false;
     };
   }, [detail.id, service, refresh]);
-  const place = async (fail = false) => {
+  const place = async (fail = false, confirmedAlerts = []) => {
     setSaving(true);
     setError(false);
     try {
@@ -106,12 +112,34 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
           sampleItemId: sample,
           targetCaseId: target || detail.id,
           reason,
+          ...(confirmedAlerts.length && {
+            result: {
+              ...selected.result,
+              components: selected.result.components.map((component) => ({
+                ...component,
+                criticalAcknowledged: confirmedAlerts.some(
+                  (alert) =>
+                    alert.kind === "CRITICAL" &&
+                    (!alert.componentId ||
+                      alert.componentId === component.componentId),
+                ),
+                invalidResultConfirmed: confirmedAlerts.some(
+                  (alert) =>
+                    alert.kind === "INVALID" &&
+                    (!alert.componentId ||
+                      alert.componentId === component.componentId),
+                ),
+              })),
+            },
+          }),
         });
       setSelected(null);
       setRefresh((n) => n + 1);
       onChanged?.();
-    } catch {
-      setError(true);
+    } catch (failure) {
+      const refusal = acknowledgementRefusal(failure.response);
+      if (!fail && refusal && selected.result?.components) setAlerts(refusal);
+      else setError(true);
     } finally {
       setSaving(false);
     }
@@ -119,6 +147,20 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
   // i18n-keys: microbiology.incoming.state.*
   return (
     <Stack gap={5}>
+      {alerts && (
+        <ResultAlertModal
+          open
+          alerts={alerts.alerts}
+          customCriticalMessage={alerts.customCriticalMessage}
+          mode="save"
+          onCorrect={() => setAlerts(null)}
+          onConfirm={() => {
+            const confirmed = alerts.alerts;
+            setAlerts(null);
+            place(false, confirmed);
+          }}
+        />
+      )}
       <h3>{t("microbiology.incoming.title")}</h3>
       {loading && <InlineLoading description={t("common.loading")} />}
       {error && (
@@ -164,6 +206,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
                     disabled={navigator.onLine === false}
                     onClick={() => {
                       setSelected(row);
+                      setAlerts(null);
                       setSample(
                         row.sampleItemId ||
                           detail.samples[0]?.sampleItemId ||
@@ -185,7 +228,7 @@ export default function CaseIncomingWorkspace({ detail, service, onChanged }) {
       {!loading && !rows.length && <p>{t("microbiology.incoming.empty")}</p>}
       {selected && (
         <Modal
-          open
+          open={!alerts}
           passiveModal
           modalHeading={selected.testName}
           onRequestClose={() => {

@@ -1,74 +1,82 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.*;
+import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacement;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.form.MicroCaseResultRequestForm;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Routes already mapped observations; protocol parsing and mapping remain in
- * the Bridge pipeline.
+ * Transfers explicitly accepted review rows within the acceptance transaction.
  */
 @Service
 public class MicroIncomingAnalyzerAdapter {
     private final MicroCaseDAO cases;
-    private final org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO links;
+    private final MicroCaseAnalysisDAO links;
     private final MicroIncomingResultService incoming;
     private final AnalyzerResultPlacementService placement;
     private final AnalyzerResultsService staging;
-    private final org.openelisglobal.microbiology.dao.MicroIncomingItemDAO queue;
 
     public MicroIncomingAnalyzerAdapter(MicroCaseDAO cases, MicroIncomingResultService incoming,
-            AnalyzerResultPlacementService placement, AnalyzerResultsService staging,
-            org.openelisglobal.microbiology.dao.MicroIncomingItemDAO queue,
-            org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO links) {
+            AnalyzerResultPlacementService placement, AnalyzerResultsService staging, MicroCaseAnalysisDAO links) {
         this.cases = cases;
         this.links = links;
         this.incoming = incoming;
         this.placement = placement;
         this.staging = staging;
-        this.queue = queue;
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void route(List<AnalyzerResults> rows, String actor) {
-        routeRows(rows, actor, false);
+    private record Reviewed(AnalyzerResults source, AnalyzerResultItem decision) {
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void retainFailure(List<AnalyzerResults> rows, String actor) {
-        routeRows(rows, actor, true);
-    }
-
-    private void routeRows(List<AnalyzerResults> rows, String actor, boolean failed) {
-        Map<List<String>, List<AnalyzerResults>> groups = new LinkedHashMap<>();
-        for (var row : rows) {
-            if (row.getIsControl() || row.isReadOnly() || row.getTestId() == null || row.getSourceMessageId() == null)
+    @Transactional
+    public Set<String> acceptReviewed(List<AnalyzerResultItem> decisions, String actor) {
+        Map<List<String>, List<Reviewed>> groups = new LinkedHashMap<>();
+        for (var decision : decisions) {
+            if (!decision.getIsAccepted() || decision.getIsDeleted() || decision.getIsRejected())
+                continue;
+            var row = staging.get(decision.getId());
+            if (row == null || row.getIsControl() || row.isReadOnly() || row.getTestId() == null
+                    || row.getSourceMessageId() == null)
                 continue;
             var key = Arrays.asList(row.getSourceConnectionId(), row.getSourceMessageId(),
-                    row.getInstrumentSpecimenId() == null ? row.getAccessionNumber() : row.getInstrumentSpecimenId(),
+                    decision.getInstrumentSpecimenId() == null ? decision.getAccessionNumber()
+                            : decision.getInstrumentSpecimenId(),
                     row.getTestId());
-            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(new Reviewed(row, decision));
         }
+        Set<String> consumed = new HashSet<>();
         for (var group : groups.values()) {
-            var first = group.get(0);
-            String tube = first.getInstrumentSpecimenId() == null ? first.getAccessionNumber()
-                    : first.getInstrumentSpecimenId();
+            var first = group.get(0).source();
+            var decision = group.get(0).decision();
+            String tube = decision.getInstrumentSpecimenId() == null ? decision.getAccessionNumber()
+                    : decision.getInstrumentSpecimenId();
             var match = placement.place(tube, first.getTestId(), first.getInstrumentPatientId(),
                     first.getInstrumentPatientName());
-            if (match.proposedSampleItemId() == null
-                    || match.patient().status() == AnalyzerResultPlacement.PatientStatus.MISMATCH
-                    || match.patient().status() == AnalyzerResultPlacement.PatientStatus.NO_ORDER_PATIENT)
+            if (match.patient().status() == AnalyzerResultPlacement.PatientStatus.MISMATCH
+                    && (decision.getNote() == null || decision.getNote().isBlank()))
                 continue;
-            var owners = cases.getBySampleItem(match.proposedSampleItemId()).stream()
-                    .filter(c -> c.getLabUnitId() != null).toList();
-            if (match.proposedAnalysisId() != null) {
-                var owner = links.getActiveByAnalysisId(match.proposedAnalysisId());
+            String sampleId = match.proposedSampleItemId();
+            String analysisId = match.proposedAnalysisId();
+            boolean awaiting = match.state() == AnalyzerResultPlacement.State.RESOLVED;
+            var chosen = match.analyses().stream().filter(a -> a.analysisId().equals(decision.getChosenAnalysisId()))
+                    .findFirst();
+            if (chosen.isPresent()) {
+                sampleId = chosen.get().sampleItemId();
+                analysisId = chosen.get().analysisId();
+                awaiting = chosen.get().awaitingResult();
+            }
+            if (sampleId == null)
+                continue;
+            var owners = cases.getBySampleItem(sampleId).stream().filter(c -> c.getLabUnitId() != null).toList();
+            if (analysisId != null) {
+                var owner = links.getActiveByAnalysisId(analysisId);
                 if (owner == null)
                     continue;
                 owners = owners.stream().filter(c -> c.getId().equals(owner.getCaseId())).toList();
@@ -77,40 +85,34 @@ public class MicroIncomingAnalyzerAdapter {
                 continue;
             var payload = new MicroCaseResultRequestForm();
             payload.components = new ArrayList<>();
-            for (var row : group) {
+            for (var reviewed : group) {
                 var component = new MicroCaseResultRequestForm.ResultComponent();
-                component.componentId = row.getComponentId();
-                component.value = row.getResult();
+                component.componentId = reviewed.source().getComponentId();
+                component.value = reviewed.decision().getResult();
+                component.criticalAcknowledged = reviewed.decision().isCriticalAcknowledged();
+                component.invalidResultConfirmed = reviewed.decision().isInvalidResultConfirmed();
                 payload.components.add(component);
             }
-            payload.note = group.stream().map(AnalyzerResults::getInstrumentNote).filter(Objects::nonNull)
-                    .filter(n -> !n.isBlank()).distinct().collect(java.util.stream.Collectors.joining("\n"));
-            String flags = group.stream().map(AnalyzerResults::getInstrumentSampleFlags).filter(Objects::nonNull)
+            payload.note = group.stream()
+                    .flatMap(r -> java.util.stream.Stream.of(r.source().getInstrumentNote(), r.decision().getNote()))
+                    .filter(Objects::nonNull).filter(n -> !n.isBlank()).distinct()
+                    .collect(java.util.stream.Collectors.joining("\n"));
+            String flags = group.stream().map(r -> r.source().getInstrumentSampleFlags()).filter(Objects::nonNull)
                     .filter(n -> !n.isBlank()).distinct().collect(java.util.stream.Collectors.joining(", "));
-            if (!flags.isBlank()) {
+            if (!flags.isBlank())
                 payload.note += "\n" + org.openelisglobal.internationalization.MessageUtil
                         .getMessage("note.analyzer.sampleFlags", new String[] { flags });
-            }
             String sourceKey = String.join(":", String.valueOf(first.getSourceConnectionId()),
                     first.getSourceMessageId(), String.valueOf(tube), first.getTestId());
-            var received = incoming.receive(owners.get(0).getId(), match.proposedSampleItemId(), first.getTestId(),
-                    "ANALYZER", sourceKey,
-                    group.stream().map(r -> String.valueOf(r.getRawResultValue()))
+            incoming.receive(owners.get(0).getId(), sampleId, first.getTestId(), "ANALYZER", sourceKey,
+                    group.stream().map(r -> String.valueOf(r.source().getRawResultValue()))
                             .collect(java.util.stream.Collectors.joining(" | ")),
-                    payload, !failed && match.state() == AnalyzerResultPlacement.State.RESOLVED
-                            && match.patient().status() == AnalyzerResultPlacement.PatientStatus.MATCH,
-                    actor);
-            if (failed && "WAITING".equals(received.state)) {
-                var item = queue.withCase(received.id);
-                item.setState("FAILED");
-                item.setFailureReason("MICROBIOLOGY_INCOMING_REVIEW_REQUIRED");
-                item.setSysUserId(actor);
-                queue.update(item);
+                    payload, awaiting, actor);
+            for (var reviewed : group) {
+                staging.delete(reviewed.source().getId(), actor);
+                consumed.add(reviewed.source().getId());
             }
-            // Ownership transfers only after the incoming item and any attached result
-            // persist.
-            for (var row : group)
-                staging.delete(row.getId(), actor);
         }
+        return consumed;
     }
 }

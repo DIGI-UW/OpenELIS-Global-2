@@ -66,6 +66,9 @@ public class MicroContainerLabelServiceTest {
         } catch (IllegalArgumentException expected) {
             assertEquals("MICROBIOLOGY_LABEL_QUANTITY", expected.getMessage());
         }
+        row.setPositiveSource("RECEIVED_ISOLATE");
+        assertEquals("MICROBIOLOGY_LABEL_UNKNOWN", assertThrows(IllegalArgumentException.class,
+                () -> service.resolve("PLT-" + caseId + "-" + rowId, "actor")).getMessage());
         java.nio.file.Files.write(java.nio.file.Path.of("target/m7-container-label.pdf"), pdf);
     }
 }

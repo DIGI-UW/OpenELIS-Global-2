@@ -20,7 +20,48 @@ public class MicroIncomingAnalyzerAdapterTest {
     private final AnalyzerResultPlacementService placement = mock(AnalyzerResultPlacementService.class);
     private final AnalyzerResultsService staging = mock(AnalyzerResultsService.class);
     private final MicroIncomingAnalyzerAdapter adapter = new MicroIncomingAnalyzerAdapter(cases, incoming, placement,
-            staging, mock(MicroIncomingItemDAO.class), links);
+            staging, links);
+
+    private Set<String> accept(List<AnalyzerResults> rows, String actor) {
+        return adapter.acceptReviewed(rows.stream().map(this::decision).toList(), actor);
+    }
+
+    private org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem decision(AnalyzerResults row) {
+        when(staging.get(row.getId())).thenReturn(row);
+        var item = new org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem();
+        item.setId(row.getId());
+        item.setIsAccepted(true);
+        item.setResult(row.getResult());
+        item.setInstrumentSpecimenId(row.getInstrumentSpecimenId());
+        item.setAccessionNumber(row.getAccessionNumber());
+        return item;
+    }
+
+    @Test
+    public void unacceptedRowsNeverTransferOrDeleteStaging() {
+        var item = decision(row("one"));
+        item.setIsAccepted(false);
+        assertTrue(adapter.acceptReviewed(List.of(item), "reviewer").isEmpty());
+        verifyZeroInteractions(incoming, staging, cases, links, placement);
+    }
+
+    @Test
+    public void reviewerEditsAndAcknowledgementsTravelWithTheAcceptedResult() {
+        match(AnalyzerResultPlacement.PatientStatus.MATCH);
+        var item = decision(row("one"));
+        item.setResult("18");
+        item.setNote("Reviewed value");
+        item.setCriticalAcknowledged(true);
+        item.setInvalidResultConfirmed(true);
+        assertEquals(Set.of("one"), adapter.acceptReviewed(List.of(item), "reviewer"));
+        var payload = ArgumentCaptor.forClass(MicroCaseResultRequestForm.class);
+        verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(),
+                payload.capture(), eq(true), eq("reviewer"));
+        assertEquals("18", payload.getValue().components.get(0).value);
+        assertTrue(payload.getValue().components.get(0).criticalAcknowledged);
+        assertTrue(payload.getValue().components.get(0).invalidResultConfirmed);
+        assertEquals("Keep instrument evidence\nReviewed value", payload.getValue().note);
+    }
 
     private AnalyzerResults row(String component) {
         var r = new AnalyzerResults();
@@ -55,7 +96,7 @@ public class MicroIncomingAnalyzerAdapterTest {
     @Test
     public void matchedComponentsTravelTogetherAndStagingIsDeletedOnlyAfterPersistence() {
         match(AnalyzerResultPlacement.PatientStatus.MATCH);
-        adapter.route(List.of(row("one"), row("two")), "actor");
+        accept(List.of(row("one"), row("two")), "actor");
         var payload = ArgumentCaptor.forClass(MicroCaseResultRequestForm.class);
         var order = inOrder(incoming, staging);
         order.verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), eq("connection:run-1:tube:12"),
@@ -76,7 +117,7 @@ public class MicroIncomingAnalyzerAdapterTest {
         related.setId("related");
         related.setLabUnitId("other-unit");
         when(cases.getBySampleItem("tube")).thenReturn(List.of(related, owner));
-        adapter.route(List.of(row("one")), "actor");
+        accept(List.of(row("one")), "actor");
         verify(incoming).receive(eq("case"), eq("tube"), eq("12"), eq("ANALYZER"), anyString(), anyString(), any(),
                 eq(true), eq("actor"));
         verify(staging).delete("one", "actor");
@@ -86,8 +127,9 @@ public class MicroIncomingAnalyzerAdapterTest {
     public void existingAnalysisWithoutActiveOwnershipStaysInSharedReview() {
         match(AnalyzerResultPlacement.PatientStatus.MATCH);
         when(links.getActiveByAnalysisId("analysis")).thenReturn(null);
-        adapter.route(List.of(row("one")), "actor");
-        verifyZeroInteractions(incoming, staging);
+        accept(List.of(row("one")), "actor");
+        verifyZeroInteractions(incoming);
+        verify(staging, never()).delete(anyString(), anyString());
     }
 
     @Test
@@ -105,15 +147,17 @@ public class MicroIncomingAnalyzerAdapterTest {
         second.setId("related");
         second.setLabUnitId("other-unit");
         when(cases.getBySampleItem("tube")).thenReturn(List.of(first, second));
-        adapter.route(List.of(row("one")), "actor");
-        verifyZeroInteractions(incoming, staging, links);
+        accept(List.of(row("one")), "actor");
+        verifyZeroInteractions(incoming, links);
+        verify(staging, never()).delete(anyString(), anyString());
     }
 
     @Test
     public void patientMismatchStaysInSharedReview() {
         match(AnalyzerResultPlacement.PatientStatus.MISMATCH);
-        adapter.route(List.of(row("one")), "actor");
-        verifyZeroInteractions(incoming, staging);
+        accept(List.of(row("one")), "actor");
+        verifyZeroInteractions(incoming);
+        verify(staging, never()).delete(anyString(), anyString());
     }
 
     @Test
@@ -122,11 +166,11 @@ public class MicroIncomingAnalyzerAdapterTest {
         when(incoming.receive(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(),
                 anyBoolean(), anyString())).thenThrow(new IllegalArgumentException("invalid components"));
         try {
-            adapter.route(List.of(row("one")), "actor");
+            accept(List.of(row("one")), "actor");
             fail("Must propagate transaction failure");
         } catch (IllegalArgumentException expected) {
             assertEquals("invalid components", expected.getMessage());
         }
-        verifyZeroInteractions(staging);
+        verify(staging, never()).delete(anyString(), anyString());
     }
 }

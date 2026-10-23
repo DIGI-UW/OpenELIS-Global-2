@@ -109,7 +109,7 @@ public class MicroBenchServiceImpl implements MicroBenchService {
             var shell = workspace.get(caseId, actor);
             if (!labUnitId.equals(shell.labUnitId))
                 throw new org.springframework.security.access.AccessDeniedException("Case lab unit access required");
-            var cultureRows = cultures.getRows(caseId);
+            var cultureRows = cultures.getRows(caseId).stream().filter(row -> !row.receivedIsolate).toList();
             if (cultureRows.isEmpty()) {
                 selected.add(row(shell, null, List.of(), actor));
             } else {
