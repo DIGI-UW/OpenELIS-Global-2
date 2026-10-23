@@ -46,28 +46,33 @@ const mediaLink = (options, sourceId, mediumId) => {
     links.find((link) => !link.sampleTypeId)
   );
 };
-const applyMediumDefaults = (
-  previous,
-  selected,
-  link,
-  requireTrackedMedia,
-) => ({
-  ...previous,
-  mediumItemId: selected?.id || "",
-  lotId:
-    String(previous.mediumItemId) === String(selected?.id)
-      ? previous.lotId
-      : "",
-  notTracked: !(selected?.trackLots || requireTrackedMedia),
-  atmosphereId:
-    link?.atmosphereId || selected?.atmosphereId || previous.atmosphereId,
-  temperature:
-    link?.temperature ?? selected?.temperature ?? previous.temperature,
-  duration: link?.duration ?? previous.duration,
-  durationUnit: link?.durationUnit || previous.durationUnit,
-  checkIntervalHours: link?.checkIntervalHours ?? previous.checkIntervalHours,
-  loopVolume: link?.loopVolume ?? previous.loopVolume,
-});
+const applyMediumDefaults = (previous, selected, link, requireTrackedMedia) => {
+  const sameMedium = String(previous.mediumItemId) === String(selected?.id);
+  const retained = sameMedium ? previous : {};
+  const trackingRequired = selected?.trackLots || requireTrackedMedia;
+  return {
+    ...previous,
+    mediumItemId: selected?.id || "",
+    lotId: sameMedium ? previous.lotId : "",
+    notTracked: trackingRequired
+      ? false
+      : sameMedium
+        ? previous.notTracked
+        : true,
+    atmosphereId:
+      link?.atmosphereId ||
+      selected?.atmosphereId ||
+      retained.atmosphereId ||
+      "",
+    temperature:
+      link?.temperature ?? selected?.temperature ?? retained.temperature ?? "",
+    duration: link?.duration ?? retained.duration ?? "",
+    durationUnit: link?.durationUnit || retained.durationUnit || "",
+    checkIntervalHours:
+      link?.checkIntervalHours ?? retained.checkIntervalHours ?? "",
+    loopVolume: link?.loopVolume ?? retained.loopVolume ?? "",
+  };
+};
 
 function CultureActionForm({
   action,

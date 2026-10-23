@@ -381,3 +381,78 @@ it.each(["NO_GROWTH", "CONTAMINATED"])(
     ).not.toBeInTheDocument();
   },
 );
+
+test.each([{}, { atmosphereId: "air", temperature: 37 }])(
+  "changing to an unlinked medium clears old conditions and applies its own defaults %j",
+  async (environment) => {
+    const service = api([]);
+    service.getCultureOptions.mockResolvedValue({
+      ...options,
+      media: [
+        ...options.media,
+        {
+          id: 11,
+          name: "Unlinked medium",
+          trackLots: false,
+          lots: [],
+          ...environment,
+        },
+      ],
+    });
+    show(service);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Inoculate culture" }),
+    );
+    change("Medium", "11");
+    for (const key of ["duration", "checkIntervalHours", "loopVolume"])
+      expect(
+        screen.getByLabelText(messages[`microbiology.culture.${key}`]),
+      ).toHaveValue(null);
+    expect(
+      screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+    ).toHaveValue("");
+    expect(
+      screen.getByLabelText(messages["microbiology.culture.atmosphereId"]),
+    ).toHaveValue(environment.atmosphereId || "");
+    expect(
+      screen.getByLabelText(messages["microbiology.culture.temperature"]),
+    ).toHaveValue(environment.temperature ?? null);
+    expect(
+      screen.getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+  },
+);
+
+test("changing source preserves an explicitly tracked lot on the same optional medium", async () => {
+  const service = api([]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { sampleItemId: "s2", sampleTypeId: "type1", label: "SPEC-2" },
+    ],
+    media: [{ ...options.media[0], trackLots: false }],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  fireEvent.click(screen.getByLabelText("Lot not tracked"));
+  change("Medium lot", "20");
+  change(messages["microbiology.culture.sourceSampleItemId"], "s2");
+  expect(screen.getByLabelText("Lot not tracked")).not.toBeChecked();
+  expect(screen.getByLabelText("Medium lot")).toHaveValue("20");
+  change("Bottle or plate identifier", "P-TRACKED");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        sourceSampleItemId: "s2",
+        mediumItemId: 10,
+        lotId: 20,
+        notTracked: false,
+      }),
+    ),
+  );
+});
