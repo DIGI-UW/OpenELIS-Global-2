@@ -390,6 +390,7 @@ test("printing awaiting inoculation retains the pending specimen grain", async (
       target: { value: "AWAITING_INOCULATION" },
     },
   );
+  await screen.findByText("PENDING-001");
   fireEvent.click(screen.getAllByRole("checkbox").at(-1));
   fireEvent.click(screen.getByRole("button", { name: "Print bench sheet" }));
   await waitFor(() =>
