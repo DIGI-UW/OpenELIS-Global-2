@@ -248,7 +248,11 @@ export default function CaseAstWorkspace({
       {!data && !error && <InlineLoading description={t("loading")} />}
       {data?.isolates?.length === 0 && <p>{t("identifyFirst")}</p>}
       {data?.isolates?.map((isolate) => (
-        <Tile key={isolate.id} data-testid={`ast-isolate-${isolate.id}`}>
+        <Tile
+          key={isolate.id}
+          data-testid={`ast-isolate-${isolate.id}`}
+          tabIndex={-1}
+        >
           <Stack gap={4}>
             <h4>
               {isolate.label}: {isolate.organism}

@@ -675,3 +675,39 @@ test("consumes a critical communication target after saving and unlocks the next
   expect(await screen.findByLabelText("Critical result target")).toBeEnabled();
   expect(screen.getByLabelText("Critical result target")).toHaveValue("CASE");
 });
+
+test("pending AST links focus the requested isolate after loading and navigation", async () => {
+  const api = service();
+  api.getAstWorkspace = vi.fn().mockResolvedValue({
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { drugs: [] },
+    isolates: ["i1", "i2"].map((id) => ({
+      id,
+      label: id,
+      assignments: [],
+      panels: [],
+      runs: [],
+      choices: [],
+    })),
+  });
+  const view = (id) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch={`?section=ast&astIsolateId=${id}`}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view("i2"));
+  const target = await screen.findByTestId("ast-isolate-i2");
+  await waitFor(() => expect(target).toHaveFocus());
+  expect(screen.getByLabelText("Testing section")).toHaveValue("AST");
+  expect(screen.getByTestId("ast-isolate-i1")).not.toHaveFocus();
+  rerender(view("i1"));
+  await waitFor(() =>
+    expect(screen.getByTestId("ast-isolate-i1")).toHaveFocus(),
+  );
+});

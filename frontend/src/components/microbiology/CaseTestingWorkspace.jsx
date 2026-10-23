@@ -366,6 +366,11 @@ export default function CaseTestingWorkspace({
     sectionScopes[scanParams.get("section")] ||
     { cultures: "CULTURE", ast: "AST" }[scanParams.get("grain")] ||
     "INITIAL";
+  const scanTarget = scanRow
+    ? `${routedScope === "CULTURE" ? "culture-row" : routedScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`
+    : routedScope === "AST" && scanParams.get("astIsolateId")
+      ? `ast-isolate-${scanParams.get("astIsolateId")}`
+      : null;
   const [placement, setPlacement] = useState(routedScope);
   useEffect(() => {
     setPlacement(routedScope);
@@ -376,14 +381,14 @@ export default function CaseTestingWorkspace({
     }
   }, [routedScope, scanRow, scanSearch]);
   useEffect(() => {
-    if (!scanRow) return undefined;
-    const targetId = `${scanScope === "CULTURE" ? "culture-row" : scanScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`;
+    if (!scanTarget || placement !== routedScope) return undefined;
     const scroll = () => {
       const target = document.querySelector(
-        `[data-testid="${CSS.escape(targetId)}"]`,
+        `[data-testid="${CSS.escape(scanTarget)}"]`,
       );
       if (!target) return false;
       target.scrollIntoView?.({ block: "center" });
+      target.focus({ preventScroll: true });
       return true;
     };
     if (scroll()) return undefined;
@@ -392,7 +397,7 @@ export default function CaseTestingWorkspace({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [scanScope, scanRow, placement]);
+  }, [scanTarget, routedScope, placement]);
   const [auxiliaryIsolates, setAuxiliaryIsolates] = useState([]);
   useEffect(() => {
     if (
