@@ -129,7 +129,19 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         if (results.getTests(target, actor).stream().filter(t -> analysisId.equals(t.analysisId))
                 .anyMatch(t -> !"NotStarted".equals(t.status)))
             throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_EXISTING_RESULT");
-        var payload = request.result == null ? decode(item.getStructuredResult()) : request.result;
+        var payload = decode(item.getStructuredResult());
+        if (request.result != null && request.result.components != null) {
+            for (var confirmation : request.result.components) {
+                if (confirmation == null)
+                    continue;
+                payload.components.stream()
+                        .filter(component -> Objects.equals(component.componentId, confirmation.componentId))
+                        .forEach(component -> {
+                            component.criticalAcknowledged = confirmation.criticalAcknowledged;
+                            component.invalidResultConfirmed = confirmation.invalidResultConfirmed;
+                        });
+            }
+        }
         payload.version = MicroCaseResultServiceImpl.version(candidates.get(0),
                 links.getByCaseAndAnalysis(target, analysisId));
         results.saveResults(target, analysisId, payload, actor, http);

@@ -308,6 +308,45 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void placementAcknowledgementCannotReplaceTheStagedResult() {
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(microCase.getSampleTypeId());
+        mapping.setTestId(analysis.getTest().getId());
+        mapping.setSysUserId(actor);
+        em.persist(mapping);
+        var original = payload();
+        original.note = "Original analyzer note";
+        var queued = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "acknowledgement-integrity", "12 / 34", original, false, actor);
+        var placement = new org.openelisglobal.microbiology.form.MicroIncomingPlacementForm();
+        placement.sampleItemId = microCase.getSampleItemId();
+        placement.result = payload();
+        placement.result.note = "Replacement client note";
+        placement.result.components.get(0).value = "99";
+        placement.result.components.get(0).criticalAcknowledged = true;
+        placement.result.components.remove(1);
+        var unknown = new MicroCaseResultRequestForm.ResultComponent();
+        unknown.componentId = "unknown";
+        unknown.value = "999";
+        placement.result.components.add(unknown);
+        var placed = incoming.place(microCase.getId(), queued.id, placement, actor, request(actor));
+        assertEquals("PLACED", placed.state);
+        assertEquals(Set.of("12", "34"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                .collect(java.util.stream.Collectors.toSet()));
+        var notes = em
+                .createQuery("from Note n where n.referenceId = :id and n.text = :text",
+                        org.openelisglobal.note.valueholder.Note.class)
+                .setParameter("id", analysis.getId()).setParameter("text", "Original analyzer note").getResultList();
+        assertEquals(1, notes.size());
+        assertEquals(Long.valueOf(0),
+                em.createQuery("select count(n) from Note n where n.referenceId = :id and n.text = :text", Long.class)
+                        .setParameter("id", analysis.getId()).setParameter("text", "Replacement client note")
+                        .getSingleResult());
+        assertEquals("Original analyzer note", placed.result.note);
+        assertEquals("12", placed.result.components.getFirst().value);
+    }
+
+    @Test
     public void analyzerArrivalAttachesComponentsOnceAndNeverFinalizes() {
         var p = payload();
         var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
