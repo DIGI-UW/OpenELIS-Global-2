@@ -64,6 +64,9 @@ export default function CaseAstWorkspace({
   onChanged,
   renderNotes,
   readOnly = false,
+  entryAction,
+  selectedRunId,
+  onEntryActionConsumed,
 }) {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -164,6 +167,30 @@ export default function CaseAstWorkspace({
       reason: "",
     });
   };
+  const consumedEntry = useRef(null);
+  useEffect(() => {
+    if (entryAction !== "new-ast-attempt") {
+      consumedEntry.current = null;
+      return;
+    }
+    if (!data) return;
+    const key = `${detail.id}:${selectedRunId}`;
+    if (consumedEntry.current === key) return;
+    consumedEntry.current = key;
+    const isolate = data.isolates.find((item) =>
+      item.runs.some((run) => run.id === selectedRunId),
+    );
+    const run = isolate?.runs.find((item) => item.id === selectedRunId);
+    if (canEnter && run?.status === "REVIEWED") open("repeat", isolate, run);
+    onEntryActionConsumed?.();
+  }, [
+    entryAction,
+    selectedRunId,
+    detail.id,
+    data,
+    canEnter,
+    onEntryActionConsumed,
+  ]);
   const submit = async () => {
     if (readOnly || !draft) return;
     const validating =
@@ -655,6 +682,19 @@ export default function CaseAstWorkspace({
             )}
             {["repeat", "retest"].includes(draft.action) && (
               <>
+                <Select
+                  id="ast-attempt-type"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.attemptType",
+                  })}
+                  value={draft.action}
+                  onChange={(event) =>
+                    setDraft({ ...draft, action: event.target.value })
+                  }
+                >
+                  <SelectItem value="repeat" text={t("action.repeat")} />
+                  <SelectItem value="retest" text={t("action.retest")} />
+                </Select>
                 <Select
                   id="ast-repeat-agent"
                   labelText={intl.formatMessage({

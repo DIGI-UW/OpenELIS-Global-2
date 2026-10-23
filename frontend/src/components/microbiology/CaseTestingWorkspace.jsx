@@ -792,6 +792,16 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "AST" && (
         <CaseAstWorkspace
+          entryAction={scanParams.get("action")}
+          selectedRunId={scanRow}
+          onEntryActionConsumed={() =>
+            onScopeChange?.("AST", {
+              ...(scanRow ? { row: scanRow } : {}),
+              ...(scanParams.get("astView")
+                ? { astView: scanParams.get("astView") }
+                : {}),
+            })
+          }
           readOnly={scanParams.get("astView") === "reviewed"}
           renderNotes={renderNotes}
           detail={detail}

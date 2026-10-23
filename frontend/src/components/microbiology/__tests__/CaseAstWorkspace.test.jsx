@@ -326,3 +326,59 @@ it("closes an editor and disables mutations when entering reviewed mode", async 
     await screen.findByRole("button", { name: t("action.select") }),
   ).toBeEnabled();
 });
+
+it.each([
+  [true, false, "REVIEWED", true],
+  [false, false, "REVIEWED", false],
+  [true, true, "REVIEWED", false],
+  [true, false, "IN_PROGRESS", false],
+])(
+  "consumes a routed new attempt with write=%s readOnly=%s status=%s",
+  async (canWrite, readOnly, status, opens) => {
+    const consumed = vi.fn();
+    const service = {
+      getAstWorkspace: vi.fn().mockResolvedValue(workspace(status)),
+      astAction: vi.fn().mockResolvedValue(workspace()),
+    };
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <CaseAstWorkspace
+          detail={{ id: "c1", canWrite, canValidate: true }}
+          service={service}
+          readOnly={readOnly}
+          entryAction="new-ast-attempt"
+          selectedRunId="run"
+          onEntryActionConsumed={consumed}
+        />
+      </IntlProvider>,
+    );
+    await waitFor(() => expect(consumed).toHaveBeenCalledTimes(1));
+    if (!opens) {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      return;
+    }
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(
+      within(dialog).getByLabelText(messages["microbiology.ast.attemptType"]),
+      { target: { value: "retest" } },
+    );
+    fireEvent.change(within(dialog).getByLabelText(t("reason")), {
+      target: { value: "Confirm susceptibility" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: t("save"), exact: true }),
+    );
+    await waitFor(() =>
+      expect(service.astAction).toHaveBeenCalledWith(
+        "c1",
+        expect.objectContaining({
+          action: "retest",
+          runId: "run",
+          isolateId: "i1",
+        }),
+        false,
+      ),
+    );
+    expect(consumed).toHaveBeenCalledTimes(1);
+  },
+);

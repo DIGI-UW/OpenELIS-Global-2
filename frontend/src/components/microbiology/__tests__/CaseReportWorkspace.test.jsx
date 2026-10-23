@@ -163,3 +163,15 @@ it("requires confirmation of the exact waiting incoming results before final rel
     ]),
   );
 });
+
+it("allows a partial report from no-growth-ready without requiring final release", async () => {
+  show(
+    { canWrite: true, canValidate: true, stage: "NO_GROWTH_READY" },
+    { finalReleaseReady: true, blockers: [] },
+  );
+  await screen.findByText("Microbiology unit");
+  expect(
+    screen.getByRole("button", { name: t("partialRelease") }),
+  ).toBeEnabled();
+  expect(screen.getByRole("button", { name: t("finalRelease") })).toBeEnabled();
+});
