@@ -481,7 +481,6 @@ export default function CaseTestingWorkspace({
       .catch(() => {
         if (mounted.current) setError(true);
       });
-    onCaseChanged?.();
   };
   const addTests = async () => {
     setAdding(true);
@@ -811,7 +810,7 @@ export default function CaseTestingWorkspace({
         <CaseCultureWorkspace
           entryAction={scanParams.get("action")}
           onEntryActionConsumed={() => onScopeChange?.("CULTURE")}
-          onChanged={onCaseChanged}
+          onChanged={refreshTesting}
           renderNotes={renderNotes}
           detail={detail}
           service={service}

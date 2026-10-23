@@ -562,6 +562,15 @@ it("honors the worklist setup action through the shared chooser and records the 
   api.cultureAction = vi
     .fn()
     .mockResolvedValue([{ ...row, outcome: "GROWTH" }]);
+  api.getTimeline.mockResolvedValueOnce([]).mockResolvedValue([
+    {
+      id: "culture-outcome",
+      activityType: "CULTURE_OUTCOME",
+      note: "Recorded growth",
+      occurredAt: "2026-01-01T12:00:00Z",
+      performedByDisplay: "Technician",
+    },
+  ]);
   const changed = vi.fn();
   const navigate = vi.fn();
   render(
@@ -591,6 +600,11 @@ it("honors the worklist setup action through the shared chooser and records the 
   );
   expect(changed).toHaveBeenCalledTimes(1);
   expect(navigate).toHaveBeenCalledWith("CULTURE");
+  await waitFor(() => expect(api.getTimeline).toHaveBeenCalledTimes(2));
+  fireEvent.change(screen.getByLabelText("Testing section"), {
+    target: { value: "HISTORY" },
+  });
+  expect(await screen.findByText(/Recorded growth/)).toBeVisible();
 });
 
 test("reviewed AST entry remains read-only for a writer and validator", async () => {

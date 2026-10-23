@@ -44,6 +44,9 @@ test("offers only eligible culture lots and retains exact culture and AST proven
   await atmosphere.selectOption(value!);
   await dialog.getByLabel("Temperature (°C)", { exact: true }).fill("35");
   await dialog.getByLabel("Incubation duration", { exact: true }).fill("48");
+  await dialog
+    .getByLabel("Duration unit", { exact: true })
+    .selectOption("HOURS");
   await expect(
     dialog.getByRole("button", { name: "Save", exact: true }),
   ).toBeEnabled();
