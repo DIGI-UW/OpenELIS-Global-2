@@ -41,8 +41,9 @@ public class MicroBreakpointConfigurationHandler extends AbstractCatalogCsvHandl
             csv.append(CSVFormat.DEFAULT.format(columns.stream().map(row::get).toArray())).append('\n');
         }
         var result = transaction.run(() -> importer.applyConfiguration(csv.toString(), SYS_USER_ID));
+        var unchangedRows = new java.util.HashSet<>(result.unchangedRowNumbers);
         for (int i = 0; i < rows.size(); i++) {
-            var outcome = result.unchangedRowNumbers.contains(i + 2) ? LoadedRow.skipped("Unchanged breakpoint")
+            var outcome = unchangedRows.contains(i + 2) ? LoadedRow.skipped("Unchanged breakpoint")
                     : LoadedRow.created(null);
             summary.record(outcome, getClass().getSimpleName(), rows.get(i).lineNumber());
         }
