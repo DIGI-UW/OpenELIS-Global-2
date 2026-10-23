@@ -261,6 +261,22 @@ it("lets Results users save a manual reading without requesting the analyzer lis
   );
   expect(service.getAnalyzers).not.toHaveBeenCalled();
   expect(screen.queryByText(t("saveError"))).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: t("action.start"), exact: true }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).queryByRole("option", {
+      name: messages["microbiology.ast.entryMode.analyzer"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(screen.getByRole("dialog")).getByRole("option", {
+      name: messages["microbiology.ast.entryMode.manual"],
+    }),
+  ).toBeInTheDocument();
 });
 
 it("loads analyzer choices when the session has analyzer import rights", async () => {
@@ -283,6 +299,14 @@ it("loads analyzer choices when the session has analyzer import rights", async (
     </IntlProvider>,
   );
   await waitFor(() => expect(service.getAnalyzers).toHaveBeenCalled());
+  fireEvent.click(
+    screen.getByRole("button", { name: t("action.start"), exact: true }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByRole("option", {
+      name: messages["microbiology.ast.entryMode.analyzer"],
+    }),
+  ).toBeInTheDocument();
 });
 
 it("closes an editor and disables mutations when entering reviewed mode", async () => {

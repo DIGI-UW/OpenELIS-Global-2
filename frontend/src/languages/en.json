@@ -14000,6 +14000,8 @@
   "microbiology.case.requiredQuestion": "{label} (required before final release)",
   "microbiology.case.saveQuestions": "Save questionnaire answers",
   "microbiology.case.questionSaveError": "Unable to save or load these answers. Reload the case to check for changes and try again.",
+  "microbiology.case.otherAnswer": "Other answer",
+  "microbiology.case.otherAnswers": "Other answers (one per line)",
   "microbiology.case.questionUnsupported": "This question type cannot be edited here. Complete it through the order questionnaire.",
   "microbiology.culture.elapsed": "{days}d {hours}h {minutes}m",
   "microbiology.culture.newIncubationEnd": "New incubation end",

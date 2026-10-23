@@ -98,10 +98,17 @@ export default function CaseQuestionnaire({ detail, service, onSaved }) {
           ...(q.type === "group"
             ? { item: items(q.item || []) }
             : {
-                answer: (answers[q.linkId] || []).map((answer) => ({
-                  ...answer,
-                  ...(q.item?.length ? { item: items(q.item) } : {}),
-                })),
+                answer: (answers[q.linkId] || [])
+                  .filter(
+                    (answer) =>
+                      q.type !== "open-choice" ||
+                      typeof answer.valueString !== "string" ||
+                      answer.valueString.trim() !== "",
+                  )
+                  .map((answer) => ({
+                    ...answer,
+                    ...(q.item?.length ? { item: items(q.item) } : {}),
+                  })),
               }),
         }));
     try {
@@ -144,9 +151,19 @@ export default function CaseQuestionnaire({ detail, service, onSaved }) {
         Object.entries(option).filter(([key]) => key.startsWith("value")),
       ),
     }));
+    const customAnswers = (answers[item.linkId] || []).filter(
+      (answer) =>
+        typeof answer.valueString === "string" &&
+        !options.some((option) =>
+          equal(valueOf(option.answer), valueOf(answer)),
+        ),
+    );
     let field;
     if (["group", "display"].includes(item.type)) field = <h4>{label}</h4>;
-    else if (["choice", "open-choice"].includes(item.type) && options.length) {
+    else if (
+      item.type === "open-choice" ||
+      (item.type === "choice" && options.length)
+    ) {
       field = item.repeats ? (
         <MultiSelect
           {...common}
@@ -162,20 +179,27 @@ export default function CaseQuestionnaire({ detail, service, onSaved }) {
           onChange={({ selectedItems }) =>
             change(
               item.linkId,
-              selectedItems.map((o) => o.answer),
+              selectedItems
+                .map((o) => o.answer)
+                .concat(item.type === "open-choice" ? customAnswers : []),
             )
           }
         />
       ) : (
         <Select
           {...common}
-          value={options.find((o) => equal(valueOf(o.answer), value))?.id ?? ""}
+          value={
+            options.find((o) => equal(valueOf(o.answer), value))?.id ??
+            (customAnswers.length ? "custom" : "")
+          }
           onChange={(e) =>
             change(
               item.linkId,
               e.target.value === ""
                 ? []
-                : [options[Number(e.target.value)].answer],
+                : e.target.value === "custom"
+                  ? [{ valueString: "" }]
+                  : [options[Number(e.target.value)].answer],
             )
           }
         >
@@ -183,8 +207,55 @@ export default function CaseQuestionnaire({ detail, service, onSaved }) {
           {options.map((o) => (
             <SelectItem key={o.id} value={o.id} text={o.label} />
           ))}
+          {item.type === "open-choice" && (
+            <SelectItem
+              value="custom"
+              text={t("microbiology.case.otherAnswer")}
+            />
+          )}
         </Select>
       );
+      if (
+        item.type === "open-choice" &&
+        (item.repeats || !options.length || customAnswers.length)
+      ) {
+        const TextField = item.repeats ? TextArea : TextInput;
+        field = (
+          <Stack gap={3}>
+            {options.length > 0 && field}
+            <TextField
+              {...common}
+              id={`${id}-custom`}
+              labelText={
+                options.length
+                  ? t(
+                      item.repeats
+                        ? "microbiology.case.otherAnswers"
+                        : "microbiology.case.otherAnswer",
+                    )
+                  : label
+              }
+              value={customAnswers
+                .map((answer) => answer.valueString)
+                .join("\n")}
+              onChange={(event) =>
+                change(
+                  item.linkId,
+                  item.repeats
+                    ? (answers[item.linkId] || [])
+                        .filter((answer) => !customAnswers.includes(answer))
+                        .concat(
+                          event.target.value
+                            .split("\n")
+                            .map((text) => ({ valueString: text })),
+                        )
+                    : [{ valueString: event.target.value }],
+                )
+              }
+            />
+          </Stack>
+        );
+      }
     } else if (item.type === "boolean")
       field = (
         <Select

@@ -575,12 +575,14 @@ export default function CaseAstWorkspace({
                       id: "microbiology.ast.entryMode.manual",
                     })}
                   />
-                  <SelectItem
-                    value="ANALYZER"
-                    text={intl.formatMessage({
-                      id: "microbiology.ast.entryMode.analyzer",
-                    })}
-                  />
+                  {canListAnalyzers && (
+                    <SelectItem
+                      value="ANALYZER"
+                      text={intl.formatMessage({
+                        id: "microbiology.ast.entryMode.analyzer",
+                      })}
+                    />
+                  )}
                 </Select>
                 {draft.awaitAnalyzerResults && (
                   <>

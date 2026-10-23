@@ -25,11 +25,12 @@ const questionnaire = {
     },
   ],
 };
-const show = (canWrite = true, definition = questionnaire) => {
+const show = (canWrite = true, definition = questionnaire, response = null) => {
   const data = {
     programId: "p",
     questionnaireJson: JSON.stringify(definition),
     version: "revision-1",
+    responseJson: response ? JSON.stringify(response) : null,
   };
   const service = {
     getQuestionnaire: vi.fn().mockResolvedValue(data),
@@ -186,4 +187,110 @@ it("does not overwrite repeated group responses with a flattened form", async ()
     }),
   ).toBeDisabled();
   expect(service.saveQuestionnaire).not.toHaveBeenCalled();
+});
+
+const coding = {
+  system: "urn:specimen",
+  code: "known",
+  display: "Known source",
+};
+const openChoice = (repeats = false) => ({
+  resourceType: "Questionnaire",
+  item: [
+    {
+      linkId: "source",
+      text: "Source",
+      type: "open-choice",
+      repeats,
+      answerOption: [{ valueCoding: coding }],
+    },
+  ],
+});
+const submitQuestions = () =>
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: messages["microbiology.case.saveQuestions"],
+    }),
+  );
+it("saves free text and predefined coding for an open-choice question", async () => {
+  const { service } = show(true, openChoice());
+  fireEvent.change(await screen.findByLabelText("Source"), {
+    target: { value: "custom" },
+  });
+  fireEvent.change(
+    screen.getByLabelText(messages["microbiology.case.otherAnswer"]),
+    { target: { value: "Different source" } },
+  );
+  submitQuestions();
+  await waitFor(() =>
+    expect(service.saveQuestionnaire).toHaveBeenCalledTimes(1),
+  );
+  expect(
+    JSON.parse(service.saveQuestionnaire.mock.calls[0][1].responseJson).item[0]
+      .answer,
+  ).toEqual([{ valueString: "Different source" }]);
+  fireEvent.change(screen.getByLabelText("Source"), { target: { value: "0" } });
+  submitQuestions();
+  await waitFor(() =>
+    expect(service.saveQuestionnaire).toHaveBeenCalledTimes(2),
+  );
+  expect(
+    JSON.parse(service.saveQuestionnaire.mock.calls[1][1].responseJson).item[0]
+      .answer,
+  ).toEqual([{ valueCoding: coding }]);
+});
+it("preserves coded selections while editing repeated free-text answers", async () => {
+  const { service } = show(true, openChoice(true), {
+    resourceType: "QuestionnaireResponse",
+    item: [
+      {
+        linkId: "source",
+        answer: [{ valueCoding: coding }, { valueString: "First source" }],
+      },
+    ],
+  });
+  const other = await screen.findByLabelText(
+    messages["microbiology.case.otherAnswers"],
+  );
+  expect(other).toHaveValue("First source");
+  fireEvent.change(other, { target: { value: "First source\n" } });
+  expect(other).toHaveValue("First source\n");
+  fireEvent.change(other, {
+    target: { value: "First source\nSecond source\n" },
+  });
+  submitQuestions();
+  await waitFor(() => expect(service.saveQuestionnaire).toHaveBeenCalled());
+  expect(
+    JSON.parse(service.saveQuestionnaire.mock.calls[0][1].responseJson).item[0]
+      .answer,
+  ).toEqual([
+    { valueCoding: coding },
+    { valueString: "First source" },
+    { valueString: "Second source" },
+  ]);
+});
+it("shows saved free text read-only outside the owning unit", async () => {
+  show(false, openChoice(), {
+    resourceType: "QuestionnaireResponse",
+    item: [{ linkId: "source", answer: [{ valueString: "Saved source" }] }],
+  });
+  const other = await screen.findByLabelText(
+    messages["microbiology.case.otherAnswer"],
+  );
+  expect(other).toHaveValue("Saved source");
+  expect(other).toBeDisabled();
+});
+it("accepts open-choice text when no predefined answers exist", async () => {
+  const definition = openChoice();
+  definition.item[0].answerOption = [];
+  const { service } = show(true, definition);
+  fireEvent.change(await screen.findByLabelText("Source"), {
+    target: { value: "Unlisted" },
+  });
+  submitQuestions();
+  await waitFor(() => expect(service.saveQuestionnaire).toHaveBeenCalled());
+  expect(
+    JSON.parse(service.saveQuestionnaire.mock.calls[0][1].responseJson).item[0]
+      .answer,
+  ).toEqual([{ valueString: "Unlisted" }]);
 });
