@@ -128,7 +128,10 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                 .map(t -> new IdValuePair(t.getId(), t.getDescription())).toList();
         f.organizations = organizations.getActiveOrganizations().stream()
                 .map(o -> new IdValuePair(o.getId(), o.getOrganizationName())).toList();
-        f.reasons = reasons.getAllReferralReasons().stream().map(r -> new IdValuePair(r.getId(), r.getName())).toList();
+        f.referralOrganizations = referralLabs().stream().map(o -> new IdValuePair(o.getId(), o.getOrganizationName()))
+                .toList();
+        f.reasons = reasons.getAllReferralReasons().stream().map(r -> new IdValuePair(r.getId(), r.getLocalizedName()))
+                .toList();
         f.sources = cultures.getSources(caseId).stream().filter(s -> !s.isRejected())
                 .map(s -> new MicroIsolateWorkspaceForm.Source(s.getId(), label(s), s.getTypeOfSampleId())).toList();
         f.tests = units.getTestsInSection(c.getLabUnitId()).stream()
@@ -282,6 +285,11 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         return get(caseId, actor);
     }
 
+    private List<org.openelisglobal.organization.valueholder.Organization> referralLabs() {
+        return organizations.getOrganizationsByTypeName("organizationName", "referralLab").stream()
+                .filter(o -> "Y".equals(o.getIsActive())).toList();
+    }
+
     private void createReferral(MicroCase c, MicroIsolateWorkspaceRequestForm r, String actor) {
         if (r.referral == null)
             bad("REFERRAL_REQUIRED");
@@ -289,7 +297,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         if (item.getReferredInstituteId() == null)
             bad("ORGANIZATION");
         var receivingLab = organizations.get(item.getReferredInstituteId());
-        if (receivingLab == null || !"Y".equals(receivingLab.getIsActive()))
+        if (receivingLab == null || !"Y".equals(receivingLab.getIsActive())
+                || referralLabs().stream().noneMatch(o -> o.getId().equals(receivingLab.getId())))
             bad("ORGANIZATION");
         item.setReferralReasonId(trim(item.getReferralReasonId()));
         if (item.getReferralReasonId() != null && reasons.getMatch("id", item.getReferralReasonId()).isEmpty())

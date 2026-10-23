@@ -27,6 +27,7 @@ const options = {
   sources: [{ id: "s1", value: "SOURCE-1", sampleTypeId: "specimen" }],
   tests: [],
   organizations: [],
+  referralOrganizations: [],
   reasons: [],
 };
 const api = (rows = [isolate]) => ({
@@ -303,7 +304,8 @@ it("submits the shared specimen referral with only a receiving lab and scoped te
   const service = api([]);
   service.getIsolateOptions.mockResolvedValue({
     ...options,
-    organizations: [{ id: "lab1", value: "Reference facility" }],
+    organizations: [{ id: "site1", value: "Collection site" }],
+    referralOrganizations: [{ id: "lab1", value: "Reference facility" }],
     tests: [
       { id: "test1", name: "Confirmatory PCR", sampleTypeIds: ["specimen"] },
     ],

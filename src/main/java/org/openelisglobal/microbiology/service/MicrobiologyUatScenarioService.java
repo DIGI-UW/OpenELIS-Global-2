@@ -104,6 +104,8 @@ public class MicrobiologyUatScenarioService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.organization.service.OrganizationService organizations;
     @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.organization.service.OrganizationTypeService organizationTypes;
+    @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.referral.service.ReferralReasonService referralReasons;
     private static final String ISOLATE_WORKSPACE_SCENARIO = "ISOLATE_WORKSPACE";
     private static final String RECEIVED_ISOLATE_SCENARIO = "RECEIVED_ISOLATE";
@@ -364,6 +366,16 @@ public class MicrobiologyUatScenarioService {
                 referenceLab.setSysUserId(performedBy);
                 organizations.insert(referenceLab);
             }
+            var referralType = organizationTypes.getOrganizationTypeByName("referralLab");
+            if (referralType == null) {
+                referralType = new org.openelisglobal.organization.valueholder.OrganizationType();
+                referralType.setName("referralLab");
+                referralType.setDescription("Referral laboratory");
+                referralType.setSysUserId(performedBy);
+                organizationTypes.insert(referralType);
+            }
+            if (!organizations.getTypeIdsForOrganizationId(referenceLab.getId()).contains(referralType.getId()))
+                organizations.linkOrganizationAndType(referenceLab, referralType.getId());
             referralReason = referralReasons.getAllReferralReasons().stream()
                     .filter(r -> ("UAT confirmation " + suffix).equals(r.getName())).findFirst().orElse(null);
             if (referralReason == null) {

@@ -76,6 +76,8 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private org.openelisglobal.organization.service.OrganizationService organizations;
     @Autowired
+    private org.openelisglobal.organization.service.OrganizationTypeService organizationTypes;
+    @Autowired
     private org.openelisglobal.referral.service.ReferralReasonService reasons;
     @Autowired
     private org.openelisglobal.referral.dao.ReferralDAO referrals;
@@ -489,6 +491,7 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         facility.setMlsSentinelLabFlag("N");
         facility.setSysUserId(writer);
         organizations.insert(facility);
+        markReferralLab(facility);
         var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
         reason.setName("M5 " + UUID.randomUUID().toString().substring(0, 12));
         reason.setSysUserId(writer);
@@ -812,6 +815,60 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
                         .isEmpty());
     }
 
+    @Test
+    public void referralReasonOptionsUseTheSessionLocale() {
+        var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
+        reason.setName("M5 untranslated " + UUID.randomUUID().toString().substring(0, 8));
+        reason.setNameKey("label.button.save");
+        reason.setSysUserId(writer);
+        reasons.insert(reason);
+        var previous = org.springframework.context.i18n.LocaleContextHolder.getLocaleContext();
+        try {
+            org.springframework.context.i18n.LocaleContextHolder.setLocale(Locale.FRENCH);
+            var option = workspace.options(c.getId()).reasons.stream().filter(r -> r.getId().equals(reason.getId()))
+                    .findFirst().orElseThrow();
+            assertEquals(reason.getLocalizedName(), option.getValue());
+            assertNotEquals(reason.getName(), option.getValue());
+        } finally {
+            org.springframework.context.i18n.LocaleContextHolder.setLocaleContext(previous);
+        }
+    }
+
+    @Test
+    public void referralDestinationsExcludeOrdinaryFacilitiesAndInactiveLabs() {
+        var request = minimalReferralRequest();
+        var facility = organizations.get(request.referral.getReferredInstituteId());
+        var options = workspace.options(c.getId());
+        assertTrue(options.referralOrganizations.stream().anyMatch(o -> o.getId().equals(facility.getId())));
+        organizations.deleteAllLinksForOrganization(facility.getId());
+        options = workspace.options(c.getId());
+        assertTrue(options.organizations.stream().anyMatch(o -> o.getId().equals(facility.getId())));
+        assertFalse(options.referralOrganizations.stream().anyMatch(o -> o.getId().equals(facility.getId())));
+        String isolateId = pick();
+        assertEquals("MICROBIOLOGY_ISOLATE_ORGANIZATION", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), isolateId, "referral", request, writer)).getMessage());
+        markReferralLab(facility);
+        facility.setIsActive("N");
+        organizations.update(facility);
+        assertFalse(workspace.options(c.getId()).referralOrganizations.stream()
+                .anyMatch(o -> o.getId().equals(facility.getId())));
+        assertEquals("MICROBIOLOGY_ISOLATE_ORGANIZATION", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), isolateId, "referral", request, writer)).getMessage());
+        assertTrue(reload().referrals.isEmpty());
+    }
+
+    private void markReferralLab(org.openelisglobal.organization.valueholder.Organization facility) {
+        var type = organizationTypes.getOrganizationTypeByName("referralLab");
+        if (type == null) {
+            type = new org.openelisglobal.organization.valueholder.OrganizationType();
+            type.setName("referralLab");
+            type.setDescription("Referral laboratory");
+            type.setSysUserId(writer);
+            organizationTypes.insert(type);
+        }
+        organizations.linkOrganizationAndType(facility, type.getId());
+    }
+
     private MicroIsolateWorkspaceRequestForm minimalReferralRequest() {
         var test = fixtures.createCatalogTest();
         test.setTestSection(units.get(c.getLabUnitId()));
@@ -827,6 +884,7 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         facility.setMlsSentinelLabFlag("N");
         facility.setSysUserId(writer);
         organizations.insert(facility);
+        markReferralLab(facility);
         var request = new MicroIsolateWorkspaceRequestForm();
         request.sampleTypeId = isolateType.getId();
         request.testId = test.getId();

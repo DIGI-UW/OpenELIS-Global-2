@@ -29,7 +29,7 @@ public class MicroIsolateWorkspaceForm {
     }
 
     public static class Options {
-        public List<IdValuePair> organisms, sampleTypes, organizations, reasons, methods;
+        public List<IdValuePair> organisms, sampleTypes, organizations, referralOrganizations, reasons, methods;
         public List<Test> tests;
         public List<Source> sources;
     }

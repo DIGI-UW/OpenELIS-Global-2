@@ -294,7 +294,7 @@ function IsolateAction({
           select("testId", tests)}
         {referral && (
           <OrderReferOutForm
-            referralOrganizations={options.organizations}
+            referralOrganizations={options.referralOrganizations}
             referralReasons={options.reasons}
             isSaving={saving || !valid}
             onCancel={onClose}
