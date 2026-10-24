@@ -413,6 +413,54 @@ describe("AnalyzerTypeMappingEditor", () => {
       return saveAnalyzerMapping.mock.calls[0][1];
     };
 
+    it("keeps the call selector when correcting an older mapping without source declarations", async () => {
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({
+          ...viralLoadMapping,
+          tests: [
+            recordRow("", {
+              callComponentId: "comp-call",
+              callComponentCode: null,
+            }),
+          ],
+        }),
+      );
+      renderEditor();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Cepheid GeneXpert MTB/RIF mappings",
+      });
+      const main = rowFor("HIVVL");
+      const picker = within(main).getByRole("combobox", {
+        name: "OpenELIS test for HIVVL",
+      });
+      await userEvent.clear(picker);
+      await userEvent.type(picker, "HIVVLP");
+      await userEvent.click(
+        await screen.findByRole("option", {
+          name: /HIV-1 viral load \(plasma\)/,
+        }),
+      );
+      const selector = within(main).getByRole("combobox", {
+        name: "Call result for HIVVL goes to",
+      });
+      expect(selector).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Save mapping" }),
+      ).toBeDisabled();
+      await userEvent.click(selector);
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Call" }),
+      );
+      const payload = await saveAndReadPayload();
+      expect(payload.tests[0]).toMatchObject({
+        testId: "9802",
+        callComponentId: "plasma-call",
+      });
+      expect(getAnalyzerTypeRevision).not.toHaveBeenCalled();
+      expect(getAnalyzerTypeDefaults).not.toHaveBeenCalled();
+    });
+
     it("shows each record as its own row and saves each with its own identity and targets", async () => {
       renderEditor();
       await screen.findByRole("heading", {

@@ -119,6 +119,34 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     }
 
     @Test
+    public void separateNumericControlRunsWithTheSameValueBothReachQc() throws Exception {
+        assertIndependentControlRuns(prepareControl(true));
+    }
+
+    @Test
+    public void separateQualitativeControlRunsWithTheSameAnswerBothReachQc() throws Exception {
+        assertIndependentControlRuns(prepareQualitativeControl("POS", true));
+    }
+
+    private void assertIndependentControlRuns(Bundle first) {
+        AnalyzerNormalizedResultImportSummary firstReceipt = importService.importBundle(first, "1");
+        assertEquals(1, firstReceipt.controlResultsProcessed());
+        Bundle second = first.copy();
+        second.getIdentifier().setValue(first.getIdentifier().getValue() + "-next-run");
+        second.getEntry().stream().map(entry -> entry.getResource()).filter(Observation.class::isInstance)
+                .map(Observation.class::cast).forEach(observation -> observation
+                        .setEffective(new org.hl7.fhir.r4.model.DateTimeType("2026-08-21T12:30:00Z")));
+        AnalyzerNormalizedResultImportSummary secondReceipt = importService.importBundle(second, "1");
+        assertEquals(1, secondReceipt.controlResultsProcessed());
+        assertEquals(Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(secondReceipt, importService.importBundle(second, "1"));
+        assertEquals(firstReceipt, importService.importBundle(first, "1"));
+        assertEquals(Integer.valueOf(2), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
     public void controlReplayDoesNotCreateAnotherOperationalQcResultAfterStagingRemoval() throws Exception {
         Bundle bundle = prepareControl(true);
         AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");

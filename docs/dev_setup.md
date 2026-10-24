@@ -189,14 +189,15 @@ rebuilds the keystore, truststore and proxy certificate that still hold the
 image's. A keystore that already holds a certificate of the site's own is kept,
 and its key becomes the install's; a proxy certificate someone else installed,
 such as a Let's Encrypt one, is kept too. A store that does not open with the
-`kspass`/`tspass` passwords in `common.properties` is left as it is, with a
-warning. Later starts keep the install's key. The first start also generates the
-install's key for database secrets (`install/encryption.key`), which the webapp
-uses unless `OE_ENCRYPTION_PASSWORD` is set. Fresh installations use this key
-from the first write. Existing databases require the explicit
-[one-time encryption upgrade](upgrades/installation-encryption.md) before switching
-to it. Normal startup never scans or rewrites database secrets. Back up the key
-volume with the database.
+configured keystore/truststore passwords is left untouched and startup fails
+with an explanation; restore the correct passwords before retrying. Later starts
+keep the install's key. The first start also generates the install's key for
+database secrets (`install/encryption.key`), which the webapp uses unless
+`OE_ENCRYPTION_PASSWORD` is set. Fresh installations use this key from the first
+write. Existing databases require the explicit
+[one-time encryption upgrade](upgrades/installation-encryption.md) before
+switching to it. Normal startup never scans or rewrites database secrets. Back
+up the key volume with the database.
 
 A paired Analyzer Bridge pinned the certificate OpenELIS served when they
 paired, so it stops delivering results when the key is replaced; undelivered

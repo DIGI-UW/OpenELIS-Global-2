@@ -133,6 +133,34 @@ reconfirmation after decimal/override changes, or reconstruct missing historical
 readings are superseded and removed. Their historical implementation notes remain
 in Git history; they are not acceptance requirements for this cleanup.
 
+## Review follow-up — 23 October 2026
+
+The remaining review fixes preserve the interpret-once boundary:
+
+- Control runs bypass the patient-result duplicate lock. Delivery receipts still
+  prevent replay; independent numeric and qualitative control runs both enter QC.
+- The mapping editor retains a saved call-target requirement when the operator
+  changes its local test, even without older source declarations. No Bridge lookup
+  or new persistence model is introduced.
+- The webapp entrypoint grants its application user write access to the public
+  truststore only. A container probe reproduces the denied upload before repair,
+  calls the real upload service after repair, and checks private-store permissions.
+- Menu configuration updates pass a saved original state to the existing audit
+  service. Unchanged configuration creates no additional history.
+- Normal operation uses one installation encryption key and performs no rekey scan.
+  The previous startup listener, service, DAO and obsolete tests are removed.
+  Existing databases use the separate, explicit [one-time upgrade](../../docs/upgrades/installation-encryption.md)
+  while application writers are stopped. Liquibase tracks completion; primary-key
+  batches are resumable. Fresh installations never need this upgrade.
+- Analyzer deletion uses Hibernate entity queries within the existing service
+  transaction, retaining history restrictions and its deletion audit event.
+
+Focused validation passed 57 backend tests and 31 mapping-editor tests. The
+standalone upgrade tests use PostgreSQL to verify interruption after 250 rows,
+wrong-key rejection, recovery of 501 secrets and one-time completion. Full local
+and GitHub validation must be refreshed for the committed candidate before
+claiming these review fixes ready.
+
 ## Remaining acceptance
 
 - [x] Audit and remove duplicate interpretation machinery and its UI callers.
@@ -145,8 +173,8 @@ in Git history; they are not acceptance requirements for this cleanup.
       including analyzer recovery/exclusions/sender identity, and inspect reports.
 - [ ] Pass the three required GitHub checkpoints on that commit; verify every
       stack layer and refresh conflicts and review threads.
-- [ ] User merges upstream dependencies, then replace candidate pins with actual
-      merged commits and pass the trusted submodule check.
+- [x] User merged upstream dependencies; Bridge 3.5.0 and mock 0.4.0 are released,
+      pinned to their merged commits, and passed the trusted submodule check.
 - [ ] Obtain required independent review before any OpenELIS merge.
 
 Offline installation, deployed PNG migration and general historical reprocessing

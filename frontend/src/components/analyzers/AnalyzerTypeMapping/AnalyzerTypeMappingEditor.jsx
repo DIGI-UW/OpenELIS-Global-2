@@ -57,6 +57,9 @@ const hasApiError = (response) =>
 const cloneTests = (tests = []) =>
   tests.map((test) => ({
     ...test,
+    requiresCallComponent: Boolean(
+      test.callComponentCode || test.callComponentId,
+    ),
     aliases: [...(test.aliases || [])],
     results: (test.results || []).map((result) => ({ ...result })),
   }));
@@ -77,7 +80,12 @@ const takesComponent = (test) =>
   Boolean(test.subIdentity || test.componentCode);
 
 const takesCallComponent = (test) =>
-  !test.subIdentity && Boolean(test.callComponentCode || test.callComponentId);
+  !test.subIdentity &&
+  Boolean(
+    test.requiresCallComponent ||
+    test.callComponentCode ||
+    test.callComponentId,
+  );
 
 const answerComponentId = (test) =>
   test.subIdentity ? test.componentId : test.callComponentId;
@@ -95,7 +103,7 @@ const missingTarget = (test) =>
   test.mappingState === "BOUND" &&
   (test.subIdentity
     ? !test.componentId
-    : Boolean(test.callComponentCode) && !test.callComponentId);
+    : takesCallComponent(test) && !test.callComponentId);
 
 const unresolvedResults = (results) =>
   results.map((result) => ({

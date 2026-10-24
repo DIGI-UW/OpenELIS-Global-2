@@ -93,7 +93,10 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     public void insertAnalyzerResults(List<AnalyzerResults> results, String sysUserId) {
         try {
             for (AnalyzerResults result : results) {
-                List<AnalyzerResults> previous = baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
+                // A control material is reused across independent runs. Delivery receipts
+                // reject retransmissions; patient duplicate review must not suppress QC.
+                List<AnalyzerResults> previous = result.getIsControl() ? List.of()
+                        : baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
                 AnalyzerResults prior = previous == null || previous.isEmpty() ? null : previous.get(0);
                 if (prior != null) {
                     result.setDuplicateAnalyzerResultId(prior.getId());
