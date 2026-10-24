@@ -247,6 +247,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         applyPanel(published, request, actorId);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);
+        // Organisms keep defaulting to the panel, now at its current version.
+        for (MicroOrganism organism : organismDAO.getByDefaultAstPanelId(current.getId())) {
+            organism.setDefaultAstPanelId(published.getId());
+            organism.setLastUpdatedBy(actorId);
+            organismDAO.update(organism);
+        }
         return toPanelForm(published);
     }
 
@@ -328,6 +334,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             if (!seen.add(antibioticId)) {
                 throw new IllegalArgumentException("Duplicate antibiotic: " + antibioticId);
             }
+            if (row.diskContent != null && row.diskContent.trim().length() > 40) {
+                throw new IllegalArgumentException("Disk content is longer than 40 characters: " + antibioticId);
+            }
             if (row.tier == null || row.tier < 1 || row.tier > 3) {
                 throw new IllegalArgumentException("tier must be between 1 and 3");
             }
@@ -346,6 +355,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             row.setDisplayOrder(order++);
             row.setTier(request.tier);
             row.setReportBehavior(request.reportBehavior);
+            row.setDiskContent(trimToNull(request.diskContent));
             panelAntibioticDAO.insert(row);
         }
     }
@@ -414,6 +424,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             item.displayOrder = row.getDisplayOrder();
             item.tier = row.getTier();
             item.reportBehavior = row.getReportBehavior();
+            item.diskContent = row.getDiskContent();
             form.antibiotics.add(item);
         }
         return form;

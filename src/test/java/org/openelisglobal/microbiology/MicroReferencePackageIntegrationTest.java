@@ -42,6 +42,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     private MicroBreakpointAdminService administration;
     @Autowired
     private MicroAstInterpretationService interpreter;
+    @Autowired
+    private MicroAstPanelDAO panels;
+    @Autowired
+    private MicroAstPanelAntibioticDAO panelAntibiotics;
 
     @Autowired
     private MicroBreakpointImportService importer;
@@ -88,7 +92,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertEquals(MicroAstInterpretation.NO_BREAKPOINT,
                 interpreter.interpret(unspecified, MicroAstMethod.MIC, new BigDecimal("4")));
         var indicated = rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC",
-                null, "MIC", "NON_MENINGITIS");
+                null, "MIC", "NON_MENINGITIS", null);
         assertEquals("NON_MENINGITIS", indicated.getClinicalContext());
         assertEquals(MicroAstInterpretation.INTERMEDIATE,
                 interpreter.interpret(indicated, MicroAstMethod.MIC, new BigDecimal("4")));
@@ -97,6 +101,89 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertEquals(2, rules.countByStandardId(standard.getId()));
         assertEquals(indicated.getId(), rules.findByContextualNaturalKey(standard.getId(), organism.getId(), null,
                 antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS").orElseThrow().getId());
+    }
+
+    @Test
+    public void zoneRuleMatchesOnlyTheDiskContentItWasPublishedFor() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.5", "DISK");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        String zone = lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,20,,,17,mm,");
+        fixture.files.put("breakpoints.csv",
+                lines.get(0) + ",disk_content\n" + lines.get(1) + ",\n" + zone + ",30ug\n");
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+
+        var matching = rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE",
+                null, "ZONE", null, "30ug");
+        assertEquals("30ug", matching.getDiskContent());
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                interpreter.interpret(matching, MicroAstMethod.ZONE, new BigDecimal("22")));
+        assertNull("Another disk must not borrow the 30ug breakpoint", rules.findContextualRule(standard.getId(),
+                organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE", null, "10ug"));
+        assertNull("An unrecorded disk must not borrow the 30ug breakpoint",
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
+        assertNull("MIC rules ignore disk content",
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC")
+                        .getDiskContent());
+    }
+
+    @Test
+    public void micRuleWithDiskContentIsRejected() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.7", "MICDISK");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        fixture.files.put("breakpoints.csv", lines.get(0) + ",disk_content\n" + lines.get(1) + ",30ug\n");
+        writeFiles(fixture);
+        assertTrue(reload(true).hasErrors());
+        assertTrue(standards.findByAuthorityAndVersion("EUCAST", fixture.edition).isEmpty());
+    }
+
+    @Test
+    public void packageOrganismGroupFillsABlankButNeverReplacesTheLaboratorysGroup() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.6", "GROUP");
+        String header = "source,code,displayName,whonetCode,gramStain,organism_group\n";
+        String row = "AMR," + fixture.organism + ",Synthetic organism GROUP,,GRAM_NEGATIVE,";
+        fixture.files.put("organisms.csv", header + row + "Enterobacterales\n");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        assertEquals("Enterobacterales", organism.getOrganismGroup());
+
+        organism.setOrganismGroup("Laboratory group");
+        organisms.update(organism);
+        fixture.files.put("organisms.csv", header + row + "Pseudomonas\n");
+        load(fixture);
+        assertEquals("Laboratory group",
+                organisms.findByReference("AMR", fixture.organism).orElseThrow().getOrganismGroup());
+    }
+
+    @Test
+    public void panelFileCreatesVersionsAndAssignsTheMostSpecificDefault() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.8", "PANEL");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String header = "panelName,antibioticWhonetCode,diskContent,defaultFor\n";
+        writePanels(header + "Synthetic species panel," + fixture.antibiotic + ",30ug,Synthetic organism PANEL\n"
+                + "Synthetic genus panel," + fixture.antibiotic + ",,Synthetic\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var species = panels.findCurrentByNameIgnoreCase("Synthetic species panel");
+        assertEquals(1, species.getVersionNumber().intValue());
+        assertEquals("30ug", panelAntibiotics.getByPanelId(species.getId()).get(0).getDiskContent());
+        assertEquals("The species claim beats the genus claim", species.getId(),
+                organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+
+        assertFalse(reloadPanels(true).hasErrors());
+        assertEquals("An unchanged panel publishes nothing", species.getId(),
+                panels.findCurrentByNameIgnoreCase("Synthetic species panel").getId());
+
+        writePanels(header + "Synthetic species panel," + fixture.antibiotic + ",10ug,Synthetic organism PANEL\n"
+                + "Synthetic genus panel," + fixture.antibiotic + ",,Synthetic\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var republished = panels.findCurrentByNameIgnoreCase("Synthetic species panel");
+        assertEquals(2, republished.getVersionNumber().intValue());
+        assertEquals("10ug", panelAntibiotics.getByPanelId(republished.getId()).get(0).getDiskContent());
+        assertEquals("The default follows the current version", republished.getId(),
+                organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
     }
 
     @Test
@@ -389,6 +476,24 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var loadedOrganisms = new java.util.HashMap<String, MicroOrganism>();
         var loadedAgents = new java.util.HashMap<String, MicroAntibiotic>();
         var selectedRules = new java.util.HashMap<String, MicroBreakpointRule>();
+        // A zone vector is interpreted with the disk content its rule was published
+        // for.
+        var diskContents = new java.util.HashMap<String, String>();
+        try (var zip = new java.util.zip.ZipFile(path);
+                var input = new java.io.InputStreamReader(
+                        zip.getInputStream(
+                                zip.getEntry("configuration/backend/microbiology-breakpoints/breakpoints.csv")),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                var published = org.apache.commons.csv.CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true)
+                        .build().parse(input)) {
+            for (var row : published) {
+                if (row.isMapped("disk_content") && !row.get("disk_content").isBlank()) {
+                    diskContents.put(String.join("|", row.get("version"), row.get("organism_code"),
+                            row.get("antibiotic_code"), row.get("method"), row.get("clinical_context")),
+                            row.get("disk_content"));
+                }
+            }
+        }
         int compared = 0;
         try (var zip = new java.util.zip.ZipFile(path);
                 var input = new java.io.InputStreamReader(
@@ -407,8 +512,12 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                         && !vector.get("clinical_context").isBlank() ? vector.get("clinical_context") : null;
                 String key = edition.getId() + "|" + org.getId() + "|" + agent.getId() + "|" + method + "|"
                         + clinicalContext;
-                var rule = selectedRules.computeIfAbsent(key, ignored -> rules.findContextualRule(edition.getId(),
-                        org.getId(), org.getOrganismGroup(), agent.getId(), method, null, method, clinicalContext));
+                String diskContent = diskContents
+                        .get(String.join("|", vector.get("version"), vector.get("organism_code"),
+                                vector.get("antibiotic_code"), method, clinicalContext == null ? "" : clinicalContext));
+                var rule = selectedRules.computeIfAbsent(key,
+                        ignored -> rules.findContextualRule(edition.getId(), org.getId(), org.getOrganismGroup(),
+                                agent.getId(), method, null, method, clinicalContext, diskContent));
                 assertNotNull("Every source context must resolve to an explicit rule: " + key, rule);
                 var expected = switch (vector.get("expected")) {
                 case "S" -> MicroAstInterpretation.SUSCEPTIBLE;
@@ -443,6 +552,17 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
             Files.createDirectories(target.getParent());
             Files.writeString(target, fixture.files.get(pair.getKey()));
         }
+    }
+
+    private void writePanels(String csv) throws Exception {
+        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-ast-panels").resolve("panels.csv");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, csv);
+    }
+
+    private org.openelisglobal.configuration.service.ConfigurationReloadResult reloadPanels(boolean force) {
+        return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
+                java.util.Set.of("microbiology-ast-panels"), force));
     }
 
     private org.openelisglobal.configuration.service.ConfigurationReloadResult reload(boolean force) {

@@ -273,6 +273,13 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         };
         row.clinicalContext = MicroBreakpointClinicalContext
                 .validate(record.isMapped("clinical_context") ? record.get("clinical_context") : null);
+        row.diskContent = record.isMapped("disk_content") ? blankToNull(record.get("disk_content")) : null;
+        if (row.diskContent != null && !"ZONE".equals(row.method)) {
+            throw new IllegalArgumentException("Disk content applies only to zone breakpoints");
+        }
+        if (row.diskContent != null && row.diskContent.length() > 40) {
+            throw new IllegalArgumentException("Disk content is longer than 40 characters");
+        }
         row.specimenTypeId = blankToNull(record.get("specimen_type_id"));
         if (row.specimenTypeId != null && typeOfSampleService.getTypeOfSampleById(row.specimenTypeId) == null) {
             throw new IllegalArgumentException("Unknown specimen type: " + row.specimenTypeId);
@@ -376,6 +383,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         rule.setMethod(row.method);
         rule.setSpecimenTypeId(row.specimenTypeId);
         rule.setClinicalContext(row.clinicalContext);
+        rule.setDiskContent(row.diskContent);
         rule.setBreakpointType(row.breakpointType);
         rule.setSusceptibleValue(row.susceptibleValue);
         rule.setIntermediateLowerValue(row.intermediateLowerValue);
@@ -442,7 +450,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 row.breakpointType, decimalText(row.susceptibleValue), decimalText(row.intermediateLowerValue),
                 decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units,
                 Boolean.toString(row.resistantInclusive), nullToEmpty(row.notes))
-                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext);
+                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext)
+                + (row.diskContent == null ? "" : "|disk=" + row.diskContent);
     }
 
     private String editionKey(ImportRow row) {
@@ -500,6 +509,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         private String method;
         private String specimenTypeId;
         private String clinicalContext;
+        private String diskContent;
         private String breakpointType;
         private BigDecimal susceptibleValue;
         private BigDecimal intermediateLowerValue;

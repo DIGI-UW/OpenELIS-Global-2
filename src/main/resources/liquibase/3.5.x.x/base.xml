@@ -691,4 +691,5 @@
   <include file="140-amr-reference-package.xml" relativeToChangelogFile="true"/>
   <include file="141-amr-breakpoint-lookup-index.xml" relativeToChangelogFile="true"/>
   <include file="142-amr-clinical-context.xml" relativeToChangelogFile="true"/>
+  <include file="143-amr-disk-content.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
