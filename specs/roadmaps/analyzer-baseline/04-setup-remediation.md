@@ -23,7 +23,8 @@ operator fix it in place, and never shows raw server text.
   (`AnalyzerLifecycleModal.tsx:78-83, 98`).
 - Hand-off: Verify's editor link (347-354) omits `analyzerId`; the editor's
   return button reads "Analyzer Types". Edit setup is titled
-  `analyzer.setup.title.new`. A SETUP analyzer has only Deactivate in the list menu (`AnalyzersList.tsx:80-90`).
+  `analyzer.setup.title.new`. A SETUP analyzer has only Deactivate in the
+  list menu (`AnalyzersList.tsx:80-90`).
 - Server messages to map: "A configured analyzer cannot be moved" (gone after
   step 3), "Analyzer Type mappings changed after Verify was loaded", "Confirm
   the current Analyzer Type mappings before applying them", "Bound test rows
