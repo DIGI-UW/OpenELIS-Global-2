@@ -134,7 +134,7 @@ public class MicroPatientReportService {
                 rows.add(new MicroPatientReportForm.Susceptibility(antibiotic.getId(), antibiotic.getDisplayName(),
                         reading.getId(), run.getId(), reading.getRawText(), reading.getUnits(),
                         MicroAstReportChoiceService.interpretation(reading), standard.getAuthority(),
-                        run.getBreakpointVersion(), reading.getMatchedBy()));
+                        run.getBreakpointVersion(), reading.getMatchedBy(), run.getClinicalContext()));
             }
             rows.sort(Comparator.comparing(MicroPatientReportForm.Susceptibility::agent));
             form.validatedResults += rows.size();
@@ -165,15 +165,16 @@ public class MicroPatientReportService {
     }
 
     public static boolean selected(MicroCaseAnalysis link) {
-        return link.getCancelledAt() == null && (link.getSelectedForReport() != null ? link.getSelectedForReport()
-                : !"ADDITIONAL".equals(link.getPlacement()));
+        return !link.isCultureOrder() && link.getCancelledAt() == null
+                && (link.getSelectedForReport() != null ? link.getSelectedForReport()
+                        : !"ADDITIONAL".equals(link.getPlacement()));
     }
 
     @Transactional
     public void selectAnalysis(String caseId, String analysisId, boolean selected, String actor) {
         authorization.requireWrite(caseId, actor, Constants.ROLE_VALIDATION);
         var link = links.getByCaseAndAnalysis(caseId, analysisId);
-        if (link == null || link.getCancelledAt() != null)
+        if (link == null || link.getCancelledAt() != null || link.isCultureOrder())
             throw new IllegalArgumentException("Case analysis not found");
         var analysis = links.getAnalyses(caseId).stream().filter(a -> a.getId().equals(analysisId)).findFirst()
                 .orElseThrow();

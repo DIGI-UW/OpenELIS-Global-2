@@ -13,6 +13,7 @@ public class MicroBreakpointRuleAdminForm {
     public String antibioticCode;
     public String method;
     public String specimenTypeId;
+    public String clinicalContext;
     public String breakpointType;
     public BigDecimal susceptibleValue;
     public BigDecimal intermediateLowerValue;

@@ -13,6 +13,37 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 public class MicroReferencePackageLiquibaseRollbackTest {
     @Test
+    public void clinicalContextRollbackCannotTurnConditionalRulesIntoUnconditionalRules() throws Exception {
+        try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
+            postgres.start();
+            try (Connection connection = postgres.createConnection("")) {
+                try (var sql = connection.createStatement()) {
+                    sql.execute("CREATE SCHEMA clinlims");
+                    sql.execute("CREATE TABLE clinlims.micro_ast_run (id varchar(36) PRIMARY KEY)");
+                    sql.execute("CREATE TABLE clinlims.micro_breakpoint_rule (id varchar(36) PRIMARY KEY)");
+                }
+                var database = DatabaseFactory.getInstance()
+                        .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+                try (var migration = new Liquibase("liquibase/3.5.x.x/142-amr-clinical-context.xml",
+                        new ClassLoaderResourceAccessor(), database)) {
+                    migration.update(new Contexts());
+                    migration.rollback(1, "");
+                    migration.update(new Contexts());
+                    try (var sql = connection.createStatement()) {
+                        sql.execute(
+                                "INSERT INTO clinlims.micro_breakpoint_rule VALUES ('conditional', 'NON_MENINGITIS')");
+                    }
+                    connection.commit();
+                    assertThrows(liquibase.exception.LiquibaseException.class, () -> migration.rollback(1, ""));
+                    database.rollback();
+                    assertEquals("NON_MENINGITIS", scalar(connection,
+                            "SELECT clinical_context FROM clinlims.micro_breakpoint_rule WHERE id='conditional'"));
+                }
+            }
+        }
+    }
+
+    @Test
     public void lookupIndexMigrationAndRollbackPreserveRules() throws Exception {
         try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
             postgres.start();

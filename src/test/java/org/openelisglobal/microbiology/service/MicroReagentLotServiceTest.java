@@ -87,7 +87,8 @@ public class MicroReagentLotServiceTest {
         analysis.setId("41");
         org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
         test.setId("22");
-        test.setName("Blood culture");
+        test.setName("Susceptibility test");
+        test.setAntimicrobialResistance(true);
         when(analysisService.getAnalysisById("41")).thenReturn(analysis);
         when(analysisService.getTest(analysis)).thenReturn(test);
 
@@ -106,6 +107,18 @@ public class MicroReagentLotServiceTest {
         reagentLink.setQuantityUnit("plate");
         when(reagentLinkService.getByTestId("22")).thenReturn(List.of(reagentLink));
         when(reagentLinkService.get("link-1")).thenReturn(reagentLink);
+    }
+
+    @Test
+    public void astSetupRejectsCultureBottleStockWithoutConsumingIt() {
+        var analysis = analysisService.getAnalysisById("41");
+        analysisService.getTest(analysis).setAntimicrobialResistance(false);
+        assertFalse(service.getRequirements("case-1").get(0).astReagent);
+        var error = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.recordSelections("case-1", MicroInventoryUsageContext.AST_SETUP, "run-1",
+                        List.of(new MicroLotSelection("41", "link-1", 7L)), "9"));
+        assertEquals("MICROBIOLOGY_AST_REAGENT_MISMATCH", error.getMessage());
+        org.mockito.Mockito.verifyZeroInteractions(inventoryManagementService, usageLinkDAO);
     }
 
     @Test

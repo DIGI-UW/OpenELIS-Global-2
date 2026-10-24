@@ -636,31 +636,33 @@ export default function CaseCultureWorkspace({
           </TableBody>
         </Table>
       </TableContainer>
-      <TableContainer title={t("extensions")}>
-        <Table aria-label={t("extensions")}>
-          <TableHead>
-            <TableRow>
-              {["extendBy", "reasonId", "note", "by", "at"].map((key) => (
-                <TableHeader key={key}>{t(key)}</TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {row.extensions.map((e) => (
-              <TableRow key={e.id}>
-                <TableCell>
-                  {numeric(e.extendBy)} {t(`unit.${e.unit}`)}
-                  {e.undoneAt && <Tag>{t("extensionUndone")}</Tag>}
-                </TableCell>
-                <TableCell>{e.reasonName}</TableCell>
-                <TableCell>{e.note}</TableCell>
-                <TableCell>{e.byDisplay || e.by}</TableCell>
-                <TableCell>{date(e.at)}</TableCell>
+      {row.extensions.length > 0 && (
+        <TableContainer title={t("extensions")}>
+          <Table aria-label={t("extensions")}>
+            <TableHead>
+              <TableRow>
+                {["extendBy", "reasonId", "note", "by", "at"].map((key) => (
+                  <TableHeader key={key}>{t(key)}</TableHeader>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {row.extensions.map((e) => (
+                <TableRow key={e.id}>
+                  <TableCell>
+                    {numeric(e.extendBy)} {t(`unit.${e.unit}`)}
+                    {e.undoneAt && <Tag>{t("extensionUndone")}</Tag>}
+                  </TableCell>
+                  <TableCell>{e.reasonName}</TableCell>
+                  <TableCell>{e.note}</TableCell>
+                  <TableCell>{e.byDisplay || e.by}</TableCell>
+                  <TableCell>{date(e.at)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </>
   );
   const tree = (parentId = null) =>
@@ -757,6 +759,7 @@ export default function CaseCultureWorkspace({
                 ))}
               </Grid>
               <Button
+                size="sm"
                 kind="ghost"
                 onClick={() =>
                   onSelect({
@@ -779,12 +782,14 @@ export default function CaseCultureWorkspace({
                     (!row.outcome || row.outcome === "GROWTH") && (
                       <>
                         <Button
+                          size="sm"
                           kind="tertiary"
                           onClick={() => open("reading", row)}
                         >
                           {t("action.reading")}
                         </Button>
                         <Button
+                          size="sm"
                           kind="tertiary"
                           onClick={() => open("extension", row)}
                         >
@@ -792,6 +797,7 @@ export default function CaseCultureWorkspace({
                         </Button>
                         {!row.outcome && (
                           <Button
+                            size="sm"
                             kind="tertiary"
                             onClick={() => open("outcome", row)}
                           >
@@ -802,6 +808,7 @@ export default function CaseCultureWorkspace({
                     )}
                   {row.outcome === "NO_GROWTH" && (
                     <Button
+                      size="sm"
                       kind="tertiary"
                       onClick={() =>
                         open("outcome", row, { outcome: "GROWTH" })
@@ -812,6 +819,7 @@ export default function CaseCultureWorkspace({
                   )}
                   {!row.receivedIsolate && row.canEditInoculatedAt && (
                     <Button
+                      size="sm"
                       kind="ghost"
                       onClick={() =>
                         open("inoculated-time", row, {
@@ -824,6 +832,7 @@ export default function CaseCultureWorkspace({
                   )}
                   {!row.receivedIsolate && row.positiveAt && (
                     <Button
+                      size="sm"
                       kind="ghost"
                       onClick={() =>
                         open("positive-time", row, {
@@ -844,6 +853,7 @@ export default function CaseCultureWorkspace({
                           row.outcome === "GROWTH" &&
                           onPickIsolate && (
                             <Button
+                              size="sm"
                               kind="tertiary"
                               onClick={() => onPickIsolate(row)}
                             >
@@ -853,12 +863,14 @@ export default function CaseCultureWorkspace({
                             </Button>
                           )}
                         <Button
+                          size="sm"
                           kind="tertiary"
                           onClick={() => open("inoculate", row)}
                         >
                           {t("subculture")}
                         </Button>
                         <Button
+                          size="sm"
                           kind="tertiary"
                           onClick={() =>
                             onChooseTests(
@@ -876,6 +888,7 @@ export default function CaseCultureWorkspace({
                           {t("testOnCulture")}
                         </Button>
                         <Button
+                          size="sm"
                           kind="tertiary"
                           disabled={
                             !options.gramStainTest ||
@@ -906,7 +919,11 @@ export default function CaseCultureWorkspace({
                 </Stack>
               )}
               {renderNotes?.("CULTURE", row.id)}
-              {log(row)}
+              {(row.readings.length > 0 || row.extensions.length > 0) && (
+                <Accordion>
+                  <AccordionItem title={t("history")}>{log(row)}</AccordionItem>
+                </Accordion>
+              )}
               {row.proposals.map((p) => (
                 <Tile key={p.id}>
                   <p>
@@ -926,6 +943,7 @@ export default function CaseCultureWorkspace({
                     detail.canWrite &&
                     !row.outcome && (
                       <Button
+                        size="sm"
                         kind="tertiary"
                         onClick={() =>
                           open("outcome", row, {

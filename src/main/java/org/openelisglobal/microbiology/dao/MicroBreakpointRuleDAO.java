@@ -9,6 +9,12 @@ public interface MicroBreakpointRuleDAO extends BaseDAO<MicroBreakpointRule, Str
     MicroBreakpointRule findBestRule(String standardId, String organismId, String organismGroup, String antibioticId,
             String method, String specimenTypeId, String breakpointType);
 
+    MicroBreakpointRule findContextualRule(String standardId, String organismId, String organismGroup,
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext);
+
+    Optional<MicroBreakpointRule> findByContextualNaturalKey(String standardId, String organismId, String organismGroup,
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext);
+
     Optional<MicroBreakpointRule> findBySourceRowHash(String sourceRowHash);
 
     Optional<MicroBreakpointRule> findByNaturalKey(String standardId, String organismId, String organismGroup,

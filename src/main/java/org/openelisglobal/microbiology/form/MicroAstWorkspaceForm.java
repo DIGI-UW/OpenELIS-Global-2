@@ -28,7 +28,7 @@ public class MicroAstWorkspaceForm {
         @jakarta.validation.constraints.NotBlank
         public String action;
         public String runId, readingId, panelId, technique, breakpointStandardId, antibioticId, interpretation, reason,
-                analyzerCardId, analyzerInstrumentId;
+                analyzerCardId, analyzerInstrumentId, clinicalContext;
         public boolean awaitAnalyzerResults;
         public List<MicroLotSelectionRequestForm> lotSelections = List.of();
         public List<String> orderedAntibioticIds;

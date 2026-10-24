@@ -72,6 +72,34 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void indicationSpecificRulesRequireExplicitContextAndReloadIndependently() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.4", "CONTEXT");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        String generic = lines.get(1).replace(",MIC,1,,,4,", ",MIC,,,,,");
+        fixture.files.put("breakpoints.csv",
+                lines.get(0) + ",clinical_context\n" + generic + ",\n" + lines.get(1) + ",NON_MENINGITIS\n");
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var unspecified = rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null,
+                "MIC");
+        assertNull(unspecified.getClinicalContext());
+        assertEquals(MicroAstInterpretation.NO_BREAKPOINT,
+                interpreter.interpret(unspecified, MicroAstMethod.MIC, new BigDecimal("4")));
+        var indicated = rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC",
+                null, "MIC", "NON_MENINGITIS");
+        assertEquals("NON_MENINGITIS", indicated.getClinicalContext());
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                interpreter.interpret(indicated, MicroAstMethod.MIC, new BigDecimal("4")));
+        assertNotEquals(unspecified.getId(), indicated.getId());
+        load(fixture);
+        assertEquals(2, rules.countByStandardId(standard.getId()));
+        assertEquals(indicated.getId(), rules.findByContextualNaturalKey(standard.getId(), organism.getId(), null,
+                antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS").orElseThrow().getId());
+    }
+
+    @Test
     public void freshLoadAndReloadKeepIdentifiersLocalEditsAndInactiveEdition() throws Exception {
         var fixture = new ReferencePackageFixture("2099.1", "RELOAD");
         load(fixture);
@@ -375,9 +403,12 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                         code -> antibiotics.findByReference("AMR", code).orElseThrow());
                 var edition = editions.get(vector.get("publisher") + "|" + vector.get("version"));
                 String method = vector.get("method");
-                String key = edition.getId() + "|" + org.getId() + "|" + agent.getId() + "|" + method;
-                var rule = selectedRules.computeIfAbsent(key, ignored -> rules.findBestRule(edition.getId(),
-                        org.getId(), org.getOrganismGroup(), agent.getId(), method, null, method));
+                String clinicalContext = vector.isMapped("clinical_context")
+                        && !vector.get("clinical_context").isBlank() ? vector.get("clinical_context") : null;
+                String key = edition.getId() + "|" + org.getId() + "|" + agent.getId() + "|" + method + "|"
+                        + clinicalContext;
+                var rule = selectedRules.computeIfAbsent(key, ignored -> rules.findContextualRule(edition.getId(),
+                        org.getId(), org.getOrganismGroup(), agent.getId(), method, null, method, clinicalContext));
                 assertNotNull("Every source context must resolve to an explicit rule: " + key, rule);
                 var expected = switch (vector.get("expected")) {
                 case "S" -> MicroAstInterpretation.SUSCEPTIBLE;

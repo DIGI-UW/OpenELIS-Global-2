@@ -458,3 +458,34 @@ it.each([
     ).toHaveValue(expected);
   },
 );
+
+it("sends an explicitly chosen clinical indication on new runs", async () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
+  data.isolates[0].assignments = [{ panelId: "panel" }];
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  expect(within(modal).getByLabelText(t("clinicalContext"))).toHaveValue("");
+  fireEvent.change(within(modal).getByLabelText(t("clinicalContext")), {
+    target: { value: "NON_MENINGITIS" },
+  });
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Clinician requested non-meningitis interpretation" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "start",
+        clinicalContext: "NON_MENINGITIS",
+      }),
+      false,
+    ),
+  );
+});

@@ -1,3 +1,4 @@
+import { labTimeZone } from "./MicrobiologyTime";
 import { labTimestamp } from "./MicrobiologyTime";
 import {
   MICROBIOLOGY_CASE_READY_MARK,
@@ -268,7 +269,9 @@ export default function CaseViewShell({
                         <p>
                           {t("microbiology.case.birthDate")}:{" "}
                           {detail.birthDate
-                            ? intl.formatDate(new Date(detail.birthDate))
+                            ? intl.formatDate(new Date(detail.birthDate), {
+                                timeZone: labTimeZone(),
+                              })
                             : t("not.available")}
                         </p>
                         <p>

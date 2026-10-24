@@ -23,15 +23,25 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
     @Transactional(readOnly = true)
     public MicroBreakpointRule findBestRule(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
+        return findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+                breakpointType, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroBreakpointRule findContextualRule(String standardId, String organismId, String organismGroup,
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.standardId = :standardId"
                         + " and r.antibioticId = :antibioticId and r.breakpointType = :breakpointType"
+                        + " and (r.clinicalContext is null or r.clinicalContext = :clinicalContext)"
                         + " and (r.method is null or r.method = :method)"
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
                         + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
                         + " or (r.organismId is null and r.organismGroup is null))"
                         + " order by case when r.organismId = :organismId then 0"
                         + " when r.organismGroup = :organismGroup then 1 else 2 end,"
+                        + " case when r.clinicalContext = :clinicalContext then 0 else 1 end,"
                         + " case when r.specimenTypeId = :specimenTypeId then 0 else 1 end,"
                         + " case when r.method = :method then 0 else 1 end", MicroBreakpointRule.class);
         query.setParameter("standardId", standardId);
@@ -41,6 +51,7 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("method", method);
         query.setParameter("specimenTypeId", specimenTypeId);
         query.setParameter("breakpointType", breakpointType);
+        query.setParameter("clinicalContext", clinicalContext);
         query.setMaxResults(1);
         return query.uniqueResultOptional().orElse(null);
     }
@@ -59,6 +70,15 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
     @Transactional(readOnly = true)
     public Optional<MicroBreakpointRule> findByNaturalKey(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
+        return findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+                breakpointType, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<MicroBreakpointRule> findByContextualNaturalKey(String standardId, String organismId,
+            String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType,
+            String clinicalContext) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroBreakpointRule r where r.standardId = :standardId"
                         + " and ((r.organismId = :organismId) or (r.organismId is null and :organismId is null))"
@@ -66,7 +86,9 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                         + " and r.antibioticId = :antibioticId"
                         + " and ((r.method = :method) or (r.method is null and :method is null))"
                         + " and ((r.specimenTypeId = :specimenTypeId) or (r.specimenTypeId is null and :specimenTypeId is null))"
-                        + " and r.breakpointType = :breakpointType", MicroBreakpointRule.class);
+                        + " and r.breakpointType = :breakpointType"
+                        + " and (r.clinicalContext = :clinicalContext or (r.clinicalContext is null and :clinicalContext is null))",
+                        MicroBreakpointRule.class);
         query.setParameter("standardId", standardId);
         query.setParameter("organismId", organismId);
         query.setParameter("organismGroup", organismGroup);
@@ -74,6 +96,7 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("method", method);
         query.setParameter("specimenTypeId", specimenTypeId);
         query.setParameter("breakpointType", breakpointType);
+        query.setParameter("clinicalContext", clinicalContext);
         return query.uniqueResultOptional();
     }
 

@@ -193,3 +193,15 @@ selected automatically; multiple active editions require an explicit selection.
 The older Java properties named `defaultBreakpointAuthority` and
 `defaultBreakpointVersion` only support legacy runs without a saved standard;
 they do not configure this default for new tests.
+
+### AMR breakpoint indications
+
+Breakpoint CSVs may include `clinical_context`. Blank retains unconditional
+lookup; `NON_MENINGITIS` is the supported explicit indication. AST setup records
+the indication selected from the clinical request and preserves it on the run,
+repeat attempts, and issued report. A blood specimen does not imply this value.
+Unknown indications are rejected. Context-specific rows never apply to an
+unspecified run. Older package editions remain immutable and reload unchanged; a
+new contextual dataset requires a new package version. New editions load
+inactive and require activation and default selection in laboratory
+administration.

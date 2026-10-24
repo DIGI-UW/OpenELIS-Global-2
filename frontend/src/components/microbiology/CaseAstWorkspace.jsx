@@ -132,7 +132,12 @@ export default function CaseAstWorkspace({
     ])
       .then(([overview, instruments]) => {
         if (live) {
-          setLots(overview || { requirements: [], usages: [] });
+          setLots({
+            requirements: (overview?.requirements || []).filter(
+              (requirement) => requirement.astReagent,
+            ),
+            usages: overview?.usages || [],
+          });
           setAnalyzers(instruments || []);
         }
       })
@@ -163,6 +168,7 @@ export default function CaseAstWorkspace({
           ? data.standards[0].id
           : "",
       technique: run?.technique || techniques[0],
+      clinicalContext: run?.clinicalContext || "",
       rawValue: "",
       orderedAntibioticIds: null,
       adjustPanel: false,
@@ -323,6 +329,14 @@ export default function CaseAstWorkspace({
                   open
                 >
                   <Stack gap={4}>
+                    <p>
+                      {t("clinicalContext")}:{" "}
+                      {t(
+                        run.clinicalContext === "NON_MENINGITIS"
+                          ? "clinicalContext.nonMeningitis"
+                          : "clinicalContext.unspecified",
+                      )}
+                    </p>
                     <ContainerLabelButton
                       detail={detail}
                       kind="AST"
@@ -688,6 +702,24 @@ export default function CaseAstWorkspace({
                     />
                   </>
                 )}
+                <Select
+                  id="ast-clinical-context"
+                  labelText={t("clinicalContext")}
+                  helperText={t("clinicalContext.help")}
+                  value={draft.clinicalContext}
+                  onChange={(event) =>
+                    setDraft({ ...draft, clinicalContext: event.target.value })
+                  }
+                >
+                  <SelectItem
+                    value=""
+                    text={t("clinicalContext.unspecified")}
+                  />
+                  <SelectItem
+                    value="NON_MENINGITIS"
+                    text={t("clinicalContext.nonMeningitis")}
+                  />
+                </Select>
                 <ReagentLotPicker
                   id="case-ast-lots"
                   requirements={lots.requirements}

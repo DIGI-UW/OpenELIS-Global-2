@@ -115,18 +115,18 @@ public class MicroAstWorkspaceService {
         else
             switch (request.action) {
             case "assign" -> assignments.assign(isolate.getId(), request.panelId, actor);
-            case "start" ->
-                ast.startRun(
-                        new MicroAstRunSetupCommand(isolate.getId(), request.panelId, request.breakpointStandardId,
-                                request.reason, technique(request.technique),
-                                request.lotSelections == null ? List.of()
-                                        : request.lotSelections.stream()
-                                                .map(lot -> new MicroLotSelection(lot.analysisId, lot.testReagentLinkId,
-                                                        lot.lotId))
-                                                .toList(),
-                                request.orderedAntibioticIds, request.awaitAnalyzerResults,
-                                request.analyzerInstrumentId, request.analyzerCardId),
-                        actor);
+            case "start" -> ast
+                    .startRun(
+                            new MicroAstRunSetupCommand(isolate.getId(), request.panelId, request.breakpointStandardId,
+                                    request.reason, technique(request.technique),
+                                    request.lotSelections == null ? List.of()
+                                            : request.lotSelections.stream()
+                                                    .map(lot -> new MicroLotSelection(lot.analysisId,
+                                                            lot.testReagentLinkId, lot.lotId))
+                                                    .toList(),
+                                    request.orderedAntibioticIds, request.awaitAnalyzerResults,
+                                    request.analyzerInstrumentId, request.analyzerCardId, request.clinicalContext),
+                            actor);
             case "reading" -> ast.recordReading(request.runId, request.antibioticId, request.rawValue, actor);
             case "repeat", "retest" -> ast.startRepeatRun(request.runId,
                     MicroAstAttemptType.valueOf(request.action.toUpperCase(Locale.ROOT)), request.reason,

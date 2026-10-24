@@ -111,6 +111,9 @@ export function MicrobiologyReportBlock({ report }) {
                     </TableCell>
                     <TableCell>
                       {row.standard} {row.version}
+                      {row.clinicalContext === "NON_MENINGITIS" && (
+                        <p>{t("clinicalContext.nonMeningitis")}</p>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

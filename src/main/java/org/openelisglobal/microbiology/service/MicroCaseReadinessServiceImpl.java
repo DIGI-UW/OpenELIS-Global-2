@@ -65,10 +65,17 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         List<MicroIsolate> isolates = isolateDAO.getWorkspace(caseId).stream().filter(i -> i.getCancelledAt() == null)
                 .toList();
         var cultureRows = cultures.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null).toList();
-        if (cultureRows.isEmpty()
+        var caseAnalyses = links.getAnalyses(caseId);
+        boolean pendingCultureSetup = caseAnalyses.stream().anyMatch(analysis -> {
+            var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
+            return link.isCultureOrder() && link.getCancelledAt() == null
+                    && (analysis.getSampleItem() == null || cultureRows.stream()
+                            .noneMatch(row -> analysis.getSampleItem().getId().equals(row.getSourceSampleItemId())));
+        });
+        if (pendingCultureSetup
                 || cultureRows.stream().anyMatch(row -> row.getOutcome() == null || row.getOutcomeAt() == null))
             addBlocker(readiness, "CULTURE_OUTCOME_REQUIRED");
-        for (var analysis : links.getAnalyses(caseId)) {
+        for (var analysis : caseAnalyses) {
             var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
             if (MicroPatientReportService.selected(link) && !analysis.getTest().isInLabOnly()
                     && !"N".equals(analysis.getIsReportable())
