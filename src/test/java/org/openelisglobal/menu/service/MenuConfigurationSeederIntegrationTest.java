@@ -73,11 +73,11 @@ public class MenuConfigurationSeederIntegrationTest extends BaseWebContextSensit
     @Test
     public void configuredUpdatesAndDeactivationAreAuditedButRepeatStartupIsNot() throws Exception {
         File file = config("{\"menus\": [{\"elementId\": \"" + HIDDEN
-                + "\", \"actionURL\": \"/ChangedByConfiguration\"}], \"excludes\": [{\"elementId\": \"" + HIDDEN
-                + "\"}]}");
+                + "\", \"isActive\": true, \"actionURL\": \"/ChangedByConfiguration\"}], \"excludes\": [{\"elementId\": \""
+                + HIDDEN + "\"}]}");
         int before = historyCount();
         seeder.seed(file, true);
-        assertEquals(before + 2, historyCount());
+        assertEquals(before + 1, historyCount());
         List<byte[]> changes = jdbc.queryForList("SELECT h.changes FROM clinlims.history h"
                 + " JOIN clinlims.reference_tables r ON r.id = h.reference_table"
                 + " JOIN clinlims.menu m ON m.id = h.reference_id"
@@ -87,7 +87,20 @@ public class MenuConfigurationSeederIntegrationTest extends BaseWebContextSensit
         assertTrue(recorded, recorded.contains("/SeedTestHidden"));
         assertTrue(recorded, recorded.contains("isActive"));
         seeder.seed(file, true);
-        assertEquals("unchanged configuration must not create audit noise", before + 2, historyCount());
+        assertEquals("unchanged configuration must not create audit noise", before + 1, historyCount());
+    }
+
+    @Test
+    public void activeDefinitionOmittedFromIncludesIsSavedOnce() throws Exception {
+        File file = config("{\"menus\": [{\"elementId\": \"" + HIDDEN
+                + "\", \"isActive\": true}], \"includes\": [{\"elementId\": \"" + ROOT + "\"}]}");
+        int before = historyCount();
+        seeder.seed(file, true);
+        assertFalse(active(HIDDEN));
+        assertEquals(before + 1, historyCount());
+        seeder.seed(file, true);
+        assertFalse(active(HIDDEN));
+        assertEquals("unchanged selection must not create audit noise", before + 1, historyCount());
     }
 
     private int historyCount() {

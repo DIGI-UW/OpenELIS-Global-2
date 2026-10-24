@@ -67,13 +67,16 @@ public class MenuConfigurationSeeder {
 
         List<Menu> effective = new ArrayList<>(rows);
         MenuConfigurationLoader.loadConfiguredMenus(configFile, effective);
+        effective.replaceAll(menu -> {
+            Menu stored = byElementId.get(menu.getElementId());
+            return stored != null && FROM_ADMIN.equals(stored.getConfigSource()) ? stored : menu;
+        });
+        if (applySelection) {
+            applySelection(configFile, effective);
+        }
         effective.stream().filter(menu -> menu.isConfigurationOnly() || !menu.getConfigurationFields().isEmpty())
                 .sorted(Comparator.comparingInt(MenuConfigurationSeeder::depth))
                 .forEach(menu -> apply(menu, byElementId));
-
-        if (applySelection) {
-            deactivateUnselected(configFile, byElementId);
-        }
     }
 
     private void apply(Menu configured, Map<String, Menu> byElementId) {
@@ -169,7 +172,7 @@ public class MenuConfigurationSeeder {
         return depth;
     }
 
-    private void deactivateUnselected(File configFile, Map<String, Menu> byElementId) {
+    private void applySelection(File configFile, List<Menu> effective) {
         JsonNode config;
         try {
             config = new ObjectMapper().readTree(configFile);
@@ -177,21 +180,23 @@ public class MenuConfigurationSeeder {
             LogEvent.logError("Error reading menu config file: " + configFile.getAbsolutePath(), e);
             return;
         }
-        List<MenuItem> selected = MenuUtil.filterByConfiguration(tree(byElementId.values()), config);
+        List<MenuItem> selected = MenuUtil.filterByConfiguration(tree(effective), config);
         if (selected == null) {
             return;
         }
         Set<String> kept = new HashSet<>();
         collect(selected, kept);
-        for (Menu row : byElementId.values()) {
-            if (!kept.contains(row.getElementId()) && row.getIsActive() && !FROM_ADMIN.equals(row.getConfigSource())) {
-                Menu storedState = snapshot(row);
-                row.setIsActive(false);
-                row.setConfigSource(FROM_DISTRIBUTION);
-                row.setSysUserId(SYSTEM_USER_ID);
-                menuService.updateAgainst(row, storedState);
+        effective.replaceAll(menu -> {
+            if (kept.contains(menu.getElementId()) || FROM_ADMIN.equals(menu.getConfigSource())) {
+                return menu;
             }
-        }
+            Menu selectedState = snapshot(menu);
+            selectedState.setIsActive(false);
+            Set<String> fields = new HashSet<>(menu.getConfigurationFields());
+            fields.add("isActive");
+            selectedState.setConfigurationFields(fields);
+            return selectedState;
+        });
     }
 
     private static Menu snapshot(Menu row) {
