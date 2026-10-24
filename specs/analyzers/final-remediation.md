@@ -55,21 +55,25 @@ OpenELIS: #4770 → #4781 → #4784 → #4786 → #4787 → #4788 → #4789 →
 Bridge: #101 → #102 → #104 → #105 → #106 → #107 → #108 → #109 →
 #110 → #111 → #112 → #113.
 
-Both stacks were rebased and published with `gh stack`; each parent is an
-ancestor of its child. OpenELIS #4798 records these candidate dependencies:
+The OpenELIS stack was synchronized with `gh stack` on 23 October 2026.
+The user merged the Bridge stack, Bridge #88 and #114, and mock #62 and #56.
+OpenELIS #4798 now pins the released upstream commits:
 
-- Bridge #113: the committed `tools/openelis-analyzer-bridge` gitlink, kept at the
-  published stack head.
-- Analyzer mock #62: `88b51f7c5ed50e953b8e80be5934162bcb138fd9`.
+- [Analyzer Bridge 3.5.0](https://github.com/DIGI-UW/openelis-analyzer-bridge/releases/tag/3.5.0):
+  `82682a27be04ae387af1b349bc7d669f914d94cc`.
+- [Analyzer Mock Server 0.4.0](https://github.com/DIGI-UW/analyzer-mock-server/releases/tag/v0.4.0):
+  `9e828e7427d5c11edb3ca1e4c2a113fe2d313bd7`.
 
-Standalone OpenELIS #4768 and Bridge #88 remain independent changes. Mock #62
-is the independent host-query dependency included by the pin. Older mock #56
-is separate control-fixture work with conflicts and is outside this candidate.
+The release trees exactly match the tested candidates. Bridge validation passed
+1,225 tests with no failures/errors and four skips; mock validation passed 283
+tests and 13 subtests with five skips. All seven combined native-traffic acceptance
+groups passed. The combined Bridge merge required one constructor repair after
+removing obsolete control fields; #114 includes it and the version bump.
 
-The trusted submodule check requires upstream default-branch commits. The
-candidate pins remain blocked until the user merges their upstream dependencies.
-After squash merges, pin the actual resulting commits and recheck. Do not weaken
-or bypass the trusted check. Required independent review remains separate.
+Standalone OpenELIS #4768 remains independent. The upstream merge prerequisite
+is satisfied; the trusted submodule check and full OpenELIS validation must pass
+on the new pins. Required independent review remains separate. No OpenELIS PR
+has been merged by this work.
 
 ## Validation and review evidence
 
@@ -146,4 +150,4 @@ in Git history; they are not acceptance requirements for this cleanup.
 - [ ] Obtain required independent review before any OpenELIS merge.
 
 Offline installation, deployed PNG migration and general historical reprocessing
-remain outside this cleanup. No production migration or merge has occurred.
+remain outside this cleanup. No production migration or OpenELIS merge has occurred.
