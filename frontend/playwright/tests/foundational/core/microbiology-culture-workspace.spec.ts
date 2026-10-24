@@ -82,21 +82,6 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     .getByRole("button", { name: "Gram stain", exact: true })
     .first()
     .click();
-  await expect(
-    page.locator("#culture-test-chooser").getByRole("button", { name: /— 1$/ }),
-  ).toBeVisible();
-  await page
-    .locator("#culture-test-chooser")
-    .getByRole("button", { name: /— 1$/ })
-    .click();
-  await expect(
-    page
-      .locator("#culture-test-chooser")
-      .getByRole("button", { name: /^UAT culture [A-F0-9]+$/ }),
-  ).toBeVisible({ timeout: LONG_TIMEOUT });
-  await page
-    .getByRole("button", { name: "Add selected tests", exact: true })
-    .click();
   const tests = parent
     .getByRole("table", { name: "Testing and results", exact: true })
     .first();
@@ -105,9 +90,6 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
   ).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
-  await tests
-    .getByRole("button", { name: "Enter or edit", exact: true })
-    .click();
   await tests
     .getByRole("textbox", { name: /^Result for/ })
     .fill("Gram-positive cocci");

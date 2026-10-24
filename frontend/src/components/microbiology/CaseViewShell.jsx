@@ -34,6 +34,7 @@ import {
   TableContainer,
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { ConfigurationContext } from "../layout/Layout";
 import { hasRole, Roles } from "../utils/Utils";
 import "./CaseWorkspace.scss";
 import "./MicrobiologyCaseView.css";
@@ -54,6 +55,7 @@ export default function CaseViewShell({
 }) {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
   const [infoOpen, setInfoOpen] = useState(true);
   const params = useParams();
@@ -269,9 +271,16 @@ export default function CaseViewShell({
                         <p>
                           {t("microbiology.case.birthDate")}:{" "}
                           {detail.birthDate
-                            ? intl.formatDate(new Date(detail.birthDate), {
-                                timeZone: labTimeZone(),
-                              })
+                            ? new Intl.DateTimeFormat(
+                                configurationProperties?.DEFAULT_DATE_LOCALE ||
+                                  intl.locale,
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  timeZone: labTimeZone(),
+                                },
+                              ).format(new Date(detail.birthDate))
                             : t("not.available")}
                         </p>
                         <p>
