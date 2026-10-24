@@ -300,7 +300,12 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         var concepts = observation.hasValueCodeableConcept()
                 ? java.util.stream.Stream.of(observation.getValueCodeableConcept())
                 : observation.getInterpretation().stream().filter(AnalyzerNormalizedResultContract::isCall);
-        return concepts.flatMap(concept -> concept.getCoding().stream())
+        return concepts.flatMap(concept -> concept.getCoding().stream()
+                // In the old combined-result representation these codes identify the
+                // call role, not a clinical answer identity. Explicit roles and
+                // qualitative answer codings retain their delivered identities.
+                .filter(coding -> !observation.hasValueQuantity() || optionalExtensionText(concept, RESULT_PART) != null
+                        || !INTERPRETATION.equals(coding.getSystem()) || !CALL_CODES.contains(coding.getCode())))
                 .filter(coding -> coding.hasSystem() && coding.hasCode())
                 .map(coding -> new org.openelisglobal.terminology.Coding(coding.getSystem(), coding.getCode()))
                 .distinct().toList();

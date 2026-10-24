@@ -659,9 +659,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void aBelowRangeViralLoadKeepsItsNumberWhenItsCallIsMapped() throws Exception {
         bindViralLoadRecords();
-        jdbc.update("INSERT INTO clinlims.test_result"
-                + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
-                + " VALUES (?, ?, 'D', 'Detected', true, 1, 'comp-call', NOW())", RESULT_OPTION_ID, TEST_ID);
+        addCodedDetectedCallAnswer();
         jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
                 + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
                 + " VALUES (?, 'HIVVL', '', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
@@ -676,7 +674,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("the number and the call, once each", 2, staged.size());
         assertEquals("<40", stagedOn(staged, null).getResult());
         assertEquals("N", stagedOn(staged, null).getResultType());
-        assertEquals("Detected", stagedOn(staged, "comp-call").getResult());
+        assertEquals(String.valueOf(DETECTED_ENTRY_ID), stagedOn(staged, "comp-call").getResult());
+        assertFalse(stagedOn(staged, "comp-call").isReadOnly());
     }
 
     /**
@@ -722,6 +721,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("INSERT INTO clinlims.test_result_component"
                 + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
                 TEST_ID);
+        addCodedDetectedCallAnswer();
         var unresolved = bindings.appendRevision(analyzer(), new AnalyzerMappingDraft(
                 List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.UNRESOLVED, null)), List.of()), "1");
         Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
@@ -736,8 +736,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertTrue(held.get(0).isReadOnly());
 
         var bound = bindings.appendRevision(analyzer(),
-                new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
-                        String.valueOf(TEST_ID), null, null, null, "", "comp-call")), List.of()),
+                new AnalyzerMappingDraft(
+                        List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
+                                String.valueOf(TEST_ID), null, null, null, "", "comp-call")),
+                        List.of(new AnalyzerMappingResultDraft("HIVVL", "DETECTED", AnalyzerMappingState.BOUND,
+                                String.valueOf(RESULT_OPTION_ID)))),
                 "1");
         confirm(bound);
         localState.applyMapping(String.valueOf(ANALYZER_ID), bound.mapping().getId(),
@@ -747,7 +750,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("the number and the call, once each", 2, recovered.size());
         assertTrue(recovered.stream().noneMatch(AnalyzerResults::isReadOnly));
         assertEquals("<40", stagedOn(recovered, null).getResult());
-        assertEquals("DETECTED", stagedOn(recovered, "comp-call").getResult());
+        assertEquals(String.valueOf(DETECTED_ENTRY_ID), stagedOn(recovered, "comp-call").getResult());
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
         assertEquals(2, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
     }
@@ -1088,6 +1091,20 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 + " 'INITIAL_RUNS', NOW(), 1, NOW())", QC_LOT_ID);
     }
 
+    private void addCodedDetectedCallAnswer() {
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated)"
+                + " VALUES (?, 'Detected', 'Y', NOW())", DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary_terminology_mapping (id, dictionary_id, source, code, relationship)"
+                        + " VALUES ('legacy-call-detected', ?, 'SNOMED', '260373001', 'SAME_AS')",
+                DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                        + " VALUES (?, ?, 'D', ?, true, 1, 'comp-call', NOW())",
+                RESULT_OPTION_ID, TEST_ID, String.valueOf(DETECTED_ENTRY_ID));
+    }
+
     private void cleanup() {
         if (jdbc == null) {
             return;
@@ -1108,6 +1125,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("DELETE FROM clinlims.analyzer_mapping WHERE analyzer_id = ?", ANALYZER_ID);
         jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_result WHERE id IN (?, ?)", RESULT_OPTION_ID, NEGATIVE_OPTION_ID);
+        jdbc.update("DELETE FROM clinlims.dictionary_terminology_mapping WHERE dictionary_id IN (?, ?)",
+                DETECTED_ENTRY_ID, NOT_DETECTED_ENTRY_ID);
         jdbc.update("DELETE FROM clinlims.dictionary WHERE id IN (?, ?)", DETECTED_ENTRY_ID, NOT_DETECTED_ENTRY_ID);
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id IN (?, ?, ?)", TEST_ID, OTHER_TEST_ID,
                 THIRD_TEST_ID);

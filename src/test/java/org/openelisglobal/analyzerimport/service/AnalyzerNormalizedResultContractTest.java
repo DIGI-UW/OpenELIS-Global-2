@@ -357,6 +357,23 @@ public class AnalyzerNormalizedResultContractTest {
         }
     }
 
+    @Test
+    public void legacyCallRoleIsNotAClinicalAnswerCodeButActualCodingsSurvive() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = firstObservation(bundle);
+        var call = observation.addInterpretation().setText("DETECTED");
+        call.addCoding().setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("DET");
+        assertTrue(AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0).answerCodings().isEmpty());
+        call.addCoding().setSystem("http://snomed.info/sct").setCode("260373001");
+        var codings = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0).answerCodings();
+        assertEquals(1, codings.size());
+        assertTrue(codings.get(0)
+                .sameAs(new org.openelisglobal.terminology.Coding("http://snomed.info/sct", "260373001")));
+        call.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-result-part",
+                new StringType("call"));
+        assertEquals(2, AnalyzerNormalizedResultContract.parse(bundle, FHIR).results().get(0).answerCodings().size());
+    }
+
     private static Bundle fixture(String name) throws IOException {
         return FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURES.resolve(name)));
     }

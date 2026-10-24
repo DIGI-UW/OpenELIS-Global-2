@@ -152,6 +152,16 @@ The remaining review fixes preserve the interpret-once boundary:
   Existing databases use the separate, explicit [one-time upgrade](../../docs/upgrades/installation-encryption.md)
   while application writers are stopped. Liquibase tracks completion; primary-key
   batches are resumable. Fresh installations never need this upgrade.
+- The Linux installer mounts its existing site key at the application's key path;
+  retaining that key requires no ciphertext conversion. Fresh and repeat installer
+  rendering and real file-only entrypoint loading are tested.
+- Shared schema preparation widens the two limited ciphertext columns before the
+  explicit upgrade and on fresh installation. Maximum-length existing values can
+  be upgraded and written again without exceeding the old limits.
+- Contract 1.0 call-role tags are excluded from clinical answer identity matching.
+  Actual delivered clinical codings remain intact. Coded-answer import and held
+  result recovery use the same retained payload; no profile lookup or parsing
+  decision is added to OpenELIS.
 - Analyzer deletion uses Hibernate entity queries within the existing service
   transaction, retaining history restrictions and its deletion audit event.
 
