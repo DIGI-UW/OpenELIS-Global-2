@@ -152,9 +152,11 @@ The remaining review fixes preserve the interpret-once boundary:
   Existing databases use the separate, explicit [one-time upgrade](../../docs/upgrades/installation-encryption.md)
   while application writers are stopped. Liquibase tracks completion; primary-key
   batches are resumable. Fresh installations never need this upgrade.
-- The Linux installer mounts its existing site key at the application's key path;
-  retaining that key requires no ciphertext conversion. Fresh and repeat installer
-  rendering and real file-only entrypoint loading are tested.
+- The Linux installer retains its existing parsed `common.properties` key,
+  including Java escape semantics; it does not mount the raw configuration key
+  as an override. Compose uses its generated installation key. The application
+  validates its effective key once, with no shared defaults. Installer rendering,
+  escaped-key decryption and file-based Compose startup are tested.
 - Shared schema preparation widens the two limited ciphertext columns before the
   explicit upgrade and on fresh installation. Maximum-length existing values can
   be upgraded and written again without exceeding the old limits.
