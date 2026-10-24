@@ -44,6 +44,37 @@ public class MicroReferencePackageLiquibaseRollbackTest {
     }
 
     @Test
+    public void diskContentRollbackCannotDiscardWhatARunRecorded() throws Exception {
+        try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
+            postgres.start();
+            try (Connection connection = postgres.createConnection("")) {
+                try (var sql = connection.createStatement()) {
+                    sql.execute("CREATE SCHEMA clinlims");
+                    sql.execute("CREATE TABLE clinlims.micro_breakpoint_rule (id varchar(36) PRIMARY KEY)");
+                    sql.execute("CREATE TABLE clinlims.micro_ast_panel_antibiotic (id varchar(36) PRIMARY KEY)");
+                    sql.execute("CREATE TABLE clinlims.micro_ast_run_antibiotic (id varchar(36) PRIMARY KEY)");
+                }
+                var database = DatabaseFactory.getInstance()
+                        .findCorrectDatabaseImplementation(new JdbcConnection(connection));
+                try (var migration = new Liquibase("liquibase/3.5.x.x/143-amr-disk-content.xml",
+                        new ClassLoaderResourceAccessor(), database)) {
+                    migration.update(new Contexts());
+                    migration.rollback(1, "");
+                    migration.update(new Contexts());
+                    try (var sql = connection.createStatement()) {
+                        sql.execute("INSERT INTO clinlims.micro_ast_run_antibiotic VALUES ('drug', '30ug')");
+                    }
+                    connection.commit();
+                    assertThrows(liquibase.exception.LiquibaseException.class, () -> migration.rollback(1, ""));
+                    database.rollback();
+                    assertEquals("30ug", scalar(connection,
+                            "SELECT disk_content FROM clinlims.micro_ast_run_antibiotic WHERE id='drug'"));
+                }
+            }
+        }
+    }
+
+    @Test
     public void lookupIndexMigrationAndRollbackPreserveRules() throws Exception {
         try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
             postgres.start();

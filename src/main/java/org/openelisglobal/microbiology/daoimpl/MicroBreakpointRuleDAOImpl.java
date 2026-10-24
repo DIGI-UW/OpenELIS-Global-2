@@ -24,17 +24,19 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
     public MicroBreakpointRule findBestRule(String standardId, String organismId, String organismGroup,
             String antibioticId, String method, String specimenTypeId, String breakpointType) {
         return findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
-                breakpointType, null);
+                breakpointType, null, null);
     }
 
     @Override
     @Transactional(readOnly = true)
     public MicroBreakpointRule findContextualRule(String standardId, String organismId, String organismGroup,
-            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext) {
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
+            String diskContent) {
         Query<MicroBreakpointRule> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.standardId = :standardId"
                         + " and r.antibioticId = :antibioticId and r.breakpointType = :breakpointType"
                         + " and (r.clinicalContext is null or r.clinicalContext = :clinicalContext)"
+                        + " and (r.diskContent is null or r.diskContent = :diskContent)"
                         + " and (r.method is null or r.method = :method)"
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
                         + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
@@ -52,6 +54,7 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("specimenTypeId", specimenTypeId);
         query.setParameter("breakpointType", breakpointType);
         query.setParameter("clinicalContext", clinicalContext);
+        query.setParameter("diskContent", diskContent);
         query.setMaxResults(1);
         return query.uniqueResultOptional().orElse(null);
     }

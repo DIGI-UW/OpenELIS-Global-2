@@ -897,6 +897,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setDisplayOrder(source.displayOrder);
             ordered.setTier(source.tier);
             ordered.setReportBehavior(source.reportBehavior);
+            ordered.setDiskContent(source.diskContent);
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -914,6 +915,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setDisplayOrder(sourceRow.getDisplayOrder());
             ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
+            ordered.setDiskContent(sourceRow.getDiskContent());
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -945,6 +947,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setDisplayOrder(sourceRow.getDisplayOrder());
             ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
+            ordered.setDiskContent(sourceRow.getDiskContent());
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -988,11 +991,17 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private MicroBreakpointRule findContextRule(MicroAstRun run, String standardId, String organismId,
             String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType) {
-        if (run.getClinicalContext() == null)
+        // A zone breakpoint applies only to the disk content recorded for this drug on
+        // the run.
+        String diskContent = "ZONE".equals(breakpointType)
+                ? runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), antibioticId)
+                        .map(MicroAstRunAntibiotic::getDiskContent).orElse(null)
+                : null;
+        if (run.getClinicalContext() == null && diskContent == null)
             return breakpointService.findBreakpointRule(standardId, organismId, organismGroup, antibioticId, method,
                     specimenTypeId, breakpointType);
         return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroup, antibioticId,
-                method, specimenTypeId, breakpointType, run.getClinicalContext());
+                method, specimenTypeId, breakpointType, run.getClinicalContext(), diskContent);
     }
 
     private String matchedBy(MicroBreakpointRule rule) {
@@ -1102,7 +1111,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 }
             }
             ordered.add(new OrderedAntibiotic(antibioticId, displayOrder++, panelRow == null ? 1 : panelRow.getTier(),
-                    panelRow == null ? "ALWAYS" : panelRow.getReportBehavior()));
+                    panelRow == null ? "ALWAYS" : panelRow.getReportBehavior(),
+                    panelRow == null ? null : panelRow.getDiskContent()));
         }
         return new OrderedSelection(ordered, !requestedIds.equals(baselineIds));
     }
@@ -1152,7 +1162,8 @@ public class MicroAstServiceImpl implements MicroAstService {
     private record OrderedSelection(List<OrderedAntibiotic> antibiotics, boolean adjusted) {
     }
 
-    private record OrderedAntibiotic(String antibioticId, Integer displayOrder, Integer tier, String reportBehavior) {
+    private record OrderedAntibiotic(String antibioticId, Integer displayOrder, Integer tier, String reportBehavior,
+            String diskContent) {
     }
 
     private void synchronizeReportableRuns(String isolateId) {

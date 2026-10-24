@@ -10665,6 +10665,8 @@
   "microbiology.admin.astPanels.publishVersion": "Publish new version",
   "microbiology.admin.astPanels.readOnly": "This historical version is read-only. Open the current version to publish a change.",
   "microbiology.admin.astPanels.reportBehavior": "Report behavior",
+  "microbiology.admin.astPanels.diskContent": "Disk content",
+  "microbiology.admin.astPanels.diskContent.help": "For disk diffusion, as the breakpoint package spells it, for example 30ug",
   "microbiology.admin.astPanels.tier": "Tier",
   "microbiology.admin.astPanels.title": "AST panels",
   "microbiology.admin.astPanels.version": "Version",
