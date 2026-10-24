@@ -13,8 +13,7 @@ public class GeneralTextEncryptorTest {
         String stored = encryptor.encrypt("secret");
         assertTrue(stored.startsWith("OE1:"));
         assertEquals("secret", GeneralTextEncryptor.of("install-key", null).decrypt(stored));
-        assertThrows(EncryptionOperationNotPossibleException.class,
-                () -> GeneralTextEncryptor.of("different-key", "install-key").decrypt(stored));
+        assertCannotRecover("secret", GeneralTextEncryptor.of("different-key", "install-key"), stored);
     }
 
     @Test
@@ -22,8 +21,7 @@ public class GeneralTextEncryptorTest {
         AES256TextEncryptor old = new AES256TextEncryptor();
         old.setPassword("previous-key");
         String ciphertext = old.encrypt("secret");
-        assertThrows(EncryptionOperationNotPossibleException.class,
-                () -> GeneralTextEncryptor.of("install-key", "previous-key").decrypt(ciphertext));
+        assertCannotRecover("secret", GeneralTextEncryptor.of("install-key", "previous-key"), ciphertext);
     }
 
     @Test
@@ -46,8 +44,15 @@ public class GeneralTextEncryptorTest {
         GeneralTextEncryptor current = GeneralTextEncryptor.of(null, effectiveKey);
         assertEquals("existing secret", current.decrypt(stored));
         assertEquals("new secret", current.decrypt(current.encrypt("new secret")));
-        assertThrows(EncryptionOperationNotPossibleException.class,
-                () -> GeneralTextEncryptor.of(rawKey, effectiveKey).decrypt(stored));
+        assertCannotRecover("existing secret", GeneralTextEncryptor.of(rawKey, effectiveKey), stored);
+    }
+
+    private static void assertCannotRecover(String plaintext, GeneralTextEncryptor encryptor, String ciphertext) {
+        try {
+            assertNotEquals(plaintext, encryptor.decrypt(ciphertext));
+        } catch (EncryptionOperationNotPossibleException expected) {
+            // Wrong-key AES decryption can reject padding or return unrelated text.
+        }
     }
 
     @Test
