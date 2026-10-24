@@ -70,10 +70,11 @@ tests and 13 subtests with five skips. All seven combined native-traffic accepta
 groups passed. The combined Bridge merge required one constructor repair after
 removing obsolete control fields; #114 includes it and the version bump.
 
-Standalone OpenELIS #4768 remains independent. The upstream merge prerequisite
-is satisfied; the trusted submodule check and full OpenELIS validation must pass
-on the new pins. Required independent review remains separate. No OpenELIS PR
-has been merged by this work.
+OpenELIS #4768 is the final layer of the stack, after #4798, as of 24 October
+2026. It adds stale-pairing recovery to the combined cleanup and released pins.
+The upstream merge prerequisite is satisfied; the trusted submodule check and
+full OpenELIS validation must pass on this combined head. Required independent
+review remains separate. No OpenELIS PR has been merged by this work.
 
 ## Validation and review evidence
 
