@@ -54,7 +54,7 @@ export default function CaseViewShell({
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
-  const [infoOpen, setInfoOpen] = useState(true);
+  const [infoOpen, setInfoOpen] = useState(false);
   const params = useParams();
   const location = useLocation();
   const history = useHistory();
@@ -206,17 +206,6 @@ export default function CaseViewShell({
                   accession: detail.accessionNumber || detail.id,
                 })}
               </h1>
-              <Tag type="blue">
-                {t(`microbiology.case.status.${detail.status}`)}
-              </Tag>
-              <p>
-                {t("microbiology.case.workStage")}:{" "}
-                {formatMicrobiologyEnum(detail.stage, intl)} ·{" "}
-                {t("microbiology.case.releaseState")}:{" "}
-                {formatMicrobiologyEnum(detail.finalReleaseState, intl)} ·{" "}
-                {t("microbiology.case.priority")}:{" "}
-                {formatMicrobiologyEnum(detail.priority, intl)}
-              </p>
               {incomingCount > 0 && (
                 <Tile>
                   <p role="status">
@@ -236,19 +225,25 @@ export default function CaseViewShell({
                   title={t("microbiology.incoming.loadError")}
                 />
               )}
-              <Grid>
-                <Column lg={8} md={4} sm={4}>
-                  <Tile>
+              <Tile>
+                <Grid condensed>
+                  <Column lg={4} md={4} sm={4}>
+                    <h3>
+                      {t(
+                        detail.domain === "ENVIRONMENTAL"
+                          ? "microbiology.case.site"
+                          : "common.patient",
+                      )}
+                    </h3>
+                    <p>
+                      {detail.domain === "ENVIRONMENTAL"
+                        ? [detail.siteName, detail.siteCode]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : detail.patientName || t("not.available")}
+                    </p>
                     {detail.domain === "ENVIRONMENTAL" ? (
                       <>
-                        <Tag type="teal">
-                          {t("microbiology.case.environmental")}
-                        </Tag>
-                        <p>{t("microbiology.case.patientRulesSkipped")}</p>
-                        <h2>{t("microbiology.case.site")}</h2>
-                        <p>
-                          {detail.siteName} · {detail.siteCode}
-                        </p>
                         <p>{detail.siteLocation}</p>
                         {detail.latitude && detail.longitude && (
                           <p>
@@ -263,11 +258,13 @@ export default function CaseViewShell({
                           {detail.requesterName || t("not.available")}{" "}
                           {detail.requesterPhone}
                         </p>
+                        <Tag type="teal">
+                          {t("microbiology.case.environmental")}
+                        </Tag>
+                        <p>{t("microbiology.case.patientRulesSkipped")}</p>
                       </>
                     ) : (
                       <>
-                        <h2>{t("common.patient")}</h2>
-                        <p>{detail.patientName || t("not.available")}</p>
                         <p>
                           {t("microbiology.case.birthDate")}:{" "}
                           {detail.birthDate
@@ -280,21 +277,58 @@ export default function CaseViewShell({
                         </p>
                       </>
                     )}
-                  </Tile>
-                </Column>
-                <Column lg={8} md={4} sm={4}>
-                  <Tile>
-                    <h2>{t("microbiology.case.labUnit")}</h2>
+                  </Column>
+                  <Column lg={4} md={4} sm={4}>
+                    <h3>{t("common.samples")}</h3>
+                    <p>{detail.specimenType}</p>
+                    <p>
+                      {t("microbiology.case.sampleCount", {
+                        count: (detail.samples || []).length,
+                      })}
+                    </p>
+                    <p>
+                      {[
+                        ...new Set(
+                          (detail.samples || [])
+                            .map((s) => s.bodySite)
+                            .filter(Boolean),
+                        ),
+                      ].join("; ")}
+                    </p>
+                  </Column>
+                  <Column lg={4} md={4} sm={4}>
+                    <h3>{t("microbiology.case.labUnit")}</h3>
                     <p>{detail.labUnit}</p>
+                    <p>
+                      {
+                        (detail.programs || []).find(
+                          (p) => p.id === detail.programId,
+                        )?.value
+                      }
+                    </p>
                     {detail.reportingTrack && (
                       <Tag type="teal">{detail.reportingTrack}</Tag>
                     )}
-                    <p>{detail.specimenType}</p>
                     {detail.referred && (
                       <Tag type="purple">
                         {t("label.results.history.event.REFERRAL")}
                       </Tag>
                     )}
+                  </Column>
+                  <Column lg={4} md={4} sm={4}>
+                    <h3>{t("microbiology.case.workStage")}</h3>
+                    <p>{formatMicrobiologyEnum(detail.stage, intl)}</p>
+                    <p>
+                      {t("microbiology.case.releaseState")}:{" "}
+                      {formatMicrobiologyEnum(detail.finalReleaseState, intl)}
+                    </p>
+                    <p>
+                      {t("microbiology.case.priority")}:{" "}
+                      {formatMicrobiologyEnum(detail.priority, intl)}
+                    </p>
+                    <Tag type="blue">
+                      {t(`microbiology.case.status.${detail.status}`)}
+                    </Tag>
                     {!detail.canWrite && (
                       <p>
                         {t(
@@ -304,13 +338,14 @@ export default function CaseViewShell({
                         )}
                       </p>
                     )}
-                  </Tile>
-                </Column>
-              </Grid>
+                  </Column>
+                </Grid>
+              </Tile>
               <div>
                 {detail.canWrite && (
                   <>
                     <Button
+                      size="sm"
                       kind="tertiary"
                       onClick={() =>
                         selectScope("CRITICAL", {
@@ -323,12 +358,14 @@ export default function CaseViewShell({
                       {t("microbiology.critical.title")}
                     </Button>
                     <Button
+                      size="sm"
                       kind="tertiary"
                       onClick={() => selectScope("NONCONFORMANCE")}
                     >
                       {t("microbiology.nce.sectionTitle")}
                     </Button>
                     <Button
+                      size="sm"
                       kind="tertiary"
                       onClick={() =>
                         selectScope("NONCONFORMANCE", { action: "mark-lost" })
@@ -341,6 +378,7 @@ export default function CaseViewShell({
                 {detail.canAmend &&
                   detail.finalReleaseState === "FINAL_RELEASED" && (
                     <Button
+                      size="sm"
                       kind="tertiary"
                       onClick={() => selectScope("AMENDMENT")}
                     >
@@ -406,87 +444,146 @@ export default function CaseViewShell({
                           }
                         />
                       )}
+                    <h2>{t("common.samples")}</h2>
+                    <TableContainer>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableHeader>{t("common.labNumber")}</TableHeader>
+                            <TableHeader>
+                              {t("microbiology.worklist.column.specimen")}
+                            </TableHeader>
+                            {detail.domain === "ENVIRONMENTAL" && (
+                              <TableHeader>
+                                {t("microbiology.case.samplingPoint")}
+                              </TableHeader>
+                            )}
+                            <TableHeader>
+                              {t("microbiology.sets.bodySite")}
+                            </TableHeader>
+                            <TableHeader>
+                              {t("microbiology.sets.container")}
+                            </TableHeader>
+                            <TableHeader>{t("collector")}</TableHeader>
+                            <TableHeader>{t("common.status")}</TableHeader>
+                            <TableHeader>
+                              {t("microbiology.case.collectionDate")}
+                            </TableHeader>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(detail.samples || []).map((s) => (
+                            <TableRow key={s.id}>
+                              <TableCell>{s.label}</TableCell>
+                              <TableCell>{s.specimenType}</TableCell>
+                              {detail.domain === "ENVIRONMENTAL" && (
+                                <TableCell>
+                                  {s.samplingPoint || t("not.available")}
+                                </TableCell>
+                              )}
+                              <TableCell>
+                                {s.bodySite || t("not.available")}
+                              </TableCell>
+                              <TableCell>
+                                {s.containerType || t("not.available")}
+                              </TableCell>
+                              <TableCell>
+                                {s.collector || t("not.available")}
+                              </TableCell>
+                              <TableCell>{t("common.collected")}</TableCell>
+                              <TableCell>
+                                {s.collectionDate
+                                  ? labTimestamp(intl, s.collectionDate)
+                                  : t("not.available")}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {(detail.pendingSamples || []).map((s) => (
+                            <TableRow key={`pending-${s.id}`}>
+                              <TableCell>{t("not.available")}</TableCell>
+                              <TableCell>{s.specimenType}</TableCell>
+                              {detail.domain === "ENVIRONMENTAL" && (
+                                <TableCell>{t("not.available")}</TableCell>
+                              )}
+                              <TableCell colSpan={3}>
+                                {t("not.available")}
+                              </TableCell>
+                              <TableCell>
+                                {t("microbiology.case.awaitingCollection")}
+                              </TableCell>
+                              <TableCell>{t("not.available")}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                    {detail.canWrite && canCorrectSamples && detail.orderId && (
+                      <RouterLink
+                        to={`/ModifyOrder?accessionNumber=${encodeURIComponent(detail.accessionNumber)}`}
+                      >
+                        {t("microbiology.case.correctSample")}
+                      </RouterLink>
+                    )}
+                    <h2>{t("microbiology.case.relatedCases")}</h2>
+                    {(detail.relatedCases || []).length === 0 ? (
+                      <p>{t("microbiology.case.noRelatedCases")}</p>
+                    ) : (
+                      <ul>
+                        {detail.relatedCases.map((c) => (
+                          <li key={c.id}>
+                            <RouterLink
+                              to={`${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(c.id)}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
+                            >
+                              {c.accessionNumber} · {c.labUnit} ·{" "}
+                              {c.specimenType}
+                            </RouterLink>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {detail.canWrite && detail.transferLabUnits?.length > 0 && (
+                      <Tile>
+                        <h2>{t("microbiology.case.transfer")}</h2>
+                        <Select
+                          id="transfer-unit"
+                          labelText={t("microbiology.case.destination")}
+                          value={destination}
+                          onChange={(e) => setDestination(e.target.value)}
+                          disabled={saving}
+                        >
+                          <SelectItem
+                            value=""
+                            text={t("microbiology.case.chooseUnit")}
+                          />
+                          {detail.transferLabUnits.map((u) => (
+                            <SelectItem
+                              key={u.id}
+                              value={u.id}
+                              text={u.value}
+                            />
+                          ))}
+                        </Select>
+                        <Button
+                          disabled={!destination || saving}
+                          onClick={transfer}
+                        >
+                          {t("microbiology.case.transfer")}
+                        </Button>
+                        {saving && (
+                          <InlineLoading description={t("common.loading")} />
+                        )}
+                      </Tile>
+                    )}
+                    {transferError && (
+                      <InlineNotification
+                        kind="error"
+                        title={t("microbiology.case.transferError")}
+                        hideCloseButton
+                      />
+                    )}
                   </AccordionItem>
                 </Accordion>
               </section>
-              <h2>{t("common.samples")}</h2>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader>{t("common.labNumber")}</TableHeader>
-                      <TableHeader>
-                        {t("microbiology.worklist.column.specimen")}
-                      </TableHeader>
-                      {detail.domain === "ENVIRONMENTAL" && (
-                        <TableHeader>
-                          {t("microbiology.case.samplingPoint")}
-                        </TableHeader>
-                      )}
-                      <TableHeader>
-                        {t("microbiology.sets.bodySite")}
-                      </TableHeader>
-                      <TableHeader>
-                        {t("microbiology.sets.container")}
-                      </TableHeader>
-                      <TableHeader>{t("collector")}</TableHeader>
-                      <TableHeader>{t("common.status")}</TableHeader>
-                      <TableHeader>
-                        {t("microbiology.case.collectionDate")}
-                      </TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(detail.samples || []).map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell>{s.label}</TableCell>
-                        <TableCell>{s.specimenType}</TableCell>
-                        {detail.domain === "ENVIRONMENTAL" && (
-                          <TableCell>
-                            {s.samplingPoint || t("not.available")}
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          {s.bodySite || t("not.available")}
-                        </TableCell>
-                        <TableCell>
-                          {s.containerType || t("not.available")}
-                        </TableCell>
-                        <TableCell>
-                          {s.collector || t("not.available")}
-                        </TableCell>
-                        <TableCell>{t("common.collected")}</TableCell>
-                        <TableCell>
-                          {s.collectionDate
-                            ? labTimestamp(intl, s.collectionDate)
-                            : t("not.available")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(detail.pendingSamples || []).map((s) => (
-                      <TableRow key={`pending-${s.id}`}>
-                        <TableCell>{t("not.available")}</TableCell>
-                        <TableCell>{s.specimenType}</TableCell>
-                        {detail.domain === "ENVIRONMENTAL" && (
-                          <TableCell>{t("not.available")}</TableCell>
-                        )}
-                        <TableCell colSpan={3}>{t("not.available")}</TableCell>
-                        <TableCell>
-                          {t("microbiology.case.awaitingCollection")}
-                        </TableCell>
-                        <TableCell>{t("not.available")}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              {detail.canWrite && canCorrectSamples && detail.orderId && (
-                <RouterLink
-                  to={`/ModifyOrder?accessionNumber=${encodeURIComponent(detail.accessionNumber)}`}
-                >
-                  {t("microbiology.case.correctSample")}
-                </RouterLink>
-              )}
               <CaseTestingWorkspace
                 onScopeChange={selectScope}
                 scanSearch={location.search}
@@ -502,55 +599,6 @@ export default function CaseViewShell({
                     .catch(() => setError(true))
                 }
               />
-              <h2>{t("microbiology.case.relatedCases")}</h2>
-              {(detail.relatedCases || []).length === 0 ? (
-                <p>{t("microbiology.case.noRelatedCases")}</p>
-              ) : (
-                <ul>
-                  {detail.relatedCases.map((c) => (
-                    <li key={c.id}>
-                      <RouterLink
-                        to={`${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(c.id)}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
-                      >
-                        {c.accessionNumber} · {c.labUnit} · {c.specimenType}
-                      </RouterLink>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {detail.canWrite && detail.transferLabUnits?.length > 0 && (
-                <Tile>
-                  <h2>{t("microbiology.case.transfer")}</h2>
-                  <Select
-                    id="transfer-unit"
-                    labelText={t("microbiology.case.destination")}
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    disabled={saving}
-                  >
-                    <SelectItem
-                      value=""
-                      text={t("microbiology.case.chooseUnit")}
-                    />
-                    {detail.transferLabUnits.map((u) => (
-                      <SelectItem key={u.id} value={u.id} text={u.value} />
-                    ))}
-                  </Select>
-                  <Button disabled={!destination || saving} onClick={transfer}>
-                    {t("microbiology.case.transfer")}
-                  </Button>
-                  {saving && (
-                    <InlineLoading description={t("common.loading")} />
-                  )}
-                </Tile>
-              )}
-              {transferError && (
-                <InlineNotification
-                  kind="error"
-                  title={t("microbiology.case.transferError")}
-                  hideCloseButton
-                />
-              )}
             </>
           )}
         </Stack>

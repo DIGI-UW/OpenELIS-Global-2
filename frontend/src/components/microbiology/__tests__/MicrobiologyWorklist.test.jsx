@@ -878,8 +878,8 @@ test("retains the scope notice through canonicalization and clears a lab-unit-on
 });
 
 test.each([
-  ["microbiology.case.search", null],
-  ["microbiology.culture.title", "bench"],
+  ["microbiology.worklist.caseSearch", "cases"],
+  ["microbiology.worklist.benchActions", "bench"],
 ])("clears AST dates when opening %s", async (label, grain) => {
   const service = {
     getWorklistRows: vi.fn().mockResolvedValue({ rows: [], total: 0 }),

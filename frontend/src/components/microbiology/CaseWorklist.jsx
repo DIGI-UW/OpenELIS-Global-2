@@ -101,19 +101,24 @@ export default function CaseWorklist({ service = serviceDefault }) {
               title={t("microbiology.worklist.scopeFiltersReset")}
             />
           )}
-          <Button
-            kind="tertiary"
-            onClick={() => change("grain", cultures ? "" : "bench")}
-          >
-            {t(
-              cultures
-                ? "microbiology.case.search"
-                : "microbiology.culture.title",
-            )}
-          </Button>
-          <Button kind="ghost" onClick={() => change("grain", "ast")}>
-            {t("microbiology.worklist.grain.ast")}
-          </Button>
+          <Stack orientation="horizontal" gap={3}>
+            <Button kind="ghost" onClick={() => change("grain", "cultures")}>
+              {t("microbiology.worklist.title")}
+            </Button>
+            <Button
+              kind="tertiary"
+              onClick={() => change("grain", cultures ? "cases" : "bench")}
+            >
+              {t(
+                cultures
+                  ? "microbiology.case.search"
+                  : "microbiology.culture.title",
+              )}
+            </Button>
+            <Button kind="ghost" onClick={() => change("grain", "ast")}>
+              {t("microbiology.worklist.grain.ast")}
+            </Button>
+          </Stack>
           {cultures ? (
             <CultureWorklist service={service} />
           ) : (
@@ -207,20 +212,26 @@ export default function CaseWorklist({ service = serviceDefault }) {
                   </Button>
                 </Column>
               </Grid>
-              <TextInput
-                type="date"
-                id="case-from"
-                labelText={t("microbiology.case.from")}
-                value={params.get("from") || ""}
-                onChange={(e) => change("from", e.target.value)}
-              />
-              <TextInput
-                type="date"
-                id="case-to"
-                labelText={t("microbiology.case.to")}
-                value={params.get("to") || ""}
-                onChange={(e) => change("to", e.target.value)}
-              />
+              <Grid condensed>
+                <Column lg={4} md={4} sm={4}>
+                  <TextInput
+                    type="date"
+                    id="case-from"
+                    labelText={t("microbiology.case.from")}
+                    value={params.get("from") || ""}
+                    onChange={(e) => change("from", e.target.value)}
+                  />
+                </Column>
+                <Column lg={4} md={4} sm={4}>
+                  <TextInput
+                    type="date"
+                    id="case-to"
+                    labelText={t("microbiology.case.to")}
+                    value={params.get("to") || ""}
+                    onChange={(e) => change("to", e.target.value)}
+                  />
+                </Column>
+              </Grid>
               {loading && <InlineLoading description={t("common.loading")} />}
               {error && (
                 <InlineNotification

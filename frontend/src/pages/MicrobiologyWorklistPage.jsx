@@ -9,10 +9,10 @@ const MicrobiologyWorklistPage = () => {
   const location = useLocation();
   useContainerScanner(workspaceService);
   const grain = new URLSearchParams(location.search).get("grain");
-  return ["cultures", "ast"].includes(grain) ? (
-    <MicrobiologyWorklist />
-  ) : (
+  return ["cases", "bench"].includes(grain) ? (
     <CaseWorklist />
+  ) : (
+    <MicrobiologyWorklist />
   );
 };
 export default MicrobiologyWorklistPage;
