@@ -11,7 +11,11 @@ docker run --rm --user 0 --entrypoint sh \
   -e SSL_TRUSTSTORE_PATH=/tmp/truststore \
   "$image" -ec '
     export OE_TRUSTSTORE_PROBE_PASSWORD=$(od -An -N24 -tx1 /dev/urandom | tr -d " \n")
-    export OE_ENCRYPTION_PASSWORD=$(od -An -N32 -tx1 /dev/urandom | tr -d " \n")
+    export EXPECTED_ENCRYPTION_KEY=$(od -An -N32 -tx1 /dev/urandom | tr -d " \n")
+    unset OE_ENCRYPTION_PASSWORD
+    mkdir -p /etc/openelis-global/install
+    printf "%s" "$EXPECTED_ENCRYPTION_KEY" > /etc/openelis-global/install/encryption.key
+    chmod 600 /etc/openelis-global/install/encryption.key
     keytool -genkeypair -alias partner -keyalg RSA -dname CN=permission-test \
       -keystore /tmp/identity -storepass:env OE_TRUSTSTORE_PROBE_PASSWORD -keypass:env OE_TRUSTSTORE_PROBE_PASSWORD >/dev/null 2>&1
     keytool -exportcert -rfc -alias partner -keystore /tmp/identity \
@@ -26,10 +30,10 @@ docker run --rm --user 0 --entrypoint sh \
     fi
     grep -q "Permission denied" /tmp/before.log || { cat /tmp/before.log; exit 1; }
     mkdir -p /tmp/probe-tomcat/bin
-    printf "%s\n" "#!/bin/sh" "exec $java_bin -cp /classes:/test-classes:/libraries/\* org.openelisglobal.security.certs.TruststoreWriteProbe" > /tmp/probe-tomcat/bin/catalina.sh
+    printf "%s\n" "#!/bin/sh" "test \"\$OE_ENCRYPTION_PASSWORD\" = \"\$EXPECTED_ENCRYPTION_KEY\" || exit 1" "exec $java_bin -cp /classes:/test-classes:/libraries/\* org.openelisglobal.security.certs.TruststoreWriteProbe" > /tmp/probe-tomcat/bin/catalina.sh
     chmod 755 /tmp/probe-tomcat/bin/catalina.sh
     CATALINA_HOME=/tmp/probe-tomcat sh /entrypoint.sh
     test "$(stat -c %a /tmp/identity)" = 600
     test "$(stat -c %u /tmp/identity)" = 0
-    echo "PASS: upload repaired; private store permissions unchanged"
+    echo "PASS: installation key loaded; upload repaired; private store permissions unchanged"
   '
