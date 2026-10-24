@@ -17,6 +17,7 @@ import org.openelisglobal.menu.util.MenuConfigurationLoader;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,6 +93,7 @@ public class MenuConfigurationSeeder {
         if (FROM_ADMIN.equals(row.getConfigSource())) {
             return;
         }
+        Menu storedState = snapshot(row);
         Set<String> fields = configured.getConfigurationFields();
         boolean changed = copy(configured, row, fields);
         if (fields.contains("parent") && !sameMenu(row.getParent(), parent)) {
@@ -101,7 +103,7 @@ public class MenuConfigurationSeeder {
         if (changed) {
             row.setConfigSource(FROM_DISTRIBUTION);
             row.setSysUserId(SYSTEM_USER_ID);
-            menuService.update(row);
+            menuService.updateAgainst(row, storedState);
         }
     }
 
@@ -183,12 +185,19 @@ public class MenuConfigurationSeeder {
         collect(selected, kept);
         for (Menu row : byElementId.values()) {
             if (!kept.contains(row.getElementId()) && row.getIsActive() && !FROM_ADMIN.equals(row.getConfigSource())) {
+                Menu storedState = snapshot(row);
                 row.setIsActive(false);
                 row.setConfigSource(FROM_DISTRIBUTION);
                 row.setSysUserId(SYSTEM_USER_ID);
-                menuService.update(row);
+                menuService.updateAgainst(row, storedState);
             }
         }
+    }
+
+    private static Menu snapshot(Menu row) {
+        Menu stored = new Menu();
+        BeanUtils.copyProperties(row, stored);
+        return stored;
     }
 
     private static List<MenuItem> tree(Iterable<Menu> rows) {

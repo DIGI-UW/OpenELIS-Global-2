@@ -71,6 +71,33 @@ public class MenuConfigurationSeederIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void configuredUpdatesAndDeactivationAreAuditedButRepeatStartupIsNot() throws Exception {
+        File file = config("{\"menus\": [{\"elementId\": \"" + HIDDEN
+                + "\", \"actionURL\": \"/ChangedByConfiguration\"}], \"excludes\": [{\"elementId\": \"" + HIDDEN
+                + "\"}]}");
+        int before = historyCount();
+        seeder.seed(file, true);
+        assertEquals(before + 2, historyCount());
+        List<byte[]> changes = jdbc.queryForList("SELECT h.changes FROM clinlims.history h"
+                + " JOIN clinlims.reference_tables r ON r.id = h.reference_table"
+                + " JOIN clinlims.menu m ON m.id = h.reference_id"
+                + " WHERE lower(r.name) = 'menu' AND m.element_id = ? ORDER BY h.id", byte[].class, HIDDEN);
+        String recorded = changes.stream().map(bytes -> new String(bytes, java.nio.charset.StandardCharsets.UTF_8))
+                .collect(java.util.stream.Collectors.joining());
+        assertTrue(recorded, recorded.contains("/SeedTestHidden"));
+        assertTrue(recorded, recorded.contains("isActive"));
+        seeder.seed(file, true);
+        assertEquals("unchanged configuration must not create audit noise", before + 2, historyCount());
+    }
+
+    private int historyCount() {
+        return jdbc.queryForObject("SELECT count(*) FROM clinlims.history h"
+                + " JOIN clinlims.reference_tables r ON r.id = h.reference_table"
+                + " JOIN clinlims.menu m ON m.id = h.reference_id"
+                + " WHERE lower(r.name) = 'menu' AND m.element_id = ?", Integer.class, HIDDEN);
+    }
+
+    @Test
     public void anItemTheFileHidesThenEnabledInAdminStaysShownWhenSeededAgain() throws Exception {
         File file = config("{\"excludes\": [{\"elementId\": \"" + HIDDEN + "\"}]}");
 
