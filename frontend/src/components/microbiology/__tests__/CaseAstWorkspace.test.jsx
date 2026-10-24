@@ -462,7 +462,9 @@ it.each([
 it("sends an explicitly chosen clinical indication on new runs", async () => {
   const data = workspace("IN_PROGRESS");
   data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
-  data.isolates[0].assignments = [{ panelId: "panel" }];
+  data.isolates[0].assignments = [
+    { panelId: "panel", provenance: "ORGANISM_DEFAULT" },
+  ];
   const service = show(data);
   fireEvent.click(
     await screen.findByRole("button", { name: t("action.start") }),
@@ -472,9 +474,7 @@ it("sends an explicitly chosen clinical indication on new runs", async () => {
   fireEvent.change(within(modal).getByLabelText(t("clinicalContext")), {
     target: { value: "NON_MENINGITIS" },
   });
-  fireEvent.change(within(modal).getByLabelText(t("reason")), {
-    target: { value: "Clinician requested non-meningitis interpretation" },
-  });
+  expect(within(modal).queryByLabelText(t("reason"))).toBeNull();
   fireEvent.click(
     within(modal).getByRole("button", { name: t("save"), exact: true }),
   );
@@ -488,4 +488,27 @@ it("sends an explicitly chosen clinical indication on new runs", async () => {
       false,
     ),
   );
+});
+
+it("asks for a panel adjustment reason only when the run does not use the organism default panel", async () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
+  data.isolates[0].assignments = [{ panelId: "panel", provenance: "MANUAL" }];
+  show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const save = within(modal).getByRole("button", {
+    name: t("save"),
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(
+    within(modal).getByLabelText(
+      messages["microbiology.ast.panelAdjustmentReason"],
+    ),
+    { target: { value: "No default panel configured for this organism" } },
+  );
+  expect(save).toBeEnabled();
 });

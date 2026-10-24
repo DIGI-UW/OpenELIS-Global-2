@@ -82,9 +82,7 @@ test("offers only eligible culture lots and retains exact culture and AST proven
   await scanner.fill("UAT-MICRO-CARD-FEFO");
   await scanner.press("Enter");
   await expect(card).toBeChecked();
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Initial susceptibility testing");
+  await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dialog).toHaveCount(0, { timeout: LONG_TIMEOUT });
   const usage = page.getByRole("table", { name: "Recorded lot usage" });

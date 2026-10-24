@@ -48,7 +48,6 @@ const reasons = [
   "invalidate",
   "acknowledge",
   "qc-override",
-  "start",
   "resolve",
 ];
 const techniques = [
@@ -258,10 +257,16 @@ export default function CaseAstWorkspace({
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
+  const panelChanged =
+    draft?.action === "start" &&
+    (draft.adjustPanel ||
+      activeIsolate?.assignments?.find((a) => a.panelId === draft.panelId)
+        ?.provenance !== "ORGANISM_DEFAULT");
+  const needsReason = draft && (reasons.includes(draft.action) || panelChanged);
   const invalid =
     draft &&
     ((draft.adjustPanel && !draft.orderedAntibioticIds?.length) ||
-      (reasons.includes(draft.action) && !draft.reason.trim()) ||
+      (needsReason && !draft.reason.trim()) ||
       (draft.action === "reading" &&
         (draft.rawValue === "" ||
           !Number.isFinite(Number(draft.rawValue)) ||
@@ -923,10 +928,16 @@ export default function CaseAstWorkspace({
                 ))}
               </Select>
             )}
-            {reasons.includes(draft.action) && (
+            {needsReason && (
               <TextArea
                 id="ast-reason"
-                labelText={t("reason")}
+                labelText={
+                  panelChanged
+                    ? intl.formatMessage({
+                        id: "microbiology.ast.panelAdjustmentReason",
+                      })
+                    : t("reason")
+                }
                 value={draft.reason}
                 maxLength={4000}
                 onChange={(e) => setDraft({ ...draft, reason: e.target.value })}
