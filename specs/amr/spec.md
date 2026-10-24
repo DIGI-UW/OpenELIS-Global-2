@@ -108,6 +108,18 @@ and leave new choices (AC-V2-101).
 _Track lots_ property, and optional usual atmosphere and temperature on medium
 items.
 
+**Deployment configuration**: a distribution ships its AST panels as
+`microbiology-ast-panels`, loaded after the reference packages: one row per
+panel drug (panel name, protocol, antibiotic WHONET code, disk content, order,
+tier, report behaviour) and, optionally, the organisms the panel is the default
+for, named as a species, a genus or an organism group; the most specific claim
+wins. A changed panel is published as a new version, and organisms that
+defaulted to the previous version move to it. Media, their links to culture
+tests, lots, a lab unit's Gram stain test and activating a breakpoint edition
+remain laboratory setup in the existing admin screens. Reference packages carry
+each organism's group (`organism_group`) and, for zone breakpoints, the disk
+content they were set for (`disk_content`).
+
 **Seeded reflex rule**: "Blood culture result = Positive: add Gram stain,
 culture on that bottle, not In lab only", an ordinary reflex rule
 (FR-10.1g, AC-V2-102).
@@ -222,6 +234,7 @@ while any referral is open (FR-17.4).
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Run**                | isolate, published panel version, method, interpretation model (clinical breakpoints or TB critical concentrations), standard + version, reason when not the active default, instrument and software version, status, validation | Several runs per isolate (FR-07.2a). The default panel is added when an isolate is identified, except NTM (FR-07.1b, FR-14.4). A panel already on an isolate cannot be added again (FR-07.1a). |
 | **Agent reading**      | run, agent, raw MIC or zone, matched breakpoint level, interpretation, instrument interpretation, expert flags, QC state                                                                                                         | Original values are never overwritten. Changing the active standard or panel never changes old results (A-07 susceptibility history).                                                          |
+| **Disk content**       | per panel drug, copied onto the run                                                                                                                                                                                              | A zone reading matches only a breakpoint published for the same disk content; otherwise it has no breakpoint.                                                                                  |
 | **Attempt / override** | reading or run, type (repeat, retest, override, revert, invalidation), reason, validator, before/after                                                                                                                           | Originals are kept (A-07 susceptibility history).                                                                                                                                              |
 | **Use for reporting**  | isolate, agent, chosen run                                                                                                                                                                                                       | Exactly one validated reading per agent on the report; defaults to the organism default panel's run (FR-07.2b, FR-11.5).                                                                       |
 

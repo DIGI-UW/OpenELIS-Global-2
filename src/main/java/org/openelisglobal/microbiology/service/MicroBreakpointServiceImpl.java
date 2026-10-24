@@ -107,8 +107,9 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
     @Override
     @Transactional(readOnly = true)
     public MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, String organismGroup,
-            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext) {
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
+            String diskContent) {
         return ruleDAO.findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
-                breakpointType, MicroBreakpointClinicalContext.validate(clinicalContext));
+                breakpointType, MicroBreakpointClinicalContext.validate(clinicalContext), diskContent);
     }
 }

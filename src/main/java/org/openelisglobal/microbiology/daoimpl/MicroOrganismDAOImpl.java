@@ -58,6 +58,14 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public List<MicroOrganism> getByDefaultAstPanelId(String panelId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroOrganism o where o.defaultAstPanelId = :panelId", MicroOrganism.class)
+                .setParameter("panelId", panelId).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<MicroOrganism> findByReference(String source, String code) {
         return entityManager.unwrap(Session.class)
                 .createQuery("from MicroOrganism e where e.referenceSource = :source and e.referenceCode = :code",
