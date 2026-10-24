@@ -1121,7 +1121,7 @@
   "analyzerType.mappingEditor.reason.test.incompatible": "Not mapped: a test in this lab's catalog carries its code but cannot hold these results.",
   "analyzerType.mappingEditor.reason.test.no_match": "Not mapped: no test in this lab's catalog carries its code.",
   "analyzerType.mappingEditor.results": "Results mapped",
-  "analyzerType.mappingEditor.return": "Back",
+  "analyzerType.mappingEditor.back": "Back",
   "analyzerType.mappingEditor.save": "Save mapping",
   "analyzerType.mappingEditor.saved": "Mappings saved",
   "analyzerType.mappingEditor.own.title": "This analyzer's own mapping",

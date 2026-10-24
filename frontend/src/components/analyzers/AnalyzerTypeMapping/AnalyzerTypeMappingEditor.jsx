@@ -1491,7 +1491,7 @@ const AnalyzerTypeMappingEditor = ({
                   renderIcon={ArrowLeft}
                   to={returnDestination}
                 >
-                  <FormattedMessage id="analyzerType.mappingEditor.return" />
+                  <FormattedMessage id="analyzerType.mappingEditor.back" />
                 </Button>
                 {!readOnly && !adopting && (
                   <Button
