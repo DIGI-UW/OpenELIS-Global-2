@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -781,7 +782,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         // The fixture supplies the timestamp; the failure is independent of its
         // timezone conversion.
         org.mockito.Mockito.doThrow(new IllegalStateException("QC storage unavailable")).when(qcResultProcessingService)
-                .processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), eq("LOT-WBC-2026-08"), eq("NORMAL"),
+                .processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), isNull(), eq("NORMAL"),
                         eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
         Bundle bundle = fixture("normalized-qc.fhir.json");
 
@@ -789,7 +790,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void recognizedControlUsesThePinnedBindingThenEntersOperationalQc() throws IOException {
+    public void recognizedControlUsesLocalMappingAndPassesReportedLevelWithoutInventingALot() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-qc.fhir.json"), "7");
@@ -801,11 +802,10 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("CONTROL", row.getResultClassification());
         assertEquals("RULES", row.getRecognitionMode());
         assertEquals("MATCH", row.getRecognitionOutcome());
-        assertEquals("LOT-WBC-2026-08", row.getLotNumber());
+        assertNull(row.getLotNumber());
         assertEquals("NORMAL", row.getControlLevel());
-        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"),
-                eq("LOT-WBC-2026-08"), eq("NORMAL"), eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"),
-                any(java.time.LocalDateTime.class));
+        verify(qcResultProcessingService).processQCResult(eq("42"), eq("501"), eq("QC-LOT-WBC-2026-08"), isNull(),
+                eq("NORMAL"), eq(new java.math.BigDecimal("7.1")), eq("10*3/uL"), any(java.time.LocalDateTime.class));
     }
 
     @Test

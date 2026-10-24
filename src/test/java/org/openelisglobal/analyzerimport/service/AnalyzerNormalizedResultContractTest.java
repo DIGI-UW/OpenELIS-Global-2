@@ -207,7 +207,7 @@ public class AnalyzerNormalizedResultContractTest {
     }
 
     @Test
-    public void parsesBridgeRecognizedControlEvidence() throws IOException {
+    public void parsesBridgeRecognizedControlWithoutInventingALotNumber() throws IOException {
         AnalyzerNormalizedResultContract contract = AnalyzerNormalizedResultContract
                 .parse(fixture("normalized-qc.fhir.json"), FHIR);
 
@@ -215,7 +215,7 @@ public class AnalyzerNormalizedResultContractTest {
         assertEquals("CONTROL", result.classification());
         assertEquals("MATCH", result.recognitionOutcome());
         assertTrue(result.recognitionFingerprint().startsWith("sha256:"));
-        assertEquals("LOT-WBC-2026-08", result.lotNumber());
+        assertNull(result.lotNumber());
         assertEquals("NORMAL", result.controlLevel());
     }
 
