@@ -13899,7 +13899,7 @@
   "admin.labelPresets.field.maxPerContainer": "Maximum labels per container",
   "admin.labelPresets.validation.maxPerContainer": "Maximum labels must be at least the default, and neither may be negative.",
   "microbiology.incoming.title": "Incoming results",
-  "microbiology.incoming.place": "Place incoming results",
+  "microbiology.incoming.open": "Place incoming results",
   "microbiology.incoming.received": "Received at",
   "microbiology.incoming.values": "Received values",
   "microbiology.incoming.review": "Review placement",

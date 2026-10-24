@@ -1,3 +1,4 @@
+@use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
 
 .microbiology-case-workspace {
@@ -19,6 +20,12 @@
 
   h3 {
     @include type.type-style("heading-compact-01");
+  }
+
+  .microbiology-case-workspace__views {
+    display: flex;
+    flex-wrap: wrap;
+    gap: spacing.$spacing-03;
   }
 
   .cds--accordion__content {

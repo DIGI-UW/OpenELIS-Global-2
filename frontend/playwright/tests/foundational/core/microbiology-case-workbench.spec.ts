@@ -89,7 +89,7 @@ test("keeps two laboratory units through case, bench and AST navigation and relo
   );
   await page
     .getByRole("button", {
-      name: "Search by accession number or patient name",
+      name: "Case search",
       exact: true,
     })
     .click();

@@ -215,7 +215,7 @@ export default function CaseViewShell({
                     })}
                   </p>
                   <Button kind="ghost" onClick={() => selectScope("INCOMING")}>
-                    {t("microbiology.incoming.place")}
+                    {t("microbiology.incoming.open")}
                   </Button>
                 </Tile>
               )}
@@ -229,13 +229,13 @@ export default function CaseViewShell({
               <Tile>
                 <Grid condensed>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>
+                    <p className="cds--label">
                       {t(
                         detail.domain === "ENVIRONMENTAL"
                           ? "microbiology.case.site"
                           : "common.patient",
                       )}
-                    </h3>
+                    </p>
                     <p>
                       {detail.domain === "ENVIRONMENTAL"
                         ? [detail.siteName, detail.siteCode]
@@ -282,7 +282,7 @@ export default function CaseViewShell({
                     )}
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>{t("common.samples")}</h3>
+                    <p className="cds--label">{t("common.samples")}</p>
                     <p>{detail.specimenType}</p>
                     <p>
                       {t("microbiology.case.sampleCount", {
@@ -300,7 +300,9 @@ export default function CaseViewShell({
                     </p>
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>{t("microbiology.case.labUnit")}</h3>
+                    <p className="cds--label">
+                      {t("microbiology.case.labUnit")}
+                    </p>
                     <p>{detail.labUnit}</p>
                     <p>
                       {
@@ -319,7 +321,9 @@ export default function CaseViewShell({
                     )}
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>{t("microbiology.case.workStage")}</h3>
+                    <p className="cds--label">
+                      {t("microbiology.case.workStage")}
+                    </p>
                     <p>{formatMicrobiologyEnum(detail.stage, intl)}</p>
                     <p>
                       {t("microbiology.case.releaseState")}:{" "}
