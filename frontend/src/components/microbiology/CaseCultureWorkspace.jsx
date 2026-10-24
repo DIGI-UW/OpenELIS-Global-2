@@ -606,36 +606,38 @@ export default function CaseCultureWorkspace({
   };
   const log = (row) => (
     <>
-      <TableContainer title={t("readings")}>
-        <Table aria-label={t("readings")}>
-          <TableHead>
-            <TableRow>
-              {[
-                "readingId",
-                "quantityId",
-                "note",
-                "incubationDay",
-                "by",
-                "at",
-              ].map((key) => (
-                <TableHeader key={key}>{t(key)}</TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {row.readings.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.readingName}</TableCell>
-                <TableCell>{r.quantityName || t("notAvailable")}</TableCell>
-                <TableCell>{r.note}</TableCell>
-                <TableCell>{numeric(r.incubationDay)}</TableCell>
-                <TableCell>{r.byDisplay || r.by}</TableCell>
-                <TableCell>{date(r.at)}</TableCell>
+      {row.readings.length > 0 && (
+        <TableContainer title={t("readings")}>
+          <Table aria-label={t("readings")}>
+            <TableHead>
+              <TableRow>
+                {[
+                  "readingId",
+                  "quantityId",
+                  "note",
+                  "incubationDay",
+                  "by",
+                  "at",
+                ].map((key) => (
+                  <TableHeader key={key}>{t(key)}</TableHeader>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {row.readings.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell>{r.readingName}</TableCell>
+                  <TableCell>{r.quantityName || t("notAvailable")}</TableCell>
+                  <TableCell>{r.note}</TableCell>
+                  <TableCell>{numeric(r.incubationDay)}</TableCell>
+                  <TableCell>{r.byDisplay || r.by}</TableCell>
+                  <TableCell>{date(r.at)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
       {row.extensions.length > 0 && (
         <TableContainer title={t("extensions")}>
           <Table aria-label={t("extensions")}>
@@ -919,11 +921,7 @@ export default function CaseCultureWorkspace({
                 </Stack>
               )}
               {renderNotes?.("CULTURE", row.id)}
-              {(row.readings.length > 0 || row.extensions.length > 0) && (
-                <Accordion>
-                  <AccordionItem title={t("history")}>{log(row)}</AccordionItem>
-                </Accordion>
-              )}
+              {log(row)}
               {row.proposals.map((p) => (
                 <Tile key={p.id}>
                   <p>

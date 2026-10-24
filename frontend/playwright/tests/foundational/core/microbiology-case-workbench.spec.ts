@@ -52,7 +52,7 @@ test("keeps two laboratory units through case, bench and AST navigation and relo
     ),
   );
   expect(new Set(units).size).toBe(2);
-  const query = new URLSearchParams({ q: "UATMICRO" });
+  const query = new URLSearchParams({ grain: "cases", q: "UATMICRO" });
   units.forEach((id) => query.append("labUnitIds", id));
   await page.goto(`/Microbiology/worklist?${query}`);
   const table = page.getByRole("table", {
@@ -158,7 +158,7 @@ test("reports an NCE and records a separate lost specimen with keyboard access",
     const seeded = await seedMicrobiologyCase(page);
     await page.goto(`/Microbiology/cases/${seeded.caseId}`);
     const action = page.getByRole("button", {
-      name: lost ? "Mark lost" : "Nonconformance",
+      name: lost ? "Mark lost" : "Report NCE",
       exact: true,
     });
     await action.focus();

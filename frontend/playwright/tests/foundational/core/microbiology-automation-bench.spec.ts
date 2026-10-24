@@ -17,7 +17,7 @@ test("places an incoming result and keeps it pending validation", async ({
       .filter({ hasText: "1 incoming result needs placement" }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
   await page
-    .getByRole("button", { name: "Incoming results", exact: true })
+    .getByRole("button", { name: "Place incoming results", exact: true })
     .click();
   const row = page
     .getByRole("row")

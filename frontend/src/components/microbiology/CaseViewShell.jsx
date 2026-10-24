@@ -55,7 +55,7 @@ export default function CaseViewShell({
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
-  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(true);
   const params = useParams();
   const location = useLocation();
   const history = useHistory();
@@ -215,7 +215,7 @@ export default function CaseViewShell({
                     })}
                   </p>
                   <Button kind="ghost" onClick={() => selectScope("INCOMING")}>
-                    {t("microbiology.incoming.title")}
+                    {t("microbiology.incoming.place")}
                   </Button>
                 </Tile>
               )}
@@ -358,14 +358,14 @@ export default function CaseViewShell({
                         })
                       }
                     >
-                      {t("microbiology.critical.title")}
+                      {t("microbiology.critical.logNotification")}
                     </Button>
                     <Button
                       size="sm"
                       kind="tertiary"
                       onClick={() => selectScope("NONCONFORMANCE")}
                     >
-                      {t("microbiology.nce.sectionTitle")}
+                      {t("microbiology.nce.report")}
                     </Button>
                     <Button
                       size="sm"

@@ -162,7 +162,7 @@ describe("canonical case workspace", () => {
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", {
-        name: messages["microbiology.incoming.title"],
+        name: messages["microbiology.incoming.place"],
       }),
     );
     expect(history.location.search).toContain("scope=INCOMING");
