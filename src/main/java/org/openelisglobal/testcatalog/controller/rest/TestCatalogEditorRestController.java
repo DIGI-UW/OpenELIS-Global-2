@@ -32,6 +32,7 @@ import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -2255,8 +2256,6 @@ public class TestCatalogEditorRestController {
 
     // ── Terminology Mappings (OGC-957..958) ───────────────────────────────────
 
-    private static final Set<String> TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
-
     private static final Set<String> TERM_RELATIONSHIPS = Set.of("SAME_AS", "BROADER_THAN", "NARROWER_THAN");
 
     /** One terminology mapping: a standard-terminology code for this test. */
@@ -2345,15 +2344,16 @@ public class TestCatalogEditorRestController {
         Set<String> seen = new HashSet<>();
         List<TestTerminologyMapping> desired = new ArrayList<>();
         for (MappingDto m : body.mappings) {
-            // Source must be a known terminology; code required; relationship (if
-            // present) must be a known qualifier.
+            // Source is any identifier that fits its column; code required;
+            // relationship (if present) must be a known qualifier.
             if (longerThan(m.code, 80) || longerThan(m.displayName, 255)) {
                 TerminologyResponse refused = new TerminologyResponse();
                 refused.testId = testId;
                 refused.messageKey = "error.testCatalog.terminology.tooLong";
                 return ResponseEntity.unprocessableEntity().body(refused);
             }
-            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
@@ -2615,10 +2615,8 @@ public class TestCatalogEditorRestController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.PANELS_INACTIVE);
     }
 
-    // ── Panel terminology (OGC-224 C4) — parity with the sample-type mapper,
-    // including WHONET; the LOINC mapping is the panel's primary identifier ──
-
-    private static final Set<String> PANEL_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL", "WHONET");
+    // ── Panel terminology (OGC-224 C4) — codes in any system; the LOINC mapping
+    // is the panel's primary identifier ──
 
     public static class PanelTerminologyMappingDto {
         public String id;
@@ -2690,7 +2688,8 @@ public class TestCatalogEditorRestController {
         Set<String> seen = new HashSet<>();
         List<org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping> desired = new ArrayList<>();
         for (PanelTerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !PANEL_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
@@ -2728,9 +2727,6 @@ public class TestCatalogEditorRestController {
         }
         return resp;
     }
-
-    /** An answer's codes come from the standard systems only. */
-    private static final Set<String> ANSWER_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
 
     public static class AnswerTerminologyMappingDto {
         public String id;
@@ -2776,7 +2772,8 @@ public class TestCatalogEditorRestController {
         Set<String> seen = new HashSet<>();
         List<org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping> desired = new ArrayList<>();
         for (AnswerTerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !ANSWER_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {

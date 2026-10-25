@@ -170,8 +170,7 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     private static boolean pinnedTo(AnalyzerInstanceState state, ObjectNode connection) {
         JsonNode profileRef = connection.path("profileRef");
         return Objects.equals(state.profileId(), profileRef.path("profileId").asText(null))
-                && state.profileRevision() == profileRef.path("revision").asInt(0)
-                && Objects.equals(state.profileFingerprint(), profileRef.path("fingerprint").asText(null));
+                && state.profileRevision() == profileRef.path("revision").asInt(0);
     }
 
     private AnalyzerInstanceView compose(AnalyzerInstanceState state) {
@@ -190,12 +189,23 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     @Override
     public AnalyzerInstanceView update(String analyzerId, AnalyzerInstanceRequest request, String actor) {
         AnalyzerInstanceState state = localStateService.update(analyzerId, request, actor);
+        if (state.profileId() == null || state.profileId().isBlank()) {
+            // Renamed before it has a type: its connection waits for the type.
+            return new AnalyzerInstanceView(state, null, null);
+        }
         if (state.bridgeConnectionId() == null) {
             return createMissingConnection(state, request, actor);
         }
         try {
             ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
-            requireExactConnection(state, current);
+            // A migrated or reset analyzer is set up on its new type before anything is
+            // applied. It is not running, so its connection moves now, with the values
+            // just entered; a running analyzer moves only through Apply.
+            boolean moving = !pinnedTo(state, current) && state.status() != Analyzer.AnalyzerStatus.ACTIVE
+                    && Objects.equals(state.analyzerId(), current.path("clientAnalyzerId").asText(null));
+            if (!moving) {
+                requireExactConnection(state, current);
+            }
             ObjectNode updated = bridgeClient.updateConnection(state.bridgeConnectionId(),
                     updateConnectionRequest(state, pin(state), connectionValues(request), current));
             requireExactConnection(state, updated);
@@ -257,8 +267,7 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         JsonNode profileRef = connection.path("profileRef");
         if (!Objects.equals(state.analyzerId(), connection.path("clientAnalyzerId").asText(null))
                 || !Objects.equals(state.profileId(), profileRef.path("profileId").asText(null))
-                || state.profileRevision() != profileRef.path("revision").asInt(0)
-                || !Objects.equals(state.profileFingerprint(), profileRef.path("fingerprint").asText(null))) {
+                || state.profileRevision() != profileRef.path("revision").asInt(0)) {
             throw new BridgeAnalyzerConnectionException("analyzer.bridge.connection.invalidEvidence");
         }
     }

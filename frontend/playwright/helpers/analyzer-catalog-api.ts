@@ -55,10 +55,17 @@ export async function seedNumericTests(
   ]);
   const catalog = (await (
     await page.request.get(`${API}/analyzer-types/mapping-catalog/tests`)
-  ).json()) as Array<{ id: string; name: string; loincCodes: string[] }>;
+  ).json()) as Array<{
+    id: string;
+    name: string;
+    codings: Array<{ system: string; code: string }>;
+  }>;
   return tests.map(({ name, loinc }) => {
     const found = catalog.filter((candidate) =>
-      candidate.loincCodes.includes(loinc),
+      candidate.codings.some(
+        (coding) =>
+          coding.system === "http://loinc.org" && coding.code === loinc,
+      ),
     );
     const match = found.find((candidate) => candidate.name.startsWith(name));
     expect(

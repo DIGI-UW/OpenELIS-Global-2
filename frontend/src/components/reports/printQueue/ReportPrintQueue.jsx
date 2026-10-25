@@ -1310,6 +1310,17 @@ export default function ReportPrintQueue() {
                               ) : (
                                 formatDateTime(row.released)
                               )}
+                              {row.awaitingValidation && (
+                                <div>
+                                  <Tag
+                                    type="blue"
+                                    size="sm"
+                                    data-testid={`awaiting-validation-${row.labNumber}`}
+                                  >
+                                    <FormattedMessage id="reportQueue.awaitingValidation" />
+                                  </Tag>
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell>
                               {row.nothingReleased ? "–" : stateTag(row)}

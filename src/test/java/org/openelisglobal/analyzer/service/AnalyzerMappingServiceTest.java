@@ -86,6 +86,14 @@ public class AnalyzerMappingServiceTest {
 
         assertSame(analyzer, created.mapping().getAnalyzer());
         assertEquals(1, created.mapping().getRevisionNumber());
+        AnalyzerMappingDefinition definition = AnalyzerMappingDefinition.of(created.mapping());
+        assertEquals(PROFILE_ID, definition.profileId());
+        assertEquals(List.of("WBC", "HIV"),
+                definition.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode).toList());
+        assertEquals(List.of("POS", "NEG"), definition.testDefinitions().get(1).resultValues());
+        assertEquals(List.of(), definition.testDefinitions().get(1).aliases());
+        assertEquals(java.util.Map.of(), definition.testDefinitions().get(1).translations());
+        org.junit.Assert.assertFalse(created.mapping().getSourceDefinitionJson().contains("configDefaults"));
         assertEquals(PROFILE_ID, created.mapping().getProfileId());
         assertEquals(PROFILE_REVISION, created.mapping().getProfileRevision());
         assertEquals(PROFILE_FINGERPRINT, created.mapping().getProfileFingerprint());
@@ -203,9 +211,11 @@ public class AnalyzerMappingServiceTest {
     }
 
     @Test
-    public void appendRevisionKeepsThePinAndSupersedesWithoutMutatingTheOldRevision() {
+    public void appendRevisionKeepsThePinAndSupersedesWithoutMutatingTheOldRevision() throws Exception {
         Analyzer analyzer = analyzer("7");
         AnalyzerMapping current = mapping("7", 1);
+        current.setSourceDefinitionJson(AnalyzerMappingDefinition
+                .from(BridgeAnalyzerProfile.from(catalog("ACTIVE").profiles().get(0).profile())).toJson());
         when(mappingDAO.findLatestByAnalyzerId("7")).thenReturn(Optional.of(current));
         org.openelisglobal.test.valueholder.Test mappedTest = activeTest("9701");
         when(testService.get("9701")).thenReturn(mappedTest);
@@ -216,6 +226,8 @@ public class AnalyzerMappingServiceTest {
 
         assertEquals(2, saved.mapping().getRevisionNumber());
         assertSame(current, saved.mapping().getSupersedes());
+        assertEquals(current.getSourceDefinitionJson(), saved.mapping().getSourceDefinitionJson());
+        verifyZeroInteractions(profileCatalogService);
         assertEquals(1, current.getRevisionNumber());
         assertEquals(PROFILE_ID, saved.mapping().getProfileId());
         assertEquals(PROFILE_REVISION, saved.mapping().getProfileRevision());
@@ -430,24 +442,26 @@ public class AnalyzerMappingServiceTest {
     }
 
     private BridgeProfileCatalog catalog(String status) throws Exception {
-        JsonNode profile = objectMapper.readTree("""
-                {
-                  "profileMeta":{"id":"site.mock-hematology","displayName":"Mock Hematology"},
-                  "protocol":{"name":"ASTM","version":"LIS2-A2"},
-                  "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
-                  "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
-                  "catalog":{
-                    "revision":3,
-                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                    "source":"SITE",
-                    "status":"%s"
-                  },
-                  "default_test_mappings":[
-                    {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
-                    {"test_code":"HIV","loinc":"20447-9","result_type":"qualitative","values":["POS","NEG"]}
-                  ]
-                }
-                """.formatted(status));
+        JsonNode profile = objectMapper.readTree(
+                """
+                        {
+                          "profileMeta":{"id":"site.mock-hematology","displayName":"Mock Hematology"},
+                          "protocol":{"name":"ASTM","version":"LIS2-A2"},
+                          "communication":{"mode":"ANALYZER_INITIATED","supports_lis_initiated":false},
+                          "configDefaults":{"connectionRole":"SERVER","aggregationMode":"PER_MESSAGE"},
+                          "catalog":{
+                            "revision":3,
+                            "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            "source":"SITE",
+                            "status":"%s"
+                          },
+                          "default_test_mappings":[
+                            {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
+                            {"test_code":"HIV","aliases":["vendor-hiv"],"loinc":"20447-9","result_type":"qualitative","values":["POS","NEG"],"translations":{"POS":["POSITIF"]}}
+                          ]
+                        }
+                        """
+                        .formatted(status));
         return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT,
                 List.of(new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode())));
     }

@@ -61,6 +61,25 @@ public class LocalizationValue extends BaseObject<String> {
     @Column(name = "value", nullable = false)
     private String value;
 
+    /**
+     * Who wrote the label (OGC-1507): {@link #ORIGIN_SITE} for a lab's own edit in
+     * the localization editor, {@link #ORIGIN_SYSTEM} for one OpenELIS wrote (a
+     * configuration file, an upgrade backfill). On a value that ships with a
+     * display key only a site label wins over the key's translation.
+     */
+    @Column(name = "origin", nullable = false)
+    private String origin = ORIGIN_SITE;
+
+    /**
+     * Under a lab's own label, the label OpenELIS wrote for this language (the
+     * configuration file's translation), so Reset has it to return to.
+     */
+    @Column(name = "system_value")
+    private String systemValue;
+
+    public static final String ORIGIN_SITE = "SITE";
+    public static final String ORIGIN_SYSTEM = "SYSTEM";
+
     public LocalizationValue() {
     }
 
@@ -101,5 +120,53 @@ public class LocalizationValue extends BaseObject<String> {
 
     public void setValue(String value) {
         this.value = value;
+    }
+
+    public String getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
+
+    public boolean isSiteLabel() {
+        return !ORIGIN_SYSTEM.equals(origin);
+    }
+
+    public String getSystemValue() {
+        return systemValue;
+    }
+
+    public void setSystemValue(String systemValue) {
+        this.systemValue = systemValue;
+    }
+
+    /** The label OpenELIS wrote for this language, or null. */
+    public String getShippedValue() {
+        return isSiteLabel() ? systemValue : value;
+    }
+
+    /** The lab writes its own label; the one OpenELIS wrote is kept. */
+    public void writeSiteLabel(String newValue) {
+        if (!isSiteLabel()) {
+            systemValue = value;
+        }
+        value = newValue;
+        origin = ORIGIN_SITE;
+    }
+
+    /**
+     * OpenELIS writes its label. With keepSiteLabel a different lab label stays and
+     * only the kept copy is updated.
+     */
+    public void writeSystemLabel(String newValue, boolean keepSiteLabel) {
+        if (keepSiteLabel && isSiteLabel() && value != null && !value.equals(newValue)) {
+            systemValue = newValue;
+            return;
+        }
+        value = newValue;
+        origin = ORIGIN_SYSTEM;
+        systemValue = null;
     }
 }

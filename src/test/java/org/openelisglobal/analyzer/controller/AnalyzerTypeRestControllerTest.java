@@ -30,6 +30,7 @@ import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.terminology.Coding;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -84,8 +85,8 @@ public class AnalyzerTypeRestControllerTest {
 
     @Test
     public void searchMappingTestsReturnsCompleteActiveCatalogMatches() {
-        List<AnalyzerMappingCatalogService.TestOption> expected = List
-                .of(new AnalyzerMappingCatalogService.TestOption("1", "HIV Viral Load", "HIVVL", List.of("25836-8")));
+        List<AnalyzerMappingCatalogService.TestOption> expected = List.of(new AnalyzerMappingCatalogService.TestOption(
+                "1", "HIV Viral Load", "HIVVL", List.of(Coding.loinc("25836-8"))));
         when(mappingCatalogService.searchActiveTests("viral")).thenReturn(expected);
 
         assertSame(expected, controller.searchMappingTests("viral").getBody());

@@ -21,9 +21,11 @@ services:
   certs:
     container_name: oe-certs
     restart: "no"
+    # The first compose file supplies the entrypoint and script mount: compose resolves
+    # relative paths from the first file's directory, which differs between stacks.
     environment:
-      KEYSTORE_PW: '"kspass"'
-      TRUSTSTORE_PW: '"tspass"'
+      KEYSTORE_PW: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      TRUSTSTORE_PW: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - keys-vol:/etc/ssl/private/
@@ -48,6 +50,12 @@ services:
       - "8080:8080"
       - "8443:8443"
     environment:
+      # Override older bootstrapped common.properties as well as fresh copies.
+      SERVER_SSL_KEY_STORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      SERVER_SSL_KEY_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      SERVER_SSL_TRUST_STORE_PASSWORD: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      SSL_KEYSTORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      SSL_TRUSTSTORE_PASSWORD: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
       DEFAULT_PW: adminADMIN!
       TZ: Africa/Nairobi
       SPRING_LIQUIBASE_CONTEXTS: test
@@ -91,6 +99,10 @@ services:
     volumes:
       - bridge-data:/data/openelis-analyzer-bridge
     environment:
+      SERVER_SSL_KEY_STORE_PASSWORD: ${SSL_KEYSTORE_PASSWORD:-kspass}
+      BRIDGE_TRUSTSTORE_PATH: /etc/openelis-global/truststore
+      BRIDGE_TRUSTSTORE_PASSWORD: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      BRIDGE_TRUSTSTORE_TYPE: PKCS12
       BRIDGE_OUTBOX_DB_PATH: /data/openelis-analyzer-bridge/outbox.db
       BRIDGE_FILE_STATE_STORE_PATH: /data/openelis-analyzer-bridge/state.db
 

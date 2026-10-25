@@ -16,6 +16,7 @@ import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,8 +49,10 @@ public class SampleTypeManagementRestController extends BaseRestController {
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
-    // Kept in sync with the frontend `SOURCES` array in TerminologySection.jsx.
-    private static final Set<String> TERM_SOURCES = new HashSet<>(Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL"));
+    /**
+     * A sample type's WHONET code is its own field, so a new WHONET mapping would
+     * hold the same fact twice; a legacy one is kept while it is unchanged.
+     */
     private static final String LEGACY_WHONET_SOURCE = "WHONET";
     private static final Set<String> TERM_RELATIONSHIPS = new HashSet<>(
             Arrays.asList("SAME_AS", "BROADER_THAN", "NARROWER_THAN"));
@@ -541,11 +544,13 @@ public class SampleTypeManagementRestController extends BaseRestController {
         Set<String> seen = new HashSet<>();
         List<SampleTypeTerminologyMapping> desired = new ArrayList<>();
         for (TerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || isBlank(m.code)) {
+            m.source = TerminologySystems.sourceOf(m.source);
+            if (m.source == null || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             boolean unchangedLegacyWhonet = isUnchangedLegacyWhonetMapping(m, activeMappings);
-            if ((!TERM_SOURCES.contains(m.source) || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
+            boolean whonet = LEGACY_WHONET_SOURCE.equalsIgnoreCase(m.source);
+            if ((whonet || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!seen.add(m.source + " " + m.code.trim())) {

@@ -6,17 +6,14 @@ shared OpenELIS image or other deployments.
 ## Instance navigation
 
 Mount `projects/reporting-uat/menu/menu_config.json` read-only at
-`/var/lib/openelis-global/menu/menu_config.json` in the reporting app. The
-loader applies this profile in memory at application startup. Existing database
-menu rows are retained; nested definitions reorganize their parent relationships
-for this instance. Other deployments keep their own menu configuration.
-
-The database remains the baseline. Configuration matches `elementId` and only
-overrides fields explicitly supplied; unlisted entries and unspecified database
-settings remain available. Existing `includes`/`excludes` filtering and route
-authorization remain in place. Nested `childMenus` can regroup existing entries
-without rewriting their database parents. Removing the mounted profile restores
-the database hierarchy after the menu cache is rebuilt (normally on restart).
+`/var/lib/openelis-global/menu/menu_config.json` in the reporting app. At every
+start the application seeds the menu rows from it: entries the database lacks
+are inserted, and the fields an entry names, including its place in a nested
+`childMenus`, are written to rows nobody has edited in Admin > Menu. Unlisted
+entries and unspecified settings stay as the database has them. A row edited in
+Admin > Menu keeps that edit. Route authorization still applies. Removing the
+profile leaves the seeded rows in place; Admin > Menu can export the current
+menu as a file for another deployment.
 
 The shared renderer accepts `presentationStyle: "section"` for a labeled section
 and `icon` for a Carbon icon. Supported icon names are `home`, `order`,

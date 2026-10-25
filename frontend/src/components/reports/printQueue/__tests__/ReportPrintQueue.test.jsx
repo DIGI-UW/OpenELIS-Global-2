@@ -78,6 +78,7 @@ const MOCK_PAGE = {
       version: 3,
       legacy: false,
       nothingReleased: false,
+      awaitingValidation: true,
     },
     {
       sampleId: 9303,
@@ -422,6 +423,19 @@ describe("ReportPrintQueue", () => {
     ).toHaveTextContent("Nothing released yet on this order");
     expect(
       screen.queryByTestId("print-V1RPT0000009303"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says on a printed row that a correction awaits validation and still offers Print", async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("awaiting-validation-V1RPT0000009302"),
+      ).toHaveTextContent("Correction awaiting validation"),
+    );
+    expect(screen.getByTestId("print-V1RPT0000009302")).toBeEnabled();
+    expect(
+      screen.queryByTestId("awaiting-validation-V1RPT0000009301"),
     ).not.toBeInTheDocument();
   });
 

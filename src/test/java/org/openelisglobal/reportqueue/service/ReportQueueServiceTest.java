@@ -253,6 +253,97 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(0, list("all").getAmendedToPrint() - 1);
     }
 
+    /**
+     * OGC-1529: a printed result corrected on Results waits for validation before
+     * the order is due again. A print in that window reprints the version on file,
+     * and the version printed after validation names the old and the new value
+     * instead of removing the result and adding it back.
+     */
+    @Test
+    public void aCorrectionAwaitingValidationKeepsTheOrderPrintedUntilItIsValidated() {
+        PrintOutcome first = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        correctAwaitingValidation("9301", "7.1");
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("PRINTED", row.getPrintStatus());
+        assertTrue(row.isAwaitingValidation());
+        assertEquals("not Amended before validation", "PARTIAL", row.getState());
+        assertEquals(0, list("all").getAmendedToPrint());
+        assertEquals(0, list("all").getToPrint());
+        assertTrue("the home dashboard reads the same definition",
+                analysisService.patientReportHasBeenDone(analysisService.get("9305")));
+
+        PrintOutcome waiting = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertTrue("a print before validation is a reprint", waiting.isReprint());
+        assertEquals(1, waiting.getVersion());
+        assertArrayEquals(first.getPdf(), waiting.getPdf());
+        assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM clinlims.report_version WHERE sample_id = ?", Integer.class, SAMPLE));
+
+        release("9301");
+        row = row(list("all"));
+        assertEquals("AMENDED", row.getState());
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertFalse(row.isAwaitingValidation());
+        assertEquals(1, list("all").getAmendedToPrint());
+
+        PrintOutcome corrected = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertEquals(2, corrected.getVersion());
+        assertFalse(corrected.isReprint());
+        Map<String, Object> version = jdbcTemplate.queryForMap(
+                "SELECT amended, change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2",
+                SAMPLE);
+        assertEquals(Boolean.TRUE, version.get("amended"));
+        String summary = String.valueOf(version.get("change_summary"));
+        assertTrue(summary, summary.contains("Glucose") && summary.contains("6.3") && summary.contains("7.1"));
+        assertFalse(summary, summary.contains("Removed") || summary.contains("Added"));
+    }
+
+    /**
+     * A result released while a printed one awaits validation waits with it, so the
+     * next version carries both changes and never drops the corrected result.
+     */
+    @Test
+    public void aNewReleaseWaitsForACorrectionAwaitingValidation() {
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        correctAwaitingValidation("9301", "7.1");
+        release("9302");
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("PRINTED", row.getPrintStatus());
+        assertEquals("the corrected result is not released again yet", "PARTIAL", row.getState());
+        assertTrue(reportQueueService.print(SAMPLE, ADMIN).orElseThrow().isReprint());
+
+        release("9301");
+        assertEquals("UNPRINTED", row(list("all")).getPrintStatus());
+        assertEquals(2, reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getVersion());
+        String summary = jdbcTemplate.queryForObject(
+                "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
+                SAMPLE);
+        assertTrue(summary, summary.contains("6.3") && summary.contains("7.1") && summary.contains("Added: Urea"));
+        assertFalse(summary, summary.contains("Removed"));
+    }
+
+    /**
+     * A printed result that is cancelled is still removed from the next version,
+     * whatever else is pending: only a correction awaiting validation holds.
+     */
+    @Test
+    public void aCancelledPrintedResultIsStillRemoved() {
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = CAST(? AS numeric) WHERE id = 9305",
+                statusService.getStatusID(AnalysisStatus.Canceled));
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("AMENDED", row.getState());
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertEquals(2, reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getVersion());
+        String summary = jdbcTemplate.queryForObject(
+                "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
+                SAMPLE);
+        assertTrue(summary, summary.contains("Removed"));
+    }
+
     @Test
     public void theTimeWindowHidesOnlyPrintedRows() {
         assertNotNull("an unprinted row released on 2026-10-01 shows under Last 24 hours", find(list("24h")));
@@ -277,6 +368,12 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("a correction after a legacy print is an amendment", "AMENDED", row(list("all")).getState());
 
         jdbcTemplate.update("UPDATE clinlims.analysis SET corrected = false WHERE id = 9301");
+        correctAwaitingValidation("9305", "81");
+        row = row(list("all"));
+        assertEquals("a correction awaiting validation is not an amendment yet", "PARTIAL", row.getState());
+        assertEquals("PRINTED", row.getPrintStatus());
+        release("9305");
+        jdbcTemplate.update("UPDATE clinlims.analysis SET corrected = false WHERE id = 9305");
         jdbcTemplate.update(
                 "UPDATE clinlims.report_version SET issued_at = '2026-09-30 09:00:00+00' WHERE sample_id = ?", SAMPLE);
         row = row(list("all"));
@@ -306,9 +403,10 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * The only released result goes back for correction after version 1 was
-     * printed: the order leaves the queue, but its lookup row and its detail keep
-     * the version that is on file instead of claiming nothing was ever printed.
+     * Every released result goes back for correction after version 1 was printed:
+     * the order leaves the queue, but its lookup row says a correction awaits
+     * validation, keeps the version that is on file, and a print reprints it
+     * (OGC-1529) instead of claiming nothing was ever released.
      */
     @Test
     public void aPrintedOrderWhoseResultsGoBackKeepsItsVersionInTheLookupAndTheDetail() {
@@ -325,10 +423,17 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         ReportQueueRequest request = new ReportQueueRequest();
         request.setLabNo(LAB_NO);
         ReportQueueRowDTO row = reportQueueService.list(request, ADMIN).getRows().get(0);
-        assertTrue(row.isNothingReleased());
+        assertFalse(row.isNothingReleased());
+        assertTrue(row.isAwaitingValidation());
+        assertEquals("PARTIAL", row.getState());
+        assertEquals(0, row.getReleasedCount());
+        assertEquals(3, row.getTotalCount());
         assertEquals(Integer.valueOf(1), row.getVersion());
         assertEquals("PRINTED", row.getPrintStatus());
         assertEquals("Nambi, Ruth", row.getRequester());
+        PrintOutcome reprint = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertTrue(reprint.isReprint());
+        assertEquals(1, reprint.getVersion());
 
         ReportQueueRowDetailDTO detail = reportQueueService.detail(SAMPLE, ADMIN).orElseThrow();
         assertEquals(1, detail.getVersions().size());
@@ -558,6 +663,20 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
                 "UPDATE clinlims.analysis SET status_id = CAST(? AS numeric), released_date = now(),"
                         + " lastupdated = now() WHERE id = CAST(? AS numeric)",
                 statusService.getStatusID(AnalysisStatus.Finalized), analysisId);
+    }
+
+    /**
+     * What a correction saved on Results leaves behind: the new value, the analysis
+     * back at technical acceptance, and the corrected flag.
+     */
+    private void correctAwaitingValidation(String analysisId, String value) {
+        jdbcTemplate.update(
+                "UPDATE clinlims.result SET value = ?, lastupdated = now() WHERE analysis_id = CAST(? AS" + " numeric)",
+                value, analysisId);
+        jdbcTemplate.update(
+                "UPDATE clinlims.analysis SET status_id = CAST(? AS numeric), corrected = true, lastupdated = now()"
+                        + " WHERE id = CAST(? AS numeric)",
+                statusService.getStatusID(AnalysisStatus.TechnicalAcceptance), analysisId);
     }
 
     private void insertLegacyVersion(String issuedAt) {

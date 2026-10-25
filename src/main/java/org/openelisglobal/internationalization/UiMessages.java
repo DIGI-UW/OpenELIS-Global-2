@@ -43,6 +43,8 @@ public final class UiMessages {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Map<String, Map<String, String>> SHIPPED = new ConcurrentHashMap<>();
+    private static final long CACHE_MILLIS = 30_000;
+    private static final Map<Locale, CachedCatalogue> CACHE = new ConcurrentHashMap<>();
 
     private final Locale locale;
     private final Map<String, String> messages;
@@ -55,6 +57,52 @@ public final class UiMessages {
     /** The catalogue for the current user's language. */
     public static UiMessages current() {
         return forLocale(LocaleContextHolder.getLocale());
+    }
+
+    /**
+     * The catalogue for a locale, reused for a few seconds: a pick list asks for
+     * one label per value, and building the catalogue reads the override files.
+     */
+    public static UiMessages cached(Locale locale) {
+        Locale resolved = locale == null ? Locale.ENGLISH : locale;
+        long now = System.currentTimeMillis();
+        CachedCatalogue cachedCatalogue = CACHE.get(resolved);
+        if (cachedCatalogue == null || now - cachedCatalogue.builtAt > CACHE_MILLIS) {
+            cachedCatalogue = new CachedCatalogue(forLocale(resolved), now);
+            CACHE.put(resolved, cachedCatalogue);
+        }
+        return cachedCatalogue.messages;
+    }
+
+    /** Whether the shipped English catalogue holds the key. */
+    public static boolean defines(String key) {
+        return key != null && !key.isBlank() && shipped("en").containsKey(key.trim());
+    }
+
+    /** The shipped English catalogue's keys under a prefix, with their English. */
+    public static Map<String, String> shippedEnglish(String prefix) {
+        Map<String, String> matching = new HashMap<>();
+        shipped("en").forEach((key, value) -> {
+            if (key.startsWith(prefix)) {
+                matching.put(key, value);
+            }
+        });
+        return matching;
+    }
+
+    /** Whether this catalogue holds the key in any layer. */
+    public boolean has(String key) {
+        return key != null && messages.containsKey(key);
+    }
+
+    private static final class CachedCatalogue {
+        private final UiMessages messages;
+        private final long builtAt;
+
+        private CachedCatalogue(UiMessages messages, long builtAt) {
+            this.messages = messages;
+            this.builtAt = builtAt;
+        }
     }
 
     public static UiMessages forLocale(Locale locale) {

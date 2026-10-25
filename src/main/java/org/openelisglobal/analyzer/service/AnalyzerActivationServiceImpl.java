@@ -26,11 +26,16 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private static final String PROFILE_BLOCKER = "analyzer.activation.blocker.profile";
     private static final String NAME_BLOCKER = "analyzer.activation.blocker.name";
+    private static final String RETIRED_BLOCKER = "analyzer.activation.blocker.retired";
     private static final String LAB_UNIT_BLOCKER = "analyzer.activation.blocker.labUnit";
     private static final String MAPPINGS_BLOCKER = "analyzer.activation.blocker.mappings";
-    private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
     private static final String BRIDGE_PROFILE_UNAVAILABLE = "analyzer.connection.readiness.profileUnavailable";
+    /**
+     * The Bridge could not restore the connection at start; an activate command
+     * restores it.
+     */
+    private static final String BRIDGE_RESTORE_FAILED = "analyzer.connection.readiness.restoreFailed";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
 
     private final AnalyzerService analyzerService;
@@ -125,7 +130,11 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             return AnalyzerActivationResult.activated(analyzer);
         } catch (RuntimeException exception) {
             previousState.restore(analyzer);
-            compensateIfApplied(context, acknowledgement, "DEACTIVATE", deactivationCommandIdSupplier, exception);
+            // Retrying a failed restore fulfills an already-active runtime intent. A
+            // local persistence failure must not switch that connection off.
+            if (previousState.status() != Analyzer.AnalyzerStatus.ACTIVE && !previousState.active()) {
+                compensateIfApplied(context, acknowledgement, "DEACTIVATE", deactivationCommandIdSupplier, exception);
+            }
             throw exception;
         }
     }
@@ -201,6 +210,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private ActivationContext validateActivation(Analyzer analyzer) {
         List<AnalyzerActivationBlocker> blockers = new ArrayList<>();
+        // A retired analyzer returns through Restore, never straight to running.
+        if (analyzer.getStatus() == Analyzer.AnalyzerStatus.RETIRED) {
+            blockers.add(new AnalyzerActivationBlocker(RETIRED_BLOCKER));
+        }
         if (analyzer.getName() == null || analyzer.getName().isBlank()) {
             blockers.add(new AnalyzerActivationBlocker(NAME_BLOCKER));
         }
@@ -228,26 +241,18 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         AnalyzerMappingSnapshot snapshot = null;
         AnalyzerMappingConfirmation confirmation = null;
         String bindingRevisionId = analyzer.getMapping() == null ? null : analyzer.getMapping().getId();
-        String recognitionFingerprint = profileRevision == null || profileRevision.controlRecognitionSummary() == null
-                ? null
-                : profileRevision.controlRecognitionSummary().recognitionFingerprint();
-        if (bindingRevisionId != null && recognitionFingerprint != null) {
+        if (bindingRevisionId != null) {
             snapshot = mappingService.findById(bindingRevisionId).orElse(null);
             if (snapshot != null) {
-                AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
-                        recognitionFingerprint);
+                AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot);
                 if (!assessment.mappingsCurrent()) {
                     blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
-                }
-                if (!assessment.recognitionCurrent()) {
-                    blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
                 }
                 confirmation = assessment.currentConfirmation().orElse(null);
             }
         }
         if (snapshot == null) {
             blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
-            blockers.add(new AnalyzerActivationBlocker(RECOGNITION_BLOCKER));
         }
 
         ConnectionReference connection = null;
@@ -334,9 +339,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         List<AnalyzerActivationBlocker> bridgeBlockers = bridgeBlockers(readiness.path("blockers"));
         if (bridgeBlockers.isEmpty()) {
             blockers.add(new AnalyzerActivationBlocker(CONNECTION_BLOCKER));
-        } else {
-            blockers.addAll(bridgeBlockers);
+            return;
         }
+        // Activating is what clears a failed restore, so it never blocks activation.
+        bridgeBlockers.stream().filter(blocker -> !BRIDGE_RESTORE_FAILED.equals(blocker.code())).forEach(blockers::add);
     }
 
     private static List<AnalyzerActivationBlocker> bridgeBlockers(JsonNode source) {
@@ -353,15 +359,12 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     }
 
     private static boolean matchesCatalogProfile(AnalyzerProfilePin profile, BridgeAnalyzerProfile catalogProfile) {
-        return Objects.equals(profile.getProfileId(), catalogProfile.profileId())
-                && profile.getProfileRevision() == catalogProfile.revision()
-                && Objects.equals(profile.getProfileFingerprint(), catalogProfile.revisionFingerprint());
+        return profile.names(catalogProfile.profileId(), catalogProfile.revision());
     }
 
     private static boolean matchesProfile(AnalyzerProfilePin profile, JsonNode profileRef) {
-        return profile != null && Objects.equals(profile.getProfileId(), profileRef.path("profileId").asText(null))
-                && profile.getProfileRevision() == profileRef.path("revision").asInt(0)
-                && Objects.equals(profile.getProfileFingerprint(), profileRef.path("fingerprint").asText(null));
+        return profile != null
+                && profile.names(profileRef.path("profileId").asText(null), profileRef.path("revision").asInt(0));
     }
 
     private boolean isActiveLabUnit(String id) {

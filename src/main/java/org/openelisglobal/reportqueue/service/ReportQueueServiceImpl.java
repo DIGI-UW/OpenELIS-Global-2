@@ -179,19 +179,24 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         }
     }
 
-    /** What differs between the last printed version and the current content. */
+    /**
+     * What differs between the last printed version and the current content. A
+     * printed result back awaiting validation holds the order: nothing differs
+     * until the correction is validated, so no version drops it (OGC-1529).
+     */
     static final class Comparison {
         final List<SnapshotItem> added = new ArrayList<>();
         final List<ReportVersionItem> removed = new ArrayList<>();
         final Map<ReportVersionItem, SnapshotItem> changed = new LinkedHashMap<>();
+        final List<ReportVersionItem> awaitingValidation = new ArrayList<>();
         boolean legacyNewer;
 
         boolean changedOrRemoved() {
-            return !changed.isEmpty() || !removed.isEmpty();
+            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty());
         }
 
         boolean contentDiffers() {
-            return legacyNewer || !added.isEmpty() || changedOrRemoved();
+            return legacyNewer || (awaitingValidation.isEmpty() && (!added.isEmpty() || changedOrRemoved()));
         }
     }
 
@@ -250,6 +255,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 row.setNothingReleased(true);
                 row.setState("PARTIAL");
                 Optional<ReportVersion> printed = versionDAO.findLatest(sampleId, ReportVersion.TYPE_PATIENT);
+                Snapshot current = printed.isPresent() ? snapshot(sample) : null;
+                if (current != null && !compare(printed.get(), current).awaitingValidation.isEmpty()) {
+                    row.setNothingReleased(false);
+                    row.setAwaitingValidation(true);
+                    row.setState(printed.get().isAmended() ? "AMENDED" : "PARTIAL");
+                    row.setReleasedCount(current.released().size());
+                    row.setTotalCount(current.items.size());
+                }
                 row.setPrintStatus(printed.isPresent() ? "PRINTED" : "UNPRINTED");
                 row.setVersion(printed.map(ReportVersion::getVersion).orElse(null));
                 row.setLegacy(printed.map(ReportVersion::isLegacy).orElse(false));
@@ -411,6 +424,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         row.setVersion(record.getVersionNumber());
         row.setLegacy(record.isLegacy());
         row.setCritical(critical);
+        row.setAwaitingValidation(record.isAwaitingValidation());
         return row;
     }
 
@@ -649,11 +663,11 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         queryDAO.lockForPrint(sampleId);
         Snapshot current = snapshot(sample);
         List<SnapshotItem> released = current.released();
-        if (released.isEmpty()) {
-            throw new NothingReleasedException(sample.getAccessionNumber());
-        }
         Optional<ReportVersion> last = versionDAO.findLatest(sampleId, ReportVersion.TYPE_PATIENT);
         Comparison comparison = compare(last.orElse(null), current);
+        if (released.isEmpty() && comparison.awaitingValidation.isEmpty()) {
+            throw new NothingReleasedException(sample.getAccessionNumber());
+        }
         OffsetDateTime now = OffsetDateTime.now();
 
         if (last.isPresent() && !comparison.contentDiffers()) {
@@ -780,7 +794,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             if (statusId == null || excluded.contains(statusId)) {
                 continue;
             }
-            if (analysis.isCorrectedSincePatientReport()) {
+            if (analysis.isCorrectedSincePatientReport() && finalized.equals(statusId)) {
                 snapshot.anyCorrected = true;
             }
             SnapshotItem item = new SnapshotItem();
@@ -888,11 +902,19 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         for (SnapshotItem item : current.released()) {
             releasedNow.put(item.analysisId, item);
         }
+        Set<Long> notReleased = new HashSet<>();
+        for (SnapshotItem item : current.items) {
+            if (!item.released) {
+                notReleased.add(item.analysisId);
+            }
+        }
         Set<Long> printed = new HashSet<>();
         for (ReportVersionItem item : last.getItems()) {
             printed.add(item.getAnalysisId());
             SnapshotItem now = releasedNow.get(item.getAnalysisId());
-            if (now == null) {
+            if (now == null && notReleased.contains(item.getAnalysisId())) {
+                comparison.awaitingValidation.add(item);
+            } else if (now == null) {
                 comparison.removed.add(item);
             } else if (!nullToEmpty(now.rawValue).equals(nullToEmpty(item.getPrintedValue()))
                     || !nullToEmpty(now.unitId).equals(nullToEmpty(item.getPrintedUnit()))) {

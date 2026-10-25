@@ -172,15 +172,16 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
         assertEquals(Integer.valueOf(1), count("result_limits", "test_id = " + testId));
 
         // The tests.csv row already bridged LOINC 2345-7 as a test-level mapping;
-        // naming it again updates that one, and the SNOMED row is new.
+        // naming it again updates that one, and the SNOMED and distro rows are new.
         load(terminologyHandler,
                 "testName,componentCode,source,code,relationship,displayName\n" + GLUCOSE
-                        + ",,LOINC,2345-7,SAME_AS,Glucose [Mass/volume]\n" + GLUCOSE + ",PRIMARY,SNOMED,33747003,,\n",
+                        + ",,LOINC,2345-7,SAME_AS,Glucose [Mass/volume]\n" + GLUCOSE + ",PRIMARY,SNOMED,33747003,,\n"
+                        + GLUCOSE + ",,CPHL,GLU,,\n",
                 "terminology.csv");
-        assertEquals("SUMMARY file=terminology.csv domain=terminology created=1 updated=1 skipped=0",
+        assertEquals("SUMMARY file=terminology.csv domain=terminology created=2 updated=1 skipped=0",
                 terminologyHandler.getLastSummary().toLine());
-        assertEquals("the LOINC the tests.csv row already bridged is updated, the SNOMED code added",
-                Integer.valueOf(2), count("test_terminology_mapping", "test_id = " + testId + " AND is_active = 'Y'"));
+        assertEquals("the LOINC the tests.csv row already bridged is updated, the SNOMED and CPHL codes added",
+                Integer.valueOf(3), count("test_terminology_mapping", "test_id = " + testId + " AND is_active = 'Y'"));
         assertEquals("Glucose [Mass/volume]", jdbc.queryForObject(
                 "SELECT display_name FROM clinlims.test_terminology_mapping WHERE test_id = ? AND source = 'LOINC'"
                         + " AND is_active = 'Y'",

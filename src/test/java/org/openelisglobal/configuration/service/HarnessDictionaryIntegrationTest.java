@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -87,6 +88,10 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
         List<String> unbound = new ArrayList<>();
         for (String profileFile : BASELINE_PROFILES) {
             JsonNode declared = new ObjectMapper().readTree(PROFILES.resolve(profileFile).toFile());
+            // The Bridge derives this field when serving the authored file. This test
+            // checks dictionary binding, not fingerprint derivation, so supply API-shaped
+            // fixture metadata without restoring stamps to the shipped profile files.
+            ((ObjectNode) declared.path("catalog")).put("revisionFingerprint", "sha256:" + "a".repeat(64));
             AnalyzerMappingDraft draft = defaults.resolve(BridgeAnalyzerProfile.from(declared));
 
             List<String> records = new ArrayList<>();

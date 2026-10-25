@@ -2,7 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 
-public record AnalyzerMappingConfirmationRequest(String baseMappingFingerprint, String recognitionFingerprint,
+public record AnalyzerMappingConfirmationRequest(String baseMappingFingerprint,
         List<AnalyzerMappingSourceRow> confirmedRows, List<AnalyzerMappingSourceRow> excludedRows) {
 
     public AnalyzerMappingConfirmationRequest {

@@ -27,23 +27,8 @@ import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Unit tests for normalized Bridge result staging in
- * {@link AnalyzerResultsServiceImpl#insertAnalyzerResults}.
- * <p>
- * The normalized-result importer is the only production caller. Four cases are
- * exercised at this persistence boundary:
- * <ol>
- * <li><b>No previous row</b> — fresh insert.</li>
- * <li><b>Held observation resolved</b> — advance the held row in place so it is
- * actionable and its audit history remains intact.</li>
- * <li><b>Exact replay</b> — same key and same completeDate or result value:
- * skip silently.</li>
- * <li><b>Changed observation</b> — same key but different completeDate and
- * DIFFERENT result value: insert the new row as a linked correction
- * ({@code readOnly=true}, {@code duplicateAnalyzerResultId} backlink on both
- * rows).</li>
- * </ol>
- * </p>
+ * Distinct deliveries must survive staging, even when their values or times
+ * match.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerResultsServiceImplTest {
@@ -66,6 +51,8 @@ public class AnalyzerResultsServiceImplTest {
         ar.setTestName(TEST_NAME);
         ar.setResult(result);
         ar.setCompleteDate(completeDate);
+        ar.setSourceConnectionId("connection-1");
+        ar.setSourceMessageId(java.util.UUID.randomUUID().toString());
         return ar;
     }
 
@@ -108,11 +95,12 @@ public class AnalyzerResultsServiceImplTest {
     }
 
     // ------------------------------------------------------------------
-    // Case 2 — exact re-import: skip silently (idempotent)
+    // Distinct deliveries remain visible even when their measured values or
+    // timestamps match.
     // ------------------------------------------------------------------
 
     @Test
-    public void reImport_sameCompleteDate_skipsInsertAndUpdate() {
+    public void distinctDeliveryAtSameTimeRemainsVisible() {
         Timestamp when = new Timestamp(1_700_000_000_000L);
         AnalyzerResults existing = existingRow("42", "1520.5", when);
         AnalyzerResults incoming = newIncoming("9999.9", when); // different value, SAME date
@@ -120,12 +108,12 @@ public class AnalyzerResultsServiceImplTest {
 
         service.insertAnalyzerResults(List.of(incoming), USER_ID);
 
-        verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
-        verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+        verify(baseObjectDAO).insert(incoming);
+        verify(baseObjectDAO).update(existing);
     }
 
     @Test
-    public void reImport_sameResultValue_skipsInsertAndUpdate() {
+    public void distinctDeliveryWithSameValueRemainsVisible() {
         AnalyzerResults existing = existingRow("42", "1520.5", new Timestamp(1_700_000_000_000L));
         AnalyzerResults incoming = newIncoming("1520.5", new Timestamp(1_800_000_000_000L)); // same value, different
                                                                                              // date
@@ -133,12 +121,12 @@ public class AnalyzerResultsServiceImplTest {
 
         service.insertAnalyzerResults(List.of(incoming), USER_ID);
 
-        verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
-        verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+        verify(baseObjectDAO).insert(incoming);
+        verify(baseObjectDAO).update(existing);
     }
 
     @Test
-    public void resolvedHeldValue_advancesExistingStagingRow() {
+    public void newDeliveryDoesNotOverwriteAHeldDelivery() {
         AnalyzerResults held = existingRow("held-id-42", "REVIEW REQUIRED", new Timestamp(1_700_000_000_000L));
         held.setReadOnly(true);
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
@@ -164,17 +152,13 @@ public class AnalyzerResultsServiceImplTest {
 
         service.insertAnalyzerResults(List.of(incoming), USER_ID);
 
-        verify(baseObjectDAO, never()).insert(any(AnalyzerResults.class));
-        ArgumentCaptor<AnalyzerResults> updateCaptor = ArgumentCaptor.forClass(AnalyzerResults.class);
-        verify(baseObjectDAO).update(updateCaptor.capture());
-        AnalyzerResults advanced = updateCaptor.getValue();
-        assertEquals("held-id-42", advanced.getId());
-        assertEquals("9001", advanced.getResult());
-        assertEquals("D", advanced.getResultType());
-        assertEquals("message-after-mapping", advanced.getSourceMessageId());
-        assertFalse(advanced.isReadOnly());
-        assertNull(advanced.getImportIssueReason());
-        assertNull(advanced.getDuplicateAnalyzerResultId());
+        verify(baseObjectDAO).insert(incoming);
+        assertEquals("new-id-777", incoming.getId());
+        assertEquals("held-id-42", held.getId());
+        assertEquals("REVIEW REQUIRED", held.getResult());
+        assertEquals("message-before-mapping", held.getSourceMessageId());
+        assertTrue(held.isReadOnly());
+        assertEquals("message-after-mapping", incoming.getSourceMessageId());
     }
 
     @Test
@@ -205,7 +189,7 @@ public class AnalyzerResultsServiceImplTest {
     }
 
     // ------------------------------------------------------------------
-    // Case 3 — corrected re-export: insert linked correction row
+    // Repeated measurements remain linked for local review.
     // ------------------------------------------------------------------
 
     @Test
@@ -238,12 +222,8 @@ public class AnalyzerResultsServiceImplTest {
     // ------------------------------------------------------------------
 
     @Test
-    public void reImport_bothCompleteDateAndResultNull_isTreatedAsCorrection() {
-        // Pathological case: a previously-staged row with null completeDate AND
-        // null result value. The loop never satisfies the "duplicate" predicate,
-        // so the incoming row is inserted as a linked correction. This test
-        // documents current behavior — if we want null+null to be a no-op skip
-        // instead, the fix is a null-guarded early-return in the loop.
+    public void distinctDeliveryIsRetainedWhenPreviousTimeAndValueAreMissing() {
+        // Missing timestamps or values do not prove two deliveries are the same.
         AnalyzerResults existing = existingRow("old-id-99", null, null);
         AnalyzerResults incoming = newIncoming("new-value", new Timestamp(1_800_000_000_000L));
         when(baseObjectDAO.getDuplicateResultByAccessionAndTest(incoming)).thenReturn(List.of(existing));
@@ -274,9 +254,8 @@ public class AnalyzerResultsServiceImplTest {
         Collections.addAll(batch, freshA, freshB, dupeC);
         service.insertAnalyzerResults(batch, USER_ID);
 
-        // Two fresh inserts, zero for the dupe
-        verify(baseObjectDAO, times(2)).insert(any(AnalyzerResults.class));
-        verify(baseObjectDAO, never()).update(any(AnalyzerResults.class));
+        verify(baseObjectDAO, times(3)).insert(any(AnalyzerResults.class));
+        verify(baseObjectDAO).update(existingForC);
     }
 
     @Test

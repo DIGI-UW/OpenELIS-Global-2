@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.terminology.Coding;
+import org.openelisglobal.terminology.TerminologySystems;
 
 /** Typed view of the established Bridge-owned analyzer profile contract. */
 public final class BridgeAnalyzerProfile {
@@ -70,14 +72,10 @@ public final class BridgeAnalyzerProfile {
             String analyzerCode = requiredText(mapping, "test_code");
             List<String> aliases = textList(mapping.path("aliases"), "profile analyzer alias");
             List<String> values = values(mapping.path("values"));
-            JsonNode coding = mapping.path("normalized_coding");
-            NormalizedCoding normalizedCoding = coding.isMissingNode() || coding.isNull() ? null
-                    : new NormalizedCoding(requiredText(coding, "system"), requiredText(coding, "code"),
-                            nullableText(coding, "display"));
             tests.add(new TestDefinition(analyzerCode, aliases, nullableText(mapping, "test_name_hint"),
-                    requiredText(mapping, "loinc"), nullableText(mapping, "unit"), nullableText(mapping, "result_type"),
-                    values, normalizedCoding, valueCodes(mapping.path("value_codes"), values),
-                    nullableText(mapping, "call_component"), components(mapping.path("components")),
+                    testCodings(mapping), nullableText(mapping, "unit"), nullableText(mapping, "result_type"), values,
+                    valueCodes(mapping.path("value_codes"), values), nullableText(mapping, "call_component"),
+                    components(mapping.path("components")),
                     translations(mapping.path("translations"), values, mapping.path("run_failure_values"))));
         }
 
@@ -188,17 +186,45 @@ public final class BridgeAnalyzerProfile {
     }
 
     /**
+     * The codings that name a test: {@code loinc} as shorthand for a LOINC coding,
+     * then its {@code codings} in any system, each once.
+     */
+    private static List<Coding> testCodings(JsonNode mapping) {
+        List<Coding> codings = new ArrayList<>();
+        String loinc = nullableText(mapping, "loinc");
+        if (loinc != null) {
+            codings.add(Coding.loinc(loinc));
+        }
+        for (Coding coding : codingList(mapping.path("codings"))) {
+            if (codings.stream().noneMatch(coding::sameAs)) {
+                codings.add(coding);
+            }
+        }
+        if (codings.isEmpty()) {
+            throw new IllegalArgumentException("Bridge analyzer profile test must be named by loinc or codings");
+        }
+        return List.copyOf(codings);
+    }
+
+    private static List<Coding> codingList(JsonNode node) {
+        List<Coding> codings = new ArrayList<>();
+        node.forEach(coding -> codings.add(new Coding(requiredText(coding, "system"), requiredText(coding, "code"),
+                nullableText(coding, "display"))));
+        return codings;
+    }
+
+    /**
      * Each declared value's codings, in any system: {@code value -> [{system,
      * code}]}.
      */
-    private static Map<String, List<NormalizedCoding>> valueCodes(JsonNode codes, List<String> values) {
+    private static Map<String, List<Coding>> valueCodes(JsonNode codes, List<String> values) {
         if (codes.isMissingNode() || codes.isNull()) {
             return Map.of();
         }
         if (!codes.isObject()) {
             throw new IllegalArgumentException("Bridge analyzer value codes must be an object");
         }
-        Map<String, List<NormalizedCoding>> result = new LinkedHashMap<>();
+        Map<String, List<Coding>> result = new LinkedHashMap<>();
         codes.fields().forEachRemaining(entry -> {
             if (!values.contains(entry.getKey())) {
                 throw new IllegalArgumentException("Bridge analyzer value code must name a declared raw value");
@@ -206,10 +232,7 @@ public final class BridgeAnalyzerProfile {
             if (!entry.getValue().isArray()) {
                 throw new IllegalArgumentException("Bridge analyzer value codes must list codings for each value");
             }
-            List<NormalizedCoding> codings = new ArrayList<>();
-            entry.getValue().forEach(coding -> codings.add(new NormalizedCoding(requiredText(coding, "system"),
-                    requiredText(coding, "code"), nullableText(coding, "display"))));
-            result.put(entry.getKey(), List.copyOf(codings));
+            result.put(entry.getKey(), List.copyOf(codingList(entry.getValue())));
         });
         return Map.copyOf(result);
     }
@@ -220,11 +243,11 @@ public final class BridgeAnalyzerProfile {
      * that component. Each component with a sub-identity receives one more record
      * of the test.
      */
-    public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc,
-            String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
-            Map<String, List<NormalizedCoding>> valueCodes, String callComponent, List<ComponentDefinition> components,
-            Map<String, List<String>> translations) {
+    public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, List<Coding> codings,
+            String unit, String resultType, List<String> resultValues, Map<String, List<Coding>> valueCodes,
+            String callComponent, List<ComponentDefinition> components, Map<String, List<String>> translations) {
         public TestDefinition {
+            codings = codings == null ? List.of() : List.copyOf(codings);
             translations = translations == null ? Map.of() : Map.copyOf(translations);
             valueCodes = valueCodes == null ? Map.of() : Map.copyOf(valueCodes);
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
@@ -232,11 +255,17 @@ public final class BridgeAnalyzerProfile {
             components = components == null ? List.of() : List.copyOf(components);
         }
 
-        public TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc, String unit,
-                String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
-                Map<String, List<NormalizedCoding>> valueCodes) {
-            this(analyzerCode, aliases, testNameHint, loinc, unit, resultType, resultValues, normalizedCoding,
-                    valueCodes, null, List.of(), Map.of());
+        public TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, List<Coding> codings,
+                String unit, String resultType, List<String> resultValues, Map<String, List<Coding>> valueCodes) {
+            this(analyzerCode, aliases, testNameHint, codings, unit, resultType, resultValues, valueCodes, null,
+                    List.of(), Map.of());
+        }
+
+        /** The test's LOINC code, or null when it is named in other systems only. */
+        public String loinc() {
+            return codings.stream()
+                    .filter(coding -> TerminologySystems.LOINC.equals(TerminologySystems.systemOf(coding.system())))
+                    .map(Coding::code).findFirst().orElse(null);
         }
 
         /** The components that receive a record of their own, in profile order. */
@@ -251,8 +280,7 @@ public final class BridgeAnalyzerProfile {
      * vendor's sub-ID notation (HIV-1&Ct), or null for the call component.
      */
     public record ComponentDefinition(String code, String label, String resultType, String unit, String subIdentity,
-            List<String> resultValues, Map<String, List<NormalizedCoding>> valueCodes,
-            Map<String, List<String>> translations) {
+            List<String> resultValues, Map<String, List<Coding>> valueCodes, Map<String, List<String>> translations) {
         public ComponentDefinition {
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);
             valueCodes = valueCodes == null ? Map.of() : Map.copyOf(valueCodes);
@@ -307,9 +335,6 @@ public final class BridgeAnalyzerProfile {
                     translations(component.path("translations"), values, component.path("run_failure_values"))));
         }
         return components;
-    }
-
-    public record NormalizedCoding(String system, String code, String display) {
     }
 
 }

@@ -18,6 +18,7 @@ public class ReportQueueRowRecord {
     private boolean unprinted;
     private boolean amended;
     private boolean partial;
+    private boolean awaitingValidation;
     private String patientId;
     private String patientLastName;
     private String patientFirstName;
@@ -111,6 +112,15 @@ public class ReportQueueRowRecord {
 
     public void setAmended(boolean amended) {
         this.amended = amended;
+    }
+
+    /** A printed result is back awaiting validation; the order holds as printed. */
+    public boolean isAwaitingValidation() {
+        return awaitingValidation;
+    }
+
+    public void setAwaitingValidation(boolean awaitingValidation) {
+        this.awaitingValidation = awaitingValidation;
     }
 
     public boolean isPartial() {

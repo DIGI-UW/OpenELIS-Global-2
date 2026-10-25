@@ -197,6 +197,129 @@ test("a released order is queued, printed as version 1, archived and reprinted",
   });
 });
 
+/** The queue's detail of an order: its versions, newest last. */
+async function versionsOf(page: Page, accession: string) {
+  const detail = await page.request.get(
+    `${API_PREFIX}/rest/reportQueue/orders/${await sampleIdOf(page, accession)}`,
+  );
+  expect(detail.status(), "queue detail").toBe(200);
+  return (
+    (await detail.json()) as {
+      versions: { version: number; changeSummary?: string }[];
+    }
+  ).versions;
+}
+
+/** The first two numeric tests the server offers on Serum, by id and name. */
+async function twoNumericSerumTests(page: Page) {
+  const response = await page.request.get(
+    `${API_PREFIX}/rest/sample-type-tests?sampleType=2`,
+  );
+  expect(response.status(), "Serum test list").toBe(200);
+  const tests = (
+    (await response.json()) as {
+      tests?: { id: string; name: string; resultType?: string }[];
+    }
+  ).tests?.filter((t) => t.resultType === "N");
+  expect(tests?.length, "two numeric Serum tests").toBeGreaterThan(1);
+  return tests!.slice(0, 2);
+}
+
+/** The same value with its last digit moved up by one, keeping its precision. */
+function bumped(value: string): string {
+  const last = Number(value.slice(-1));
+  return last < 9
+    ? `${value.slice(0, -1)}${last + 1}`
+    : `${value.slice(0, -1)}${last - 1}`;
+}
+
+/**
+ * OGC-1529: a printed result corrected on Results waits for validation. Until
+ * then the order stays Printed and a print reprints version 1; once the
+ * correction is validated the next print is one corrected version naming the
+ * old and the new value, never one that removes the result and adds it back.
+ */
+test("a correction awaiting validation keeps the order printed until it is validated", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const tests = await twoNumericSerumTests(page);
+  const accession =
+    await test.step("print version 1 of a released order", async () => {
+      const labNo = await createSampleOrder(page, {
+        labNo: "",
+        receivedDate: "",
+        receivedTime: "",
+        sampleTypeId: "2",
+        testIds: tests.map((t) => t.id).join(","),
+        ...(await orderParties(page)),
+      });
+      expect(labNo).not.toBe("");
+      await enterResults(page, labNo);
+      await validateResults(page, labNo);
+      const row = await queueRow(page, labNo);
+      const print = await printFromRow(page, row);
+      expect(print.headers()["x-report-version"]).toBe("1");
+      return labNo;
+    });
+
+  const corrected =
+    await test.step("correct one result on Results without validating it", async () => {
+      await page.goto(`/Results?accessionNumber=${accession}`, {
+        waitUntil: "domcontentloaded",
+        timeout: NAV_TIMEOUT,
+      });
+      const row = page
+        .getByRole("row")
+        .filter({ hasText: `${tests[1].name}(Serum)` });
+      const edit = row.getByRole("button", { name: "Edit", exact: true });
+      await expect(edit).toBeVisible({ timeout: UI_TIMEOUT });
+      await edit.click();
+      const box = row.getByRole("textbox", { name: /^Result for / });
+      await expect(box).toBeVisible({ timeout: UI_TIMEOUT });
+      const before = await box.inputValue();
+      const after = bumped(before);
+      await box.fill(after);
+      await box.press("Tab");
+      const saved = page.waitForResponse(
+        (response) =>
+          /\/rest\/results-entry\/analysis\/\d+\/result/.test(response.url()) &&
+          response.request().method() === "POST",
+      );
+      await row.getByRole("button", { name: "Save", exact: true }).click();
+      expect((await saved).status()).toBe(200);
+      return after;
+    });
+
+  await test.step("the order stays Printed and a print is a reprint", async () => {
+    const row = await queueRow(page, accession);
+    await expect(row).toContainText("Printed");
+    await expect(row).not.toContainText("Unprinted");
+    await expect(row).not.toContainText("Amended");
+    await expect(
+      row.getByTestId(`awaiting-validation-${accession}`),
+    ).toContainText("Correction awaiting validation");
+    const print = await printFromRow(page, row);
+    expect(print.headers()["x-report-version"]).toBe("1");
+    expect(print.headers()["x-report-reprint"]).toBe("true");
+    expect(await versionsOf(page, accession)).toHaveLength(1);
+  });
+
+  await test.step("once validated it prints one corrected version", async () => {
+    await validateResults(page, accession);
+    const row = await queueRow(page, accession);
+    await expect(row).toContainText("Amended");
+    await expect(row).toContainText("Unprinted");
+    const print = await printFromRow(page, row);
+    expect(print.headers()["x-report-version"]).toBe("2");
+    const versions = await versionsOf(page, accession);
+    expect(versions).toHaveLength(2);
+    const summary = versions.find((v) => v.version === 2)?.changeSummary ?? "";
+    expect(summary).toContain(`→ ${corrected}`);
+    expect(summary).not.toMatch(/Removed|Added/);
+  });
+});
+
 test("the home dashboard's unprinted results tile opens the queue", async ({
   page,
 }) => {

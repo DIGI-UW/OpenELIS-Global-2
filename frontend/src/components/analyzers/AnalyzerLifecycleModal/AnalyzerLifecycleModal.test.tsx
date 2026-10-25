@@ -7,6 +7,7 @@ import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import {
   activateAnalyzer,
+  changeAnalyzerUse,
   deactivateAnalyzer,
   reactivateAnalyzer,
 } from "../../../services/analyzerService";
@@ -16,6 +17,7 @@ import AnalyzerLifecycleModal, {
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
+  changeAnalyzerUse: vi.fn(),
   deactivateAnalyzer: vi.fn(),
   reactivateAnalyzer: vi.fn(),
 }));
@@ -117,5 +119,29 @@ describe("AnalyzerLifecycleModal", () => {
     expect(
       screen.queryByText("Analyzer not found: 501"),
     ).not.toBeInTheDocument();
+  });
+
+  it("says to retire an analyzer whose delete is refused because it was used", async () => {
+    vi.mocked(changeAnalyzerUse).mockImplementation((_id, _action, callback) =>
+      callback({
+        changed: false,
+        statusCode: 400,
+        messageKey: "analyzer.lifecycle.error.inUse",
+      }),
+    );
+    renderModal("delete");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Delete analyzer$/ }),
+    );
+
+    expect(changeAnalyzerUse).toHaveBeenCalledWith(
+      "501",
+      "delete",
+      expect.any(Function),
+    );
+    expect(
+      await screen.findByText(messages["analyzer.lifecycle.error.inUse"]),
+    ).toBeInTheDocument();
   });
 });

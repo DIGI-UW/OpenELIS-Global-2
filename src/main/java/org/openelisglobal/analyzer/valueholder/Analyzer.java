@@ -194,11 +194,13 @@ public class Analyzer extends BaseObject<String> {
         return fhirUuid.toString();
     }
 
-    /**
-     * Enum for analyzer unified status field. Values must match database
-     * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE
-     */
+    /** An analyzer's state; stored by name. */
     public enum AnalyzerStatus {
-        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE
+        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE,
+        /**
+         * Replaced or out of use: kept with its results and history, hidden from the
+         * list by default.
+         */
+        RETIRED
     }
 }

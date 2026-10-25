@@ -65,7 +65,7 @@ public class EQAPanelSample extends BaseObject<Long> {
     private Long analyteId;
 
     @Convert(converter = EncryptionConverter.class)
-    @Column(name = "target_value", length = 512)
+    @Column(name = "target_value", columnDefinition = "text")
     private String targetValue;
 
     @Column(name = "target_unit", length = 50)

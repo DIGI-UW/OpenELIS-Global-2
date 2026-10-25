@@ -7,19 +7,42 @@ analyzer design; code that disagrees with it is wrong. The
 how the baseline was built and the decisions behind each rule. Work outside it
 is listed in [roadmap.md](roadmap.md).
 
+## Boundary implementation status — 22 October 2026
+
+The interpret-once boundary below is the revised engineering decision requested
+by the user. The coordinated stack cleanup removes duplicated interpretation checks and
+incomplete qualitative normalization. The [boundary audit and implementation
+plan](boundary-remediation.md) records those gaps and the removal order; this
+specification is not a claim that the new boundary has shipped.
+
 ## How it works
 
 1. **A profile describes an instrument model.** The Bridge ships one profile
    per supported instrument, written from the vendor's own LIS document: the
-   codes and values the instrument sends, their standard codes (LOINC for
-   tests; LOINC, SNOMED or CIEL for values), units, where each part of a
-   result sits in the message, the vendor's language translations, and how
-   control results are recognised. A profile says nothing about a site.
+   codes and values the instrument sends, the codings that name each test and
+   each value, units, where each part of a result sits in the message, the
+   vendor's language translations, and how control results are recognised. A
+   coding is `{system, code}`. A core-shipped profile cites standard systems
+   (LOINC for tests; LOINC, SNOMED or CIEL for values); a distro's profile may
+   also cite the distro catalog's own system, the vocabulary its tests are
+   named in. A profile says nothing about a site.
 2. **Each analyzer owns its mapping.** When a lab adds an analyzer, OpenELIS
-   resolves the profile's standard codes against the local catalog by exact
-   match into that analyzer's own mapping; a row that does not resolve says why
+   resolves the profile's codings against the local catalog by exact match
+   into that analyzer's own mapping, with one rule for tests and values: a
+   profile coding names the local test or answer that carries the same
+   `(system, code)`. OpenELIS keeps a concept's codes as terminology rows whose
+   `source` is the system. LOINC, SNOMED, CIEL and OCL have canonical URIs for
+   FHIR; any other source is an identifier the catalog owner chose, and no list
+   of permitted systems exists anywhere. A row that does not resolve says why
    (no match, ambiguous, or incompatible). There is no shared mapping per
-   analyzer type: the Analyzer Types page only previews a profile's defaults. In the setup wizard the operator
+   analyzer type: the Analyzer Types page only previews a profile's defaults.
+   A profile may mark a test or part `"default": "EXCLUDED"`. Individual
+   values use the containing test or part's `value_defaults` map, for example
+   `"value_defaults": {"ERROR": "EXCLUDED"}`. A new analyzer starts with these
+   rows on Do not receive, and the page counts each as
+   decided, so a type is Ready when every row is mapped or excluded. For a type
+   in use the page also says, for each analyzer on it, whether its mapping is
+   confirmed and current or behind. In the setup wizard the operator
    enables the assays this instrument runs, as on the instrument's own host test
    code table, resolves every unresolved row among them, confirms, and activates.
    Language and number format can be overridden per analyzer on its Bridge
@@ -43,10 +66,13 @@ is listed in [roadmap.md](roadmap.md).
    its reason and recovers, without duplication, once the mapping is fixed.
    Both systems keep their audit copy: the Bridge every raw message and
    bundle, OpenELIS the bundle for the life of the result, viewable from the
-   review row.
+   review row. A reviewer may remove a held result from review instead, such
+   as a test message or a result from a retired analyzer: the removal is in
+   the audit trail with the row it removed, the bundle stays on the delivery
+   receipt, and the removed result does not recover.
 7. **A newer profile revision is adopted explicitly.** One review screen shows
-   every row's fate; the analyzer keeps receiving on its current revision until
-   the operator confirms and applies. Apply switches OpenELIS and the Bridge
+   configuration changes and their effect on local mapping targets; the analyzer keeps
+   receiving on its current revision until the operator confirms and applies. Apply switches OpenELIS and the Bridge
    together; if the Bridge cannot switch, neither does.
 8. **The baseline profiles started fresh.** No profile from before the baseline
    is an earlier revision of a baseline profile or can be adopted into one. A
@@ -79,14 +105,76 @@ is listed in [roadmap.md](roadmap.md).
     test for is held until the lab maps it or marks it Do not receive. The
     profile decides which kind each record is and its evidence page says so;
     OpenELIS never guesses.
+12. **A Bridge reads one shipped set, and a revision is its id and
+    number.** Core ships the baseline profiles and the templates. A Bridge's
+    shipped set is the one in its image or the complete folder a distro points
+    it at (`BRIDGE_PROFILE_CATALOG_SHIPPED_PATTERN`), and then the image's
+    profiles are not read. A distro that keeps its own set copies the core
+    profiles it uses unchanged, under core's ids, and adds its own under its
+    own ids; sets are never merged and a profile is never overridden. A
+    revision is `(profileId, revision)`. The Bridge computes a fingerprint of
+    the file's content when it publishes or loads a revision, and reports it
+    so OpenELIS can tell cheaply that a file changed; nobody writes it by
+    hand, and nothing is refused because it changed. A copied file is the same
+    revision as its source. Profiles a lab authors in the UI are the site's
+    own, under `site.` ids, in the Bridge's revision store, and enter a shipped
+    set only when a distro takes them in under an id of its own.
+13. **The Bridge interprets once; OpenELIS maps and places the outcome.**
+    The Bridge resolves the sender, decodes the message and decides what the
+    instrument reported using the configuration captured for that receipt.
+    It normalizes codes, numbers, vendor spellings, parts, patient/control
+    classification, failure outcomes and informational flags into an explicit,
+    versioned FHIR result contract. Raw text and configuration provenance remain
+    audit evidence. Ordinary retry preserves the rendered bundle and delivery
+    identity. Restart before rendering uses retained decoding context, never
+    silently substitutes current configuration. Unresolved input is retained
+    with a reason and requires explicit resolution rather than a guessed result.
+
+    OpenELIS validates the delivered contract and source association, applies
+    the approved local test/component/answer mappings and exclusions, checks
+    compatibility with local targets, places the result and supports review,
+    acceptance, operational QC, audit and duplicate prevention. The Bridge does
+    not maintain a second copy of OpenELIS's approved local catalog mapping.
+
+    OpenELIS does not compare a delivered result with today's decimal setting,
+    extraction recipe, aliases, vendor translations, routing patterns or control
+    recognition rules. Delivery and held recovery do not fetch current Bridge
+    profiles/connections to reconstruct how an earlier result was interpreted.
+    Profile IDs/revisions and fingerprints are provenance, not sufficient proof
+    that two raw codes mean the same thing, nor standalone rejection gates.
+    Delivered semantic identity, type and units must fit the approved local
+    binding; changed meaning under a reused code cannot silently pass through.
+
+    Viewing, editing and confirming an existing local mapping does not contact
+    the Bridge or require a recognition-rule hash. Adoption retains canonical
+    output declarations for local editing; it does not copy parsing recipes.
+    Older mappings remain editable from their saved rows and received normalized
+    results. Named reviewer, timestamp, mapping decisions and audit remain required.
+
+    Local mapping changes still require approval and stale-editor protection.
+    Setup/profile changes remain authorized, validated administrative actions,
+    with their effects shown at adoption. A parsing-only change does not
+    retrospectively invalidate a normalized result or an unchanged local mapping.
+    Recognition evidence describes the delivered classification; it is not a
+    second recognition-rule hash gate at import.
+
+    A held result recovers by reapplying local mapping/placement to its preserved
+    normalized payload. Missing historical decimal metadata alone is not a hold
+    reason. Unknown or incomplete semantic results remain explicit unresolved
+    work until a reviewed decision is possible. Recovery preserves receipts,
+    dismissed/finalized results and the audit trail; it never invents another
+    message identity to bypass duplicate protection. The mapping editor's
+    concurrency fingerprint, connection probe setting fingerprint and certificate
+    pins remain safeguards for their separate responsibilities.
 
 ## Who owns what
 
-| System        | Owns                                                                                                                                                                                                                                                                 |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bridge        | Analyzer profiles (immutable revisions), connections and secrets, protocols and transports (including watching result folders), parsing, control-result recognition, the raw message audit copy, the FHIR bundle it builds, and its own key pair and pairing record. |
-| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog, placement and review of results, held results, quality control, activation, the bundle copy, and its own key pair and the paired Bridge's fingerprint.    |
-| Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                                                                                    |
+| System        | Owns                                                                                                                                                                                                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bridge        | Analyzer profiles and their revisions, connections and secrets, protocols and transports (including watching result folders), parsing, control-result recognition, the raw message audit copy, the FHIR bundle it builds, and its own key pair and pairing record.                                            |
+| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's approved mapping to the local catalog and delivered-result compatibility, placement and review of results, held results, quality control, activation, the bundle copy, and its own key pair and the paired Bridge's fingerprint. |
+| Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                                                                                                                             |
+| Distro        | Its complete shipped profile set, kept in its repository with its history: core's profiles copied unchanged under core's ids, its own profiles under its own ids.                                                                                                                                             |
 
 Production code never branches on a manufacturer, model, profile ID or
 analyzer code. OpenELIS has no file poller and never opens a result file.
@@ -94,14 +182,23 @@ analyzer code. OpenELIS has no file poller and never opens a result file.
 ## What must always hold
 
 - Unknown or unmappable results are held; they are never dropped or posted.
+  Only a reviewer removes one from review, and that is audited (point 6).
 - Recovery never duplicates a result. Acceptance is recorded once per
   `(connection_id, message_id)` in `analyzer_delivery_receipt`, independent of
   staging, mapping changes and profile revisions; receipts are never purged.
 - One bad mapping holds only its own results; unrelated results continue.
+- An analyzer that received a result or was ever activated is retired, never
+  deleted: it keeps its results and history and leaves the analyzer list
+  unless retired analyzers are shown, and it can be restored to inactive. Only
+  an analyzer with neither can be deleted, together with its mapping.
 - Quality control and connection probes never gate activation or invalidate a
   verification.
 - An instrument's warning about a sample is never a result and never gates a
   result: it is read by the reviewer and kept as a note.
+- Parsing-configuration changes do not invalidate already normalized results.
+  Unknown delivered meanings or incompatible local targets hold only the affected
+  work. Administrative profile adoption and local mapping approval are explicit;
+  whole-profile fingerprints are not delivery or recovery gates.
 
 ## Where the detail is
 

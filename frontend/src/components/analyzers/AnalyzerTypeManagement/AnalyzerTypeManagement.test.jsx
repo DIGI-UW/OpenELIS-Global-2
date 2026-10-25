@@ -350,17 +350,15 @@ describe("AnalyzerTypeManagement", () => {
       screen.getByRole("columnheader", { name: "Protocol" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("columnheader", { name: "Tests mapped" }),
+      screen.getByRole("columnheader", { name: "Tests for a new analyzer" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("columnheader", { name: "Results mapped" }),
+      screen.getByRole("columnheader", { name: "Results for a new analyzer" }),
     ).toBeVisible();
     expect(screen.getByRole("columnheader", { name: "Used by" })).toBeVisible();
     expect(screen.getByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
     expect(screen.getByText("Mindray BC-5380")).toBeVisible();
-    expect(
-      screen.getByText("3 / 4 · 75% · 1 marked Do not receive"),
-    ).toBeVisible();
+    expect(screen.getByText("4 decided: 3 mapped, 1 excluded")).toBeVisible();
     expect(screen.queryByText("Tecan Infinite F50")).not.toBeInTheDocument();
 
     expect(screen.queryByText("Plugin class")).not.toBeInTheDocument();

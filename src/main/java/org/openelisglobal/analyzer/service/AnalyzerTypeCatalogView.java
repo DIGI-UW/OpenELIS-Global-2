@@ -26,8 +26,14 @@ public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFinger
      * saved mapping revision that is not in force yet and waits for Confirm and
      * Apply.
      */
+    /**
+     * An analyzer on this type: behind when a newer profile or mapping revision
+     * waits for it, or its mapping's confirmation no longer stands against the
+     * served profile.
+     */
     public record AffectedAnalyzer(String id, String name, boolean active, int pinnedProfileRevision,
-            int pinnedMappingRevision, boolean newerProfileRevision, boolean newerMappingRevision) {
+            int pinnedMappingRevision, boolean newerProfileRevision, boolean newerMappingRevision,
+            boolean mappingConfirmed) {
     }
 
     public record TypeSummary(String profileId, int revision, String revisionFingerprint, String displayName,

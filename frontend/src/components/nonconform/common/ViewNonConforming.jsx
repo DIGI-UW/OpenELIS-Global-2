@@ -38,29 +38,14 @@ export const initialReportFormValues = {
 };
 
 export const selectOptions = [
-  {
-    value: "nceNumber",
-    text: "NCE Number",
-  },
-  {
-    text: "Lab Number",
-    value: "labNumber",
-  },
+  { value: "nceNumber", labelId: "nonconform.search.nceNumber" },
+  { value: "labNumber", labelId: "nonconform.search.labNumber" },
 ];
 
 export const headers = [
-  {
-    key: "date",
-    value: "Date",
-  },
-  {
-    key: "nceNumber",
-    value: "NCE Number",
-  },
-  {
-    key: "specimen",
-    value: "Lab Section/Unit",
-  },
+  { key: "date", labelId: "nonconform.column.date" },
+  { key: "nceNumber", labelId: "nonconform.search.nceNumber" },
+  { key: "specimen", labelId: "nonconform.column.labSection" },
 ];
 
 const initialFormData = {
@@ -337,7 +322,7 @@ export const ViewNonConformingEvent = () => {
                     <SelectItem
                       key={statusOption.value}
                       value={statusOption.value}
-                      text={statusOption.text}
+                      text={intl.formatMessage({ id: statusOption.labelId })}
                     />
                   ))}
                 </Select>
@@ -397,7 +382,7 @@ export const ViewNonConformingEvent = () => {
                     <TableHeader key="checkbox" />
                     {headers.map((header) => (
                       <TableHeader id={header.key} key={header.key}>
-                        {header.value}
+                        {intl.formatMessage({ id: header.labelId })}
                       </TableHeader>
                     ))}
                   </TableRow>

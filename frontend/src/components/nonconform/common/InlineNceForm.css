@@ -90,6 +90,11 @@
     background 0.15s;
 }
 
+.inline-nce-severity-card:focus-visible {
+  outline: 2px solid #0f62fe;
+  outline-offset: 2px;
+}
+
 .inline-nce-severity-card:hover {
   background: #f4f4f4;
 }

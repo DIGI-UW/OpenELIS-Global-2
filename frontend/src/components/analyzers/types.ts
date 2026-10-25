@@ -1,4 +1,5 @@
 export type AnalyzerStatus =
+  | "RETIRED"
   | "INACTIVE"
   | "SETUP"
   | "VALIDATION"

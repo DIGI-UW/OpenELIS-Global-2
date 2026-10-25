@@ -62,7 +62,7 @@ public class DeliveryChannel extends BaseObject<Long> {
     @Column(name = "username", length = 255)
     private String username;
 
-    @Column(name = "secret", length = 2048)
+    @Column(name = "secret", columnDefinition = "text")
     @Convert(converter = EncryptionConverter.class)
     private String secret;
 

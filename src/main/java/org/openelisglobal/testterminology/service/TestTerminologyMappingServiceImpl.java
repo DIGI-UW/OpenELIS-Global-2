@@ -53,14 +53,8 @@ public class TestTerminologyMappingServiceImpl extends AuditableBaseObjectServic
 
     @Override
     @Transactional(readOnly = true)
-    public List<TestTerminologyMapping> getActiveBySource(String source) {
-        List<TestTerminologyMapping> active = new ArrayList<>();
-        for (TestTerminologyMapping mapping : getAllMatching("source", source)) {
-            if ("Y".equals(mapping.getIsActive())) {
-                active.add(mapping);
-            }
-        }
-        return active;
+    public List<TestTerminologyMapping> getAllActive() {
+        return getAllMatching("isActive", "Y");
     }
 
     @Override

@@ -79,7 +79,8 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         validateDraft(draft);
         Optional<AnalyzerMapping> latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId());
         return persistRevision(analyzer, latest.orElse(null), latest.map(m -> m.getRevisionNumber() + 1).orElse(1),
-                profile.profileId(), profile.revision(), profile.revisionFingerprint(), draft, effectiveActor);
+                profile.profileId(), profile.revision(), profile.revisionFingerprint(),
+                AnalyzerMappingDefinition.from(profile).toJson(), draft, effectiveActor);
     }
 
     @Override
@@ -96,7 +97,8 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
             return load(current);
         }
         return persistRevision(analyzer, current, current.getRevisionNumber() + 1, current.getProfileId(),
-                current.getProfileRevision(), current.getProfileFingerprint(), draft, effectiveActor);
+                current.getProfileRevision(), current.getProfileFingerprint(), current.getSourceDefinitionJson(), draft,
+                effectiveActor);
     }
 
     @Override
@@ -120,7 +122,8 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         }
         draft.requireComponentTargets(profile);
         return persistRevision(analyzer, current, current.getRevisionNumber() + 1, profile.profileId(),
-                profile.revision(), profile.revisionFingerprint(), draft, effectiveActor);
+                profile.revision(), profile.revisionFingerprint(), AnalyzerMappingDefinition.from(profile).toJson(),
+                draft, effectiveActor);
     }
 
     @Override
@@ -153,14 +156,15 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
     }
 
     private AnalyzerMappingSnapshot persistRevision(Analyzer analyzer, AnalyzerMapping supersedes, int revisionNumber,
-            String profileId, int profileRevision, String profileFingerprint, AnalyzerMappingDraft draft,
-            String actor) {
+            String profileId, int profileRevision, String profileFingerprint, String sourceDefinitionJson,
+            AnalyzerMappingDraft draft, String actor) {
         AnalyzerMapping mapping = new AnalyzerMapping();
         mapping.setAnalyzer(analyzer);
         mapping.setRevisionNumber(revisionNumber);
         mapping.setProfileId(profileId);
         mapping.setProfileRevision(profileRevision);
         mapping.setProfileFingerprint(profileFingerprint);
+        mapping.setSourceDefinitionJson(sourceDefinitionJson);
         mapping.setMappingFingerprint(AnalyzerMappingFingerprint.calculate(draft));
         mapping.setSupersedes(supersedes);
         mapping.setCreatedBy(actor);
