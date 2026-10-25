@@ -69,14 +69,14 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * A name that isn't in the dataset must not resolve to some other scriptlet
-     * or throw; it should simply come back unresolved.
-     * NOTE: assumes getScriptletByName returns null on no match (typical for a
-     * single-object DAO lookup in this codebase). Verify against
-     * ScriptletServiceImpl / ScriptletDAO before relying on this in CI — if the
-     * implementation instead returns the same Scriptlet object unmodified (with
-     * only the name set), change this assertion to check codeSource/id are null
-     * instead of asserting the whole object is null.
+     * A name that isn't in the dataset must not resolve to some other scriptlet or
+     * throw; it should simply come back unresolved. NOTE: assumes
+     * getScriptletByName returns null on no match (typical for a single-object DAO
+     * lookup in this codebase). Verify against ScriptletServiceImpl / ScriptletDAO
+     * before relying on this in CI — if the implementation instead returns the same
+     * Scriptlet object unmodified (with only the name set), change this assertion
+     * to check codeSource/id are null instead of asserting the whole object is
+     * null.
      */
     @Test
     public void getScriptletByName_shouldReturnNull_whenNameDoesNotExist() {
@@ -94,8 +94,8 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * An id with no matching row must not throw or silently return an
-     * uninitialized Scriptlet; it should come back null.
+     * An id with no matching row must not throw or silently return an uninitialized
+     * Scriptlet; it should come back null.
      */
     @Test
     public void getScriptletById_shouldReturnNull_whenIdDoesNotExist() {
@@ -104,8 +104,8 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * A blank id is a malformed lookup, not a "not found" — same expectation as
-     * an unknown id: no match, no exception.
+     * A blank id is a malformed lookup, not a "not found" — same expectation as an
+     * unknown id: no match, no exception.
      */
     @Test
     public void getScriptletById_shouldReturnNull_whenIdIsBlank() {
@@ -120,8 +120,8 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * A filter that matches nothing in the dataset must come back as an empty
-     * list, not null and not every scriptlet.
+     * A filter that matches nothing in the dataset must come back as an empty list,
+     * not null and not every scriptlet.
      */
     @Test
     public void getScriptlets_shouldReturnEmptyList_whenFilterMatchesNothing() {
@@ -132,8 +132,8 @@ public class ScriptletServiceTest extends BaseWebContextSensitiveTest {
     /**
      * An empty filter is presumably treated as "match everything" (common for a
      * LIKE '%%' style filter query) rather than "match nothing". This asserts the
-     * whole dataset comes back — verify against ScriptletServiceImpl and adjust
-     * if an empty filter is instead expected to return no rows or throw.
+     * whole dataset comes back — verify against ScriptletServiceImpl and adjust if
+     * an empty filter is instead expected to return no rows or throw.
      */
     @Test
     public void getScriptlets_shouldReturnAllScriptlets_whenFilterIsEmpty() {
