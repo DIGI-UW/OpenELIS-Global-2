@@ -684,4 +684,10 @@
 
   <!-- Terminology codes are stored trimmed (OGC-1465). -->
   <include relativeToChangelogFile="true" file="138-terminology-codes-trimmed.xml"/>
+  <!-- A mapping confirmation keeps how the profile read each row (spec point 13). -->
+  <include relativeToChangelogFile="true" file="140-analyzer-mapping-confirmation-readings.xml"/>
+  <include relativeToChangelogFile="true" file="141-menu-config-source.xml"/>
+  <!-- A held analyzer result keeps how its record read on arrival (spec point 13). -->
+  <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
+  <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
 </databaseChangeLog>

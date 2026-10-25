@@ -15,7 +15,6 @@ package org.openelisglobal.menu.valueholder;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -86,6 +85,12 @@ public class Menu extends BaseObject<String> {
     @Column(name = "icon")
     private String icon;
 
+    /**
+     * {@code distribution} or {@code admin}; see {@code MenuConfigurationSeeder}.
+     */
+    @Column(name = "config_source")
+    private String configSource;
+
     // Java `transient` as well as JPA @Transient: these carry request intent, not
     // entity state, and the audit trail reflects over fields and skips only the
     // Java modifier -- without it a request that merely names a field is recorded
@@ -99,7 +104,8 @@ public class Menu extends BaseObject<String> {
     @Transient
     private transient boolean configurationOnly;
 
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    /** Fields the menu configuration file sets on this menu, while it is seeded. */
+    @JsonIgnore
     public Set<String> getConfigurationFields() {
         return configurationFields;
     }
@@ -108,7 +114,8 @@ public class Menu extends BaseObject<String> {
         configurationFields = Set.copyOf(fields);
     }
 
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    /** A menu only the configuration file defines, while it is seeded. */
+    @JsonIgnore
     public boolean isConfigurationOnly() {
         return configurationOnly;
     }
@@ -251,5 +258,13 @@ public class Menu extends BaseObject<String> {
 
     public void setHideInOldUI(boolean hideInOldUI) {
         this.hideInOldUI = hideInOldUI;
+    }
+
+    public String getConfigSource() {
+        return configSource;
+    }
+
+    public void setConfigSource(String configSource) {
+        this.configSource = configSource;
     }
 }

@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.reports.dataexport.dao.NonConformanceExportDAO;
 import org.openelisglobal.reports.dataexport.form.ExportFilter;
 import org.openelisglobal.reports.dataexport.form.ExportSnapshot;
@@ -112,6 +113,31 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
         }
     }
 
+    /**
+     * OGC-1507 BR-4: an event's type prints in the language of the user who asked
+     * for the export; a job stored before the language was captured prints English.
+     */
+    @Test
+    public void anEventsTypePrintsInTheLanguageOfTheUserWhoAskedForTheExport() {
+        var type = new NceType();
+        type.setName("QC failure");
+        type.setDisplayKey("nce.type.qc_failure");
+        type.setActive(true);
+        entityManager.persist(type);
+        var event = event(null, "2026-05-05");
+        event.setNceTypeId(type.getId());
+        entityManager.flush();
+
+        try (var rows = occurrences.events(request("2026-05-05", "2026-05-05", "fr-FR"))) {
+            assertEquals("Échec du contrôle qualité",
+                    rows.filter(row -> row.eventId().equals(event.getId())).findFirst().orElseThrow().reason());
+        }
+        try (var rows = occurrences.events(request("2026-05-05", "2026-05-05"))) {
+            assertEquals("QC failure",
+                    rows.filter(row -> row.eventId().equals(event.getId())).findFirst().orElseThrow().reason());
+        }
+    }
+
     private NcEvent event(String happened, String recorded) {
         var event = new NcEvent();
         event.setDateOfEvent(happened == null ? null : Date.valueOf(happened));
@@ -123,10 +149,14 @@ public class NonConformanceExportMappingIntegrationTest extends BaseWebContextSe
     }
 
     private ExportSnapshot request(String from, String to) {
+        return request(from, to, null);
+    }
+
+    private ExportSnapshot request(String from, String to, String locale) {
         var definition = new ReportSourceConfig("NON_CONFORMANCE", 1, "Non-Conformance", "NON_CONFORMANCE",
                 "eventOrRecordedDate", List.of("TABLE"), List.of("ncOccurrenceId"), List.of(), List.of("labSectionIds"),
                 Map.of("TABLE", List.of()));
         return new ExportSnapshot(definition, "TABLE", List.of(),
-                new ExportFilter(from, to, List.of("1"), List.of(), List.of()), "UTC", List.of());
+                new ExportFilter(from, to, List.of("1"), List.of(), List.of()), "UTC", List.of(), locale);
     }
 }

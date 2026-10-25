@@ -24,6 +24,7 @@ services:
       - bridge-state:/data/openelis-analyzer-bridge
     environment:
       - TZ=${TZ:-UTC}
+      - SERVER_SSL_KEY_STORE_PASSWORD=${SSL_KEYSTORE_PASSWORD:-kspass}
       # OpenELIS pairs with this code on startup. Without one, the Bridge logs a
       # generated code for a Global Admin to enter on the Analyzers page.
       - BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
@@ -36,7 +37,9 @@ services:
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global
       # OpenELIS's HTTPS certificate is in the stack's trust store, so the
       # Bridge also verifies OpenELIS after that certificate is regenerated.
-      - JDK_JAVA_OPTIONS=-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Djavax.net.ssl.trustStoreType=PKCS12
+      - BRIDGE_TRUSTSTORE_PATH=/etc/openelis-global/truststore
+      - BRIDGE_TRUSTSTORE_PASSWORD=${SSL_TRUSTSTORE_PASSWORD:-tspass}
+      - BRIDGE_TRUSTSTORE_TYPE=PKCS12
       - ORG_ITECH_AHB_MLLP_ENABLED=true
       - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:

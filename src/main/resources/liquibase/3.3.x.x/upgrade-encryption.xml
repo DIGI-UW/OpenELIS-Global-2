@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <!-- Standalone upgrade only. Never include this in the application changelog.
+         Stop all writers and back up the database and keys before executing. -->
+    <include file="liquibase/3.3.x.x/encrypted-value-capacity.xml"/>
+    <changeSet id="installation-encryption-upgrade-v1" author="openelis" runInTransaction="false">
+        <customChange class="org.openelisglobal.security.upgrade.EncryptedSecretsUpgrade"/>
+        <!-- Key conversion is not reversed automatically; restore the matching backup. -->
+    </changeSet>
+</databaseChangeLog>

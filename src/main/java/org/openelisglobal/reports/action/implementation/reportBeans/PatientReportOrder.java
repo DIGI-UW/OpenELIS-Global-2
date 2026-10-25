@@ -22,6 +22,7 @@ public final class PatientReportOrder {
     private boolean collectionsDiffer = false;
     private String orderDate;
     private Integer version;
+    private String issueTime;
     private String changeSummary;
 
     /** Every non-cancelled, non-rejected result on the order is released. */
@@ -132,6 +133,19 @@ public final class PatientReportOrder {
 
     public void setVersion(Integer version) {
         this.version = version;
+    }
+
+    /**
+     * When the version this print belongs to was first issued, as the report prints
+     * times; null when the print is not a queue version, in which case the render
+     * time is used.
+     */
+    public String getIssueTime() {
+        return issueTime;
+    }
+
+    public void setIssueTime(String issueTime) {
+        this.issueTime = issueTime;
     }
 
     /**

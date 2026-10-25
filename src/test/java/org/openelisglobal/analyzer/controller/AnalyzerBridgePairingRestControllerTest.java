@@ -43,7 +43,8 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
     public void stubStatus() {
         org.mockito.Mockito.reset(pairing);
         when(pairing.getStatus()).thenReturn(new AnalyzerBridgePairingService.Status("https://bridge:8443", true,
-                "ab".repeat(32), "cd".repeat(32), Instant.parse("2026-10-08T12:00:00Z"), false));
+                "ab".repeat(32), "cd".repeat(32), Instant.parse("2026-10-08T12:00:00Z"), false,
+                AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE));
     }
 
     @Test
@@ -51,7 +52,8 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
         mockMvc.perform(get(PAIRING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.paired").value(true))
                 .andExpect(jsonPath("$.bridgeCertificateSha256").value("ab".repeat(32)))
-                .andExpect(jsonPath("$.pairedAt").value("2026-10-08T12:00:00Z"));
+                .andExpect(jsonPath("$.pairedAt").value("2026-10-08T12:00:00Z"))
+                .andExpect(jsonPath("$.pinCheck").value("OTHER_CERTIFICATE"));
     }
 
     @Test

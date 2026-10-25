@@ -94,11 +94,13 @@ Playwright.
 The startup path does not execute SQL fixture loaders or use fixed primary keys.
 It calls `seed-analyzers.sh --ensure-connections` to create missing
 profile-backed harness connections through authenticated application services.
-Ordinary restarts preserve existing connection configuration, mappings, and
-review data; they do not replay result traffic. CI uses the same
-`--ensure-connections` mode. The Playwright scenarios own their API-created
-clinical orders and native traffic. CI parity is a separate validation command
-because it intentionally reproduces CI packaging.
+Ordinary restarts preserve existing profile-pinned connection configuration,
+mappings, and review data; they do not replay result traffic. A harness analyzer
+row from before profile-pinned analyzers (no profile, no Bridge connection) is
+set up like a new one. CI uses the same `--ensure-connections` mode. The
+Playwright scenarios own their API-created clinical orders and native traffic.
+CI parity is a separate validation command because it intentionally reproduces
+CI packaging.
 
 A stack for recording the evidence videos starts with
 `scripts/dev-stack up --no-scenarios` and then runs

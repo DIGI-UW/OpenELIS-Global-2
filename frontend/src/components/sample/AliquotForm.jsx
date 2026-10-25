@@ -251,13 +251,22 @@ export function SampleItemsDisplay(props) {
     return sampleItem.externalId || "";
   };
 
-  const calculateRemainingQuantity = (sampleItem) => {
-    const totalAliquotQuantity = sampleItem.aliquots.reduce(
-      (total, aliquot) => {
-        return total + (parseFloat(aliquot.quantity) || 0);
-      },
+  // A tube with no recorded quantity gives the aliquots nothing to be split
+  // from or balanced against, so what is typed for them is what is saved.
+  const hasRecordedQuantity = (sampleItem) =>
+    sampleItem.quantity !== null &&
+    sampleItem.quantity !== undefined &&
+    sampleItem.quantity !== "" &&
+    !Number.isNaN(parseFloat(sampleItem.quantity));
+
+  const calculateAllocatedQuantity = (sampleItem) =>
+    sampleItem.aliquots.reduce(
+      (total, aliquot) => total + (parseFloat(aliquot.quantity) || 0),
       0,
     );
+
+  const calculateRemainingQuantity = (sampleItem) => {
+    const totalAliquotQuantity = calculateAllocatedQuantity(sampleItem);
 
     const remaining =
       (parseFloat(sampleItem.quantity) || 0) - totalAliquotQuantity;
@@ -266,6 +275,9 @@ export function SampleItemsDisplay(props) {
   };
 
   const isQuantityBalanced = (sampleItem) => {
+    if (!hasRecordedQuantity(sampleItem)) {
+      return true;
+    }
     const totalAliquotQuantity = sampleItem.aliquots.reduce(
       (total, aliquot) => {
         return total + (parseFloat(aliquot.quantity) || 0);
@@ -371,8 +383,9 @@ export function SampleItemsDisplay(props) {
     );
 
     // Calculate maximum allowed for this aliquot
-    const maxAllowed =
-      (parseFloat(sampleItem.quantity) || 0) - currentTotalExcludingThis;
+    const maxAllowed = hasRecordedQuantity(sampleItem)
+      ? parseFloat(sampleItem.quantity) - currentTotalExcludingThis
+      : Infinity;
 
     // Ensure aliquot quantity doesn't exceed available quantity
     const finalQuantity = Math.min(newQuantity, maxAllowed);
@@ -639,6 +652,10 @@ export function SampleItemsDisplay(props) {
                   <React.Fragment key={index}>
                     <TableExpandRow
                       onClick={() => toggleRowExpansion(index)}
+                      onExpand={(event) => {
+                        event.stopPropagation();
+                        toggleRowExpansion(index);
+                      }}
                       isExpanded={expandedRows[index]}
                     >
                       <TableCell>
@@ -842,6 +859,7 @@ export function SampleItemsDisplay(props) {
                                         <TableCell>
                                           {sampleItem.aliquots.length > 0 ? (
                                             <Select
+                                              id={`aliquot-target-${index}-${analysisIndex}`}
                                               size="sm"
                                               labelText=""
                                               value={selectedValue}
@@ -980,8 +998,8 @@ export function SampleItemsDisplay(props) {
                                       <FormattedMessage id="allocated.to.aliquots" />
                                       :
                                     </strong>{" "}
-                                    {(
-                                      sampleItem.quantity - remainingQuantity
+                                    {calculateAllocatedQuantity(
+                                      sampleItem,
                                     ).toFixed(2)}{" "}
                                     {uomDisplay}
                                   </Column>
@@ -1027,6 +1045,7 @@ export function SampleItemsDisplay(props) {
                                           {aliquot.externalId}
                                         </div>
                                         <NumberInput
+                                          id={`aliquot-quantity-${index}-${aliquotIndex}`}
                                           label={intl.formatMessage({
                                             id: "aliquot.quantity",
                                           })}

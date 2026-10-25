@@ -57,7 +57,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       await expect(sourceRow).toContainText("ASTM");
       await expect(sourceRow).toContainText(/revision [1-9]\d*/);
       await expect(sourceRow).toContainText("Active");
-      // Tests mapped and Results mapped read "mapped / total": never more mapped than there are.
+      // The new-analyzer preview columns read "mapped / total" for a core type: never more mapped than there are.
       for (const column of [2, 3]) {
         const cell = sourceRow.getByRole("cell").nth(column);
         await expect(cell).toHaveText(/\d+ \/ \d+/);

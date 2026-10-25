@@ -14,8 +14,10 @@ import java.util.Map;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.controller.pathology.PathologyController;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +29,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -157,6 +161,28 @@ public class PathologyControllerDeactivateTest extends BaseWebContextSensitiveTe
                 response.getStatus());
         assertTrue("and the answer says which id that was",
                 String.valueOf(bodyOf(response).get("error")).contains("424242"));
+    }
+
+    /**
+     * The pathology dashboard lists a user only the cases whose order they may read
+     * by lab unit; a block or slide of any other case is not found and stays in
+     * use.
+     */
+    @Test
+    public void deactivate_ofACaseOutsideTheUsersUnits_answers404() throws Exception {
+        Object scope = AopTestUtils.getUltimateTargetObject(
+                webApplicationContext.getBean(org.openelisglobal.program.service.ProgramSampleLabUnitScope.class));
+        Object realService = ReflectionTestUtils.getField(scope, "sampleLabUnitScopeService");
+        SampleLabUnitScopeService outside = Mockito.mock(SampleLabUnitScopeService.class);
+        ReflectionTestUtils.setField(scope, "sampleLabUnitScopeService", outside);
+        try {
+            assertEquals(HttpStatus.NOT_FOUND.value(), postAsTechnician(BLOCK_ENDPOINT, null).getStatus());
+            assertEquals(HttpStatus.NOT_FOUND.value(), postAsTechnician(SLIDE_ENDPOINT, null).getStatus());
+            assertTrue("the block is still in use", isActive("pathology_block", LEGACY_BLOCK_ID));
+            assertTrue("the slide is still in use", isActive("pathology_slide", LEGACY_SLIDE_ID));
+        } finally {
+            ReflectionTestUtils.setField(scope, "sampleLabUnitScopeService", realService);
+        }
     }
 
     @Test

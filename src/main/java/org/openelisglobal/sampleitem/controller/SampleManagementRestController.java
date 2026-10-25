@@ -18,6 +18,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.dto.AddTestsResponse;
 import org.openelisglobal.sampleitem.dto.CancelTestResponse;
 import org.openelisglobal.sampleitem.dto.CreateAliquotResponse;
@@ -60,6 +63,10 @@ public class SampleManagementRestController extends BaseRestController {
 
     @Autowired
     private SampleManagementService sampleManagementService;
+    @Autowired
+    private SampleService sampleService;
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
 
     /**
      * Search for sample items by accession number.
@@ -82,11 +89,15 @@ public class SampleManagementRestController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<SearchSamplesResponse> searchSamplesByAccessionNumber(
             @RequestParam @NotBlank(message = "Accession number is required") String accessionNumber,
-            @RequestParam(defaultValue = "false") boolean includeTests) {
+            @RequestParam(defaultValue = "false") boolean includeTests, HttpServletRequest request) {
 
         try {
             LogEvent.logInfo(this.getClass().getName(), "searchSamplesByAccessionNumber",
                     "Searching for samples with accession number: " + accessionNumber);
+            Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+            if (sample != null && !sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
+                return ResponseEntity.notFound().build();
+            }
 
             SearchSamplesResponse response = sampleManagementService.searchByAccessionNumber(accessionNumber,
                     includeTests);
@@ -133,6 +144,9 @@ public class SampleManagementRestController extends BaseRestController {
             LogEvent.logInfo(this.getClass().getName(), "createAliquot", "Creating aliquot from parent: "
                     + form.getParentSampleItemId() + ", quantity: " + form.getQuantityToTransfer());
 
+            if (!sampleLabUnitScopeService.isSampleItemVisible(sysUserId, form.getParentSampleItemId())) {
+                return ResponseEntity.notFound().build();
+            }
             CreateAliquotResponse response = sampleManagementService.createAliquot(form, sysUserId);
 
             LogEvent.logInfo(this.getClass().getName(), "createAliquot",
@@ -184,6 +198,10 @@ public class SampleManagementRestController extends BaseRestController {
                     String.format("Adding %d test(s) to %d sample item(s)", form.getTestIds().size(),
                             form.getSampleItemIds().size()));
 
+            if (!form.getSampleItemIds().stream()
+                    .allMatch(itemId -> sampleLabUnitScopeService.isSampleItemVisible(sysUserId, itemId))) {
+                return ResponseEntity.notFound().build();
+            }
             AddTestsResponse response = sampleManagementService.addTestsToSamples(form, sysUserId);
 
             LogEvent.logInfo(this.getClass().getName(), "addTestsToSamples",
@@ -237,6 +255,9 @@ public class SampleManagementRestController extends BaseRestController {
                     String.format("Cancelling test - analysisId: %s, sampleItemId: %s", form.getAnalysisId(),
                             form.getSampleItemId()));
 
+            if (!sampleLabUnitScopeService.isSampleItemVisible(sysUserId, form.getSampleItemId())) {
+                return ResponseEntity.notFound().build();
+            }
             CancelTestResponse response = sampleManagementService.cancelTest(form, sysUserId);
 
             LogEvent.logInfo(this.getClass().getName(), "cancelTest",

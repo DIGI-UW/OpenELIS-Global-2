@@ -19,10 +19,13 @@ import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyRequest;
+import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -48,6 +51,8 @@ public class PathologyController extends BaseRestController {
     private PathologyDisplayService pathologyDisplayService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private ProgramSampleLabUnitScope programSampleLabUnitScope;
 
     /**
      * Ids of the cases the last search found, in pages of paging.results.pageSize.
@@ -74,8 +79,11 @@ public class PathologyController extends BaseRestController {
         } else {
             pageNumber = 1;
             List<PathologyStatus> requested = statuses == null ? List.of() : Arrays.asList(statuses);
-            pageIds = dashboardPaging.cache(session, pathologySampleService
-                    .searchWithStatusAndTerm(requested, searchTerm).stream().map(e -> e.getId()).toList());
+            pageIds = dashboardPaging.cache(session,
+                    programSampleLabUnitScope
+                            .visible(getSysUserId(request),
+                                    pathologySampleService.searchWithStatusAndTerm(requested, searchTerm))
+                            .stream().map(e -> e.getId()).toList());
         }
         List<PathologyDisplayItem> items = pageIds.stream().map(pathologyDisplayService::convertToDisplayItem)
                 .collect(Collectors.toList());
@@ -85,7 +93,11 @@ public class PathologyController extends BaseRestController {
 
     @GetMapping(value = "/rest/pathology/dashboard/count", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<PathologyDashBoardCount> getFilteredPathologyEntries() {
+    public ResponseEntity<PathologyDashBoardCount> getFilteredPathologyEntries(HttpServletRequest request) {
+        String user = getSysUserId(request);
+        if (programSampleLabUnitScope.isRestricted(user)) {
+            return ResponseEntity.ok(visibleCount(user));
+        }
         PathologyDashBoardCount count = new PathologyDashBoardCount();
         count.setInProgress(pathologySampleService.getCountWithStatus(PathologyStages.inProgress()));
         count.setAwaitingReview(
@@ -101,11 +113,30 @@ public class PathologyController extends BaseRestController {
         return ResponseEntity.ok(count);
     }
 
+    /** The dashboard tiles counted over the cases the user may read. */
+    private PathologyDashBoardCount visibleCount(String user) {
+        PathologyDashBoardCount count = new PathologyDashBoardCount();
+        count.setInProgress(programSampleLabUnitScope.count(user,
+                () -> pathologySampleService.getWithStatus(PathologyStages.inProgress()), c -> true));
+        count.setAwaitingReview(programSampleLabUnitScope.count(user,
+                () -> pathologySampleService.getWithStatus(Arrays.asList(PathologyStatus.READY_PATHOLOGIST)),
+                c -> true));
+        count.setAdditionalRequests(
+                programSampleLabUnitScope.count(user, pathologySampleService::getAll, c -> c.getRequests() != null && c
+                        .getRequests().stream().anyMatch(r -> r.getStatus() == PathologyRequest.RequestStatus.OPENED)));
+        Timestamp weekAgo = Timestamp.from(Instant.now().minus(7, ChronoUnit.DAYS));
+        count.setComplete(programSampleLabUnitScope.count(user,
+                () -> pathologySampleService.getWithStatus(Arrays.asList(PathologyStatus.COMPLETED)),
+                c -> c.getLastupdated() != null && !c.getLastupdated().before(weekAgo)));
+        return count;
+    }
+
     @PostMapping(value = "/rest/pathology/assignTechnician", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<String> assignTechnician(@RequestParam Integer pathologySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(currentUserId, pathologySampleService.get(pathologySampleId));
         pathologySampleService.assignTechnician(pathologySampleId, systemUserService.get(currentUserId), currentUserId);
         return ResponseEntity.ok("ok");
     }
@@ -115,6 +146,7 @@ public class PathologyController extends BaseRestController {
     public ResponseEntity<String> assignPathologist(@RequestParam Integer pathologySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(currentUserId, pathologySampleService.get(pathologySampleId));
         pathologySampleService.assignPathologist(pathologySampleId, systemUserService.get(currentUserId),
                 currentUserId);
         return ResponseEntity.ok("ok");
@@ -123,7 +155,8 @@ public class PathologyController extends BaseRestController {
     @GetMapping(value = "/rest/pathology/caseView/{pathologySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public PathologyCaseViewDisplayItem getFilteredPathologyEntries(
-            @PathVariable("pathologySampleId") Integer pathologySampleId) {
+            @PathVariable("pathologySampleId") Integer pathologySampleId, HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request), pathologySampleService.get(pathologySampleId));
         return pathologyDisplayService.convertToCaseDisplayItem(pathologySampleId);
     }
 
@@ -135,6 +168,7 @@ public class PathologyController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<?> getFilteredPathologyEntries(@PathVariable("pathologySampleId") Integer pathologySampleId,
             @RequestBody PathologySampleForm form, HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request), pathologySampleService.get(pathologySampleId));
         form.setSystemUserId(this.getSysUserId(request));
         try {
             pathologySampleService.updateWithFormValues(pathologySampleId, form);
@@ -177,6 +211,10 @@ public class PathologyController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<?> deactivateBlock(@PathVariable("blockId") Integer blockId,
             @RequestBody(required = false) DeactivationRequest body, HttpServletRequest request) {
+        PathologySample owner = pathologySampleService.getCaseOfBlock(blockId);
+        if (owner != null) {
+            programSampleLabUnitScope.requireVisible(getSysUserId(request), owner);
+        }
         return pathologySampleService.deactivateBlock(blockId, reasonFrom(body), getSysUserId(request))
                 .<ResponseEntity<?>>map(block -> ResponseEntity.ok(toMap(block))).orElseGet(() -> ResponseEntity
                         .status(HttpStatus.NOT_FOUND).body(Map.of("error", "No pathology block with id " + blockId)));
@@ -186,6 +224,10 @@ public class PathologyController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<?> deactivateSlide(@PathVariable("slideId") Integer slideId,
             @RequestBody(required = false) DeactivationRequest body, HttpServletRequest request) {
+        PathologySample owner = pathologySampleService.getCaseOfSlide(slideId);
+        if (owner != null) {
+            programSampleLabUnitScope.requireVisible(getSysUserId(request), owner);
+        }
         return pathologySampleService.deactivateSlide(slideId, reasonFrom(body), getSysUserId(request))
                 .<ResponseEntity<?>>map(slide -> ResponseEntity.ok(toMap(slide))).orElseGet(() -> ResponseEntity
                         .status(HttpStatus.NOT_FOUND).body(Map.of("error", "No pathology slide with id " + slideId)));

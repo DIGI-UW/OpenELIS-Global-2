@@ -21,6 +21,9 @@ import {
   getFromOpenElisServer,
   putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
+import TerminologySourceInput, {
+  sourceTooLong,
+} from "./TerminologySourceInput";
 import { NotificationContext } from "../../../layout/Layout";
 import StaleSaveNotice, {
   isStaleConflict,
@@ -33,10 +36,10 @@ import StaleSaveNotice, {
  * read-only until the admin clicks Edit; a row's fields are then editable in
  * place. New rows are added via the bottom form (either "Add mapping" or just
  * filling it and hitting Save). The whole set persists with PUT
- * /rest/test-catalog/tests/{id}/terminology. Source ∈ LOINC / SNOMED / CIEL /
- * OCL; relationship ∈ SAME_AS / BROADER_THAN / NARROWER_THAN.
+ * /rest/test-catalog/tests/{id}/terminology. Source is a standard system or
+ * the catalog's own identifier; relationship ∈ SAME_AS / BROADER_THAN /
+ * NARROWER_THAN.
  */
-const SOURCES = ["LOINC", "SNOMED", "CIEL", "OCL"];
 const RELATIONSHIPS = ["SAME_AS", "BROADER_THAN", "NARROWER_THAN"];
 const SOURCE_TAG = {
   LOINC: "blue",
@@ -424,19 +427,11 @@ const TerminologySection = ({ testId }) => {
                 >
                   <TableCell>
                     {editing ? (
-                      <Select
+                      <TerminologySourceInput
                         id={`mapping-source-${i}`}
-                        labelText=""
                         value={m.source || ""}
-                        onChange={(e) =>
-                          updateMapping(i, { source: e.target.value })
-                        }
-                      >
-                        <SelectItem value="" text="" />
-                        {SOURCES.map((s) => (
-                          <SelectItem key={s} value={s} text={s} />
-                        ))}
-                      </Select>
+                        onChange={(source) => updateMapping(i, { source })}
+                      />
                     ) : (
                       <Tag type={SOURCE_TAG[m.source] || "gray"}>
                         {m.source}
@@ -601,19 +596,14 @@ const TerminologySection = ({ testId }) => {
       )}
 
       <Stack gap={4} orientation="horizontal">
-        <Select
+        <TerminologySourceInput
           id="terminology-source"
-          labelText={intl.formatMessage({
+          titleText={intl.formatMessage({
             id: "label.testCatalog.terminology.source",
           })}
           value={draft.source}
-          onChange={(e) => setDraft({ ...draft, source: e.target.value })}
-        >
-          <SelectItem value="" text="" />
-          {SOURCES.map((s) => (
-            <SelectItem key={s} value={s} text={s} />
-          ))}
-        </Select>
+          onChange={(source) => setDraft({ ...draft, source })}
+        />
         <TextInput
           id="terminology-code"
           labelText={intl.formatMessage({
@@ -701,7 +691,16 @@ const TerminologySection = ({ testId }) => {
           onRefresh={reloadAfterStale}
         />
       )}
-      <Button kind="primary" disabled={saving || stale} onClick={handleSave}>
+      <Button
+        kind="primary"
+        disabled={
+          saving ||
+          stale ||
+          sourceTooLong(draft.source) ||
+          mappings.some((m) => sourceTooLong(m.source))
+        }
+        onClick={handleSave}
+      >
         <FormattedMessage id="label.button.save" />
       </Button>
     </Stack>

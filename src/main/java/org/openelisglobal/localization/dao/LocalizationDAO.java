@@ -17,6 +17,7 @@
 package org.openelisglobal.localization.dao;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.localization.valueholder.Localization;
 
@@ -60,4 +61,10 @@ public interface LocalizationDAO extends BaseDAO<Localization, String> {
      * @param localizationId the renamed localization
      */
     void syncStoredTestNames(String localizationId);
+
+    /**
+     * The display key of every NCE category, NCE type and dictionary entry that has
+     * one, by the id of its name's localization (OGC-1507).
+     */
+    Map<String, String> displayKeysByLocalizationId();
 }

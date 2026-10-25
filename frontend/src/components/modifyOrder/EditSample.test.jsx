@@ -176,4 +176,57 @@ describe("EditSample rows for a test on two samples", () => {
       ["312", false],
     ]);
   });
+
+  /**
+   * OGC-1514: the available tests are a search per existing sample, not one
+   * paged checkbox table for the whole order.
+   */
+  it("offers each sample its own test search and adds the picked test to that sample", () => {
+    const setOrderFormValues = vi.fn();
+    renderTwoSamples(setOrderFormValues);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "DEV01260000000000454-2 (Whole Blood)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "DEV01260000000000454-3 (Whole Blood)",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Available Tests" })).toBeNull();
+
+    const searches = screen.getAllByPlaceholderText("Choose Available Test");
+    expect(searches).toHaveLength(2);
+    fireEvent.change(searches[1], { target: { value: "plat" } });
+    fireEvent.click(screen.getByRole("menuitem", { name: "Platelets" }));
+
+    const saved = setOrderFormValues.mock.calls.at(-1)[0].possibleTests;
+    expect(saved.map((t) => [t.sampleItemId, t.add])).toEqual([
+      ["291", false],
+      ["312", true],
+    ]);
+  });
+
+  it("says so when no test can be added", () => {
+    window.scrollTo = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <EditSample
+          samples={[]}
+          setSamples={vi.fn()}
+          orderFormValues={{ existingTests: [], possibleTests: [] }}
+          setOrderFormValues={vi.fn()}
+          error={() => null}
+        />
+      </IntlProvider>,
+    );
+
+    expect(
+      screen.getByText(
+        "Every orderable test of the existing samples is already on this order.",
+      ),
+    ).toBeInTheDocument();
+  });
 });

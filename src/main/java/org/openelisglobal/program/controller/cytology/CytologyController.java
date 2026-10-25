@@ -12,6 +12,7 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.util.DashboardPage;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.CytologyDashBoardCount;
+import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.service.cytology.CytologyDisplayService;
 import org.openelisglobal.program.service.cytology.CytologySampleService;
 import org.openelisglobal.program.valueholder.cytology.CytologyCaseViewDisplayItem;
@@ -40,6 +41,8 @@ public class CytologyController extends BaseRestController {
 
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private ProgramSampleLabUnitScope programSampleLabUnitScope;
 
     /**
      * Ids of the cases the last search found, in pages of paging.results.pageSize.
@@ -66,8 +69,11 @@ public class CytologyController extends BaseRestController {
         } else {
             pageNumber = 1;
             List<CytologyStatus> requested = statuses == null ? List.of() : Arrays.asList(statuses);
-            pageIds = dashboardPaging.cache(session, cytologySampleService
-                    .searchWithStatusAndTerm(requested, searchTerm).stream().map(e -> e.getId()).toList());
+            pageIds = dashboardPaging.cache(session,
+                    programSampleLabUnitScope
+                            .visible(getSysUserId(request),
+                                    cytologySampleService.searchWithStatusAndTerm(requested, searchTerm))
+                            .stream().map(e -> e.getId()).toList());
         }
         List<CytologyDisplayItem> items = pageIds.stream().map(cytologyDisplayService::convertToDisplayItem)
                 .collect(Collectors.toList());
@@ -77,7 +83,11 @@ public class CytologyController extends BaseRestController {
 
     @GetMapping(value = "/rest/cytology/dashboard/count", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<CytologyDashBoardCount> getCytologyDashBoardMetrics() {
+    public ResponseEntity<CytologyDashBoardCount> getCytologyDashBoardMetrics(HttpServletRequest request) {
+        String user = getSysUserId(request);
+        if (programSampleLabUnitScope.isRestricted(user)) {
+            return ResponseEntity.ok(visibleCount(user));
+        }
         CytologyDashBoardCount count = new CytologyDashBoardCount();
         count.setInProgress(cytologySampleService
                 .getCountWithStatus(Arrays.asList(CytologyStatus.PREPARING_SLIDES, CytologyStatus.SCREENING)));
@@ -92,10 +102,28 @@ public class CytologyController extends BaseRestController {
         return ResponseEntity.ok(count);
     }
 
+    /** The dashboard tiles counted over the cases the user may read. */
+    private CytologyDashBoardCount visibleCount(String user) {
+        CytologyDashBoardCount count = new CytologyDashBoardCount();
+        count.setInProgress(programSampleLabUnitScope.count(user,
+                () -> cytologySampleService
+                        .getWithStatus(Arrays.asList(CytologyStatus.PREPARING_SLIDES, CytologyStatus.SCREENING)),
+                c -> true));
+        count.setAwaitingReview(programSampleLabUnitScope.count(user,
+                () -> cytologySampleService.getWithStatus(Arrays.asList(CytologyStatus.READY_FOR_CYTOPATHOLOGIST)),
+                c -> true));
+        Timestamp weekAgo = Timestamp.from(Instant.now().minus(7, ChronoUnit.DAYS));
+        count.setComplete(programSampleLabUnitScope.count(user,
+                () -> cytologySampleService.getWithStatus(Arrays.asList(CytologyStatus.COMPLETED)),
+                c -> c.getLastupdated() != null && !c.getLastupdated().before(weekAgo)));
+        return count;
+    }
+
     @PostMapping(value = "/rest/cytology/assignTechnician", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<String> assignTechnician(@RequestParam Integer cytologySampleId, HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(currentUserId, cytologySampleService.get(cytologySampleId));
         cytologySampleService.assignTechnician(cytologySampleId, systemUserService.get(currentUserId));
         return ResponseEntity.ok("ok");
     }
@@ -105,13 +133,16 @@ public class CytologyController extends BaseRestController {
     public ResponseEntity<String> assignPathologist(@RequestParam Integer cytologySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(currentUserId, cytologySampleService.get(cytologySampleId));
         cytologySampleService.assignCytoPathologist(cytologySampleId, systemUserService.get(currentUserId));
         return ResponseEntity.ok("ok");
     }
 
     @GetMapping(value = "/rest/cytology/caseView/{cytologySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public CytologyCaseViewDisplayItem getCytologyEntry(@PathVariable("cytologySampleId") Integer cytologySampleId) {
+    public CytologyCaseViewDisplayItem getCytologyEntry(@PathVariable("cytologySampleId") Integer cytologySampleId,
+            HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request), cytologySampleService.get(cytologySampleId));
         return cytologyDisplayService.convertToCaseDisplayItem(cytologySampleId);
     }
 
@@ -119,6 +150,7 @@ public class CytologyController extends BaseRestController {
     @ResponseBody
     public CytologySampleForm createCytologyEntry(@PathVariable("cytologySampleId") Integer cytologySampleId,
             @RequestBody CytologySampleForm form, HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request), cytologySampleService.get(cytologySampleId));
         form.setSystemUserId(this.getSysUserId(request));
         cytologySampleService.updateWithFormValues(cytologySampleId, form);
 

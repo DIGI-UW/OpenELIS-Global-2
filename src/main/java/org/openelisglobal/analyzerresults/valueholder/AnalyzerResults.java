@@ -96,23 +96,32 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
     public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
+    public static final String IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING = "conflicting_answer_mapping";
     public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
     /** The run produced no value (ERROR, NO RESULT); never a patient result. */
     public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
     /** A control that reports an answer, for a test and level with no QC target. */
     public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
     /**
-     * Sent under another revision of the analyzer's profile than the one in force,
-     * for a record the two revisions read differently.
+     * Historical hold reason, retained only so existing rows can recover locally.
      */
     public static final String IMPORT_ISSUE_OTHER_REVISION = "arrived_under_other_revision";
     /** For an assay the analyzer's setup says this instrument does not run. */
     public static final String IMPORT_ISSUE_ASSAY_NOT_ENABLED = "assay_not_enabled";
+    /**
+     * Historical row-reading hold; new deliveries do not produce this reason.
+     */
+    public static final String IMPORT_ISSUE_READING_CHANGED = "reading_changed";
+    /**
+     * Historical type-reading hold; new deliveries do not produce this reason.
+     */
+    public static final String IMPORT_ISSUE_TYPE_READING_CHANGED = "type_reading_changed";
     /** Held results that applying the analyzer's mapping retries. */
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
             IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
-            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING,
-            IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED);
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING,
+            IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING, IMPORT_ISSUE_OTHER_REVISION,
+            IMPORT_ISSUE_ASSAY_NOT_ENABLED, IMPORT_ISSUE_READING_CHANGED, IMPORT_ISSUE_TYPE_READING_CHANGED);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
@@ -191,6 +200,13 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "source_payload", columnDefinition = "TEXT")
     private String sourcePayload;
+
+    /**
+     * Historical parsing snapshot retained for audit only. Import and recovery do
+     * not read it.
+     */
+    @Column(name = "arrival_reading", columnDefinition = "TEXT")
+    private String arrivalReading;
 
     // QC metadata propagated from the analyzer-bridge for control samples.
     // Transient — only carried in-memory from FHIR ingest
@@ -402,6 +418,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setSourcePayload(String sourcePayload) {
         this.sourcePayload = sourcePayload;
+    }
+
+    public String getArrivalReading() {
+        return arrivalReading;
+    }
+
+    public void setArrivalReading(String arrivalReading) {
+        this.arrivalReading = arrivalReading;
     }
 
     public String getLotNumber() {

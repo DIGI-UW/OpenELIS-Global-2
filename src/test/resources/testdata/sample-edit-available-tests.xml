@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- OGC-1514: the tests Modify Order offers for an existing sample. AVAIL-0001
+        has one Water Sample item carrying Lead (live) and Copper (cancelled); the
+        sample type also offers Zinc and the inactive Nickel. -->
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+    <!-- status names must match StatusService.addTo*Map() -->
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="SampleEntered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="4" description="Not Tested"
+        code="4" status_type="ANALYSIS" name="Not Tested"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="11"
+        description="Analysis canceled" code="11" status_type="ANALYSIS"
+        name="Test Canceled" lastupdated="2025-01-01 12:00:00" />
+    <localization id="1" description="Water Sample" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Water Sample" />
+    <localization id="2" description="Lead" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Lead (Pb)" />
+    <localization id="3" description="Copper" />
+    <localization_value id="3" localization_id="3"
+        locale="en" value="Copper (Cu)" />
+    <localization id="4" description="Zinc" />
+    <localization_value id="4" localization_id="4"
+        locale="en" value="Zinc (Zn)" />
+    <localization id="5" description="Nickel" />
+    <localization_value id="5" localization_id="5"
+        locale="en" value="Nickel (Ni)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-1514" name_localization_id="2" />
+    <test id="2" description="Copper (Cu)" loinc="10369-7"
+        is_active="Y" is_reportable="Y" orderable="true"
+        lastupdated="2025-01-01 12:00:00" test_section_id="1"
+        test_format_id="1" sort_order="2" name="Copper"
+        guid="test-copper-1514" name_localization_id="3" />
+    <test id="3" description="Zinc (Zn)" loinc="10370-5" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="3" name="Zinc"
+        guid="test-zinc-1514" name_localization_id="4" />
+    <test id="4" description="Nickel (Ni)" loinc="10371-3"
+        is_active="N" is_reportable="Y" orderable="true"
+        lastupdated="2025-01-01 12:00:00" test_section_id="1"
+        test_format_id="1" sort_order="4" name="Nickel"
+        guid="test-nickel-1514" name_localization_id="5" />
+    <sampletype_test id="1" sample_type_id="1" test_id="1"
+        is_panel="false" />
+    <sampletype_test id="2" sample_type_id="1" test_id="2"
+        is_panel="false" />
+    <sampletype_test id="3" sample_type_id="1" test_id="3"
+        is_panel="false" />
+    <sampletype_test id="4" sample_type_id="1" test_id="4"
+        is_panel="false" />
+    <sample id="9201" accession_number="AVAIL-0001" domain="H"
+        status_id="1" received_date="2025-06-26 00:00:00.0"
+        entered_date="2025-06-26 00:00:00.0"
+        collection_date="2025-06-26 00:00:00.0" sys_user_id="1"
+        lastupdated="2025-06-26 12:00:00" />
+    <sample_item id="9201" sort_order="1" status_id="1"
+        samp_id="9201" typeosamp_id="1" collection_date="2025-06-26 10:00:00"
+        lastupdated="2025-06-26 12:00:00" />
+    <analysis id="9201" sampitem_id="9201" test_id="1"
+        test_sect_id="1" revision="0" status_id="4"
+        lastupdated="2025-06-26 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+    <analysis id="9202" sampitem_id="9201" test_id="2"
+        test_sect_id="1" revision="0" status_id="11"
+        lastupdated="2025-06-26 12:00:00" analysis_type="MANUAL"
+        is_reportable="Y" />
+</dataset>

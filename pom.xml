@@ -10,7 +10,7 @@
     <properties>
         <maven.java.release>21</maven.java.release>
         <!-- Semantic Versioning; see RELEASES.md -->
-        <revision>3.3.0-SNAPSHOT</revision>
+        <revision>3.4.0-SNAPSHOT</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -949,7 +949,7 @@
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
+                <version>3.10.4</version>
                 <configuration>
                     <pom>
                         <includes>
@@ -1152,5 +1152,33 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <!-- The Eclipse formatter is fetched from download.eclipse.org; while
+            that site is down CI fetches the same pinned release from an Eclipse mirror. -->
+        <profile>
+            <id>eclipse-p2-mirror</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <configuration>
+                            <java>
+                                <eclipse>
+                                    <p2Mirrors>
+                                        <p2Mirror>
+                                            <prefix>https://download.eclipse.org/</prefix>
+                                            <url>https://mirrors.huaweicloud.com/eclipse/</url>
+                                        </p2Mirror>
+                                    </p2Mirrors>
+                                </eclipse>
+                            </java>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

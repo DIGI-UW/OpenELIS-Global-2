@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1520: where a menu row's values come from. 'distribution' rows follow
+         the menu configuration file at every start; 'admin' rows were edited in
+         Admin > Menu and keep those edits. -->
+    <changeSet id="141-menu-config-source" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="menu" columnName="config_source"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="menu">
+            <column name="config_source" type="VARCHAR(20)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="menu" columnName="config_source"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

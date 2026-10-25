@@ -14,6 +14,7 @@ import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.ImmunohistochemistryDashBoardCount;
 import org.openelisglobal.program.service.ImmunohistochemistryDisplayService;
 import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
+import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistryDisplayItem;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample.ImmunohistochemistryStatus;
@@ -38,6 +39,8 @@ public class ImmunohistochemistryController extends BaseRestController {
     private ImmunohistochemistryDisplayService immunohistochemistryDisplayService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private ProgramSampleLabUnitScope programSampleLabUnitScope;
 
     /**
      * Ids of the cases the last search found, in pages of paging.results.pageSize.
@@ -64,8 +67,11 @@ public class ImmunohistochemistryController extends BaseRestController {
         } else {
             pageNumber = 1;
             List<ImmunohistochemistryStatus> requested = statuses == null ? List.of() : Arrays.asList(statuses);
-            pageIds = dashboardPaging.cache(session, immunohistochemistrySampleService
-                    .searchWithStatusAndTerm(requested, searchTerm).stream().map(e -> e.getId()).toList());
+            pageIds = dashboardPaging.cache(session,
+                    programSampleLabUnitScope
+                            .visible(getSysUserId(request),
+                                    immunohistochemistrySampleService.searchWithStatusAndTerm(requested, searchTerm))
+                            .stream().map(e -> e.getId()).toList());
         }
         List<ImmunohistochemistryDisplayItem> items = pageIds.stream()
                 .map(immunohistochemistryDisplayService::convertToDisplayItem).collect(Collectors.toList());
@@ -75,7 +81,12 @@ public class ImmunohistochemistryController extends BaseRestController {
 
     @GetMapping(value = "/rest/immunohistochemistry/dashboard/count", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<ImmunohistochemistryDashBoardCount> getFilteredImmunohistochemistryEntries() {
+    public ResponseEntity<ImmunohistochemistryDashBoardCount> getFilteredImmunohistochemistryEntries(
+            HttpServletRequest request) {
+        String user = getSysUserId(request);
+        if (programSampleLabUnitScope.isRestricted(user)) {
+            return ResponseEntity.ok(visibleCount(user));
+        }
         ImmunohistochemistryDashBoardCount count = new ImmunohistochemistryDashBoardCount();
         count.setInProgress(immunohistochemistrySampleService
                 .getCountWithStatus(Arrays.asList(ImmunohistochemistryStatus.IN_PROGRESS)));
@@ -92,11 +103,35 @@ public class ImmunohistochemistryController extends BaseRestController {
         return ResponseEntity.ok(count);
     }
 
+    /** The dashboard tiles counted over the cases the user may read. */
+    private ImmunohistochemistryDashBoardCount visibleCount(String user) {
+        ImmunohistochemistryDashBoardCount count = new ImmunohistochemistryDashBoardCount();
+        count.setInProgress(
+                programSampleLabUnitScope
+                        .count(user,
+                                () -> immunohistochemistrySampleService
+                                        .getWithStatus(Arrays.asList(ImmunohistochemistryStatus.IN_PROGRESS)),
+                                c -> true));
+        count.setAwaitingReview(
+                programSampleLabUnitScope.count(user,
+                        () -> immunohistochemistrySampleService
+                                .getWithStatus(Arrays.asList(ImmunohistochemistryStatus.READY_PATHOLOGIST)),
+                        c -> true));
+        Timestamp weekAgo = Timestamp.from(Instant.now().minus(7, ChronoUnit.DAYS));
+        count.setComplete(programSampleLabUnitScope.count(user,
+                () -> immunohistochemistrySampleService
+                        .getWithStatus(Arrays.asList(ImmunohistochemistryStatus.COMPLETED)),
+                c -> c.getLastupdated() != null && !c.getLastupdated().before(weekAgo)));
+        return count;
+    }
+
     @PostMapping(value = "/rest/immunohistochemistry/assignTechnician", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<String> assignTechnician(@RequestParam Integer immunohistochemistrySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(currentUserId,
+                immunohistochemistrySampleService.get(immunohistochemistrySampleId));
         immunohistochemistrySampleService.assignTechnician(immunohistochemistrySampleId,
                 systemUserService.get(currentUserId));
         return ResponseEntity.ok("ok");
@@ -107,6 +142,8 @@ public class ImmunohistochemistryController extends BaseRestController {
     public ResponseEntity<String> assignPathologist(@RequestParam Integer immunohistochemistrySampleId,
             HttpServletRequest request) {
         String currentUserId = getSysUserId(request);
+        programSampleLabUnitScope.requireVisible(currentUserId,
+                immunohistochemistrySampleService.get(immunohistochemistrySampleId));
         immunohistochemistrySampleService.assignPathologist(immunohistochemistrySampleId,
                 systemUserService.get(currentUserId));
         return ResponseEntity.ok("ok");
@@ -115,7 +152,10 @@ public class ImmunohistochemistryController extends BaseRestController {
     @GetMapping(value = "/rest/immunohistochemistry/caseView/{immunohistochemistrySampleId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ImmunohistochemistryCaseViewDisplayItem getFilteredImmunohistochemistryEntries(
-            @PathVariable("immunohistochemistrySampleId") Integer immunohistochemistrySampleId) {
+            @PathVariable("immunohistochemistrySampleId") Integer immunohistochemistrySampleId,
+            HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request),
+                immunohistochemistrySampleService.get(immunohistochemistrySampleId));
         return immunohistochemistryDisplayService.convertToCaseDisplayItem(immunohistochemistrySampleId);
     }
 
@@ -124,6 +164,8 @@ public class ImmunohistochemistryController extends BaseRestController {
     public ImmunohistochemistrySampleForm getFilteredImmunohistochemistryEntries(
             @PathVariable("immunohistochemistrySampleId") Integer immunohistochemistrySampleId,
             @RequestBody ImmunohistochemistrySampleForm form, HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request),
+                immunohistochemistrySampleService.get(immunohistochemistrySampleId));
         form.setSystemUserId(this.getSysUserId(request));
         immunohistochemistrySampleService.updateWithFormValues(immunohistochemistrySampleId, form);
 

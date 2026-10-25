@@ -59,6 +59,15 @@ public interface ProviderDAO extends BaseDAO<Provider, String> {
     List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode);
 
     /**
+     * The same page with an explicit page size instead of
+     * {@code page.defaultPageSize}; one row more than the page size is returned.
+     */
+    List<Provider> getPagesOfSearchedProviders(int startingRecNo, int pageSize, String parameter, String titleCode);
+
+    /** The phone search with an explicit page size. */
+    List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, int pageSize, String phone);
+
+    /**
      * Search providers by phone number (primary phone, work phone, or fax).
      *
      * @param startingRecNo starting record number for pagination

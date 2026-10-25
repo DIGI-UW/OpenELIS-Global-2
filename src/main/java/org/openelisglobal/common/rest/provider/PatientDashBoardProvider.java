@@ -204,6 +204,10 @@ public class PatientDashBoardProvider {
         return delayedAnalyses;
     }
 
+    /**
+     * Today's released results whose order the Report Print Queue still lists as
+     * Unprinted. The queue decides per order, so it is asked once per order.
+     */
     private List<Analysis> unprintedResults() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
@@ -212,12 +216,40 @@ public class PatientDashBoardProvider {
         if (analyses == null) {
             return unprintedAnalyses;
         }
-        analyses.forEach(a -> {
-            if (!analysisService.patientReportHasBeenDone(a)) {
-                unprintedAnalyses.add(a);
+        Map<String, Boolean> printedByOrder = new HashMap<>();
+        for (Analysis analysis : analyses) {
+            String orderId = orderIdOf(analysis);
+            boolean printed = orderId == null ? analysisService.patientReportHasBeenDone(analysis)
+                    : printedByOrder.computeIfAbsent(orderId, id -> analysisService.patientReportHasBeenDone(analysis));
+            if (!printed) {
+                unprintedAnalyses.add(analysis);
             }
-        });
+        }
         return unprintedAnalyses;
+    }
+
+    private static String orderIdOf(Analysis analysis) {
+        return analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null ? null
+                : analysis.getSampleItem().getSample().getId();
+    }
+
+    /**
+     * The Unprinted Results tile: orders with a result released today that the
+     * Report Print Queue still lists as Unprinted, within the given sections (null
+     * for the whole lab). The queue counts orders, so the tile does too (FRS
+     * OGC-1031 FR-9.3, AC-23).
+     */
+    int unprintedOrdersToday(List<String> sectionIds) {
+        return distinctOrders(restrictToSections(unprintedResults(), sectionIds));
+    }
+
+    private static int distinctOrders(List<Analysis> analyses) {
+        Set<String> orders = new HashSet<>();
+        for (Analysis analysis : analyses) {
+            String orderId = orderIdOf(analysis);
+            orders.add(orderId == null ? "analysis-" + analysis.getId() : orderId);
+        }
+        return orders.size();
     }
 
     private List<OrderDisplayBean> convertAnalysesToOrderBean(List<Analysis> analyses) {
@@ -436,8 +468,7 @@ public class PatientDashBoardProvider {
                                 statusIdList));
                 break;
             case UN_PRINTED_RESULTS:
-                metrics.setUnPritendResults(
-                        restrictToSections(unprintedResults(), restricted ? userSectionIds : null).size());
+                metrics.setUnPritendResults(unprintedOrdersToday(restricted ? userSectionIds : null));
                 break;
             case INCOMING_ORDERS:
                 metrics.setIncomigOrders(incomingOrders(sysUserId).size());

@@ -316,6 +316,7 @@ public class ResultSaveService {
         result.setValue(value);
         result.setSysUserId(currentUserId);
         result.setSortOrder("0");
+        result.setValidatedDate(null);
     }
 
     private boolean isSameValue(String value, Result result) {

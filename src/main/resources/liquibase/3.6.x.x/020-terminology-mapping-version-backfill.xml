@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- The terminology mapping entities take their optimistic-lock @Version from
+         BaseObject, which is the last_updated column. The SQL backfills that seeded
+         mappings from the legacy code columns (043 for tests, 129 for answers)
+         inserted rows without it, and Hibernate cannot update a row whose version is
+         NULL ("Batch update returned unexpected row count ... expected: 1"): the
+         answer-terminology and dictionary loaders fail on an upgraded database, and
+         so does every editor save that touches such a row. Stamp the rows that were
+         left without a version and let the column default so later SQL inserts
+         cannot recreate the gap. -->
+
+    <changeSet id="020-dictionary-terminology-mapping-version-default" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="dictionary_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <addDefaultValue schemaName="clinlims" tableName="dictionary_terminology_mapping" columnName="last_updated"
+            defaultValueComputed="now()"/>
+    </changeSet>
+
+    <changeSet id="020-dictionary-terminology-mapping-version-backfill" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="dictionary_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <sql>
+            UPDATE clinlims.dictionary_terminology_mapping
+               SET last_updated = COALESCE(lastupdated, now())
+             WHERE last_updated IS NULL
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="020-test-terminology-mapping-version-default" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="test_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <addDefaultValue schemaName="clinlims" tableName="test_terminology_mapping" columnName="last_updated"
+            defaultValueComputed="now()"/>
+    </changeSet>
+
+    <changeSet id="020-test-terminology-mapping-version-backfill" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="test_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <sql>
+            UPDATE clinlims.test_terminology_mapping
+               SET last_updated = COALESCE(lastupdated, now())
+             WHERE last_updated IS NULL
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="020-panel-terminology-mapping-version-backfill" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="panel_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <sql>
+            UPDATE clinlims.panel_terminology_mapping
+               SET last_updated = COALESCE(lastupdated, now())
+             WHERE last_updated IS NULL
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="020-sample-type-terminology-mapping-version-backfill" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="sample_type_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <sql>
+            UPDATE clinlims.sample_type_terminology_mapping
+               SET last_updated = COALESCE(lastupdated, now())
+             WHERE last_updated IS NULL
+        </sql>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="020-panel-terminology-mapping-version-default" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="panel_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <addDefaultValue schemaName="clinlims" tableName="panel_terminology_mapping" columnName="last_updated"
+            defaultValueComputed="now()"/>
+    </changeSet>
+
+    <changeSet id="020-sample-type-terminology-mapping-version-default" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="sample_type_terminology_mapping" columnName="last_updated"/>
+        </preConditions>
+        <addDefaultValue schemaName="clinlims" tableName="sample_type_terminology_mapping" columnName="last_updated"
+            defaultValueComputed="now()"/>
+    </changeSet>
+
+</databaseChangeLog>

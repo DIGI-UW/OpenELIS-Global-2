@@ -167,7 +167,10 @@ public class DeviceProvider implements IResourceProvider {
                 throw new InvalidRequestException("Device resource required");
             }
 
-            requireAnalyzer(theId, method);
+            Analyzer existing = requireAnalyzer(theId, method);
+            if (existing.getStatus() == Analyzer.AnalyzerStatus.RETIRED) {
+                throw new UnprocessableEntityException("Restore the retired analyzer before updating its Device");
+            }
 
             if (device.hasId() && !theId.getIdPart().equals(device.getIdElement().getIdPart())) {
                 throw new InvalidRequestException("Device.id " + device.getIdElement().getIdPart()
@@ -225,6 +228,9 @@ public class DeviceProvider implements IResourceProvider {
 
         try {
             Analyzer analyzer = requireAnalyzer(theId, method);
+            if (analyzer.getStatus() == Analyzer.AnalyzerStatus.RETIRED) {
+                return FhirProviderUtils.buildDeleteOutcome(theId, "Device");
+            }
 
             analyzer.setActive(false);
             analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);

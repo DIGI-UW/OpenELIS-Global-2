@@ -69,17 +69,16 @@ describe("PanelTerminologySection", () => {
     expect(screen.getByTestId("primary-tag")).toBeInTheDocument();
   });
 
-  it("offers all five sources including WHONET", async () => {
+  it("suggests the standard systems and takes any other source", async () => {
     mockServer();
     wrap();
     await screen.findByText("24323-8");
-    const select = document.querySelector("#panel-terminology-source");
-    const values = Array.from(select.querySelectorAll("option")).map(
-      (o) => o.value,
-    );
-    for (const s of ["LOINC", "SNOMED", "CIEL", "OCL", "WHONET"]) {
-      expect(values).toContain(s);
-    }
+    const source = document.querySelector("#panel-terminology-source");
+    fireEvent.click(source);
+    const suggested = Array.from(
+      source.closest(".cds--list-box").querySelectorAll('[role="option"]'),
+    ).map((o) => o.textContent);
+    expect(suggested).toEqual(["LOINC", "SNOMED", "CIEL", "OCL"]);
   });
 
   it("Save PUTs the desired set, folding in a typed draft row", async () => {

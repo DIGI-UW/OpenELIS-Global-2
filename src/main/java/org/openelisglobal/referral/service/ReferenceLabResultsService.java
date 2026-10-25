@@ -12,7 +12,19 @@ public interface ReferenceLabResultsService {
 
     List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view);
 
+    /** The view's referrals whose order the user may read by lab unit. */
+    List<ReferenceLabReferralDTO> getDashboardReferrals(DashboardView view, String sysUserId);
+
     ReferenceLabMetricsDTO getDashboardMetrics();
+
+    /** The metrics counted over the referrals the user may read by lab unit. */
+    ReferenceLabMetricsDTO getDashboardMetrics(String sysUserId);
+
+    /**
+     * Whether the user may act on the referral, by the lab units of its order. An
+     * unknown referral answers true, so the action itself reports it missing.
+     */
+    boolean isReferralVisible(String referralId, String sysUserId);
 
     /**
      * Accept a returned referral (OGC-803): live-read the results from the remote

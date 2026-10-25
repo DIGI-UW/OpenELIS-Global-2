@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactDOM from "react-dom";
 import {
   Button,
@@ -31,7 +37,7 @@ import {
   TableRow,
   Tag,
   DismissibleTag,
-  Tile,
+  ClickableTile,
   Toggle,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -47,6 +53,7 @@ import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import SearchPatientForm from "../../patient/SearchPatientForm";
 import config from "../../../config.json";
+import "./ReportPrintQueue.scss";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 const WINDOWS = ["24h", "7d", "30d", "all", "custom"];
@@ -54,9 +61,44 @@ const STATE_TAG = { PARTIAL: "warm-gray", FINAL: "teal", AMENDED: "magenta" };
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
-  { label: "routine.reports", link: "/RoutineReports" },
+  { label: "common.reports", link: "/RoutineReports" },
   { label: "reportQueue.title", link: "/ReportPrintQueue" },
 ];
+
+const PRINT_STATUSES = ["UNPRINTED", "PRINTED"];
+
+/** Lab numbers of one format compare as text, digits by value. */
+const REQUESTER_SEARCH_PAGE_SIZE = 200;
+const REQUESTER_SEARCH_MAX_PAGES = 10;
+
+/**
+ * Requester options from provider search rows. A requester typed freely at
+ * order entry gets a person record per order, so one name is offered once and
+ * filters on all its records.
+ */
+export const requesterOptionsByName = (providers) => {
+  const byName = new Map();
+  (providers || []).forEach((provider) => {
+    const text =
+      provider.displayName ||
+      provider.name ||
+      `${provider.lastName || ""}, ${provider.firstName || ""}`;
+    const id = String(provider.personId || provider.id);
+    const option = byName.get(text) || { id, text, ids: [] };
+    if (!option.ids.includes(id)) {
+      option.ids.push(id);
+    }
+    byName.set(text, option);
+  });
+  return [...byName.values()];
+};
+
+/**
+ * Whether a lab number range ends before it starts, compared as the server
+ * compares and queries it: plain text, so DEV10 comes before DEV9.
+ */
+export const isRangeReversed = (from, to) =>
+  Boolean(from) && Boolean(to) && String(to) < String(from);
 
 function formatDateTime(iso) {
   if (!iso) {
@@ -84,20 +126,27 @@ export default function ReportPrintQueue() {
   const intl = useIntl();
   const location = useLocation();
   const history = useHistory();
-  const initialLabNo = useMemo(
-    () => new URLSearchParams(location.search).get("labNo") || "",
+  const initialParams = useMemo(
+    () => new URLSearchParams(location.search),
     [location.search],
   );
+  const initialLabNo = initialParams.get("labNo") || "";
+  const initialPrintStatus = (
+    initialParams.get("printStatus") || ""
+  ).toUpperCase();
 
   const [labNoInput, setLabNoInput] = useState(initialLabNo);
   const [labNoToInput, setLabNoToInput] = useState("");
   const [rangeMode, setRangeMode] = useState(false);
+  const [rangeReversed, setRangeReversed] = useState(false);
   const [lookup, setLookup] = useState(
     initialLabNo ? { labNo: initialLabNo, labNoTo: "", patient: null } : null,
   );
   const [showPatientSearch, setShowPatientSearch] = useState(false);
   const [states, setStates] = useState([]);
-  const [printStatus, setPrintStatus] = useState("ALL");
+  const [printStatus, setPrintStatus] = useState(
+    PRINT_STATUSES.includes(initialPrintStatus) ? initialPrintStatus : "ALL",
+  );
   const [window_, setWindow] = useState(null);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -123,17 +172,35 @@ export default function ReportPrintQueue() {
 
   const stateItems = useMemo(
     () => [
-      { id: "PARTIAL", text: intl.formatMessage({ id: "reportQueue.state.partialName" }) },
-      { id: "FINAL", text: intl.formatMessage({ id: "reportQueue.state.final" }) },
-      { id: "AMENDED", text: intl.formatMessage({ id: "reportQueue.state.amended" }) },
+      {
+        id: "PARTIAL",
+        text: intl.formatMessage({ id: "reportQueue.state.partialName" }),
+      },
+      {
+        id: "FINAL",
+        text: intl.formatMessage({ id: "reportQueue.state.final" }),
+      },
+      {
+        id: "AMENDED",
+        text: intl.formatMessage({ id: "reportQueue.state.amended" }),
+      },
     ],
     [intl],
   );
   const printStatusItems = useMemo(
     () => [
-      { id: "ALL", text: intl.formatMessage({ id: "common.all", defaultMessage: "All" }) },
-      { id: "UNPRINTED", text: intl.formatMessage({ id: "reportQueue.printStatus.unprinted" }) },
-      { id: "PRINTED", text: intl.formatMessage({ id: "reportQueue.printStatus.printed" }) },
+      {
+        id: "ALL",
+        text: intl.formatMessage({ id: "common.all", defaultMessage: "All" }),
+      },
+      {
+        id: "UNPRINTED",
+        text: intl.formatMessage({ id: "reportQueue.printStatus.unprinted" }),
+      },
+      {
+        id: "PRINTED",
+        text: intl.formatMessage({ id: "reportQueue.printStatus.printed" }),
+      },
     ],
     [intl],
   );
@@ -148,14 +215,46 @@ export default function ReportPrintQueue() {
 
   const headers = useMemo(
     () => [
-      { key: "labNumber", header: intl.formatMessage({ id: "reportQueue.col.labNoName" }), sortable: true },
-      { key: "subject", header: intl.formatMessage({ id: "reportQueue.col.subject" }), sortable: true },
-      { key: "details", header: intl.formatMessage({ id: "reportQueue.col.details" }) },
-      { key: "released", header: intl.formatMessage({ id: "reportQueue.col.released" }), sortable: true },
-      { key: "state", header: intl.formatMessage({ id: "reportQueue.col.state" }), sortable: true },
-      { key: "printStatus", header: intl.formatMessage({ id: "reportQueue.col.printStatus" }), sortable: true },
-      { key: "version", header: intl.formatMessage({ id: "reportQueue.col.version" }) },
-      { key: "action", header: intl.formatMessage({ id: "common.action", defaultMessage: "Action" }) },
+      {
+        key: "labNumber",
+        header: intl.formatMessage({ id: "reportQueue.col.labNoName" }),
+        sortable: true,
+      },
+      {
+        key: "subject",
+        header: intl.formatMessage({ id: "reportQueue.col.subject" }),
+        sortable: true,
+      },
+      {
+        key: "details",
+        header: intl.formatMessage({ id: "reportQueue.col.details" }),
+      },
+      {
+        key: "released",
+        header: intl.formatMessage({ id: "reportQueue.col.released" }),
+        sortable: true,
+      },
+      {
+        key: "state",
+        header: intl.formatMessage({ id: "reportQueue.col.state" }),
+        sortable: true,
+      },
+      {
+        key: "printStatus",
+        header: intl.formatMessage({ id: "reportQueue.col.printStatus" }),
+        sortable: true,
+      },
+      {
+        key: "version",
+        header: intl.formatMessage({ id: "reportQueue.col.version" }),
+      },
+      {
+        key: "action",
+        header: intl.formatMessage({
+          id: "common.action",
+          defaultMessage: "Action",
+        }),
+      },
     ],
     [intl],
   );
@@ -186,7 +285,11 @@ export default function ReportPrintQueue() {
       }
       facilities.forEach((item) => params.append("facilityIds", item.id));
       wards.forEach((item) => params.append("wardIds", item.id));
-      requesters.forEach((item) => params.append("requesterIds", item.id));
+      requesters.forEach((item) =>
+        (item.ids || [item.id]).forEach((id) =>
+          params.append("requesterIds", id),
+        ),
+      );
     }
     params.set("sort", sort.key);
     params.set("sortDir", sort.dir);
@@ -197,19 +300,35 @@ export default function ReportPrintQueue() {
     const id = ++requestId.current;
     setLoading(true);
     setLoadError(false);
-    getFromOpenElisServer(`/rest/reportQueue?${params.toString()}`, (response) => {
-      if (id !== requestId.current) {
-        return;
-      }
-      if (!response || !Array.isArray(response.rows)) {
-        setLoadError(true);
+    getFromOpenElisServer(
+      `/rest/reportQueue?${params.toString()}`,
+      (response) => {
+        if (id !== requestId.current) {
+          return;
+        }
+        if (!response || !Array.isArray(response.rows)) {
+          setLoadError(true);
+          setLoading(false);
+          return;
+        }
+        setData(response);
         setLoading(false);
-        return;
-      }
-      setData(response);
-      setLoading(false);
-    });
-  }, [lookup, states, printStatus, window_, customFrom, customTo, facilities, wards, requesters, sort, page, pageSize]);
+      },
+    );
+  }, [
+    lookup,
+    states,
+    printStatus,
+    window_,
+    customFrom,
+    customTo,
+    facilities,
+    wards,
+    requesters,
+    sort,
+    page,
+    pageSize,
+  ]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -220,7 +339,11 @@ export default function ReportPrintQueue() {
     getFromOpenElisServer("/rest/reportQueue/preferences", (preferences) => {
       ReactDOM.unstable_batchedUpdates(() => {
         setWindow(preferences?.timeWindow || "7d");
-        setPageSize(PAGE_SIZES.includes(preferences?.pageSize) ? preferences.pageSize : 20);
+        setPageSize(
+          PAGE_SIZES.includes(preferences?.pageSize)
+            ? preferences.pageSize
+            : 20,
+        );
       });
     });
   }, []);
@@ -233,20 +356,28 @@ export default function ReportPrintQueue() {
     const collected = [];
     let pending = facilities.length;
     facilities.forEach((facility) => {
-      getFromOpenElisServer(`/rest/departments-for-site?refferingSiteId=${facility.id}`, (list) => {
-        if (cancelled) return;
-        (Array.isArray(list) ? list : []).forEach((item) =>
-          collected.push({ id: String(item.id), text: `${item.value} (${facility.text})` }),
-        );
-        pending -= 1;
-        if (pending === 0) {
-          setWardOptions(collected);
-          setWards((current) => {
-            const kept = current.filter((ward) => collected.some((option) => option.id === ward.id));
-            return kept.length === current.length ? current : kept;
-          });
-        }
-      });
+      getFromOpenElisServer(
+        `/rest/departments-for-site?refferingSiteId=${facility.id}`,
+        (list) => {
+          if (cancelled) return;
+          (Array.isArray(list) ? list : []).forEach((item) =>
+            collected.push({
+              id: String(item.id),
+              text: `${item.value} (${facility.text})`,
+            }),
+          );
+          pending -= 1;
+          if (pending === 0) {
+            setWardOptions(collected);
+            setWards((current) => {
+              const kept = current.filter((ward) =>
+                collected.some((option) => option.id === ward.id),
+              );
+              return kept.length === current.length ? current : kept;
+            });
+          }
+        },
+      );
     });
     return () => {
       cancelled = true;
@@ -267,6 +398,11 @@ export default function ReportPrintQueue() {
       return;
     }
     const to = rangeMode ? (labNoToInput || "").trim() : "";
+    if (isRangeReversed(from, to)) {
+      setRangeReversed(true);
+      return;
+    }
+    setRangeReversed(false);
     setPage(1);
     setLookup({ labNo: from, labNoTo: to, patient: null });
   };
@@ -275,6 +411,7 @@ export default function ReportPrintQueue() {
     setLookup(null);
     setLabNoInput("");
     setLabNoToInput("");
+    setRangeReversed(false);
     setPage(1);
     if (initialLabNo) {
       history.replace(location.pathname);
@@ -301,7 +438,11 @@ export default function ReportPrintQueue() {
   };
 
   const searchFacilities = (text) => {
-    if (!text || text.trim().length < 2 || text.trim() === lastFacilityQuery.current) {
+    if (
+      !text ||
+      text.trim().length < 2 ||
+      text.trim() === lastFacilityQuery.current
+    ) {
       return;
     }
     lastFacilityQuery.current = text.trim();
@@ -310,32 +451,49 @@ export default function ReportPrintQueue() {
       (response) => {
         const list = response?.organizations || response?.results || [];
         setFacilityOptions(
-          list.map((org) => ({ id: String(org.id), text: org.organizationName || org.name })),
+          list.map((org) => ({
+            id: String(org.id),
+            text: org.organizationName || org.name,
+          })),
         );
       },
     );
   };
 
   const searchRequesters = (text) => {
-    if (!text || text.trim().length < 2 || text.trim() === lastRequesterQuery.current) {
+    if (
+      !text ||
+      text.trim().length < 2 ||
+      text.trim() === lastRequesterQuery.current
+    ) {
       return;
     }
-    lastRequesterQuery.current = text.trim();
-    getFromOpenElisServer(
-      `/rest/provider/search?search=${encodeURIComponent(text.trim())}&pageSize=20`,
-      (response) => {
-        const list = response?.providers || response?.results || [];
-        setRequesterOptions(
-          list.map((provider) => ({
-            id: String(provider.personId || provider.id),
-            text:
-              provider.displayName ||
-              provider.name ||
-              `${provider.lastName || ""}, ${provider.firstName || ""}`,
-          })),
-        );
-      },
-    );
+    const query = text.trim();
+    lastRequesterQuery.current = query;
+    const found = [];
+    const loadPage = (pageNumber) => {
+      getFromOpenElisServer(
+        `/rest/provider/search?search=${encodeURIComponent(query)}&pageSize=${REQUESTER_SEARCH_PAGE_SIZE}&page=${pageNumber}`,
+        (response) => {
+          if (lastRequesterQuery.current !== query) {
+            return;
+          }
+          const list = response?.providers || response?.results || [];
+          found.push(...list);
+          const total = Number(response?.totalCount) || 0;
+          if (
+            list.length === REQUESTER_SEARCH_PAGE_SIZE &&
+            found.length < total &&
+            pageNumber < REQUESTER_SEARCH_MAX_PAGES
+          ) {
+            loadPage(pageNumber + 1);
+            return;
+          }
+          setRequesterOptions(requesterOptionsByName(found));
+        },
+      );
+    };
+    loadPage(1);
   };
 
   const loadDetail = useCallback((sampleId) => {
@@ -343,7 +501,10 @@ export default function ReportPrintQueue() {
     getFromOpenElisServer(`/rest/reportQueue/orders/${sampleId}`, (detail) => {
       setDetails((current) => ({
         ...current,
-        [sampleId]: detail && detail.sampleId ? { loading: false, detail } : { loading: false, error: true },
+        [sampleId]:
+          detail && detail.sampleId
+            ? { loading: false, detail }
+            : { loading: false, error: true },
       }));
     });
   }, []);
@@ -361,19 +522,29 @@ export default function ReportPrintQueue() {
         const version = response?.headers?.get("X-Report-Version");
         const reprint = response?.headers?.get("X-Report-Reprint") === "true";
         const issued = intl.formatMessage(
-          { id: reprint ? "reportQueue.print.reprinted" : "reportQueue.print.issued" },
+          {
+            id: reprint
+              ? "reportQueue.print.reprinted"
+              : "reportQueue.print.issued",
+          },
           { n: version, labNumber: row.labNumber },
         );
         setNotice(
           opened
             ? {
                 kind: "success",
-                title: intl.formatMessage({ id: "reportQueue.print.success" }, { count: 1 }),
+                title: intl.formatMessage(
+                  { id: "reportQueue.print.success" },
+                  { count: 1 },
+                ),
                 subtitle: issued,
               }
             : {
                 kind: "warning",
-                title: intl.formatMessage({ id: "reportQueue.print.popupBlocked" }, { labNumber: row.labNumber }),
+                title: intl.formatMessage(
+                  { id: "reportQueue.print.popupBlocked" },
+                  { labNumber: row.labNumber },
+                ),
                 subtitle: issued,
                 link: url,
               },
@@ -409,10 +580,17 @@ export default function ReportPrintQueue() {
     );
   };
 
-  const rows = (data?.rows || []).map((row) => ({ ...row, id: String(row.sampleId) }));
+  const rows = (data?.rows || []).map((row) => ({
+    ...row,
+    id: String(row.sampleId),
+  }));
   const lookupActive = !!lookup;
   const filtersActive =
-    states.length > 0 || printStatus !== "ALL" || facilities.length > 0 || wards.length > 0 || requesters.length > 0;
+    states.length > 0 ||
+    printStatus !== "ALL" ||
+    facilities.length > 0 ||
+    wards.length > 0 ||
+    requesters.length > 0;
 
   const stateTag = (row) => {
     const partial = row.releasedCount < row.totalCount;
@@ -434,7 +612,11 @@ export default function ReportPrintQueue() {
     }
     return (
       <>
-        <Tag type={STATE_TAG[row.state] || "gray"} size="sm" data-testid={`state-${row.sampleId}`}>
+        <Tag
+          type={STATE_TAG[row.state] || "gray"}
+          size="sm"
+          data-testid={`state-${row.sampleId}`}
+        >
           {label}
         </Tag>
         {row.critical && (
@@ -453,7 +635,11 @@ export default function ReportPrintQueue() {
       data-testid={`print-status-${row.sampleId}`}
     >
       <FormattedMessage
-        id={row.printStatus === "PRINTED" ? "reportQueue.printStatus.printed" : "reportQueue.printStatus.unprinted"}
+        id={
+          row.printStatus === "PRINTED"
+            ? "reportQueue.printStatus.printed"
+            : "reportQueue.printStatus.unprinted"
+        }
       />
     </Tag>
   );
@@ -477,13 +663,36 @@ export default function ReportPrintQueue() {
           subtitle={intl.formatMessage({ id: "reportQueue.guidance.body" })}
           style={{ maxWidth: "100%", marginBottom: "0.5rem" }}
         />
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1.5rem" }} data-testid="legend">
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+            marginBottom: "0.75rem",
+          }}
+          data-testid="legend"
+        >
           {[
-            ["PARTIAL", "reportQueue.state.partialName", "reportQueue.legend.partial"],
+            [
+              "PARTIAL",
+              "reportQueue.state.partialName",
+              "reportQueue.legend.partial",
+            ],
             ["FINAL", "reportQueue.state.final", "reportQueue.legend.final"],
-            ["AMENDED", "reportQueue.state.amended", "reportQueue.legend.amended"],
+            [
+              "AMENDED",
+              "reportQueue.state.amended",
+              "reportQueue.legend.amended",
+            ],
           ].map(([state, nameKey, legendKey]) => (
-            <span key={state} style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+            <span
+              key={state}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.25rem",
+              }}
+            >
               <Tag type={STATE_TAG[state]} size="sm">
                 <FormattedMessage id={nameKey} />
               </Tag>
@@ -492,7 +701,13 @@ export default function ReportPrintQueue() {
               </small>
             </span>
           ))}
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+          >
             <Tag type="purple" size="sm">
               <FormattedMessage id="reportQueue.printStatus.unprinted" />
             </Tag>
@@ -500,7 +715,13 @@ export default function ReportPrintQueue() {
               <FormattedMessage id="reportQueue.legend.unprinted" />
             </small>
           </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}
+          >
             <Tag type="green" size="sm">
               <FormattedMessage id="reportQueue.printStatus.printed" />
             </Tag>
@@ -510,38 +731,42 @@ export default function ReportPrintQueue() {
           </span>
         </div>
 
-        <Grid narrow style={{ marginBottom: "1.5rem" }}>
+        <Grid narrow style={{ marginBottom: "0.75rem" }}>
           <Column lg={4} md={4} sm={4}>
-            <Tile
+            <ClickableTile
               data-testid="tile-to-print"
-              style={{ cursor: "pointer" }}
+              style={{ minHeight: "auto", padding: "0.5rem 1rem" }}
               onClick={() => {
                 clearSearch();
                 setPrintStatus("UNPRINTED");
                 setStates([]);
               }}
             >
-              <p style={{ fontSize: "2rem", fontWeight: "600" }}>{data ? data.toPrint : "–"}</p>
+              <p style={{ fontSize: "1.5rem", fontWeight: "600" }}>
+                {data ? data.toPrint : "–"}
+              </p>
               <p>
                 <FormattedMessage id="reportQueue.tile.toPrint" />
               </p>
-            </Tile>
+            </ClickableTile>
           </Column>
           <Column lg={4} md={4} sm={4}>
-            <Tile
+            <ClickableTile
               data-testid="tile-amended-to-print"
-              style={{ cursor: "pointer" }}
+              style={{ minHeight: "auto", padding: "0.5rem 1rem" }}
               onClick={() => {
                 clearSearch();
                 setPrintStatus("UNPRINTED");
                 setStates(["AMENDED"]);
               }}
             >
-              <p style={{ fontSize: "2rem", fontWeight: "600" }}>{data ? data.amendedToPrint : "–"}</p>
+              <p style={{ fontSize: "1.5rem", fontWeight: "600" }}>
+                {data ? data.amendedToPrint : "–"}
+              </p>
               <p>
                 <FormattedMessage id="reportQueue.tile.amendedToPrint" />
               </p>
-            </Tile>
+            </ClickableTile>
           </Column>
         </Grid>
 
@@ -550,11 +775,21 @@ export default function ReportPrintQueue() {
             <CustomLabNumberInput
               id="queue-lab-no"
               name="queueLabNo"
-              labelText={intl.formatMessage({ id: "common.labNumber", defaultMessage: "Lab Number" })}
-              placeholder={intl.formatMessage({ id: "reportQueue.filter.labNo.placeholder" })}
-              helperText={intl.formatMessage({ id: "reportQueue.filter.labNo.helper" })}
+              labelText={intl.formatMessage({
+                id: "common.labNumber",
+                defaultMessage: "Lab Number",
+              })}
+              placeholder={intl.formatMessage({
+                id: "reportQueue.filter.labNo.placeholder",
+              })}
+              helperText={intl.formatMessage({
+                id: "reportQueue.filter.labNo.helper",
+              })}
               value={labNoInput}
-              onChange={(event, rawValue) => setLabNoInput(rawValue ?? event.target.value)}
+              onChange={(event, rawValue) => {
+                setRangeReversed(false);
+                setLabNoInput(rawValue ?? event.target.value);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -566,7 +801,9 @@ export default function ReportPrintQueue() {
           <Column lg={2} md={2} sm={4}>
             <Toggle
               id="queue-lab-range"
-              labelText={intl.formatMessage({ id: "reportQueue.filter.labNo.range" })}
+              labelText={intl.formatMessage({
+                id: "reportQueue.filter.labNo.range",
+              })}
               size="sm"
               toggled={rangeMode}
               onToggle={(value) => setRangeMode(value)}
@@ -577,9 +814,18 @@ export default function ReportPrintQueue() {
               <CustomLabNumberInput
                 id="queue-lab-no-to"
                 name="queueLabNoTo"
-                labelText={intl.formatMessage({ id: "reportQueue.filter.labNo.to" })}
+                labelText={intl.formatMessage({
+                  id: "reportQueue.filter.labNo.to",
+                })}
                 value={labNoToInput}
-                onChange={(event, rawValue) => setLabNoToInput(rawValue ?? event.target.value)}
+                invalid={rangeReversed}
+                invalidText={intl.formatMessage({
+                  id: "reportQueue.filter.labNo.rangeReversed",
+                })}
+                onChange={(event, rawValue) => {
+                  setRangeReversed(false);
+                  setLabNoToInput(rawValue ?? event.target.value);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -590,20 +836,28 @@ export default function ReportPrintQueue() {
             </Column>
           )}
           <Column lg={3} md={4} sm={4}>
-            <Button kind="ghost" size="md" onClick={() => setShowPatientSearch((open) => !open)}>
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => setShowPatientSearch((open) => !open)}
+            >
               <FormattedMessage id="reportQueue.filter.patient" />
             </Button>
           </Column>
         </Grid>
 
         {showPatientSearch && (
-          <div style={{ marginBottom: "1rem" }} data-testid="queue-patient-search">
+          <div
+            style={{ marginBottom: "1rem" }}
+            data-testid="queue-patient-search"
+          >
             <SearchPatientForm
               idPrefix="queue"
               renderNotifications={false}
               followUrlLabNumber={false}
               getSelectedPatient={(patient) => {
-                const id = patient?.patientPK || patient?.id || patient?.patientId;
+                const id =
+                  patient?.patientPK || patient?.id || patient?.patientId;
                 if (!id) {
                   return;
                 }
@@ -613,7 +867,9 @@ export default function ReportPrintQueue() {
                   labNoTo: "",
                   patient: {
                     id,
-                    name: [patient.lastName, patient.firstName].filter(Boolean).join(", "),
+                    name: [patient.lastName, patient.firstName]
+                      .filter(Boolean)
+                      .join(", "),
                   },
                 });
                 setShowPatientSearch(false);
@@ -625,20 +881,33 @@ export default function ReportPrintQueue() {
         {lookupActive && (
           <div
             data-testid="active-search"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1rem",
+            }}
           >
             <DismissibleTag
               type="blue"
+              className="report-queue-active-search"
+              style={{ maxInlineSize: "none" }}
               onClose={clearSearch}
               text={
                 lookup.patient
-                  ? intl.formatMessage({ id: "reportQueue.search.active.patient" }, { name: lookup.patient.name })
+                  ? intl.formatMessage(
+                      { id: "reportQueue.search.active.patient" },
+                      { name: lookup.patient.name },
+                    )
                   : lookup.labNoTo
                     ? intl.formatMessage(
                         { id: "reportQueue.search.active.labRange" },
                         { from: lookup.labNo, to: lookup.labNoTo },
                       )
-                    : intl.formatMessage({ id: "reportQueue.search.active.labNo" }, { labNo: lookup.labNo })
+                    : intl.formatMessage(
+                        { id: "reportQueue.search.active.labNo" },
+                        { labNo: lookup.labNo },
+                      )
               }
             />
             <Button kind="ghost" size="sm" onClick={clearSearch}>
@@ -650,15 +919,23 @@ export default function ReportPrintQueue() {
           </div>
         )}
 
-        <Grid narrow style={{ marginBottom: "1.5rem", alignItems: "flex-end" }}>
+        <Grid
+          narrow
+          style={{ marginBottom: "0.75rem", alignItems: "flex-end" }}
+        >
           <Column lg={3} md={4} sm={4}>
             <MultiSelect
               id="queue-state"
               titleText={intl.formatMessage({ id: "reportQueue.filter.state" })}
-              label={intl.formatMessage({ id: "common.all", defaultMessage: "All" })}
+              label={intl.formatMessage({
+                id: "common.all",
+                defaultMessage: "All",
+              })}
               items={stateItems}
               itemToString={(item) => (item ? item.text : "")}
-              selectedItems={stateItems.filter((item) => states.includes(item.id))}
+              selectedItems={stateItems.filter((item) =>
+                states.includes(item.id),
+              )}
               disabled={lookupActive}
               onChange={({ selectedItems }) => {
                 setPage(1);
@@ -669,11 +946,18 @@ export default function ReportPrintQueue() {
           <Column lg={3} md={4} sm={4}>
             <Dropdown
               id="queue-print-status"
-              titleText={intl.formatMessage({ id: "reportQueue.filter.printStatus" })}
-              label={intl.formatMessage({ id: "common.all", defaultMessage: "All" })}
+              titleText={intl.formatMessage({
+                id: "reportQueue.filter.printStatus",
+              })}
+              label={intl.formatMessage({
+                id: "common.all",
+                defaultMessage: "All",
+              })}
               items={printStatusItems}
               itemToString={(item) => (item ? item.text : "")}
-              selectedItem={printStatusItems.find((item) => item.id === printStatus)}
+              selectedItem={printStatusItems.find(
+                (item) => item.id === printStatus,
+              )}
               disabled={lookupActive}
               onChange={({ selectedItem }) => {
                 setPage(1);
@@ -684,12 +968,18 @@ export default function ReportPrintQueue() {
           <Column lg={3} md={4} sm={4}>
             <Dropdown
               id="queue-window"
-              titleText={intl.formatMessage({ id: "reportQueue.filter.window" })}
-              helperText={intl.formatMessage({ id: "reportQueue.filter.window.helper" })}
+              titleText={intl.formatMessage({
+                id: "reportQueue.filter.window",
+              })}
+              helperText={intl.formatMessage({
+                id: "reportQueue.filter.window.helper",
+              })}
               label={intl.formatMessage({ id: "reportQueue.filter.window.7d" })}
               items={windowItems}
               itemToString={(item) => (item ? item.text : "")}
-              selectedItem={windowItems.find((item) => item.id === window_) || null}
+              selectedItem={
+                windowItems.find((item) => item.id === window_) || null
+              }
               disabled={lookupActive}
               onChange={({ selectedItem }) => {
                 const next = selectedItem?.id ?? "7d";
@@ -714,7 +1004,10 @@ export default function ReportPrintQueue() {
                   <DatePickerInput
                     id="queue-window-from"
                     placeholder="yyyy-mm-dd"
-                    labelText={intl.formatMessage({ id: "common.from", defaultMessage: "From" })}
+                    labelText={intl.formatMessage({
+                      id: "common.from",
+                      defaultMessage: "From",
+                    })}
                   />
                 </DatePicker>
               </Column>
@@ -731,7 +1024,9 @@ export default function ReportPrintQueue() {
                   <DatePickerInput
                     id="queue-window-to"
                     placeholder="yyyy-mm-dd"
-                    labelText={intl.formatMessage({ id: "reportQueue.filter.window.to" })}
+                    labelText={intl.formatMessage({
+                      id: "reportQueue.filter.window.to",
+                    })}
                   />
                 </DatePicker>
               </Column>
@@ -739,13 +1034,22 @@ export default function ReportPrintQueue() {
           )}
         </Grid>
 
-        <Grid narrow style={{ marginBottom: "1.5rem", alignItems: "flex-end" }}>
+        <Grid
+          narrow
+          style={{ marginBottom: "0.75rem", alignItems: "flex-end" }}
+        >
           <Column lg={4} md={4} sm={4}>
             <FilterableMultiSelect
               id="queue-facility"
-              titleText={intl.formatMessage({ id: "reportQueue.filter.facility" })}
-              helperText={intl.formatMessage({ id: "reportQueue.filter.typeahead.helper" })}
-              placeholder={intl.formatMessage({ id: "reportQueue.filter.typeahead.helper" })}
+              titleText={intl.formatMessage({
+                id: "reportQueue.filter.facility",
+              })}
+              helperText={intl.formatMessage({
+                id: "reportQueue.filter.typeahead.helper",
+              })}
+              placeholder={intl.formatMessage({
+                id: "reportQueue.filter.typeahead.helper",
+              })}
               items={facilityOptions}
               itemToString={(item) => (item ? item.text : "")}
               selectedItems={facilities}
@@ -759,7 +1063,11 @@ export default function ReportPrintQueue() {
               id="queue-ward"
               titleText={intl.formatMessage({ id: "reportQueue.filter.ward" })}
               helperText={
-                facilities.length === 0 ? intl.formatMessage({ id: "reportQueue.filter.ward.disabled" }) : undefined
+                facilities.length === 0
+                  ? intl.formatMessage({
+                      id: "reportQueue.filter.ward.disabled",
+                    })
+                  : undefined
               }
               placeholder=""
               items={wardOptions}
@@ -775,9 +1083,16 @@ export default function ReportPrintQueue() {
           <Column lg={4} md={4} sm={4}>
             <FilterableMultiSelect
               id="queue-requester"
-              titleText={intl.formatMessage({ id: "common.requester", defaultMessage: "Requester" })}
-              helperText={intl.formatMessage({ id: "reportQueue.filter.typeahead.helper" })}
-              placeholder={intl.formatMessage({ id: "reportQueue.filter.typeahead.helper" })}
+              titleText={intl.formatMessage({
+                id: "common.requester",
+                defaultMessage: "Requester",
+              })}
+              helperText={intl.formatMessage({
+                id: "reportQueue.filter.typeahead.helper",
+              })}
+              placeholder={intl.formatMessage({
+                id: "reportQueue.filter.typeahead.helper",
+              })}
               items={requesterOptions}
               itemToString={(item) => (item ? item.text : "")}
               selectedItems={requesters}
@@ -798,14 +1113,23 @@ export default function ReportPrintQueue() {
           </Column>
         </Grid>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.5rem" }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.25rem",
+            marginBottom: "0.5rem",
+          }}
+        >
           {facilities.map((item) => (
             <DismissibleTag
               key={`f-${item.id}`}
               type="cool-gray"
               size="sm"
               text={item.text}
-              onClose={() => changeFacilities(facilities.filter((f) => f.id !== item.id))}
+              onClose={() =>
+                changeFacilities(facilities.filter((f) => f.id !== item.id))
+              }
             />
           ))}
           {wards.map((item) => (
@@ -823,7 +1147,9 @@ export default function ReportPrintQueue() {
               type="cool-gray"
               size="sm"
               text={item.text}
-              onClose={() => setRequesters(requesters.filter((r) => r.id !== item.id))}
+              onClose={() =>
+                setRequesters(requesters.filter((r) => r.id !== item.id))
+              }
             />
           ))}
           {states.map((state) => (
@@ -838,7 +1164,14 @@ export default function ReportPrintQueue() {
         </div>
 
         {notice && (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1rem",
+            }}
+          >
             <InlineNotification
               kind={notice.kind}
               lowContrast
@@ -848,7 +1181,12 @@ export default function ReportPrintQueue() {
               style={{ maxWidth: "100%", margin: 0 }}
             />
             {notice.link && (
-              <Link href={notice.link} target="_blank" rel="noopener" data-testid="open-report">
+              <Link
+                href={notice.link}
+                target="_blank"
+                rel="noopener"
+                data-testid="open-report"
+              >
                 <FormattedMessage id="reportQueue.print.open" />
               </Link>
             )}
@@ -856,7 +1194,14 @@ export default function ReportPrintQueue() {
         )}
 
         {loadError && (
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginBottom: "1rem",
+            }}
+          >
             <InlineNotification
               kind="error"
               lowContrast
@@ -864,17 +1209,34 @@ export default function ReportPrintQueue() {
               title={intl.formatMessage({ id: "reportQueue.error.load" })}
               style={{ maxWidth: "100%", margin: 0 }}
             />
-            <Button kind="ghost" size="sm" onClick={load} data-testid="queue-retry">
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={load}
+              data-testid="queue-retry"
+            >
               <FormattedMessage id="common.retry" defaultMessage="Retry" />
             </Button>
           </div>
         )}
 
         {loading && !data ? (
-          <DataTableSkeleton headers={headers} rowCount={5} showHeader={false} showToolbar={false} />
+          <DataTableSkeleton
+            headers={headers}
+            rowCount={5}
+            showHeader={false}
+            showToolbar={false}
+          />
         ) : (
           <DataTable rows={rows} headers={headers} isSortable={false}>
-            {({ rows: tableRows, headers: tableHeaders, getHeaderProps, getRowProps, getTableProps, getExpandHeaderProps }) => (
+            {({
+              rows: tableRows,
+              headers: tableHeaders,
+              getHeaderProps,
+              getRowProps,
+              getTableProps,
+              getExpandHeaderProps,
+            }) => (
               <TableContainer>
                 <Table {...getTableProps()} size="md">
                   <TableHead>
@@ -886,7 +1248,11 @@ export default function ReportPrintQueue() {
                           {...getHeaderProps({ header })}
                           isSortable={!!header.sortable}
                           isSortHeader={sort.key === header.key}
-                          sortDirection={sort.key === header.key ? sort.dir.toUpperCase() : "NONE"}
+                          sortDirection={
+                            sort.key === header.key
+                              ? sort.dir.toUpperCase()
+                              : "NONE"
+                          }
                           onClick={() => onHeaderClick(header)}
                         >
                           {header.header}
@@ -908,14 +1274,17 @@ export default function ReportPrintQueue() {
                             {...rowProps}
                             data-testid={`queue-row-${row.labNumber}`}
                             onExpand={(event) => {
-                              if (!tableRow.isExpanded && (!detail || detail.error)) {
+                              if (
+                                !tableRow.isExpanded &&
+                                (!detail || detail.error)
+                              ) {
                                 loadDetail(row.sampleId);
                               }
                               rowProps.onExpand(event);
                             }}
                           >
                             <TableCell>
-                              <span style={{ fontFamily: "monospace" }}>{row.labNumber}</span>
+                              <span>{row.labNumber}</span>
                             </TableCell>
                             <TableCell>
                               <div>{row.patientName || "–"}</div>
@@ -923,27 +1292,78 @@ export default function ReportPrintQueue() {
                             </TableCell>
                             <TableCell>
                               <div>{row.requester || "–"}</div>
-                              <small>{[row.facility, row.ward].filter(Boolean).join(" / ")}</small>
-                            </TableCell>
-                            <TableCell>{row.nothingReleased ? "–" : formatDateTime(row.released)}</TableCell>
-                            <TableCell>{row.nothingReleased ? "–" : stateTag(row)}</TableCell>
-                            <TableCell>{row.nothingReleased && !row.version ? "–" : printStatusTag(row)}</TableCell>
-                            <TableCell>
-                              {row.version
-                                ? intl.formatMessage({ id: "reportQueue.version.value" }, { n: row.version })
-                                : intl.formatMessage({ id: "reportQueue.version.none" })}
+                              <small>
+                                {[row.facility, row.ward]
+                                  .filter(Boolean)
+                                  .join(" / ")}
+                              </small>
                             </TableCell>
                             <TableCell>
                               {row.nothingReleased ? (
-                                <Button size="sm" kind="primary" disabled title={intl.formatMessage({ id: "reportQueue.print.disabled.nothingReleased" })}>
+                                <Tag
+                                  type="gray"
+                                  size="sm"
+                                  data-testid={`nothing-released-${row.labNumber}`}
+                                >
+                                  <FormattedMessage id="reportQueue.print.disabled.nothingReleased" />
+                                </Tag>
+                              ) : (
+                                formatDateTime(row.released)
+                              )}
+                              {row.awaitingValidation && (
+                                <div>
+                                  <Tag
+                                    type="blue"
+                                    size="sm"
+                                    data-testid={`awaiting-validation-${row.labNumber}`}
+                                  >
+                                    <FormattedMessage id="reportQueue.awaitingValidation" />
+                                  </Tag>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {row.nothingReleased ? "–" : stateTag(row)}
+                            </TableCell>
+                            <TableCell>
+                              {row.nothingReleased && !row.version
+                                ? "–"
+                                : printStatusTag(row)}
+                            </TableCell>
+                            <TableCell>
+                              {row.version
+                                ? intl.formatMessage(
+                                    { id: "reportQueue.version.value" },
+                                    { n: row.version },
+                                  )
+                                : intl.formatMessage({
+                                    id: "reportQueue.version.none",
+                                  })}
+                            </TableCell>
+                            <TableCell>
+                              {row.nothingReleased ? (
+                                <Button
+                                  size="sm"
+                                  kind="primary"
+                                  style={{ paddingInlineEnd: "1rem" }}
+                                  disabled
+                                  title={intl.formatMessage({
+                                    id: "reportQueue.print.disabled.nothingReleased",
+                                  })}
+                                >
                                   <FormattedMessage id="reportQueue.action.print" />
                                 </Button>
                               ) : printing === row.sampleId ? (
-                                <InlineLoading description={intl.formatMessage({ id: "reportQueue.action.print" })} />
+                                <InlineLoading
+                                  description={intl.formatMessage({
+                                    id: "reportQueue.action.print",
+                                  })}
+                                />
                               ) : (
                                 <Button
                                   size="sm"
                                   kind="primary"
+                                  style={{ paddingInlineEnd: "1rem" }}
                                   data-testid={`print-${row.labNumber}`}
                                   onClick={() => handlePrint(row)}
                                 >
@@ -954,7 +1374,10 @@ export default function ReportPrintQueue() {
                           </TableExpandRow>
                           <TableExpandedRow colSpan={tableHeaders.length + 1}>
                             {tableRow.isExpanded && (
-                              <RowDetail detail={detail} onRetry={() => loadDetail(row.sampleId)} />
+                              <RowDetail
+                                detail={detail}
+                                onRetry={() => loadDetail(row.sampleId)}
+                              />
                             )}
                           </TableExpandedRow>
                         </React.Fragment>
@@ -971,7 +1394,14 @@ export default function ReportPrintQueue() {
           <p style={{ marginTop: "1rem" }} data-testid="queue-empty">
             <FormattedMessage id="reportQueue.empty" />{" "}
             {(filtersActive || lookupActive) && (
-              <Link href="#" onClick={(event) => { event.preventDefault(); clearSearch(); clearFilters(); }}>
+              <Link
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
+                  clearSearch();
+                  clearFilters();
+                }}
+              >
                 <FormattedMessage id="reportQueue.filter.clear" />
               </Link>
             )}
@@ -1003,7 +1433,14 @@ export default function ReportPrintQueue() {
 function RowDetail({ detail, onRetry }) {
   const intl = useIntl();
   if (!detail || detail.loading) {
-    return <InlineLoading description={intl.formatMessage({ id: "label.loading", defaultMessage: "Loading" })} />;
+    return (
+      <InlineLoading
+        description={intl.formatMessage({
+          id: "label.loading",
+          defaultMessage: "Loading",
+        })}
+      />
+    );
   }
   if (detail.error) {
     return (
@@ -1015,7 +1452,12 @@ function RowDetail({ detail, onRetry }) {
           title={intl.formatMessage({ id: "reportQueue.error.load" })}
           style={{ margin: 0 }}
         />
-        <Button kind="ghost" size="sm" onClick={onRetry} data-testid="detail-retry">
+        <Button
+          kind="ghost"
+          size="sm"
+          onClick={onRetry}
+          data-testid="detail-retry"
+        >
           <FormattedMessage id="common.retry" defaultMessage="Retry" />
         </Button>
       </div>
@@ -1042,7 +1484,10 @@ function RowDetail({ detail, onRetry }) {
       return null;
     }
     return intl.formatMessage({
-      id: test.status === "AWAITING_VALIDATION" ? "reportQueue.detail.awaitingValidation" : "reportQueue.detail.inProgress",
+      id:
+        test.status === "AWAITING_VALIDATION"
+          ? "reportQueue.detail.awaitingValidation"
+          : "reportQueue.detail.inProgress",
     });
   };
   return (
@@ -1053,13 +1498,32 @@ function RowDetail({ detail, onRetry }) {
         </h5>
         <StructuredListWrapper>
           <StructuredListBody>
+            <StructuredListRow head>
+              {[
+                "reportQueue.detail.col.test",
+                "reportQueue.detail.col.result",
+                "reportQueue.detail.col.flag",
+                "reportQueue.detail.col.released",
+                "reportQueue.detail.validatedBy",
+              ].map((id) => (
+                <StructuredListCell head key={id}>
+                  <FormattedMessage id={id} />
+                </StructuredListCell>
+              ))}
+            </StructuredListRow>
             {data.tests.map((test) => (
               <StructuredListRow key={test.analysisId}>
                 <StructuredListCell noWrap>{test.testName}</StructuredListCell>
-                <StructuredListCell>{test.released ? test.result || "–" : statusLabel(test)}</StructuredListCell>
+                <StructuredListCell>
+                  {test.released ? test.result || "–" : statusLabel(test)}
+                </StructuredListCell>
                 <StructuredListCell>{flagLabel(test.flag)}</StructuredListCell>
-                <StructuredListCell>{test.released ? formatDateTime(test.releasedAt) : ""}</StructuredListCell>
-                <StructuredListCell>{test.validatedBy || ""}</StructuredListCell>
+                <StructuredListCell>
+                  {test.released ? formatDateTime(test.releasedAt) : ""}
+                </StructuredListCell>
+                <StructuredListCell>
+                  {test.validatedBy || ""}
+                </StructuredListCell>
               </StructuredListRow>
             ))}
           </StructuredListBody>
@@ -1122,7 +1586,10 @@ function RowDetail({ detail, onRetry }) {
               {data.versions.map((version) => (
                 <StructuredListRow key={version.id}>
                   <StructuredListCell>
-                    {intl.formatMessage({ id: "reportQueue.version.value" }, { n: version.version })}
+                    {intl.formatMessage(
+                      { id: "reportQueue.version.value" },
+                      { n: version.version },
+                    )}
                     {version.amended && (
                       <>
                         {" "}
@@ -1138,22 +1605,35 @@ function RowDetail({ detail, onRetry }) {
                       <small key={index} style={{ display: "block" }}>
                         {intl.formatMessage(
                           { id: "reportQueue.history.reprinted" },
-                          { date: formatDateTime(reprint.printedAt), user: reprint.printedBy || "" },
+                          {
+                            date: formatDateTime(reprint.printedAt),
+                            user: reprint.printedBy || "",
+                          },
                         )}
                       </small>
                     ))}
                   </StructuredListCell>
-                  <StructuredListCell>{version.issuedBy || ""}</StructuredListCell>
                   <StructuredListCell>
-                    {version.changeSummary || intl.formatMessage({ id: "reportQueue.history.firstIssue" })}
+                    {version.issuedBy || ""}
                   </StructuredListCell>
                   <StructuredListCell>
-                    {version.legacy ? "–" : `${version.releasedCount}/${version.totalCount}`}
+                    {version.changeSummary ||
+                      intl.formatMessage({
+                        id: "reportQueue.history.firstIssue",
+                      })}
+                  </StructuredListCell>
+                  <StructuredListCell>
+                    {version.legacy
+                      ? "–"
+                      : `${version.releasedCount}/${version.totalCount}`}
                   </StructuredListCell>
                   <StructuredListCell>
                     {version.archived ? (
                       <>
-                        <span title={version.sha256} style={{ fontFamily: "monospace" }}>
+                        <span
+                          title={version.sha256}
+                          style={{ fontFamily: "monospace" }}
+                        >
                           {(version.sha256 || "").slice(0, 12)}
                         </span>{" "}
                         <Link

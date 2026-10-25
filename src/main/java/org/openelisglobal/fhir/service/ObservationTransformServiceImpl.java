@@ -372,7 +372,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = terminologyTransformService
                 .resolveResultComponent(test.getId(), result);
         observation.setCode(terminologyTransformService.transformResultCodeableConcept(test, component,
-                sampleItem.getTypeOfSampleId()));
+                sampleItem == null ? null : sampleItem.getTypeOfSampleId()));
         observation.addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         if (sampleItem != null) {
             observation.setSpecimen(common.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));

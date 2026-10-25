@@ -631,6 +631,10 @@ public class ResultsValidationUtility {
 
         ResultValidationItem parentItem = null;
         for (Result result : resultList) {
+            if (result != null && (result.getValidatedDate() != null
+                    || (result.getParentResult() != null && result.getParentResult().getValidatedDate() != null))) {
+                continue;
+            }
             if (parentItem != null && result.getParentResult() != null
                     && parentItem.getResultId().equals(result.getParentResult().getId())) {
                 parentItem.setQualifiedResultValue(result.getValue());

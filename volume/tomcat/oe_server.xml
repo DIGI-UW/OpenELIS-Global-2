@@ -93,7 +93,7 @@
                <SSLHostConfig certificateVerification="optional"
                     trustManagerClassName="org.openelisglobal.tomcat.AnyClientCertificateTrustManager">
                     <Certificate certificateKeystoreFile="/etc/openelis-global/keystore"
-                         certificateKeystorePassword="kspass"
+                         certificateKeystorePassword="${oe.ssl.keystorepassword}"
                          certificateKeystoreType="PKCS12"
                          type="RSA" />
                </SSLHostConfig>

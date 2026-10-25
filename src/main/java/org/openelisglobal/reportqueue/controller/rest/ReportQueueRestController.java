@@ -63,6 +63,11 @@ public class ReportQueueRestController {
         if (patientId != null && !patientId.isBlank() && !patientId.trim().matches("\\d+")) {
             return ResponseEntity.badRequest().body(Map.of("message", "patientId must be a number"));
         }
+        if (labNo != null && !labNo.isBlank() && labNoTo != null && !labNoTo.isBlank()
+                && labNoTo.trim().compareTo(labNo.trim()) < 0) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("code", "labRangeReversed", "message", "the To lab number is before the From lab number"));
+        }
         ReportQueueRequest queueRequest = new ReportQueueRequest();
         queueRequest.setLabNo(labNo);
         queueRequest.setLabNoTo(labNoTo);
@@ -117,8 +122,8 @@ public class ReportQueueRestController {
     }
 
     @GetMapping("/versions/{versionId}/pdf")
-    public ResponseEntity<byte[]> archivedPdf(@PathVariable Long versionId) {
-        Optional<ReportVersion> version = reportQueueService.version(versionId);
+    public ResponseEntity<byte[]> archivedPdf(HttpServletRequest request, @PathVariable Long versionId) {
+        Optional<ReportVersion> version = reportQueueService.version(versionId, ControllerUtills.getSysUserId(request));
         if (version.isEmpty()) {
             return ResponseEntity.notFound().build();
         }

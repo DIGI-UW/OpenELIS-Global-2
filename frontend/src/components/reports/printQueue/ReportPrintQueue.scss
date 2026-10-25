@@ -1,0 +1,5 @@
+// The active-search chip carries a whole lab number or range; Carbon caps a
+// dismissible tag's text at 200px, which cut the number short (OGC-431 QA).
+.report-queue-active-search .cds--interactive--tag-children {
+  max-inline-size: none;
+}

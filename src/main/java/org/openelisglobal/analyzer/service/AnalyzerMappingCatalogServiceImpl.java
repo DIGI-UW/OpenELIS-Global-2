@@ -2,15 +2,14 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.terminology.Coding;
 import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -29,8 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalogService {
 
-    private static final String LOINC = "LOINC";
-
+    private final org.openelisglobal.unitofmeasure.service.UnitOfMeasureService units;
     private final TestService testService;
     private final TestResultService testResultService;
     private final TestTerminologyMappingService terminologyService;
@@ -43,7 +41,9 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     public AnalyzerMappingCatalogServiceImpl(TestService testService, TestResultService testResultService,
             TestTerminologyMappingService terminologyService, DictionaryService dictionaryService,
             TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests,
-            TestResultComponentService componentService, DictionaryTerminologyMappingService answerTerminology) {
+            TestResultComponentService componentService, DictionaryTerminologyMappingService answerTerminology,
+            org.openelisglobal.unitofmeasure.service.UnitOfMeasureService units) {
+        this.units = units;
         this.testService = testService;
         this.testResultService = testResultService;
         this.terminologyService = terminologyService;
@@ -57,9 +57,10 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     @Override
     @Transactional(readOnly = true)
     public List<TestOption> searchActiveTests(String query) {
-        Map<String, Set<String>> loincByTestId = terminologyService.getActiveBySource(LOINC).stream()
-                .collect(Collectors.groupingBy(TestTerminologyMapping::getTestId, Collectors
-                        .mapping(TestTerminologyMapping::getCode, Collectors.toCollection(LinkedHashSet::new))));
+        // A code scoped to one component names that part of a result, not the test.
+        Map<String, List<TestTerminologyMapping>> codesByTestId = terminologyService.getAllActive().stream()
+                .filter(mapping -> mapping.getComponentId() == null)
+                .collect(Collectors.groupingBy(TestTerminologyMapping::getTestId));
         Map<String, String> specimenNames = sampleTypes.getAllTypeOfSamples().stream()
                 .filter(type -> type.isActive() && !isBlank(type.getDescription()))
                 .collect(Collectors.toMap(TypeOfSample::getId, TypeOfSample::getDescription));
@@ -73,13 +74,15 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
             if (test == null || !test.isActive()) {
                 continue;
             }
-            Set<String> loincCodes = new LinkedHashSet<>();
+            List<Coding> codings = new ArrayList<>();
             if (!isBlank(test.getLoinc())) {
-                loincCodes.add(test.getLoinc().trim());
+                codings.add(Coding.loinc(test.getLoinc().trim()));
             }
-            loincCodes.addAll(loincByTestId.getOrDefault(test.getId(), Set.of()));
-            TestOption option = new TestOption(test.getId(), test.getName(), test.getLocalCode(),
-                    List.copyOf(loincCodes), specimensByTest.getOrDefault(test.getId(), List.of()));
+            for (TestTerminologyMapping mapping : codesByTestId.getOrDefault(test.getId(), List.of())) {
+                addCoding(codings, mapping.getSource(), mapping.getCode(), mapping.getDisplayName());
+            }
+            TestOption option = new TestOption(test.getId(), test.getName(), test.getLocalCode(), codings,
+                    specimensByTest.getOrDefault(test.getId(), List.of()));
             if (matches(option, normalizedQuery)) {
                 choices.add(option);
             }
@@ -116,8 +119,15 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     public List<ComponentOption> getActiveComponents(String testId) {
         return componentService.getActiveComponentsByTestId(testId).stream()
                 .map(component -> new ComponentOption(component.getId(), component.getCode(), component.getLabel(),
-                        component.getIsPrimary()))
+                        component.getIsPrimary(), component.getResultType(), unitName(component.getUomId())))
                 .toList();
+    }
+
+    private String unitName(String id) {
+        if (id == null)
+            return null;
+        var unit = units.getUnitOfMeasureById(id);
+        return unit == null ? null : unit.getUnitOfMeasureName();
     }
 
     private static boolean matches(TestOption option, String query) {
@@ -125,7 +135,7 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
             return true;
         }
         return contains(option.name(), query) || contains(option.code(), query)
-                || option.loincCodes().stream().anyMatch(code -> contains(code, query));
+                || option.codings().stream().anyMatch(coding -> contains(coding.code(), query));
     }
 
     private static boolean isUsableOption(TestResult option, String testId) {
@@ -143,15 +153,26 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
         return dictionary != null && !isBlank(dictionary.getDictEntry()) ? dictionary.getDictEntry() : value;
     }
 
-    private List<AnswerCoding> codingsOf(Dictionary dictionary) {
-        if (dictionary == null) {
-            return List.of();
+    private List<Coding> codingsOf(Dictionary dictionary) {
+        List<Coding> codings = new ArrayList<>();
+        if (dictionary != null) {
+            for (var mapping : answerTerminology.getActiveByDictionaryId(dictionary.getId())) {
+                addCoding(codings, mapping.getSource(), mapping.getCode(), mapping.getDisplayName());
+            }
         }
-        return answerTerminology.getActiveByDictionaryId(dictionary.getId()).stream()
-                .filter(mapping -> TerminologySystems.urlOf(mapping.getSource()) != null && !isBlank(mapping.getCode()))
-                .map(mapping -> new AnswerCoding(TerminologySystems.urlOf(mapping.getSource()),
-                        mapping.getCode().trim()))
-                .toList();
+        return codings;
+    }
+
+    /** Adds a terminology row's coding unless it is blank or already there. */
+    private static void addCoding(List<Coding> codings, String source, String code, String display) {
+        String system = TerminologySystems.systemOf(source);
+        if (system == null || isBlank(code)) {
+            return;
+        }
+        Coding coding = new Coding(system, code.trim(), isBlank(display) ? null : display.trim());
+        if (codings.stream().noneMatch(coding::sameAs)) {
+            codings.add(coding);
+        }
     }
 
     private static boolean contains(String value, String query) {

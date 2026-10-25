@@ -169,8 +169,14 @@ PY
   local analyzer_id
   analyzer_id="$(find_analyzer_id "$name")"
   if [ "$ENSURE_CONNECTIONS" = true ] && [ -n "$analyzer_id" ]; then
-    echo "  Preserved existing connection: $name"
-    return 0
+    # A row from before profile-pinned analyzers (no profile, no Bridge connection) cannot receive
+    # anything, so it is set up like a new instance. A pinned one is the operator's and is kept as
+    # it is, inactive included: nothing here guesses whether it was disabled on purpose.
+    if [ -n "$(analyzer_field "$name" profileId)" ]; then
+      echo "  Preserved existing connection: $name"
+      return 0
+    fi
+    echo "  $name has no profile pin (from before profile-pinned analyzers); setting it up"
   fi
   local method="POST"
   local url="$ANALYZER_API"
@@ -193,9 +199,25 @@ PY
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
-  if [ "$action" = "create" ]; then
+  if [ "$action" = "create" ] || [ "$ENSURE_CONNECTIONS" = true ]; then
     set_up_like_an_operator "$(find_analyzer_id "$name")" "$name"
   fi
+}
+
+# One field of the named analyzer from the last analyzer list read, empty when absent.
+analyzer_field() {
+  python3 - "$ANALYZERS_FILE" "$1" "$2" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    analyzers = json.load(handle).get("analyzers", [])
+for item in analyzers:
+    if item.get("name") == sys.argv[2]:
+        value = item.get(sys.argv[3])
+        print("" if value in (None, 0) else value)
+        break
+PY
 }
 
 api_send() {
@@ -232,7 +254,6 @@ if unresolved:
 else:
     print(json.dumps({
         "baseMappingFingerprint": mapping["mappingFingerprint"],
-        "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
         "confirmedRows": confirmed,
         "excludedRows": excluded,
     }))
@@ -377,7 +398,7 @@ reconcile_profile_analyzer "QuantStudio 7" "$QUANTSTUDIO_PROFILE_ID" "$QUANTSTUD
 reconcile_profile_analyzer "FluoroCycler XT" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" '{"directory":"/data/analyzer-imports/fluorocycler-xt/incoming"}'
 
 if [ "$ENSURE_CONNECTIONS" = true ]; then
-  echo "Done. Missing harness connections created; existing configuration and review data preserved."
+  echo "Done. Missing and unpinned harness connections set up; pinned connections and review data preserved."
   exit 0
 fi
 

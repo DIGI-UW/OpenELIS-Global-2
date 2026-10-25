@@ -38,6 +38,7 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.referral.action.beanitems.ReferralItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
+import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.controller.LogbookResultsBaseController;
 import org.openelisglobal.result.form.LogbookResultsForm;
@@ -46,6 +47,7 @@ import org.openelisglobal.result.service.AnalysisTimelineService;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
@@ -54,6 +56,7 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestSectionService;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testalertrule.service.TestAlertEvaluationService;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
@@ -423,6 +426,10 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         // resulted (OGC-1179).
         if (persisted != null) {
             body.put("analysisStatusId", analysisService.getStatusId(persisted));
+            Map<String, String> componentStatusIds = componentStatusIds(persisted);
+            if (!componentStatusIds.isEmpty()) {
+                body.put("componentStatusIds", componentStatusIds);
+            }
         }
         // The persisted result's id — the client's row must adopt it, or a row
         // saved from the blank placeholder state keeps a null resultId and every
@@ -439,6 +446,40 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);
+    }
+
+    /**
+     * Each part's status after a save, keyed by component id, for a test with more
+     * than one part; empty otherwise. Every part's row on Results Entry shows its
+     * own status and a save can move the test from one status to another, so the
+     * page is told every part's status, not only the saved part's. A result whose
+     * test_result row names no component belongs to the primary.
+     */
+    private Map<String, String> componentStatusIds(Analysis analysis) {
+        Map<String, String> statuses = new HashMap<>();
+        Test test = analysisService.getTest(analysis);
+        List<TestResultComponent> components = test == null ? List.of()
+                : testResultComponentService.getActiveComponentsByTestId(test.getId());
+        if (components.size() < 2) {
+            return statuses;
+        }
+        String primaryId = components.stream().filter(TestResultComponent::getIsPrimary).map(TestResultComponent::getId)
+                .findFirst().orElse(components.get(0).getId());
+        Map<String, Result> resultByComponent = new HashMap<>();
+        for (Result result : resultService.getResultsByAnalysis(analysis)) {
+            if (result.getParentResult() != null) {
+                continue;
+            }
+            String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+            resultByComponent.putIfAbsent(GenericValidator.isBlankOrNull(componentId) ? primaryId : componentId,
+                    result);
+        }
+        String analysisStatusId = analysisService.getStatusId(analysis);
+        for (TestResultComponent component : components) {
+            statuses.put(component.getId(),
+                    ResultsLoadUtility.componentStatusId(analysisStatusId, resultByComponent.get(component.getId())));
+        }
+        return statuses;
     }
 
     /**

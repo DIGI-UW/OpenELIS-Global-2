@@ -178,6 +178,8 @@ interface SaveResponse {
   resultId?: string;
   /** the analysis status the save moved the row to (Status column + counts) */
   analysisStatusId?: string;
+  /** each part's status after the save, by component id (multi-part tests) */
+  componentStatusIds?: Record<string, string>;
   /** the persisted value, as reported and as stored (OGC-1179) */
   resultValue?: string;
   rawResultValue?: string;
@@ -939,11 +941,11 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           type: "SAVE_SUCCEEDED",
         }),
       }));
-      // the version token and the analysis status are per ANALYSIS — refresh
-      // them on every component row of this analysis so a sibling save isn't
-      // falsely rejected, and so the Status column and the filter counts above
-      // it describe the worklist as the save left it rather than as it was
-      // loaded (OGC-1179).
+      // the version token is per ANALYSIS — refresh it on every component row
+      // of this analysis so a sibling save isn't falsely rejected. The status
+      // follows the save too, so the Status column and the filter counts
+      // describe the worklist as the save left it (OGC-1179); a component row
+      // carries its own part's status, which the save reports per part.
       // The SAVED row must also adopt the persisted resultId: a row saved
       // from the blank placeholder state would otherwise keep resultId null
       // and every later save would INSERT a duplicate result for the
@@ -959,7 +961,15 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           if (response.analysisLastupdated) {
             updated.analysisLastupdated = response.analysisLastupdated;
           }
-          if (response.analysisStatusId) {
+          const componentStatusId =
+            row.testResultComponentId &&
+            response.componentStatusIds?.[row.testResultComponentId];
+          if (componentStatusId) {
+            updated.analysisStatusId = componentStatusId;
+          } else if (
+            response.analysisStatusId &&
+            (!row.testResultComponentId || worklistRowKey(row) === key)
+          ) {
             updated.analysisStatusId = response.analysisStatusId;
           }
           if (worklistRowKey(row) === key) {
@@ -1041,6 +1051,25 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       // as boolean — same normalization the legacy page applies before POST
       item.reportable = item.reportable !== "N";
       const key = worklistRowKey(row);
+      // A referral the user opened rides the save only when complete; one
+      // missing its laboratory or reason is refused rather than dropped, so a
+      // save never reads as having referred a test it did not.
+      const pendingReferral = referralDrafts[key];
+      if (
+        pendingReferral &&
+        (!pendingReferral.referredInstituteId ||
+          !pendingReferral.referralReasonId)
+      ) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "label.results.referral.incomplete",
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
       // R2 (FR-J1/J2): the dual-axis note — visibility chosen, context auto-set
       // from the edit-state machine (Modification when editing a saved result)
       const noteDraft = noteDrafts[key];
@@ -1160,6 +1189,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       rejectDrafts,
       interpretationDrafts,
       rowStates,
+      addNotification,
+      setNotificationVisible,
+      intl,
     ],
   );
 

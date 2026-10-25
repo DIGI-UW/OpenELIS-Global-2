@@ -444,13 +444,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Succesfuly saved",
+        message: intl.formatMessage({ id: "save.success" }),
       });
     } else {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Duplicate Calculation Name or Error while saving",
+        message: intl.formatMessage({ id: "error.duplicate.calculationname" }),
       });
     }
   };

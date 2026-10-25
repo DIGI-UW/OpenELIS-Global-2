@@ -33,6 +33,20 @@ public interface ReportQueueQueryDAO {
     boolean isPrinted(Long sampleId, String finalizedStatusId, List<String> excludedStatusIds);
 
     /**
+     * Whether the order is within the criteria's section scope: null section ids
+     * mean the whole lab, an empty list nothing, otherwise an analysis of the order
+     * in one of those sections (BR-9).
+     */
+    boolean isInScope(Long sampleId, ReportQueueCriteria criteria);
+
+    /**
+     * The first result of every released analysis on the given orders whose first
+     * result is numeric, in analysis order, with what the critical range lookup
+     * needs.
+     */
+    List<ReleasedNumericResultRecord> releasedNumericResults(List<Long> sampleIds, String finalizedStatusId);
+
+    /**
      * The facility, ward and requester of one order whether or not anything is
      * released on it, for the row of an order the queue itself does not list.
      */

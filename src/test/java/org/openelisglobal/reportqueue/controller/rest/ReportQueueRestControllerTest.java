@@ -148,6 +148,50 @@ public class ReportQueueRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * FR-3.3: a range whose To comes before its From is refused, not answered with
+     * an empty list.
+     */
+    @Test
+    public void aReversedLabNumberRangeIsRefused() throws Exception {
+        mockMvc.perform(get("/rest/reportQueue").param("labNo", "V1RPT0000009305").param("labNoTo", "V1RPT0000009301")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, admin)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("labRangeReversed"));
+        mockMvc.perform(get("/rest/reportQueue").param("labNo", "V1RPT0000009301").param("labNoTo", "V1RPT0000009305")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, admin)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.rows[0].labNumber").value("V1RPT0000009301"));
+    }
+
+    /**
+     * BR-9: a user whose lab units do not cover the order gets 404 on its detail,
+     * print and archived file.
+     */
+    @Test
+    public void anOrderOutsideTheUsersLabUnitsIsNotFoundOnDetailPrintAndPdf() throws Exception {
+        MvcResult detail = mockMvc
+                .perform(get("/rest/reportQueue/orders/9301").sessionAttr(IActionConstants.USER_SESSION_DATA, admin))
+                .andExpect(status().isOk()).andReturn();
+        mockMvc.perform(post("/rest/reportQueue/print").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sampleId\":9301}").sessionAttr(IActionConstants.USER_SESSION_DATA, admin))
+                .andExpect(status().isOk());
+        detail = mockMvc
+                .perform(get("/rest/reportQueue/orders/9301").sessionAttr(IActionConstants.USER_SESSION_DATA, admin))
+                .andExpect(status().isOk()).andReturn();
+        long versionId = JSON.readTree(detail.getResponse().getContentAsString()).get("versions").get(0).get("id")
+                .asLong();
+
+        UserSessionData withoutLabUnits = new UserSessionData();
+        withoutLabUnits.setSytemUserId(9302);
+        mockMvc.perform(
+                get("/rest/reportQueue/orders/9301").sessionAttr(IActionConstants.USER_SESSION_DATA, withoutLabUnits))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/rest/reportQueue/print").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sampleId\":9301}").sessionAttr(IActionConstants.USER_SESSION_DATA, withoutLabUnits))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rest/reportQueue/versions/" + versionId + "/pdf")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, withoutLabUnits)).andExpect(status().isNotFound());
+    }
+
     @Test
     public void aPatientIdThatIsNotANumberIsRefused() throws Exception {
         mockMvc.perform(get("/rest/reportQueue").param("patientId", "abc")

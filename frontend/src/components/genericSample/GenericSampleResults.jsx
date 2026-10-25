@@ -95,7 +95,7 @@ function GenericSampleResults({
   // Breadcrumb navigation
   const defaultBreadcrumbs = [
     { label: "home.label", link: "/" },
-    { label: "sample.label.generic", link: "/GenericSample/Order" },
+    { label: "menu.genericSample", link: "/GenericSample/Order" },
     { label: "result.entry.label" },
   ];
 

@@ -738,6 +738,30 @@ public class ResultsLoadUtility {
     }
 
     /**
+     * The status a component row of a multi-component analysis shows. The parts are
+     * entered and validated one by one while the analysis stays in technical
+     * acceptance, so each row reports its own part: not tested while it has no
+     * value, finalized once it was validated on its own, technical acceptance while
+     * its value awaits validation. Any other analysis status (not started,
+     * finalized, rejected, cancelled) applies to every part alike.
+     *
+     * @param result the part's top-level result, null when it has none
+     */
+    public static String componentStatusId(String analysisStatusId, Result result) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        if (!statusService.matches(analysisStatusId, AnalysisStatus.TechnicalAcceptance)) {
+            return analysisStatusId;
+        }
+        if (result == null || GenericValidator.isBlankOrNull(result.getValue())) {
+            return statusService.getStatusID(AnalysisStatus.NotStarted);
+        }
+        if (result.getValidatedDate() != null) {
+            return statusService.getStatusID(AnalysisStatus.Finalized);
+        }
+        return analysisStatusId;
+    }
+
+    /**
      * The component an existing result belongs to: via its test_result row's
      * component_id, defaulting to the primary component (NULL component_id rows are
      * legacy rows owned by the primary).
@@ -1100,7 +1124,8 @@ public class ResultsLoadUtility {
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
-        testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
+        testItem.setAnalysisStatusId(component == null ? analysisService.getStatusId(analysis)
+                : componentStatusId(analysisService.getStatusId(analysis), result));
         // Display type selection:
         // - For existing results with a stored non-blank value whose type differs
         // from the test's configured type, prefer the STORED type for display.

@@ -19,7 +19,6 @@ import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,6 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
@@ -47,7 +45,6 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.eqa.service.SampleEQAService;
@@ -87,6 +84,7 @@ import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
 import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.OrderProgressService;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -97,17 +95,12 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
-import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.userrole.service.UserRoleService;
-import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorPool;
@@ -231,13 +224,7 @@ public class OrderSearchRestController extends BaseRestController {
     private PanelService panelService;
 
     @Autowired
-    private UserService userService;
-
-    @Autowired
     private TestSectionService testSectionService;
-
-    @Autowired
-    private UserRoleService userRoleService;
 
     @Autowired
     private VectorSamplingSiteService vectorSamplingSiteService;
@@ -246,11 +233,14 @@ public class OrderSearchRestController extends BaseRestController {
 
     /**
      * Configuration property name (site_information or
-     * SystemConfiguration.properties) that opts a deployment in to scoping the
-     * recent-orders list by the user's test sections. Absent or anything other than
-     * "true" leaves the list unscoped.
+     * SystemConfiguration.properties) that opts a deployment out of scoping the
+     * orders dashboard by the user's lab units. The dashboard is scoped like the
+     * home dashboard unless the property is explicitly "false".
      */
     private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
+
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
 
     @Autowired
     private TestMethodService testMethodService;
@@ -343,7 +333,7 @@ public class OrderSearchRestController extends BaseRestController {
      * @param workflowType clinical, environmental or vector
      * @return the page's orders, the page announcement and the total matched
      * @see #resolveAllowedSectionIds(String) for when the list is narrowed to the
-     *      user's test sections (opt-in, off by default)
+     *      user's lab units (on by default)
      */
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getDashboard(@RequestParam(required = false) Integer page,
@@ -417,7 +407,7 @@ public class OrderSearchRestController extends BaseRestController {
             }
             boolean createdByCurrentUser = currentSysUserId != null && currentSysUserId.equals(sample.getSysUserId());
             if (!allowedSectionIds.isEmpty() && !createdByCurrentUser
-                    && !sampleBelongsToSections(sample, allowedSectionIds)) {
+                    && !sampleLabUnitScopeService.belongsToSections(sample, allowedSectionIds)) {
                 continue;
             }
             if (!searchLower.isEmpty() && !matchesSearch(sample, searchLower)) {
@@ -698,7 +688,8 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber) {
+    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber,
+            HttpServletRequest request) {
 
         if (labNumber == null || labNumber.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
@@ -708,7 +699,7 @@ public class OrderSearchRestController extends BaseRestController {
             // Find the sample by accession number
             Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
 
-            if (sample == null) {
+            if (sample == null || !sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
                 return ResponseEntity.notFound().build();
             }
 
@@ -1854,107 +1845,28 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
-     * The test section IDs the recent-orders list may be narrowed to, or an empty
-     * set meaning "show everything" (the pre-existing behaviour).
+     * The test section IDs the orders dashboard is narrowed to, or an empty set
+     * meaning the whole lab.
      *
      * <p>
-     * Scoping recent orders by test section is opt-in through the
-     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property (a
-     * site_information row or a SystemConfiguration.properties entry), which is
-     * absent by default. Without the opt-in this endpoint keeps returning every
-     * recent order, as it did before section scoping was introduced: with
-     * {@code REQUIRE_LAB_UNIT_AT_LOGIN=true},
-     * {@link UserService#getUserTestSections(String, String)} returns only the
-     * single lab unit chosen at login for non-admins, which would silently collapse
-     * "Recent Orders" to one section for existing clinical deployments.
-     *
-     * <p>
-     * Even when enabled, global administrators and {@code AllLabUnits} users are
-     * never scoped, and neither is a user whose section list came from the login
-     * lab-unit constraint rather than from their own assignments.
-     *
-     * <p>
-     * The returned set is expanded to include child sections of every assigned
-     * section, because analyses are filed under child sections (e.g. "Entomology")
-     * rather than the domain-level parent (e.g. "Vector Surveillance") a user is
-     * assigned to.
+     * The dashboard reads with the same lab-unit scope as the home dashboard and
+     * the order lookups ({@link SampleLabUnitScopeService}). A site can switch the
+     * dashboard back to the whole lab by setting the
+     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property to
+     * {@code false}. Global administrators, {@code AllLabUnits} users and users
+     * whose section comes from the login lab-unit constraint read the whole lab;
+     * assigned sections are expanded to their child sections.
      */
     private Set<String> resolveAllowedSectionIds(String sysUserId) {
-        if (!recentOrderSectionScopingEnabled()) {
+        if (recentOrderSectionScopingDisabled()) {
             return Collections.emptySet();
         }
-        if (isGlobalScopeUser(sysUserId) || isLoginLabUnitConstrained()) {
-            return Collections.emptySet();
-        }
-        List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
-        if (userSections == null || userSections.isEmpty()) {
-            return Collections.emptySet();
-        }
-        Set<String> ids = new HashSet<>();
-        for (IdValuePair section : userSections) {
-            ids.add(section.getId());
-        }
-        List<TestSection> allSections = testSectionService.getAllActiveTestSections();
-        for (TestSection section : allSections) {
-            TestSection parent = section.getParentTestSection();
-            if (parent != null && ids.contains(parent.getId())) {
-                ids.add(section.getId());
-            }
-        }
-        return ids;
+        return sampleLabUnitScopeService.restrictedSectionIds(sysUserId);
     }
 
-    private boolean recentOrderSectionScopingEnabled() {
-        return "true".equalsIgnoreCase(
+    private boolean recentOrderSectionScopingDisabled() {
+        return "false".equalsIgnoreCase(
                 ConfigurationProperties.getInstance().getPropertyValue(RESTRICT_RECENT_ORDERS_PROPERTY));
-    }
-
-    /**
-     * True when lab unit selection is required at login, in which case a
-     * non-admin's resolved section list is the single unit chosen at login rather
-     * than the set of sections they are actually assigned to.
-     */
-    private boolean isLoginLabUnitConstrained() {
-        return ConfigurationProperties.getInstance().isPropertyValueEqual(Property.REQUIRE_LAB_UNIT_AT_LOGIN, "true");
-    }
-
-    /**
-     * True when the user's lab-unit assignments already cover every test section —
-     * a global administrator or a user mapped to {@code AllLabUnits}.
-     */
-    private boolean isGlobalScopeUser(String sysUserId) {
-        if (sysUserId == null) {
-            return false;
-        }
-        if (userRoleService.userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)) {
-            return true;
-        }
-        UserLabUnitRoles labUnitRoles = userService.getUserLabUnitRoles(sysUserId);
-        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) {
-            return false;
-        }
-        return labUnitRoles.getLabUnitRoleMap().stream()
-                .anyMatch(roleMap -> UnifiedSystemUserController.ALL_LAB_UNITS.equals(roleMap.getLabUnit()));
-    }
-
-    /**
-     * Whether any analysis on the sample belongs to one of the allowed sections.
-     * Samples with no analyses yet are treated as belonging everywhere — there is
-     * no section to match against, and hiding them would hide freshly entered
-     * orders.
-     */
-    private boolean sampleBelongsToSections(Sample sample, Set<String> allowedSectionIds) {
-        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
-        if (analyses == null || analyses.isEmpty()) {
-            return true;
-        }
-        for (Analysis analysis : analyses) {
-            String sectionId = analysis.getTestSection() != null ? analysis.getTestSection().getId() : null;
-            if (sectionId != null && allowedSectionIds.contains(sectionId)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

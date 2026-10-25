@@ -97,6 +97,8 @@ const LAB_UNITS = [
 const STATUSES = [
   { id: "4", value: "Not started" },
   { id: "15", value: "Accepted by technician" },
+  { id: "6", value: "Results final" },
+  { id: "7", value: "Not accepted by biologist" },
 ];
 
 const wireServer = (rows: any[]) => {
@@ -271,6 +273,30 @@ describe("OGC-1179 — unified Results worklist", () => {
     expect(resultField().value).toBe("34.2");
   });
 
+  /**
+   * A referral opened on a row rides its save only when it names the reference
+   * laboratory and the reason; an incomplete one is refused rather than
+   * silently dropped from the save.
+   */
+  it("refuses to save a row whose referral is missing its laboratory", async () => {
+    await renderPage();
+    fireEvent.click(screen.getAllByRole("button", { name: /Expand row/i })[0]);
+    fireEvent.click(screen.getAllByText("Refer this test")[0]);
+    fireEvent.change(
+      document.querySelector('[id^="referral-reason-"]') as HTMLSelectElement,
+      { target: { value: "1" } },
+    );
+
+    fireEvent.click(screen.getAllByTestId("save-button")[0]);
+
+    expect(
+      utilsMock.postToOpenElisServerJsonResponse.mock.calls.some(
+        (call: any[]) =>
+          String(call[0]).includes("/rest/results-entry/analysis/"),
+      ),
+    ).toBe(false);
+  });
+
   /** #6 — a stale save offers a refresh the user can actually press. */
   it("gives the stale-save notice a working Refresh action", async () => {
     await renderPage();
@@ -308,10 +334,10 @@ describe("OGC-1179 — unified Results worklist", () => {
 
 /**
  * A multi-component analysis renders one row per component sharing an
- * analysisId (FR-A′1). The save response carries analysis-level facts — the
- * version token and the status — which every row of that analysis must adopt,
- * and row-level facts, which only the saved row may. A sibling being edited at
- * the same time must come through untouched.
+ * analysisId (FR-A′1). The save response carries the version token, which
+ * every row of that analysis must adopt, and row-level facts, the status among
+ * them since each part carries its own, which only the saved row may. A
+ * sibling being edited at the same time must come through untouched.
  */
 describe("OGC-1179 — a save and its sibling component rows", () => {
   const componentRow = (componentId: string, value: string) => ({
@@ -335,8 +361,8 @@ describe("OGC-1179 — a save and its sibling component rows", () => {
     window.localStorage.clear();
   });
 
-  it("leaves a sibling's unsaved edit alone while adopting the analysis status", async () => {
-    await renderPage([componentRow("n2", "10"), componentRow("e", "20")]);
+  it("leaves a sibling's unsaved edit and its own status alone", async () => {
+    await renderPage([componentRow("n2", "10"), componentRow("e", "")]);
 
     const field = (componentId: string) =>
       document.getElementById(
@@ -366,7 +392,47 @@ describe("OGC-1179 — a save and its sibling component rows", () => {
 
     // the sibling kept exactly what was typed into it
     expect(field("e").value).toBe("21");
-    // and the analysis-level status reached both rows
-    expect(screen.getAllByText("Accepted by technician").length).toBe(2);
+    // the saved part took the status the save reported; the unsaved part
+    // kept its own
+    expect(screen.getAllByText("Accepted by technician").length).toBe(1);
+    expect(screen.getAllByText("Not started").length).toBe(1);
+  });
+
+  /**
+   * A save can move the whole test, here back from a retest, so every part
+   * takes the status the save reports for it: a part with a value awaits
+   * validation, a validated part stays final, an empty part is not started.
+   */
+  it("gives every part the status the save reports for it", async () => {
+    await renderPage([
+      { ...componentRow("n2", "10"), analysisStatusId: "7" },
+      { ...componentRow("e", "20"), analysisStatusId: "7" },
+      { ...componentRow("primary", ""), analysisStatusId: "7" },
+    ]);
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({
+          resultId: "71",
+          analysisStatusId: "15",
+          analysisLastupdated: "1700000009999",
+          resultValue: "11.00",
+          rawResultValue: "11",
+          componentStatusIds: { n2: "15", e: "6", primary: "4" },
+        }),
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Edit/i })[0]);
+    fireEvent.change(
+      document.getElementById("unifiedResultValue-60-n2") as HTMLInputElement,
+      { target: { value: "11" } },
+    );
+    fireEvent.click(screen.getAllByTestId("save-button")[0]);
+
+    expect(screen.getAllByText("Accepted by technician").length).toBe(1);
+    expect(screen.getAllByText("Results final").length).toBe(1);
+    expect(screen.getAllByText("Not started").length).toBe(1);
+    expect(
+      screen.queryByText("Not accepted by biologist"),
+    ).not.toBeInTheDocument();
   });
 });

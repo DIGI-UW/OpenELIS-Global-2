@@ -48,7 +48,7 @@ async function sampleTypeWithTest(page: Page) {
       )
     ).json();
     const test = (catalog.tests || []).find((t) => t.name);
-    if (test) return { typeId: String(type.id), test };
+    if (test) return { typeId: String(type.id), typeName: type.value, test };
   }
   throw new Error("No sample type with a test");
 }
@@ -128,7 +128,11 @@ test.describe("Add Order added samples (OGC-1406)", () => {
     page,
   }) => {
     const lastName = await seedPatient(page);
-    const { typeId, test: orderTest } = await sampleTypeWithTest(page);
+    const {
+      typeId,
+      typeName,
+      test: orderTest,
+    } = await sampleTypeWithTest(page);
     await openSampleStep(page, lastName);
 
     await chooseSampleType(page, 0, typeId);
@@ -140,8 +144,8 @@ test.describe("Add Order added samples (OGC-1406)", () => {
     await chooseSampleType(page, 1, typeId);
     await fillOrderStep(page);
 
-    await expect(page.getByTestId("order-sample-missing-tests")).toHaveText(
-      /Sample 2 has a sample type but no test/,
+    await expect(page.getByTestId("order-sample-missing-tests")).toContainText(
+      `Sample 2: ${typeName} has no test`,
     );
     await expect(page.getByRole("button", { name: "Submit" })).toBeDisabled();
   });

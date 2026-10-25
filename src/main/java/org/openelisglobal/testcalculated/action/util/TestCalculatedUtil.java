@@ -266,7 +266,9 @@ public class TestCalculatedUtil {
     private Analysis createCalculatedResult(ResultCalculation resultCalculation, ResultSet resultSet,
             Calculation calculation, String value, String systemUserId) {
         Test test = testService.get(calculation.getTestId().toString());
-        String resultType = testService.getResultType(test);
+        String resultType = test == null ? null
+                : ruleResultScope.resultTypeForComponent(test.getId(), calculation.getComponentId(),
+                        testService.getResultType(test));
         Analysis analysis = null;
         if (test != null) {
             if (resultCalculation.getOperandResultMap().containsValue(null)) {
@@ -292,7 +294,7 @@ public class TestCalculatedUtil {
             if (testResult.getSignificantDigits() != null) {
                 result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
             }
-            result.setResultType(testService.getResultType(test));
+            result.setResultType(resultType);
             result.setSysUserId(systemUserId);
             Boolean resultCalculated = false;
             if (value != null) {
@@ -360,7 +362,7 @@ public class TestCalculatedUtil {
             String systemUserId, String externalNote) {
         List<Note> notes = new ArrayList<>();
         Note note = noteService.createSavableNote(newAnalysis, NoteType.INTERNAL,
-                "Result Succesfully Calculated From Calculation Rule :" + calculatioName, CALCULATION_SUBJECT,
+                "Result Successfully Calculated From Calculation Rule :" + calculatioName, CALCULATION_SUBJECT,
                 systemUserId);
         if (!noteService.duplicateNoteExists(note)) {
             notes.add(note);

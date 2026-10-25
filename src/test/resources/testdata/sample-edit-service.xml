@@ -39,6 +39,10 @@
         lastupdated="2024-01-01 00:00:00" />
     <localization_value id="3" localization_id="3"
         locale="en" value="Blood" last_updated="2024-01-01 00:00:00" />
+    <localization id="4" description="Urea Test"
+        lastupdated="2024-01-01 00:00:00" />
+    <localization_value id="4" localization_id="4"
+        locale="en" value="Urea" last_updated="2024-01-01 00:00:00" />
 
     <!-- Person for Patient -->
     <person id="1" last_name="Patient" first_name="Test"
@@ -95,6 +99,11 @@
     <test id="1" name="Glucose" description="Serum Glucose"
         test_section_id="1" is_active="Y" is_reportable="Y"
         name_localization_id="2" guid="glucose-test-guid-001"
+        lastupdated="2024-02-12 10:00:00" />
+    <!-- A second test the sample item can take (not ordered on it) -->
+    <test id="2" name="Urea" description="Serum Urea"
+        test_section_id="1" is_active="Y" is_reportable="Y"
+        name_localization_id="4" guid="urea-test-guid-002"
         lastupdated="2024-02-12 10:00:00" />
 
     <!-- Analysis with NotStarted status -->

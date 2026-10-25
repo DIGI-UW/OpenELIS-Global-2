@@ -33,6 +33,14 @@ public class DictionaryLoincSyncAndBackfillTest extends BaseWebContextSensitiveT
             + " AND NOT EXISTS (SELECT 1 FROM clinlims.dictionary_terminology_mapping m"
             + " WHERE m.dictionary_id = d.id AND m.source = 'LOINC' AND m.code = trim(d.loinc_code))";
 
+    /**
+     * The repair statement, run verbatim
+     * (020-terminology-mapping-version-backfill): the backfill above wrote no
+     * last_updated, the @Version column every Hibernate update is keyed on.
+     */
+    private static final String REPAIR_SQL = "UPDATE clinlims.dictionary_terminology_mapping"
+            + " SET last_updated = COALESCE(lastupdated, now()) WHERE last_updated IS NULL";
+
     private static final long LEGACY_ONLY = 96501L;
     private static final long NO_LOINC = 96502L;
     private static final long SYNC_TARGET = 96503L;
@@ -86,6 +94,69 @@ public class DictionaryLoincSyncAndBackfillTest extends BaseWebContextSensitiveT
         assertEquals(1, mappingService.getActiveByDictionaryId(String.valueOf(LEGACY_ONLY)).size());
     }
 
+    /**
+     * 020 also lets the version column default on every mapping table, so a later
+     * SQL insert that omits it cannot recreate the gap the repair closes.
+     */
+    @Test
+    public void everyTerminologyMappingTableDefaultsItsVersionColumn() {
+        List<String> withoutDefault = new ArrayList<>();
+        for (String table : List.of("dictionary_terminology_mapping", "test_terminology_mapping",
+                "panel_terminology_mapping", "sample_type_terminology_mapping")) {
+            String columnDefault = jdbc.queryForObject(
+                    "SELECT column_default FROM information_schema.columns WHERE table_schema = 'clinlims'"
+                            + " AND table_name = ? AND column_name = 'last_updated'",
+                    String.class, table);
+            if (columnDefault == null || !columnDefault.contains("now()")) {
+                withoutDefault.add(table);
+            }
+        }
+        assertEquals("mapping tables whose last_updated has no default", List.of(), withoutDefault);
+    }
+
+    @Test
+    public void repairStampsTheVersionOfEveryBackfilledMapping() {
+        insertMappingWithoutVersion(LEGACY_ONLY, "LA6576-8");
+        assertEquals(Integer.valueOf(1), countWithoutVersion(LEGACY_ONLY));
+
+        jdbc.execute(REPAIR_SQL);
+
+        assertEquals(Integer.valueOf(0), countWithoutVersion(LEGACY_ONLY));
+    }
+
+    @Test
+    public void aBackfilledMappingCanBeUpdatedThroughTheServiceAfterTheRepair() {
+        insertMappingWithoutVersion(LEGACY_ONLY, "LA6576-8");
+        jdbc.execute(REPAIR_SQL);
+        String answerId = String.valueOf(LEGACY_ONLY);
+
+        mappingService.syncLegacyLoinc(answerId, "LA6576-8", "1");
+        mappingService.saveMappingsForDictionary(answerId, List.of(desired("LOINC", "LA6576-8", "SAME_AS", "Positive")),
+                "1");
+
+        List<DictionaryTerminologyMapping> active = mappingService.getActiveByDictionaryId(answerId);
+        assertEquals(1, active.size());
+        assertEquals("Positive", active.get(0).getDisplayName());
+        assertEquals(Integer.valueOf(0), countWithoutVersion(LEGACY_ONLY));
+    }
+
+    /**
+     * A row as the 129 backfill left it on an upgraded database: the SQL named
+     * lastupdated only, so the @Version column stayed NULL.
+     */
+    private void insertMappingWithoutVersion(long dictionaryId, String code) {
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary_terminology_mapping"
+                        + " (id, dictionary_id, source, code, relationship, is_active, lastupdated, last_updated)"
+                        + " VALUES (gen_random_uuid()::varchar, ?, 'LOINC', ?, 'SAME_AS', 'Y', now(), NULL)",
+                dictionaryId, code);
+    }
+
+    private Integer countWithoutVersion(long dictionaryId) {
+        return jdbc.queryForObject("SELECT count(*) FROM clinlims.dictionary_terminology_mapping"
+                + " WHERE dictionary_id = ? AND last_updated IS NULL", Integer.class, dictionaryId);
+    }
+
     @Test
     public void aCodeWrittenToTheLegacyColumnBecomesTheAnswersLoincMapping() {
         String answerId = String.valueOf(SYNC_TARGET);
@@ -123,10 +194,15 @@ public class DictionaryLoincSyncAndBackfillTest extends BaseWebContextSensitiveT
     }
 
     private DictionaryTerminologyMapping desired(String source, String code, String relationship) {
+        return desired(source, code, relationship, null);
+    }
+
+    private DictionaryTerminologyMapping desired(String source, String code, String relationship, String displayName) {
         DictionaryTerminologyMapping mapping = new DictionaryTerminologyMapping();
         mapping.setSource(source);
         mapping.setCode(code);
         mapping.setRelationship(relationship);
+        mapping.setDisplayName(displayName);
         return mapping;
     }
 

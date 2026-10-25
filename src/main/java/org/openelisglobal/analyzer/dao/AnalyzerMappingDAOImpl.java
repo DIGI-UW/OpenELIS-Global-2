@@ -20,6 +20,14 @@ public class AnalyzerMappingDAOImpl extends BaseDAOImpl<AnalyzerMapping, String>
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<AnalyzerMapping> get(String id) {
+        String hql = "FROM AnalyzerMapping m JOIN FETCH m.analyzer WHERE m.id = :id";
+        return entityManager.unwrap(Session.class).createQuery(hql, AnalyzerMapping.class).setParameter("id", id)
+                .getResultList().stream().findFirst();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<AnalyzerMapping> findLatestByAnalyzerId(String analyzerId) {
         if (analyzerId == null || analyzerId.trim().isEmpty()) {
             return Optional.empty();
@@ -43,5 +51,19 @@ public class AnalyzerMappingDAOImpl extends BaseDAOImpl<AnalyzerMapping, String>
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         query.setParameter("profileId", profileId.trim());
         return query.getResultList();
+    }
+
+    @Override
+    public void deleteAnalyzerWithItsMappings(String analyzerId) {
+        Session session = entityManager.unwrap(Session.class);
+        String id = analyzerId.trim();
+        String mappings = "SELECT m.id FROM AnalyzerMapping m WHERE m.analyzer.id = :id";
+        for (String hql : List.of("UPDATE Analyzer SET mapping = NULL WHERE id = :id",
+                "DELETE FROM AnalyzerMappingConfirmation WHERE mapping.id IN (" + mappings + ")",
+                "DELETE FROM AnalyzerMappingResult WHERE mapping.id IN (" + mappings + ")",
+                "DELETE FROM AnalyzerMappingTest WHERE mapping.id IN (" + mappings + ")",
+                "DELETE FROM AnalyzerMapping WHERE analyzer.id = :id", "DELETE FROM Analyzer WHERE id = :id")) {
+            session.createQuery(hql).setParameter("id", id).executeUpdate();
+        }
     }
 }

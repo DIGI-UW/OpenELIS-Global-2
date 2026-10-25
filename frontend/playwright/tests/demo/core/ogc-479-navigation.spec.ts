@@ -102,13 +102,14 @@ test("Reporting navigation retains the draft and exposes configurable menus", as
     .getByTestId("menu-settings-menu_reports")
     .getByRole("button", { name: "Reports", exact: true })
     .click();
+  // The instance file seeded this menu's icon; it can still be edited here.
   const managed = page.getByTestId("menu-fields-menu_reports");
-  await expect(
-    managed.getByRole("combobox", { name: "Icon", exact: true }),
-  ).toBeDisabled();
-  await expect(
-    managed.getByText("Managed by instance configuration"),
-  ).toHaveCount(2);
+  const seededIcon = managed.getByRole("combobox", {
+    name: "Icon",
+    exact: true,
+  });
+  await expect(seededIcon).toBeEnabled();
+  await expect(seededIcon).toHaveValue("reports");
   await managed.scrollIntoViewIfNeeded();
   await demo.evidence("navigation-06-instance-setting");
   await demo.chapter({

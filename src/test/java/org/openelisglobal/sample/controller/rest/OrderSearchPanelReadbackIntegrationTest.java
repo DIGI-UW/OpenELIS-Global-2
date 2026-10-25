@@ -112,7 +112,8 @@ public class OrderSearchPanelReadbackIntegrationTest extends BaseWebContextSensi
     }
 
     private Map<String, Object> search(String labNumber) {
-        ResponseEntity<Map<String, Object>> response = orderSearchRestController.searchOrder(labNumber);
+        ResponseEntity<Map<String, Object>> response = orderSearchRestController.searchOrder(labNumber,
+                new MockHttpServletRequest());
         assertEquals(HttpStatus.OK, response.getStatusCode());
         return response.getBody();
     }

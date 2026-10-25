@@ -316,6 +316,54 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual({self.sha, "previous"}, {path.name for path in releases.iterdir()})
         self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
 
+    def test_a_release_the_deploy_user_cannot_delete_is_removed_through_docker_and_never_fails_the_deploy(self):
+        """Run 39466371613 attempt 4 passed readiness and the analyzer smoke, then failed
+        with "[Errno 13] Permission denied: 'backend'" while pruning an old release."""
+        releases = self.root / "releases"
+        (releases / "old").mkdir(parents=True)
+        (releases / "previous").mkdir()
+        (self.target.parent / "target.json").write_text(json.dumps({"release": str(releases / "previous")}))
+        real_rmtree = deployment.shutil.rmtree
+
+        def refuse_old(path, *args, **kwargs):
+            if Path(path).name == "old":
+                raise PermissionError(13, "Permission denied", "backend")
+            return real_rmtree(path, *args, **kwargs)
+
+        self.ready_health()
+        with patch.object(deployment.shutil, "rmtree", side_effect=refuse_old):
+            self.deploy()
+
+        removal = [args for args in self.commands if args[:3] == ["docker", "run", "--rm"]]
+        self.assertEqual(1, len(removal))
+        self.assertIn(f"{releases}:/releases", removal[0])
+        self.assertEqual(["rm", "-rf", "/releases/old"], removal[0][-3:])
+        self.assertTrue((self.target.parent / "target.json").is_file())
+        self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
+
+    def test_a_release_docker_cannot_delete_either_is_left_with_a_warning(self):
+        releases = self.root / "releases"
+        (releases / "old").mkdir(parents=True)
+        self.ready_health()
+
+        def refuse_docker_removal(args, cwd, capture=False, **kwargs):
+            if args[:3] == ["docker", "run", "--rm"]:
+                raise deployment.subprocess.CalledProcessError(1, args)
+            return self.command(args, cwd, capture, **kwargs)
+
+        real_rmtree = deployment.shutil.rmtree
+
+        def refuse_old(path, *args, **kwargs):
+            if Path(path).name == "old":
+                raise PermissionError(13, "Permission denied", "backend")
+            return real_rmtree(path, *args, **kwargs)
+
+        with patch.object(deployment.shutil, "rmtree", side_effect=refuse_old):
+            self.deploy(run=refuse_docker_removal)
+
+        self.assertTrue((self.target.parent / "target.json").is_file())
+        self.assertIn("could not remove old release", (self.diagnostics / "prune-warnings.txt").read_text())
+
     def test_site_settings_read_the_env_file_when_compose_cannot_list_it(self):
         (self.root / ".env").write_text(
             "# site settings\nexport TEST_USER=qa-admin\nTEST_PASS='qa pass'\nASTM_SIMULATOR_HTTP_PORT=\"9085\"\n")
@@ -356,7 +404,8 @@ class AnalyzerDeliveryTest(unittest.TestCase):
             return {"status": "completed", "pushed": 1}
         if url.endswith("/analyzer/analyzers"):
             return {"analyzers": [{"id": 7, "name": "QuantStudio 5"},
-                                  {"id": 2, "name": deployment.SMOKE_ANALYZER}]}
+                                  {"id": 2, "name": deployment.SMOKE_ANALYZER, "status": "ACTIVE",
+                                   "profileId": "cepheid-genexpert-astm", "bridgeConnectionId": "c-2"}]}
         if url.endswith("/AnalyzerResults?id=2"):
             return {"resultList": self.rows if self.on_page == "1" else [],
                     "paging": {"searchTermToPage": [{"id": "DEV01900000000000011", "value": self.on_page}]
@@ -374,7 +423,7 @@ class AnalyzerDeliveryTest(unittest.TestCase):
 
         report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
                                                      http=self.http, sleep=arrive_on_second_poll, timeout=5)
-        push = self.calls[0]
+        push = next(call for call in self.calls if call[0] == "POST")
         self.assertEqual(("POST", "http://mock/simulate/fixture/genexpert_astm/hivvl/quantified",
                           {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
                            "sender_id": "OE2-TEST-GENEXPERT"}), push)
@@ -398,12 +447,29 @@ class AnalyzerDeliveryTest(unittest.TestCase):
     def test_mock_that_did_not_push_fails_before_polling(self):
         def refused(method, url, body=None):
             self.calls.append((method, url, body))
+            if url.endswith("/analyzer/analyzers"):
+                return self.http(method, url, body)
             return {"status": "failed", "pushed": 0, "error": "connection refused"}
 
         with self.assertRaisesRegex(RuntimeError, "connection refused"):
             deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
                                                 http=refused, sleep=lambda _s: None, timeout=5)
-        self.assertEqual(1, len(self.calls))
+        self.assertFalse(any("AnalyzerResults" in call[1] for call in self.calls))
+
+    def test_an_inactive_unconnected_smoke_analyzer_is_named_before_anything_is_sent(self):
+        """Testing kept analyzer rows from before profile pins: INACTIVE, no profile, no Bridge
+        connection. The smoke used to push into them and time out with an empty review list."""
+        def legacy(method, url, body=None):
+            self.calls.append((method, url, body))
+            if url.endswith("/analyzer/analyzers"):
+                return {"analyzers": [{"id": "2", "name": deployment.SMOKE_ANALYZER, "status": "INACTIVE",
+                                       "profileId": "", "bridgeConnectionId": None}]}
+            raise AssertionError(url)
+
+        with self.assertRaisesRegex(RuntimeError, "status INACTIVE, profile none, Bridge connection none"):
+            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                http=legacy, sleep=lambda _s: None, timeout=5)
+        self.assertEqual([("GET", "https://oe/rest/analyzer/analyzers", None)], self.calls)
 
 
 if __name__ == "__main__":

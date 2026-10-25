@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Button,
   Checkbox,
   NumberInput,
   PasswordInput,
@@ -153,6 +154,7 @@ const AnalyzerConnectionFields = ({
   changedSecrets,
   submitAttempted,
   onChange,
+  suggestions = {},
 }) => {
   const intl = useIntl();
 
@@ -269,15 +271,39 @@ const AnalyzerConnectionFields = ({
             );
           }
 
+          const offered = suggestions[field.key] || [];
           return (
-            <TextInput
-              {...common}
-              key={field.key}
-              labelText={label}
-              helperText={helperText}
-              value={values[field.key] ?? ""}
-              onChange={(event) => onChange(field, event.target.value)}
-            />
+            <div key={field.key}>
+              <TextInput
+                {...common}
+                labelText={label}
+                helperText={helperText}
+                value={values[field.key] ?? ""}
+                onChange={(event) => onChange(field, event.target.value)}
+              />
+              {offered.length > 0 && (
+                <div
+                  className="analyzer-setup__connect-suggestions"
+                  data-testid={`analyzer-connection-${field.key}-received`}
+                >
+                  <span>
+                    {intl.formatMessage({
+                      id: "analyzer.connection.field.received",
+                    })}
+                  </span>
+                  {offered.map((value) => (
+                    <Button
+                      key={value}
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => onChange(field, value)}
+                    >
+                      {value}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })}
     </div>

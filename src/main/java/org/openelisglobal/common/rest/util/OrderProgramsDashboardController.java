@@ -9,6 +9,7 @@ import org.openelisglobal.common.rest.provider.form.OrderProgramsDashboardForm;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.bean.DashboardSummary;
 import org.openelisglobal.program.service.OrderProgramsDisplayService;
+import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
 import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.valueholder.OrderProgramDisplayItem;
 import org.openelisglobal.program.valueholder.ProgramSample;
@@ -31,6 +32,9 @@ public class OrderProgramsDashboardController extends BaseRestController {
     @Autowired
     private SampleService sampleService;
 
+    @Autowired
+    private ProgramSampleLabUnitScope programSampleLabUnitScope;
+
     private final OrderProgramsDashboardPaging paging = new OrderProgramsDashboardPaging();
 
     @GetMapping(value = "/programSamplesList", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -45,9 +49,10 @@ public class OrderProgramsDashboardController extends BaseRestController {
 
         if (requestedPage == null || requestedPage.isBlank()) {
 
-            List<ProgramSample> samples = (filter != null && !filter.isEmpty())
-                    ? programSampleService.getProgramSamplesByAccessionNumberOrProgramName(filter)
-                    : programSampleService.getAll();
+            List<ProgramSample> samples = programSampleLabUnitScope.visible(getSysUserId(request),
+                    (filter != null && !filter.isEmpty())
+                            ? programSampleService.getProgramSamplesByAccessionNumberOrProgramName(filter)
+                            : programSampleService.getAll());
 
             orderPrograms = samples.stream().map(this::convertToOrderPrograms).toList();
 
@@ -71,7 +76,9 @@ public class OrderProgramsDashboardController extends BaseRestController {
     }
 
     @GetMapping(value = "/programSample/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<OrderProgramDisplayItem> getProgramSampleDisplayItem(@PathVariable int id) {
+    public ResponseEntity<OrderProgramDisplayItem> getProgramSampleDisplayItem(@PathVariable int id,
+            HttpServletRequest request) {
+        programSampleLabUnitScope.requireVisible(getSysUserId(request), programSampleService.get(id));
         OrderProgramDisplayItem psdi = orderProgramsDisplayService.getOrderProgramById(id);
         return ResponseEntity.ok(psdi);
     }

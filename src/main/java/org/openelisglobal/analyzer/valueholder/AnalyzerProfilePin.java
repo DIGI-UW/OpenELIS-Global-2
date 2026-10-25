@@ -1,6 +1,10 @@
 package org.openelisglobal.analyzer.valueholder;
 
-/** The exact Bridge profile revision an analyzer's mapping is pinned to. */
+/**
+ * The Bridge profile revision an analyzer's mapping is pinned to. A pin is a
+ * profile and a revision; its fingerprint is the content last seen, a change
+ * detector that never refuses.
+ */
 public final class AnalyzerProfilePin {
 
     private final String profileId;
@@ -23,5 +27,13 @@ public final class AnalyzerProfilePin {
 
     public String getProfileFingerprint() {
         return profileFingerprint;
+    }
+
+    /**
+     * Whether this pin names the given revision, whatever content either side last
+     * saw.
+     */
+    public boolean names(String otherProfileId, int otherRevision) {
+        return profileId != null && profileId.equals(otherProfileId) && profileRevision == otherRevision;
     }
 }

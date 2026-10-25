@@ -6,7 +6,40 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../../../languages/en.json";
-import ReportPrintQueue from "../ReportPrintQueue";
+import ReportPrintQueue, {
+  isRangeReversed,
+  requesterOptionsByName,
+} from "../ReportPrintQueue";
+
+describe("ReportPrintQueue helpers", () => {
+  it("orders a lab number range as the server does, as plain text", () => {
+    expect(isRangeReversed("DEV9", "DEV10")).toBe(true);
+    expect(isRangeReversed("DEV10", "DEV9")).toBe(false);
+    expect(isRangeReversed("V1RPT0000009305", "V1RPT0000009301")).toBe(true);
+    expect(isRangeReversed("V1RPT0000009301", "V1RPT0000009301")).toBe(false);
+    expect(isRangeReversed("V1RPT0000009301", "")).toBe(false);
+  });
+
+  it("offers one requester per name carrying every record's id", () => {
+    const page = (from, to) =>
+      Array.from({ length: to - from }, (_, i) => ({
+        personId: String(from + i),
+        displayName: "Jam, Jim",
+      }));
+    const options = requesterOptionsByName([
+      ...page(1, 201),
+      ...page(201, 250),
+      { personId: "900", displayName: "Mek, Paul" },
+      { personId: "5", displayName: "Jam, Jim" },
+    ]);
+    expect(options.map((option) => option.text)).toEqual([
+      "Jam, Jim",
+      "Mek, Paul",
+    ]);
+    expect(options[0].ids).toHaveLength(249);
+    expect(options[1].ids).toEqual(["900"]);
+  });
+});
 
 const MOCK_PAGE = {
   rows: [
@@ -45,9 +78,28 @@ const MOCK_PAGE = {
       version: 3,
       legacy: false,
       nothingReleased: false,
+      awaitingValidation: true,
+    },
+    {
+      sampleId: 9303,
+      labNumber: "V1RPT0000009303",
+      patientName: "Tau, Grace",
+      patientCode: "PAT-9303",
+      facility: null,
+      ward: null,
+      requester: null,
+      released: null,
+      releasedCount: 0,
+      totalCount: 2,
+      state: "PARTIAL",
+      printStatus: "PRINTED",
+      critical: false,
+      version: 1,
+      legacy: false,
+      nothingReleased: true,
     },
   ],
-  total: 2,
+  total: 3,
   page: 1,
   pageSize: 20,
   toPrint: 1,
@@ -87,11 +139,14 @@ const MOCK_DETAIL = {
       changeSummary: null,
       releasedCount: 1,
       totalCount: 2,
-      sha256: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+      sha256:
+        "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
       archived: true,
       legacy: false,
       archiveFailed: false,
-      reprints: [{ printedAt: "2026-10-02T10:00:00+03:00", printedBy: "Ben Okello" }],
+      reprints: [
+        { printedAt: "2026-10-02T10:00:00+03:00", printedBy: "Ben Okello" },
+      ],
     },
   ],
 };
@@ -135,7 +190,11 @@ vi.mock("../../../patient/SearchPatientForm", () => ({
     <button
       type="button"
       onClick={() =>
-        getSelectedPatient({ patientPK: "77", lastName: "Kila", firstName: "Mary" })
+        getSelectedPatient({
+          patientPK: "77",
+          lastName: "Kila",
+          firstName: "Mary",
+        })
       }
     >
       pick-patient
@@ -149,14 +208,18 @@ vi.mock("../../../common/PageBreadCrumb", () => ({
 
 vi.mock("../../../common/CustomLabNumberInput", () => ({
   default: (props) => (
-    <input
-      id={props.id}
-      name={props.name}
-      aria-label={props.labelText}
-      value={props.value}
-      onChange={(event) => props.onChange(event, event.target.value)}
-      onKeyDown={props.onKeyDown}
-    />
+    <>
+      <input
+        id={props.id}
+        name={props.name}
+        aria-label={props.labelText}
+        aria-invalid={props.invalid ? "true" : undefined}
+        value={props.value}
+        onChange={(event) => props.onChange(event, event.target.value)}
+        onKeyDown={props.onKeyDown}
+      />
+      {props.invalid && <span>{props.invalidText}</span>}
+    </>
   ),
 }));
 
@@ -179,70 +242,124 @@ describe("ReportPrintQueue", () => {
 
   it("loads the queue on open without a search button and shows state, print status and tiles", async () => {
     renderPage();
-    expect(screen.getByRole("heading", { name: "Report Print Queue" })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("queue-row-V1RPT0000009301")).toBeInTheDocument());
+    expect(
+      screen.getByRole("heading", { name: "Report Print Queue" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009301"),
+      ).toBeInTheDocument(),
+    );
     expect(requests[0]).toBe("/rest/reportQueue/preferences");
-    expect(requests[1]).toMatch(/^\/rest\/reportQueue\?.*window=7d.*pageSize=20/);
-    expect(requests.filter((url) => url.startsWith("/rest/reportQueue?"))).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: /^Search$/ })).not.toBeInTheDocument();
+    expect(requests[1]).toMatch(
+      /^\/rest\/reportQueue\?.*window=7d.*pageSize=20/,
+    );
+    expect(
+      requests.filter((url) => url.startsWith("/rest/reportQueue?")),
+    ).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: /^Search$/ }),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("state-9301")).toHaveTextContent("Partial 2/3");
-    expect(screen.getByTestId("print-status-9301")).toHaveTextContent("Unprinted");
+    expect(screen.getByTestId("print-status-9301")).toHaveTextContent(
+      "Unprinted",
+    );
     expect(screen.getByText("Critical")).toBeInTheDocument();
     expect(screen.getByTestId("state-9302")).toHaveTextContent("Amended");
-    expect(screen.getByTestId("print-status-9302")).toHaveTextContent("Printed");
+    expect(screen.getByTestId("print-status-9302")).toHaveTextContent(
+      "Printed",
+    );
     expect(screen.getByText("v3")).toBeInTheDocument();
-    expect(screen.getByText("Not printed")).toBeInTheDocument();
+    expect(screen.getByText("Not issued")).toBeInTheDocument();
     expect(screen.getByTestId("tile-to-print")).toHaveTextContent("1");
     expect(screen.getByTestId("tile-amended-to-print")).toHaveTextContent("0");
     expect(screen.getByText("Kila, Mary")).toBeInTheDocument();
-    expect(screen.getByText("Port Moresby General Hospital / Ward 4")).toBeInTheDocument();
+    expect(
+      screen.getByText("Port Moresby General Hospital / Ward 4"),
+    ).toBeInTheDocument();
   });
 
   it("applies a lab number lookup on Enter, shows the active search strip and clears it", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("queue-row-V1RPT0000009301")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009301"),
+      ).toBeInTheDocument(),
+    );
     const input = screen.getByLabelText("Lab Number");
     fireEvent.change(input, { target: { value: "V1RPT0000009301" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() =>
-      expect(requests.some((url) => url.includes("labNo=V1RPT0000009301"))).toBe(true),
+      expect(
+        requests.some((url) => url.includes("labNo=V1RPT0000009301")),
+      ).toBe(true),
     );
-    expect(screen.getByTestId("active-search")).toHaveTextContent("Lab No: V1RPT0000009301");
-    expect(screen.getByRole("button", { name: "Clear search" })).toBeInTheDocument();
+    expect(screen.getByTestId("active-search")).toHaveTextContent(
+      "Lab No: V1RPT0000009301",
+    );
+    expect(
+      screen.getByRole("button", { name: "Clear search" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
-    await waitFor(() => expect(screen.queryByTestId("active-search")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByTestId("active-search")).not.toBeInTheDocument(),
+    );
   });
 
   it("looks up every order of a chosen patient", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("queue-row-V1RPT0000009301")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009301"),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Search by patient" }));
     fireEvent.click(screen.getByText("pick-patient"));
-    await waitFor(() => expect(requests.some((url) => url.includes("patientId=77"))).toBe(true));
-    expect(screen.getByTestId("active-search")).toHaveTextContent("Patient: Kila, Mary");
+    await waitFor(() =>
+      expect(requests.some((url) => url.includes("patientId=77"))).toBe(true),
+    );
+    expect(screen.getByTestId("active-search")).toHaveTextContent(
+      "Patient: Kila, Mary",
+    );
   });
 
   it("prints a row through the queue endpoint, opens the PDF and reloads", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("print-V1RPT0000009301")).toBeInTheDocument());
-    const before = requests.filter((url) => url.startsWith("/rest/reportQueue?")).length;
+    await waitFor(() =>
+      expect(screen.getByTestId("print-V1RPT0000009301")).toBeInTheDocument(),
+    );
+    const before = requests.filter((url) =>
+      url.startsWith("/rest/reportQueue?"),
+    ).length;
     fireEvent.click(screen.getByTestId("print-V1RPT0000009301"));
     await waitFor(() =>
-      expect(requests).toContain('POST /rest/reportQueue/print {"sampleId":9301}'),
+      expect(requests).toContain(
+        'POST /rest/reportQueue/print {"sampleId":9301}',
+      ),
     );
     expect(window.open).toHaveBeenCalledWith("blob:report", "_blank");
     await waitFor(() =>
-      expect(requests.filter((url) => url.startsWith("/rest/reportQueue?")).length).toBe(before + 1),
+      expect(
+        requests.filter((url) => url.startsWith("/rest/reportQueue?")).length,
+      ).toBe(before + 1),
     );
-    expect(screen.getByText("Printed version 1 of V1RPT0000009301")).toBeInTheDocument();
+    expect(
+      screen.getByText("Printed version 1 of V1RPT0000009301"),
+    ).toBeInTheDocument();
   });
 
   it("loads the row detail on expand with tests and the version history", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("queue-row-V1RPT0000009302")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009302"),
+      ).toBeInTheDocument(),
+    );
     const expanders = screen.getAllByRole("button", { name: /expand/i });
     fireEvent.click(expanders[1]);
-    await waitFor(() => expect(screen.getByTestId("history")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId("history")).toBeInTheDocument(),
+    );
     expect(requests).toContain("/rest/reportQueue/orders/9302");
     expect(screen.getByText("7.1 mmol/L")).toBeInTheDocument();
     expect(screen.getAllByText("Sarah Chen")).toHaveLength(2);
@@ -256,32 +373,143 @@ describe("ReportPrintQueue", () => {
 
   it("persists the time window and page size per user", async () => {
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("queue-row-V1RPT0000009301")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009301"),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByText("Last 7 days"));
     fireEvent.click(screen.getByText("Last 30 days"));
     await waitFor(() =>
-      expect(requests).toContain('PUT /rest/reportQueue/preferences {"timeWindow":"30d","pageSize":20}'),
+      expect(requests).toContain(
+        'PUT /rest/reportQueue/preferences {"timeWindow":"30d","pageSize":20}',
+      ),
     );
-    await waitFor(() => expect(requests.some((url) => url.includes("window=30d"))).toBe(true));
+    await waitFor(() =>
+      expect(requests.some((url) => url.includes("window=30d"))).toBe(true),
+    );
   });
 
   it("starts with the lab number from the URL", async () => {
     renderPage("/ReportPrintQueue?type=patient&labNo=V1RPT0000009301");
     await waitFor(() =>
-      expect(requests.some((url) => url.includes("labNo=V1RPT0000009301"))).toBe(true),
+      expect(
+        requests.some((url) => url.includes("labNo=V1RPT0000009301")),
+      ).toBe(true),
     );
-    expect(screen.getByTestId("active-search")).toHaveTextContent("Lab No: V1RPT0000009301");
+    expect(screen.getByTestId("active-search")).toHaveTextContent(
+      "Lab No: V1RPT0000009301",
+    );
+  });
+
+  it("starts filtered to Unprinted when the home tile opens it", async () => {
+    renderPage("/ReportPrintQueue?type=patient&printStatus=unprinted");
+    await waitFor(() =>
+      expect(
+        requests.some((url) => url.includes("printStatus=UNPRINTED")),
+      ).toBe(true),
+    );
+  });
+
+  it("says on the row that an order found by lab number has nothing released", async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009303"),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByTestId("nothing-released-V1RPT0000009303"),
+    ).toHaveTextContent("Nothing released yet on this order");
+    expect(
+      screen.queryByTestId("print-V1RPT0000009303"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says on a printed row that a correction awaits validation and still offers Print", async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("awaiting-validation-V1RPT0000009302"),
+      ).toHaveTextContent("Correction awaiting validation"),
+    );
+    expect(screen.getByTestId("print-V1RPT0000009302")).toBeEnabled();
+    expect(
+      screen.queryByTestId("awaiting-validation-V1RPT0000009301"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refuses a reversed lab number range before asking the server", async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009301"),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "Range" }));
+    fireEvent.change(screen.getByLabelText("Lab Number"), {
+      target: { value: "V1RPT0000009305" },
+    });
+    const to = screen.getByLabelText("To lab number");
+    fireEvent.change(to, { target: { value: "V1RPT0000009301" } });
+    fireEvent.keyDown(to, { key: "Enter" });
+    expect(
+      screen.getByText("The To lab number is before the From lab number"),
+    ).toBeInTheDocument();
+    expect(requests.some((url) => url.includes("labNoTo="))).toBe(false);
+    expect(screen.queryByTestId("active-search")).not.toBeInTheDocument();
+
+    fireEvent.change(to, { target: { value: "V1RPT0000009309" } });
+    fireEvent.keyDown(to, { key: "Enter" });
+    await waitFor(() =>
+      expect(
+        requests.some((url) => url.includes("labNoTo=V1RPT0000009309")),
+      ).toBe(true),
+    );
+    expect(screen.getByTestId("active-search")).toHaveTextContent(
+      "Lab No: V1RPT0000009305 to V1RPT0000009309",
+    );
+  });
+
+  it("heads the expansion's tests table", async () => {
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("queue-row-V1RPT0000009302"),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: /expand/i })[1]);
+    await waitFor(() =>
+      expect(screen.getByTestId("history")).toBeInTheDocument(),
+    );
+    for (const header of [
+      "Test",
+      "Result",
+      "Flag",
+      "Released",
+      "Validated by",
+    ]) {
+      expect(screen.getAllByText(header).length).toBeGreaterThan(0);
+    }
   });
 
   it("offers Retry when the queue fails to load and loads it on click", async () => {
     failures.page = true;
     try {
       renderPage();
-      await waitFor(() => expect(screen.getByTestId("queue-retry")).toBeInTheDocument());
-      expect(screen.queryByTestId("queue-row-V1RPT0000009301")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByTestId("queue-retry")).toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByTestId("queue-row-V1RPT0000009301"),
+      ).not.toBeInTheDocument();
       failures.page = false;
       fireEvent.click(screen.getByTestId("queue-retry"));
-      await waitFor(() => expect(screen.getByTestId("queue-row-V1RPT0000009301")).toBeInTheDocument());
+      await waitFor(() =>
+        expect(
+          screen.getByTestId("queue-row-V1RPT0000009301"),
+        ).toBeInTheDocument(),
+      );
     } finally {
       failures.page = false;
     }
@@ -290,10 +518,19 @@ describe("ReportPrintQueue", () => {
   it("offers a link to the report when the browser blocks the window", async () => {
     window.open = vi.fn(() => null);
     renderPage();
-    await waitFor(() => expect(screen.getByTestId("print-V1RPT0000009301")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId("print-V1RPT0000009301")).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByTestId("print-V1RPT0000009301"));
-    await waitFor(() => expect(screen.getByTestId("open-report")).toBeInTheDocument());
-    expect(screen.getByTestId("open-report")).toHaveAttribute("href", "blob:report");
-    expect(screen.getByText("Printed version 1 of V1RPT0000009301")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("open-report")).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("open-report")).toHaveAttribute(
+      "href",
+      "blob:report",
+    );
+    expect(
+      screen.getByText("Printed version 1 of V1RPT0000009301"),
+    ).toBeInTheDocument();
   });
 });
