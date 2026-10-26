@@ -4,6 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroReportingRuleForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleHistoryForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleSettingsForm;
 import org.openelisglobal.microbiology.service.MicroReportingRuleService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,6 +29,11 @@ public class MicroReportingRuleRestController extends MicrobiologyRestController
     @PostMapping
     public MicroReportingRuleForm save(@RequestBody MicroReportingRuleForm form, HttpServletRequest request) {
         return service.toForm(service.save(form, authenticatedUserId(request)));
+    }
+
+    @PostMapping("/preview")
+    public MicroReportingRulePreviewResultForm preview(@RequestBody MicroReportingRulePreviewForm form) {
+        return service.preview(form);
     }
 
     @GetMapping("/{id}/history")

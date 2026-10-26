@@ -24,6 +24,7 @@ import {
   getReportingRuleHistory,
   getReportingRules,
   getReportingRuleSettings,
+  previewReportingRules,
   saveInterpretationRule,
   saveReportingRule,
   saveReportingRuleSettings,
@@ -84,6 +85,13 @@ export default function AstRulesPage() {
   const [draft, setDraft] = useState(null);
   const [interpretationDraft, setInterpretationDraft] = useState(null);
   const [history, setHistory] = useState(null);
+  const [preview, setPreview] = useState({
+    organismId: "",
+    sampleTypeId: "",
+    clinicalContext: "",
+    readings: [],
+  });
+  const [previewResult, setPreviewResult] = useState(null);
   const [error, setError] = useState(false);
   const [interpretationError, setInterpretationError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -136,6 +144,34 @@ export default function AstRulesPage() {
       setError(true);
     }
   };
+
+  const runPreview = async () => {
+    setError(false);
+    try {
+      const result = await previewReportingRules({
+        organismId: preview.organismId || "",
+        sampleTypeId: preview.sampleTypeId || "",
+        clinicalContext: preview.clinicalContext || "",
+        readings: preview.readings
+          .filter((reading) => reading.antibioticId)
+          .map((reading) => ({
+            antibioticId: reading.antibioticId,
+            interpretation: reading.interpretation,
+          })),
+      });
+      setPreviewResult(result);
+    } catch {
+      setError(true);
+    }
+  };
+
+  const changePreviewReading = (index, field, value) =>
+    setPreview({
+      ...preview,
+      readings: preview.readings.map((reading, position) =>
+        position === index ? { ...reading, [field]: value } : reading,
+      ),
+    });
 
   const openHistory = async (rule) => {
     setError(false);
@@ -669,6 +705,147 @@ export default function AstRulesPage() {
           </Stack>
         </Modal>
       )}
+      <h2>{t("preview")}</h2>
+      <Stack gap={5}>
+        <Select
+          id="reporting-rule-preview-organism"
+          labelText={t("previewOrganism")}
+          value={preview.organismId}
+          onChange={(event) =>
+            setPreview({ ...preview, organismId: event.target.value })
+          }
+        >
+          <SelectItem value="" text={t("choose")} />
+          {options.organisms.map((item) => (
+            <SelectItem key={item.id} value={item.id} text={item.label} />
+          ))}
+        </Select>
+        <Select
+          id="reporting-rule-preview-sample-type"
+          labelText={t("previewSampleType")}
+          value={preview.sampleTypeId}
+          onChange={(event) =>
+            setPreview({ ...preview, sampleTypeId: event.target.value })
+          }
+        >
+          <SelectItem value="" text={t("anySampleType")} />
+          {options.sampleTypes.map((item) => (
+            <SelectItem key={item.id} value={item.id} text={item.label} />
+          ))}
+        </Select>
+        <Select
+          id="reporting-rule-preview-clinical-context"
+          labelText={t("previewIndication")}
+          value={preview.clinicalContext}
+          onChange={(event) =>
+            setPreview({ ...preview, clinicalContext: event.target.value })
+          }
+        >
+          <SelectItem value="" text={t("any")} />
+          <SelectItem value="NON_MENINGITIS" text={t("nonMeningitis")} />
+        </Select>
+        {preview.readings.map((reading, index) => (
+          <div key={index}>
+            <Select
+              id={`reporting-rule-preview-antibiotic-${index}`}
+              labelText={intl.formatMessage(
+                { id: "microbiology.admin.astRules.previewAntibiotic" },
+                { n: index + 1 },
+              )}
+              value={reading.antibioticId}
+              onChange={(event) =>
+                changePreviewReading(index, "antibioticId", event.target.value)
+              }
+            >
+              <SelectItem value="" text={t("choose")} />
+              {options.antibiotics.map((item) => (
+                <SelectItem key={item.id} value={item.id} text={item.label} />
+              ))}
+            </Select>
+            <Select
+              id={`reporting-rule-preview-result-${index}`}
+              labelText={intl.formatMessage(
+                { id: "microbiology.admin.astRules.previewResult" },
+                { n: index + 1 },
+              )}
+              value={reading.interpretation}
+              onChange={(event) =>
+                changePreviewReading(
+                  index,
+                  "interpretation",
+                  event.target.value,
+                )
+              }
+            >
+              <SelectItem value="SUSCEPTIBLE" text={t("resultS")} />
+              <SelectItem value="INTERMEDIATE" text={t("resultI")} />
+              <SelectItem value="RESISTANT" text={t("resultR")} />
+            </Select>
+          </div>
+        ))}
+        <Button
+          kind="ghost"
+          onClick={() =>
+            setPreview({
+              ...preview,
+              readings: [
+                ...preview.readings,
+                { antibioticId: "", interpretation: "SUSCEPTIBLE" },
+              ],
+            })
+          }
+        >
+          {t("addAntibiotic")}
+        </Button>
+        <Button onClick={runPreview}>{t("preview")}</Button>
+        {previewResult?.defaultPanelName && (
+          <p>
+            {intl.formatMessage(
+              { id: "microbiology.admin.astRules.previewDefaultPanel" },
+              { name: previewResult.defaultPanelName },
+            )}
+          </p>
+        )}
+        {previewResult && (
+          <Table aria-label={t("previewResultTable")}>
+            <TableHead>
+              <TableRow>
+                {[
+                  "antibiotic",
+                  "previewMeasured",
+                  "previewInterpretedAs",
+                  "previewReport",
+                  "previewWhy",
+                  "note",
+                ].map((header) => (
+                  <TableHeader key={header}>{t(header)}</TableHeader>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {previewResult.rows.map((row) => (
+                <TableRow key={row.antibioticId}>
+                  <TableCell>{row.antibioticName}</TableCell>
+                  <TableCell>{row.measured}</TableCell>
+                  <TableCell>
+                    {row.interpretation}
+                    {row.expertRule && <div>{row.expertRule}</div>}
+                  </TableCell>
+                  <TableCell>{row.reported ? t("yes") : t("no")}</TableCell>
+                  <TableCell>
+                    {`${t(
+                      row.reportRuleId
+                        ? "previewRule"
+                        : "previewPanelOrDefault",
+                    )} ${t(behaviors[row.reportBehavior])}`}
+                  </TableCell>
+                  <TableCell>{row.note || ""}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Stack>
     </Stack>
   );
 }
