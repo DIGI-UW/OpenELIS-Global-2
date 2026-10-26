@@ -459,3 +459,42 @@ it("says when a preview could not be run", async () => {
     await screen.findByText("The preview could not be run."),
   ).toBeInTheDocument();
 });
+
+it("drops an old preview when a new one fails or an input changes", async () => {
+  previewReportingRules
+    .mockResolvedValueOnce({
+      defaultPanelName: null,
+      rows: [
+        {
+          antibioticId: "cro",
+          antibioticName: "Ceftriaxone",
+          measured: "SUSCEPTIBLE",
+          interpretation: "SUSCEPTIBLE",
+          reportBehavior: "ALWAYS",
+          reported: true,
+        },
+      ],
+    })
+    .mockRejectedValueOnce(new Error("Bad Request"))
+    .mockResolvedValueOnce({ defaultPanelName: null, rows: [] });
+  show();
+  fireEvent.change(await screen.findByLabelText("Preview organism"), {
+    target: { value: "ab" },
+  });
+  const button = screen.getByRole("button", { name: "Preview" });
+  fireEvent.click(button);
+  await screen.findByRole("table", { name: "Preview result" });
+  fireEvent.click(button);
+  expect(
+    await screen.findByText("The preview could not be run."),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("table", { name: "Preview result" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(button);
+  await screen.findByRole("table", { name: "Preview result" });
+  fireEvent.click(screen.getByRole("button", { name: "Add antibiotic" }));
+  expect(
+    screen.queryByRole("table", { name: "Preview result" }),
+  ).not.toBeInTheDocument();
+});

@@ -155,25 +155,21 @@ export default function AstRulesPage() {
   const runPreview = async () => {
     setPreviewError(false);
     try {
-      const result = await previewReportingRules({
-        organismId: preview.organismId || "",
-        sampleTypeId: preview.sampleTypeId || "",
-        clinicalContext: preview.clinicalContext || "",
-        readings: preview.readings
-          .filter((reading) => reading.antibioticId)
-          .map((reading) => ({
-            antibioticId: reading.antibioticId,
-            interpretation: reading.interpretation,
-          })),
-      });
+      const result = await previewReportingRules(preview);
       setPreviewResult(result);
     } catch {
       setPreviewError(true);
+      setPreviewResult(null);
     }
   };
 
+  const changePreview = (next) => {
+    setPreview(next);
+    setPreviewResult(null);
+  };
+
   const changePreviewReading = (index, field, value) =>
-    setPreview({
+    changePreview({
       ...preview,
       readings: preview.readings.map((reading, position) =>
         position === index ? { ...reading, [field]: value } : reading,
@@ -719,7 +715,7 @@ export default function AstRulesPage() {
           labelText={t("previewOrganism")}
           value={preview.organismId}
           onChange={(event) =>
-            setPreview({ ...preview, organismId: event.target.value })
+            changePreview({ ...preview, organismId: event.target.value })
           }
         >
           <SelectItem value="" text={t("choose")} />
@@ -732,7 +728,7 @@ export default function AstRulesPage() {
           labelText={t("previewSampleType")}
           value={preview.sampleTypeId}
           onChange={(event) =>
-            setPreview({ ...preview, sampleTypeId: event.target.value })
+            changePreview({ ...preview, sampleTypeId: event.target.value })
           }
         >
           <SelectItem value="" text={t("anySampleType")} />
@@ -745,7 +741,7 @@ export default function AstRulesPage() {
           labelText={t("previewIndication")}
           value={preview.clinicalContext}
           onChange={(event) =>
-            setPreview({ ...preview, clinicalContext: event.target.value })
+            changePreview({ ...preview, clinicalContext: event.target.value })
           }
         >
           <SelectItem value="" text={t("any")} />
@@ -793,7 +789,7 @@ export default function AstRulesPage() {
         <Button
           kind="ghost"
           onClick={() =>
-            setPreview({
+            changePreview({
               ...preview,
               readings: [
                 ...preview.readings,
@@ -849,11 +845,14 @@ export default function AstRulesPage() {
                   </TableCell>
                   <TableCell>{row.reported ? t("yes") : t("no")}</TableCell>
                   <TableCell>
-                    {`${t(
-                      row.reportRuleId
-                        ? "previewRule"
-                        : "previewPanelOrDefault",
-                    )} ${t(behaviors[row.reportBehavior])}`}
+                    {intl.formatMessage(
+                      {
+                        id: row.reportRuleId
+                          ? "microbiology.admin.astRules.previewRule"
+                          : "microbiology.admin.astRules.previewPanelOrDefault",
+                      },
+                      { behavior: t(behaviors[row.reportBehavior]) },
+                    )}
                   </TableCell>
                   <TableCell>{row.note || ""}</TableCell>
                 </TableRow>
