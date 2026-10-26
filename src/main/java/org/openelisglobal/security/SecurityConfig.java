@@ -22,7 +22,6 @@ import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.analyzer.service.AnalyzerBridgePairingService;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.config.condition.ConditionalOnProperty;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
@@ -348,12 +347,12 @@ public class SecurityConfig {
             Set<String> samlRoleNames = new LinkedHashSet<>();
             Collection<GrantedAuthority> authorities = new KeycloakAuthoritiesExtractor().convert(assertion,
                     samlRoleNames);
-            // qa.* permission authorities derive from the same DB grants as form
+            // Permission authorities derive from the same DB grants as form
             // login (CustomUserDetailsService) so hasAuthority('qa.view.x') gates
             // admit SSO users too. Bean fetched lazily — this converter only runs
             // per SAML login, after the data layer is up.
             for (String permission : SpringContext.getBean(RoleModuleService.class)
-                    .getPermittedModuleNames(samlRoleNames, Constants.QA_PERMISSION_PREFIX)) {
+                    .getPermittedModuleNames(samlRoleNames)) {
                 authorities.add(new SimpleGrantedAuthority(permission));
             }
 

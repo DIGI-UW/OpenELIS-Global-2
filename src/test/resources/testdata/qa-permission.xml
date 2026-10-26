@@ -129,4 +129,21 @@
     <system_role_module id="9320" has_select="Y"
         has_add="N" has_update="N" has_delete="N" system_role_id="9105"
         system_module_id="9205" />
+
+    <!-- A dashboards.* key and an unprefixed module, both granted to Results -->
+    <system_module id="9208"
+        name="dashboards.view.management"
+        description="Management dashboard visibility" has_select_flag="Y"
+        has_add_flag="N" has_update_flag="N" has_delete_flag="N" />
+    <system_module id="9209"
+        name="VectorSurveillanceDashboard"
+        description="URL-gated module, not a permission key"
+        has_select_flag="Y" has_add_flag="N" has_update_flag="N"
+        has_delete_flag="N" />
+    <system_role_module id="9325" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9104"
+        system_module_id="9208" />
+    <system_role_module id="9326" has_select="Y"
+        has_add="N" has_update="N" has_delete="N" system_role_id="9104"
+        system_module_id="9209" />
 </dataset>

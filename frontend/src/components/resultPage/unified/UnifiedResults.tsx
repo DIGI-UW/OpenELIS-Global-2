@@ -58,7 +58,6 @@ import ESignatureButton, {
 } from "../../esignature/ESignatureButton";
 import PolymorphicResultCell, {
   ResultCellRow,
-  blocksSaveOnPrecision,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 import {
@@ -1805,10 +1804,6 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                               recordId={row.analysisId}
                               onBeforeSign={() => beforeSign(row)}
                               onSign={() => handleSave(row)}
-                              disabled={
-                                writesResultValue(state) &&
-                                blocksSaveOnPrecision(row)
-                              }
                               size="sm"
                             >
                               <FormattedMessage id="label.results.save" />
@@ -1931,10 +1926,6 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                                       recordId={row.analysisId}
                                       onBeforeSign={() => beforeSign(row)}
                                       onSign={() => handleSave(row)}
-                                      disabled={
-                                        writesResultValue(state) &&
-                                        blocksSaveOnPrecision(row)
-                                      }
                                       size="sm"
                                     >
                                       <FormattedMessage id="label.results.save" />
