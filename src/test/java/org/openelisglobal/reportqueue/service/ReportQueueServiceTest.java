@@ -442,6 +442,42 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * OGC-1544: a correction that does not change the value as reported (6.3 to 6.4
+     * at no decimal places, both reported as 6) still amends the report, and the
+     * change line names the values entered, not "6 → 6".
+     */
+    @Test
+    public void aCorrectionWithinTheReportedPrecisionAmendsAndNamesTheEnteredValues() {
+        jdbcTemplate.update("UPDATE clinlims.result SET significant_digits = 0 WHERE id = 9301");
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '6.4', lastupdated = now() WHERE id = 9301");
+
+        assertEquals("AMENDED", row(list("all")).getState());
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        String summary = jdbcTemplate.queryForObject(
+                "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
+                SAMPLE);
+        assertTrue(summary, summary.contains("6.3") && summary.contains("6.4"));
+    }
+
+    /**
+     * OGC-1544: the queue shows a result as reported, rounded to its test's places,
+     * and flags it on that value, so the page agrees with the printed report: 5.84
+     * to one place is 5.8, inside 3.9-5.8, so it is not flagged high.
+     */
+    @Test
+    public void aResultIsShownAndFlaggedAsReported() {
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '5.84', significant_digits = 1 WHERE id = 9301");
+
+        ReportQueueRowDetailDTO.TestRowDTO test = reportQueueService.detail(SAMPLE, ADMIN).orElseThrow().getTests()
+                .stream().filter(t -> "9301".equals(String.valueOf(t.getAnalysisId()))).findFirst().orElseThrow();
+
+        assertTrue(test.getResult(), test.getResult().startsWith("5.8"));
+        assertFalse(test.getResult(), test.getResult().startsWith("5.84"));
+        assertEquals("", test.getFlag() == null ? "" : test.getFlag());
+    }
+
+    /**
      * A batch print (the Patient Status Report range) gives an order with nothing
      * released its preliminary page instead of dropping it, and archives nothing.
      */

@@ -14,6 +14,7 @@ import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import ManagementDashboard from "./components/dashboards/management/ManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
@@ -291,7 +292,7 @@ export default function App() {
     const retrier = createServerRetrier();
     state.retrier = retrier;
     try {
-      for (let failures = 0; ; ) {
+      for (let failures = 0; ;) {
         try {
           const jsonResp = await requestSession(
             config.serverBaseUrl + `/session`,
@@ -944,6 +945,13 @@ export default function App() {
                   exact
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/dashboards/management"
+                  exact
+                  render={() => <ManagementDashboard />}
+                  permission="dashboards.view.management"
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 {/* QA v0.5 IA rehome (OGC-691): EQA and QC pages moved under
                     /qa/*. Kept so bookmarks and anything still linking an old
