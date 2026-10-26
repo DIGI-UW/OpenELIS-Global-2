@@ -32,6 +32,12 @@ public class MicroAstRunAntibiotic extends BaseObject<String> {
     @Column(name = "report_behavior", nullable = false, length = 30)
     private String reportBehavior = "ALWAYS";
 
+    @Column(name = "reported", nullable = false)
+    private boolean reported = true;
+
+    @Column(name = "report_manual", nullable = false)
+    private boolean reportManual = false;
+
     @Override
     public String getId() {
         return id;
@@ -80,6 +86,22 @@ public class MicroAstRunAntibiotic extends BaseObject<String> {
 
     public void setReportBehavior(String reportBehavior) {
         this.reportBehavior = reportBehavior;
+    }
+
+    public boolean isReported() {
+        return reported;
+    }
+
+    public void setReported(boolean reported) {
+        this.reported = reported;
+    }
+
+    public boolean isReportManual() {
+        return reportManual;
+    }
+
+    public void setReportManual(boolean reportManual) {
+        this.reportManual = reportManual;
     }
 
     @Column(name = "disk_content", length = 40)

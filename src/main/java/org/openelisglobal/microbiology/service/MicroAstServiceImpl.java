@@ -409,6 +409,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
                 .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
+        applyReportDefault(run, antibioticId, interpretation.name());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_RECORDED, performedBy,
                 "AST reading recorded", "{\"astRunId\":\"" + runId + "\",\"readingId\":\"" + reading.getId() + "\"}");
         return reading;
@@ -439,6 +440,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         recordOverrideEvent(readingId, MicroAstOverrideAction.OVERRIDE, fromInterpretation,
                 overrideInterpretation.name(), overrideReason, performedBy);
         MicroAstReading updated = readingDAO.update(reading);
+        applyReportDefault(run, reading.getAntibioticId(), overrideInterpretation.name());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
                 "AST interpretation overridden", "{\"readingId\":\"" + readingId + "\"}");
         return updated;
@@ -467,6 +469,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setOverrideInterpretation(null);
         reading.setOverrideReason(null);
         MicroAstReading updated = readingDAO.update(reading);
+        applyReportDefault(run, reading.getAntibioticId(), reading.getInterpretation());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
                 "AST interpretation override reverted", "{\"readingId\":\"" + readingId + "\"}");
         return updated;
@@ -704,6 +707,51 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     @Override
+    @Transactional
+    public MicroAstRunAntibiotic setReported(String runId, String antibioticId, boolean reported, String performedBy) {
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        MicroAstRunAntibiotic ordered = runAntibioticDAO.getByRunIdAndAntibioticId(runId, antibioticId)
+                .orElseThrow(() -> new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED"));
+        ordered.setReported(reported);
+        ordered.setReportManual(true);
+        MicroAstRunAntibiotic updated = runAntibioticDAO.update(ordered);
+        String agent = antibioticDAO.get(antibioticId).map(MicroAntibiotic::getDisplayName).orElse(antibioticId);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy, agent
+                + (reported ? ": changed from not reported to reported" : ": changed from reported to not reported"),
+                "{\"astRunId\":\"" + runId + "\",\"antibioticId\":\"" + antibioticId + "\",\"reported\":" + reported
+                        + "}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
+    public void resetReportDefaults(String isolateId, String performedBy) {
+        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroIsolate isolate = isolateDAO.get(isolateId)
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
+            Map<String, String> interpretations = latestReadings(run.getId()).stream().collect(
+                    Collectors.toMap(MicroAstReading::getAntibioticId, MicroAstReportChoiceService::interpretation));
+            for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByRunId(run.getId())) {
+                ordered.setReportManual(false);
+                ordered.setReported(
+                        defaultReported(ordered.getReportBehavior(), interpretations.get(ordered.getAntibioticId())));
+                runAntibioticDAO.update(ordered);
+            }
+        }
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy,
+                "Report choices reset to defaults", "{\"isolateId\":\"" + isolateId + "\"}");
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<MicroAstRun> getRunsForIsolate(String isolateId) {
         return runDAO.getByIsolateId(isolateId);
@@ -817,7 +865,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setMethod(method.name());
         reading.setRawValue(analyzerReading.rawValue());
         reading.setRawText(analyzerReading.rawValue() == null ? null : analyzerReading.rawValue().toPlainString());
-        reading.setInterpretation(interpretReading(run, rule, method, analyzerReading.rawValue()).name());
+        String interpretation = interpretReading(run, rule, method, analyzerReading.rawValue()).name();
+        reading.setInterpretation(interpretation);
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
         reading.setSource("ANALYZER_AUTO");
         reading.setMatchedBy(matchedBy(rule));
@@ -829,6 +878,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
                 .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
+        applyReportDefault(run, reading.getAntibioticId(), interpretation);
     }
 
     /** The reading is kept as plain text too, so its exponent must be small. */
@@ -898,6 +948,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setTier(source.tier);
             ordered.setReportBehavior(source.reportBehavior);
             ordered.setDiskContent(source.diskContent);
+            ordered.setReported(defaultReported(source.reportBehavior, null));
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -916,6 +967,8 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
             ordered.setDiskContent(sourceRow.getDiskContent());
+            ordered.setReported(sourceRow.isReported());
+            ordered.setReportManual(sourceRow.isReportManual());
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -948,6 +1001,8 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
             ordered.setDiskContent(sourceRow.getDiskContent());
+            ordered.setReported(sourceRow.isReported());
+            ordered.setReportManual(sourceRow.isReportManual());
             runAntibioticDAO.insert(ordered);
         }
     }
@@ -1022,6 +1077,26 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private String defaultUnits(MicroAstMethod method) {
         return MicroAstMethod.ZONE.equals(method) ? "mm" : "ug/mL";
+    }
+
+    private void applyReportDefault(MicroAstRun run, String antibioticId, String interpretation) {
+        MicroAstRunAntibiotic ordered = runAntibioticDAO.getByRunIdAndAntibioticId(run.getId(), antibioticId)
+                .orElse(null);
+        if (ordered == null || ordered.isReportManual()) {
+            return;
+        }
+        ordered.setReported(defaultReported(ordered.getReportBehavior(), interpretation));
+        runAntibioticDAO.update(ordered);
+    }
+
+    private static boolean defaultReported(String reportBehavior, String interpretation) {
+        if ("SUPPRESS_UNLESS_RESISTANT".equals(reportBehavior)) {
+            return MicroAstInterpretation.RESISTANT.name().equals(interpretation);
+        }
+        if ("CASCADE".equals(reportBehavior)) {
+            return false;
+        }
+        return true;
     }
 
     private String effectiveInterpretation(MicroAstReading reading) {

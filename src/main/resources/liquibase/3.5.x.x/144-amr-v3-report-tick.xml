@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="144-amr-v3-report-tick" author="openelis">
+  <comment>A per-drug report tick decides whether the chosen reading prints for the patient.</comment>
+  <addColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic">
+   <column name="reported" type="boolean" defaultValueBoolean="true">
+    <constraints nullable="false"/>
+   </column>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic">
+   <column name="report_manual" type="boolean" defaultValueBoolean="false">
+    <constraints nullable="false"/>
+   </column>
+  </addColumn>
+  <rollback>
+   <sql splitStatements="false"><![CDATA[
+    DO $$ BEGIN
+     IF EXISTS (SELECT 1 FROM clinlims.micro_ast_run_antibiotic WHERE report_manual = true) THEN
+      RAISE EXCEPTION 'Cannot discard report choices made by staff';
+     END IF;
+    END $$;
+   ]]></sql>
+   <dropColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic" columnName="report_manual"/>
+   <dropColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic" columnName="reported"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

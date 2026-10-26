@@ -246,6 +246,18 @@ export default function CaseAstWorkspace({
       setBusy(false);
     }
   };
+  const reportAction = async (body) => {
+    setBusy(true);
+    setError(false);
+    try {
+      setData(await service.astAction(detail.id, body, !canEnter));
+      onChanged?.();
+    } catch (failure) {
+      setError(failure.response?.message || failure.response?.error || true);
+    } finally {
+      setBusy(false);
+    }
+  };
   const button = (action, isolate, run, reading, antibioticId) => (
     <Button
       key={action}
@@ -405,6 +417,7 @@ export default function CaseAstWorkspace({
                               "raw",
                               "interpretation",
                               "selected",
+                              "reportTick",
                               "actions",
                             ].map((key) => (
                               <TableHeader key={key}>{t(key)}</TableHeader>
@@ -476,6 +489,47 @@ export default function CaseAstWorkspace({
                                     <Tag type="green">{t("selected")}</Tag>
                                   ) : (
                                     t("none")
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Checkbox
+                                    id={`report-${run.id}-${agent.antibioticId}`}
+                                    labelText={intl.formatMessage(
+                                      { id: "microbiology.m6.reportAgent" },
+                                      { agent: agent.antibioticName },
+                                    )}
+                                    aria-label={intl.formatMessage(
+                                      { id: "microbiology.m6.reportAgent" },
+                                      { agent: agent.antibioticName },
+                                    )}
+                                    hideLabel
+                                    checked={!!agent.reported}
+                                    disabled={
+                                      !(canEnter || canValidate) || busy
+                                    }
+                                    onChange={(_, { checked }) =>
+                                      reportAction({
+                                        action: "report",
+                                        isolateId: isolate.id,
+                                        runId: run.id,
+                                        antibioticId: agent.antibioticId,
+                                        reported: checked,
+                                      })
+                                    }
+                                  />
+                                  {agent.reportManual ? (
+                                    <p>{t("reportReason.manual")}</p>
+                                  ) : (
+                                    [
+                                      "SUPPRESS_UNLESS_RESISTANT",
+                                      "CASCADE",
+                                    ].includes(agent.reportBehavior) && (
+                                      <p>
+                                        {t(
+                                          `reportReason.${agent.reportBehavior}`,
+                                        )}
+                                      </p>
+                                    )
                                   )}
                                 </TableCell>
                                 <TableCell>
@@ -571,6 +625,26 @@ export default function CaseAstWorkspace({
                 </AccordionItem>
               ))}
             </Accordion>
+            {(canEnter || canValidate) &&
+              isolate.runs.some((run) =>
+                run.orderedAntibiotics.some((agent) => agent.reportManual),
+              ) && (
+                <div>
+                  <Button
+                    size="sm"
+                    kind="ghost"
+                    disabled={busy}
+                    onClick={() =>
+                      reportAction({
+                        action: "report-reset",
+                        isolateId: isolate.id,
+                      })
+                    }
+                  >
+                    {t("action.report-reset")}
+                  </Button>
+                </div>
+              )}
           </Stack>
         </Tile>
       ))}

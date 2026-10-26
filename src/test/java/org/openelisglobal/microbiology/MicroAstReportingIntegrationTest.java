@@ -44,6 +44,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroAstRunDAO runs;
     @Autowired
+    private MicroAstRunAntibioticDAO runAntibiotics;
+    @Autowired
     private MicroAstService ast;
     @Autowired
     private MicroAstPanelAssignmentService assignments;
@@ -64,6 +66,7 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     private MicroCase c;
     private MicrobiologyTestFixtures.ReferenceData reference;
     private String writer, validator, outsider, isolate, drugB;
+    private MicroAstPanelAntibiotic drugBPanelRow;
 
     @Before
     @Override
@@ -98,6 +101,7 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         ordered.setAntibioticId(drugB);
         ordered.setDisplayOrder(2);
         panelDrugs.insert(ordered);
+        drugBPanelRow = ordered;
         var rule = new MicroBreakpointRule();
         rule.setStandardId(reference.standard().getId());
         rule.setOrganismId(reference.organism().getId());
@@ -395,5 +399,83 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         em.flush();
         assertThrows(MicroCaseLockedException.class,
                 () -> ast.recordReading(run.getId(), drugB, new BigDecimal("4"), writer));
+    }
+
+    @Test
+    public void untickedAgentLeavesThePatientReportButStaysSelectedForWhonet() {
+        var run = start(isolate);
+        var entered = enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+        ast.setReported(run.getId(), drugB, false, validator);
+        em.flush();
+        em.clear();
+        var row = reports.preview(c.getId()).isolates.get(0);
+        assertEquals(2, row.tested());
+        assertEquals(List.of(reference.antibiotic().getId()),
+                row.susceptibilities().stream().map(r -> r.antibioticId()).toList());
+        assertEquals(Set.of(entered.get(0).getId(), entered.get(1).getId()),
+                readings.getSelectedByRunIds(List.of(run.getId())).stream().map(MicroAstReading::getId)
+                        .collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @Test
+    public void reportOnlyIfResistantStartsUntickedAndTicksOnAResistantReading() {
+        drugBPanelRow.setReportBehavior("SUPPRESS_UNLESS_RESISTANT");
+        panelDrugs.update(drugBPanelRow);
+        var susceptible = start(isolate);
+        assertFalse(agent(susceptible, drugB).isReported());
+        enter(susceptible, "4");
+        assertFalse(agent(susceptible, drugB).isReported());
+        var resistant = start(isolate("ISO-2"));
+        enter(resistant, "64");
+        assertTrue(agent(resistant, drugB).isReported());
+        assertTrue(agent(resistant, reference.antibiotic().getId()).isReported());
+    }
+
+    @Test
+    public void manualUntickSurvivesALaterReadingAndResetRestoresTheDefault() {
+        var run = start(isolate);
+        ast.setReported(run.getId(), drugB, false, writer);
+        enter(run, "64");
+        assertFalse(agent(run, drugB).isReported());
+        assertTrue(agent(run, drugB).isReportManual());
+        assertTrue(
+                timeline.getTimeline(c.getId()).stream().anyMatch(a -> "REPORT_CHOICE_CHANGED".equals(a.activityType)));
+        ast.resetReportDefaults(isolate, writer);
+        assertTrue(agent(run, drugB).isReported());
+        assertFalse(agent(run, drugB).isReportManual());
+    }
+
+    @Test
+    public void repeatRunKeepsAManualTick() {
+        var first = start(isolate);
+        enter(first, "4");
+        ast.setReported(first.getId(), drugB, false, writer);
+        ast.reviewRun(first.getId(), validator);
+        var repeat = ast.startRepeatRun(first.getId(), MicroAstAttemptType.RETEST, "Confirm second agent",
+                MicroAstTechnique.BROTH_MICRODILUTION, writer);
+        assertFalse(agent(repeat, drugB).isReported());
+        assertTrue(agent(repeat, drugB).isReportManual());
+    }
+
+    @Test
+    public void reportTickNeedsRightsInTheCaseLabUnit() {
+        var run = start(isolate);
+        assertThrows(AccessDeniedException.class, () -> ast.setReported(run.getId(), drugB, false, outsider));
+    }
+
+    @Test
+    public void finalCaseRejectsReportTickChange() {
+        var run = start(isolate);
+        c.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(c);
+        em.flush();
+        assertThrows(MicroCaseLockedException.class, () -> ast.setReported(run.getId(), drugB, false, writer));
+    }
+
+    private MicroAstRunAntibiotic agent(MicroAstRun run, String antibioticId) {
+        em.flush();
+        em.clear();
+        return runAntibiotics.getByRunIdAndAntibioticId(run.getId(), antibioticId).orElseThrow();
     }
 }
