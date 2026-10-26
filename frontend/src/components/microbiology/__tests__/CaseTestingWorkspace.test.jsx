@@ -250,13 +250,16 @@ describe("case testing workspace", () => {
       );
     },
   );
-  test("invalid precision blocks saving and failed saves preserve both fields", async () => {
+  test("extra decimals warn without blocking the save, and failed saves preserve both fields", async () => {
     const api = service();
     api.saveResults.mockRejectedValue(new Error("stale"));
     show(api);
     await openEditor();
     enter("MTB", "12.5");
-    expect(screen.getByRole("button", { name: "Save results" })).toBeDisabled();
+    expect(
+      await screen.findByText(/saved as entered and reported rounded/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save results" })).toBeEnabled();
     enter("MTB", "12");
     enter("Rifampicin", "34");
     fireEvent.click(screen.getByRole("button", { name: "Save results" }));
