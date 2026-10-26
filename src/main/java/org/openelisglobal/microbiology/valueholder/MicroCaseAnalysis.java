@@ -198,4 +198,9 @@ public class MicroCaseAnalysis extends BaseObject<String> {
     public void setCancellationReason(String cancellationReason) {
         this.cancellationReason = cancellationReason;
     }
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_id")
+    private String cultureId;
 }
