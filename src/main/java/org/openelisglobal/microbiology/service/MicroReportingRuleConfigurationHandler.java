@@ -72,6 +72,9 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
     }
 
     private LoadedRow<String> loadRow(CsvRow row) {
+        if ("(isolate)".equalsIgnoreCase(row.get("agent"))) {
+            return LoadedRow.skipped("Isolate-level notes are not supported");
+        }
         String level = required(row, "organism_level").toUpperCase(Locale.ROOT);
         MicroOrganism organism = null;
         String organismGroup = null;
@@ -85,9 +88,6 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         }
         String organismId = organism == null ? null : organism.getId();
         Set<String> sampleTypeIds = sampleTypeIds(row);
-        if ("(isolate)".equalsIgnoreCase(row.get("agent"))) {
-            return LoadedRow.skipped("Isolate-level notes are not supported");
-        }
         String code = required(row, "agent");
         MicroAntibiotic antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code).orElseThrow(
                 () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code));
