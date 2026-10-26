@@ -38,6 +38,9 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     private MicroAstReportChoiceService reportChoices;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroOrganismDAO organismDAO;
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private MicroAstService astService;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -156,6 +159,9 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroIsolate updated = isolateDAO.update(isolate);
         if (previous.getOrganismId() != null && !previous.getOrganismId().equals(updated.getOrganismId()))
             retireSusceptibility(updated, performedBy);
+        if (!java.util.Objects.equals(previous.getOrganismId(), isolate.getOrganismId())) {
+            astService.reapplyReportingRulesForIsolate(isolate.getId(), performedBy);
+        }
         panelAssignments.assignDefault(updated, performedBy);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,
                 identificationActivityNote(isolate, previous, reason),

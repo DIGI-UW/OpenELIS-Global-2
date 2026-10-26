@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
@@ -23,7 +24,6 @@ import org.openelisglobal.microbiology.valueholder.MicroReportingRuleHistory;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.systemuser.service.SystemUserService;
-import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.stereotype.Service;
@@ -83,15 +83,9 @@ public class MicroReportingRuleService {
             throw new IllegalArgumentException("REPORTING_RULE_TARGET_INVALID");
         }
         String clinicalContext = MicroBreakpointClinicalContext.validate(form.clinicalContext);
-        Set<String> sampleTypeIds = new HashSet<>();
-        if (form.sampleTypeIds != null) {
-            for (String sampleTypeId : form.sampleTypeIds) {
-                String normalized = trimToNull(sampleTypeId);
-                if (normalized != null) {
-                    sampleTypeIds.add(normalized);
-                }
-            }
-        }
+        Set<String> sampleTypeIds = form.sampleTypeIds == null ? new HashSet<>()
+                : form.sampleTypeIds.stream().map(this::trimToNull).filter(Objects::nonNull)
+                        .collect(Collectors.toCollection(HashSet::new));
         MicroReportingRule rule = form.id == null ? new MicroReportingRule()
                 : rules.get(form.id).orElseThrow(() -> new IllegalArgumentException("REPORTING_RULE_NOT_FOUND"));
         String previousAntibioticId = rule.getAntibioticId();
@@ -116,7 +110,8 @@ public class MicroReportingRuleService {
         if (after.equals(before)) {
             return rule;
         }
-        List<MicroReportingRuleHistory> revisions = history.getByRuleId(rule.getId());
+        List<MicroReportingRuleHistory> revisions = history.getAllMatchingOrdered("ruleId", rule.getId(), "revision",
+                true);
         int revision = revisions.isEmpty() ? 1 : revisions.get(0).getRevision() + 1;
         MicroReportingRuleHistory entry = new MicroReportingRuleHistory();
         entry.setRuleId(rule.getId());
@@ -127,9 +122,9 @@ public class MicroReportingRuleService {
         entry.setAfterValue(after);
         entry.setSysUserId(actor);
         history.insert(entry);
-        astService.reapplyReportingRules(antibioticId);
+        astService.reapplyReportingRules(antibioticId, actor);
         if (previousAntibioticId != null && !Objects.equals(previousAntibioticId, antibioticId)) {
-            astService.reapplyReportingRules(previousAntibioticId);
+            astService.reapplyReportingRules(previousAntibioticId, actor);
         }
         return rule;
     }
@@ -156,12 +151,14 @@ public class MicroReportingRuleService {
     }
 
     public List<MicroReportingRuleHistoryForm> getHistory(String ruleId) {
-        return history.getByRuleId(ruleId).stream().map(entry -> {
+        Map<String, String> userDisplayById = new java.util.HashMap<>();
+        return history.getAllMatchingOrdered("ruleId", ruleId, "revision", true).stream().map(entry -> {
             MicroReportingRuleHistoryForm form = new MicroReportingRuleHistoryForm();
             form.revision = entry.getRevision();
             form.changedAt = entry.getChangedAt();
             form.changedBy = entry.getChangedBy();
-            form.changedByName = userName(entry.getChangedBy());
+            form.changedByName = MicrobiologyUserDisplayResolver.resolve(systemUsers, entry.getChangedBy(),
+                    userDisplayById);
             form.before = entry.getBeforeValue();
             form.after = entry.getAfterValue();
             return form;
@@ -186,17 +183,6 @@ public class MicroReportingRuleService {
         return getSettings();
     }
 
-    private String userName(String userId) {
-        SystemUser user = systemUsers.getUserById(userId);
-        if (user == null) {
-            return userId;
-        }
-        String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-        String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
-        String fullName = (firstName + " " + lastName).trim();
-        return fullName.isEmpty() ? userId : fullName;
-    }
-
     private String setting(String name) {
         SiteInformation value = settings.getSiteInformationByName(name);
         return value == null || value.getValue() == null ? "" : value.getValue().trim();
@@ -215,7 +201,7 @@ public class MicroReportingRuleService {
         settings.persistData(setting, isNew);
     }
 
-    private MicroReportingRuleForm toForm(MicroReportingRule rule) {
+    public MicroReportingRuleForm toForm(MicroReportingRule rule) {
         MicroReportingRuleForm form = new MicroReportingRuleForm();
         form.id = rule.getId();
         form.antibioticId = rule.getAntibioticId();
