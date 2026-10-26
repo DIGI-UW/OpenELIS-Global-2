@@ -253,8 +253,9 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
         var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
         writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName()
-                + ",ANY,(isolate),Isolate note,,,,,,Therapy is not usually indicated,ALWAYS,,\n" + "SPECIES,"
-                + organism.getDisplayName() + ",ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+                + ",No such sample type,(isolate),Isolate note,,,,,,Therapy is not usually indicated,ALWAYS,,\n"
+                + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,REPORT,,,,,,,,\n");
         assertFalse(reloadReportingRules(false).hasErrors());
         assertEquals(1, rulesFor(antibioticId).size());
     }
