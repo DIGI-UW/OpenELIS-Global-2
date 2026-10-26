@@ -249,8 +249,8 @@ export const getWorklistRows = (query = {}) =>
         params.set(key, query[key]);
       }
     });
-    ["specimen", "organism", "origin", "significance"].forEach((key) =>
-      (query[key] || []).forEach((value) => params.append(key, value)),
+    ["specimen", "organism", "origin", "significance", "labUnitIds"].forEach(
+      (key) => (query[key] || []).forEach((value) => params.append(key, value)),
     );
     const search = params.toString();
     getFromOpenElisServer(

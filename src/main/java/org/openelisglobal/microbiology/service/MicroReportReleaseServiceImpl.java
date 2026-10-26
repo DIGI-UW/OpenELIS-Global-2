@@ -53,7 +53,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         }
         MicroReportProjectionResult projection = reportProjectionService.releasePreliminary(caseId, performedBy);
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name());
-        microCase.setStage(MicroCaseStage.PRELIM_RELEASED.name());
+        // Partial reporting does not change the current laboratory work stage.
         MicroCase updated = caseDAO.update(microCase);
         reportVersionService.recordPreliminary(caseId, projection, performedBy);
         recordActivity(caseId, MicroCaseActivityType.PRELIMINARY_REPORT_RELEASED, performedBy,

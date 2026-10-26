@@ -59,6 +59,18 @@ public class MicroPatientReportServiceTest {
     @InjectMocks
     private MicroPatientReportService service;
 
+    @Test
+    public void reportNotesCannotExposeExcludedResultsOrUnselectedDrugReadings() {
+        var report = new org.openelisglobal.microbiology.form.MicroPatientReportForm();
+        report.initial.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Test("selected", "Reported",
+                List.of()));
+        assertTrue(MicroPatientReportService.includedNoteTarget(report, null, null));
+        assertTrue(MicroPatientReportService.includedNoteTarget(report, "RESULT", "selected"));
+        assertFalse(MicroPatientReportService.includedNoteTarget(report, "RESULT", "hidden"));
+        assertFalse(MicroPatientReportService.includedNoteTarget(report, "DRUG", "unselected"));
+        assertFalse(MicroPatientReportService.includedNoteTarget(report, "CULTURE", "unfinished"));
+    }
+
     @Before
     public void setup() {
         MockitoAnnotations.initMocks(this);

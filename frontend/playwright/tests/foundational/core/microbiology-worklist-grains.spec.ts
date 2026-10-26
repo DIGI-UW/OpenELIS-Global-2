@@ -112,9 +112,9 @@ test.describe("M-07 microbiology worklist grains", () => {
         url.searchParams.get("astRunId") === seeded.astRunId
       );
     });
-    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
-      { timeout: LONG_TIMEOUT },
-    );
+    await expect(
+      page.getByRole("heading", { name: "AST / DST", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
   test("Reviewed AST runs leave active work and remain available read-only", async ({
@@ -179,8 +179,8 @@ test.describe("M-07 microbiology worklist grains", () => {
         url.searchParams.get("astView") === "reviewed"
       );
     });
-    await expect(page.getByRole("heading", { name: "Manual AST" })).toBeVisible(
-      { timeout: LONG_TIMEOUT },
-    );
+    await expect(
+      page.getByRole("heading", { name: "AST / DST", exact: true }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 });

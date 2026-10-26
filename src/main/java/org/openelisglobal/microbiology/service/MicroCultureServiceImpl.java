@@ -28,6 +28,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional(readOnly = true)
 public class MicroCultureServiceImpl implements MicroCultureService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.systemuser.service.SystemUserService displayUsers;
     private final MicroCaseDAO cases;
     private final MicroCultureReadingDAO readings;
     private final MicroCultureExtensionDAO extensions;
@@ -77,7 +79,9 @@ public class MicroCultureServiceImpl implements MicroCultureService {
 
     @Override
     public List<MicroCultureForm> getRows(String caseId) {
-        return rows.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null).map(this::form).toList();
+        var names = new java.util.HashMap<String, String>();
+        return rows.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null).map(row -> form(row, names))
+                .toList();
     }
 
     @Override
@@ -416,7 +420,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         throw new IllegalArgumentException("MICROBIOLOGY_CULTURE_" + suffix);
     }
 
-    private MicroCultureForm form(MicroCaseInoculation row) {
+    private MicroCultureForm form(MicroCaseInoculation row, java.util.Map<String, String> names) {
         var f = new MicroCultureForm();
         f.receivedIsolate = "RECEIVED_ISOLATE".equals(row.getPositiveSource());
         f.id = row.getId();
@@ -443,17 +447,23 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         f.outcome = row.getOutcome();
         f.outcomeAt = row.getOutcomeAt();
         f.outcomeBy = row.getOutcomeBy();
+        f.outcomeByDisplay = MicrobiologyUserDisplayResolver.resolve(displayUsers, row.getOutcomeBy(), names);
         f.readings = row.getReadings().stream()
                 .map(r -> new MicroCultureForm.Reading(r.getId(), r.getReadingId(), label(r.getReadingId()),
                         r.getQuantityId(), label(r.getQuantityId()), r.getNote(), r.getIncubationDay(),
-                        r.getRecordedBy(), r.getRecordedAt()))
+                        r.getRecordedBy(), r.getRecordedAt(),
+                        MicrobiologyUserDisplayResolver.resolve(displayUsers, r.getRecordedBy(), names)))
                 .toList();
         f.extensions = row.getExtensions().stream()
                 .map(e -> new MicroCultureForm.Extension(e.getId(), e.getExtendBy(), e.getUnit(), e.getReasonId(),
-                        label(e.getReasonId()), e.getNote(), e.getRecordedBy(), e.getRecordedAt(), e.getUndoneAt()))
+                        label(e.getReasonId()), e.getNote(), e.getRecordedBy(), e.getRecordedAt(), e.getUndoneAt(),
+                        MicrobiologyUserDisplayResolver.resolve(displayUsers, e.getRecordedBy(), names)))
                 .toList();
-        f.proposals = row.getProposals().stream().map(p -> new MicroCultureForm.Proposal(p.getId(), p.getSignal(),
-                p.getRecordedAt(), p.getConfirmedBy(), p.getConfirmedAt())).toList();
+        f.proposals = row.getProposals().stream()
+                .map(p -> new MicroCultureForm.Proposal(p.getId(), p.getSignal(), p.getRecordedAt(), p.getConfirmedBy(),
+                        p.getConfirmedAt(),
+                        MicrobiologyUserDisplayResolver.resolve(displayUsers, p.getConfirmedBy(), names)))
+                .toList();
         boolean incubating = f.outcome == null || "GROWTH".equals(f.outcome);
         f.canEditInoculatedAt = f.sourceSampleItemId != null && !f.sourceSampleItemId.isBlank() && f.readings.isEmpty()
                 && incubating;

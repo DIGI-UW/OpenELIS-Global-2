@@ -2,8 +2,9 @@ import React from "react";
 import { vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
-import { IntlProvider } from "react-intl";
+import { IntlProvider, createIntl } from "react-intl";
 import messages from "../../../languages/en.json";
+import { labTimeZone } from "../MicrobiologyTime";
 import CaseCultureWorkspace from "../CaseCultureWorkspace";
 const sources = [
   {
@@ -89,7 +90,9 @@ it("prefills medium links and requires a lot for tracked media", async () => {
   fireEvent.click(
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
-  expect(screen.getByLabelText("Medium")).toHaveValue("10");
+  expect(screen.getByRole("combobox", { name: "Medium" })).toHaveValue(
+    "Blood agar · Lot tracked",
+  );
   expect(screen.getByLabelText("Incubation duration")).toHaveValue(48);
   expect(screen.getByLabelText("Atmosphere")).toHaveValue("air");
   expect(screen.getByLabelText("Lot not tracked")).toBeDisabled();
@@ -294,9 +297,13 @@ test("changing media applies source-specific incubation defaults before generic 
   fireEvent.click(
     await screen.findByRole("button", { name: "Inoculate culture" }),
   );
-  fireEvent.change(
-    screen.getByLabelText(messages["microbiology.culture.mediumItemId"]),
-    { target: { value: "11" } },
+  fireEvent.change(screen.getByRole("combobox", { name: "Medium" }), {
+    target: { value: "Long incubation" },
+  });
+  fireEvent.click(
+    screen.getByRole("option", {
+      name: "Long incubation medium · Lot not tracked",
+    }),
   );
   expect(
     screen.getByLabelText(messages["microbiology.culture.duration"]),
@@ -403,7 +410,13 @@ test.each([{}, { atmosphereId: "air", temperature: 37 }])(
     fireEvent.click(
       await screen.findByRole("button", { name: "Inoculate culture" }),
     );
-    change("Medium", "11");
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Medium", exact: true }),
+      { target: { value: "Unlinked" } },
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: "Unlinked medium · Lot not tracked" }),
+    );
     for (const key of ["duration", "checkIntervalHours", "loopVolume"])
       expect(
         screen.getByLabelText(messages[`microbiology.culture.${key}`]),
@@ -495,4 +508,176 @@ it("preserves received-isolate provenance while allowing a real subculture", asy
       name: messages["microbiology.culture.subculture"],
     }),
   ).toBeEnabled();
+});
+
+it("previews an extension from the existing end without resetting inoculation", async () => {
+  show(api());
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Extend incubation" }),
+  );
+  change("Extend by", "12");
+  change("Extension unit", "HOURS");
+  const preview = screen.getByText(/New incubation end:/);
+  const intl = createIntl({ locale: "en", messages });
+  const end = new Date("2026-10-11T22:00:00Z");
+  expect(preview).toHaveTextContent(
+    intl.formatDate(end, { timeZone: labTimeZone() }),
+  );
+  expect(preview).toHaveTextContent(
+    intl.formatTime(end, { timeZone: labTimeZone(), timeZoneName: "short" }),
+  );
+  change("Extend by", "0");
+  expect(screen.getByText(/New incubation end:/)).toHaveTextContent(
+    "Not available",
+  );
+});
+
+it.each([
+  ["mark-positive", "GROWTH"],
+  ["mark-no-growth", "NO_GROWTH"],
+])(
+  "opens the routed %s outcome and saves it on its culture row",
+  async (entryAction, outcome) => {
+    const service = api();
+    const changed = vi.fn();
+    const consumed = vi.fn();
+    show(service, {
+      entryAction,
+      onChanged: changed,
+      onEntryActionConsumed: consumed,
+    });
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Culture row")).toHaveValue("r1");
+    expect(within(dialog).getByLabelText("Outcome")).toHaveValue(outcome);
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    );
+    await waitFor(() =>
+      expect(service.cultureAction).toHaveBeenCalledWith(
+        "c1",
+        "r1",
+        "outcome",
+        expect.objectContaining({ outcome }),
+      ),
+    );
+    expect(service.cultureAction.mock.calls[0][3]).not.toHaveProperty(
+      "cultureRowId",
+    );
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(consumed).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("requires an explicit culture selection when a routed outcome has multiple eligible rows", async () => {
+  const service = api([
+    row,
+    { ...row, id: "r2", containerIdentifier: "PLATE-2" },
+  ]);
+  show(service, { entryAction: "mark-no-growth" });
+  const dialog = await screen.findByRole("dialog");
+  const save = within(dialog).getByRole("button", {
+    name: "Save",
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText("Culture row"), {
+    target: { value: "r2" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith(
+      "c1",
+      "r2",
+      "outcome",
+      expect.objectContaining({ outcome: "NO_GROWTH" }),
+    ),
+  );
+});
+
+it("explains a routed outcome without eligible cultures", async () => {
+  const service = api([]);
+  show(service, { entryAction: "mark-positive" });
+  await screen.findByText(
+    messages["microbiology.culture.noEligibleOutcomeRows"],
+  );
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});
+
+it("does not open a routed outcome for a read-only viewer", async () => {
+  const service = api();
+  show(service, {
+    entryAction: "mark-positive",
+    detail: { ...detail, canWrite: false },
+  });
+  await screen.findByTestId("culture-row-r1");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});
+
+it("opens and consumes the routed primary inoculation action", async () => {
+  const consumed = vi.fn();
+  show(api([]), {
+    entryAction: "start-inoculation",
+    onEntryActionConsumed: consumed,
+  });
+  await screen.findByRole("dialog");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText("Parent culture")).not.toBeInTheDocument();
+  expect(consumed).toHaveBeenCalledTimes(1);
+});
+it("routed subculture requires an eligible parent and preserves its specimen", async () => {
+  const consumed = vi.fn();
+  const service = api([
+    row,
+    {
+      ...row,
+      id: "r2",
+      sourceSampleItemId: "s2",
+      containerIdentifier: "PLATE-2",
+    },
+    {
+      ...row,
+      id: "r3",
+      containerIdentifier: "CONCLUDED",
+      outcome: "NO_GROWTH",
+    },
+  ]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { ...sources[0], sampleItemId: "s2", label: "SPEC-2" },
+    ],
+  });
+  show(service, {
+    entryAction: "add-subculture",
+    onEntryActionConsumed: consumed,
+  });
+  const parent = await screen.findByLabelText("Parent culture");
+  expect(
+    screen.queryByRole("option", { name: "CONCLUDED" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: messages["microbiology.culture.save"] }),
+  ).toBeDisabled();
+  fireEvent.change(parent, { target: { value: "r2" } });
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toHaveValue("s2");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toBeDisabled();
+  change("Bottle or plate identifier", "SUB-2");
+  change("Medium lot", "20");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ parentId: "r2", sourceSampleItemId: "s2" }),
+    ),
+  );
+  expect(consumed).toHaveBeenCalledTimes(1);
 });

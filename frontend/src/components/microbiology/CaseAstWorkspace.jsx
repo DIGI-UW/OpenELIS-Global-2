@@ -1,10 +1,17 @@
+import ReagentLotPicker, { formatReagentLotConflict } from "./ReagentLotPicker";
+import ReagentUsageHistory from "./ReagentUsageHistory";
+import { labTimestamp } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../utils/Utils";
 import {
   Accordion,
   AccordionItem,
   Button,
+  Checkbox,
+  FilterableMultiSelect,
   InlineLoading,
   InlineNotification,
   Modal,
@@ -44,14 +51,60 @@ const reasons = [
   "start",
   "resolve",
 ];
-const techniques = ["BROTH_MICRODILUTION", "DISK_DIFFUSION", "ETEST"];
-export default function CaseAstWorkspace({ detail, service, onChanged }) {
+const techniques = [
+  "BROTH_MICRODILUTION",
+  "DISK_DIFFUSION",
+  "ETEST",
+  "VITEK_2",
+  "PHOENIX",
+];
+export default function CaseAstWorkspace({
+  detail,
+  service,
+  onChanged,
+  renderNotes,
+  readOnly = false,
+  entryAction,
+  selectedRunId,
+  onEntryActionConsumed,
+}) {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const canListAnalyzers = [
+    Roles.ANALYSER_IMPORT,
+    Roles.GLOBAL_ADMIN,
+    "Admin",
+  ].some((role) => hasRole(userSessionDetails, role));
   const t = (key) => intl.formatMessage({ id: `microbiology.m6.${key}` });
   const [data, setData] = useState(null),
     [error, setError] = useState(false),
     [busy, setBusy] = useState(false),
     [draft, setDraft] = useState(null);
+  const [lots, setLots] = useState({ requirements: [], usages: [] });
+  const [selectedLots, setSelectedLots] = useState({});
+  const [analyzers, setAnalyzers] = useState([]);
+  const [antibiotics, setAntibiotics] = useState([]);
+  useEffect(() => {
+    if (draft?.action !== "start" || !draft.adjustPanel) return;
+    let live = true;
+    service
+      .getAntibiotics()
+      .then((rows) => {
+        if (live)
+          setAntibiotics(
+            rows.map((a) => ({ id: a.id, label: a.name || a.label })),
+          );
+      })
+      .catch(() => {
+        if (live) setError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [draft?.action, draft?.adjustPanel, service]);
+  useEffect(() => {
+    setDraft(null);
+  }, [detail.id, readOnly]);
   const current = useRef(detail);
   current.current = detail;
   useEffect(() => {
@@ -71,9 +124,30 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
       live = false;
     };
   }, [detail.id, detail.canWrite, detail.canValidate, service]);
-  const canEnter = detail.canWrite && data?.canEnter;
-  const canValidate = detail.canValidate && data?.canValidate;
-  const open = (action, isolate, run, reading, antibioticId) =>
+  useEffect(() => {
+    let live = true;
+    Promise.all([
+      service.getReagentLotOverview?.(detail.id),
+      canListAnalyzers ? service.getAnalyzers?.() : Promise.resolve([]),
+    ])
+      .then(([overview, instruments]) => {
+        if (live) {
+          setLots(overview || { requirements: [], usages: [] });
+          setAnalyzers(instruments || []);
+        }
+      })
+      .catch(() => {
+        if (live) setError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [detail.id, data, service, canListAnalyzers]);
+  const canEnter = !readOnly && detail.canWrite && data?.canEnter;
+  const canValidate = !readOnly && detail.canValidate && data?.canValidate;
+  const open = (action, isolate, run, reading, antibioticId) => {
+    setError(false);
+    setSelectedLots({});
     setDraft({
       action,
       isolateId: isolate?.id,
@@ -84,12 +158,41 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
       breakpointStandardId: data.standards?.[0]?.id || "",
       technique: run?.technique || techniques[0],
       rawValue: "",
+      orderedAntibioticIds: null,
+      adjustPanel: false,
       analyzerInstrumentId: run?.analyzerInstrumentId,
       analyzerCardId: "",
+      awaitAnalyzerResults: false,
       interpretation: "RESISTANT",
       reason: "",
     });
+  };
+  const consumedEntry = useRef(null);
+  useEffect(() => {
+    if (entryAction !== "new-ast-attempt") {
+      consumedEntry.current = null;
+      return;
+    }
+    if (!data) return;
+    const key = `${detail.id}:${selectedRunId}`;
+    if (consumedEntry.current === key) return;
+    consumedEntry.current = key;
+    const isolate = data.isolates.find((item) =>
+      item.runs.some((run) => run.id === selectedRunId),
+    );
+    const run = isolate?.runs.find((item) => item.id === selectedRunId);
+    if (canEnter && run?.status === "REVIEWED") open("repeat", isolate, run);
+    onEntryActionConsumed?.();
+  }, [
+    entryAction,
+    selectedRunId,
+    detail.id,
+    data,
+    canEnter,
+    onEntryActionConsumed,
+  ]);
   const submit = async () => {
+    if (readOnly || !draft) return;
     const validating =
       validationActions.includes(draft.action) || draft.action === "resolve";
     if (!(validating ? current.current.canValidate : current.current.canWrite))
@@ -97,6 +200,7 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
     setBusy(true);
     setError(false);
     try {
+      const { adjustPanel, ...request } = draft;
       if (draft.action === "resolve") {
         await service.resolveDst(detail.id, draft);
         setData(await service.getAstWorkspace(detail.id));
@@ -105,7 +209,8 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
           await service.astAction(
             detail.id,
             {
-              ...draft,
+              ...request,
+              lotSelections: Object.values(selectedLots),
               rawValue:
                 draft.action === "reading" ? Number(draft.rawValue) : null,
             },
@@ -114,8 +219,18 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
         );
       setDraft(null);
       onChanged?.();
-    } catch {
-      setError(true);
+    } catch (failure) {
+      const lotError = formatReagentLotConflict(
+        failure.response,
+        lots.requirements,
+        selectedLots,
+        intl,
+      );
+      setError(
+        lotError
+          ? { localized: lotError }
+          : failure.response?.message || failure.response?.error || true,
+      );
     } finally {
       setBusy(false);
     }
@@ -133,7 +248,8 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
   const invalid =
     draft &&
-    ((reasons.includes(draft.action) && !draft.reason.trim()) ||
+    ((draft.adjustPanel && !draft.orderedAntibioticIds?.length) ||
+      (reasons.includes(draft.action) && !draft.reason.trim()) ||
       (draft.action === "reading" &&
         (draft.rawValue === "" ||
           !Number.isFinite(Number(draft.rawValue)) ||
@@ -144,20 +260,26 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
       (draft.action === "invalidate" &&
         draft.analyzerInstrumentId &&
         !draft.analyzerCardId.trim()));
+  const errorKey =
+    typeof error === "string" ? `microbiology.m6.error.${error}` : "";
+  const errorMessage =
+    errorKey && intl.messages[errorKey]
+      ? intl.formatMessage({ id: errorKey })
+      : error?.localized || t("saveError");
   return (
     <Stack gap={5}>
       <h3>{t("ast")}</h3>
       {error && (
-        <InlineNotification
-          kind="error"
-          title={t("saveError")}
-          hideCloseButton
-        />
+        <InlineNotification kind="error" title={errorMessage} hideCloseButton />
       )}
       {!data && !error && <InlineLoading description={t("loading")} />}
       {data?.isolates?.length === 0 && <p>{t("identifyFirst")}</p>}
       {data?.isolates?.map((isolate) => (
-        <Tile key={isolate.id} data-testid={`ast-isolate-${isolate.id}`}>
+        <Tile
+          key={isolate.id}
+          data-testid={`ast-isolate-${isolate.id}`}
+          tabIndex={-1}
+        >
           <Stack gap={4}>
             <h4>
               {isolate.label}: {isolate.organism}
@@ -184,7 +306,7 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                 <AccordionItem
                   key={run.id}
                   data-testid={`ast-run-${run.id}`}
-                  title={`${t(`run.${run.status}`)} · ${t(`technique.${run.technique}`)} · ${intl.formatDate(new Date(run.startedAt))}`}
+                  title={`${t(`run.${run.status}`)} · ${t(`technique.${run.technique}`)} · ${labTimestamp(intl, run.startedAt)}`}
                   open
                 >
                   <Stack gap={4}>
@@ -231,7 +353,10 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                             ].includes(run.status);
                             return (
                               <TableRow key={agent.antibioticId}>
-                                <TableCell>{agent.antibioticName}</TableCell>
+                                <TableCell>
+                                  {agent.antibioticName}
+                                  {reading && renderNotes?.("DRUG", reading.id)}
+                                </TableCell>
                                 <TableCell>
                                   {reading
                                     ? `${reading.rawText ?? reading.rawValue ?? ""} ${reading.units || ""}`
@@ -315,6 +440,12 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                     </div>
                     <Accordion>
                       <AccordionItem title={t("history")}>
+                        <p>
+                          {intl.formatMessage(
+                            { id: "microbiology.ast.attemptNumber" },
+                            { number: isolate.runs.indexOf(run) + 1 },
+                          )}
+                        </p>
                         {run.attemptReason && <p>{run.attemptReason}</p>}
                         {run.readings.map((reading) => (
                           <div key={reading.id}>
@@ -328,8 +459,7 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                               : {reading.rawText ?? reading.rawValue}{" "}
                               {reading.units} ·{" "}
                               {t(`interpretation.${reading.interpretation}`)} ·{" "}
-                              {intl.formatDate(new Date(reading.createdAt))}{" "}
-                              {intl.formatTime(new Date(reading.createdAt))}
+                              {labTimestamp(intl, reading.createdAt)}
                             </p>
                             {reading.overrideHistory.map((event) => (
                               <p key={event.id}>
@@ -379,15 +509,16 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                 <Button
                   kind="tertiary"
                   size="sm"
-                  onClick={() =>
+                  onClick={() => {
+                    setError(false);
                     setDraft({
                       action: "resolve",
                       antibioticId: drug.antibioticId,
                       evidenceFingerprint: drug.evidenceFingerprint,
                       interpretation: "RESISTANT",
                       reason: "",
-                    })
-                  }
+                    });
+                  }}
                 >
                   {t("action.resolve")}
                 </Button>
@@ -396,6 +527,7 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
           ))}
         </Tile>
       )}
+      <ReagentUsageHistory usages={lots.usages} />
       {draft && (
         <Modal
           open
@@ -405,15 +537,99 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
           primaryButtonDisabled={
             busy ||
             invalid ||
+            (draft.action === "start" &&
+              draft.awaitAnalyzerResults &&
+              (!draft.analyzerInstrumentId || !draft.analyzerCardId.trim())) ||
             (validationActions.includes(draft.action) ||
             draft.action === "resolve"
               ? !canValidate
               : !canEnter)
           }
-          onRequestClose={() => !busy && setDraft(null)}
+          onRequestClose={() => {
+            if (!busy) {
+              setDraft(null);
+              setError(false);
+            }
+          }}
           onRequestSubmit={submit}
         >
           <Stack gap={4}>
+            {draft.action === "start" && (
+              <>
+                <Select
+                  id="ast-entry-mode"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.entryMode",
+                  })}
+                  value={draft.awaitAnalyzerResults ? "ANALYZER" : "MANUAL"}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      awaitAnalyzerResults: e.target.value === "ANALYZER",
+                    })
+                  }
+                >
+                  <SelectItem
+                    value="MANUAL"
+                    text={intl.formatMessage({
+                      id: "microbiology.ast.entryMode.manual",
+                    })}
+                  />
+                  {canListAnalyzers && (
+                    <SelectItem
+                      value="ANALYZER"
+                      text={intl.formatMessage({
+                        id: "microbiology.ast.entryMode.analyzer",
+                      })}
+                    />
+                  )}
+                </Select>
+                {draft.awaitAnalyzerResults && (
+                  <>
+                    <Select
+                      id="ast-instrument"
+                      labelText={intl.formatMessage({
+                        id: "microbiology.ast.analyzer",
+                      })}
+                      value={draft.analyzerInstrumentId || ""}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          analyzerInstrumentId: e.target.value,
+                        })
+                      }
+                    >
+                      <SelectItem value="" text={t("choose")} />
+                      {analyzers.map((a) => (
+                        <SelectItem key={a.id} value={a.id} text={a.name} />
+                      ))}
+                    </Select>
+                    <TextInput
+                      id="ast-card-id"
+                      labelText={intl.formatMessage({
+                        id: "microbiology.ast.cardId",
+                      })}
+                      value={draft.analyzerCardId}
+                      onChange={(e) =>
+                        setDraft({ ...draft, analyzerCardId: e.target.value })
+                      }
+                    />
+                  </>
+                )}
+                <ReagentLotPicker
+                  id="case-ast-lots"
+                  requirements={lots.requirements}
+                  selectedLots={selectedLots}
+                  disabled={busy}
+                  onChange={(lot) =>
+                    setSelectedLots((previous) => ({
+                      ...previous,
+                      [`${lot.analysisId}:${lot.testReagentLinkId}`]: lot,
+                    }))
+                  }
+                />
+              </>
+            )}
             {["start", "assign"].includes(draft.action) && (
               <Select
                 id="ast-panel"
@@ -428,6 +644,103 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                   <SelectItem key={p.id} value={p.id} text={p.label} />
                 ))}
               </Select>
+            )}
+            {draft.action === "start" && (
+              <>
+                <Checkbox
+                  id="ast-adjust-panel"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.adjustPanel",
+                  })}
+                  checked={draft.adjustPanel}
+                  onChange={(_, { checked }) =>
+                    setDraft({
+                      ...draft,
+                      adjustPanel: checked,
+                      orderedAntibioticIds: checked ? [] : null,
+                    })
+                  }
+                />
+                {draft.adjustPanel && (
+                  <FilterableMultiSelect
+                    id="ast-ordered-agents"
+                    titleText={intl.formatMessage({
+                      id: "microbiology.ast.orderedAntibiotics",
+                    })}
+                    items={antibiotics}
+                    itemToString={(a) => a?.label || ""}
+                    selectedItems={antibiotics.filter((a) =>
+                      draft.orderedAntibioticIds?.includes(a.id),
+                    )}
+                    onChange={({ selectedItems }) =>
+                      setDraft({
+                        ...draft,
+                        orderedAntibioticIds: selectedItems.map((a) => a.id),
+                      })
+                    }
+                  />
+                )}
+              </>
+            )}
+            {["repeat", "retest"].includes(draft.action) && (
+              <>
+                <Select
+                  id="ast-attempt-type"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.attemptType",
+                  })}
+                  value={draft.action}
+                  onChange={(event) =>
+                    setDraft({ ...draft, action: event.target.value })
+                  }
+                >
+                  <SelectItem value="repeat" text={t("action.repeat")} />
+                  <SelectItem value="retest" text={t("action.retest")} />
+                </Select>
+                <Select
+                  id="ast-repeat-agent"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.ast.attemptScope",
+                  })}
+                  value={draft.orderedAntibioticIds?.[0] || ""}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      orderedAntibioticIds: e.target.value
+                        ? [e.target.value]
+                        : null,
+                    })
+                  }
+                >
+                  <SelectItem
+                    value=""
+                    text={intl.formatMessage({
+                      id: "microbiology.ast.wholePanel",
+                    })}
+                  />
+                  {activeIsolate.runs
+                    .find((r) => r.id === draft.runId)
+                    ?.orderedAntibiotics.map((a) => (
+                      <SelectItem
+                        key={a.antibioticId}
+                        value={a.antibioticId}
+                        text={a.antibioticName}
+                      />
+                    ))}
+                </Select>
+                <ReagentLotPicker
+                  id="case-repeat-lots"
+                  requirements={lots.requirements}
+                  selectedLots={selectedLots}
+                  disabled={busy}
+                  onChange={(lot) =>
+                    setSelectedLots((previous) => ({
+                      ...previous,
+                      [`${lot.analysisId}:${lot.testReagentLinkId}`]: lot,
+                    }))
+                  }
+                />
+              </>
             )}
             {["start", "repeat", "retest"].includes(draft.action) && (
               <Select
@@ -518,7 +831,7 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
             {error && (
               <InlineNotification
                 kind="error"
-                title={t("saveError")}
+                title={errorMessage}
                 hideCloseButton
               />
             )}

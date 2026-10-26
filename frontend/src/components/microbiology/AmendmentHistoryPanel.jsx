@@ -24,6 +24,7 @@ const AmendmentHistoryPanel = ({
   service = MicrobiologyService,
   onCaseUpdated,
   active = true,
+  canAmend = true,
 }) => {
   const intl = useIntl();
   const headingRef = useRef(null);
@@ -154,7 +155,7 @@ const AmendmentHistoryPanel = ({
         />
       )}
 
-      {(finalReleased || amendmentOpen) && (
+      {canAmend && (finalReleased || amendmentOpen) && (
         <div className="microbiology-amendment-actions">
           <TextArea
             id="microbiology-amendment-reason"

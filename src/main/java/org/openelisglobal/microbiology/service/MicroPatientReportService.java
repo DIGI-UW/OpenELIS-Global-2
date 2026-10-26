@@ -143,8 +143,25 @@ public class MicroPatientReportService {
         }
         form.classification = dst.evaluate(caseId).classification;
         form.notes = timeline.getReportNotes(caseId).stream()
-                .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt)).toList();
+                .filter(n -> includedNoteTarget(form, n.targetType, n.targetId))
+                .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt, n.targetType,
+                        n.targetId))
+                .toList();
         return form;
+    }
+
+    static boolean includedNoteTarget(MicroPatientReportForm report, String type, String id) {
+        if (type == null)
+            return true;
+        return switch (type) {
+        case "RESULT" -> java.util.stream.Stream.concat(report.initial.stream(), report.additional.stream())
+                .anyMatch(test -> test.analysisId().equals(id));
+        case "CULTURE" -> report.cultures.stream().anyMatch(row -> row.id().equals(id));
+        case "ISOLATE" -> report.isolates.stream().anyMatch(row -> row.id().equals(id));
+        case "DRUG" -> report.isolates.stream().flatMap(row -> row.susceptibilities().stream())
+                .anyMatch(row -> row.readingId().equals(id));
+        default -> false;
+        };
     }
 
     public static boolean selected(MicroCaseAnalysis link) {

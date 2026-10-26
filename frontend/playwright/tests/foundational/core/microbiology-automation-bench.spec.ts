@@ -11,9 +11,14 @@ test("places an incoming result and keeps it pending validation", async ({
   test.setTimeout(120000);
   const seeded = await seedMicrobiologyAutomation(page);
   await page.goto(`/Microbiology/cases/${seeded.caseId}`);
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "1 incoming result needs placement" }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
   await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("INCOMING");
+    .getByRole("button", { name: "Incoming results", exact: true })
+    .click();
   const row = page
     .getByRole("row")
     .filter({ hasText: "UAT Microbiology follow-up assay" });
@@ -26,6 +31,11 @@ test("places an incoming result and keeps it pending validation", async ({
     .selectOption(seeded.sampleItemId);
   await page.getByRole("button", { name: "Place result", exact: true }).click();
   await expect(row).toContainText("Placed", { timeout: LONG_TIMEOUT });
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "1 incoming result needs placement" }),
+  ).toHaveCount(0);
   await page
     .getByLabel("Testing section", { exact: true })
     .selectOption("ADDITIONAL");

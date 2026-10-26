@@ -330,6 +330,20 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void multipleUnitFiltersCannotBroadenPermissionsOrLoseUnitOptions() {
+        var q = query();
+        q.labUnitIds = List.of(source.getId(), other.getId());
+        var filtered = workspace.search(q, viewer);
+        assertEquals(List.of(own.getId()), filtered.rows.stream().map(r -> r.id).toList());
+        assertFalse(filtered.labUnits.stream().anyMatch(u -> other.getId().equals(u.getId())));
+        q.labUnitIds = List.of(other.getId());
+        var inaccessible = workspace.search(q, viewer);
+        assertEquals(0, inaccessible.total);
+        assertEquals(0, inaccessible.rows.size());
+        assertTrue(inaccessible.labUnits.stream().anyMatch(u -> source.getId().equals(u.getId())));
+    }
+
+    @Test
     public void directReadIsAllowedWhileExplicitUnitSearchRemainsScoped() {
         var direct = workspace.get(hidden.getId(), viewer);
         assertTrue(direct.readOnlyAccess);
@@ -386,6 +400,48 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
         assertThrows(MicroCaseLockedException.class,
                 () -> workspace.transfer(own.getId(), destination.getId(), viewer));
         assertEquals(source.getId(), cases.get(own.getId()).get().getLabUnitId());
+    }
+
+    @Test
+    public void fourBottlesRetainTheirCollectionIdentityAfterCorrectionAndTransfer() {
+        grant(source.getId(), destination.getId());
+        var expected = new LinkedHashMap<String, java.sql.Timestamp>();
+        for (int i = 0; i < 4; i++) {
+            var bottle = fixtures.createSampleWithSampleItem("M9-BOTTLE-" + i);
+            bottle.setSample(em.find(org.openelisglobal.sample.valueholder.Sample.class, own.getSampleId()));
+            bottle.setTypeOfSample(fixtures.getOrCreateActiveSampleType());
+            bottle.setBodySite(i < 2 ? "Left arm" : "Right arm");
+            bottle.setContainer(i % 2 == 0 ? "Aerobic bottle" : "Anaerobic bottle");
+            bottle.setCollector("Collector " + i);
+            bottle.setCollectionDate(
+                    java.sql.Timestamp.from(java.time.Instant.parse("2026-10-14T23:58:00Z").plusSeconds(i * 60)));
+            sampleItems.update(bottle);
+            membership.addSample(own.getId(), bottle.getId(), actor);
+            expected.put(bottle.getId(), bottle.getCollectionDate());
+        }
+        em.flush();
+        em.clear();
+        var shell = workspace.get(own.getId(), viewer);
+        assertEquals(4, shell.samples.size());
+        assertEquals(Set.of("Left arm", "Right arm"),
+                shell.samples.stream().map(row -> row.bodySite).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of("Aerobic bottle", "Anaerobic bottle"),
+                shell.samples.stream().map(row -> row.containerType).collect(java.util.stream.Collectors.toSet()));
+        assertEquals(Set.of("Collector 0", "Collector 1", "Collector 2", "Collector 3"),
+                shell.samples.stream().map(row -> row.collector).collect(java.util.stream.Collectors.toSet()));
+        shell.samples.forEach(row -> assertEquals(expected.get(row.sampleItemId), row.collectionDate));
+        var corrected = sampleItems.get(expected.keySet().iterator().next());
+        corrected.setBodySite("Left forearm");
+        sampleItems.update(corrected);
+        workspace.transfer(own.getId(), destination.getId(), viewer);
+        em.flush();
+        em.clear();
+        var moved = workspace.get(own.getId(), viewer);
+        assertEquals(destination.getId(), moved.labUnitId);
+        assertEquals(4, moved.samples.size());
+        assertEquals("Left forearm", moved.samples.stream().filter(row -> row.sampleItemId.equals(corrected.getId()))
+                .findFirst().orElseThrow().bodySite);
+        moved.samples.forEach(row -> assertEquals(expected.get(row.sampleItemId), row.collectionDate));
     }
 
     @Test

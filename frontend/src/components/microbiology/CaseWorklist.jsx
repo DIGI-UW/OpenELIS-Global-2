@@ -1,3 +1,4 @@
+import { labTimeZone } from "./MicrobiologyTime";
 import CultureWorklist from "./CultureWorklist";
 import React, { useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
@@ -17,6 +18,7 @@ import {
   Pagination,
   Search,
   Select,
+  MultiSelect,
   SelectItem,
   TextInput,
   Button,
@@ -61,6 +63,17 @@ export default function CaseWorklist({ service = serviceDefault }) {
   }, [service, location.search, refresh]);
   const change = (key, value) => {
     const next = new URLSearchParams(location.search);
+    if (key === "grain" && value === "ast") {
+      if (
+        ["status", "cultureFilter", "needsAttention"].some((filter) =>
+          next.has(filter),
+        )
+      )
+        next.set("scopeFiltersReset", "true");
+      ["status", "cultureFilter", "needsAttention"].forEach((filter) =>
+        next.delete(filter),
+      );
+    }
     if (value) next.set(key, String(value));
     else next.delete(key);
     if (key !== "page") next.delete("page");
@@ -81,6 +94,13 @@ export default function CaseWorklist({ service = serviceDefault }) {
       <Column lg={16} md={8} sm={4}>
         <Stack gap={5}>
           <h1>{t("microbiology.worklist.title")}</h1>
+          {params.get("scopeFiltersReset") === "true" && (
+            <InlineNotification
+              kind="info"
+              hideCloseButton
+              title={t("microbiology.worklist.scopeFiltersReset")}
+            />
+          )}
           <Button
             kind="tertiary"
             onClick={() => change("grain", cultures ? "" : "bench")}
@@ -115,20 +135,38 @@ export default function CaseWorklist({ service = serviceDefault }) {
               />
               <Grid condensed>
                 <Column lg={4} md={4} sm={4}>
-                  <Select
+                  <MultiSelect
                     id="case-unit"
-                    labelText={t("microbiology.case.labUnit")}
-                    value={params.get("labUnitId") || ""}
-                    onChange={(e) => change("labUnitId", e.target.value)}
-                  >
-                    <SelectItem
-                      value=""
-                      text={t("microbiology.case.allUnits")}
-                    />
-                    {(data?.labUnits || []).map((u) => (
-                      <SelectItem key={u.id} value={u.id} text={u.value} />
-                    ))}
-                  </Select>
+                    titleText={t("microbiology.case.labUnit")}
+                    label={t("microbiology.case.allUnits")}
+                    items={data?.labUnits || []}
+                    itemToString={(u) => u?.value || ""}
+                    selectedItems={[
+                      ...params.getAll("labUnitIds"),
+                      params.get("labUnitId"),
+                    ]
+                      .filter(Boolean)
+                      .map(
+                        (id) =>
+                          data?.labUnits?.find((u) => u.id === id) || {
+                            id,
+                            value: id,
+                          },
+                      )}
+                    onChange={({ selectedItems }) => {
+                      const next = new URLSearchParams(location.search);
+                      next.delete("labUnitId");
+                      next.delete("labUnitIds");
+                      next.delete("page");
+                      selectedItems.forEach((u) =>
+                        next.append("labUnitIds", u.id),
+                      );
+                      history.push({
+                        pathname: location.pathname,
+                        search: next.toString(),
+                      });
+                    }}
+                  />
                 </Column>
                 <Column lg={4} md={4} sm={4}>
                   <Select
@@ -212,7 +250,10 @@ export default function CaseWorklist({ service = serviceDefault }) {
                       getRowProps,
                       getTableProps,
                     }) => (
-                      <Table {...getTableProps()}>
+                      <Table
+                        {...getTableProps()}
+                        aria-label={t("microbiology.worklist.title")}
+                      >
                         <TableHead>
                           <TableRow>
                             {headers.map((h) => (
@@ -254,7 +295,9 @@ export default function CaseWorklist({ service = serviceDefault }) {
                                     </Tag>
                                   ) : cell.info.header === "createdAt" &&
                                     cell.value ? (
-                                    intl.formatDate(new Date(cell.value))
+                                    intl.formatDate(new Date(cell.value), {
+                                      timeZone: labTimeZone(),
+                                    })
                                   ) : (
                                     cell.value || t("not.available")
                                   )}

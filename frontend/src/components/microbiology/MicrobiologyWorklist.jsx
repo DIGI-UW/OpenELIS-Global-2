@@ -1,3 +1,4 @@
+import { searchCases } from "./CaseWorkspaceService";
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Download,
@@ -19,6 +20,7 @@ import {
   OverflowMenuItem,
   Pagination,
   Select,
+  MultiSelect,
   SelectItem,
   Stack,
   Switch,
@@ -238,10 +240,11 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
     location.search,
     referenceNow,
   );
-  const canonicalWorklistUrl = getMicrobiologyWorklistUrl(
-    filters,
-    referenceNow,
-  );
+  const scopeFiltersReset =
+    new URLSearchParams(location.search).get("scopeFiltersReset") === "true";
+  const canonicalWorklistUrl =
+    getMicrobiologyWorklistUrl(filters, referenceNow) +
+    (scopeFiltersReset ? "&scopeFiltersReset=true" : "");
   const isAstGrain = filters.grain === "ast";
   const canExportWhonet = [
     Roles.GLOBAL_ADMIN,
@@ -273,6 +276,18 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   });
   const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshGeneration, setRefreshGeneration] = useState(0);
+  const [labUnits, setLabUnits] = useState([]);
+  useEffect(() => {
+    let live = true;
+    searchCases("pageSize=1")
+      .then((data) => {
+        if (live) setLabUnits(data.labUnits || []);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const { current: worklist, previousRows, newPositiveRowIds } = worklistState;
@@ -393,6 +408,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   };
 
   const hasFilters = Boolean(
+    filters.labUnitIds.length > 0 ||
     filters.status ||
     filters.stage ||
     filters.urgency ||
@@ -739,6 +755,53 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
             </Tag>
           </div>
         </header>
+        {isAstGrain && (
+          <Stack orientation="horizontal" gap={3}>
+            {[
+              { grain: "", label: "microbiology.case.search" },
+              { grain: "bench", label: "microbiology.culture.title" },
+            ].map(({ grain, label }) => (
+              <Button
+                key={label}
+                kind="tertiary"
+                onClick={() => {
+                  const next = new URLSearchParams(location.search);
+                  const keys = [
+                    "from",
+                    "to",
+                    "status",
+                    "stage",
+                    "due",
+                    "specimen",
+                    "organism",
+                    "origin",
+                    "significance",
+                  ];
+                  if (keys.some((key) => next.has(key)))
+                    next.set("scopeFiltersReset", "true");
+                  keys.concat("page").forEach((key) => next.delete(key));
+                  if (grain) next.set("grain", grain);
+                  else next.delete("grain");
+                  history.push({
+                    pathname: location.pathname,
+                    search: next.toString(),
+                  });
+                }}
+              >
+                {intl.formatMessage({ id: label })}
+              </Button>
+            ))}
+          </Stack>
+        )}
+        {scopeFiltersReset && (
+          <InlineNotification
+            kind="info"
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.worklist.scopeFiltersReset",
+            })}
+          />
+        )}
         <div className="microbiology-worklist__grain-control">
           <ContentSwitcher
             selectedIndex={isAstGrain ? 1 : 0}
@@ -749,7 +812,6 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 status: "",
                 stage: "",
                 due: "",
-                q: "",
               })
             }
           >
@@ -895,13 +957,31 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 </p>
               </div>
             </div>
-            <MicrobiologySurveillanceFilters
-              state={filters}
-              filterOptions={worklist.filterOptions}
-              onChange={(changes) => updateFilters(changes)}
-              now={referenceNow}
-              idPrefix="microbiology-worklist-surveillance"
-            />
+            <>
+              <MultiSelect
+                id="ast-lab-unit"
+                titleText={intl.formatMessage({
+                  id: "microbiology.case.labUnit",
+                })}
+                label={intl.formatMessage({ id: "microbiology.case.allUnits" })}
+                items={labUnits}
+                itemToString={(u) => u?.value || ""}
+                selectedItems={(filters.labUnitIds || []).map(
+                  (id) =>
+                    labUnits.find((u) => u.id === id) || { id, value: id },
+                )}
+                onChange={({ selectedItems }) =>
+                  updateFilters({ labUnitIds: selectedItems.map((u) => u.id) })
+                }
+              />
+              <MicrobiologySurveillanceFilters
+                state={filters}
+                filterOptions={worklist.filterOptions}
+                onChange={(changes) => updateFilters(changes)}
+                now={referenceNow}
+                idPrefix="microbiology-worklist-surveillance"
+              />
+            </>
           </section>
         )}
         <section
@@ -919,7 +999,10 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
               disabled={!hasFilters}
               onClick={() =>
                 history.push(
-                  getMicrobiologyWorklistUrl({ grain: filters.grain }),
+                  getMicrobiologyWorklistUrl(
+                    { grain: filters.grain },
+                    referenceNow,
+                  ),
                 )
               }
             >

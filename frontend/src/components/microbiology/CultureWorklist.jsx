@@ -1,3 +1,4 @@
+import { labTimestamp } from "./MicrobiologyTime";
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -37,14 +38,6 @@ export default function CultureWorklist({ service }) {
   const [data, setData] = useState(null),
     [error, setError] = useState(false),
     [loading, setLoading] = useState(true),
-    [filter, setFilter] = useState(""),
-    [attention, setAttention] = useState(false),
-    [units, setUnits] = useState([]),
-    [search, setSearch] = useState(
-      () => new URLSearchParams(location.search).get("q") || "",
-    ),
-    [page, setPage] = useState(1),
-    [size, setSize] = useState(20),
     [refresh, setRefresh] = useState(0),
     [action, setAction] = useState(null),
     [selection, setSelection] = useState([]),
@@ -53,6 +46,28 @@ export default function CultureWorklist({ service }) {
     [options, setOptions] = useState(null),
     [input, setInput] = useState({}),
     [sheet, setSheet] = useState(null);
+  const params = new URLSearchParams(location.search);
+  const filter = params.get("cultureFilter") || "";
+  const attention = params.get("needsAttention") === "true";
+  const unitIds = [
+    ...new Set(
+      [...params.getAll("labUnitIds"), params.get("labUnitId")].filter(Boolean),
+    ),
+  ];
+  const search = params.get("q") || "";
+  const page = Number(params.get("page")) || 1;
+  const size = Number(params.get("pageSize")) || 20;
+  const change = (changes) => {
+    const next = new URLSearchParams(location.search);
+    next.delete("page");
+    Object.entries(changes).forEach(([key, value]) => {
+      next.delete(key);
+      (Array.isArray(value) ? value : [value])
+        .filter((v) => v !== "" && v != null)
+        .forEach((v) => next.append(key, String(v)));
+    });
+    history.push({ pathname: location.pathname, search: next.toString() });
+  };
   useEffect(() => {
     let live = true;
     setLoading(true);
@@ -63,7 +78,10 @@ export default function CultureWorklist({ service }) {
       page,
       pageSize: size,
     });
-    units.forEach((u) => q.append("labUnitIds", u.id));
+    unitIds.forEach((id) => q.append("labUnitIds", id));
+    ["from", "to", "patientId", "status"].forEach((key) => {
+      if (params.get(key)) q.set(key, params.get(key));
+    });
     service
       .searchBench(q.toString())
       .then((d) => {
@@ -81,7 +99,7 @@ export default function CultureWorklist({ service }) {
     return () => {
       live = false;
     };
-  }, [service, filter, attention, units, search, page, size, refresh]);
+  }, [service, location.search, refresh]);
   const inoculationTests = (items) => {
     if (
       !items.length ||
@@ -97,6 +115,12 @@ export default function CultureWorklist({ service }) {
   };
   const selectedItems = (selected) =>
     selected.map((row) => data.rows.find((item) => item.id === row.id));
+  const caseSearch = (item) => {
+    const next = new URLSearchParams(location.search);
+    next.set("scope", "CULTURE");
+    if (item.cultureId) next.set("row", item.cultureId);
+    return next.toString();
+  };
   const begin = async (kind, selected) => {
     const selectedRows = selected.map((r) =>
       data.rows.find((item) => item.id === r.id),
@@ -216,8 +240,7 @@ export default function CultureWorklist({ service }) {
         labelText={t("microbiology.case.search")}
         value={search}
         onChange={(e) => {
-          setSearch(e.target.value);
-          setPage(1);
+          change({ q: e.target.value });
         }}
       />
       <MultiSelect
@@ -225,10 +248,16 @@ export default function CultureWorklist({ service }) {
         titleText={t("microbiology.case.labUnit")}
         label={t("microbiology.case.allUnits")}
         items={data?.labUnits || []}
+        selectedItems={unitIds.map(
+          (id) =>
+            data?.labUnits?.find((unit) => unit.id === id) || { id, value: id },
+        )}
         itemToString={(u) => u?.value || ""}
         onChange={({ selectedItems }) => {
-          setUnits(selectedItems);
-          setPage(1);
+          change({
+            labUnitId: "",
+            labUnitIds: selectedItems.map((item) => item.id),
+          });
         }}
       />
       <Select
@@ -236,8 +265,7 @@ export default function CultureWorklist({ service }) {
         labelText={t("microbiology.culture.title")}
         value={filter}
         onChange={(e) => {
-          setFilter(e.target.value);
-          setPage(1);
+          change({ cultureFilter: e.target.value });
         }}
       >
         {["", "AWAITING_INOCULATION", "CHECK_DUE", "FINAL_READ_DUE"].map(
@@ -255,8 +283,7 @@ export default function CultureWorklist({ service }) {
         labelText={t("microbiology.bench.attentionOnly")}
         checked={attention}
         onChange={(_, { checked }) => {
-          setAttention(checked);
-          setPage(1);
+          change({ needsAttention: checked ? "true" : "" });
         }}
       />
       {loading && <InlineLoading description={t("common.loading")} />}
@@ -366,7 +393,7 @@ export default function CultureWorklist({ service }) {
                             kind="ghost"
                             onClick={() =>
                               history.push(
-                                `${MICROBIOLOGY_CASE_PATH}/${item.caseId}?scope=CULTURE${item.cultureId ? `&row=${item.cultureId}` : ""}`,
+                                `${MICROBIOLOGY_CASE_PATH}/${item.caseId}?${caseSearch(item)}`,
                               )
                             }
                           >
@@ -386,9 +413,7 @@ export default function CultureWorklist({ service }) {
                           ))}
                         </TableCell>
                         <TableCell>
-                          {item.dueAt
-                            ? `${intl.formatDate(new Date(item.dueAt))} ${intl.formatTime(new Date(item.dueAt))}`
-                            : ""}
+                          {item.dueAt ? labTimestamp(intl, item.dueAt) : ""}
                         </TableCell>
                       </TableRow>
                     );
@@ -420,8 +445,7 @@ export default function CultureWorklist({ service }) {
           )
         }
         onChange={({ page, pageSize }) => {
-          setPage(page);
-          setSize(pageSize);
+          change({ page, pageSize });
         }}
       />
       {action && options && (

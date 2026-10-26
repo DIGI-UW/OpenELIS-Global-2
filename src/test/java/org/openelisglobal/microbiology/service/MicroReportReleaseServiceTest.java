@@ -100,6 +100,25 @@ public class MicroReportReleaseServiceTest {
     }
 
     @Test
+    public void partialReportsPreserveTheWorkStageIncludingNoGrowthReady() {
+        for (var stage : List.of(MicroCaseStage.NO_GROWTH_READY, MicroCaseStage.IDENTIFICATION,
+                MicroCaseStage.AST_IN_PROGRESS)) {
+            var microCase = new MicroCase();
+            microCase.setId("case-" + stage.name());
+            microCase.setStage(stage.name());
+            when(caseDAO.get(microCase.getId())).thenReturn(Optional.of(microCase));
+            when(caseDAO.update(microCase)).thenReturn(microCase);
+            when(reportProjectionService.releasePreliminary(microCase.getId(), "1"))
+                    .thenReturn(new MicroReportProjectionResult("Validated result", true, List.of("11")));
+            var released = service.releasePreliminary(microCase.getId(), "1");
+            assertEquals(stage.name(), released.getStage());
+            assertEquals(MicroCaseFinalReleaseState.PRELIMINARY_RELEASED.name(), released.getFinalReleaseState());
+            verify(reportVersionService).recordPreliminary(org.mockito.ArgumentMatchers.eq(microCase.getId()),
+                    any(MicroReportProjectionResult.class), org.mockito.ArgumentMatchers.eq("1"));
+        }
+    }
+
+    @Test
     public void preliminaryReleaseIsRejectedOnceTheCaseIsFinal() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");

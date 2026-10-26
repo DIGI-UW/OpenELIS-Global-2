@@ -41,56 +41,40 @@ test.describe("OGC-782 R11 culture purpose", () => {
       );
       const caseView = page.getByTestId("microbiology-case-view");
       await expect(caseView).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(
-        caseView.getByRole("radio", {
-          name: "Clinical diagnosis or treatment",
-        }),
-      ).toBeChecked();
-      await caseView
-        .getByRole("group", { name: "Culture purpose" })
-        .getByText("Active screening or carriage", { exact: true })
-        .click();
-      await caseView.getByRole("button", { name: "Save order detail" }).click();
-      await expect(
-        caseView.getByRole("radio", {
-          name: "Active screening or carriage",
-        }),
-      ).toBeChecked();
-      await caseView
-        .getByRole("group", { name: "Culture purpose" })
-        .scrollIntoViewIfNeeded();
+      const purpose = caseView.getByLabel("Culture purpose", { exact: true });
+      await expect(purpose).toHaveValue("DIAGNOSTIC");
+      await purpose.selectOption("SCREENING");
+      const saved = page.waitForResponse(
+        (response) =>
+          response.url().endsWith(`/cases/${editableCase.caseId}/context`) &&
+          response.request().method() === "POST",
+      );
+      await caseView.getByRole("button", { name: "Save", exact: true }).click();
+      expect((await saved).ok()).toBeTruthy();
+      await expect(purpose).toBeEnabled();
+      await expect(purpose).toHaveValue("SCREENING");
+      await page.reload();
+      await expect(purpose).toHaveValue("SCREENING");
       await attachScreenshot(page, testInfo, "r11-culture-purpose-corrected");
-
-      await caseView
-        .getByRole("button", { name: /^Case info Accession number:/ })
-        .click();
-      await expect(
-        caseView.getByText("Active screening or carriage", { exact: true }),
-      ).toBeVisible();
-      await caseView
-        .getByRole("button", { name: "Timeline", exact: true })
-        .click();
-      const timeline = page.getByTestId("microbiology-timeline-card");
-      await expect(
-        timeline.getByText("Culture purpose changed", { exact: true }),
-      ).toBeVisible();
-      await expect(
-        timeline.getByText(
-          "Clinical diagnosis or treatment to Active screening or carriage",
-          { exact: true },
-        ),
-      ).toBeVisible();
+      await page
+        .getByLabel("Testing section", { exact: true })
+        .selectOption("HISTORY");
+      const timeline = page.getByRole("table", {
+        name: "Case timeline",
+        exact: true,
+      });
+      await expect(timeline).toContainText("Diagnostic → Screening");
       await attachScreenshot(page, testInfo, "r11-culture-purpose-audit");
     });
 
     const specimen = [
       population.clinical.sampleTypeId,
       population.screening.sampleTypeId,
-      population.unspecified.sampleTypeId,
+      population.survey.sampleTypeId,
     ];
     const query = buildWhonetExportQuery(population.exportDate, { specimen });
 
-    await test.step("Exclude screening and unspecified cultures by default", async () => {
+    await test.step("Exclude screening, environmental and unselected survey cultures by default", async () => {
       await page.goto(`/Microbiology/whonet?${query}`, {
         waitUntil: "commit",
       });
@@ -102,7 +86,7 @@ test.describe("OGC-782 R11 culture purpose", () => {
       ).not.toBeChecked();
       await expect(
         page.getByRole("checkbox", {
-          name: "Include historical cultures with unspecified purpose",
+          name: "Include environmental isolates",
         }),
       ).not.toBeChecked();
       await page.getByRole("button", { name: "Preview export" }).click();
@@ -120,18 +104,12 @@ test.describe("OGC-782 R11 culture purpose", () => {
       );
     });
 
-    await test.step("Include screening and unspecified populations independently", async () => {
+    await test.step("Include screening explicitly and restore the diagnostic population", async () => {
       const screening = page.getByRole("checkbox", {
         name: "Include active screening or carriage cultures",
       });
-      const unspecified = page.getByRole("checkbox", {
-        name: "Include historical cultures with unspecified purpose",
-      });
       const screeningLabel = page.locator(
         'label[for="whonet-include-screening"]',
-      );
-      const unspecifiedLabel = page.locator(
-        'label[for="whonet-include-unspecified"]',
       );
       await screeningLabel.click();
       await expect(screening).toBeChecked();
@@ -150,20 +128,11 @@ test.describe("OGC-782 R11 culture purpose", () => {
 
       await screeningLabel.click();
       await expect(screening).not.toBeChecked();
-      await unspecifiedLabel.click();
-      await expect(unspecified).toBeChecked();
-      await expect(page).toHaveURL(/includeScreening=false/);
-      await expect(page).toHaveURL(/includeUnspecified=true/);
+      // Unselected survey cases stay excluded under the V2 population policy.
       await page.getByRole("button", { name: "Preview export" }).click();
       await expect(
         metric(page, "After culture-purpose selection").locator("strong"),
-      ).toHaveText("4");
-      await attachScreenshot(
-        page,
-        testInfo,
-        "r11-whonet-unspecified-population",
-        true,
-      );
+      ).toHaveText("2");
     });
 
     await test.step("Keep final culture purpose visible and locked", async () => {
@@ -174,14 +143,10 @@ test.describe("OGC-782 R11 culture purpose", () => {
       const caseView = page.getByTestId("microbiology-case-view");
       await expect(caseView).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
-        caseView.getByRole("radio", {
-          name: "Active screening or carriage",
-        }),
-      ).toBeChecked();
+        caseView.getByLabel("Culture purpose", { exact: true }),
+      ).toHaveValue("SCREENING");
       await expect(
-        caseView.getByRole("radio", {
-          name: "Clinical diagnosis or treatment",
-        }),
+        caseView.getByLabel("Culture purpose", { exact: true }),
       ).toBeDisabled();
       await expect(
         caseView.getByRole("button", { name: "Save order detail" }),

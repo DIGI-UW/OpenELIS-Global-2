@@ -54,6 +54,13 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         Set<String> ids = readUnits(userId);
         if (q.labUnitId != null && ids != null && !ids.contains(q.labUnitId))
             throw new AccessDeniedException("Case lab unit access required");
+        final Set<String> permittedIds = ids;
+        if (q.labUnitIds != null && !q.labUnitIds.isEmpty()) {
+            var selected = new LinkedHashSet<>(q.labUnitIds);
+            if (ids != null)
+                selected.retainAll(ids);
+            ids = selected;
+        }
         MicroCaseSearchPageForm page = new MicroCaseSearchPageForm();
         page.page = q.page;
         page.pageSize = q.pageSize;
@@ -61,7 +68,8 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         page.rows = searchDAO.search(q, ids).stream().map(v -> summary(v, new MicroCaseSummaryForm())).toList();
         // Include units containing retained cases, even after their catalog tests are
         // deactivated.
-        page.labUnits = units.getAllTestSections().stream().filter(u -> ids == null || ids.contains(u.getId()))
+        page.labUnits = units.getAllTestSections().stream()
+                .filter(u -> permittedIds == null || permittedIds.contains(u.getId()))
                 .map(u -> new org.openelisglobal.common.util.IdValuePair(u.getId(), u.getTestSectionName())).toList();
         return page;
     }
@@ -95,6 +103,8 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         f.canWrite = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_RESULTS);
         f.finalReleaseState = c.getFinalReleaseState();
         f.amendmentOpen = "AMENDMENT_IN_PROGRESS".equals(c.getFinalReleaseState());
+        f.canAmend = c.getStatus() == MicroCaseStatus.ACTIVE
+                && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
         f.canValidate = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
         context.compile(c, f);
         f.referred = referrals
@@ -112,6 +122,10 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
             s.specimenType = si.getTypeOfSample() == null ? null : si.getTypeOfSample().getDescription();
             s.collectionDate = si.getCollectionDate();
             s.samplingPoint = si.getLocationDetails();
+            s.bodySite = si.getBodySite();
+            s.collectionLocationId = si.getCollectionLocationId();
+            s.containerType = si.getContainer();
+            s.collector = si.getCollector();
             s.cultureSetNumber = si.getCultureSetNumber();
             f.samples.add(s);
         }

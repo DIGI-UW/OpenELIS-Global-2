@@ -1,3 +1,8 @@
+import CaseAttachmentNotes from "./CaseAttachmentNotes";
+import { labTimestamp } from "./MicrobiologyTime";
+import AmendmentHistoryPanel from "./AmendmentHistoryPanel";
+import CriticalCommunicationPanel from "./CriticalCommunicationPanel";
+import CaseNonconformancePanel from "./CaseNonconformancePanel";
 import CaseHistory from "./CaseHistory";
 import CaseIncomingWorkspace from "./CaseIncomingWorkspace";
 import CaseAstWorkspace from "./CaseAstWorkspace";
@@ -321,6 +326,7 @@ export default function CaseTestingWorkspace({
   detail,
   service,
   onCaseChanged,
+  onScopeChange,
   scanSearch = "",
 }) {
   const mounted = useRef(true);
@@ -341,21 +347,45 @@ export default function CaseTestingWorkspace({
   const [cultureSource, setCultureSource] = useState(null);
   const scanParams = new URLSearchParams(scanSearch);
   const scanScope = scanParams.get("scope");
-  const scanRow = scanParams.get("row");
-  const [placement, setPlacement] = useState("INITIAL");
+  const scanRow = scanParams.get("row") || scanParams.get("astRunId");
+  const sectionScopes = {
+    setup: "CULTURE",
+    timeline: "HISTORY",
+    isolates: "ISOLATES",
+    ast: "AST",
+    reports: "REPORT",
+    amendment: "AMENDMENT",
+    "critical-communication": "CRITICAL",
+    nonconformance: "NONCONFORMANCE",
+  };
+  const routedScope =
+    scanScope ||
+    sectionScopes[scanParams.get("section")] ||
+    { cultures: "CULTURE", ast: "AST" }[scanParams.get("grain")] ||
+    "INITIAL";
+  const scanTarget = scanRow
+    ? `${routedScope === "CULTURE" ? "culture-row" : routedScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`
+    : routedScope === "AST" && scanParams.get("astIsolateId")
+      ? `ast-isolate-${scanParams.get("astIsolateId")}`
+      : null;
+  const [placement, setPlacement] = useState(routedScope);
   useEffect(() => {
-    if (["CULTURE", "ISOLATES", "AST"].includes(scanScope))
-      setPlacement(scanScope);
-  }, [scanScope, scanRow]);
+    setPlacement(routedScope);
+    if (routedScope === "HISTORY")
+      document.getElementById("case-history")?.focus();
+    if (["case-info", "order-detail"].includes(scanParams.get("section"))) {
+      document.getElementById("case-information")?.focus();
+    }
+  }, [routedScope, scanRow, scanSearch]);
   useEffect(() => {
-    if (!scanRow) return undefined;
-    const targetId = `${scanScope === "CULTURE" ? "culture-row" : scanScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`;
+    if (!scanTarget || placement !== routedScope) return undefined;
     const scroll = () => {
       const target = document.querySelector(
-        `[data-testid="${CSS.escape(targetId)}"]`,
+        `[data-testid="${CSS.escape(scanTarget)}"]`,
       );
       if (!target) return false;
       target.scrollIntoView?.({ block: "center" });
+      target.focus({ preventScroll: true });
       return true;
     };
     if (scroll()) return undefined;
@@ -364,7 +394,30 @@ export default function CaseTestingWorkspace({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [scanScope, scanRow, placement]);
+  }, [scanTarget, routedScope, placement]);
+  const [auxiliaryIsolates, setAuxiliaryIsolates] = useState([]);
+  useEffect(() => {
+    if (
+      !["CRITICAL", "NONCONFORMANCE"].includes(placement) ||
+      !service.getIsolates
+    )
+      return undefined;
+    let live = true;
+    service
+      .getIsolates(detail.id)
+      .then((data) => {
+        if (live)
+          setAuxiliaryIsolates(
+            data.isolates.map((i) => ({ ...i, isolateLabel: i.label })),
+          );
+      })
+      .catch(() => {
+        if (live) setError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [detail.id, placement, service]);
   const [editor, setEditor] = useState(null);
   const [selection, setSelection] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -404,7 +457,18 @@ export default function CaseTestingWorkspace({
   useEffect(() => {
     if (!detail.canWrite) setEditor(null);
   }, [detail.canWrite]);
+  const renderNotes = (targetType, targetId) => (
+    <CaseAttachmentNotes
+      detail={detail}
+      service={service}
+      timeline={timeline}
+      targetType={targetType}
+      targetId={targetId}
+      onSaved={() => service.getTimeline(detail.id).then(setTimeline)}
+    />
+  );
   const refreshTesting = () => {
+    onCaseChanged?.();
     Promise.all([service.getTests(detail.id), service.getTimeline(detail.id)])
       .then(([data, history]) => {
         if (!mounted.current) return;
@@ -414,7 +478,6 @@ export default function CaseTestingWorkspace({
       .catch(() => {
         if (mounted.current) setError(true);
       });
-    onCaseChanged?.();
   };
   const addTests = async () => {
     setAdding(true);
@@ -484,13 +547,19 @@ export default function CaseTestingWorkspace({
       <Table aria-label={t("microbiology.testing.title")}>
         <TableHead>
           <TableRow>
-            {["test", "result", "flag", "performedBy", "status", "actions"].map(
-              (key) => (
-                <TableHeader key={key}>
-                  {t(`microbiology.testing.${key}`)}
-                </TableHeader>
-              ),
-            )}
+            {[
+              "test",
+              "result",
+              "flag",
+              "performedBy",
+              "status",
+              "actions",
+              "notes",
+            ].map((key) => (
+              <TableHeader key={key}>
+                {t(`microbiology.testing.${key}`)}
+              </TableHeader>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -587,12 +656,15 @@ export default function CaseTestingWorkspace({
                       </p>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {renderNotes("RESULT", test.analysisId)}
+                  </TableCell>
                 </TableRow>
                 {editor === test.analysisId &&
                   detail.canWrite &&
                   test.canEdit && (
                     <TableRow>
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={7}>
                         <ResultEditor
                           test={test}
                           caseId={detail.id}
@@ -622,6 +694,7 @@ export default function CaseTestingWorkspace({
         value={placement}
         onChange={(e) => {
           setPlacement(e.target.value);
+          onScopeChange?.(e.target.value);
           setEditor(null);
         }}
       >
@@ -630,12 +703,83 @@ export default function CaseTestingWorkspace({
         <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
         <SelectItem value="AST" text={t("microbiology.m6.ast")} />
         <SelectItem value="INCOMING" text={t("microbiology.incoming.title")} />
+        <SelectItem value="HISTORY" text={t("microbiology.case.timeline")} />
         <SelectItem value="REPORT" text={t("microbiology.m6.report")} />
+        <SelectItem
+          value="AMENDMENT"
+          text={t("microbiology.amendment.title")}
+        />
+        <SelectItem value="CRITICAL" text={t("microbiology.critical.title")} />
+        {detail.canWrite && (
+          <SelectItem
+            value="NONCONFORMANCE"
+            text={t("microbiology.nce.sectionTitle")}
+          />
+        )}
         <SelectItem
           value="ADDITIONAL"
           text={t("microbiology.testing.additional")}
         />
       </Select>
+      {placement === "AMENDMENT" && (
+        <AmendmentHistoryPanel
+          caseId={detail.id}
+          finalReleaseState={detail.finalReleaseState}
+          service={service}
+          canAmend={detail.canAmend}
+          onCaseUpdated={onCaseChanged}
+        />
+      )}
+      {placement === "CRITICAL" && (
+        <CriticalCommunicationPanel
+          key={`${detail.id}-${scanParams.get("action")}-${scanParams.get("targetType")}-${scanParams.get("targetId")}`}
+          onEntryComplete={() => onScopeChange?.("CRITICAL")}
+          caseId={detail.id}
+          sampleItemId={detail.samples?.[0]?.sampleItemId}
+          isolates={auxiliaryIsolates}
+          projectedResultIds={tests.flatMap((test) =>
+            test.components
+              .map((component) => component.resultId)
+              .filter(Boolean),
+          )}
+          entryTargetType={
+            scanParams.get("action") === "log-critical"
+              ? scanParams.get("targetType")
+              : ""
+          }
+          entryTargetId={
+            scanParams.get("action") === "log-critical"
+              ? scanParams.get("targetId")
+              : ""
+          }
+          service={service}
+          isReadOnly={!detail.canWrite}
+          onCaseUpdated={onCaseChanged}
+        />
+      )}
+      {placement === "NONCONFORMANCE" && detail.canWrite && (
+        <CaseNonconformancePanel
+          key={scanParams.get("action")}
+          mode={
+            scanParams.get("action") === "mark-lost"
+              ? "mark-lost"
+              : "report-nce"
+          }
+          isolates={auxiliaryIsolates}
+          caseId={detail.id}
+          service={service}
+          onComplete={() => {
+            refreshTesting();
+            onCaseChanged?.();
+            onScopeChange?.("HISTORY");
+            setPlacement("HISTORY");
+          }}
+          onCancel={() => {
+            onScopeChange?.("HISTORY");
+            setPlacement("HISTORY");
+          }}
+        />
+      )}
       {placement === "INCOMING" && (
         <CaseIncomingWorkspace
           detail={detail}
@@ -645,6 +789,18 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "AST" && (
         <CaseAstWorkspace
+          entryAction={scanParams.get("action")}
+          selectedRunId={scanRow}
+          onEntryActionConsumed={() =>
+            onScopeChange?.("AST", {
+              ...(scanRow ? { row: scanRow } : {}),
+              ...(scanParams.get("astView")
+                ? { astView: scanParams.get("astView") }
+                : {}),
+            })
+          }
+          readOnly={scanParams.get("astView") === "reviewed"}
+          renderNotes={renderNotes}
           detail={detail}
           service={service}
           onChanged={onCaseChanged}
@@ -659,9 +815,13 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "CULTURE" && (
         <CaseCultureWorkspace
+          entryAction={scanParams.get("action")}
+          onEntryActionConsumed={() => onScopeChange?.("CULTURE")}
+          onChanged={refreshTesting}
+          renderNotes={renderNotes}
           detail={detail}
           service={service}
-          selectedId={cultureId}
+          selectedId={(routedScope === "CULTURE" && scanRow) || cultureId}
           renderTests={renderTests}
           onPickIsolate={(row) => {
             setPickCultureId(row.id);
@@ -696,6 +856,14 @@ export default function CaseTestingWorkspace({
       )}
       {placement === "ISOLATES" && (
         <CaseIsolateWorkspace
+          renderNotes={renderNotes}
+          onLogCritical={(isolate) =>
+            onScopeChange?.("CRITICAL", {
+              action: "log-critical",
+              targetType: "ISOLATE",
+              targetId: isolate.id,
+            })
+          }
           key={detail.id}
           detail={detail}
           service={service}
@@ -781,7 +949,13 @@ export default function CaseTestingWorkspace({
             </section>
           </>
         )}
-      <CaseHistory activities={timeline} />
+      <section
+        id="case-history"
+        tabIndex={-1}
+        aria-label={t("microbiology.case.timeline")}
+      >
+        <CaseHistory activities={timeline} open={placement === "HISTORY"} />
+      </section>
       <Tile>
         <Stack gap={4}>
           <h2>{t("microbiology.testing.notes")}</h2>
@@ -789,7 +963,7 @@ export default function CaseTestingWorkspace({
             <Table aria-label={t("microbiology.testing.notes")}>
               <TableHead>
                 <TableRow>
-                  {["date", "author", "note"].map((key) => (
+                  {["date", "author", "noteType", "note"].map((key) => (
                     <TableHeader key={key}>
                       {t(`microbiology.testing.${key}`)}
                     </TableHeader>
@@ -798,17 +972,26 @@ export default function CaseTestingWorkspace({
               </TableHead>
               <TableBody>
                 {timeline
-                  .filter((item) => item.activityType === "MANUAL_NOTE")
+                  .filter(
+                    (item) =>
+                      item.activityType === "MANUAL_NOTE" && !item.targetType,
+                  )
                   .sort(
                     (a, b) => new Date(a.occurredAt) - new Date(b.occurredAt),
                   )
                   .map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
-                        {intl.formatDate(new Date(item.occurredAt))}{" "}
-                        {intl.formatTime(new Date(item.occurredAt))}
+                        {labTimestamp(intl, item.occurredAt)}
                       </TableCell>
                       <TableCell>{item.performedByDisplay}</TableCell>
+                      <TableCell>
+                        {t(
+                          item.structuredData === "SEND_RESULT"
+                            ? "microbiology.m6.sendWithResult"
+                            : "microbiology.testing.internalNote",
+                        )}
+                      </TableCell>
                       <TableCell>
                         {item.note}
                         {item.structuredData === "SEND_RESULT" && (

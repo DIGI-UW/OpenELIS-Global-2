@@ -5,7 +5,8 @@ import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import CaseTestingWorkspace from "../CaseTestingWorkspace";
 import messages from "../../../languages/en.json";
-vi.mock("../../utils/Utils", () => ({
+vi.mock("../../utils/Utils", async () => ({
+  ...(await vi.importActual("../../utils/Utils")),
   getFromOpenElisServer: vi.fn((url, cb) =>
     cb(
       url === "/rest/users"
@@ -23,6 +24,7 @@ const detail = {
       sampleItemId: "sample-1",
       sampleTypeId: "type-1",
       specimenType: "Sputum",
+      label: "Sputum sample 1",
     },
   ],
 };
@@ -535,4 +537,194 @@ describe("culture test chooser", () => {
       ),
     );
   });
+});
+
+it("honors the worklist setup action through the shared chooser and records the selected row outcome", async () => {
+  const api = service();
+  const row = {
+    id: "culture-1",
+    sourceSampleItemId: "sample-1",
+    containerIdentifier: "PLATE-1",
+    inoculatedAt: "2026-01-01T10:00:00Z",
+    duration: 48,
+    durationUnit: "HOURS",
+    readings: [],
+    extensions: [],
+    proposals: [],
+  };
+  api.getCultures = vi.fn().mockResolvedValue([row]);
+  api.getCultureOptions = vi.fn().mockResolvedValue({
+    sources: detail.samples,
+    media: [],
+    mediaLinks: [],
+    atmospheres: [],
+    readings: [],
+    quantities: [],
+    extensionReasons: [],
+  });
+  api.cultureAction = vi
+    .fn()
+    .mockResolvedValue([{ ...row, outcome: "GROWTH" }]);
+  api.getTimeline.mockResolvedValueOnce([]).mockResolvedValue([
+    {
+      id: "culture-outcome",
+      activityType: "CULTURE_OUTCOME",
+      note: "Recorded growth",
+      occurredAt: "2026-01-01T12:00:00Z",
+      performedByDisplay: "Technician",
+    },
+  ]);
+  const changed = vi.fn();
+  const navigate = vi.fn();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=setup&action=mark-positive"
+        onCaseChanged={changed}
+        onScopeChange={navigate}
+      />
+    </IntlProvider>,
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(screen.getByLabelText("Testing section")).toHaveValue("CULTURE");
+  expect(within(dialog).getByLabelText("Outcome")).toHaveValue("GROWTH");
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() =>
+    expect(api.cultureAction).toHaveBeenCalledWith(
+      "case-1",
+      "culture-1",
+      "outcome",
+      expect.objectContaining({ outcome: "GROWTH" }),
+    ),
+  );
+  expect(changed).toHaveBeenCalledTimes(1);
+  expect(navigate).toHaveBeenCalledWith("CULTURE");
+  await waitFor(() => expect(api.getTimeline).toHaveBeenCalledTimes(2));
+  fireEvent.change(screen.getByLabelText("Testing section"), {
+    target: { value: "HISTORY" },
+  });
+  expect(await screen.findByText(/Recorded growth/)).toBeVisible();
+});
+
+test("reviewed AST entry remains read-only for a writer and validator", async () => {
+  const api = service();
+  api.getAstWorkspace = vi.fn().mockResolvedValue({
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { drugs: [] },
+    isolates: [
+      {
+        id: "i1",
+        label: "ISO-1",
+        assignments: [],
+        panels: [],
+        runs: [],
+        choices: [],
+      },
+    ],
+  });
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=ast&astView=reviewed"
+      />
+    </IntlProvider>,
+  );
+  expect(await screen.findByText(/ISO-1/)).toBeVisible();
+  expect(
+    screen.queryByRole("button", {
+      name: messages["microbiology.m6.action.start"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", {
+      name: messages["microbiology.m6.action.assign"],
+    }),
+  ).not.toBeInTheDocument();
+});
+
+test("consumes a critical communication target after saving and unlocks the next entry", async () => {
+  const api = service();
+  api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
+  api.logCriticalCommunication = vi
+    .fn()
+    .mockResolvedValue({ id: "communication-1" });
+  const navigate = vi.fn();
+  const view = (search) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch={search}
+        onScopeChange={navigate}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(
+    view(
+      "?scope=CRITICAL&action=log-critical&targetType=SAMPLE_ITEM&targetId=sample-1",
+    ),
+  );
+  expect(await screen.findByLabelText("Critical result target")).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Recipient"), {
+    target: { value: "Provider" },
+  });
+  fireEvent.change(screen.getByLabelText("Message"), {
+    target: { value: "Critical result called" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Log communication" }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith("CRITICAL"));
+  expect(api.logCriticalCommunication).toHaveBeenCalledWith(
+    "case-1",
+    expect.objectContaining({
+      targetType: "SAMPLE_ITEM",
+      targetId: "sample-1",
+    }),
+  );
+  rerender(view("?scope=CRITICAL"));
+  expect(await screen.findByLabelText("Critical result target")).toBeEnabled();
+  expect(screen.getByLabelText("Critical result target")).toHaveValue("CASE");
+});
+
+test("pending AST links focus the requested isolate after loading and navigation", async () => {
+  const api = service();
+  api.getAstWorkspace = vi.fn().mockResolvedValue({
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { drugs: [] },
+    isolates: ["i1", "i2"].map((id) => ({
+      id,
+      label: id,
+      assignments: [],
+      panels: [],
+      runs: [],
+      choices: [],
+    })),
+  });
+  const view = (id) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch={`?section=ast&astIsolateId=${id}`}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view("i2"));
+  const target = await screen.findByTestId("ast-isolate-i2");
+  await waitFor(() => expect(target).toHaveFocus());
+  expect(screen.getByLabelText("Testing section")).toHaveValue("AST");
+  expect(screen.getByTestId("ast-isolate-i1")).not.toHaveFocus();
+  rerender(view("i1"));
+  await waitFor(() =>
+    expect(screen.getByTestId("ast-isolate-i1")).toHaveFocus(),
+  );
 });

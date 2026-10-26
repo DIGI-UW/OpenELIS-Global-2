@@ -1,3 +1,11 @@
+import {
+  labDateTimeInput as localTime,
+  labInputInstant as instant,
+  labTimestamp,
+  labTimeZone,
+  positivityDuration,
+  extendedEnd,
+} from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
@@ -6,6 +14,7 @@ import {
   AccordionItem,
   Button,
   Checkbox,
+  ComboBox,
   Grid,
   Column,
   InlineLoading,
@@ -29,14 +38,6 @@ import {
 
 const units = ["HOURS", "DAYS", "WEEKS"];
 const outcomes = ["GROWTH", "NO_GROWTH", "CONTAMINATED"];
-const localTime = (value) => {
-  const date = value ? new Date(value) : new Date();
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 23);
-};
-const instant = (value) => (value ? new Date(value).toISOString() : null);
-
 const mediaLink = (options, sourceId, mediumId) => {
   const source = options.sources.find((s) => s.sampleItemId === sourceId);
   const links = options.mediaLinks.filter(
@@ -88,8 +89,30 @@ function CultureActionForm({
   const t = (key, values) =>
     intl.formatMessage({ id: `microbiology.culture.${key}` }, values);
   const [draft, setDraft] = useState(action.draft);
+  const eligibleRows = rows.filter(
+    (row) =>
+      !row.receivedIsolate &&
+      (!row.outcome ||
+        (row.outcome === "NO_GROWTH" && draft.outcome === "GROWTH")),
+  );
+  const eligibleParents = rows.filter(
+    (row) =>
+      (!row.outcome || row.outcome === "GROWTH") &&
+      options.sources.some(
+        (source) => source.sampleItemId === row.sourceSampleItemId,
+      ),
+  );
+  const selectedRow = action.chooseRow
+    ? rows.find((row) => row.id === draft.cultureRowId)
+    : action.row;
   const change = (key, value) =>
-    setDraft((previous) => ({ ...previous, [key]: value }));
+    setDraft((previous) => ({
+      ...previous,
+      [key]: value,
+      ...(key === "outcome" && value === "GROWTH" && !previous.positiveAt
+        ? { positiveAt: localTime() }
+        : {}),
+    }));
   const medium = options.media.find(
     (m) => String(m.id) === String(draft.mediumItemId),
   );
@@ -131,12 +154,21 @@ function CultureActionForm({
       id={`culture-${key}`}
       labelText={t(label)}
       value={draft[key] || ""}
-      disabled={key === "sourceSampleItemId" && !!draft.parentId}
-      onChange={(e) =>
-        key === "sourceSampleItemId"
-          ? chooseSource(e.target.value)
-          : change(key, e.target.value)
+      disabled={
+        key === "sourceSampleItemId" &&
+        (!!draft.parentId || action.chooseParent)
       }
+      onChange={(e) => {
+        const value = e.target.value;
+        if (key === "sourceSampleItemId") chooseSource(value);
+        else if (key === "parentId") {
+          chooseSource(
+            eligibleParents.find((row) => row.id === value)
+              ?.sourceSampleItemId || "",
+          );
+          change(key, value);
+        } else change(key, value);
+      }}
     >
       <SelectItem value="" text={t("choose")} />
       {values.map((v) => (
@@ -170,6 +202,8 @@ function CultureActionForm({
   let valid = true;
   if (action.kind === "inoculate")
     valid =
+      (!action.chooseParent ||
+        eligibleParents.some((row) => row.id === draft.parentId)) &&
       !!draft.sourceSampleItemId &&
       !!draft.mediumItemId &&
       !!draft.atmosphereId &&
@@ -181,11 +215,17 @@ function CultureActionForm({
   if (action.kind === "reading") valid = !!draft.readingId;
   if (action.kind === "extension")
     valid = Number(draft.extendBy) > 0 && !!draft.unit && !!draft.reasonId;
-  if (action.kind === "outcome") valid = !!draft.outcome;
+  if (action.kind === "outcome")
+    valid =
+      !!draft.outcome &&
+      (!action.chooseRow ||
+        eligibleRows.some((row) => row.id === draft.cultureRowId));
   if (action.kind === "inoculated-time") valid = !!draft.inoculatedAt;
   if (action.kind === "positive-time") valid = !!draft.positiveAt;
   const submit = () => {
     const body = { ...draft };
+    const cultureRowId = body.cultureRowId;
+    delete body.cultureRowId;
     [
       "mediumItemId",
       "lotId",
@@ -202,7 +242,7 @@ function CultureActionForm({
     ["inoculatedAt", "positiveAt"].forEach((key) => {
       if (key in body) body[key] = instant(body[key]);
     });
-    onSave(body);
+    onSave(body, cultureRowId);
   };
   return (
     <Modal
@@ -221,6 +261,15 @@ function CultureActionForm({
       <Stack gap={5}>
         {action.kind === "inoculate" && (
           <>
+            {action.chooseParent &&
+              select(
+                "parentId",
+                eligibleParents.map((row) => ({
+                  id: row.id,
+                  value: row.containerIdentifier,
+                })),
+                "parentCulture",
+              )}
             {select(
               "sourceSampleItemId",
               options.sources.map((s) => ({
@@ -246,17 +295,25 @@ function CultureActionForm({
               </>
             )}
             {input("containerIdentifier")}
-            <Select
+            <ComboBox
               id="culture-mediumItemId"
-              labelText={t("mediumItemId")}
-              value={draft.mediumItemId || ""}
-              onChange={(e) => chooseMedium(e.target.value)}
-            >
-              <SelectItem value="" text={t("choose")} />
-              {options.media.map((m) => (
-                <SelectItem key={m.id} value={String(m.id)} text={m.name} />
-              ))}
-            </Select>
+              titleText={t("mediumItemId")}
+              items={options.media}
+              selectedItem={medium || null}
+              itemToString={(m) =>
+                m
+                  ? `${m.name} · ${t(m.trackLots || options.requireTrackedMedia ? "tracked" : "notTracked")}`
+                  : ""
+              }
+              shouldFilterItem={({ item, inputValue }) =>
+                item.name
+                  .toLocaleLowerCase()
+                  .includes((inputValue || "").toLocaleLowerCase())
+              }
+              onChange={({ selectedItem }) =>
+                chooseMedium(selectedItem ? String(selectedItem.id) : "")
+              }
+            />
             <Checkbox
               id="culture-notTracked"
               labelText={t("notTracked")}
@@ -285,10 +342,29 @@ function CultureActionForm({
             {input("extendBy", "number")}
             {select("unit", unitChoices)}
             {select("reasonId", options.extensionReasons)}
+            <p>
+              {t("newIncubationEnd")}:{" "}
+              {labTimestamp(
+                intl,
+                extendedEnd(
+                  action.row?.incubationEnds,
+                  draft.extendBy,
+                  draft.unit,
+                ),
+              )}
+            </p>
           </>
         )}
         {action.kind === "outcome" && (
           <>
+            {action.chooseRow &&
+              select(
+                "cultureRowId",
+                eligibleRows.map((row) => ({
+                  id: row.id,
+                  value: row.containerIdentifier,
+                })),
+              )}
             {select(
               "outcome",
               outcomes.map((id) => ({ id, value: t(`outcome.${id}`) })),
@@ -310,6 +386,25 @@ function CultureActionForm({
             onChange={(e) => change("note", e.target.value)}
           />
         )}
+        {(draft.outcome === "GROWTH" || action.kind === "positive-time") &&
+          draft.positiveAt &&
+          selectedRow && (
+            <p>
+              {t("timeToPositivityHours")}:{" "}
+              {positivityDuration(
+                intl,
+                (new Date(instant(draft.positiveAt)) -
+                  new Date(selectedRow.inoculatedAt)) /
+                  3600000,
+              )}
+            </p>
+          )}
+        <p>
+          {intl.formatMessage(
+            { id: "microbiology.case.labClock" },
+            { zone: labTimeZone() },
+          )}
+        </p>
         <p>{t("serverValidation")}</p>
       </Stack>
     </Modal>
@@ -324,6 +419,10 @@ export default function CaseCultureWorkspace({
   onChooseTests,
   onPickIsolate,
   renderTests,
+  renderNotes,
+  entryAction,
+  onEntryActionConsumed,
+  onChanged,
 }) {
   const intl = useIntl();
   const t = (key, values) =>
@@ -359,13 +458,81 @@ export default function CaseCultureWorkspace({
       live = false;
     };
   }, [detail.id, detail.labUnitId, service]);
-  const date = (value) =>
-    value
-      ? `${intl.formatDate(new Date(value))} ${intl.formatTime(new Date(value))}`
-      : t("notAvailable");
+  const entryHandled = useRef("");
+  useEffect(() => {
+    if (
+      ![
+        "mark-positive",
+        "mark-no-growth",
+        "start-inoculation",
+        "add-subculture",
+      ].includes(entryAction)
+    ) {
+      entryHandled.current = "";
+      return;
+    }
+    const key = `${detail.id}:${entryAction}`;
+    if (!options || !detail.canWrite || entryHandled.current === key) return;
+    entryHandled.current = key;
+    if (entryAction === "start-inoculation") {
+      open("inoculate");
+      onEntryActionConsumed?.();
+      return;
+    }
+    if (entryAction === "add-subculture") {
+      const parents = rows.filter(
+        (row) =>
+          (!row.outcome || row.outcome === "GROWTH") &&
+          options.sources.some(
+            (source) => source.sampleItemId === row.sourceSampleItemId,
+          ),
+      );
+      const parent =
+        parents.find((row) => row.id === selectedId) ||
+        (parents.length === 1 ? parents[0] : null);
+      if (parents.length) open("inoculate", parent, {}, true);
+      else setError("noEligibleParentRows");
+      onEntryActionConsumed?.();
+      return;
+    }
+    const outcome = entryAction === "mark-positive" ? "GROWTH" : "NO_GROWTH";
+    const eligible = rows.filter(
+      (row) =>
+        !row.receivedIsolate &&
+        (!row.outcome || (row.outcome === "NO_GROWTH" && outcome === "GROWTH")),
+    );
+    const row =
+      eligible.find((row) => row.id === selectedId) ||
+      (eligible.length === 1 ? eligible[0] : null);
+    if (eligible.length === 0) {
+      setError("noEligibleOutcomeRows");
+    } else {
+      setError("");
+      setAction({
+        kind: "outcome",
+        chooseRow: true,
+        row,
+        draft: {
+          outcome,
+          cultureRowId: row?.id || "",
+          ...(outcome === "GROWTH" ? { positiveAt: localTime() } : {}),
+        },
+      });
+    }
+    onEntryActionConsumed?.();
+  }, [
+    entryAction,
+    detail.id,
+    detail.canWrite,
+    options,
+    rows,
+    selectedId,
+    onEntryActionConsumed,
+  ]);
+  const date = (value) => labTimestamp(intl, value);
   const numeric = (value) =>
     value == null ? t("notAvailable") : intl.formatNumber(Number(value));
-  const open = (kind, row = null, draft = {}) => {
+  const open = (kind, row = null, draft = {}, chooseParent = false) => {
     if (kind === "inoculate") {
       const previous = row || rows[rows.length - 1];
       const source =
@@ -403,10 +570,12 @@ export default function CaseCultureWorkspace({
         ...draft,
       };
     }
+    if (kind === "outcome" && draft.outcome === "GROWTH" && !draft.positiveAt)
+      draft.positiveAt = localTime();
     setError("");
-    setAction({ kind, row, draft });
+    setAction({ kind, row, draft, chooseParent });
   };
-  const save = async (body) => {
+  const save = async (body, cultureRowId) => {
     if (!detail.canWrite || saving) return;
     setSaving(true);
     setError("");
@@ -416,13 +585,14 @@ export default function CaseCultureWorkspace({
           ? await service.inoculateCulture(detail.id, body)
           : await service.cultureAction(
               detail.id,
-              action.row.id,
+              cultureRowId || action.row?.id,
               action.kind,
               body,
             );
       if (!live.current) return;
       setRows(data);
       setAction(null);
+      onChanged?.();
     } catch (failure) {
       if (!live.current) return;
       const message =
@@ -459,7 +629,7 @@ export default function CaseCultureWorkspace({
                 <TableCell>{r.quantityName || t("notAvailable")}</TableCell>
                 <TableCell>{r.note}</TableCell>
                 <TableCell>{numeric(r.incubationDay)}</TableCell>
-                <TableCell>{r.by}</TableCell>
+                <TableCell>{r.byDisplay || r.by}</TableCell>
                 <TableCell>{date(r.at)}</TableCell>
               </TableRow>
             ))}
@@ -484,7 +654,7 @@ export default function CaseCultureWorkspace({
                 </TableCell>
                 <TableCell>{e.reasonName}</TableCell>
                 <TableCell>{e.note}</TableCell>
-                <TableCell>{e.by}</TableCell>
+                <TableCell>{e.byDisplay || e.by}</TableCell>
                 <TableCell>{date(e.at)}</TableCell>
               </TableRow>
             ))}
@@ -540,19 +710,40 @@ export default function CaseCultureWorkspace({
                   ["temperature", numeric(row.temperature)],
                   [
                     "duration",
-                    `${numeric(row.duration)} ${row.durationUnit ? t(`unit.${row.durationUnit}`) : ""}`,
+                    <>
+                      {numeric(row.duration)}{" "}
+                      {row.durationUnit ? t(`unit.${row.durationUnit}`) : ""}{" "}
+                      {row.extensions.filter((e) => !e.undoneAt).length > 0 && (
+                        <Tag type="purple">
+                          {t("extended", {
+                            count: row.extensions.filter((e) => !e.undoneAt)
+                              .length,
+                          })}
+                        </Tag>
+                      )}
+                    </>,
                   ],
                   ["loopVolume", numeric(row.loopVolume)],
                   ["inoculatedAt", date(row.inoculatedAt)],
                   ["incubationEnds", date(row.incubationEnds)],
                   ["nextCheck", date(row.nextCheck)],
                   ["positiveAt", date(row.positiveAt)],
-                  ["timeToPositivityHours", numeric(row.timeToPositivityHours)],
+                  [
+                    "timeToPositivityHours",
+                    positivityDuration(
+                      intl,
+                      row.positiveAt && row.inoculatedAt
+                        ? (new Date(row.positiveAt) -
+                            new Date(row.inoculatedAt)) /
+                            3600000
+                        : row.timeToPositivityHours,
+                    ),
+                  ],
                   ...(row.outcome
                     ? [
                         [
                           "outcomeRecorded",
-                          `${row.outcomeBy} — ${date(row.outcomeAt)}`,
+                          `${row.outcomeByDisplay || row.outcomeBy} — ${date(row.outcomeAt)}`,
                         ],
                       ]
                     : []),
@@ -714,6 +905,7 @@ export default function CaseCultureWorkspace({
                     )}
                 </Stack>
               )}
+              {renderNotes?.("CULTURE", row.id)}
               {log(row)}
               {row.proposals.map((p) => (
                 <Tile key={p.id}>
@@ -726,7 +918,7 @@ export default function CaseCultureWorkspace({
                   {p.confirmedAt ? (
                     <p>
                       {t("confirmed", {
-                        by: p.confirmedBy,
+                        by: p.confirmedByDisplay || p.confirmedBy,
                         at: date(p.confirmedAt),
                       })}
                     </p>

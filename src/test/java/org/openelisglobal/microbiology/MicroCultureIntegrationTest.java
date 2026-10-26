@@ -42,6 +42,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCaseActivityDAO activities;
     @Autowired
+    private MicroCaseTimelineService timeline;
+    @Autowired
     private MicroCaseInoculationDAO cultures;
     @Autowired
     private MicroCaseDAO cases;
@@ -301,6 +303,23 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         em.flush();
         assertFalse(benchSearch.referralAttentionCases().contains(microCase.getId()));
         assertEquals(0, benchSearch.benchCount(query, units, List.of(), benchSearch.referralAttentionCases(), now));
+    }
+
+    @Test
+    public void uuidCultureNotesSurviveFlushAndStayOffReportsUnlessExternal() {
+        String caseId = microCase.getId();
+        String cultureId = create().id;
+        timeline.addNote(caseId, "Internal bench discussion", false, "CULTURE", cultureId, actor);
+        timeline.addNote(caseId, "Culture report annotation", true, "CULTURE", cultureId, actor);
+        em.flush();
+        em.clear();
+        var notes = timeline.getTimeline(caseId).stream().filter(n -> "MANUAL_NOTE".equals(n.activityType)).toList();
+        assertEquals(2, notes.size());
+        assertTrue(notes.stream().allMatch(n -> "CULTURE".equals(n.targetType) && cultureId.equals(n.targetId)));
+        var reportNotes = timeline.getReportNotes(caseId);
+        assertEquals(1, reportNotes.size());
+        assertEquals("Culture report annotation", reportNotes.get(0).note);
+        assertEquals(cultureId, reportNotes.get(0).targetId);
     }
 
     @Test

@@ -1,3 +1,4 @@
+import MicrobiologyService from "./MicrobiologyService";
 import {
   getFromOpenElisServer,
   postToOpenElisServerForBlob,
@@ -37,6 +38,9 @@ const mutate = (url, body) =>
           ),
     ),
   );
+export const getQuestionnaire = (id) => read(`${caseUrl(id)}/questionnaire`);
+export const saveQuestionnaire = (id, body) =>
+  mutate(`${caseUrl(id)}/questionnaire`, body);
 export const saveContext = (id, body) => mutate(`${caseUrl(id)}/context`, body);
 export const getTests = (id) => read(`${caseUrl(id)}/analyses`);
 export const addTests = (id, body) => mutate(`${caseUrl(id)}/analyses`, body);
@@ -55,8 +59,19 @@ export const validateResult = (id, analysisId, version) =>
     version,
   });
 export const getTimeline = (id) => read(`${caseUrl(id)}/timeline`);
-export const addNote = (id, text, sendWithResult = false) =>
-  mutate(`${caseUrl(id)}/notes`, { text, sendWithResult });
+export const addNote = (
+  id,
+  text,
+  sendWithResult = false,
+  targetType,
+  targetId,
+) =>
+  mutate(`${caseUrl(id)}/notes`, {
+    text,
+    sendWithResult,
+    targetType,
+    targetId,
+  });
 export const getCultures = (id) => read(`${caseUrl(id)}/cultures`);
 export const getCultureOptions = (id) =>
   read(`${caseUrl(id)}/cultures/options`);
@@ -147,6 +162,9 @@ export const printContainer = (body) =>
     ),
   );
 export default {
+  ...MicrobiologyService,
+  getQuestionnaire,
+  saveQuestionnaire,
   downloadEnvironmentalCertificate,
   saveContext,
   getContainerPresets,

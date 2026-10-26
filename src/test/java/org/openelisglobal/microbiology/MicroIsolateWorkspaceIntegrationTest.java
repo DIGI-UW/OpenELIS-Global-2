@@ -520,6 +520,17 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
                 new HashSet<>(linked.stream().map(f -> f.getAnalysis().getSampleItem().getId()).toList()));
         assertEquals(2, linked.stream().map(f -> f.getAnalysis().getId()).distinct().count());
         for (var ref : linked) {
+            assertEquals(ref.getSentDate(),
+                    form.referrals.stream().filter(r -> r.id().equals(ref.getId())).findFirst().orElseThrow().sentAt());
+        }
+        Timestamp handoff = Timestamp.from(Instant.parse("2026-10-14T23:59:42.123Z"));
+        linked.get(0).getSubcontract().setHandoffDatetime(handoff);
+        em.merge(linked.get(0).getSubcontract());
+        em.flush();
+        em.clear();
+        assertEquals(handoff, reload().referrals.stream().filter(r -> r.id().equals(linked.get(0).getId())).findFirst()
+                .orElseThrow().sentAt());
+        for (var ref : linked) {
             ref.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED);
             referrals.update(ref);
         }
@@ -884,6 +895,26 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
             organizationTypes.insert(type);
         }
         organizations.linkOrganizationAndType(facility, type.getId());
+    }
+
+    @Test
+    public void referralHandoffOverridesButDoesNotEraseTheLegacySentDate() {
+        var request = minimalReferralRequest();
+        workspace.act(c.getId(), pick(), "referral", request, writer);
+        var id = reload().referrals.get(0).id();
+        var legacy = Timestamp.from(Instant.parse("2026-01-01T10:00:00Z"));
+        var handoff = Timestamp.from(Instant.parse("2026-01-02T10:00:00Z"));
+        var referral = em.find(org.openelisglobal.referral.valueholder.Referral.class, id);
+        referral.setSentDate(legacy);
+        referral.getSubcontract().setHandoffDatetime(null);
+        assertEquals(legacy, reload().referrals.get(0).sentAt());
+        referral = em.find(org.openelisglobal.referral.valueholder.Referral.class, id);
+        referral.getSubcontract().setHandoffDatetime(handoff);
+        assertEquals(handoff, reload().referrals.get(0).sentAt());
+        referral = em.find(org.openelisglobal.referral.valueholder.Referral.class, id);
+        referral.setSubcontract(null);
+        assertEquals(legacy, reload().referrals.get(0).sentAt());
+
     }
 
     private MicroIsolateWorkspaceRequestForm minimalReferralRequest() {

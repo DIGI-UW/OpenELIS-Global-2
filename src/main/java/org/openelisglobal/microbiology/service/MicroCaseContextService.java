@@ -23,6 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class MicroCaseContextService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO clinicalDetails;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseFinalRequirementsService requirements;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService dictionary;
     private final MicroCaseDAO cases;
     private final MicroCaseAuthorizationService authorization;
     private final MicroCaseActivityDAO activities;
@@ -55,11 +61,32 @@ public class MicroCaseContextService {
         form.programs = programs.getAll().stream().filter(p -> p.isShowOnMicroCase() && "Y".equals(p.getIsActive()))
                 .filter(p -> Domain.normalize(p.getDomain()).equals(form.domain))
                 .map(p -> new org.openelisglobal.common.util.IdValuePair(p.getId(), p.getProgramName())).toList();
+        if (c.getProgramId() != null) {
+            var program = programs.get(c.getProgramId());
+            if (program != null && program.getReportingTrackId() != null) {
+                var track = dictionary.get(program.getReportingTrackId());
+                form.reportingTrack = track == null ? null : track.getDictEntry();
+            }
+        }
         form.culturePurpose = c.getCulturePurpose();
         form.purposeOptions = MicroCulturePurpose.options(environmental);
         form.orderCaseCount = cases.getByOrder(c.getSampleId()).size();
-        if (!environmental)
+        if (!environmental) {
+            var detail = clinicalDetails.getByCaseId(c.getId());
+            var fields = new org.openelisglobal.microbiology.form.MicroCaseOrderDetailForm();
+            fields.caseId = c.getId();
+            fields.culturePurpose = c.getCulturePurpose();
+            if (detail != null) {
+                fields.patientOrigin = detail.getPatientOrigin();
+                fields.admissionDate = detail.getAdmissionDate() == null ? null : detail.getAdmissionDate().toString();
+                fields.numberOfSets = detail.getNumberOfSets();
+                fields.clinicalHistory = detail.getClinicalHistory();
+                fields.antibioticExposure = detail.getAntibioticExposure();
+            }
+            form.orderDetail = fields;
+            form.requiredClinicalFields = requirements.requiredFields();
             return;
+        }
         requireEnvironmental(c);
         var site = sites.get(Integer.valueOf(c.getSiteId()));
         if (site == null)

@@ -21,7 +21,8 @@ public class MicroIsolateWorkspaceForm {
     }
 
     public record Identification(String id, String organismId, String organismName, String status, String method,
-            BigDecimal confidence, Timestamp identifiedAt, String by, Timestamp at, String reason, String amendmentId) {
+            BigDecimal confidence, Timestamp identifiedAt, String by, Timestamp at, String reason, String amendmentId,
+            String byDisplay) {
     }
 
     public record Referral(String id, String sampleItemId, String testName, String organizationName, String status,

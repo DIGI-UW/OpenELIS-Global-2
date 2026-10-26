@@ -6,9 +6,19 @@ import { Router, Route } from "react-router-dom";
 import { createMemoryHistory } from "history";
 import CaseWorklist from "../CaseWorklist";
 import CaseViewShell from "../CaseViewShell";
+import {
+  MICROBIOLOGY_CASE_READY_MARK,
+  markMicrobiologyReady,
+} from "../MicrobiologyPerformance";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import { Roles } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
 vi.mock("../CaseTestingWorkspace", () => ({ default: () => null }));
+vi.mock("../MicrobiologyPerformance", async (importOriginal) => ({
+  ...(await importOriginal()),
+  markMicrobiologyReady: vi.fn(),
+}));
 
 const renderPage = (component, path = "/Microbiology/worklist") => {
   const history = createMemoryHistory({ initialEntries: [path] });
@@ -46,6 +56,39 @@ const shell = {
 };
 
 describe("MVP microbiology case workspace", () => {
+  test("marks case ready only after a successful shell load", async () => {
+    markMicrobiologyReady.mockClear();
+    let finish;
+    const service = {
+      getCase: vi.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    };
+    renderPage(
+      <CaseViewShell service={service} caseId="case-1" />,
+      "/Microbiology/cases/case-1?view=workbench",
+    );
+    expect(markMicrobiologyReady).not.toHaveBeenCalled();
+    await act(async () => finish(shell));
+    expect(screen.getByText("Test Patient")).toBeVisible();
+    expect(markMicrobiologyReady).toHaveBeenCalledWith(
+      MICROBIOLOGY_CASE_READY_MARK,
+    );
+  });
+  test("failed case loads never emit the ready mark", async () => {
+    markMicrobiologyReady.mockClear();
+    const service = {
+      getCase: vi.fn().mockRejectedValue(new Error("unavailable")),
+    };
+    await act(async () =>
+      renderPage(<CaseViewShell service={service} caseId="case-1" />),
+    );
+    expect(markMicrobiologyReady).not.toHaveBeenCalled();
+    expect(screen.queryByText("Test Patient")).not.toBeInTheDocument();
+  });
   test("lists cases and keeps filters when opening the shell", async () => {
     const service = {
       searchCases: vi.fn().mockResolvedValue({
@@ -226,3 +269,45 @@ describe("MVP microbiology case workspace", () => {
     expect(screen.queryByText("Test Patient")).toBeNull();
   });
 });
+
+test("related cases retain worklist filters but discard the previous case's action target", async () => {
+  const service = { getCase: vi.fn().mockResolvedValue(shell) };
+  renderPage(
+    <CaseViewShell service={service} caseId="case-1" />,
+    "/Microbiology/cases/case-1?labUnitId=10&scope=CRITICAL&action=log-critical&targetType=CASE&targetId=case-1&astView=reviewed&astRunId=run-1",
+  );
+  expect(
+    await screen.findByRole("link", { name: /M2-001 · TB lab/ }),
+  ).toHaveAttribute("href", "/Microbiology/cases/case-2?labUnitId=10");
+});
+
+test.each([
+  [[Roles.RESULTS], false],
+  [[Roles.RESULTS, Roles.RECEPTION], true],
+  [[Roles.GLOBAL_ADMIN], false],
+])(
+  "sample correction follows the Reception route gate for roles %j",
+  async (roles, allowed) => {
+    const service = {
+      getCase: vi.fn().mockResolvedValue({ ...shell, orderId: "42" }),
+    };
+    renderPage(
+      <UserSessionDetailsContext.Provider
+        value={{ userSessionDetails: { roles } }}
+      >
+        <CaseViewShell service={service} caseId="case-1" />
+      </UserSessionDetailsContext.Provider>,
+      "/Microbiology/cases/case-1",
+    );
+    await screen.findByText("Test Patient");
+    const link = screen.queryByRole("link", {
+      name: messages["microbiology.case.correctSample"],
+    });
+    if (allowed)
+      expect(link).toHaveAttribute(
+        "href",
+        "/ModifyOrder?accessionNumber=M2-001",
+      );
+    else expect(link).not.toBeInTheDocument();
+  },
+);

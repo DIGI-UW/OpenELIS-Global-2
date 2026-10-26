@@ -31,7 +31,10 @@ public class MicroPatientReportForm {
             String units, String interpretation, String standard, String version, String matchedBy) {
     }
 
-    public record Note(String text, String author, Timestamp at) {
+    public record Note(String text, String author, Timestamp at, String targetType, String targetId) {
+        public Note(String text, String author, Timestamp at) {
+            this(text, author, at, null, null);
+        }
     }
 
     public record Version(String id, int number, String type, Timestamp at, String by, MicroPatientReportForm report) {

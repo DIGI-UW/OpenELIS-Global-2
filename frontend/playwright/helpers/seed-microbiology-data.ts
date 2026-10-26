@@ -129,6 +129,7 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario =
+  | "UX_CONTEXT"
   | "M8"
   | "AST_REPORTING"
   | "CASE"
@@ -170,7 +171,7 @@ interface MicrobiologyCaseFixture {
   };
 }
 
-type CulturePurpose = "CLINICAL_DIAGNOSTIC" | "ACTIVE_SCREENING";
+type CulturePurpose = "DIAGNOSTIC" | "SCREENING" | "SURVEY_OR_STUDY";
 
 interface MicrobiologyAstRunFixture {
   id: string;
@@ -261,7 +262,7 @@ export async function seedMicrobiologyCulturePurposeCase(
       {
         headers: { "X-CSRF-Token": await getCsrfToken(page) },
         data: {
-          culturePurpose: "CLINICAL_DIAGNOSTIC",
+          culturePurpose: "DIAGNOSTIC",
           cultureMethodId: seeded.methodId,
           patientOrigin: "",
           admissionDate: null,
@@ -611,7 +612,7 @@ async function seedMicrobiologyWhonetExportScenario(
   page: Page,
   {
     scenarioKey,
-    culturePurpose = "CLINICAL_DIAGNOSTIC",
+    culturePurpose = "DIAGNOSTIC",
     patientOrigin,
     specimenWhonetCode,
     unmappedSignificance = "CLINICALLY_SIGNIFICANT",
@@ -780,22 +781,22 @@ export async function seedMicrobiologyCulturePurposeWhonetPopulation(
 ) {
   const clinical = await seedMicrobiologyWhonetExportScenario(page, {
     scenarioKey: `playwright-r11-culture-purpose-clinical-${randomUUID()}`,
-    culturePurpose: "CLINICAL_DIAGNOSTIC",
+    culturePurpose: "DIAGNOSTIC",
     specimenWhonetCode: "BLD",
   });
   const screening = await seedMicrobiologyWhonetExportScenario(page, {
     scenarioKey: `playwright-r11-culture-purpose-screening-${randomUUID()}`,
-    culturePurpose: "ACTIVE_SCREENING",
+    culturePurpose: "SCREENING",
     specimenWhonetCode: "BLD",
   });
-  const unspecified = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: `playwright-r11-culture-purpose-unspecified-${randomUUID()}`,
-    culturePurpose: null,
+  const survey = await seedMicrobiologyWhonetExportScenario(page, {
+    scenarioKey: `playwright-r11-culture-purpose-survey-${randomUUID()}`,
+    culturePurpose: "SURVEY_OR_STUDY",
     specimenWhonetCode: "BLD",
   });
   if (
     clinical.exportDate !== screening.exportDate ||
-    clinical.exportDate !== unspecified.exportDate
+    clinical.exportDate !== survey.exportDate
   ) {
     throw new Error(
       "Culture-purpose WHONET fixtures must share an export date",
@@ -804,7 +805,7 @@ export async function seedMicrobiologyCulturePurposeWhonetPopulation(
   return {
     clinical,
     screening,
-    unspecified,
+    survey,
     exportDate: clinical.exportDate,
   };
 }
@@ -986,7 +987,7 @@ export async function seedMicrobiologyWhonetWorklistHandoffCase(
       {
         headers: { "X-CSRF-Token": await getCsrfToken(page) },
         data: {
-          culturePurpose: "CLINICAL_DIAGNOSTIC",
+          culturePurpose: "DIAGNOSTIC",
           cultureMethodId: seeded.methodId,
           patientOrigin: "INPATIENT",
           admissionDate: null,
@@ -1264,3 +1265,6 @@ export const seedMicrobiologyAutomation = (page: Page) =>
 
 export const seedMicrobiologyEnvironmental = (page: Page) =>
   provisionMicrobiologyScenario(page, "M8");
+
+export const seedMicrobiologyMissingContext = (page: Page) =>
+  provisionMicrobiologyScenario(page, "UX_CONTEXT");

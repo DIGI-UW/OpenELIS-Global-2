@@ -14,9 +14,6 @@ const INSTANTS = {
   "components/microbiology/CultureWorklist.jsx": [
     "Date.now() - new Date().getTimezoneOffset() * 60000,",
   ],
-  "components/microbiology/CaseCultureWorkspace.jsx": [
-    "const date = value ? new Date(value) : new Date();",
-  ],
   "components/coldStorage/CorrectiveActions.jsx": [
     "let end = new Date();",
     "const parseDate = (dateValue) => toDate(dateValue) ?? new Date();",
