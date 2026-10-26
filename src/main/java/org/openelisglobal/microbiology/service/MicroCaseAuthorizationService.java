@@ -17,11 +17,6 @@ public class MicroCaseAuthorizationService {
     }
 
     @Transactional
-    public MicroCase requireWrite(String caseId, String actor, String role) {
-        return requireWrite(caseId, actor, new String[] { role });
-    }
-
-    @Transactional
     public MicroCase requireWrite(String caseId, String actor, String... roles) {
         var c = cases.getForUpdate(caseId);
         if (c == null)
