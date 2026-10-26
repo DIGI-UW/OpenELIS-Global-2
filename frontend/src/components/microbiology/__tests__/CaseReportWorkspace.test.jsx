@@ -22,6 +22,7 @@ const report = () => ({
       id: "i1",
       label: "ISO-1",
       organism: "E. coli",
+      tested: 3,
       susceptibilities: [
         {
           antibioticId: "a",
@@ -211,4 +212,10 @@ it("disables report release while the browser is offline", async () => {
   } finally {
     onLine.mockRestore();
   }
+});
+it("says how many of the isolate's tested antibiotics are reported", async () => {
+  show();
+  expect(
+    await screen.findByText("1 of 3 antibiotics reported"),
+  ).toBeInTheDocument();
 });

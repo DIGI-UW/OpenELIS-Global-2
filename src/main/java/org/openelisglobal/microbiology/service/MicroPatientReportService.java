@@ -25,6 +25,7 @@ public class MicroPatientReportService {
     private final MicroOrganismDAO organisms;
     private final MicroAntibioticDAO antibiotics;
     private final MicroAstRunDAO runs;
+    private final MicroAstRunAntibioticDAO runAntibiotics;
     private final MicroAstReportChoiceService choices;
     private final MicroBreakpointStandardDAO standards;
     private final MicroCaseTimelineService timeline;
@@ -39,9 +40,10 @@ public class MicroPatientReportService {
 
     public MicroPatientReportService(MicroCaseDAO cases, MicroCaseAnalysisDAO links, MicroCaseInoculationDAO cultures,
             MicroIsolateDAO isolates, MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics, MicroAstRunDAO runs,
-            MicroAstReportChoiceService choices, MicroBreakpointStandardDAO standards,
-            MicroCaseTimelineService timeline, MicroDstService dst, ResultService results, IStatusService statuses,
-            TestSectionService units, MicroCaseAuthorizationService authorization, MicroCaseActivityDAO activities,
+            MicroAstRunAntibioticDAO runAntibiotics, MicroAstReportChoiceService choices,
+            MicroBreakpointStandardDAO standards, MicroCaseTimelineService timeline, MicroDstService dst,
+            ResultService results, IStatusService statuses, TestSectionService units,
+            MicroCaseAuthorizationService authorization, MicroCaseActivityDAO activities,
             MicroReportVersionDAO versions) {
         this.cases = cases;
         this.links = links;
@@ -50,6 +52,7 @@ public class MicroPatientReportService {
         this.organisms = organisms;
         this.antibiotics = antibiotics;
         this.runs = runs;
+        this.runAntibiotics = runAntibiotics;
         this.choices = choices;
         this.standards = standards;
         this.timeline = timeline;
@@ -127,7 +130,11 @@ public class MicroPatientReportService {
                     || isolate.getOrganismId() == null)
                 continue;
             var rows = new ArrayList<MicroPatientReportForm.Susceptibility>();
-            for (var reading : choices.getSelectedReadings(isolate.getId())) {
+            var selectedReadings = choices.getSelectedReadings(isolate.getId());
+            for (var reading : selectedReadings) {
+                var agent = runAntibiotics.getByRunIdAndAntibioticId(reading.getAstRunId(), reading.getAntibioticId());
+                if (agent.isPresent() && !agent.get().isReported())
+                    continue;
                 var run = runs.get(reading.getAstRunId()).orElseThrow();
                 var standard = standards.get(run.getBreakpointStandardId()).orElseThrow();
                 var antibiotic = antibiotics.get(reading.getAntibioticId()).orElseThrow();
@@ -139,7 +146,8 @@ public class MicroPatientReportService {
             rows.sort(Comparator.comparing(MicroPatientReportForm.Susceptibility::agent));
             form.validatedResults += rows.size();
             form.isolates.add(new MicroPatientReportForm.Isolate(isolate.getId(), isolate.getIsolateLabel(),
-                    organisms.get(isolate.getOrganismId()).orElseThrow().getDisplayName(), rows));
+                    organisms.get(isolate.getOrganismId()).orElseThrow().getDisplayName(), rows,
+                    selectedReadings.size()));
         }
         form.classification = dst.evaluate(caseId).classification;
         form.notes = timeline.getReportNotes(caseId).stream()

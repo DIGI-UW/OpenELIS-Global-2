@@ -18,10 +18,16 @@ public class MicroCaseAuthorizationService {
 
     @Transactional
     public MicroCase requireWrite(String caseId, String actor, String role) {
+        return requireWrite(caseId, actor, new String[] { role });
+    }
+
+    @Transactional
+    public MicroCase requireWrite(String caseId, String actor, String... roles) {
         var c = cases.getForUpdate(caseId);
         if (c == null)
             throw new IllegalArgumentException("Case not found");
-        if (actor == null || !access.hasLabUnitRole(actor, c.getLabUnitId(), role))
+        if (actor == null || !java.util.Arrays.stream(roles)
+                .anyMatch(role -> access.hasLabUnitRole(actor, c.getLabUnitId(), role)))
             throw new AccessDeniedException("Case lab unit access required");
         MicroCaseMutationGuard.requireMutable(c);
         return c;

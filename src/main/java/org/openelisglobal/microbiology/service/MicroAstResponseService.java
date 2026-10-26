@@ -94,6 +94,8 @@ public class MicroAstResponseService {
             orderedForm.displayOrder = ordered.getDisplayOrder();
             orderedForm.tier = ordered.getTier();
             orderedForm.reportBehavior = ordered.getReportBehavior();
+            orderedForm.reported = ordered.isReported();
+            orderedForm.reportManual = ordered.isReportManual();
             form.orderedAntibiotics.add(orderedForm);
         }
         return form;

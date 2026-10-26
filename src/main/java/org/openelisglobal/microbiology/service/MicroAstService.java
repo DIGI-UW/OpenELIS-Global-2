@@ -90,6 +90,10 @@ public interface MicroAstService {
 
     List<MicroAstReading> getReadingsForRun(String runId);
 
+    MicroAstRunAntibiotic setReported(String runId, String antibioticId, boolean reported, String performedBy);
+
+    void resetReportDefaults(String isolateId, String performedBy);
+
     List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId);
 
     List<MicroAstPanelAntibiotic> getPanelAntibiotics(String panelId);

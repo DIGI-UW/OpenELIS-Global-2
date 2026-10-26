@@ -78,7 +78,7 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
             drugs.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility("d" + i,
                     "Agent " + i, "reading", "run", "64", "ug/mL", "RESISTANT", "CLSI", "2026", "EXACT"));
         report.isolates.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Isolate("i", "ISO-1",
-                "Escherichia coli", drugs));
+                "Escherichia coli", drugs, drugs.size()));
         report.notes.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Note("External clinical note",
                 "Validator", null));
         micro.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
