@@ -47,3 +47,8 @@ current_failures.txt
 # translations themselves live in volume/translation.
 /public/translation/
 /evidence-videos/
+
+# Help refresh pipeline output. Written locally by `npm run help:refresh`
+# (fixtures mode in dev, live mode at release cut). The release manager
+# commits the live-mode output with `git add -f` as part of the release PR.
+/public/help-content/

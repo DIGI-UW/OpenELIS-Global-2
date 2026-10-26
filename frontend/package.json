@@ -19,6 +19,7 @@
     "date-fns": "^2.8.1",
     "dayjs": "^1.10.4",
     "exceljs": "^4.4.0",
+    "flexsearch": "^0.8.212",
     "formik": "^2.2.9",
     "history": "^4.10.1",
     "i18next": "^21.10.0",
@@ -37,6 +38,8 @@
     "react-intl": "^5.20.12",
     "react-router-dom": "^5.2.0",
     "rxjs": "6.x",
+    "sanitize-html": "^2.17.5",
+    "sharp": "^0.35.5",
     "single-spa": "5.x",
     "styled-components": "^5.3.6",
     "yup": "^0.29.2"
@@ -82,7 +85,8 @@
     "pw:bundle-report": "node scripts/pw-bundle-report.mjs",
     "pw:test:ui": "playwright test --ui",
     "pw:test:headed": "playwright test --headed",
-    "pw:test:video": "npm run pw:test:harness-demo-video"
+    "pw:test:video": "npm run pw:test:harness-demo-video",
+    "help:refresh": "node scripts/help-refresh.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
