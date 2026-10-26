@@ -972,12 +972,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         request.sampleTypeId = sampleTypeId;
         request.readings = List.of(previewReading(drugB, "SUSCEPTIBLE"),
                 previewReading(reference.antibiotic().getId(), "SUSCEPTIBLE"));
-        var result = reportingRules.preview(request);
+        var result = ast.previewReportingRules(request);
         assertEquals(reference.panel().getName(), result.defaultPanelName);
         var expert = result.rows.stream().filter(r -> drugB.equals(r.antibioticId)).findFirst().orElseThrow();
         assertEquals("SUSCEPTIBLE", expert.measured);
         assertEquals("RESISTANT", expert.interpretation);
-        assertNotNull(expert.expertRule);
+        assertEquals("Expert rule: " + reference.organism().getDisplayName() + ", Second agent always R",
+                expert.expertRule);
         assertEquals(rule.getId(), expert.reportRuleId);
         assertTrue(expert.reported);
         assertEquals("Consider meropenem", expert.note);
@@ -988,6 +989,48 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertNull(plain.reportRuleId);
         assertTrue(plain.reported);
         assertNull(plain.note);
+    }
+
+    @Test
+    public void previewUsesThePanelsReportBehaviorWhenNoRuleMatches() {
+        var request = previewOf(suppressedUnlessResistantDrug());
+        var row = ast.previewReportingRules(request).rows.get(0);
+        assertEquals("SUPPRESS_UNLESS_RESISTANT", row.reportBehavior);
+        assertFalse(row.reported);
+    }
+
+    @Test
+    public void previewIgnoresTheDefaultPanelForAnNtmOrganismAsRealRunsDo() {
+        reference.organism().setSusceptibilityProtocol("NTM");
+        organisms.update(reference.organism());
+        em.flush();
+        var result = ast.previewReportingRules(previewOf(suppressedUnlessResistantDrug()));
+        assertNull(result.defaultPanelName);
+        assertEquals("ALWAYS", result.rows.get(0).reportBehavior);
+        assertTrue(result.rows.get(0).reported);
+    }
+
+    private String suppressedUnlessResistantDrug() {
+        var drug = new MicroAntibiotic();
+        drug.setDisplayName("Third agent");
+        drug.setWhonetCode("C" + UUID.randomUUID().toString().substring(0, 7));
+        antibiotics.insert(drug);
+        var row = new MicroAstPanelAntibiotic();
+        row.setPanelId(reference.panel().getId());
+        row.setAntibioticId(drug.getId());
+        row.setDisplayOrder(3);
+        row.setReportBehavior("SUPPRESS_UNLESS_RESISTANT");
+        panelDrugs.insert(row);
+        em.flush();
+        return drug.getId();
+    }
+
+    private org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm previewOf(String antibioticId) {
+        var request = new org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm();
+        request.organismId = reference.organism().getId();
+        request.sampleTypeId = sampleTypeId;
+        request.readings = List.of(previewReading(antibioticId, "SUSCEPTIBLE"));
+        return request;
     }
 
     private org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm.Reading previewReading(
