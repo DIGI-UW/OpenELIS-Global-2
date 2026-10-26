@@ -92,7 +92,9 @@ public interface MicroAstService {
 
     void resetReportDefaults(String isolateId, String performedBy);
 
-    void reapplyReportingRules(String antibioticId);
+    void reapplyReportingRules(String antibioticId, String performedBy);
+
+    void reapplyReportingRulesForIsolate(String isolateId, String performedBy);
 
     List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId);
 

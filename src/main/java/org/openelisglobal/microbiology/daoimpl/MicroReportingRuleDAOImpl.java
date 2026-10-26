@@ -47,7 +47,7 @@ public class MicroReportingRuleDAOImpl extends BaseDAOImpl<MicroReportingRule, S
                         (MicroReportingRule r) -> r.getOrganismId() != null && r.getOrganismId().equals(organismId) ? 0
                                 : r.getOrganismGroup() != null && r.getOrganismGroup().equals(organismGroup) ? 1 : 2)
                 .thenComparingInt(r -> r.getSampleTypeIds().isEmpty() ? 1 : 0)
-                .thenComparingInt(r -> r.getClinicalContext() == null ? 1 : 0);
+                .thenComparingInt(r -> r.getClinicalContext() == null ? 1 : 0).thenComparing(MicroReportingRule::getId);
         return query.list().stream()
                 .filter(r -> r.getSampleTypeIds().isEmpty() || r.getSampleTypeIds().contains(sampleTypeId)).min(best);
     }

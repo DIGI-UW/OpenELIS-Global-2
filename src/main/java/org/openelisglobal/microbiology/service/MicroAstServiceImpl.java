@@ -757,34 +757,67 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     @Override
     @Transactional
-    public void reapplyReportingRules(String antibioticId) {
-        for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByAntibioticId(antibioticId)) {
+    public void reapplyReportingRules(String antibioticId, String performedBy) {
+        Set<String> changedCaseIds = new LinkedHashSet<>();
+        for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByAntibioticIdForCasesNotFinalReleased(antibioticId)) {
             MicroAstRun run = runDAO.get(ordered.getAstRunId()).orElse(null);
-            if (run == null) {
+            if (run == null || !reapplyReportingRule(run, ordered)) {
                 continue;
             }
             MicroIsolate isolate = isolateDAO.get(run.getIsolateId()).orElse(null);
-            if (isolate == null) {
-                continue;
+            if (isolate != null) {
+                changedCaseIds.add(isolate.getCaseId());
             }
-            MicroCase microCase = caseDAO.get(isolate.getCaseId()).orElse(null);
-            if (microCase != null
-                    && MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
-                continue;
-            }
-            var rule = findReportingRule(run, antibioticId);
-            String reportBehavior = rule.map(MicroReportingRule::getReportBehavior)
-                    .orElseGet(() -> panelReportBehavior(run.getPanelId(), antibioticId));
-            ordered.setReportBehavior(reportBehavior);
-            ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
-            if (!ordered.isReportManual()) {
-                String interpretation = latestReadings(run.getId()).stream()
-                        .filter(reading -> antibioticId.equals(reading.getAntibioticId()))
-                        .map(MicroAstReportChoiceService::interpretation).findFirst().orElse(null);
-                ordered.setReported(defaultReported(reportBehavior, interpretation));
-            }
-            runAntibioticDAO.update(ordered);
         }
+        for (String caseId : changedCaseIds) {
+            recordActivity(caseId, MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy,
+                    "Report choices updated by a reporting rule change", "{\"antibioticId\":\"" + antibioticId + "\"}");
+        }
+    }
+
+    @Override
+    @Transactional
+    public void reapplyReportingRulesForIsolate(String isolateId, String performedBy) {
+        MicroCaseServiceImpl.requireText(isolateId, "isolateId");
+        MicroIsolate isolate = isolateDAO.get(isolateId).orElse(null);
+        if (isolate == null) {
+            return;
+        }
+        MicroCase microCase = caseDAO.get(isolate.getCaseId()).orElse(null);
+        if (microCase != null
+                && MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
+            return;
+        }
+        boolean changed = false;
+        for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
+            for (MicroAstRunAntibiotic ordered : runAntibioticDAO.getByRunId(run.getId())) {
+                changed |= reapplyReportingRule(run, ordered);
+            }
+        }
+        if (changed) {
+            recordActivity(isolate.getCaseId(), MicroCaseActivityType.REPORT_CHOICE_CHANGED, performedBy,
+                    "Report choices updated after re-identification", "{\"isolateId\":\"" + isolateId + "\"}");
+        }
+    }
+
+    private boolean reapplyReportingRule(MicroAstRun run, MicroAstRunAntibiotic ordered) {
+        String antibioticId = ordered.getAntibioticId();
+        var rule = findReportingRule(run, antibioticId);
+        String reportBehavior = rule.map(MicroReportingRule::getReportBehavior)
+                .orElseGet(() -> panelReportBehavior(run.getPanelId(), antibioticId));
+        ordered.setReportBehavior(reportBehavior);
+        ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
+        boolean changed = false;
+        if (!ordered.isReportManual()) {
+            String interpretation = latestReadings(run.getId()).stream()
+                    .filter(reading -> antibioticId.equals(reading.getAntibioticId()))
+                    .map(MicroAstReportChoiceService::interpretation).findFirst().orElse(null);
+            boolean reported = defaultReported(reportBehavior, interpretation);
+            changed = reported != ordered.isReported();
+            ordered.setReported(reported);
+        }
+        runAntibioticDAO.update(ordered);
+        return changed;
     }
 
     @Override

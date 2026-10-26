@@ -50,6 +50,10 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroAstService ast;
     @Autowired
+    private MicroIsolateService isolateService;
+    @Autowired
+    private MicroCaseActivityDAO activities;
+    @Autowired
     private MicroAstPanelAssignmentService assignments;
     @Autowired
     private MicroAstReportChoiceService choices;
@@ -635,6 +639,54 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         var report = reportingRules.save(form, writer);
         assertNull(report.getCascadeCondition());
         assertFalse(report.isAddAutomatically());
+    }
+
+    @Test
+    public void equallySpecificRulesResolveTheSameWayEveryTime() {
+        var later = ruleWithId("ffffffff-ffff-ffff-ffff-ffffffffffff", "DONT_REPORT");
+        var earlier = ruleWithId("00000000-0000-0000-0000-000000000000", "ALWAYS");
+        var run = start(isolate);
+        assertEquals(earlier.getId(), agent(run, drugB).getReportRuleId());
+        assertTrue(agent(run, drugB).isReported());
+        assertNotEquals(later.getId(), agent(run, drugB).getReportRuleId());
+    }
+
+    @Test
+    public void aRuleEditThatChangesTicksRecordsOneActivityPerCase() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        start(isolate);
+        start(isolate("ISO-2"));
+        var edit = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        edit.id = saved.getId();
+        reportingRules.save(edit, validator);
+        em.flush();
+        assertEquals(1, activities.getByCaseId(c.getId()).stream()
+                .filter(a -> MicroCaseActivityType.REPORT_CHOICE_CHANGED.name().equals(a.getActivityType())).count());
+    }
+
+    @Test
+    public void reidentifyingTheIsolateReappliesTheReportingRules() {
+        var acinetobacter = fixtures.createOrganism("Acinetobacter " + UUID.randomUUID(), "ACB", null);
+        reportingRule(acinetobacter.getId(), null, List.of(), "DONT_REPORT");
+        var run = start(isolate);
+        assertTrue(agent(run, drugB).isReported());
+        isolateService.updateIdentification(isolate, acinetobacter.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                fixtures.createMethodId(), null, "Corrected identification",
+                new Timestamp(System.currentTimeMillis() - 1000), validator);
+        assertFalse(agent(run, drugB).isReported());
+        assertEquals("DONT_REPORT", agent(run, drugB).getReportBehavior());
+    }
+
+    private MicroReportingRule ruleWithId(String id, String reportBehavior) {
+        var rule = new MicroReportingRule();
+        rule.setId(id);
+        rule.setAntibioticId(drugB);
+        rule.setOrganismId(reference.organism().getId());
+        rule.setReportBehavior(reportBehavior);
+        em.persist(rule);
+        em.flush();
+        return rule;
     }
 
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
