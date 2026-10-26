@@ -101,9 +101,10 @@ public class MicroReportingRuleService {
         rule.setOrganismGroup(organismGroup);
         rule.setClinicalContext(clinicalContext);
         rule.setReportBehavior(reportBehavior);
-        rule.setCascadeCondition(trimToNull(form.cascadeCondition));
+        boolean cascade = "CASCADE".equals(reportBehavior);
+        rule.setCascadeCondition(cascade ? trimToNull(form.cascadeCondition) : null);
         rule.setSampleTypeIds(sampleTypeIds);
-        rule.setAddAutomatically(form.addAutomatically);
+        rule.setAddAutomatically(cascade && form.addAutomatically);
         rule.setActive(form.active == null || form.active);
         rule.setSysUserId(actor);
         if (form.id == null) {
