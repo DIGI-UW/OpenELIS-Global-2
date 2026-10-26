@@ -74,6 +74,7 @@ const KpiStrip = ({ scope }) => {
         const kpi = query.data?.[tile.key];
         const tone = rateTone(kpi?.value, kpi?.thresholds);
         const thresholds = thresholdParts(kpi?.thresholds, "REJECTION");
+        const delta = kpi ? tile.delta(kpi.value, kpi.prior) : null;
         return (
           <QITile
             key={tile.key}
@@ -82,8 +83,12 @@ const KpiStrip = ({ scope }) => {
             accent={tone === "gray" ? "blue" : tone}
             loading={!query.data}
             primary={tile.primary(kpi?.value, intl)}
-            delta={kpi ? tile.delta(kpi.value, kpi.prior) : null}
-            targetLine={intl.formatMessage({ id: "label.mgmt.kpi.vsPrior" })}
+            delta={delta}
+            targetLine={
+              delta
+                ? intl.formatMessage({ id: "label.mgmt.kpi.vsPrior" })
+                : null
+            }
             thresholdLine={
               thresholds
                 ? intl.formatMessage(
