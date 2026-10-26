@@ -96,7 +96,8 @@ public class MicroAstResponseService {
         form.analyzerMessageCodes = run.getAnalyzerMessageCodes();
         form.sourceEventId = run.getSourceEventId();
         var readings = astService.getReadingsForRun(run.getId());
-        form.intrinsicContradiction = intrinsicContradiction(readings);
+        form.intrinsicContradiction = astService.latestReadings(run.getId()).stream()
+                .anyMatch(MicroAstReading::contradictsExpertRule);
         var orderedAntibiotics = astService.getOrderedAntibioticsForRun(run.getId());
         boolean released = orderedAntibiotics.stream().anyMatch(ordered -> ordered.getReportRuleId() != null)
                 && finalReleased(run);
@@ -151,15 +152,6 @@ public class MicroAstResponseService {
         form.overrideHistory = overrideHistory.stream().filter(event -> reading.getId().equals(event.readingId))
                 .toList();
         return form;
-    }
-
-    private boolean intrinsicContradiction(List<MicroAstReading> readings) {
-        Map<String, MicroAstReading> latest = new HashMap<>();
-        for (MicroAstReading reading : readings) {
-            latest.merge(reading.getAntibioticId(), reading, (current,
-                    candidate) -> candidate.getEntrySequence() >= current.getEntrySequence() ? candidate : current);
-        }
-        return latest.values().stream().anyMatch(MicroAstReading::contradictsExpertRule);
     }
 
     private boolean finalReleased(MicroAstRun run) {

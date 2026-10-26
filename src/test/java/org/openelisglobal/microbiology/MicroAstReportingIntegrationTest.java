@@ -1137,6 +1137,87 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
                         && a.note != null && a.note.startsWith("Expert rule")));
     }
 
+    @Test
+    public void aValidatorOverrideReplacesTheExpertRuleOverride() {
+        alwaysResistant(reference.organism().getId(), null);
+        var run = start(isolate);
+        var entered = enter(run, "4");
+        ast.overrideReading(entered.get(1).getId(), MicroAstInterpretation.SUSCEPTIBLE,
+                "Reference laboratory confirmed susceptible", validator);
+        em.flush();
+        em.clear();
+        assertNull(readings.get(entered.get(1).getId()).orElseThrow().getOverrideRuleId());
+        ast.reviewRun(run.getId(), validator);
+    }
+
+    @Test
+    public void aContradictionAfterTheIdentificationWasConfirmedBlocksReviewAgain() {
+        var run = start(isolate);
+        enter(run, "4");
+        ast.acknowledgeAnalyzerFlags(run.getId(), "Identification confirmed", validator);
+        alwaysResistant(reference.organism().getId(), null);
+        ast.recordReading(run.getId(), drugB, new BigDecimal("4"), writer);
+        var blocked = assertThrows(MicroAstConflictException.class, () -> ast.reviewRun(run.getId(), validator));
+        assertEquals("AST_INTRINSIC_RESISTANCE_UNVERIFIED", blocked.getMessage());
+    }
+
+    @Test
+    public void reidentifyingRetiresTheRunAndTheRepeatGetsTheNewOrganismsRules() {
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        alwaysResistant(klebsiella.getId(), null);
+        var first = start(isolate);
+        var entered = enter(first, "4");
+        reidentify(klebsiella.getId());
+        assertEquals("RERUN_REQUIRED", runs.get(first.getId()).orElseThrow().getStatus());
+        assertNull(readings.get(entered.get(1).getId()).orElseThrow().getOverrideInterpretation());
+        var repeat = enter(start(isolate), "4");
+        assertEquals("RESISTANT", readings.get(repeat.get(1).getId()).orElseThrow().getOverrideInterpretation());
+    }
+
+    @Test
+    public void reidentifyingAwayFromTheRulesOrganismLeavesTheRetiredRunsOverride() {
+        var escherichia = fixtures.createOrganism("Escherichia " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        var rule = alwaysResistant(reference.organism().getId(), null);
+        var first = start(isolate);
+        var entered = enter(first, "4");
+        reidentify(escherichia.getId());
+        assertEquals("RERUN_REQUIRED", runs.get(first.getId()).orElseThrow().getStatus());
+        var retired = readings.get(entered.get(1).getId()).orElseThrow();
+        assertEquals("RESISTANT", retired.getOverrideInterpretation());
+        assertEquals(rule.getId(), retired.getOverrideRuleId());
+        var repeat = readings.get(enter(start(isolate), "4").get(1).getId()).orElseThrow();
+        assertNull(repeat.getOverrideInterpretation());
+        assertNull(repeat.getOverrideRuleId());
+    }
+
+    @Test
+    public void identifyingAnIsolateWithNoOrganismAppliesTheRulesToItsOpenRun() {
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        alwaysResistant(klebsiella.getId(), null);
+        var run = start(isolate);
+        var entered = enter(run, "4");
+        // An amendment revert can restore a null organism while the run survives.
+        em.createQuery("update MicroIsolate i set i.organismId = null where i.id = :id").setParameter("id", isolate)
+                .executeUpdate();
+        em.flush();
+        em.clear();
+        var status = runs.get(run.getId()).orElseThrow().getStatus();
+        reidentify(klebsiella.getId());
+        assertEquals(status, runs.get(run.getId()).orElseThrow().getStatus());
+        assertEquals("RESISTANT", readings.get(entered.get(1).getId()).orElseThrow().getOverrideInterpretation());
+    }
+
+    private void reidentify(String organismId) {
+        isolateService.updateIdentification(isolate, organismId, null, MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                MicroIsolateIdentificationStatus.CONFIRMED, fixtures.createMethodId(), null, "Corrected identification",
+                new Timestamp(System.currentTimeMillis() - 1000), validator);
+        em.flush();
+        em.clear();
+    }
+
     private MicroInterpretationRule alwaysResistant(String organismId, String organismGroup) {
         var form = new org.openelisglobal.microbiology.form.MicroInterpretationRuleForm();
         form.antibioticId = drugB;
