@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="145-amr-v3-reporting-rules" author="openelis">
+<createTable schemaName="clinlims" tableName="micro_reporting_rule"><column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column><column name="antibiotic_id" type="varchar(36)"><constraints nullable="false"/></column><column name="organism_id" type="varchar(36)"/><column name="organism_group" type="varchar(100)"/><column name="clinical_context" type="varchar(40)"/><column name="report_behavior" type="varchar(30)"><constraints nullable="false"/></column><column name="cascade_condition" type="varchar(1000)"/><column name="add_automatically" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column><column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column><column name="last_updated" type="timestamp"/></createTable>
+<createTable schemaName="clinlims" tableName="micro_reporting_rule_sample_type"><column name="rule_id" type="varchar(36)"><constraints nullable="false"/></column><column name="sample_type_id" type="varchar(20)"><constraints nullable="false"/></column></createTable>
+<createTable schemaName="clinlims" tableName="micro_reporting_rule_history"><column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column><column name="rule_id" type="varchar(36)"><constraints nullable="false"/></column><column name="revision" type="integer"><constraints nullable="false"/></column><column name="changed_at" type="timestamp"><constraints nullable="false"/></column><column name="changed_by" type="varchar(36)"><constraints nullable="false"/></column><column name="before_value" type="text"/><column name="after_value" type="text"><constraints nullable="false"/></column><column name="last_updated" type="timestamp"/></createTable>
+<addPrimaryKey schemaName="clinlims" tableName="micro_reporting_rule_sample_type" columnNames="rule_id,sample_type_id" constraintName="pk_micro_reporting_rule_sample_type"/>
+<addUniqueConstraint schemaName="clinlims" tableName="micro_reporting_rule_history" columnNames="rule_id,revision" constraintName="uq_micro_reporting_rule_history_revision"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_reporting_rule" baseColumnNames="antibiotic_id" referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id" constraintName="fk_micro_reporting_rule_antibiotic_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_reporting_rule" baseColumnNames="organism_id" referencedTableSchemaName="clinlims" referencedTableName="micro_organism" referencedColumnNames="id" constraintName="fk_micro_reporting_rule_organism_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_reporting_rule_sample_type" baseColumnNames="rule_id" referencedTableSchemaName="clinlims" referencedTableName="micro_reporting_rule" referencedColumnNames="id" constraintName="fk_micro_reporting_rule_sample_type_rule_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_reporting_rule_history" baseColumnNames="rule_id" referencedTableSchemaName="clinlims" referencedTableName="micro_reporting_rule" referencedColumnNames="id" constraintName="fk_micro_reporting_rule_history_rule_id"/>
+<sql>ALTER TABLE clinlims.micro_reporting_rule ADD CONSTRAINT chk_micro_reporting_rule_behavior CHECK (report_behavior IN ('ALWAYS','SUPPRESS_UNLESS_RESISTANT','CASCADE','DONT_REPORT'));</sql>
+<sql>ALTER TABLE clinlims.micro_reporting_rule ADD CONSTRAINT chk_micro_reporting_rule_target CHECK (NOT (organism_id IS NOT NULL AND organism_group IS NOT NULL));</sql>
+<addColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic"><column name="report_rule_id" type="varchar(36)"/></addColumn>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_run_antibiotic" baseColumnNames="report_rule_id" referencedTableSchemaName="clinlims" referencedTableName="micro_reporting_rule" referencedColumnNames="id" constraintName="fk_micro_ast_run_antibiotic_report_rule_id"/>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_reporting_rule) THEN
+  RAISE EXCEPTION 'Cannot discard the laboratory reporting rules';
+ END IF;
+END $$;
+]]></sql><dropColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic" columnName="report_rule_id"/><dropTable schemaName="clinlims" tableName="micro_reporting_rule_history"/><dropTable schemaName="clinlims" tableName="micro_reporting_rule_sample_type"/><dropTable schemaName="clinlims" tableName="micro_reporting_rule"/></rollback>
+</changeSet>
+</databaseChangeLog>

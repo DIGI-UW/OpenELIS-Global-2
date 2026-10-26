@@ -46,7 +46,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroAstRunAntibioticDAO runAntibiotics;
     @Autowired
+    private MicroReportingRuleService reportingRules;
+    @Autowired
     private MicroAstService ast;
+    @Autowired
+    private MicroIsolateService isolateService;
+    @Autowired
+    private MicroCaseActivityDAO activities;
     @Autowired
     private MicroAstPanelAssignmentService assignments;
     @Autowired
@@ -67,6 +73,7 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     private MicrobiologyTestFixtures.ReferenceData reference;
     private String writer, validator, outsider, isolate, drugB;
     private MicroAstPanelAntibiotic drugBPanelRow;
+    private String sampleTypeId;
 
     @Before
     @Override
@@ -81,6 +88,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         validator = actor(unit.getId(), Constants.ROLE_VALIDATION);
         outsider = actor(fixtures.createLabUnit().getId(), Constants.ROLE_VALIDATION);
         var source = fixtures.createSampleWithSampleItem("M6");
+        source.setTypeOfSample(fixtures.getOrCreateActiveSampleType());
+        sampleTypeId = source.getTypeOfSample().getId();
         c = new MicroCase();
         c.setSampleId(source.getSample().getId());
         c.setSampleItemId(source.getId());
@@ -477,5 +486,231 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         em.flush();
         em.clear();
         return runAntibiotics.getByRunIdAndAntibioticId(run.getId(), antibioticId).orElseThrow();
+    }
+
+    @Test
+    public void dontReportRuleLeavesTheDrugUntickedButKeepsItForWhonet() {
+        var dontReport = reportingRule(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        var run = start(isolate);
+        enter(run, "4");
+        assertFalse(agent(run, drugB).isReported());
+        assertEquals(dontReport.getId(), agent(run, drugB).getReportRuleId());
+        assertEquals("DONT_REPORT", agent(run, drugB).getReportBehavior());
+        ast.reviewRun(run.getId(), validator);
+        em.flush();
+        em.clear();
+        assertEquals(List.of(reference.antibiotic().getId()), reports.preview(c.getId()).isolates.get(0)
+                .susceptibilities().stream().map(r -> r.antibioticId()).toList());
+        assertTrue(readings.getSelectedByRunIds(List.of(run.getId())).stream()
+                .anyMatch(r -> drugB.equals(r.getAntibioticId())));
+    }
+
+    @Test
+    public void sampleTypeRuleBeatsAnySampleTypeRule() {
+        groupOrganism("Enterobacterales");
+        reportingRule(null, "Enterobacterales", List.of(), "DONT_REPORT");
+        reportingRule(null, "Enterobacterales", List.of(sampleTypeId), "ALWAYS");
+        assertTrue(agent(start(isolate), drugB).isReported());
+    }
+
+    @Test
+    public void ruleForAnotherSampleTypeDoesNotApply() {
+        groupOrganism("Enterobacterales");
+        reportingRule(null, "Enterobacterales", List.of(), "DONT_REPORT");
+        reportingRule(null, "Enterobacterales", List.of(fixtures.createTypeOfSample().getId()), "ALWAYS");
+        assertFalse(agent(start(isolate), drugB).isReported());
+    }
+
+    @Test
+    public void organismRuleBeatsGroupRule() {
+        groupOrganism("Enterobacterales");
+        reportingRule(null, "Enterobacterales", List.of(), "DONT_REPORT");
+        reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        assertTrue(agent(start(isolate), drugB).isReported());
+    }
+
+    @Test
+    public void indicationRuleAppliesOnlyToRunsWithThatIndication() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        form.clinicalContext = "NON_MENINGITIS";
+        reportingRules.save(form, writer);
+        assertTrue(agent(start(isolate), drugB).isReported());
+    }
+
+    @Test
+    public void editingARuleUpdatesUnreleasedRunsButNotHandChangedTicksAndKeepsHistory() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        var run = start(isolate);
+        var other = start(isolate("ISO-2"));
+        ast.setReported(other.getId(), drugB, true, writer);
+        var edit = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        edit.id = saved.getId();
+        reportingRules.save(edit, validator);
+        assertFalse(agent(run, drugB).isReported());
+        assertTrue(agent(other, drugB).isReported());
+        var history = reportingRules.getHistory(saved.getId());
+        assertEquals(2, history.size());
+        assertEquals(validator, history.get(0).changedBy);
+        assertTrue(history.get(0).before.contains("ALWAYS"));
+        assertTrue(history.get(0).after.contains("DONT_REPORT"));
+        assertNull(history.get(1).before);
+    }
+
+    @Test
+    public void reportingRuleTargetsAnOrganismOrAGroupNotBoth() {
+        assertThrows(IllegalArgumentException.class,
+                () -> reportingRule(reference.organism().getId(), "Enterobacterales", List.of(), "ALWAYS"));
+        assertThrows(IllegalArgumentException.class,
+                () -> reportingRule(reference.organism().getId(), null, List.of(), "SOMETIMES"));
+    }
+
+    @Test
+    public void reportingRulesRecordWhichStandardTheyWereWrittenFor() {
+        assertEquals("EUCAST", reportingRules.saveSettings("EUCAST", writer).writtenFor);
+        em.flush();
+        em.clear();
+        assertEquals("EUCAST", reportingRules.getSettings().writtenFor);
+        assertThrows(IllegalArgumentException.class, () -> reportingRules.saveSettings("WHONET", writer));
+    }
+
+    @Test
+    public void listedRulesCarryDisplayNames() {
+        reportingRule(reference.organism().getId(), null, List.of(sampleTypeId), "ALWAYS");
+        var listed = reportingRules.getRules().get(0);
+        assertEquals("Second agent", listed.antibioticName);
+        assertEquals(reference.organism().getDisplayName(), listed.organismName);
+        assertEquals(1, listed.sampleTypeNames.size());
+    }
+
+    @Test
+    public void ruleHistoryNamesWhoChangedIt() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        assertTrue(reportingRules.getHistory(saved.getId()).get(0).changedByName.contains(Constants.ROLE_RESULTS));
+    }
+
+    @Test
+    public void resetAfterARuleChangeUsesTheNewRule() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        var run = start(isolate);
+        ast.setReported(run.getId(), drugB, true, writer);
+        var edit = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        edit.id = saved.getId();
+        reportingRules.save(edit, writer);
+        assertTrue(agent(run, drugB).isReported());
+        assertEquals("DONT_REPORT", agent(run, drugB).getReportBehavior());
+        ast.resetReportDefaults(isolate, writer);
+        assertFalse(agent(run, drugB).isReported());
+    }
+
+    @Test
+    public void blankReportDefaultIsRejectedNotACrash() {
+        assertThrows(IllegalArgumentException.class,
+                () -> reportingRule(reference.organism().getId(), null, List.of(), ""));
+        assertThrows(IllegalArgumentException.class,
+                () -> reportingRule(reference.organism().getId(), null, List.of(), null));
+    }
+
+    @Test
+    public void blankWrittenForClearsTheSetting() {
+        reportingRules.saveSettings("EUCAST", writer);
+        assertNull(reportingRules.saveSettings("", writer).writtenFor);
+        em.flush();
+        em.clear();
+        assertNull(reportingRules.getSettings().writtenFor);
+    }
+
+    @Test
+    public void savingAnUnchangedRuleAddsNoHistory() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        var same = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        same.id = saved.getId();
+        reportingRules.save(same, writer);
+        assertEquals(1, reportingRules.getHistory(saved.getId()).size());
+    }
+
+    @Test
+    public void leavingCascadeDropsItsCondition() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "CASCADE");
+        form.cascadeCondition = "Report if ceftriaxone is resistant";
+        form.addAutomatically = true;
+        var saved = reportingRules.save(form, writer);
+        form.id = saved.getId();
+        form.reportBehavior = "ALWAYS";
+        var report = reportingRules.save(form, writer);
+        assertNull(report.getCascadeCondition());
+        assertFalse(report.isAddAutomatically());
+    }
+
+    @Test
+    public void equallySpecificRulesResolveTheSameWayEveryTime() {
+        var later = ruleWithId("ffffffff-ffff-ffff-ffff-ffffffffffff", "DONT_REPORT");
+        var earlier = ruleWithId("00000000-0000-0000-0000-000000000000", "ALWAYS");
+        var run = start(isolate);
+        assertEquals(earlier.getId(), agent(run, drugB).getReportRuleId());
+        assertTrue(agent(run, drugB).isReported());
+        assertNotEquals(later.getId(), agent(run, drugB).getReportRuleId());
+    }
+
+    @Test
+    public void aRuleEditThatChangesTicksRecordsOneActivityPerCase() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        start(isolate);
+        start(isolate("ISO-2"));
+        var edit = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        edit.id = saved.getId();
+        reportingRules.save(edit, validator);
+        em.flush();
+        assertEquals(1, activities.getByCaseId(c.getId()).stream()
+                .filter(a -> MicroCaseActivityType.REPORT_CHOICE_CHANGED.name().equals(a.getActivityType())).count());
+    }
+
+    @Test
+    public void reidentifyingTheIsolateReappliesTheReportingRules() {
+        var acinetobacter = fixtures.createOrganism("Acinetobacter " + UUID.randomUUID(), "ACB", null);
+        reportingRule(acinetobacter.getId(), null, List.of(), "DONT_REPORT");
+        var run = start(isolate);
+        assertTrue(agent(run, drugB).isReported());
+        isolateService.updateIdentification(isolate, acinetobacter.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                fixtures.createMethodId(), null, "Corrected identification",
+                new Timestamp(System.currentTimeMillis() - 1000), validator);
+        assertFalse(agent(run, drugB).isReported());
+        assertEquals("DONT_REPORT", agent(run, drugB).getReportBehavior());
+    }
+
+    private MicroReportingRule ruleWithId(String id, String reportBehavior) {
+        var rule = new MicroReportingRule();
+        rule.setId(id);
+        rule.setAntibioticId(drugB);
+        rule.setOrganismId(reference.organism().getId());
+        rule.setReportBehavior(reportBehavior);
+        em.persist(rule);
+        em.flush();
+        return rule;
+    }
+
+    private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
+            String organismGroup, List<String> sampleTypeIds, String reportBehavior) {
+        var form = new org.openelisglobal.microbiology.form.MicroReportingRuleForm();
+        form.antibioticId = drugB;
+        form.organismId = organismId;
+        form.organismGroup = organismGroup;
+        form.sampleTypeIds = sampleTypeIds;
+        form.reportBehavior = reportBehavior;
+        return form;
+    }
+
+    private MicroReportingRule reportingRule(String organismId, String organismGroup, List<String> sampleTypeIds,
+            String reportBehavior) {
+        var saved = reportingRules.save(reportingRuleForm(organismId, organismGroup, sampleTypeIds, reportBehavior),
+                writer);
+        em.flush();
+        return saved;
+    }
+
+    private void groupOrganism(String group) {
+        reference.organism().setOrganismGroup(group);
+        organisms.update(reference.organism());
+        em.flush();
     }
 }

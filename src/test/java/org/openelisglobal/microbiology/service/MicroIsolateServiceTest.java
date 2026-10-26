@@ -61,6 +61,8 @@ public class MicroIsolateServiceTest {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "access", access);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
                 org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "astService",
+                org.mockito.Mockito.mock(MicroAstService.class));
         lenient().when(access.hasLabUnitRole(any(), any(), any())).thenReturn(true);
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");
