@@ -418,6 +418,20 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void blockedFinalReleaseAnswersConflictNamingWhatIsMissing() throws Exception {
+        grantRole(Constants.ROLE_VALIDATION, source.getId());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/rest/microbiology/cases/" + own.getId() + "/release/final")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.error")
+                        .value("MICROBIOLOGY_RELEASE_BLOCKED"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.blockers",
+                        org.hamcrest.CoreMatchers.hasItem("ISOLATE_REQUIRED")));
+    }
+
+    @Test
     public void pendingCaseHeaderLoadsBeforePhysicalSampleExists() {
         var shell = workspace.get(own.getId(), viewer);
         assertEquals(workspaceAccession(), shell.accessionNumber);
