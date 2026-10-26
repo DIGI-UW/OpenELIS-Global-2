@@ -537,6 +537,14 @@ export default function CaseAstWorkspace({
                                       )}
                                     </>
                                   )}
+                                  {agent.ruleNote && (
+                                    <>
+                                      <Tag size="sm" type="teal">
+                                        {t("fromRule")}
+                                      </Tag>
+                                      <p>{agent.ruleNote}</p>
+                                    </>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {canEnter &&

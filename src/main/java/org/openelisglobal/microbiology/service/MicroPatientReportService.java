@@ -26,6 +26,7 @@ public class MicroPatientReportService {
     private final MicroAntibioticDAO antibiotics;
     private final MicroAstRunDAO runs;
     private final MicroAstRunAntibioticDAO runAntibiotics;
+    private final MicroReportingRuleDAO reportingRules;
     private final MicroAstReportChoiceService choices;
     private final MicroBreakpointStandardDAO standards;
     private final MicroCaseTimelineService timeline;
@@ -40,10 +41,10 @@ public class MicroPatientReportService {
 
     public MicroPatientReportService(MicroCaseDAO cases, MicroCaseAnalysisDAO links, MicroCaseInoculationDAO cultures,
             MicroIsolateDAO isolates, MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics, MicroAstRunDAO runs,
-            MicroAstRunAntibioticDAO runAntibiotics, MicroAstReportChoiceService choices,
-            MicroBreakpointStandardDAO standards, MicroCaseTimelineService timeline, MicroDstService dst,
-            ResultService results, IStatusService statuses, TestSectionService units,
-            MicroCaseAuthorizationService authorization, MicroCaseActivityDAO activities,
+            MicroAstRunAntibioticDAO runAntibiotics, MicroReportingRuleDAO reportingRules,
+            MicroAstReportChoiceService choices, MicroBreakpointStandardDAO standards,
+            MicroCaseTimelineService timeline, MicroDstService dst, ResultService results, IStatusService statuses,
+            TestSectionService units, MicroCaseAuthorizationService authorization, MicroCaseActivityDAO activities,
             MicroReportVersionDAO versions) {
         this.cases = cases;
         this.links = links;
@@ -53,6 +54,7 @@ public class MicroPatientReportService {
         this.antibiotics = antibiotics;
         this.runs = runs;
         this.runAntibiotics = runAntibiotics;
+        this.reportingRules = reportingRules;
         this.choices = choices;
         this.standards = standards;
         this.timeline = timeline;
@@ -78,6 +80,7 @@ public class MicroPatientReportService {
     public MicroPatientReportForm preview(String caseId) {
         var c = cases.get(caseId).orElseThrow();
         var form = new MicroPatientReportForm();
+        var ruleNotes = new ArrayList<MicroPatientReportForm.Note>();
         form.caseId = caseId;
         form.labUnitId = c.getLabUnitId();
         form.labUnitName = units.get(c.getLabUnitId()).getLocalizedName();
@@ -142,6 +145,14 @@ public class MicroPatientReportService {
                         reading.getId(), run.getId(), reading.getRawText(), reading.getUnits(),
                         MicroAstReportChoiceService.interpretation(reading), standard.getAuthority(),
                         run.getBreakpointVersion(), reading.getMatchedBy(), run.getClinicalContext()));
+                var ruleId = agent.map(MicroAstRunAntibiotic::getReportRuleId).orElse(null);
+                if (ruleId != null) {
+                    var rule = reportingRules.get(ruleId).orElse(null);
+                    var text = rule == null ? null : rule.noteFor(MicroAstReportChoiceService.interpretation(reading));
+                    if (text != null) {
+                        ruleNotes.add(new MicroPatientReportForm.Note(text, null, null, "DRUG", reading.getId(), true));
+                    }
+                }
             }
             rows.sort(Comparator.comparing(MicroPatientReportForm.Susceptibility::agent));
             form.validatedResults += rows.size();
@@ -150,11 +161,12 @@ public class MicroPatientReportService {
                     selectedReadings.size()));
         }
         form.classification = dst.evaluate(caseId).classification;
-        form.notes = timeline.getReportNotes(caseId).stream()
-                .filter(n -> includedNoteTarget(form, n.targetType, n.targetId))
-                .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt, n.targetType,
-                        n.targetId))
-                .toList();
+        form.notes = new ArrayList<>(
+                timeline.getReportNotes(caseId).stream().filter(n -> includedNoteTarget(form, n.targetType, n.targetId))
+                        .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt,
+                                n.targetType, n.targetId))
+                        .toList());
+        form.notes.addAll(ruleNotes);
         return form;
     }
 

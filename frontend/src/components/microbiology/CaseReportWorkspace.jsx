@@ -30,7 +30,9 @@ export function MicrobiologyReportBlock({ report }) {
       )
       .map((note, index) => (
         <p key={index}>
-          {note.text} · {note.author} · {labTimestamp(intl, note.at)}
+          {note.fromRule
+            ? `${note.text} · ${t("fromRule")}`
+            : `${note.text} · ${note.author} · ${labTimestamp(intl, note.at)}`}
         </p>
       ));
   const testRows = (tests) =>

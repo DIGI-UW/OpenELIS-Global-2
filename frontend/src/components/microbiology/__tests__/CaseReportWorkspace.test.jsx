@@ -182,3 +182,34 @@ it("says how many of the isolate's tested antibiotics are reported", async () =>
     await screen.findByText("1 of 3 antibiotics reported"),
   ).toBeInTheDocument();
 });
+it("prints a rule note under its drug without an author", async () => {
+  const data = report();
+  data.isolates[0].susceptibilities[0].readingId = "ra";
+  data.notes = [
+    {
+      text: "Consider meropenem",
+      fromRule: true,
+      targetType: "DRUG",
+      targetId: "ra",
+    },
+  ];
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseReportWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={{
+          getReport: vi.fn().mockResolvedValue(data),
+          getReportVersions: vi.fn().mockResolvedValue([]),
+          getReadiness: vi
+            .fn()
+            .mockResolvedValue({ blockers: [], finalReleaseReady: false }),
+          getTests: vi.fn().mockResolvedValue([]),
+          releaseReport: vi.fn(),
+        }}
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByText("Consider meropenem · From rule"),
+  ).toBeInTheDocument();
+});

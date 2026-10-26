@@ -35,6 +35,8 @@ const emptyRule = {
   clinicalContext: "",
   reportBehavior: "ALWAYS",
   cascadeCondition: "",
+  note: "",
+  noteWhen: "ALWAYS",
   addAutomatically: false,
   active: true,
 };
@@ -50,6 +52,12 @@ const standards = {
   CLSI: "standardClsi",
   EUCAST: "standardEucast",
   LOCAL: "standardLocal",
+};
+
+const noteWhens = {
+  ALWAYS: "noteAlways",
+  WHEN_R: "noteWhenR",
+  WHEN_S: "noteWhenS",
 };
 
 const displayValue = (value) => {
@@ -135,7 +143,10 @@ export default function AstRulesPage() {
     setBusy(true);
     setError(false);
     try {
-      await saveReportingRule(draft);
+      await saveReportingRule({
+        ...draft,
+        noteWhen: draft.noteWhen || "ALWAYS",
+      });
       setRules((await getReportingRules()) || []);
       setDraft(null);
     } catch {
@@ -250,6 +261,7 @@ export default function AstRulesPage() {
               "reportDefault",
               "condition",
               "addAutomatically",
+              "note",
               "actions",
             ].map((header) => (
               <TableHeader key={header}>{t(header)}</TableHeader>
@@ -260,7 +272,7 @@ export default function AstRulesPage() {
           {groups.map((group) => (
             <React.Fragment key={group.key}>
               <TableRow>
-                <TableCell colSpan={7}>{group.label}</TableCell>
+                <TableCell colSpan={8}>{group.label}</TableCell>
               </TableRow>
               {group.rules.map((rule) => (
                 <TableRow key={rule.id}>
@@ -285,6 +297,17 @@ export default function AstRulesPage() {
                       ? rule.addAutomatically
                         ? t("yes")
                         : t("no")
+                      : ""}
+                  </TableCell>
+                  <TableCell>
+                    {rule.note
+                      ? intl.formatMessage(
+                          { id: "microbiology.admin.astRules.noteSummary" },
+                          {
+                            when: t(noteWhens[rule.noteWhen]),
+                            note: rule.note,
+                          },
+                        )
                       : ""}
                   </TableCell>
                   <TableCell>
@@ -424,6 +447,28 @@ export default function AstRulesPage() {
                   />
                 </>
               )}
+              <TextInput
+                id="reporting-rule-note"
+                labelText={t("note")}
+                value={draft.note || ""}
+                onChange={(event) =>
+                  setDraft({ ...draft, note: event.target.value })
+                }
+                disabled={busy}
+              />
+              <Select
+                id="reporting-rule-note-when"
+                labelText={t("noteWhen")}
+                value={draft.noteWhen || "ALWAYS"}
+                onChange={(event) =>
+                  setDraft({ ...draft, noteWhen: event.target.value })
+                }
+                disabled={busy}
+              >
+                {Object.entries(noteWhens).map(([value, label]) => (
+                  <SelectItem key={value} value={value} text={t(label)} />
+                ))}
+              </Select>
               <Checkbox
                 id="reporting-rule-active"
                 labelText={t("active")}

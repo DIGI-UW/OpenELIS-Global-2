@@ -48,6 +48,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroReportingRuleService reportingRules;
     @Autowired
+    private MicroAstResponseService astResponses;
+    @Autowired
     private MicroAstService ast;
     @Autowired
     private MicroIsolateService isolateService;
@@ -687,6 +689,69 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         em.persist(rule);
         em.flush();
         return rule;
+    }
+
+    @Test
+    public void ruleNoteWhenResistantPrintsUnderAResistantDrugOnly() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "Consider meropenem for this resistant isolate";
+        form.noteWhen = "WHEN_R";
+        reportingRules.save(form, writer);
+        var resistant = start(isolate);
+        var resistantReadings = enter(resistant, "64");
+        ast.reviewRun(resistant.getId(), validator);
+        var susceptible = start(isolate("ISO-2"));
+        enter(susceptible, "4");
+        ast.reviewRun(susceptible.getId(), validator);
+        em.flush();
+        em.clear();
+        var notes = reports.preview(c.getId()).notes.stream().filter(n -> n.fromRule()).toList();
+        assertEquals(1, notes.size());
+        assertEquals("Consider meropenem for this resistant isolate", notes.get(0).text());
+        assertEquals("DRUG", notes.get(0).targetType());
+        assertEquals(resistantReadings.get(1).getId(), notes.get(0).targetId());
+    }
+
+    @Test
+    public void ruleNoteIsNotPrintedForAnUntickedDrug() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        form.note = "Not printed";
+        form.noteWhen = "ALWAYS";
+        reportingRules.save(form, writer);
+        var run = start(isolate);
+        enter(run, "64");
+        ast.reviewRun(run.getId(), validator);
+        em.flush();
+        em.clear();
+        assertTrue(reports.preview(c.getId()).notes.stream().noneMatch(n -> n.fromRule()));
+    }
+
+    @Test
+    public void ruleNoteFollowsItsRuleAndShowsOnTheRunDrug() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "First wording";
+        form.noteWhen = "ALWAYS";
+        var saved = reportingRules.save(form, writer);
+        var run = start(isolate);
+        enter(run, "4");
+        form.id = saved.getId();
+        form.note = "Second wording";
+        reportingRules.save(form, writer);
+        em.flush();
+        em.clear();
+        var drug = astResponses.toRunFormWithReadings(runs.get(run.getId()).orElseThrow()).orderedAntibiotics.stream()
+                .filter(a -> drugB.equals(a.antibioticId)).findFirst().orElseThrow();
+        assertEquals("Second wording", drug.ruleNote);
+    }
+
+    @Test
+    public void ruleNoteNeedsAKnownCondition() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "Sometimes";
+        form.noteWhen = "SOMETIMES";
+        assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer));
+        form.noteWhen = null;
+        assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer));
     }
 
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,

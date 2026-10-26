@@ -90,6 +90,40 @@ public class MicroReportingRule extends BaseObject<String> {
         cascadeCondition = value;
     }
 
+    @Column(name = "note", length = 1000)
+    private String note;
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String value) {
+        note = value;
+    }
+
+    @Column(name = "note_when", length = 10)
+    private String noteWhen;
+
+    public String getNoteWhen() {
+        return noteWhen;
+    }
+
+    public void setNoteWhen(String value) {
+        noteWhen = value;
+    }
+
+    public String noteFor(String interpretation) {
+        if (note == null || noteWhen == null) {
+            return null;
+        }
+        return switch (noteWhen) {
+        case "ALWAYS" -> note;
+        case "WHEN_R" -> "RESISTANT".equals(interpretation) ? note : null;
+        case "WHEN_S" -> "SUSCEPTIBLE".equals(interpretation) ? note : null;
+        default -> null;
+        };
+    }
+
     @Column(name = "add_automatically", nullable = false)
     private boolean addAutomatically;
 
