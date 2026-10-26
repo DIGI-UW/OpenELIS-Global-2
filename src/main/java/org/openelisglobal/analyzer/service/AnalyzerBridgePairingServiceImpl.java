@@ -3,10 +3,13 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.nio.channels.UnresolvedAddressException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
@@ -77,7 +80,7 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         return new Status(bridgeUrl, paired, paired ? record.get().getBridgeCertificateSha256() : null,
                 clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null,
                 !configuredCode.isEmpty() && !configuredCodeRefused,
-                paired ? checkPin(record.get()).orElse(null) : null);
+                paired && !bridgeUrl.isEmpty() ? checkPin(record.get()).orElse(null) : null);
     }
 
     @Override
@@ -160,7 +163,7 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         Optional<AnalyzerBridgePairing> pinned = dao.findCurrent().filter(r -> r.getBridgeCertificateSha256() != null);
         if (pinned.isPresent()) {
             Optional<PinCheck> check = checkPin(pinned.get());
-            if (check.isEmpty() || check.get() == PinCheck.MATCHES) {
+            if (check.isEmpty() || check.get() == PinCheck.MATCHES || check.get() == PinCheck.UNREACHABLE) {
                 return;
             }
             LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
@@ -186,8 +189,9 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
 
     /**
      * Asks the Bridge at the configured address for its pairing state, observing
-     * the certificate it presents. Empty when the Bridge cannot be reached or its
-     * answer cannot be read.
+     * the certificate it presents. {@code UNREACHABLE} when nothing answers at the
+     * address in time (refused, unknown host, or no answer before the timeout),
+     * empty when the answer cannot be read.
      */
     private Optional<PinCheck> checkPin(AnalyzerBridgePairing record) {
         BridgeTls.ObservingServerTrustManager observed = new BridgeTls.ObservingServerTrustManager();
@@ -213,6 +217,8 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
                 return Optional.empty();
             }
             return Optional.of(paired.booleanValue() ? PinCheck.MATCHES : PinCheck.BRIDGE_UNPAIRED);
+        } catch (ConnectException | HttpTimeoutException | UnresolvedAddressException e) {
+            return Optional.of(PinCheck.UNREACHABLE);
         } catch (GeneralSecurityException | IOException e) {
             return Optional.empty();
         } catch (InterruptedException e) {

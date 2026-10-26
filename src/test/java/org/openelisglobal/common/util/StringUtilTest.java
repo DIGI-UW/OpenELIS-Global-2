@@ -109,6 +109,32 @@ public class StringUtilTest {
     }
 
     @Test
+    public void roundToPlaces_roundsHalfUp() {
+        assertEquals("1", StringUtil.roundToPlaces("0.9", 0));
+        assertEquals("1.0", StringUtil.roundToPlaces("0.95", 1));
+        assertEquals("70", StringUtil.roundToPlaces("69.9", 0));
+        assertEquals("12.35", StringUtil.roundToPlaces("12.345", 2));
+        assertEquals("12.50", StringUtil.roundToPlaces("12.5", 2));
+    }
+
+    @Test
+    public void roundToPlaces_leavesWhatItCannotRoundSafely() {
+        assertEquals("<0.55", StringUtil.roundToPlaces("<0.55", 0));
+        assertEquals("<5.00", StringUtil.roundToPlaces("<5", 2));
+        assertEquals("1.567e5", StringUtil.roundToPlaces("1.567e5", 2));
+        assertEquals("abc", StringUtil.roundToPlaces("abc", 1));
+        assertEquals("12.345", StringUtil.roundToPlaces("12.345", -1));
+        assertEquals(null, StringUtil.roundToPlaces(null, 1));
+    }
+
+    @Test
+    public void roundToPlaces_dropsTrailingZerosBehindAComparator() {
+        assertEquals("<40", StringUtil.roundToPlaces("<40.00", 0));
+        assertEquals(">1.5", StringUtil.roundToPlaces(">1.50", 1));
+        assertEquals("<40.50", StringUtil.roundToPlaces("<40.50", 0));
+    }
+
+    @Test
     public void padMantissa_shouldPadWithoutChangingTheNotationWritten() {
         assertEquals("1.50e5", StringUtil.padMantissa("1.5e5", 2));
         assertEquals("1.50E+05", StringUtil.padMantissa("1.5E+05", 2));

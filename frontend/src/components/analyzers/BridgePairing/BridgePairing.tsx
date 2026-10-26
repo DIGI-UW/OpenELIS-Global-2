@@ -43,8 +43,23 @@ const BridgePairing = () => {
     return () => controller.abort();
   }, []);
 
-  if (!status || !status.bridgeUrl) {
+  if (!status) {
     return null;
+  }
+
+  if (!status.bridgeUrl) {
+    return (
+      <div data-testid="bridge-pairing">
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="bridge-pairing-not-configured"
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.error.notConfigured",
+          })}
+        />
+      </div>
+    );
   }
 
   const submit = (event: React.FormEvent) => {
@@ -121,6 +136,22 @@ const BridgePairing = () => {
       )}
     </form>
   );
+
+  if (status.paired && status.pinCheck === "UNREACHABLE") {
+    return (
+      <div data-testid="bridge-pairing">
+        <Callout
+          kind="error"
+          lowContrast
+          data-testid="bridge-pairing-unreachable"
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.error.unreachable",
+          })}
+          subtitle={status.bridgeUrl}
+        />
+      </div>
+    );
+  }
 
   if (stalePin) {
     const key =

@@ -292,8 +292,13 @@ public class AnalyzerBridgePairingServiceTest {
         }
     }
 
+    /**
+     * OGC-1546: an unreachable Bridge is reported as such, so the Analyzers page
+     * can say so instead of showing it paired, and the pin is kept and not
+     * re-paired.
+     */
     @Test
-    public void anUnreachableBridgeKeepsThePinAndIsNotCalledStale() {
+    public void anUnreachableBridgeKeepsThePinAndIsReportedUnreachable() {
         AnalyzerBridgePairingService pairing = service(CODE);
         pairing.pairWithConfiguredCode();
         String pinned = stored.get().getBridgeCertificateSha256();
@@ -302,8 +307,39 @@ public class AnalyzerBridgePairingServiceTest {
         pairing.pairWithConfiguredCode();
 
         assertTrue(pairing.getStatus().paired());
-        assertNull(pairing.getStatus().pinCheck());
+        assertEquals(AnalyzerBridgePairingService.PinCheck.UNREACHABLE, pairing.getStatus().pinCheck());
         assertEquals(pinned, stored.get().getBridgeCertificateSha256());
+        assertEquals(1, bridge.pairingAttempts.get());
+    }
+
+    /**
+     * OGC-1546: a Bridge that takes the request and never answers is as unreachable
+     * as one that refuses it.
+     */
+    @Test
+    public void aBridgeThatNeverAnswersIsReportedUnreachable() {
+        AnalyzerBridgePairingService pairing = service(CODE);
+        pairing.pairWithConfiguredCode();
+        bridge.stallStateAnswers();
+
+        assertEquals(AnalyzerBridgePairingService.PinCheck.UNREACHABLE, pairing.getStatus().pinCheck());
+    }
+
+    /**
+     * OGC-1546: a site that was paired and later had its Bridge address removed
+     * still gets its status, so the page can say no address is configured; the pin
+     * check used to fail on the empty address and answer 500.
+     */
+    @Test
+    public void aStoredPinWithTheBridgeUrlRemovedIsReportedWithoutAPinCheck() {
+        service(CODE).pairWithConfiguredCode();
+        AnalyzerBridgePairingService withoutUrl = new AnalyzerBridgePairingServiceImpl(dao, encryptor, "", CODE, "",
+                "");
+
+        AnalyzerBridgePairingService.Status status = withoutUrl.getStatus();
+
+        assertEquals("", status.bridgeUrl());
+        assertNull(status.pinCheck());
     }
 
     @Test

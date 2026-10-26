@@ -60,4 +60,26 @@ describe("resultFlagFor", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("judges a plain decimal as reported, rounded half up to the test's places", () => {
+    expect(
+      resultFlagFor(row({ resultValue: "4.5", significantDigits: 0 })),
+    ).toBe("NORMAL");
+    expect(
+      resultFlagFor(row({ resultValue: "4.4", significantDigits: 0 })),
+    ).toBe("ABNORMAL");
+    expect(
+      resultFlagFor(row({ resultValue: "100.04", significantDigits: 1 })),
+    ).toBe("NORMAL");
+  });
+
+  it("does not round a value behind < or >, or when the places are unknown", () => {
+    expect(
+      resultFlagFor(row({ resultValue: "<4.5", significantDigits: 0 })),
+    ).toBe("ABNORMAL");
+    expect(resultFlagFor(row({ resultValue: "4.5" }))).toBe("ABNORMAL");
+    expect(
+      resultFlagFor(row({ resultValue: "4.5", significantDigits: -1 })),
+    ).toBe("ABNORMAL");
+  });
 });
