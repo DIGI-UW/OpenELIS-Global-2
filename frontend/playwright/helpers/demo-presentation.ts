@@ -42,7 +42,7 @@ export type DemoPresentation = {
   caption: (text: string | null) => Promise<void>;
   /** Draws the eye to the element that shows the outcome. */
   highlight: (locator: Locator, durationMs?: number) => Promise<void>;
-  /** Closes a story on the outcome its assertions just read back. */
+  /** Closes a story on the outcome its assertions just read back; the card stays up. */
   verified: (title: string, subtitle?: string) => Promise<void>;
   pause: (ms: number) => Promise<void>;
   evidence: (
@@ -104,9 +104,11 @@ export function createDemoPresentation(
       if (!isVideo) return;
       caption = null;
       await showCaption(page, null, testInfo);
+      // Held, so the recording ends on the outcome rather than the page behind it.
       await showTitleCard(page, title, subtitle, 4500, testInfo, {
         eyebrow: "Verified",
         accent: "#24a148",
+        hold: true,
       });
     },
     pause: (ms) => videoPause(page, ms, testInfo),

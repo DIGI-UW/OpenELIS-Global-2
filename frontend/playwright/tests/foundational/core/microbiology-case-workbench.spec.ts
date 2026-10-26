@@ -80,10 +80,10 @@ test(
     );
     await demo.highlight(table);
     await expect(table.getByRole("row")).toHaveCount(3);
-    await page.getByRole("button", { name: "Culture", exact: true }).click();
     await demo.caption(
       "The culture worklist keeps both units; a culture opens on its case's culture section.",
     );
+    await page.getByRole("button", { name: "Culture", exact: true }).click();
     await expect(
       table.getByRole("button", { name: first.accessionNumber, exact: true }),
     ).toBeVisible();
@@ -102,10 +102,10 @@ test(
       .click();
     await page.reload();
     await expect(table.getByRole("row")).toHaveCount(3);
-    await page.getByRole("button", { name: "AST runs", exact: true }).click();
     await demo.caption(
       "The AST worklist and case search carry the same two units.",
     );
+    await page.getByRole("button", { name: "AST runs", exact: true }).click();
     await expect(page.getByTestId("microbiology-worklist")).toBeVisible();
     expect(
       new URL(page.url()).searchParams.getAll("labUnitIds").sort(),
