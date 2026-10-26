@@ -25,4 +25,11 @@ public class MicroWorklistQueryForm {
     public String sort = "priority";
     public int page = 1;
     public int pageSize = 20;
+
+    /**
+     * Which sample items the caller may read, by their lab units; null when the
+     * caller reads every case. Set by the controller, never bound from the request.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public java.util.function.Predicate<String> sampleItemVisible;
 }

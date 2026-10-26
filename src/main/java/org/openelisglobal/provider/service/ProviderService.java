@@ -28,6 +28,15 @@ public interface ProviderService extends BaseObjectService<Provider, String> {
     /** The same page, narrowed to one provider title (OGC-1223). */
     List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode);
 
+    /**
+     * The same page with an explicit page size; one row more than the page size is
+     * returned so the caller can tell whether a next page exists.
+     */
+    List<Provider> getPagesOfSearchedProviders(int startingRecNo, int pageSize, String parameter);
+
+    /** The phone search with an explicit page size, plus one row. */
+    List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, int pageSize, String phone);
+
     int getTotalSearchedProviderCount(String parameter);
 
     /** The same count, narrowed to one provider title (OGC-1223). */

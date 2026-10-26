@@ -121,12 +121,10 @@ test.describe("Adopting a newer profile revision", () => {
 
       await page
         .getByRole("button", {
-          name: "Confirm mappings and control recognition",
+          name: "Confirm mappings",
         })
         .click();
-      await expect(
-        page.getByText("Mappings and control recognition confirmed"),
-      ).toBeVisible();
+      await expect(page.getByText("Mappings confirmed")).toBeVisible();
       await page
         .getByRole("button", { name: "Apply mappings and retry held results" })
         .click();

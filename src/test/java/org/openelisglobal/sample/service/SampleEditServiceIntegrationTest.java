@@ -49,6 +49,7 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
     private static final String EXISTING_ANALYSIS_ID = "1";
     private static final String EXISTING_SAMPLE_ITEM_ID = "1";
     private static final String TEST_ID = "1";
+    private static final String SECOND_TEST_ID = "2";
     private static final String SECOND_ANALYSIS_ON_SAME_ITEM_ID = "2";
     private static final String OTHER_SAMPLE_ITEM_ID = "2";
     private static final String ANALYSIS_ON_OTHER_ITEM_ID = "3";
@@ -323,7 +324,7 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
 
         SampleEditItem addItem = new SampleEditItem();
         addItem.setAdd(true);
-        addItem.setTestId(TEST_ID);
+        addItem.setTestId(SECOND_TEST_ID);
         addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
         form.getPossibleTests().add(addItem);
 
@@ -346,7 +347,7 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
                 Analysis freshAnalysis = analysisService.get(analysis.getId());
 
                 assertEquals("Status should be NotStarted", notStartedStatus, freshAnalysis.getStatusId());
-                assertEquals("Test ID should match", TEST_ID, freshAnalysis.getTest().getId());
+                assertEquals("Test ID should match", SECOND_TEST_ID, freshAnalysis.getTest().getId());
                 assertEquals("AnalysisType should be MANUAL", "MANUAL", freshAnalysis.getAnalysisType());
                 assertEquals("Revision should be 0", "0", freshAnalysis.getRevision());
                 assertEquals("Sample item ID should match", EXISTING_SAMPLE_ITEM_ID,
@@ -356,6 +357,105 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         }
 
         assertTrue("Newly added analysis should be found in DB", foundNewAnalysis);
+    }
+
+    /**
+     * OGC-1514: Modify Order used to offer the tests already on a sample, and a
+     * second "add" of one created a duplicate analysis on the same specimen.
+     */
+    @Test
+    public void editSample_addingATestAlreadyLiveOnTheItem_createsNoSecondAnalysis() {
+        SampleEditForm form = createBaseForm();
+
+        SampleEditItem addItem = new SampleEditItem();
+        addItem.setAdd(true);
+        addItem.setTestId(TEST_ID);
+        addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        form.getPossibleTests().add(addItem);
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        List<Analysis> analyses = analysisService
+                .getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID));
+        assertEquals("the live Glucose analysis is not ordered twice", 1, analyses.size());
+        assertEquals(EXISTING_ANALYSIS_ID, analyses.get(0).getId());
+    }
+
+    @Test
+    public void editSample_addingATestTwiceInOneSave_createsOneAnalysis() {
+        SampleEditForm form = createBaseForm();
+
+        for (int i = 0; i < 2; i++) {
+            SampleEditItem addItem = new SampleEditItem();
+            addItem.setAdd(true);
+            addItem.setTestId(SECOND_TEST_ID);
+            addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+            form.getPossibleTests().add(addItem);
+        }
+
+        sampleEditService.editSample(form, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        List<Analysis> analyses = analysisService
+                .getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID));
+        assertEquals("Glucose plus one Urea", 2, analyses.size());
+    }
+
+    /**
+     * OGC-1514 review: an add that revived a cancelled analysis skipped the
+     * duplicate guard. A test cancelled and ordered afresh in one save leaves a
+     * cancelled row next to the live one; adding it again must not revive the
+     * cancelled row into a second live analysis of the same test.
+     */
+    @Test
+    public void editSample_addingATestWithACancelledAndALiveAnalysis_revivesNothing() {
+        SampleEditForm reorder = createBaseForm();
+        SampleEditItem cancelItem = new SampleEditItem();
+        cancelItem.setCanceled(true);
+        cancelItem.setAnalysisId(EXISTING_ANALYSIS_ID);
+        cancelItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        reorder.getExistingTests().add(cancelItem);
+        reorder.getPossibleTests().add(addOf(TEST_ID));
+        sampleEditService.editSample(reorder, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        String canceledStatus = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        assertEquals("the cancelled Glucose stays cancelled", canceledStatus,
+                analysisService.get(EXISTING_ANALYSIS_ID).getStatusId());
+        List<Analysis> live = liveAnalysesOf(TEST_ID);
+        assertEquals("cancel and re-order in one save leaves one live Glucose", 1, live.size());
+        String reordered = live.get(0).getId();
+
+        SampleEditForm again = createBaseForm();
+        again.getPossibleTests().add(addOf(TEST_ID));
+        sampleEditService.editSample(again, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), true, SYS_USER_ID);
+
+        live = liveAnalysesOf(TEST_ID);
+        assertEquals("the cancelled Glucose is not revived next to the live one", 1, live.size());
+        assertEquals(reordered, live.get(0).getId());
+        assertEquals(canceledStatus, analysisService.get(EXISTING_ANALYSIS_ID).getStatusId());
+    }
+
+    private SampleEditItem addOf(String testId) {
+        SampleEditItem addItem = new SampleEditItem();
+        addItem.setAdd(true);
+        addItem.setTestId(testId);
+        addItem.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        return addItem;
+    }
+
+    private List<Analysis> liveAnalysesOf(String testId) {
+        String canceledStatus = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled);
+        List<Analysis> live = new ArrayList<>();
+        for (Analysis analysis : analysisService
+                .getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID))) {
+            if (testId.equals(analysis.getTest().getId()) && !canceledStatus.equals(analysis.getStatusId())) {
+                live.add(analysis);
+            }
+        }
+        return live;
     }
 
     @Test

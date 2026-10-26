@@ -2,7 +2,6 @@ package org.openelisglobal.menu.service;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +80,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Override
     @Transactional
     public MenuItem save(MenuItem menuItem) {
-        MenuItem item = saveMenuItem(menuItem, configuredMenus());
+        MenuItem item = saveMenuItem(menuItem);
         rebuildAfterCommit();
         return item;
     }
@@ -90,26 +89,12 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
     @Transactional
     public List<MenuItem> save(List<MenuItem> menuItems) {
         List<MenuItem> menuItemsNew = new ArrayList<>();
-        Map<String, Menu> configuration = configuredMenus();
         for (MenuItem menuItem : menuItems) {
-            MenuItem item = saveMenuItem(menuItem, configuration);
+            MenuItem item = saveMenuItem(menuItem);
             menuItemsNew.add(item);
         }
         rebuildAfterCommit();
         return menuItemsNew;
-    }
-
-    private Map<String, Menu> configuredMenus() {
-        Map<String, Menu> result = new HashMap<>();
-        collectMenus(MenuUtil.getUnfilteredMenuTree(), result);
-        return result;
-    }
-
-    private void collectMenus(List<MenuItem> items, Map<String, Menu> result) {
-        for (MenuItem item : items) {
-            result.put(item.getMenu().getElementId(), item.getMenu());
-            collectMenus(item.getChildMenus(), result);
-        }
     }
 
     private void rebuildAfterCommit() {
@@ -125,7 +110,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         }
     }
 
-    private MenuItem saveMenuItem(MenuItem menuItem, Map<String, Menu> configuration) {
+    private MenuItem saveMenuItem(MenuItem menuItem) {
         Menu menu = menuItem.getMenu();
         Menu oldMenu;
         if (GenericValidator.isBlankOrNull(menu.getId())) {
@@ -134,14 +119,8 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
             oldMenu = get(menu.getId());
         }
 
-        Menu effective = configuration.get(menu.getElementId());
-        Set<String> controlled = effective == null ? Set.of() : effective.getConfigurationFields();
         if (oldMenu == null) {
-            if (effective == null || !effective.isConfigurationOnly()) {
-                MenuUtil.updateMenu(menu);
-            } else {
-                menuItem.setMenu(effective);
-            }
+            MenuUtil.updateMenu(menu);
         } else {
             // Detach before mutating. The audit trail in AuditableBaseObjectServiceImpl
             // reloads the row to diff old against new, and inside one persistence
@@ -150,25 +129,29 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
             // recorded. Detached, the reload reads the persisted state and the diff
             // is real; BaseDAOImpl.update merges, so the write itself is unaffected.
             getBaseObjectDAO().evict(oldMenu);
-            if (!controlled.contains("actionURL")) {
-                oldMenu.setActionURL(menu.getActionURL());
-            }
-            if (!controlled.contains("isActive")) {
-                oldMenu.setIsActive(menu.getIsActive());
-            }
-            if (menu.isPresentationStyleSpecified() && !controlled.contains("presentationStyle")) {
+            boolean edited = !Objects.equals(oldMenu.getActionURL(), menu.getActionURL())
+                    || oldMenu.getIsActive() != menu.getIsActive();
+            oldMenu.setActionURL(menu.getActionURL());
+            oldMenu.setIsActive(menu.getIsActive());
+            if (menu.isPresentationStyleSpecified()) {
                 String style = normalize(menu.getPresentationStyle());
                 if (style != null && !"section".equals(style)) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported menu presentation style");
                 }
+                edited |= !Objects.equals(oldMenu.getPresentationStyle(), style);
                 oldMenu.setPresentationStyle(style);
             }
-            if (menu.isIconSpecified() && !controlled.contains("icon")) {
+            if (menu.isIconSpecified()) {
                 String icon = normalize(menu.getIcon());
                 if (icon != null && !icon.matches("[a-z][a-z0-9-]{0,59}")) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid menu icon name");
                 }
+                edited |= !Objects.equals(oldMenu.getIcon(), icon);
                 oldMenu.setIcon(icon);
+            }
+            // The menu configuration file no longer changes a row someone edited here.
+            if (edited) {
+                oldMenu.setConfigSource(MenuConfigurationSeeder.FROM_ADMIN);
             }
             menuItem.setMenu(save(oldMenu));
         }
@@ -176,7 +159,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         List<MenuItem> oldChildren = menuItem.getChildMenus();
         menuItem.setChildMenus(new ArrayList<>());
         for (MenuItem oldChild : oldChildren) {
-            menuItem.getChildMenus().add(saveMenuItem(oldChild, configuration));
+            menuItem.getChildMenus().add(saveMenuItem(oldChild));
         }
         return menuItem;
     }

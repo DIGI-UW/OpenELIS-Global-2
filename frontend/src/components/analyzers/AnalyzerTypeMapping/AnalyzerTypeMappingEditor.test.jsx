@@ -81,18 +81,20 @@ const mapping = {
       loinc: "46244-0",
       unit: null,
       resultType: "qualitative",
-      normalizedCoding: {
-        system: "urn:openelis:analyzer-test",
-        code: "SHARED",
-        display: "Shared normalized identity",
-      },
+      codings: [
+        {
+          system: "urn:openelis:analyzer-test",
+          code: "SHARED",
+          display: "Shared identity",
+        },
+      ],
       mappingState: "BOUND",
       testId: "9701",
       selectedTest: {
         id: "9701",
         name: "Rifampin Resistance",
         code: "RIF",
-        loincCodes: ["46244-0"],
+        codings: [{ system: "http://loinc.org", code: "46244-0" }],
       },
       suggestedTest: null,
       results: [
@@ -123,11 +125,13 @@ const mapping = {
       loinc: "94500-6",
       unit: null,
       resultType: "quantitative",
-      normalizedCoding: {
-        system: "urn:openelis:analyzer-test",
-        code: "SHARED",
-        display: "Shared normalized identity",
-      },
+      codings: [
+        {
+          system: "urn:openelis:analyzer-test",
+          code: "SHARED",
+          display: "Shared identity",
+        },
+      ],
       mappingState: "UNRESOLVED",
       testId: null,
       selectedTest: null,
@@ -135,7 +139,7 @@ const mapping = {
         id: "9702",
         name: "COVID-19 PCR",
         code: "COVID19",
-        loincCodes: ["94500-6"],
+        codings: [{ system: "http://loinc.org", code: "94500-6" }],
       },
       results: [],
     },
@@ -147,7 +151,6 @@ const mapping = {
       loinc: "94558-4",
       unit: null,
       resultType: "qualitative",
-      normalizedCoding: null,
       mappingState: "UNRESOLVED",
       unresolvedReason: "AMBIGUOUS",
       testId: null,
@@ -175,7 +178,7 @@ const catalogTests = [
     id: "9703",
     name: "Unconfigured qualitative test",
     code: "UNCONFIGURED",
-    loincCodes: ["94558-4"],
+    codings: [{ system: "http://loinc.org", code: "94558-4" }],
   },
 ];
 
@@ -299,13 +302,13 @@ describe("AnalyzerTypeMappingEditor", () => {
       id: "9801",
       name: "HIV-1 viral load",
       code: "HIVVL",
-      loincCodes: ["20447-9"],
+      codings: [{ system: "http://loinc.org", code: "20447-9" }],
     };
     const otherViralLoadTest = {
       id: "9802",
       name: "HIV-1 viral load (plasma)",
       code: "HIVVLP",
-      loincCodes: ["20447-9"],
+      codings: [{ system: "http://loinc.org", code: "20447-9" }],
     };
     const componentsByTestForRecords = {
       9801: [
@@ -327,7 +330,6 @@ describe("AnalyzerTypeMappingEditor", () => {
       loinc: "20447-9",
       unit: null,
       resultType: "quantitative",
-      normalizedCoding: null,
       mappingState: "BOUND",
       testId: "9801",
       selectedTest: viralLoadTest,
@@ -410,6 +412,54 @@ describe("AnalyzerTypeMappingEditor", () => {
       await waitFor(() => expect(saveAnalyzerMapping).toHaveBeenCalledTimes(1));
       return saveAnalyzerMapping.mock.calls[0][1];
     };
+
+    it("keeps the call selector when correcting an older mapping without source declarations", async () => {
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({
+          ...viralLoadMapping,
+          tests: [
+            recordRow("", {
+              callComponentId: "comp-call",
+              callComponentCode: null,
+            }),
+          ],
+        }),
+      );
+      renderEditor();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Cepheid GeneXpert MTB/RIF mappings",
+      });
+      const main = rowFor("HIVVL");
+      const picker = within(main).getByRole("combobox", {
+        name: "OpenELIS test for HIVVL",
+      });
+      await userEvent.clear(picker);
+      await userEvent.type(picker, "HIVVLP");
+      await userEvent.click(
+        await screen.findByRole("option", {
+          name: /HIV-1 viral load \(plasma\)/,
+        }),
+      );
+      const selector = within(main).getByRole("combobox", {
+        name: "Call result for HIVVL goes to",
+      });
+      expect(selector).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Save mapping" }),
+      ).toBeDisabled();
+      await userEvent.click(selector);
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Call" }),
+      );
+      const payload = await saveAndReadPayload();
+      expect(payload.tests[0]).toMatchObject({
+        testId: "9802",
+        callComponentId: "plasma-call",
+      });
+      expect(getAnalyzerTypeRevision).not.toHaveBeenCalled();
+      expect(getAnalyzerTypeDefaults).not.toHaveBeenCalled();
+    });
 
     it("shows each record as its own row and saves each with its own identity and targets", async () => {
       renderEditor();
@@ -574,7 +624,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         id: "9803",
         name: "HIV-1 qualitative",
         code: "HIVQL",
-        loincCodes: ["20447-9"],
+        codings: [{ system: "http://loinc.org", code: "20447-9" }],
       };
       getAnalyzerMappingTests.mockImplementation((callback) =>
         callback([viralLoadTest, otherViralLoadTest, qualitativeTest]),
@@ -631,43 +681,6 @@ describe("AnalyzerTypeMappingEditor", () => {
         componentId: "ql-ratio",
         callComponentId: null,
       });
-    });
-
-    it("shows a translation under the value it translates", async () => {
-      getAnalyzerMapping.mockImplementation((_id, callback) =>
-        callback({
-          ...viralLoadMapping,
-          tests: [
-            {
-              ...viralLoadMapping.tests[0],
-              results: [
-                ...viralLoadMapping.tests[0].results,
-                {
-                  rawValue: "NON DÉTECTÉ",
-                  mappingState: "UNRESOLVED",
-                  resultOptionId: null,
-                  selectedOption: null,
-                  translationOf: "NOT DETECTED",
-                },
-              ],
-            },
-            viralLoadMapping.tests[1],
-          ],
-        }),
-      );
-      renderEditor();
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Cepheid GeneXpert MTB/RIF mappings",
-      });
-
-      const main = rowFor("HIVVL");
-      expect(
-        within(main).getByText("Translation of NOT DETECTED"),
-      ).toBeVisible();
-      expect(
-        within(main).queryByText("Translation of NON DÉTECTÉ"),
-      ).not.toBeInTheDocument();
     });
 
     it("lets the operator place a received record the profile does not declare", async () => {
@@ -782,7 +795,7 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mappings",
       }),
     ).toBeInTheDocument();
     await waitFor(() =>
@@ -973,7 +986,7 @@ describe("AnalyzerTypeMappingEditor", () => {
       }),
     ).toHaveTextContent("Resistant");
     expect(within(sourceRows[1]).getByText("RAW-B")).toBeVisible();
-    expect(screen.getAllByText("Shared normalized identity")).toHaveLength(2);
+    expect(screen.getAllByText("Shared identity")).toHaveLength(2);
     expect(screen.getByText("Alias: RAW A")).toBeVisible();
     expect(screen.getByText("Specimen ID starts with CPOS")).toBeVisible();
     expect(
@@ -987,10 +1000,26 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("confirms local mappings without Bridge recognition metadata", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, controlRecognition: null }),
+    );
+    renderEditor();
+    const button = await screen.findByRole("button", {
+      name: "Confirm mappings",
+    });
+    expect(button).toBeEnabled();
+    await userEvent.click(button);
+    expect(confirmAnalyzerMapping).toHaveBeenCalledTimes(1);
+    expect(confirmAnalyzerMapping.mock.calls[0][1]).not.toHaveProperty(
+      "recognitionFingerprint",
+    );
+  });
+
   it("confirms partial mappings without excluding unresolved rows", async () => {
     renderEditor();
     const button = await screen.findByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mappings",
     });
     expect(button).toBeEnabled();
     expect(
@@ -1326,7 +1355,7 @@ describe("AnalyzerTypeMappingEditor", () => {
 
     expect(screen.getByText("Mappings saved")).toBeVisible();
     const confirm = screen.getByRole("button", {
-      name: "Confirm mappings and control recognition",
+      name: "Confirm mappings",
     });
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
@@ -1336,7 +1365,6 @@ describe("AnalyzerTypeMappingEditor", () => {
         "501",
         {
           baseMappingFingerprint: saved.mappingFingerprint,
-          recognitionFingerprint: recognition.recognitionFingerprint,
           confirmedRows: [
             { sourceRowKey: "RAW-A", subIdentity: "", rawValue: null },
             { sourceRowKey: "RAW-A", subIdentity: "", rawValue: "DETECTED" },
@@ -1359,6 +1387,65 @@ describe("AnalyzerTypeMappingEditor", () => {
       screen.getByText(/Confirmed by Lab Admin on Aug 22, 2026/),
     ).toBeVisible();
     expect(screen.getByText("Current confirmation")).toBeVisible();
+  });
+
+  it("keeps a saved exclusion checked when the server clears its previous target", async () => {
+    const saved = {
+      ...mapping,
+      mappingFingerprint: `sha256:${"d".repeat(64)}`,
+      tests: mapping.tests.map((test) =>
+        test.sourceRowKey === "RAW-A"
+          ? {
+              ...test,
+              mappingState: "EXCLUDED",
+              testId: null,
+              selectedTest: null,
+              componentId: null,
+              callComponentId: null,
+              results: test.results.map((result) => ({
+                ...result,
+                mappingState: "EXCLUDED",
+                resultOptionId: null,
+                selectedOption: null,
+              })),
+            }
+          : test,
+      ),
+      confirmation: { ...unconfirmed, state: "STALE" },
+    };
+    saveAnalyzerMapping.mockImplementation((_id, _request, callback) =>
+      callback(saved),
+    );
+    renderEditor();
+    const excluded = await screen.findByRole("checkbox", {
+      name: "Do not receive RAW-A",
+    });
+    await userEvent.click(excluded);
+    await userEvent.click(screen.getByRole("button", { name: "Save mapping" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Save changes",
+      }),
+    );
+    await screen.findByText("Mappings saved");
+    expect(
+      screen.getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    ).toBeChecked();
+    const confirm = screen.getByRole("button", {
+      name: "Confirm mappings",
+    });
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+    expect(confirmAnalyzerMapping).toHaveBeenCalledWith(
+      "501",
+      expect.objectContaining({
+        baseMappingFingerprint: saved.mappingFingerprint,
+        excludedRows: expect.arrayContaining([
+          { sourceRowKey: "RAW-A", subIdentity: "", rawValue: null },
+        ]),
+      }),
+      expect.any(Function),
+    );
   });
 
   it("keeps the selections of an excluded test so that un-excluding restores them", async () => {
@@ -1519,7 +1606,7 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mappings",
       }),
     ).not.toBeInTheDocument();
     expect(

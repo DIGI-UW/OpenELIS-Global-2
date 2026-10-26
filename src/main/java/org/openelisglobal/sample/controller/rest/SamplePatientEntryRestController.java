@@ -70,6 +70,7 @@ import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -1004,6 +1005,24 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * no-patient order) reports only the errors that refused it, not the empty
      * patient form it never had (OGC-1483).
      */
+    /**
+     * A field error's message in the user's language, from its message key and
+     * arguments, so a refusal such as an unknown requester reads in French on a
+     * French session; its English default when the key has no message.
+     */
+    private static String localized(org.springframework.validation.FieldError error) {
+        String fallback = error.getDefaultMessage() != null ? error.getDefaultMessage() : "invalid value";
+        if (error.getCode() == null) {
+            return fallback;
+        }
+        try {
+            return MessageUtil.getMessage(error.getCode(), error.getArguments(), fallback,
+                    LocaleContextHolder.getLocale());
+        } catch (RuntimeException noMessageSource) {
+            return fallback;
+        }
+    }
+
     static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage, String workflowType,
             boolean withoutPatient) {
         boolean dropPatientErrors = withoutPatient || "environmental".equals(workflowType)
@@ -1018,8 +1037,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         org.springframework.validation.FieldError firstFe = fieldErrors.isEmpty() ? null : fieldErrors.get(0);
         String message;
         if (firstFe != null) {
-            message = firstFe.getField() + ": "
-                    + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
+            message = firstFe.getField() + ": " + localized(firstFe);
         } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
             message = result.getGlobalErrors().get(0).getDefaultMessage();
         } else {
@@ -1030,7 +1048,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         body.put("fieldErrors", fieldErrors.stream().map(fe -> {
             Map<String, String> entry = new java.util.HashMap<>();
             entry.put("field", fe.getField());
-            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? localized(fe) : "");
             return entry;
         }).collect(Collectors.toList()));
         // OGC-743: include globalErrors so reject(...) calls aren't silently

@@ -18,6 +18,7 @@ import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IResultSaveService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.beanAdapters.ResultSaveBeanAdapter;
 import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
@@ -44,6 +45,7 @@ import org.openelisglobal.reports.valueholder.DocumentTrack;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationPaging;
@@ -582,8 +584,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 Analysis analysis = analysisService.get(analysisItem.getAnalysisId());
                 analysis.setSysUserId(getSysUserId(request));
+                boolean componentOnly = analysisItem.getIsAccepted() && !blocked.contains(analysis.getId())
+                        && otherComponentsAwaitValidation(analysis, analysisItem, analysisItems);
 
-                if (!analysisIdList.contains(analysis.getId())) {
+                if (!componentOnly && !analysisIdList.contains(analysis.getId())) {
 
                     boolean releaseBlocked = analysisItem.getIsAccepted() && blocked.contains(analysis.getId());
                     if (releaseBlocked) {
@@ -613,20 +617,100 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 createNeededNotes(analysisItem, analysis, noteUpdateList);
 
+                List<Result> results = new ArrayList<>();
                 if (areResults(analysisItem)) {
-                    List<Result> results = createResultFromAnalysisItem(analysisItem, analysis, analysis,
-                            noteUpdateList, deletableList);
+                    results = createResultFromAnalysisItem(analysisItem, analysis, analysis, noteUpdateList,
+                            deletableList);
                     for (Result result : results) {
                         resultUpdateList.add(result);
 
-                        if (areListeners) {
+                        if (!componentOnly && areListeners) {
                             addResultSets(analysis, result, resultValidationSave);
                         }
                     }
                 }
+                if (componentOnly) {
+                    markComponentValidated(analysisItem, results, resultUpdateList);
+                }
             }
         }
+        clearComponentMarks(analysisIdList, resultUpdateList);
         return new ArrayList<>(withheldAccessions);
+    }
+
+    /**
+     * A test that is released or sent back no longer has components validated on
+     * their own: every mark is cleared, so a later correction re-opens all of its
+     * components alike, whichever order they were first validated in.
+     */
+    private void clearComponentMarks(List<String> settledAnalysisIds, List<Result> resultUpdateList) {
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        for (String analysisId : settledAnalysisIds) {
+            for (Result stored : resultService.getResultsByAnalysis(analysisService.get(analysisId))) {
+                if (stored.getValidatedDate() == null) {
+                    continue;
+                }
+                Result pending = resultUpdateList.stream().filter(r -> stored.getId().equals(r.getId())).findFirst()
+                        .orElse(null);
+                if (pending != null) {
+                    pending.setValidatedDate(null);
+                } else {
+                    stored.setValidatedDate(null);
+                    stored.setSysUserId(getSysUserId(request));
+                    resultUpdateList.add(stored);
+                }
+            }
+        }
+    }
+
+    /**
+     * True when the accepted row is one component of a multi-component test and
+     * another component that has a result is neither validated yet nor accepted in
+     * this same save. The test is then not released: only this component is marked
+     * validated, and the test is released with its last component.
+     */
+    private boolean otherComponentsAwaitValidation(Analysis analysis, AnalysisItem accepted,
+            List<AnalysisItem> analysisItems) {
+        if (isBlankOrNull(accepted.getResultId())) {
+            return false;
+        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        Result acceptedResult = resultService.get(accepted.getResultId());
+        if (acceptedResult == null) {
+            return false;
+        }
+        String acceptedComponent = scope.componentIdOf(acceptedResult);
+        if (acceptedComponent == null) {
+            return false;
+        }
+        for (Result other : resultService.getResultsByAnalysis(analysis)) {
+            if (other.getParentResult() != null || other.getId().equals(acceptedResult.getId())
+                    || isBlankOrNull(other.getValue()) || other.getValidatedDate() != null
+                    || acceptedComponent.equals(scope.componentIdOf(other))) {
+                continue;
+            }
+            boolean acceptedNow = analysisItems.stream()
+                    .anyMatch(item -> item.getIsAccepted() && other.getId().equals(item.getResultId()));
+            if (!acceptedNow) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void markComponentValidated(AnalysisItem accepted, List<Result> saved, List<Result> resultUpdateList) {
+        java.sql.Timestamp now = new java.sql.Timestamp(System.currentTimeMillis());
+        for (Result result : saved) {
+            if (accepted.getResultId().equals(result.getId())) {
+                result.setValidatedDate(now);
+                return;
+            }
+        }
+        Result result = SpringContext.getBean(ResultService.class).get(accepted.getResultId());
+        result.setValidatedDate(now);
+        result.setSysUserId(getSysUserId(request));
+        resultUpdateList.add(result);
     }
 
     private void createNeededNotes(AnalysisItem analysisItem, Analysis analysis, List<Note> noteUpdateList) {
@@ -715,7 +799,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             return errorResponse(409, "qcHold");
         }
         return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
-                deletableList, resultSaveService, updaters, "released");
+                deletableList, resultSaveService, updaters, analysisUpdateList.isEmpty() ? "accepted" : "released");
     }
 
     /**

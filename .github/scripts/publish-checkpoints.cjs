@@ -1,5 +1,11 @@
 const REQUIRED_CHECKS = ["01 Checkpoint - Backend", "02 Checkpoint - Frontend"];
 
+/** Server errors, rate limits and network failures; a 4xx answer is final. */
+function isTransient(error) {
+  const status = Number(error && error.status);
+  return !status || status >= 500 || status === 429;
+}
+
 module.exports = async function waitForPublishCheckpoints({
   github,
   core,
@@ -20,8 +26,21 @@ module.exports = async function waitForPublishCheckpoints({
     throw new Error("Publication requires the source build run and attempt");
   }
   const E2E = `03 Checkpoint - E2E / build-${buildRunId}-${buildRunAttempt}`;
-  const started = now();
-  while (now() - started < timeoutMs) {
+  // A pull request whose head is this commit (develop -> main) runs the same
+  // checkpoints on the same sha; only the candidate's own push or release runs
+  // decide whether it is published.
+  async function readCandidate() {
+    const runs = await github.rest.actions.listWorkflowRunsForRepo({
+      owner,
+      repo,
+      head_sha: sha,
+      per_page: 100,
+    });
+    const candidateSuites = new Set(
+      runs.data.workflow_runs
+        .filter((run) => !String(run.event).startsWith("pull_request"))
+        .map((run) => run.check_suite_id),
+    );
     const [statuses, ...checks] = await Promise.all([
       github.rest.repos.listCommitStatusesForRef({
         owner,
@@ -40,11 +59,36 @@ module.exports = async function waitForPublishCheckpoints({
         }),
       ),
     ]);
+    return { candidateSuites, statuses, checks };
+  }
+
+  const started = now();
+  while (now() - started < timeoutMs) {
+    let candidateSuites, statuses, checks;
+    try {
+      ({ candidateSuites, statuses, checks } = await readCandidate());
+    } catch (error) {
+      // A slow or failing GitHub API answer is not a verdict on the candidate;
+      // the next poll asks again (2026-10-20: one timeout ended a deploy's wait).
+      if (!isTransient(error)) {
+        throw error;
+      }
+      core.info(
+        `GitHub API did not answer (${error.status || error.message}); retrying.`,
+      );
+      await sleep(pollMs);
+      continue;
+    }
     const e2e = statuses.data.find((entry) => entry.context === E2E);
     const required = REQUIRED_CHECKS.map((name, index) => ({
       name,
       check: checks[index].data.check_runs
-        .filter((entry) => entry.name === name && entry.head_sha === sha)
+        .filter(
+          (entry) =>
+            entry.name === name &&
+            entry.head_sha === sha &&
+            candidateSuites.has(entry.check_suite?.id),
+        )
         .sort((left, right) => right.id - left.id)[0],
     }));
 

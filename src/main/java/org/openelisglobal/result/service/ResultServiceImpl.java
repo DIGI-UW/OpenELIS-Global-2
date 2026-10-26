@@ -524,11 +524,17 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
                 && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {
             List<ResultLimit> limits = getResultLimits(result);
             if (!limits.isEmpty()) {
-                return !result.getValue().equals(limits.get(0).getDictionaryNormalId());
+                return !result.getValue().equals(limits.get(0).getDictionaryNormalId()) && !isNormalOption(result);
             }
         }
 
         return false;
+    }
+
+    private boolean isNormalOption(Result result) {
+        TestResult option = result.getTestResult();
+        return option != null && result.getValue().equals(option.getValue())
+                && Boolean.TRUE.equals(option.getIsNormal());
     }
 
     @Override

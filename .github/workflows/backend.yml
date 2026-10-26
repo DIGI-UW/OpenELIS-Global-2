@@ -37,8 +37,16 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
+      # The formatter comes from download.eclipse.org; when that site does not
+      # answer, the same pinned release is fetched from an Eclipse mirror.
       - name: Check formatting
-        run: mvn spotless:check
+        run: |
+          if curl -fsSL --max-time 30 https://download.eclipse.org/eclipse/updates/4.26/p2.index | grep -q '^version='; then
+            mvn spotless:check
+          else
+            echo "::warning::download.eclipse.org is unavailable; using the eclipse-p2-mirror profile"
+            mvn -Peclipse-p2-mirror spotless:check
+          fi
 
   deployment-contract:
     uses: ./.github/workflows/deployment-checks.yml

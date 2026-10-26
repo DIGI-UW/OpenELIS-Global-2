@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1507: reference values OpenELIS ships (NCE categories and types, shipped
+         dictionary entries) show through display keys translated in Transifex. A stored
+         label then wins only when the lab wrote it, so every label records who wrote it:
+         SITE for the lab's own edit, SYSTEM for one OpenELIS wrote. Existing labels are
+         kept as the lab's own, except those the 3.5.x upgrades backfilled from the
+         value's own name (002-nce-enhancement nce-016/017, 001-generic-localization-system
+         3.5.0-009), which were never edits. -->
+
+    <changeSet id="023-localization-value-origin" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="localization_value" columnName="origin"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="localization_value">
+            <column name="origin" type="VARCHAR(10)" defaultValue="SITE">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="023-backfilled-labels-are-system-labels" author="openelis">
+        <comment>Labels copied from the value's own name by the 3.5.x backfills are not site edits.</comment>
+        <sql>
+            UPDATE clinlims.localization_value lv SET origin = 'SYSTEM'
+            FROM clinlims.nce_type t
+            WHERE t.name_localization_id = lv.localization_id AND lv.value = t.name;
+            UPDATE clinlims.localization_value lv SET origin = 'SYSTEM'
+            FROM clinlims.nce_category c
+            WHERE c.name_localization_id = lv.localization_id AND lv.value = c.name;
+            UPDATE clinlims.localization_value lv SET origin = 'SYSTEM'
+            FROM clinlims.dictionary d
+            WHERE d.name_localization_id = lv.localization_id AND lv.value = d.dict_entry;
+        </sql>
+    </changeSet>
+
+    <changeSet id="023-earlier-shipped-labels-are-system-labels" author="openelis">
+        <comment>The French "Commande" the NCE category file carried before OGC-1507 was loaded, not
+            typed by the lab, so the file's new "Demande" may replace it.</comment>
+        <sql>
+            UPDATE clinlims.localization_value lv SET origin = 'SYSTEM'
+            FROM clinlims.nce_category c
+            WHERE c.name_localization_id = lv.localization_id AND c.name = 'Order'
+              AND lv.locale = 'fr' AND lv.value = 'Commande';
+        </sql>
+    </changeSet>
+
+    <changeSet id="023-localization-value-system-value" author="openelis">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="localization_value" columnName="system_value"/>
+            </not>
+        </preConditions>
+        <comment>Under a lab's own label, the label OpenELIS wrote for that language, so Reset to
+            shipped translation can return to it. Loaders fill it on their next run.</comment>
+        <addColumn schemaName="clinlims" tableName="localization_value">
+            <column name="system_value" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="023-dictionary-display-key-length" author="openelis">
+        <comment>Shipped dictionary keys name their list and value (dictionary.list.value).</comment>
+        <modifyDataType schemaName="clinlims" tableName="dictionary" columnName="display_key" newDataType="VARCHAR(100)"/>
+    </changeSet>
+
+</databaseChangeLog>

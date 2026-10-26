@@ -795,9 +795,12 @@ final class PatientResultsPdf {
             canvas.lineTo(right, base + 11);
             canvas.stroke();
             canvas.restoreState();
-            ColumnText.showTextAligned(canvas, Element.ALIGN_LEFT,
-                    new Phrase(messages.get("report.patient.issued") + " " + current.issued, fonts.regular(7, GRAY)),
-                    left, base + 2, 0);
+            String issued = messages.get("report.patient.issued") + " " + current.issued;
+            if (current.order.getVersion() != null) {
+                issued = messages.format("report.patient.footer.version", current.order.getVersion()) + DOT + issued;
+            }
+            ColumnText.showTextAligned(canvas, Element.ALIGN_LEFT, new Phrase(issued, fonts.regular(7, GRAY)), left,
+                    base + 2, 0);
             ColumnText.showTextAligned(canvas, Element.ALIGN_CENTER,
                     new Phrase(join(DOT, current.first.getAccessionNumber(), current.first.getSubjectNumber()),
                             fonts.regular(7, GRAY)),
@@ -843,7 +846,8 @@ final class PatientResultsPdf {
             this.total = writer.getDirectContent().createTemplate(14, 10);
             this.stripTotal = writer.getDirectContent().createTemplate(14, 10);
             this.strip = strip(order, first);
-            this.issued = PatientCILNSPClinical_vreduit.reportTime(new Timestamp(System.currentTimeMillis()));
+            this.issued = order.getIssueTime() != null ? order.getIssueTime()
+                    : PatientCILNSPClinical_vreduit.reportTime(new Timestamp(System.currentTimeMillis()));
         }
     }
 

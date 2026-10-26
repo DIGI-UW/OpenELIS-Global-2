@@ -556,7 +556,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 className="dashboard-tile"
                 onClick={() =>
                   tile.type === "UN_PRINTED_RESULTS"
-                    ? navigate("/ReportPrintQueue?type=patient")()
+                    ? navigate(
+                        "/ReportPrintQueue?type=patient&printStatus=unprinted",
+                      )()
                     : handleMaximizeClick(tile)
                 }
               >

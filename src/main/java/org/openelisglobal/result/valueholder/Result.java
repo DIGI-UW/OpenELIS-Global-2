@@ -69,6 +69,13 @@ public class Result extends EnumValueItemImpl {
 
     private BigDecimal coverageFactor;
 
+    /**
+     * When this result was validated on its own, as one component of a
+     * multi-component test whose other components were still waiting. Null
+     * otherwise.
+     */
+    private java.sql.Timestamp validatedDate;
+
     public Result() {
         super();
         analysis = new ValueHolder();
@@ -301,6 +308,14 @@ public class Result extends EnumValueItemImpl {
 
     public void setCoverageFactor(BigDecimal coverageFactor) {
         this.coverageFactor = coverageFactor;
+    }
+
+    public java.sql.Timestamp getValidatedDate() {
+        return validatedDate;
+    }
+
+    public void setValidatedDate(java.sql.Timestamp validatedDate) {
+        this.validatedDate = validatedDate;
     }
 
     @Override

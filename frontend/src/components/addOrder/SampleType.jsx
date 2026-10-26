@@ -850,10 +850,10 @@ const SampleType = (props) => {
               orderLabelText={intl.formatMessage({
                 id: "barcode.labels.order.row",
               })}
-              specimenLabelFormatter={(sampleNumber) =>
+              specimenLabelFormatter={() =>
                 intl.formatMessage(
                   { id: "barcode.labels.sample.row" },
-                  { sampleNumber },
+                  { sampleNumber: index + 1 },
                 )
               }
               runningTotalLabel={intl.formatMessage({

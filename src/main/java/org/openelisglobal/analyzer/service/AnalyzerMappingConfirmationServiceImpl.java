@@ -51,17 +51,15 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     @Override
     @Transactional
-    public AnalyzerMappingConfirmationView confirm(AnalyzerMappingSnapshot candidate, String recognitionFingerprint,
+    public AnalyzerMappingConfirmationView confirm(AnalyzerMappingSnapshot candidate,
             AnalyzerMappingConfirmationRequest request, String actor) {
-        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
+        CandidateContext context = requireCandidate(candidate);
         String effectiveActor = requireText(actor, "actor");
         if (request == null) {
             throw new IllegalArgumentException("Confirmation request is required");
         }
         requireMatchingFingerprint(request.baseMappingFingerprint(), context.mappingFingerprint,
                 "analyzer.mapping.error.changedSinceLoaded", "Analyzer mapping changed after Verify was loaded");
-        requireMatchingFingerprint(request.recognitionFingerprint(), context.recognitionFingerprint,
-                "analyzer.mapping.error.recognitionChanged", "Control recognition changed after Verify was loaded");
         if (!hasCurrentCatalogBindings(candidate)) {
             throw new AnalyzerRequestException("analyzer.mapping.error.catalogNotCurrent",
                     "Analyzer mapping references inactive or unrelated catalog values");
@@ -77,7 +75,10 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
         Optional<AnalyzerMappingConfirmation> existing = confirmationDAO.findByMappingId(candidate.mapping().getId());
         if (existing.isPresent()) {
-            return toView(existing.get(), AnalyzerMappingConfirmationView.State.CURRENT);
+            return toView(existing.get(),
+                    isCurrent(candidate, context, existing.get()) && hasExactSavedRows(candidate, existing.get())
+                            ? AnalyzerMappingConfirmationView.State.CURRENT
+                            : AnalyzerMappingConfirmationView.State.STALE);
         }
 
         AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
@@ -86,7 +87,6 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         confirmation.setProfileRevision(context.profile.getProfileRevision());
         confirmation.setProfileRevisionFingerprint(context.profileRevisionFingerprint);
         confirmation.setMappingFingerprint(context.mappingFingerprint);
-        confirmation.setRecognitionFingerprint(context.recognitionFingerprint);
         confirmation.setConfirmedRowsJson(writeRows(confirmedRows));
         confirmation.setExcludedRowsJson(writeRows(excludedRows));
         confirmation.setConfirmedBy(effectiveActor);
@@ -104,21 +104,20 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     @Override
     @Transactional(readOnly = true)
-    public AnalyzerMappingConfirmationView getStatus(AnalyzerMappingSnapshot candidate, String recognitionFingerprint) {
-        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
-        return confirmationDAO.findLatestByAnalyzerId(candidate.mapping().getAnalyzer().getId())
-                .map(confirmation -> toView(confirmation,
-                        isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
-                                && hasExactSavedRows(candidate, confirmation)
-                                        ? AnalyzerMappingConfirmationView.State.CURRENT
-                                        : AnalyzerMappingConfirmationView.State.STALE))
-                .orElseGet(AnalyzerMappingConfirmationView::unconfirmed);
+    public AnalyzerMappingConfirmationView getStatus(AnalyzerMappingSnapshot candidate) {
+        CandidateContext context = requireCandidate(candidate);
+        return confirmationDAO.findLatestByAnalyzerId(candidate.mapping().getAnalyzer().getId()).map(confirmation -> {
+            boolean current = isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
+                    && hasExactSavedRows(candidate, confirmation);
+            return toView(confirmation, current ? AnalyzerMappingConfirmationView.State.CURRENT
+                    : AnalyzerMappingConfirmationView.State.STALE);
+        }).orElseGet(AnalyzerMappingConfirmationView::unconfirmed);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean hasMatchingConfirmation(AnalyzerMappingSnapshot candidate, String recognitionFingerprint) {
-        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
+    public boolean hasMatchingConfirmation(AnalyzerMappingSnapshot candidate) {
+        CandidateContext context = requireCandidate(candidate);
         return confirmationDAO.findByMappingId(candidate.mapping().getId())
                 .filter(confirmation -> isCurrent(candidate, context, confirmation)
                         && hasExactSavedRows(candidate, confirmation))
@@ -133,23 +132,19 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     @Override
     @Transactional(readOnly = true)
-    public AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate,
-            String recognitionFingerprint) {
-        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
+    public AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate) {
+        CandidateContext context = requireCandidate(candidate);
         Optional<AnalyzerMappingConfirmation> stored = confirmationDAO.findByMappingId(candidate.mapping().getId());
         if (stored.isEmpty()) {
             return AnalyzerMappingVerificationAssessment.unconfirmed();
         }
         AnalyzerMappingConfirmation confirmation = stored.get();
-        boolean durableCandidateMatch = isDurableCandidateMatch(candidate, context, confirmation);
-        boolean mappingsCurrent = durableCandidateMatch && hasCurrentCatalogBindings(candidate)
+        boolean mappingsCurrent = isCurrent(candidate, context, confirmation) && hasCurrentCatalogBindings(candidate)
                 && hasExactSavedRows(candidate, confirmation);
-        boolean recognitionCurrent = durableCandidateMatch
-                && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
-        return new AnalyzerMappingVerificationAssessment(mappingsCurrent, recognitionCurrent, confirmation);
+        return new AnalyzerMappingVerificationAssessment(mappingsCurrent, confirmation);
     }
 
-    private static CandidateContext requireCandidate(AnalyzerMappingSnapshot candidate, String recognitionFingerprint) {
+    private static CandidateContext requireCandidate(AnalyzerMappingSnapshot candidate) {
         if (candidate == null || candidate.mapping() == null || candidate.mapping().getId() == null
                 || candidate.mapping().getAnalyzer() == null) {
             throw new IllegalArgumentException("Complete analyzer mapping candidate is required");
@@ -158,11 +153,9 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
                 "mapping fingerprint");
         String profileRevisionFingerprint = requireFingerprint(candidate.mapping().getProfileFingerprint(),
                 "profile revision fingerprint");
-        String effectiveRecognitionFingerprint = requireFingerprint(recognitionFingerprint, "recognition fingerprint");
         AnalyzerProfilePin profile = new AnalyzerProfilePin(candidate.mapping().getProfileId(),
                 candidate.mapping().getProfileRevision(), candidate.mapping().getProfileFingerprint());
-        return new CandidateContext(profile, profileRevisionFingerprint, mappingFingerprint,
-                effectiveRecognitionFingerprint);
+        return new CandidateContext(profile, profileRevisionFingerprint, mappingFingerprint);
     }
 
     private static RowDisposition expectedRows(AnalyzerMappingSnapshot candidate) {
@@ -205,17 +198,9 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
 
     private static boolean isCurrent(AnalyzerMappingSnapshot candidate, CandidateContext context,
             AnalyzerMappingConfirmation confirmation) {
-        return isDurableCandidateMatch(candidate, context, confirmation)
-                && context.recognitionFingerprint.equals(confirmation.getRecognitionFingerprint());
-    }
-
-    private static boolean isDurableCandidateMatch(AnalyzerMappingSnapshot candidate, CandidateContext context,
-            AnalyzerMappingConfirmation confirmation) {
         return confirmation.getMapping() != null
                 && Objects.equals(candidate.mapping().getId(), confirmation.getMapping().getId())
                 && Objects.equals(context.profile.getProfileId(), confirmation.getProfileId())
-                && context.profile.getProfileRevision() == confirmation.getProfileRevision()
-                && context.profileRevisionFingerprint.equals(confirmation.getProfileRevisionFingerprint())
                 && context.mappingFingerprint.equals(confirmation.getMappingFingerprint())
                 && hasText(confirmation.getConfirmedBy()) && confirmation.getConfirmedAt() != null
                 && hasText(confirmation.getAuditEventId());
@@ -323,9 +308,10 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     }
 
     private record CandidateContext(AnalyzerProfilePin profile, String profileRevisionFingerprint,
-            String mappingFingerprint, String recognitionFingerprint) {
+            String mappingFingerprint) {
     }
 
     private record RowDisposition(List<AnalyzerMappingSourceRow> confirmed, List<AnalyzerMappingSourceRow> excluded) {
     }
+
 }

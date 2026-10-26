@@ -197,6 +197,75 @@ describe("PanelsSection", () => {
     );
   });
 
+  it("an inline create is busy until the new panel is switched on, and names a failed switch", async () => {
+    wire([]);
+    postToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        status: 201,
+        json: () => Promise.resolve({ id: "9", name: "Chem Panel" }),
+      }),
+    );
+    let activate;
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) => {
+      if (url.endsWith("/basic-info")) {
+        activate = cb;
+        return;
+      }
+      cb({
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            testId: "42",
+            memberships: [
+              { panelId: "9", panelName: "Chem Panel", position: 1 },
+            ],
+          }),
+      });
+    });
+    const addNotification = vi.fn();
+    const { NotificationContext } = await import("../../../layout/Layout");
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{ addNotification, setNotificationVisible: () => {} }}
+        >
+          <PanelsSection testId="42" testDomain="CLINICAL" />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText(messages["label.testCatalog.panels.empty"]);
+    fireEvent.change(document.querySelector("#new-panel-name"), {
+      target: { value: "Chem Panel" },
+    });
+    fireEvent.click(screen.getByTestId("create-panel-button"));
+    await waitFor(() => expect(activate).toBeDefined());
+    fireEvent.change(document.querySelector("#new-panel-name"), {
+      target: { value: "Second" },
+    });
+    expect(screen.getByTestId("create-panel-button")).toBeDisabled();
+
+    activate({ status: 500 });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("create-panel-button")).toBeEnabled(),
+    );
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message:
+          'Panel "Chem Panel" was created and this test added, but it could not be switched on. Activate it in the Panel Editor.',
+      }),
+    );
+    // An apostrophe before {name} is ICU quoting and printed "{name}" literally.
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message:
+          'Panel "Chem Panel" created and this test added. Configure it further in the Panel Editor.',
+      }),
+    );
+  });
+
   it("a new panel name over 20 characters is capped and its refusal named (OGC-1456)", async () => {
     wire([]);
     postToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>

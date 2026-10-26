@@ -77,7 +77,11 @@ public interface ReportQueueService {
      */
     byte[] printPatientReports(List<String> sampleIds, String sysUserId);
 
-    Optional<ReportVersion> version(Long versionId);
+    /**
+     * The archived version, when it exists and its order is within the user's
+     * scope.
+     */
+    Optional<ReportVersion> version(Long versionId, String sysUserId);
 
     ReportQueuePreferenceDTO preferences(String sysUserId);
 

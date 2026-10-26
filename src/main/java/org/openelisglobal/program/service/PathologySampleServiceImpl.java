@@ -336,6 +336,18 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Transactional
     @Override
+    public PathologySample getCaseOfBlock(Integer blockId) {
+        return blockId == null ? null : baseObjectDAO.getCaseOfBlock(blockId);
+    }
+
+    @Transactional
+    @Override
+    public PathologySample getCaseOfSlide(Integer slideId) {
+        return slideId == null ? null : baseObjectDAO.getCaseOfSlide(slideId);
+    }
+
+    @Transactional
+    @Override
     public Optional<PathologySlide> deactivateSlide(Integer slideId, String reason, String sysUserId) {
         Optional<PathologySlide> found = pathologySlideDAO.get(slideId);
         if (found.isEmpty() || !found.get().isActive()) {

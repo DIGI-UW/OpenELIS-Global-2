@@ -833,17 +833,21 @@ const AddOrder = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderLabelSignature, isModifyOrder]);
 
-  // Human-facing row label for the sample table: the sample type name, falling
-  // back to "Sample N" (the filtered position the backend correlates by).
+  // Human-facing row label for the sample table, as the Result Reporting
+  // headings read it: "Sample N: <sample type>", numbered by the sample's place
+  // on the form so both sections name a sample alike.
   const orderLabelSampleFormatter = (row) => {
     const sample = orderLabelSamples[Number(row.sampleIdLocal)];
-    if (sample && sample.name) {
-      return sample.name;
-    }
-    return intl.formatMessage(
+    const position = sample ? samples.indexOf(sample) : -1;
+    const heading = intl.formatMessage(
       { id: "orderEntry.labels.sampleRow.header" },
-      { number: row.sampleNumber, id: row.sampleIdLocal },
+      {
+        number: position >= 0 ? position + 1 : row.sampleNumber,
+        id: row.sampleIdLocal,
+      },
     );
+    const typeName = sampleTypeNameOf(sample);
+    return typeName ? `${heading}: ${typeName}` : heading;
   };
 
   // Capture the LabelsSection's chosen quantities (persistPayload, already shaped

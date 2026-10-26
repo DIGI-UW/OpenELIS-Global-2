@@ -93,6 +93,50 @@ describe("BridgePairing", () => {
     expect(screen.getByTestId("bridge-pairing-form")).toBeInTheDocument();
   });
 
+  it("says when the Bridge presents a different certificate and asks for its code", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...PAIRED, pinCheck: "OTHER_CERTIFICATE" }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "Paired with a different Bridge certificate",
+    );
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "abababababababab",
+    );
+    expect(screen.queryByTestId("bridge-pairing-paired")).toBeNull();
+    expect(screen.getByTestId("bridge-pairing-form")).toBeInTheDocument();
+  });
+
+  it("says when the Bridge lost the pairing", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({
+        ...PAIRED,
+        pinCheck: "BRIDGE_UNPAIRED",
+        pairsAutomatically: true,
+      }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "The Analyzer Bridge lost its pairing",
+    );
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "OpenELIS pairs with the code it is configured with on its own.",
+    );
+  });
+
+  it("shows a pin the Bridge confirms as paired", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...PAIRED, pinCheck: "MATCHES" }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-paired")).toBeInTheDocument();
+    expect(screen.queryByTestId("bridge-pairing-stale")).toBeNull();
+  });
+
   it("shows nothing when no Bridge is configured", () => {
     getBridgePairing.mockImplementation((callback) =>
       callback({ ...UNPAIRED, bridgeUrl: "" }),

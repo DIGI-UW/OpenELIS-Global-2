@@ -33,6 +33,7 @@ import org.openelisglobal.common.services.ReportTrackingService.ReportType;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
@@ -40,7 +41,9 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.reportqueue.dao.ReleasedNumericResultRecord;
 import org.openelisglobal.reportqueue.dao.ReportQueueCriteria;
 import org.openelisglobal.reportqueue.dao.ReportQueuePreferenceDAO;
 import org.openelisglobal.reportqueue.dao.ReportQueueQueryDAO;
@@ -76,7 +79,11 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
+import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
+import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -112,6 +119,12 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     private ResultService resultService;
     @Autowired
     private ResultLimitService resultLimitService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
+    @Autowired
+    private PatientService patientService;
+    @Autowired
+    private UnitOfMeasureService unitOfMeasureService;
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
@@ -166,19 +179,24 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         }
     }
 
-    /** What differs between the last printed version and the current content. */
+    /**
+     * What differs between the last printed version and the current content. A
+     * printed result back awaiting validation holds the order: nothing differs
+     * until the correction is validated, so no version drops it (OGC-1529).
+     */
     static final class Comparison {
         final List<SnapshotItem> added = new ArrayList<>();
         final List<ReportVersionItem> removed = new ArrayList<>();
         final Map<ReportVersionItem, SnapshotItem> changed = new LinkedHashMap<>();
+        final List<ReportVersionItem> awaitingValidation = new ArrayList<>();
         boolean legacyNewer;
 
         boolean changedOrRemoved() {
-            return !changed.isEmpty() || !removed.isEmpty();
+            return awaitingValidation.isEmpty() && (!changed.isEmpty() || !removed.isEmpty());
         }
 
         boolean contentDiffers() {
-            return legacyNewer || !added.isEmpty() || changedOrRemoved();
+            return legacyNewer || (awaitingValidation.isEmpty() && (!added.isEmpty() || changedOrRemoved()));
         }
     }
 
@@ -216,8 +234,9 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         page.setTimeWindow(window);
         page.setLookup(criteria.isLookup());
         List<ReportQueueRowRecord> records = queryDAO.list(criteria);
+        Set<Long> critical = criticalSampleIds(records);
         for (ReportQueueRowRecord record : records) {
-            page.getRows().add(toRow(record));
+            page.getRows().add(toRow(record, critical.contains(record.getSampleId())));
         }
         page.setTotal(queryDAO.count(criteria));
         long[] tiles = queryDAO.tiles(criteria);
@@ -227,7 +246,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         if (page.getRows().isEmpty() && !GenericValidator.isBlankOrNull(request.getLabNo())
                 && GenericValidator.isBlankOrNull(request.getLabNoTo())) {
             Sample sample = sampleService.getSampleByAccessionNumber(request.getLabNo().trim());
-            if (sample != null && sample.getId() != null) {
+            if (sample != null && sample.getId() != null
+                    && queryDAO.isInScope(Long.valueOf(sample.getId()), criteria)) {
                 Long sampleId = Long.valueOf(sample.getId());
                 ReportQueueRowDTO row = new ReportQueueRowDTO();
                 row.setSampleId(sampleId);
@@ -235,6 +255,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 row.setNothingReleased(true);
                 row.setState("PARTIAL");
                 Optional<ReportVersion> printed = versionDAO.findLatest(sampleId, ReportVersion.TYPE_PATIENT);
+                Snapshot current = printed.isPresent() ? snapshot(sample) : null;
+                if (current != null && !compare(printed.get(), current).awaitingValidation.isEmpty()) {
+                    row.setNothingReleased(false);
+                    row.setAwaitingValidation(true);
+                    row.setState(printed.get().isAmended() ? "AMENDED" : "PARTIAL");
+                    row.setReleasedCount(current.released().size());
+                    row.setTotalCount(current.items.size());
+                }
                 row.setPrintStatus(printed.isPresent() ? "PRINTED" : "UNPRINTED");
                 row.setVersion(printed.map(ReportVersion::getVersion).orElse(null));
                 row.setLegacy(printed.map(ReportVersion::isLegacy).orElse(false));
@@ -378,7 +406,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 .anyMatch(roleMap -> UnifiedSystemUserController.ALL_LAB_UNITS.equals(roleMap.getLabUnit()));
     }
 
-    private ReportQueueRowDTO toRow(ReportQueueRowRecord record) {
+    private ReportQueueRowDTO toRow(ReportQueueRowRecord record, boolean critical) {
         ReportQueueRowDTO row = new ReportQueueRowDTO();
         row.setSampleId(record.getSampleId());
         row.setLabNumber(record.getAccessionNumber());
@@ -395,23 +423,82 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         row.setPrintStatus(record.isUnprinted() ? "UNPRINTED" : "PRINTED");
         row.setVersion(record.getVersionNumber());
         row.setLegacy(record.isLegacy());
-        row.setCritical(hasCriticalResult(record.getSampleId()));
+        row.setCritical(critical);
+        row.setAwaitingValidation(record.isAwaitingValidation());
         return row;
     }
 
-    private boolean hasCriticalResult(Long sampleId) {
-        Sample sample = findSample(String.valueOf(sampleId));
-        if (sample == null) {
-            return false;
+    /**
+     * The page's orders with a released numeric result beyond a critical bound,
+     * judged as the report flags BB and EE (the first result of each analysis
+     * against its test's, or its component's, critical range for the patient), from
+     * one query for the page instead of a report snapshot per row (FRS OGC-1031
+     * NFR-1).
+     */
+    private Set<Long> criticalSampleIds(List<ReportQueueRowRecord> records) {
+        Set<Long> critical = new HashSet<>();
+        List<Long> sampleIds = new ArrayList<>();
+        for (ReportQueueRowRecord record : records) {
+            sampleIds.add(record.getSampleId());
         }
-        Snapshot snapshot = snapshot(sample);
-        for (SnapshotItem item : snapshot.released()) {
-            if (ResultAlertFlags.CRITICALLY_ABOVE.equals(item.flag)
-                    || ResultAlertFlags.CRITICALLY_BELOW.equals(item.flag)) {
-                return true;
+        if (sampleIds.isEmpty()) {
+            return critical;
+        }
+        Map<String, Patient> patients = new HashMap<>();
+        Map<String, List<TestResultComponent>> components = new HashMap<>();
+        Map<String, ResultLimit> limits = new HashMap<>();
+        String finalized = statusService.getStatusID(AnalysisStatus.Finalized);
+        for (ReleasedNumericResultRecord result : queryDAO.releasedNumericResults(sampleIds, finalized)) {
+            if (critical.contains(result.getSampleId())) {
+                continue;
+            }
+            try {
+                Patient patient = result.getPatientId() == null ? null
+                        : patients.computeIfAbsent(result.getPatientId(), patientService::getData);
+                String scope = componentScope(result, components);
+                String key = result.getTestId() + "/" + scope + "/" + result.getSampleTypeId() + "/"
+                        + result.getPatientId();
+                ResultLimit limit = limits.computeIfAbsent(key,
+                        k -> scope == null
+                                ? resultLimitService.getResultLimitForTestAndPatient(result.getTestId(), patient,
+                                        result.getSampleTypeId())
+                                : resultLimitService.getResultLimitForComponentAndPatient(scope, patient,
+                                        result.getSampleTypeId()));
+                String letter = ResultAlertFlags.criticalLetter(limit,
+                        StringUtil.getActualNumericValue(result.getValue()));
+                if (!GenericValidator.isBlankOrNull(letter)) {
+                    critical.add(result.getSampleId());
+                }
+            } catch (RuntimeException e) {
+                LogEvent.logWarn(getClass().getSimpleName(), "criticalSampleIds",
+                        "no critical flag for analysis " + result.getAnalysisId() + ": " + e.getMessage());
             }
         }
-        return false;
+        return critical;
+    }
+
+    /**
+     * The component whose range the result is judged against on a test with several
+     * components, as the result limit lookup resolves it; null for a test-level
+     * range.
+     */
+    private String componentScope(ReleasedNumericResultRecord result, Map<String, List<TestResultComponent>> cache) {
+        List<TestResultComponent> list = cache.computeIfAbsent(result.getTestId(),
+                testResultComponentService::getActiveComponentsByTestId);
+        if (list == null || list.size() < 2) {
+            return null;
+        }
+        for (TestResultComponent component : list) {
+            if (component.getId().equals(result.getComponentId())) {
+                return component.getId();
+            }
+        }
+        for (TestResultComponent component : list) {
+            if (component.getIsPrimary()) {
+                return component.getId();
+            }
+        }
+        return list.get(0).getId();
     }
 
     // ----- detail
@@ -420,7 +507,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     @Transactional(readOnly = true)
     public Optional<ReportQueueRowDetailDTO> detail(Long sampleId, String sysUserId) {
         Sample sample = findSample(String.valueOf(sampleId));
-        if (sample == null) {
+        if (sample == null || !queryDAO.isInScope(sampleId, baseCriteria(sysUserId))) {
             return Optional.empty();
         }
         ReportQueueRowDetailDTO detail = new ReportQueueRowDetailDTO();
@@ -530,7 +617,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     @Override
     public Optional<PrintOutcome> print(Long sampleId, String sysUserId) {
         Sample sample = findSample(String.valueOf(sampleId));
-        if (sample == null) {
+        if (sample == null || !queryDAO.isInScope(sampleId, baseCriteria(sysUserId))) {
             return Optional.empty();
         }
         return Optional.of(printOrder(sample, sysUserId));
@@ -576,19 +663,21 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         queryDAO.lockForPrint(sampleId);
         Snapshot current = snapshot(sample);
         List<SnapshotItem> released = current.released();
-        if (released.isEmpty()) {
-            throw new NothingReleasedException(sample.getAccessionNumber());
-        }
         Optional<ReportVersion> last = versionDAO.findLatest(sampleId, ReportVersion.TYPE_PATIENT);
         Comparison comparison = compare(last.orElse(null), current);
+        if (released.isEmpty() && comparison.awaitingValidation.isEmpty()) {
+            throw new NothingReleasedException(sample.getAccessionNumber());
+        }
         OffsetDateTime now = OffsetDateTime.now();
 
         if (last.isPresent() && !comparison.contentDiffers()) {
             ReportVersion version = last.get();
             byte[] pdf = version.getPdfContent();
             if (pdf == null) {
-                pdf = render(sample, sysUserId, new PatientCILNSPClinical_vreduit.IssueContext(version.getVersion(),
-                        version.isAmended(), version.getChangeSummary(), replacedIssueTime(version)));
+                pdf = render(sample, sysUserId,
+                        new PatientCILNSPClinical_vreduit.IssueContext(version.getVersion(), version.isAmended(),
+                                version.getChangeSummary(), replacedIssueTime(version),
+                                issueTime(version.getIssuedAt())));
             }
             ReportPrintEvent reprint = new ReportPrintEvent();
             reprint.setVersion(version);
@@ -608,7 +697,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         String summary = last.isPresent() ? summary(comparison, last.get(), current) : null;
         String replaced = last.map(this::replacedIssueTime).orElse(null);
         byte[] pdf = render(sample, sysUserId,
-                new PatientCILNSPClinical_vreduit.IssueContext(number, amended, summary, replaced));
+                new PatientCILNSPClinical_vreduit.IssueContext(number, amended, summary, replaced, issueTime(now)));
 
         ReportVersion version = new ReportVersion();
         version.setSampleId(sampleId);
@@ -659,10 +748,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
     }
 
     private String replacedIssueTime(ReportVersion version) {
-        if (version.getIssuedAt() == null) {
+        return issueTime(version.getIssuedAt());
+    }
+
+    private static String issueTime(OffsetDateTime issuedAt) {
+        if (issuedAt == null) {
             return null;
         }
-        return PatientCILNSPClinical_vreduit.reportTime(Timestamp.from(version.getIssuedAt().toInstant()));
+        return PatientCILNSPClinical_vreduit.reportTime(Timestamp.from(issuedAt.toInstant()));
     }
 
     private byte[] render(Sample sample, String sysUserId, PatientCILNSPClinical_vreduit.IssueContext context) {
@@ -701,7 +794,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             if (statusId == null || excluded.contains(statusId)) {
                 continue;
             }
-            if (analysis.isCorrectedSincePatientReport()) {
+            if (analysis.isCorrectedSincePatientReport() && finalized.equals(statusId)) {
                 snapshot.anyCorrected = true;
             }
             SnapshotItem item = new SnapshotItem();
@@ -809,11 +902,19 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         for (SnapshotItem item : current.released()) {
             releasedNow.put(item.analysisId, item);
         }
+        Set<Long> notReleased = new HashSet<>();
+        for (SnapshotItem item : current.items) {
+            if (!item.released) {
+                notReleased.add(item.analysisId);
+            }
+        }
         Set<Long> printed = new HashSet<>();
         for (ReportVersionItem item : last.getItems()) {
             printed.add(item.getAnalysisId());
             SnapshotItem now = releasedNow.get(item.getAnalysisId());
-            if (now == null) {
+            if (now == null && notReleased.contains(item.getAnalysisId())) {
+                comparison.awaitingValidation.add(item);
+            } else if (now == null) {
                 comparison.removed.add(item);
             } else if (!nullToEmpty(now.rawValue).equals(nullToEmpty(item.getPrintedValue()))
                     || !nullToEmpty(now.unitId).equals(nullToEmpty(item.getPrintedUnit()))) {
@@ -838,8 +939,10 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         for (Map.Entry<ReportVersionItem, SnapshotItem> change : comparison.changed.entrySet()) {
             ReportVersionItem was = change.getKey();
             SnapshotItem now = change.getValue();
+            String unitBefore = nullToEmpty(was.getPrintedUnit()).equals(nullToEmpty(now.unitId)) ? null
+                    : unitName(was.getPrintedUnit());
             String line = MessageUtil.getMessage("reportQueue.change.changed", new Object[] { now.testName,
-                    withUnit(was.getPrintedDisplay(), null), withUnit(now.display, now.unitName) });
+                    withUnit(was.getPrintedDisplay(), unitBefore), withUnit(now.display, now.unitName) });
             String note = correctionNote(now.analysis, last.getIssuedAt());
             parts.add(note == null ? line : line + " (" + note + ")");
         }
@@ -890,8 +993,9 @@ public class ReportQueueServiceImpl implements ReportQueueService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<ReportVersion> version(Long versionId) {
-        return versionDAO.get(versionId);
+    public Optional<ReportVersion> version(Long versionId, String sysUserId) {
+        return versionDAO.get(versionId)
+                .filter(version -> queryDAO.isInScope(version.getSampleId(), baseCriteria(sysUserId)));
     }
 
     @Override
@@ -961,6 +1065,18 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             return last.trim() + ", " + first.trim();
         }
         return hasLast ? last.trim() : hasFirst ? first.trim() : null;
+    }
+
+    /**
+     * The unit's name for the change summary, when the printed unit is no longer
+     * the test's.
+     */
+    private String unitName(String unitId) {
+        if (GenericValidator.isBlankOrNull(unitId)) {
+            return null;
+        }
+        UnitOfMeasure unit = unitOfMeasureService.getUnitOfMeasureById(unitId);
+        return unit == null ? null : unit.getName();
     }
 
     private static String withUnit(String value, String unit) {

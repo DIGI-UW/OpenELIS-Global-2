@@ -57,4 +57,10 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * @return the slide, or empty when no slide carries that id
      */
     Optional<PathologySlide> deactivateSlide(Integer slideId, String reason, String sysUserId);
+
+    /** The case a block belongs to, null when no case holds it. */
+    PathologySample getCaseOfBlock(Integer blockId);
+
+    /** The case a slide belongs to, null when no case holds it. */
+    PathologySample getCaseOfSlide(Integer slideId);
 }
