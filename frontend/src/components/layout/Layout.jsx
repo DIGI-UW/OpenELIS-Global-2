@@ -105,6 +105,12 @@ export default function Layout(props) {
   // matching /login regardless of auth state.
   const isFocusedAuthRoute = location.pathname === "/ChangePasswordLogin";
 
+  // Standalone surfaces (currently the in-app Help viewer) are opened in their
+  // own tab and must render without the OpenELIS Header, side nav or Footer
+  // per FRS AC 7. Config + i18n providers still wrap the content.
+  const isStandaloneRoute =
+    location.pathname === "/help" || location.pathname.startsWith("/help/");
+
   // Only push content when the persistent sidenav is actually present
   // (authenticated desktop UX with the nav pinned). Unauthenticated pages
   // like /login have no sidenav to make room for.
@@ -198,33 +204,45 @@ export default function Layout(props) {
             removeNotification,
           }}
         >
-          <div className="d-flex flex-column min-vh-100">
-            <Header
-              onChangeLanguage={props.onChangeLanguage}
-              navOpen={navOpen}
-              isDesktop={isDesktop}
-              navPinned={navPinned}
-              navPersistent={navPersistent}
-              toggleNavPinned={toggleNavPinned}
-              toggleSideNav={() => setDrawerOpen((open) => !open)}
-              closeSideNav={closeSideNav}
-              navContext={navContext}
-              showSideNav={!isFocusedAuthRoute}
-            />
-            {/* Theme wrapper creates white theme zone for content area */}
-            {/* Global SCSS theme = blue header/nav, this = light content */}
+          {isStandaloneRoute ? (
             <Theme theme="white">
               <Content
                 data-testid="content-wrapper"
-                className={`${isLocked ? "content-nav-locked" : ""}${
-                  isAdminContext ? " content-admin-context" : ""
-                }`.trim()}
+                data-standalone="true"
+                className="content-standalone"
               >
                 {children}
               </Content>
             </Theme>
-            <Footer />
-          </div>
+          ) : (
+            <div className="d-flex flex-column min-vh-100">
+              <Header
+                onChangeLanguage={props.onChangeLanguage}
+                navOpen={navOpen}
+                isDesktop={isDesktop}
+                navPinned={navPinned}
+                navPersistent={navPersistent}
+                toggleNavPinned={toggleNavPinned}
+                toggleSideNav={() => setDrawerOpen((open) => !open)}
+                closeSideNav={closeSideNav}
+                navContext={navContext}
+                showSideNav={!isFocusedAuthRoute}
+              />
+              {/* Theme wrapper creates white theme zone for content area */}
+              {/* Global SCSS theme = blue header/nav, this = light content */}
+              <Theme theme="white">
+                <Content
+                  data-testid="content-wrapper"
+                  className={`${isLocked ? "content-nav-locked" : ""}${
+                    isAdminContext ? " content-admin-context" : ""
+                  }`.trim()}
+                >
+                  {children}
+                </Content>
+              </Theme>
+              <Footer />
+            </div>
+          )}
         </NotificationContext.Provider>
       </TranslationOverrideProvider>
     </ConfigurationContext.Provider>

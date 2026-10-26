@@ -548,6 +548,56 @@ button {
   color: #ffffff !important;
 }
 
+/*
+ * In-app help viewer (/help). Standalone surface opened in its own tab.
+ * SideNav TOC on the left, article on the right. Narrow viewports collapse
+ * the side nav above the content (FRS AC 18, usable at 480 px and 360 px).
+ */
+.content-standalone {
+  margin-left: 0 !important;
+  width: 100% !important;
+  min-height: 100vh;
+}
+
+.help-viewer {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  min-height: 100vh;
+}
+
+.help-viewer__content {
+  padding: 1.5rem 2rem;
+  max-width: 60rem;
+}
+
+.help-viewer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.help-viewer__page-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.help-viewer__page-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media screen and (max-width: 768px) {
+  .help-viewer {
+    grid-template-columns: 1fr;
+  }
+  .help-viewer__content {
+    padding: 1rem;
+  }
+}
+
 /* Ensure select input sits on blue header without white fill */
 .selectLocale .cds--select-input__wrapper {
   background: transparent !important;
