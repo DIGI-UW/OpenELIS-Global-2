@@ -193,7 +193,7 @@ test.describe("OGC-782 R11 culture purpose", () => {
       await test.step("Keep culture-purpose filters usable at a narrow viewport", async () => {
         const frame = page.viewportSize();
         await demo.caption(
-          "On a phone-width screen the purpose filters still fit.",
+          "The export page is checked at phone width, shown enlarged here: the purpose filters still fit.",
         );
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(`/Microbiology/whonet?${query}`, {

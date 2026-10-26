@@ -4,6 +4,7 @@ import {
   seedMicrobiologyCultureWorkspace,
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { scanContainerLabel } from "../../../helpers/microbiology-ui";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 
 test(
@@ -248,8 +249,7 @@ test(
     await page
       .getByRole("heading", { name: "Microbiology worklist" })
       .waitFor();
-    await page.keyboard.type(`PLT-${seeded.caseId}-${id}`);
-    await page.keyboard.press("Enter");
+    await scanContainerLabel(page, `PLT-${seeded.caseId}-${id}`);
     await expect(page).toHaveURL(
       new RegExp(`/Microbiology/cases/${seeded.caseId}.*row=${id}`),
       { timeout: LONG_TIMEOUT },

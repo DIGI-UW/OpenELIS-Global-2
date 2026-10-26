@@ -44,7 +44,7 @@ test.describe("Microbiology final-report amendments", () => {
 
       await test.step("Open an amendment from its canonical URL", async () => {
         await demo.caption(
-          "The final case is read-only. Opening an amendment requires a reason.",
+          "A released case cannot be changed. Opening an amendment requires a reason.",
         );
         await page.goto(
           `/Microbiology/cases/${seeded.caseId}?section=amendment`,

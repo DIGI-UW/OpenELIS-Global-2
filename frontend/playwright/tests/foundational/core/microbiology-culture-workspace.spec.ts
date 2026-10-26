@@ -179,7 +179,7 @@ test(
     });
     const frame = page.viewportSize();
     await demo.caption(
-      "On a phone-width screen the same page fits without sideways scrolling.",
+      "The same page is checked at phone width, shown enlarged here: it fits without sideways scrolling.",
     );
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(

@@ -185,7 +185,7 @@ test(
     });
     const frame = page.viewportSize();
     await demo.caption(
-      "On a phone-width screen the isolate fits without sideways scrolling.",
+      "The isolate is checked at phone width, shown enlarged here: it fits without sideways scrolling.",
     );
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(isolate.getByRole("heading", { name: /ISO-1/ })).toBeVisible();
