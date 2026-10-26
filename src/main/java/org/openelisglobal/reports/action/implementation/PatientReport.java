@@ -780,9 +780,10 @@ public abstract class PatientReport extends Report {
                     && !GenericValidator.isBlankOrNull(result.getValue())) {
                 if (result.getMinNormal() != null & result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    if (Double.valueOf(result.getValue(true)) < result.getMinNormal()) {
+                    double reported = Double.valueOf(StringUtil.getActualNumericValue(result.getReportedValue()));
+                    if (reported < result.getMinNormal()) {
                         flag = "B";
-                    } else if (Double.valueOf(result.getValue(true)) > result.getMaxNormal()) {
+                    } else if (reported > result.getMaxNormal()) {
                         flag = "E";
                     }
                 }
@@ -864,7 +865,7 @@ public abstract class PatientReport extends Report {
         try {
             ResultLimit limit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(currentAnalysis,
                     result, currentPatient);
-            return ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+            return ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(result.getReportedValue()));
         } catch (RuntimeException e) {
             LogEvent.logError("No critical alert flag for analysis " + currentAnalysis.getId() + ", result "
                     + result.getId() + ": the report prints the value without it", e);
@@ -1085,7 +1086,8 @@ public abstract class PatientReport extends Report {
             Result first = componentResults.get(0);
             ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
                     component.getId());
-            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(), first.getValue(true));
+            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(),
+                    StringUtil.getActualNumericValue(first.getReportedValue()));
             alerts.add(letter);
             results.append(component.getLabel()).append(": ").append(componentValue);
             if (!letter.isEmpty()) {

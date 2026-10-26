@@ -93,6 +93,16 @@ const Field = ({ labelKey, value, testId }) => (
   </div>
 );
 
+/**
+ * The value Modify starts from: a numeric result as it was entered, since the row
+ * shows it rounded to the test's places (OGC-1544). A viral load shown as its
+ * count starts from that count.
+ */
+const modifyStartValue = (row) =>
+  row.resultType === "N" && !row.displayResultAsLog && row.storedResult != null
+    ? row.storedResult
+    : (row.result ?? "");
+
 const ValidationReviewPanel = ({
   data: row,
   rows = [],
@@ -168,7 +178,7 @@ const ValidationReviewPanel = ({
   const [modifying, setModifying] = useState(false);
   const [retesting, setRetesting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
-  const [newValue, setNewValue] = useState(row.result ?? "");
+  const [newValue, setNewValue] = useState(modifyStartValue(row));
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState("");
   // OGC-1417: a corrected value the server will not store until the validator
@@ -768,7 +778,7 @@ const ValidationReviewPanel = ({
               disabled={busy}
               onClick={() => {
                 setModifying(false);
-                setNewValue(row.result ?? "");
+                setNewValue(modifyStartValue(row));
                 setErrorKey("");
                 if (!visibilityChosen) {
                   changeNoteVisibility(NOTE_EXTERNAL, false);
