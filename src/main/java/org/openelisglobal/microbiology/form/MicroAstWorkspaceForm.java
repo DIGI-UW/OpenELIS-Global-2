@@ -30,7 +30,7 @@ public class MicroAstWorkspaceForm {
         public String runId, readingId, panelId, technique, breakpointStandardId, antibioticId, interpretation, reason,
                 analyzerCardId, analyzerInstrumentId, clinicalContext;
         public boolean awaitAnalyzerResults;
-        public Boolean reported;
+        public boolean reported;
         public List<MicroLotSelectionRequestForm> lotSelections = List.of();
         public List<String> orderedAntibioticIds;
         public java.math.BigDecimal rawValue;
