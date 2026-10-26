@@ -149,9 +149,7 @@ export interface AnalyzerDeactivationResultView extends Omit<
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
 
 export type AnalyzerUnresolvedReason =
-  | "NO_MATCH"
-  | "AMBIGUOUS"
-  | "INCOMPATIBLE";
+  "NO_MATCH" | "AMBIGUOUS" | "INCOMPATIBLE";
 
 /** A code in a code system: a canonical URI or a catalog's own identifier. */
 export interface Coding {
@@ -385,7 +383,8 @@ export interface BridgePairingStatus {
   clientCertificateSha256?: string | null;
   pairedAt?: string | null;
   pairsAutomatically: boolean;
-  pinCheck?: "MATCHES" | "OTHER_CERTIFICATE" | "BRIDGE_UNPAIRED" | null;
+  pinCheck?:
+    "MATCHES" | "OTHER_CERTIFICATE" | "BRIDGE_UNPAIRED" | "UNREACHABLE" | null;
 }
 
 export type BridgePairingResponse = BridgePairingStatus & {
@@ -877,11 +876,7 @@ export interface AnalyzerAdoptionDecision {
 }
 
 export type AnalyzerAdoptionBucket =
-  | "UNCHANGED"
-  | "CHANGED"
-  | "NEEDS_MAPPING"
-  | "BLOCKED"
-  | "RETIRED";
+  "UNCHANGED" | "CHANGED" | "NEEDS_MAPPING" | "BLOCKED" | "RETIRED";
 
 /** What adopting a newer profile revision does to each record. */
 export interface AnalyzerAdoptionReview {

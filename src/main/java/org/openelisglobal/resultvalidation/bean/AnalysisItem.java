@@ -51,6 +51,13 @@ public class AnalysisItem implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
 
+    /**
+     * The result exactly as entered or received; {@link #result} is that value as
+     * reported, rounded to the test's places (OGC-1544). Modify starts from it.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
+    private String storedResult;
+
     // OGC-1417: the validator correcting the value has acknowledged it as
     // critical, or confirmed it although it lies outside the valid range
     private boolean criticalAcknowledged = false;
@@ -372,6 +379,14 @@ public class AnalysisItem implements Serializable {
 
     public String getResult() {
         return result;
+    }
+
+    public String getStoredResult() {
+        return storedResult;
+    }
+
+    public void setStoredResult(String storedResult) {
+        this.storedResult = storedResult;
     }
 
     public String getNormalRange() {
