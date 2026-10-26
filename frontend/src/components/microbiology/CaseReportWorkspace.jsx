@@ -82,44 +82,54 @@ export function MicrobiologyReportBlock({ report }) {
           <p>{t(`classification.${report.classification}`)}</p>
         )}
         {report.isolates.map((isolate) => (
-          <TableContainer
-            key={isolate.id}
-            title={`${isolate.label}: ${isolate.organism}`}
-          >
-            <Table aria-label={`${isolate.label} ${t("ast")}`}>
-              <TableHead>
-                <TableRow>
-                  {["agent", "raw", "interpretation", "breakpoint"].map(
-                    (key) => (
-                      <TableHeader key={key}>{t(key)}</TableHeader>
-                    ),
-                  )}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {isolate.susceptibilities.map((row) => (
-                  <TableRow key={row.antibioticId}>
-                    <TableCell>
-                      {row.agent}
-                      {notesFor("DRUG", row.readingId)}
-                    </TableCell>
-                    <TableCell>
-                      {row.raw} {row.units}
-                    </TableCell>
-                    <TableCell>
-                      {t(`interpretation.${row.interpretation}`)}
-                    </TableCell>
-                    <TableCell>
-                      {row.standard} {row.version}
-                      {row.clinicalContext === "NON_MENINGITIS" && (
-                        <p>{t("clinicalContext.nonMeningitis")}</p>
-                      )}
-                    </TableCell>
+          <React.Fragment key={isolate.id}>
+            {isolate.tested > 0 && (
+              <p>
+                {intl.formatMessage(
+                  { id: "microbiology.m6.reportedOfTested" },
+                  {
+                    reported: isolate.susceptibilities.length,
+                    tested: isolate.tested,
+                  },
+                )}
+              </p>
+            )}
+            <TableContainer title={`${isolate.label}: ${isolate.organism}`}>
+              <Table aria-label={`${isolate.label} ${t("ast")}`}>
+                <TableHead>
+                  <TableRow>
+                    {["agent", "raw", "interpretation", "breakpoint"].map(
+                      (key) => (
+                        <TableHeader key={key}>{t(key)}</TableHeader>
+                      ),
+                    )}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                </TableHead>
+                <TableBody>
+                  {isolate.susceptibilities.map((row) => (
+                    <TableRow key={row.antibioticId}>
+                      <TableCell>
+                        {row.agent}
+                        {notesFor("DRUG", row.readingId)}
+                      </TableCell>
+                      <TableCell>
+                        {row.raw} {row.units}
+                      </TableCell>
+                      <TableCell>
+                        {t(`interpretation.${row.interpretation}`)}
+                      </TableCell>
+                      <TableCell>
+                        {row.standard} {row.version}
+                        {row.clinicalContext === "NON_MENINGITIS" && (
+                          <p>{t("clinicalContext.nonMeningitis")}</p>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </React.Fragment>
         ))}
       </section>
       <section>
