@@ -76,10 +76,8 @@ public class CustomUserDetailsService implements UserDetailsService {
             roleNames.add(Constants.ROLE_GLOBAL_ADMIN);
         }
 
-        // qa.* permission keys granted to the user's roles become plain
-        // authorities so QA REST controllers can gate on hasAuthority
-        // ('qa.view.x') per the QA permission model (liquibase/qa/004).
-        authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
+        // Granted permission keys become plain authorities for hasAuthority gates.
+        authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames));
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (String authorityName : authorityNames) {

@@ -180,6 +180,83 @@ public class SampleEditPatientlessTest extends BaseWebContextSensitiveTest {
                 .getStatusCode().value());
     }
 
+    /**
+     * A form the validator refuses, such as one naming a requester that does not
+     * exist, used to be saved anyway and then failed with a bare HTTP 500, or
+     * answered 200 having ignored the bad value (OGC-1543 walk).
+     */
+    @Test
+    public void sampleEdit_aRefusedFormAnswers400AndChangesNothing() throws Exception {
+        SampleEditFormValidator refusing = Mockito.mock(SampleEditFormValidator.class);
+        Mockito.doAnswer(call -> {
+            ((BeanPropertyBindingResult) call.getArgument(1)).rejectValue("sampleOrderItems.providerPersonId",
+                    "error.provider.notFound", new Object[] { "9000099" },
+                    "The requester with id 9000099 does not exist");
+            return null;
+        }).when(refusing).validate(Mockito.any(), Mockito.any());
+        ReflectionTestUtils.setField(controller, "formValidator", refusing);
+        SampleEditForm form = controller.showSampleEdit(request, PATIENTLESS_ACCESSION, null);
+        OrderPriority before = sampleService.getSampleByAccessionNumber(PATIENTLESS_ACCESSION).getPriority();
+        form.getSampleOrderItems()
+                .setPriority(OrderPriority.STAT.equals(before) ? OrderPriority.ROUTINE : OrderPriority.STAT);
+
+        ResponseEntity<?> response = controller.saveSampleEdit(request, form,
+                new BeanPropertyBindingResult(form, "form"));
+
+        assertEquals(400, response.getStatusCode().value());
+        assertTrue(String.valueOf(((Map<?, ?>) response.getBody()).get("error")).contains("9000099"));
+        assertEquals(before, sampleService.getSampleByAccessionNumber(PATIENTLESS_ACCESSION).getPriority());
+    }
+
+    /**
+     * The refusal names the requester in the user's language (review of #4822): a
+     * French session reads the French message, not the English default.
+     */
+    @Test
+    public void sampleEdit_aRefusalReadsInTheUsersLanguage() throws Exception {
+        SampleEditFormValidator refusing = Mockito.mock(SampleEditFormValidator.class);
+        Mockito.doAnswer(call -> {
+            ((BeanPropertyBindingResult) call.getArgument(1)).rejectValue("sampleOrderItems.providerPersonId",
+                    "error.provider.notFound", new Object[] { "9000099" },
+                    "The requester with id 9000099 does not exist");
+            return null;
+        }).when(refusing).validate(Mockito.any(), Mockito.any());
+        ReflectionTestUtils.setField(controller, "formValidator", refusing);
+        SampleEditForm form = controller.showSampleEdit(request, PATIENTLESS_ACCESSION, null);
+        java.util.Locale before = org.springframework.context.i18n.LocaleContextHolder.getLocale();
+        org.springframework.context.i18n.LocaleContextHolder.setLocale(java.util.Locale.FRENCH);
+        try {
+            ResponseEntity<?> response = controller.saveSampleEdit(request, form,
+                    new BeanPropertyBindingResult(form, "form"));
+
+            String error = String.valueOf(((Map<?, ?>) response.getBody()).get("error"));
+            assertTrue(error, error.contains("Le demandeur avec l'identifiant 9000099 n'existe pas"));
+        } finally {
+            org.springframework.context.i18n.LocaleContextHolder.setLocale(before);
+        }
+    }
+
+    /**
+     * Normal Modify Order saves have always raised other validator errors (an empty
+     * sampleXML, a patient name with a comma), which the save ignores; only an
+     * unknown site, department or requester stops it.
+     */
+    @Test
+    public void sampleEdit_otherValidatorErrorsStillSave() throws Exception {
+        SampleEditFormValidator noisy = Mockito.mock(SampleEditFormValidator.class);
+        Mockito.doAnswer(call -> {
+            ((BeanPropertyBindingResult) call.getArgument(1)).reject("batchentry.error.sampleXML.invalid");
+            return null;
+        }).when(noisy).validate(Mockito.any(), Mockito.any());
+        ReflectionTestUtils.setField(controller, "formValidator", noisy);
+        SampleEditForm form = controller.showSampleEdit(request, PATIENTLESS_ACCESSION, null);
+
+        ResponseEntity<?> response = controller.saveSampleEdit(request, form,
+                new BeanPropertyBindingResult(form, "form"));
+
+        assertEquals(200, response.getStatusCode().value());
+    }
+
     @Test
     public void sampleEdit_stillReportsAMissingSample() throws Exception {
         SampleEditForm form = controller.showSampleEdit(request, "DASH-9999", null);

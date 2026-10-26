@@ -464,8 +464,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                                         result.getSampleTypeId())
                                 : resultLimitService.getResultLimitForComponentAndPatient(scope, patient,
                                         result.getSampleTypeId()));
-                String letter = ResultAlertFlags.criticalLetter(limit,
-                        StringUtil.getActualNumericValue(result.getValue()));
+                String letter = ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(
+                        StringUtil.roundToPlaces(result.getValue(), result.getSignificantDigits())));
                 if (!GenericValidator.isBlankOrNull(letter)) {
                     critical.add(result.getSampleId());
                 }
@@ -852,7 +852,9 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             }
             return String.join(", ", names);
         }
-        return ResultType.NUMERIC.matches(result.getResultType()) ? result.getValue(true) : value;
+        return ResultType.NUMERIC.matches(result.getResultType())
+                ? StringUtil.getActualNumericValue(result.getReportedValue())
+                : value;
     }
 
     /**
@@ -866,7 +868,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 String flag = "";
                 if (result.getMinNormal() != null && result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    double value = Double.parseDouble(result.getValue(true));
+                    double value = Double.parseDouble(StringUtil.getActualNumericValue(result.getReportedValue()));
                     if (value < result.getMinNormal()) {
                         flag = ResultAlertFlags.BELOW;
                     } else if (value > result.getMaxNormal()) {
@@ -874,7 +876,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                     }
                 }
                 ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
-                String critical = ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+                String critical = ResultAlertFlags.criticalLetter(limit,
+                        StringUtil.getActualNumericValue(result.getReportedValue()));
                 return GenericValidator.isBlankOrNull(critical) ? flag : critical;
             }
             if (ResultType.isDictionaryVariant(result.getResultType())
@@ -941,8 +944,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             SnapshotItem now = change.getValue();
             String unitBefore = nullToEmpty(was.getPrintedUnit()).equals(nullToEmpty(now.unitId)) ? null
                     : unitName(was.getPrintedUnit());
-            String line = MessageUtil.getMessage("reportQueue.change.changed", new Object[] { now.testName,
-                    withUnit(was.getPrintedDisplay(), unitBefore), withUnit(now.display, now.unitName) });
+            String before = was.getPrintedDisplay();
+            String after = now.display;
+            if (nullToEmpty(before).equals(nullToEmpty(after))) {
+                before = was.getPrintedValue();
+                after = now.rawValue;
+            }
+            String line = MessageUtil.getMessage("reportQueue.change.changed",
+                    new Object[] { now.testName, withUnit(before, unitBefore), withUnit(after, now.unitName) });
             String note = correctionNote(now.analysis, last.getIssuedAt());
             parts.add(note == null ? line : line + " (" + note + ")");
         }
