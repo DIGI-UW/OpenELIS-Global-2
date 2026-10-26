@@ -4,3 +4,4 @@ analyzer-unmigrated
 analyzer-window-schema
 pathology-stage-descriptions
 analyzer-unpinned-mapping
+pathology-block-slide-identity

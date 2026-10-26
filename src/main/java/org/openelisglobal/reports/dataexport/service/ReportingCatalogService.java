@@ -24,6 +24,7 @@ import org.openelisglobal.reports.dataexport.form.ReportingVariable;
 import org.openelisglobal.reports.dataexport.form.SavedReportDefinition;
 import org.openelisglobal.reports.dataexport.form.SavedReportFilters;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -234,7 +235,7 @@ public class ReportingCatalogService {
         return new ExportSnapshot(definition, request.layout(), selected,
                 new ExportFilter(filter.dateFrom(), filter.dateTo(), scope,
                         filter.testIds().stream().distinct().sorted().toList(), selectedStatuses),
-                settings.zone().getId(), ids);
+                settings.zone().getId(), ids, LocaleContextHolder.getLocale().toLanguageTag());
     }
 
     public SavedReportDefinition validateSaved(String owner, SavedReportDefinition request) {

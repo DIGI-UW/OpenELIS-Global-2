@@ -215,7 +215,9 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
      * "Applies to = this component" mappings) — including the primary — so a single
      * Observation can bear both the test and the component terminology. A
      * non-primary component additionally gets an OpenELIS coding for its stable
-     * code and the component label as text, so it is individually identifiable.
+     * code and the component label as text, so it is individually identifiable. The
+     * component's own codes follow the test's precedence: within one system the
+     * SAME_AS code wins over the broader and narrower ones.
      */
 
     @Override
@@ -228,6 +230,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
         }
         String label = GenericValidator.isBlankOrNull(component.getLabel()) ? component.getCode()
                 : component.getLabel();
+        Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
         for (TestTerminologyMapping mapping : testTerminologyMappingService.getActiveByTestId(test.getId())) {
             if (!component.getId().equals(mapping.getComponentId())
                     || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
@@ -241,8 +244,10 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
             // present; otherwise the component's name.
             String codingDisplay = GenericValidator.isBlankOrNull(mapping.getDisplayName()) ? label
                     : mapping.getDisplayName();
-            codeableConcept.addCoding(new Coding(system, mapping.getCode(), codingDisplay));
+            bySystem.computeIfAbsent(system, k -> new ArrayList<>()).add(new Candidate(mapping.getCode(),
+                    "SAME_AS".equalsIgnoreCase(mapping.getRelationship()), codingDisplay));
         }
+        addPrioritizedCodings(codeableConcept, bySystem);
         if (!component.getIsPrimary()) {
             codeableConcept.addCoding(
                     new Coding(fhirConfig.getOeFhirSystem() + "/test_result_component", component.getCode(), label));

@@ -30,19 +30,19 @@ vi.mock("../../../services/analyzerService", () => ({
   saveAnalyzerMapping: vi.fn(),
 }));
 
-const glucose = { id: "9701", name: "Glucose", code: "GLU", loincCodes: [] };
+const glucose = { id: "9701", name: "Glucose", code: "GLU", codings: [] };
 const fastingGlucose = {
   id: "9702",
   name: "Fasting glucose",
   code: "FGLU",
-  loincCodes: [],
+  codings: [],
 };
-const sodium = { id: "9703", name: "Sodium", code: "NA", loincCodes: [] };
+const sodium = { id: "9703", name: "Sodium", code: "NA", codings: [] };
 const retiredTest = {
   id: "9704",
   name: "Old assay",
   code: "OLD",
-  loincCodes: [],
+  codings: [],
 };
 
 const row = (code, overrides) => ({
@@ -53,7 +53,6 @@ const row = (code, overrides) => ({
   loinc: null,
   unit: null,
   resultType: "quantitative",
-  normalizedCoding: null,
   mappingState: "UNRESOLVED",
   origin: "DEFAULT",
   testId: null,

@@ -16,7 +16,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -35,6 +34,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.terminology.Coding;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -81,7 +81,7 @@ public class AnalyzerMappingEditorServiceTest {
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", recognitionFingerprint(),
                 "16", "Grace Hopper", null, List.of(), List.of());
         analyzerWithLatest(current);
-        when(confirmationService.getStatus(current, recognitionFingerprint())).thenReturn(confirmation);
+        when(confirmationService.getStatus(current)).thenReturn(confirmation);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
@@ -100,11 +100,10 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMappingView.TestRow first = view.tests().get(0);
         assertEquals("RAW-A", first.sourceRowKey());
         assertEquals("RAW-A", first.rawCode());
-        assertEquals(List.of("RAW-A1", "RAW-A2"), first.aliases());
+        assertTrue(first.aliases().isEmpty()); // Instrument aliases are Bridge parsing configuration.
         assertEquals("First result", first.testNameHint());
         assertEquals("94500-6", first.loinc());
-        assertEquals("https://loinc.org", first.normalizedCoding().system());
-        assertEquals("94500-6", first.normalizedCoding().code());
+        assertEquals(List.of(Coding.loinc("94500-6"), new Coding("CPHL", "SARS2", "SARS-CoV-2 RNA")), first.codings());
         assertEquals(AnalyzerMappingState.BOUND, first.mappingState());
         assertEquals(AnalyzerMappingOrigin.DEFAULT, first.origin());
         assertEquals("9701", first.testId());
@@ -122,11 +121,8 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals("RAW-C", view.tests().get(2).sourceRowKey());
         assertNull(view.tests().get(2).suggestedTest());
 
-        assertEquals("RULES", view.controlRecognition().mode());
-        assertEquals("Specimen ID starts with QC-", view.controlRecognition().conditions().get(0).description());
-        assertEquals("SPECIMEN_ID_STARTS_WITH", view.controlRecognition().conditions().get(0).kind());
-        assertEquals("Specimen ID", view.controlRecognition().conditions().get(0).sourceLabel());
-        assertEquals("QC-", view.controlRecognition().conditions().get(0).value());
+        assertNull(view.controlRecognition());
+        verifyZeroInteractions(bridgeProfileCatalogService);
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, view.confirmation().state());
         verify(mappingService).findLatestByAnalyzerId("42");
     }
@@ -135,19 +131,48 @@ public class AnalyzerMappingEditorServiceTest {
     public void confirmMappingKeepsUnresolvedRowsSeparateFromConfirmedDecisions() throws Exception {
         AnalyzerMappingSnapshot candidate = currentMapping();
         AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
-                candidate.mapping().getMappingFingerprint(), recognitionFingerprint(),
+                candidate.mapping().getMappingFingerprint(),
                 List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
                 List.of(new AnalyzerMappingSourceRow("RAW-A", "NEG")));
         AnalyzerMappingConfirmationView expected = AnalyzerMappingConfirmationView.unconfirmed();
         analyzerWithLatest(candidate);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(positive()));
-        when(confirmationService.confirm(candidate, recognitionFingerprint(), request, "17")).thenReturn(expected);
+        when(confirmationService.confirm(candidate, request, "17")).thenReturn(expected);
 
         AnalyzerMappingConfirmationView confirmed = service.confirmMapping("42", request, "17");
 
         assertEquals(expected, confirmed);
-        verify(confirmationService).confirm(candidate, recognitionFingerprint(), request, "17");
+        verify(confirmationService).confirm(candidate, request, "17");
+        verifyZeroInteractions(bridgeProfileCatalogService);
+    }
+
+    @Test
+    public void olderMappingCanBeViewedSavedAndConfirmedWithoutBridgeOrRecognitionMetadata() throws Exception {
+        AnalyzerMappingSnapshot current = currentMapping();
+        Analyzer analyzer = savableWithLatest(current);
+        current.mapping().setSourceDefinitionJson(null);
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17")))
+                .thenReturn(current);
+
+        AnalyzerMappingView view = service.getMapping("42");
+        assertEquals(3, view.tests().size());
+        assertNull(view.controlRecognition());
+        AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(current);
+        service.saveMapping("42",
+                new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(), draft.tests(), draft.results()),
+                "17");
+        AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
+                current.mapping().getMappingFingerprint(),
+                List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
+                List.of(new AnalyzerMappingSourceRow("RAW-A", "NEG")));
+        service.confirmMapping("42", request, "17");
+
+        verify(mappingService).appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"));
+        verify(confirmationService).confirm(current, request, "17");
+        verifyZeroInteractions(bridgeProfileCatalogService);
     }
 
     @Test
@@ -190,6 +215,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("RAW-A");
         held.setRawResultValue("INDETERMINATE-VENDOR-X");
+        held.setResult("INDETERMINATE");
+        held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
         analyzerWithLatest(currentMapping());
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
@@ -200,7 +227,7 @@ public class AnalyzerMappingEditorServiceTest {
 
         assertEquals(3, view.tests().get(0).results().size());
         AnalyzerMappingView.ResultRow observed = view.tests().get(0).results().get(2);
-        assertEquals("INDETERMINATE-VENDOR-X", observed.rawValue());
+        assertEquals("INDETERMINATE", observed.rawValue());
         assertEquals(AnalyzerMappingState.UNRESOLVED, observed.mappingState());
     }
 
@@ -209,6 +236,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("VENDOR-NEW-42");
         held.setRawResultValue("INDETERMINATE");
+        held.setResult("INDETERMINATE");
         held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         analyzerWithLatest(currentMapping());
@@ -222,7 +250,7 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals("VENDOR-NEW-42", observed.rawCode());
         assertEquals(AnalyzerMappingState.UNRESOLVED, observed.mappingState());
         assertEquals("INDETERMINATE", observed.results().get(0).rawValue());
-        assertNull(observed.normalizedCoding());
+        assertEquals(List.of(), observed.codings());
         verify(mappingService, never()).appendRevision(any(), any(), any());
     }
 
@@ -231,6 +259,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("VENDOR-NEW-42");
         held.setRawResultValue("INDETERMINATE");
+        held.setResult("INDETERMINATE");
         held.setResultType("A");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         analyzerWithLatest(currentMapping());
@@ -271,6 +300,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("NEW-NUMERIC");
         held.setRawResultValue("7.5");
+        held.setResult("7.5");
         held.setResultType("N");
         held.setUnits("mg/L");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
@@ -301,6 +331,7 @@ public class AnalyzerMappingEditorServiceTest {
                 new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(), draft.tests(), draft.results()),
                 "17");
 
+        verifyZeroInteractions(bridgeProfileCatalogService);
         assertEquals(5, view.mappingRevision());
         assertEquals("sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 view.mappingFingerprint());
@@ -337,6 +368,26 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
+    public void localRepairCanRemoveAnObsoleteVendorSpellingMapping() throws Exception {
+        AnalyzerMappingSnapshot base = currentMapping();
+        var answers = new ArrayList<>(base.results());
+        answers.add(result(base.mapping(), "RAW-A", "VENDOR-POS", AnalyzerMappingState.BOUND, "812"));
+        AnalyzerMappingSnapshot current = new AnalyzerMappingSnapshot(base.mapping(), base.tests(), answers);
+        Analyzer analyzer = savableWithLatest(current);
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17")))
+                .thenReturn(savedMapping());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        AnalyzerMappingDraft canonical = validDraft();
+
+        service.saveMapping("42", new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(),
+                canonical.tests(), canonical.results()), "17");
+
+        ArgumentCaptor<AnalyzerMappingDraft> saved = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
+        verify(mappingService).appendRevision(eq(analyzer), saved.capture(), eq("17"));
+        assertFalse(saved.getValue().results().stream().anyMatch(row -> "VENDOR-POS".equals(row.rawValue())));
+    }
+
+    @Test
     public void saveAndReopenRetainsAnObservedTestAfterItsHeldRowsAreGone() throws Exception {
         AnalyzerMappingSnapshot current = currentMapping();
         AnalyzerMappingSnapshot savedBase = savedMapping();
@@ -350,6 +401,7 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("NEW-TEST");
         held.setRawResultValue("7.5");
+        held.setResult("7.5");
         held.setResultType("N");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         Analyzer analyzer = savableWithLatest(current);
@@ -441,8 +493,9 @@ public class AnalyzerMappingEditorServiceTest {
     @Test
     public void doesNotSuggestATestThatOnlySharesTheRawCodeOrName() throws Exception {
         unresolvedMapping();
-        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.TestOption("9801", "Second result", "RAW-B", List.of("12345-6"))));
+        when(mappingCatalogService.searchActiveTests(null))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("9801", "Second result", "RAW-B",
+                        List.of(Coding.loinc("12345-6")))));
 
         AnalyzerMappingView view = service.getMapping("42");
 
@@ -517,6 +570,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMapping mapping = revision("71", 1, "sha256:" + "f".repeat(64));
         mapping.setProfileId("site.viral-load");
         mapping.setProfileRevision(1);
+        mapping.setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(viralLoadRevision().profile())).toJson());
         AnalyzerMappingSnapshot latest = new AnalyzerMappingSnapshot(mapping,
                 List.of(testRow(mapping, "", null, "comp-call"), testRow(mapping, "&LOG", "comp-LOG", null)),
                 List.of());
@@ -525,7 +580,6 @@ public class AnalyzerMappingEditorServiceTest {
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
         when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
-        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
         when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"))).thenReturn(latest);
         viralLoadCatalog();
 
@@ -552,7 +606,7 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
-    public void aTranslationIsShownRightAfterTheValueItTranslates() throws Exception {
+    public void onlyCanonicalAnswersNeedLocalMappings() throws Exception {
         BridgeProfileCatalog.ProfileRevision revision = viralLoadRevision();
         var viralLoad = (com.fasterxml.jackson.databind.node.ObjectNode) revision.profile()
                 .path("default_test_mappings").get(0);
@@ -565,10 +619,8 @@ public class AnalyzerMappingEditorServiceTest {
         List<AnalyzerMappingView.ResultRow> results = recordRow(service.getDefaults("site.viral-load", 1), "")
                 .results();
 
-        assertEquals(List.of("DETECTED", "DÉTECTÉ", "NOT DETECTED", "NON DÉTECTÉ"),
+        assertEquals(List.of("DETECTED", "NOT DETECTED"),
                 results.stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
-        assertEquals(Arrays.asList(null, "DETECTED", null, "NOT DETECTED"),
-                results.stream().map(AnalyzerMappingView.ResultRow::translationOf).toList());
     }
 
     @Test
@@ -576,7 +628,7 @@ public class AnalyzerMappingEditorServiceTest {
         when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("9701", "HIV-1 viral load", null,
-                        List.of("20447-9"))));
+                        List.of(Coding.loinc("20447-9")))));
         when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveComponents("9701"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
@@ -596,6 +648,8 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMapping mapping = revision("71", 1, "sha256:" + "f".repeat(64));
         mapping.setProfileId("site.viral-load");
         mapping.setProfileRevision(1);
+        mapping.setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(viralLoadRevision().profile())).toJson());
         AnalyzerMappingSnapshot latest = new AnalyzerMappingSnapshot(mapping,
                 List.of(testRow(mapping, "", null, "comp-call"), testRow(mapping, "&LOG", "comp-LOG", null)),
                 List.of());
@@ -604,13 +658,13 @@ public class AnalyzerMappingEditorServiceTest {
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
         when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
-        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
         when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"))).thenReturn(latest);
         viralLoadCatalog();
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("HIVVL");
         held.setRawSubIdentity("HIV-1&EndPt");
         held.setRawResultValue("257.0");
+        held.setResult("257.0");
         held.setResultType("N");
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
@@ -644,7 +698,7 @@ public class AnalyzerMappingEditorServiceTest {
     private void viralLoadCatalog() {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("9701", "HIV-1 viral load", null,
-                        List.of("20447-9"))));
+                        List.of(Coding.loinc("20447-9")))));
         when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveComponents("9701"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-call", "call", "Call"),
@@ -718,7 +772,8 @@ public class AnalyzerMappingEditorServiceTest {
         analyzer.setMapping(latest.mapping());
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
-        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        latest.mapping().setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(profileRevision().profile())).toJson());
         return analyzer;
     }
 
@@ -791,11 +846,7 @@ public class AnalyzerMappingEditorServiceTest {
                         "POS":[{"system":"http://loinc.org","code":"LA6576-8"}],
                         "NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]
                       },
-                      "normalized_coding":{
-                        "system":"https://loinc.org",
-                        "code":"94500-6",
-                        "display":"SARS-CoV-2 RNA"
-                      }
+                      "codings":[{"system":"CPHL","code":"SARS2","display":"SARS-CoV-2 RNA"}]
                     },
                     {
                       "test_code":"RAW-B",
@@ -850,9 +901,11 @@ public class AnalyzerMappingEditorServiceTest {
                 List.of(result(revision, "RAW-A", "POS", AnalyzerMappingState.BOUND, "811"), excluded));
     }
 
-    private static AnalyzerMappingSnapshot savedMapping() {
+    private AnalyzerMappingSnapshot savedMapping() throws Exception {
         AnalyzerMapping revision = revision("62", 5,
                 "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+        revision.setSourceDefinitionJson(
+                AnalyzerMappingDefinition.from(BridgeAnalyzerProfile.from(profileRevision().profile())).toJson());
         return new AnalyzerMappingSnapshot(revision,
                 List.of(test(revision, "RAW-A", AnalyzerMappingState.BOUND, "9701"),
                         test(revision, "RAW-B", AnalyzerMappingState.EXCLUDED, null),
@@ -893,12 +946,15 @@ public class AnalyzerMappingEditorServiceTest {
 
     private static List<AnalyzerMappingCatalogService.TestOption> activeTests() {
         return List.of(
-                new AnalyzerMappingCatalogService.TestOption("9701", "SARS-CoV-2 RNA", "COVID19", List.of("94500-6")),
-                new AnalyzerMappingCatalogService.TestOption("9702", "Ambiguous one", "AMB-1", List.of("77777-7")),
-                new AnalyzerMappingCatalogService.TestOption("9703", "Ambiguous two", "AMB-2", List.of("77777-7")));
+                new AnalyzerMappingCatalogService.TestOption("9701", "SARS-CoV-2 RNA", "COVID19",
+                        List.of(Coding.loinc("94500-6"))),
+                new AnalyzerMappingCatalogService.TestOption("9702", "Ambiguous one", "AMB-1",
+                        List.of(Coding.loinc("77777-7"))),
+                new AnalyzerMappingCatalogService.TestOption("9703", "Ambiguous two", "AMB-2",
+                        List.of(Coding.loinc("77777-7"))));
     }
 
-    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
-        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
+    private static List<Coding> loinc(String code) {
+        return List.of(new Coding("http://loinc.org", code));
     }
 }

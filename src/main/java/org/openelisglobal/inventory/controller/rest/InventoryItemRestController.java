@@ -14,13 +14,13 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryTagService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/inventory/items")
+@PreAuthorize("hasAnyRole('RESULTS', 'ADMIN')")
 public class InventoryItemRestController extends BaseRestController {
 
     @Autowired
@@ -45,17 +46,6 @@ public class InventoryItemRestController extends BaseRestController {
     public ResponseEntity<List<String>> getAllTags() {
         try {
             return ResponseEntity.ok(inventoryTagService.getActiveTagNames());
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<ItemType>> getAllItemTypes() {
-        try {
-            List<ItemType> types = inventoryItemService.getAllItemTypes();
-            return ResponseEntity.ok(types);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -92,17 +82,6 @@ public class InventoryItemRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(item);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping(value = "/type/{itemType}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryItem>> getByType(@PathVariable ItemType itemType) {
-        try {
-            List<InventoryItem> items = inventoryItemService.getByItemType(itemType);
-            return ResponseEntity.ok(items);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

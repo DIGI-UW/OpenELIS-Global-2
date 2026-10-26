@@ -35,10 +35,10 @@ const GLOVES = {
   trackLots: false,
 };
 
-const renderScreen = async (onSaved) => {
+const renderScreen = async () => {
   const view = render(
     <IntlProvider locale="en" messages={messages}>
-      <ReceiveDelivery onSaved={onSaved} />
+      <ReceiveDelivery />
     </IntlProvider>,
   );
   await screen.findByLabelText(/scan the box/i);
@@ -204,8 +204,7 @@ describe("ReceiveDelivery", () => {
   });
 
   it("commits every line in one call", async () => {
-    const onSaved = vi.fn();
-    await renderScreen(onSaved);
+    await renderScreen();
 
     scan("010890123456789017271231101A2B3C");
     await waitFor(() =>
@@ -229,7 +228,6 @@ describe("ReceiveDelivery", () => {
     expect(payload[0].inventoryItem).toEqual({ id: CARTRIDGE.itemId });
     expect(payload[0].lotNumber).toBe("1A2B3C");
     expect(payload[0].id).toBeUndefined();
-    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
   });
 

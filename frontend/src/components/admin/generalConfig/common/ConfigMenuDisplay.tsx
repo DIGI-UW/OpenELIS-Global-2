@@ -72,7 +72,7 @@ interface NotificationContextValue {
   notificationVisible: boolean;
 }
 
-function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
+function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
   const { notificationVisible } = useContext(
     NotificationContext,
   ) as NotificationContextValue;
@@ -375,4 +375,6 @@ function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
   );
 }
 
-export default ConfigMenuDisplay;
+export default function ConfigMenuDisplay(props: ConfigMenuDisplayProps) {
+  return <ConfigMenuDisplayContent key={props.menuType} {...props} />;
+}

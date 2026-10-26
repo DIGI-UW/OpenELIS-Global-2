@@ -108,7 +108,8 @@ where applicable; FKs to `TEST(ID)` as `numeric(10)`.
 ### `test_terminology_mapping` (OGC-939 alt / M10 consumer)
 
 - `id` VARCHAR(36) PK · `test_id` numeric(10) FK NOT NULL · `source`
-  VARCHAR(20) (LOINC/SNOMED/CIEL/OCL) · `code` VARCHAR(80) · `relationship`
+  VARCHAR(20) (any system; LOINC/SNOMED/CIEL/OCL have canonical URIs) ·
+  `code` VARCHAR(80) · `relationship`
   VARCHAR(20) · `is_active`. Unique `(test_id, source, code)`.
 - `TEST.LOINC` stays (deprecate-in-place); backfill one LOINC mapping row per
   test with non-null `TEST.LOINC`.

@@ -94,6 +94,10 @@ jobs:
             exit 0
           fi
           echo "google-chrome missing from runner image — installing on the fly"
+          # A failing third-party source fails apt-get update; Chrome comes
+          # from Google's repo, not Microsoft's (403 on a runner, 2026-10-20).
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources
           APT_TIMEOUT_OPTS=(-o Acquire::http::timeout=120 -o Acquire::https::timeout=120)
           for attempt in 1 2 3; do
             if sudo apt-get "${APT_TIMEOUT_OPTS[@]}" update \

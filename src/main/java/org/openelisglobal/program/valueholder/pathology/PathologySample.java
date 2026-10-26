@@ -72,15 +72,17 @@ public class PathologySample extends ProgramSample {
     @NotNull
     private PathologyStatus status = PathologyStatus.ACCESSIONED;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     @LazyCollection(LazyCollectionOption.FALSE)
     private List<PathologyBlock> blocks;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologySlide> slides;
 
+    // Rebuilt on every save; keeps orphan removal until these rows carry a
+    // lifecycle of their own.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologyRequest> requests;
@@ -208,14 +210,16 @@ public class PathologySample extends ProgramSample {
         return blocks;
     }
 
+    /** Names each block by the identifier written on it. */
     public String getBlocks_Audit() {
         if (blocks == null) {
             return null;
         } else {
-            return StringUtils.join(
-                    blocks.stream().map(e -> "Block Number: " + e.getBlockNumber() + ", Location: " + e.getLocation())
-                            .collect(Collectors.toList()),
-                    "; ");
+            return StringUtils.join(blocks.stream()
+                    .map(e -> "Block: " + e.displayIdentifier() + ", Cassette State: "
+                            + (e.getCassetteState() == null ? "" : e.getCassetteState().name()) + ", Location: "
+                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive())
+                    .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -227,13 +231,17 @@ public class PathologySample extends ProgramSample {
         return slides;
     }
 
+    /** Names each slide by the identifier written on it and by its parent block. */
     public String getSlides_Audit() {
         if (slides == null) {
             return null;
         } else {
-            return StringUtils
-                    .join(slides.stream().map(e -> "File Type: " + e.getFileType() + ", Location: " + e.getLocation())
-                            .collect(Collectors.toList()), "; ");
+            return StringUtils.join(slides.stream()
+                    .map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
+                            + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
+                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive() + ", File Type: "
+                            + StringUtils.defaultString(e.getFileType()))
+                    .collect(Collectors.toList()), "; ");
         }
     }
 

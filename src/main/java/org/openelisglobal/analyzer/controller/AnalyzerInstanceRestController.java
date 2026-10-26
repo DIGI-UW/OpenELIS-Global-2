@@ -19,6 +19,7 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.AnalyzerRequestException;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -70,12 +71,17 @@ public class AnalyzerInstanceRestController extends BaseRestController {
     @PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String search,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false, defaultValue = "false") boolean includeRetired) {
         String normalizedSearch = search == null ? null : search.trim().toLowerCase(Locale.ROOT);
+        boolean askingForRetired = Analyzer.AnalyzerStatus.RETIRED.name().equalsIgnoreCase(status);
         List<Map<String, Object>> analyzers = analyzerInstanceService.list().stream()
+                .filter(state -> includeRetired || askingForRetired
+                        || state.status() != Analyzer.AnalyzerStatus.RETIRED)
                 .filter(state -> normalizedSearch == null || normalizedSearch.isEmpty()
                         || state.name().toLowerCase(Locale.ROOT).contains(normalizedSearch)
-                        || state.profileId().toLowerCase(Locale.ROOT).contains(normalizedSearch))
+                        || (state.profileId() != null
+                                && state.profileId().toLowerCase(Locale.ROOT).contains(normalizedSearch)))
                 .filter(state -> status == null || status.isBlank() || state.status().name().equalsIgnoreCase(status))
                 .map(AnalyzerInstanceRestController::toStateMap).toList();
         return ResponseEntity.ok(Map.of("analyzers", analyzers));

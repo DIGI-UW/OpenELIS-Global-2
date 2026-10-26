@@ -26,6 +26,7 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
+import org.openelisglobal.security.GeneralTextEncryptor;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -33,16 +34,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * competency events against a real DB (qa/017 + qa/018).
  *
  * <p>
- * One deliberate gap, worth stating so nobody reads more assurance into this
- * class than it offers: the {@code test} Spring profile replaces
- * {@code TextEncryptor} with a pass-through mock, so
- * {@code eqa_panel_sample.target_value} is stored as plaintext here. These
- * tests therefore prove the converter is *wired* and the column is *wide
- * enough*, but only the live stack can prove the value is actually ciphertext
- * at rest. That check belongs to UAT, and the column width below is what makes
- * it survivable: measured against jasypt 1.9.3, a 143-byte plaintext is the
- * largest whose ciphertext (236 chars) still fits VARCHAR(255); 144 bytes
- * yields 256 chars and overflows it.
+ * The test Spring profile uses a pass-through TextEncryptor. Entity round trips
+ * verify converter wiring; the capacity test explicitly encrypts with the real
+ * encryptor and verifies that the complete ciphertext survives database
+ * storage. Runtime converter configuration remains a live-stack acceptance
+ * check.
  */
 public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
 
@@ -130,14 +126,24 @@ public class EQAPanelSpineIntegrationTest extends EQASpineTestBase {
 
     @Test
     public void targetValueColumnIsWideEnoughForCiphertext() {
-        // jasypt AES256 expands plaintext to 4*ceil((32+16*(floor(bytes/16)+1))/3)
-        // characters, so VARCHAR(255) would silently cap plaintext at 143 bytes.
-        // This is the guard that a later "tidy up to 255" cannot pass.
-        Integer length = jdbc.queryForObject(
-                "SELECT character_maximum_length FROM information_schema.columns WHERE table_schema = 'clinlims'"
-                        + " AND table_name = 'eqa_panel_sample' AND column_name = 'target_value'",
-                Integer.class);
-        assertEquals(Integer.valueOf(512), length);
+        GeneralTextEncryptor encryptor = GeneralTextEncryptor.of(java.util.UUID.randomUUID().toString(), null);
+        String plaintext = "x".repeat(336);
+        String ciphertext = encryptor.encrypt(plaintext);
+        assertTrue("versioned ciphertext exceeds the old storage limit", ciphertext.length() > 512);
+        EQAPanel panel = insertPanel(insertScheme("Ciphertext capacity", EQASchemeType.INTER_LAB_SPLIT, "NHLS"),
+                p -> p.setPanelName("Ciphertext capacity"));
+        EQAPanelSample sample = new EQAPanelSample();
+        sample.setPanel(panel);
+        sample.setSampleCode("CAPACITY-A01");
+        sample.setBlindCode("CAPACITY-B01");
+        sample.setAnalyteId(ANALYTE_HIV_VL);
+        sample.setTargetValue(ciphertext);
+        sample.setSysUserId(USER);
+        Long sampleId = eqaPanelSampleDAO.insert(sample);
+        String stored = jdbc.queryForObject("SELECT target_value FROM clinlims.eqa_panel_sample WHERE id = ?",
+                String.class, sampleId);
+        assertEquals(ciphertext, stored);
+        assertEquals(plaintext, encryptor.decrypt(stored));
     }
 
     @Test

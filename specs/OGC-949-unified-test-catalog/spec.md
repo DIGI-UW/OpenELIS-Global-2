@@ -675,8 +675,8 @@ see research.md §R9). v1 objects:
   REUSED, not created (M9).
 - **SAMPLETYPE_TEST.display_order** — NEW COLUMN on the existing sample-type↔test
   junction (FRS: `test_sample_type.display_order`) (M12).
-- **test_terminology_mapping** — NEW; multi-source (LOINC/SNOMED/CIEL/OCL)
-  mappings; `TEST.LOINC` deprecate-in-place with backfill (M10).
+- **test_terminology_mapping** — NEW; multi-source mappings in any system
+  (LOINC/SNOMED/CIEL/OCL or the catalog's own); `TEST.LOINC` deprecate-in-place with backfill (M10).
 - **test_activation_acknowledgment** — NEW; audit log of coverage acknowledgments.
 - **Multi-section junction** (FRS: `test_section_assignment`) — DEFERRED
   decision at M2; today TEST is 1:1 section via `TEST.TEST_SECTION_ID`.

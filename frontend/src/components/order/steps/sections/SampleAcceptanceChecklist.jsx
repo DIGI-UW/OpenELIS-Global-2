@@ -680,6 +680,7 @@ const SampleAcceptanceChecklist = ({
       {showNce && (
         <InlineNceForm
           accessionNumber={labNumber}
+          sampleItemId={sampleItemId}
           initialDescription={buildFailureReason()}
           onClose={() => setShowNce(false)}
           onSubmitSuccess={() => setShowNce(false)}

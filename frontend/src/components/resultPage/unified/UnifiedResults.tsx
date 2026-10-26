@@ -31,7 +31,9 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
+  displayDateToIso,
   getFromOpenElisServer,
+  parseIsoDate,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { requestFailed, serverMessage } from "../../utils/requestOutcome";
@@ -82,7 +84,7 @@ import ExpandedPanel, {
   PanelRow,
   RejectDraft,
 } from "./ExpandedPanel";
-import { ReferralDraft } from "./ReferralAction";
+import { ReferralDraft, datePlaceholderId } from "./ReferralAction";
 import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
@@ -176,6 +178,8 @@ interface SaveResponse {
   resultId?: string;
   /** the analysis status the save moved the row to (Status column + counts) */
   analysisStatusId?: string;
+  /** each part's status after the save, by component id (multi-part tests) */
+  componentStatusIds?: Record<string, string>;
   /** the persisted value, as reported and as stored (OGC-1179) */
   resultValue?: string;
   rawResultValue?: string;
@@ -257,6 +261,22 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   // ---- R4 (OGC-1023) NCE / referral / rejection state ----
   const { configurationProperties } = useContext(ConfigurationContext) as {
     configurationProperties?: Record<string, string>;
+  };
+  const dayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+  const parseFilterDate = (text: string): Date | false =>
+    parseIsoDate(displayDateToIso(text.trim(), dayFirst ? "fr-FR" : "en-US"));
+  const commitFilterDate = (date: Date | false) => {
+    if (!date) {
+      setCollectionDate("");
+      return;
+    }
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    setCollectionDate(
+      dayFirst
+        ? `${dd}/${mm}/${date.getFullYear()}`
+        : `${mm}/${dd}/${date.getFullYear()}`,
+    );
   };
   const allowResultRejection =
     configurationProperties?.allowResultRejection === "true";
@@ -921,11 +941,11 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           type: "SAVE_SUCCEEDED",
         }),
       }));
-      // the version token and the analysis status are per ANALYSIS — refresh
-      // them on every component row of this analysis so a sibling save isn't
-      // falsely rejected, and so the Status column and the filter counts above
-      // it describe the worklist as the save left it rather than as it was
-      // loaded (OGC-1179).
+      // the version token is per ANALYSIS — refresh it on every component row
+      // of this analysis so a sibling save isn't falsely rejected. The status
+      // follows the save too, so the Status column and the filter counts
+      // describe the worklist as the save left it (OGC-1179); a component row
+      // carries its own part's status, which the save reports per part.
       // The SAVED row must also adopt the persisted resultId: a row saved
       // from the blank placeholder state would otherwise keep resultId null
       // and every later save would INSERT a duplicate result for the
@@ -941,7 +961,15 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           if (response.analysisLastupdated) {
             updated.analysisLastupdated = response.analysisLastupdated;
           }
-          if (response.analysisStatusId) {
+          const componentStatusId =
+            row.testResultComponentId &&
+            response.componentStatusIds?.[row.testResultComponentId];
+          if (componentStatusId) {
+            updated.analysisStatusId = componentStatusId;
+          } else if (
+            response.analysisStatusId &&
+            (!row.testResultComponentId || worklistRowKey(row) === key)
+          ) {
             updated.analysisStatusId = response.analysisStatusId;
           }
           if (worklistRowKey(row) === key) {
@@ -1023,6 +1051,25 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       // as boolean — same normalization the legacy page applies before POST
       item.reportable = item.reportable !== "N";
       const key = worklistRowKey(row);
+      // A referral the user opened rides the save only when complete; one
+      // missing its laboratory or reason is refused rather than dropped, so a
+      // save never reads as having referred a test it did not.
+      const pendingReferral = referralDrafts[key];
+      if (
+        pendingReferral &&
+        (!pendingReferral.referredInstituteId ||
+          !pendingReferral.referralReasonId)
+      ) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "label.results.referral.incomplete",
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
       // R2 (FR-J1/J2): the dual-axis note — visibility chosen, context auto-set
       // from the edit-state machine (Modification when editing a saved result)
       const noteDraft = noteDrafts[key];
@@ -1142,6 +1189,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       rejectDrafts,
       interpretationDrafts,
       rowStates,
+      addNotification,
+      setNotificationVisible,
+      intl,
     ],
   );
 
@@ -1409,26 +1459,27 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               className="unifiedResultsToolbarColumn"
             >
               <DatePicker
+                key={dayFirst ? "day-first" : "month-first"}
                 datePickerType="single"
-                dateFormat="d/m/Y"
-                onChange={(dates: Date[]) => {
-                  if (dates && dates.length) {
-                    const d = dates[0];
-                    setCollectionDate(
-                      `${String(d.getDate()).padStart(2, "0")}/${String(
-                        d.getMonth() + 1,
-                      ).padStart(2, "0")}/${d.getFullYear()}`,
-                    );
-                  } else {
-                    setCollectionDate("");
-                  }
-                }}
+                dateFormat={dayFirst ? "d/m/Y" : "m/d/Y"}
+                parseDate={parseFilterDate}
+                onChange={(dates: Date[]) =>
+                  commitFilterDate(dates && dates.length ? dates[0] : false)
+                }
               >
                 <DatePickerInput
                   id="unifiedResultsDate"
                   labelText={intl.formatMessage({ id: "label.results.date" })}
-                  placeholder="dd/mm/yyyy"
+                  placeholder={intl.formatMessage({
+                    id: datePlaceholderId(
+                      configurationProperties?.DEFAULT_DATE_LOCALE,
+                    ),
+                  })}
                   disabled={Boolean(selectedPatient)}
+                  onBlur={(event: React.FocusEvent<HTMLInputElement>) => {
+                    const typed = event.target.value.trim();
+                    commitFilterDate(typed ? parseFilterDate(typed) : false);
+                  }}
                 />
               </DatePicker>
             </Column>

@@ -18,7 +18,6 @@ import {
   activateShippedAnalyzer,
   activateShippedBc5380,
   activateShippedGeneXpert,
-  excludeCodes,
 } from "../../../helpers/analyzer-setup-flow";
 import { FLUOROCYCLER, QUANTSTUDIO } from "../../../helpers/shipped-profiles";
 import { csrfToken, withAuthedPage } from "../../../helpers/api-session";
@@ -28,13 +27,14 @@ import {
   savedValue,
   type Order,
 } from "../../../helpers/analyzer-review";
-import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
   applyMappings,
   confirmMapping,
   doNotReceive,
   saveMapping,
 } from "../../../helpers/analyzer-mapping-page";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
+
 import {
   openFirstWaiting,
   openValidationQueue,
@@ -148,10 +148,32 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       );
       await demo.highlight(summary);
       await demo.caption(
-        "The parts are one analysis, so releasing the viral load releases every part with it.",
+        "Each part is validated on its own; the viral load is released with its last part.",
       );
-      await openFirstWaiting(page);
-      await releaseOpen(page);
+      await validateAndReleaseFirst(page);
+      await expect(summary).toContainText(
+        `Needs review: ${HIV_VL_VALUED_PARTS.length - 1}`,
+      );
+
+      await demo.caption(
+        "On the order, the validated part is final while the others still await validation.",
+      );
+      await page.goto(
+        `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
+        { waitUntil: "domcontentloaded" },
+      );
+      await expect(
+        page.getByRole("button", { name: "Results final (1)" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", {
+          name: `Accepted by technician (${HIV_VL_VALUED_PARTS.length - 1})`,
+        }),
+      ).toBeVisible();
+      await openValidationQueue(page, order.accession);
+      for (let left = HIV_VL_VALUED_PARTS.length - 1; left > 0; left--) {
+        await validateAndReleaseFirst(page);
+      }
       await expect(
         page.getByTestId("release-all-clear-why-queueEmpty"),
       ).toBeVisible();
@@ -733,73 +755,64 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
   });
 
   test(
-    "its microscope exam is held until the lab marks those codes Do not receive, then the CBC is accepted",
+    "the lab excludes the manual differential and clears its two undeclared codes before accepting the CBC",
     { tag: ["@evidence", "@hl7", "@exceptions"] },
     async ({ page }, testInfo) => {
       const demo = createDemoPresentation(page, testInfo);
       await demo.intro(
         "Mindray BC-5380: a microscope exam the lab does not do",
-        "The instrument reports a manual differential with every CBC. This lab decides not to receive it.",
+        "The instrument can report a technician-entered manual differential. This lab chooses not to receive those records.",
       );
+      // The harness catalog maps the 17 declared manual codes. The lab excludes
+      // them explicitly; the two undeclared codes appear only once received.
+      const undeclared = ["11000", "11001"];
+      await page.goto(`/analyzers/${analyzer.id}/mapping`);
+      for (const code of MICROSCOPE_EXAM.filter(
+        (code) => !undeclared.includes(code),
+      )) {
+        await doNotReceive(page, code);
+      }
+      await saveMapping(page);
+      await confirmMapping(page);
+      await applyMappings(page);
       await demo.caption(
-        "Off screen: a CBC is ordered on whole blood, and the BC-5380 sends its message, microscope exam included.",
+        "Off screen: the BC-5380 sends a manual-count message, including the microscope exam the lab has excluded.",
       );
       const { order, testIds } = await orderCbc(page);
       await sendBc5380Fixture(
         page,
         analyzer.id,
         order.accession,
-        "analysis-result",
+        "manual-count",
         senderId,
       );
       const staged = () =>
         worklistFor<WorklistRow>(page, analyzer.id, order.accession);
       await expect
         .poll(async () => (await staged()).length)
-        .toBe(REPORTED.length + MICROSCOPE_EXAM.length);
+        .toBe(REPORTED.length + undeclared.length);
       const held = (await staged()).filter((row) => row.importIssueReason);
-      expect(held.map((row) => row.rawTestCode).sort()).toEqual(
-        [...MICROSCOPE_EXAM].sort(),
-      );
+      expect(held.map((row) => row.rawTestCode).sort()).toEqual(undeclared);
       expect(new Set(held.map((row) => row.importIssueReason))).toEqual(
         new Set(["unknown_analyzer_test"]),
       );
-
-      await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
-        waitUntil: "domcontentloaded",
-      });
-      await expect(
-        page.getByText(
-          `${MICROSCOPE_EXAM.length} analyzer results need attention`,
-        ),
-      ).toBeVisible();
-      const firstHeld = page.getByTestId(`held-analyzer-result-${held[0].id}`);
+      await page.goto(`/analyzers/${analyzer.id}/mapping`);
       await demo.caption(
-        `The CBC's ${REPORTED.length} values wait for review. The ${MICROSCOPE_EXAM.length} microscope-exam records are held: the profile declares them, but this lab's mapping has no decision for them yet, since no catalog test carries their codes.`,
+        "Two codes were not declared by the profile. The lab excludes those too, then saves, confirms and applies its decisions.",
       );
-      await demo.highlight(firstHeld);
-      await demo.caption("A held row leads to this analyzer's mapping page.");
-      await firstHeld
-        .getByRole("link", { name: "Review analyzer mapping" })
-        .click();
-      await expect(page).toHaveURL(
-        new RegExp(`/analyzers/${analyzer.id}/mapping`),
-      );
-      await demo.caption(
-        "The lab does its differentials by hand, so each microscope-exam code is marked Do not receive.",
-      );
-      for (const code of MICROSCOPE_EXAM) {
+      for (const code of undeclared) {
         await doNotReceive(page, code);
       }
-      await demo.caption(
-        "Save, confirm, and apply: the held records are retried against the mapping, and records the lab does not receive are cleared.",
-      );
       await saveMapping(page);
       await confirmMapping(page);
       await applyMappings(page);
       await expect
         .poll(async () => (await staged()).length)
         .toBe(REPORTED.length);
+      await page.reload();
+      for (const code of MICROSCOPE_EXAM) {
+        await expect(page.locator(`#exclude-test-${code}`)).toBeChecked();
+      }
       expect((await staged()).filter((row) => row.importIssueReason)).toEqual(
         [],
       );
@@ -811,7 +824,7 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
         page.getByText(/analyzer results? needs? attention/),
       ).toHaveCount(0);
       await demo.caption(
-        "Nothing is held. The reviewer accepts the CBC; the next CBC arrives without the microscope exam.",
+        "Nothing is held. The reviewer accepts the CBC after the lab has excluded the microscope records.",
       );
       await acceptAll(page, analyzer, [order.accession], {
         onScreen: true,
@@ -826,7 +839,7 @@ test.describe("A Mindray BC-5380 reports a microscope exam the lab does not do",
       }
       await demo.verified(
         `The CBC on ${order.accession} is saved; the microscope exam never became a result`,
-        `${MICROSCOPE_EXAM.length} records were held, then cleared by the lab's own decision on the mapping page.`,
+        `${MICROSCOPE_EXAM.length} microscope records were excluded by the lab, whose decisions remain visible after reloading.`,
       );
     },
   );
@@ -844,8 +857,7 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
         `Results BC-5380 ${run}`,
         senderId,
       );
-      // The lab's first CBC brought the microscope exam codes, held for its
-      // decision; it excluded them on the analyzer's mapping page.
+      // The routine automated-count fixture contains no manual differential.
       const { order } = await orderCbc(page);
       await sendBc5380Fixture(
         page,
@@ -854,14 +866,6 @@ test.describe("A Mindray BC-5380 from setup to a released CBC", () => {
         "analysis-result",
         senderId,
       );
-      await expect
-        .poll(
-          async () =>
-            (await worklistFor<WorklistRow>(page, active.id, order.accession))
-              .length,
-        )
-        .toBe(REPORTED.length + MICROSCOPE_EXAM.length);
-      await excludeCodes(page, active.id, MICROSCOPE_EXAM);
       await expect
         .poll(
           async () =>

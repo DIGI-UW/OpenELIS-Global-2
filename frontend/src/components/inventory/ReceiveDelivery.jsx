@@ -23,7 +23,7 @@ import { toLocalIsoDate } from "../utils/Utils";
 import { labNow } from "../utils/labClock";
 import "./InventoryItemsBoard.css";
 
-const ReceiveDelivery = ({ onSaved = () => {} }) => {
+const ReceiveDelivery = () => {
   const intl = useIntl();
   const scanRef = useRef(null);
   const nextLineKey = useRef(0);
@@ -155,7 +155,6 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
       setDone(lines.length);
       setLines([]);
       clearLine();
-      onSaved();
       focusScan();
     } catch (err) {
       setError(err.message);
@@ -377,7 +376,6 @@ const ReceiveDelivery = ({ onSaved = () => {} }) => {
             setDefiningUpc(null);
             setUnknownUpc(null);
             load();
-            onSaved();
           }}
         />
       )}

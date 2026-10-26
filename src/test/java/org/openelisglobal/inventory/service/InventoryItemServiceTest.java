@@ -6,7 +6,6 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
@@ -28,7 +27,6 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
         assertNotNull("Item should be loaded from dataset", item);
         assertEquals("Test Reagent A", item.getName());
-        assertEquals(ItemType.REAGENT, item.getItemType());
         assertEquals("Y", item.getIsActive());
     }
 
@@ -38,7 +36,6 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
 
         assertNotNull("Should find test item 2", item);
         assertEquals("Test RDT Kit", item.getName());
-        assertEquals(ItemType.RDT, item.getItemType());
         assertEquals("QC", item.getCategory());
     }
 
@@ -74,7 +71,6 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     public void createInventoryItem_shouldInsertNewItem() {
         InventoryItem newItem = new InventoryItem();
         newItem.setName("Test Item Created");
-        newItem.setItemType(ItemType.RDT);
         newItem.setUnits("pieces");
         newItem.setIsActive("Y");
         newItem.setFhirUuid(java.util.UUID.randomUUID());

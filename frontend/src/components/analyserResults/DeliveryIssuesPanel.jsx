@@ -94,14 +94,20 @@ const DeliveryIssuesPanel = () => {
 
   const headers = useMemo(
     () =>
-      ["analyzer", "received", "status", "reason", "detail", "actions"].map(
-        (key) => ({
-          key,
-          header: intl.formatMessage({
-            id: `analyzer.deliveryIssues.column.${key}`,
-          }),
+      [
+        "analyzer",
+        "sender",
+        "received",
+        "status",
+        "reason",
+        "detail",
+        "actions",
+      ].map((key) => ({
+        key,
+        header: intl.formatMessage({
+          id: `analyzer.deliveryIssues.column.${key}`,
         }),
-      ),
+      })),
     [intl],
   );
 
@@ -113,6 +119,7 @@ const DeliveryIssuesPanel = () => {
         { id: "analyzer.deliveryIssues.unrecognizedSender" },
         { source: row.sourceId || "-" },
       ),
+    sender: row.sender || "-",
     received: row.receivedAt
       ? intl.formatDate(new Date(row.receivedAt), {
           dateStyle: "medium",

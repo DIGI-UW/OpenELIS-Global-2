@@ -34,6 +34,9 @@ import org.springframework.stereotype.Service;
 public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingService {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
+    // The pin is checked whenever the Analyzers page loads; an unreachable Bridge
+    // must not hold the page for the full pairing timeout.
+    private static final Duration PIN_CHECK_TIMEOUT = Duration.ofSeconds(5);
     private static final Set<String> REFUSALS = Set.of("analyzer.bridgePairing.error.wrongCode",
             "analyzer.bridgePairing.error.closed");
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -72,7 +75,9 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         String clientFingerprint = record.map(this::clientFingerprint).orElse(null);
         boolean paired = record.map(r -> r.getBridgeCertificateSha256() != null).orElse(false);
         return new Status(bridgeUrl, paired, paired ? record.get().getBridgeCertificateSha256() : null,
-                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null, !configuredCode.isEmpty());
+                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null,
+                !configuredCode.isEmpty() && !configuredCodeRefused,
+                paired ? checkPin(record.get()).orElse(null) : null);
     }
 
     @Override
@@ -149,8 +154,19 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
     @Override
     @Scheduled(initialDelay = 5_000, fixedDelay = 30_000)
     public void pairWithConfiguredCode() {
-        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || configuredCodeRefused || getStatus().paired()) {
+        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || configuredCodeRefused) {
             return;
+        }
+        Optional<AnalyzerBridgePairing> pinned = dao.findCurrent().filter(r -> r.getBridgeCertificateSha256() != null);
+        if (pinned.isPresent()) {
+            Optional<PinCheck> check = checkPin(pinned.get());
+            if (check.isEmpty() || check.get() == PinCheck.MATCHES) {
+                return;
+            }
+            LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
+                    "The Analyzer Bridge at " + bridgeUrl + " no longer matches the pinned certificate "
+                            + pinned.get().getBridgeCertificateSha256() + " (" + check.get()
+                            + "); pairing again with the configured code.");
         }
         try {
             pair(configuredCode, null);
@@ -165,6 +181,43 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
             }
             LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
                     "Could not pair with the Analyzer Bridge at " + bridgeUrl + " yet: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Asks the Bridge at the configured address for its pairing state, observing
+     * the certificate it presents. Empty when the Bridge cannot be reached or its
+     * answer cannot be read.
+     */
+    private Optional<PinCheck> checkPin(AnalyzerBridgePairing record) {
+        BridgeTls.ObservingServerTrustManager observed = new BridgeTls.ObservingServerTrustManager();
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(PIN_CHECK_TIMEOUT)
+                    .sslContext(BridgeTls.context(clientIdentity(record), observed)).build();
+            HttpResponse<String> response = client.send(
+                    HttpRequest.newBuilder(URI.create(bridgeUrl + "/pairing")).timeout(PIN_CHECK_TIMEOUT).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            X509Certificate served = observed.observed();
+            if (served == null) {
+                return Optional.empty();
+            }
+            if (!BridgeTls.sha256(served).equalsIgnoreCase(record.getBridgeCertificateSha256())) {
+                return Optional.of(PinCheck.OTHER_CERTIFICATE);
+            }
+            if (response.statusCode() != 200) {
+                return Optional.empty();
+            }
+            JsonNode answer = JSON.readTree(response.body());
+            JsonNode paired = answer == null ? null : answer.get("paired");
+            if (paired == null || !paired.isBoolean()) {
+                return Optional.empty();
+            }
+            return Optional.of(paired.booleanValue() ? PinCheck.MATCHES : PinCheck.BRIDGE_UNPAIRED);
+        } catch (GeneralSecurityException | IOException e) {
+            return Optional.empty();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
         }
     }
 

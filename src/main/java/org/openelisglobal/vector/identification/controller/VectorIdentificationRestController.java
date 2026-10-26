@@ -22,6 +22,7 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -66,6 +67,8 @@ public class VectorIdentificationRestController extends BaseRestController {
 
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
 
     @Autowired
     private SampleItemService sampleItemService;
@@ -103,10 +106,13 @@ public class VectorIdentificationRestController extends BaseRestController {
      * pools produces N worklist rows. Samples that have no pool yet are excluded.
      */
     @GetMapping(value = "/worklist", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<WorklistRowDTO>> getWorklist(@RequestParam(required = false) String status) {
+    public ResponseEntity<List<WorklistRowDTO>> getWorklist(@RequestParam(required = false) String status,
+            HttpServletRequest http) {
         try {
             String filter = status == null || status.isBlank() ? "pending" : status.toLowerCase();
-            List<Sample> samples = sampleService.getAllMatching("domain", VECTOR_DOMAIN);
+            String userId = getSysUserId(http);
+            List<Sample> samples = sampleService.getAllMatching("domain", VECTOR_DOMAIN).stream()
+                    .filter(sample -> sampleLabUnitScopeService.isVisible(userId, sample)).toList();
 
             List<WorklistRowDTO> rows = new ArrayList<>();
             for (Sample s : samples) {

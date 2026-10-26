@@ -20,7 +20,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
-import org.jasypt.util.text.AES256TextEncryptor;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.analyzer.service.AnalyzerBridgePairingService;
 import org.openelisglobal.common.constants.Constants;
@@ -130,8 +129,15 @@ public class SecurityConfig {
             + " connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';"
             + " frame-src *.openlmis.org 'self'; object-src 'self';";
 
-    @Value("${encryption.general.password:dev}")
+    @Value("${encryption.general.password:}")
     private String encryptionPassword;
+
+    /**
+     * The install's own key for database secrets; blank keeps
+     * {@code encryption.general.password}.
+     */
+    @Value("${OE_ENCRYPTION_PASSWORD:}")
+    private String installEncryptionPassword;
 
     @Autowired
     private UserDetailsService userDetailsService;
@@ -544,9 +550,7 @@ public class SecurityConfig {
 
     @Bean
     public TextEncryptor textEncryptor() {
-        AES256TextEncryptor textEncryptor = new AES256TextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
-        return textEncryptor;
+        return GeneralTextEncryptor.of(installEncryptionPassword, encryptionPassword);
     }
 
     // @Bean

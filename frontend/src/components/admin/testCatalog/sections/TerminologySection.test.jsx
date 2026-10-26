@@ -123,7 +123,9 @@ describe("TerminologySection", () => {
     await screen.findByText(messages["label.testCatalog.terminology.empty"]);
 
     fireEvent.change(
-      screen.getByLabelText(messages["label.testCatalog.terminology.source"]),
+      screen.getByRole("combobox", {
+        name: messages["label.testCatalog.terminology.source"],
+      }),
       { target: { value: "LOINC" } },
     );
     fireEvent.change(
@@ -172,7 +174,9 @@ describe("TerminologySection", () => {
     await screen.findByText(messages["label.testCatalog.terminology.empty"]);
 
     fireEvent.change(
-      screen.getByLabelText(messages["label.testCatalog.terminology.source"]),
+      screen.getByRole("combobox", {
+        name: messages["label.testCatalog.terminology.source"],
+      }),
       { target: { value: "SNOMED" } },
     );
     fireEvent.change(
@@ -197,6 +201,52 @@ describe("TerminologySection", () => {
         sampleTypeId: null,
       },
     ]);
+  });
+
+  it("saves a code in the catalog's own system", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ testId: "42", mappings: [] }),
+    );
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.terminology.empty"]);
+
+    fireEvent.change(
+      screen.getByRole("combobox", {
+        name: messages["label.testCatalog.terminology.source"],
+      }),
+      { target: { value: "CPHL" } },
+    );
+    fireEvent.change(
+      screen.getByLabelText(messages["label.testCatalog.terminology.code"]),
+      { target: { value: "VL-HIV" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).mappings[0],
+    ).toMatchObject({ source: "CPHL", code: "VL-HIV" });
+  });
+
+  it("keeps Save off while a source is longer than its column", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb({ testId: "42", mappings: [] }),
+    );
+    renderSection();
+    await screen.findByText(messages["label.testCatalog.terminology.empty"]);
+
+    fireEvent.change(
+      screen.getByRole("combobox", {
+        name: messages["label.testCatalog.terminology.source"],
+      }),
+      { target: { value: "A".repeat(21) } },
+    );
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(
+      screen.getByText("A source is at most 20 characters"),
+    ).toBeInTheDocument();
   });
 
   it("edits an existing mapping in place and persists the change", async () => {
@@ -249,7 +299,9 @@ describe("TerminologySection", () => {
 
     // Draft the same (source, code) again and try to save straight away.
     fireEvent.change(
-      screen.getByLabelText(messages["label.testCatalog.terminology.source"]),
+      screen.getByRole("combobox", {
+        name: messages["label.testCatalog.terminology.source"],
+      }),
       { target: { value: "LOINC" } },
     );
     fireEvent.change(

@@ -55,6 +55,9 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
+# The interface's translation catalogue, packaged into the WAR for the reports
+# that print their labels from it (see the pom's ui-languages resource).
+COPY ./frontend/src/languages /build/frontend/src/languages
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mkdir -p /root/.m2/repository/org/itech \
     && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \

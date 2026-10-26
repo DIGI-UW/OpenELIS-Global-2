@@ -160,6 +160,7 @@ public class DeviceTransformServiceImpl implements DeviceTransformService {
                 device.setStatus(FHIRDeviceStatus.ENTEREDINERROR);
                 break;
 
+            case RETIRED:
             case INACTIVE:
                 device.setStatus(FHIRDeviceStatus.INACTIVE);
                 break;

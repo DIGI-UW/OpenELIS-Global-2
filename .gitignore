@@ -160,4 +160,4 @@ PR-*-STATUS-REPORT.md
 volume/nce-attachments/
 # Generated local development certificates and private keys
 /.dev-stack/tls/
-
+/.dev-stack/images.json

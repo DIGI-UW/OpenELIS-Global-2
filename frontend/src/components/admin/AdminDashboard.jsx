@@ -82,8 +82,8 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: QrCode,
   },
   {
-    messageId: "notificationtrigger.config.title",
-    path: "notificationTriggerConfig",
+    messageId: "sidenav.label.admin.notifications",
+    path: "notificationTriggerConfig/triggers",
     icon: Bullhorn,
   },
   {

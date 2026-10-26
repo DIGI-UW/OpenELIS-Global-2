@@ -3,8 +3,11 @@ package org.openelisglobal.externalconnections.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -62,9 +65,9 @@ public class ExternalConnectionRestController extends BaseController {
             @RequestParam(value = ID, required = false) Integer externalConnectionId) {
         ExternalConnectionForm form = new ExternalConnectionForm();
         form.setAuthenticationTypes(Arrays.asList(AuthType.values()));
-        form.setProgrammedConnections(Arrays.asList(ProgrammedConnection.values()));
 
         if (externalConnectionId == null || externalConnectionId == 0) {
+            form.setProgrammedConnections(offeredConnectionTypes());
             form.setExternalConnection(new ExternalConnection());
             form.setBasicAuthenticationData(new BasicAuthenticationData());
             form.setExternalConnectionContacts(new ArrayList<>());
@@ -73,15 +76,52 @@ public class ExternalConnectionRestController extends BaseController {
             if (connection == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("External connection not found.");
             }
+            form.setProgrammedConnections(Arrays.asList(ProgrammedConnection.values()));
             form.setExternalConnection(connection);
             form.setExternalConnectionContacts(
                     externalConnectionContactService.getAllMatching("externalConnection.id", externalConnectionId));
             Map<AuthType, ExternalConnectionAuthenticationData> authData = externalConnectionAuthenticationDataService
                     .getForExternalConnection(externalConnectionId);
-            form.setBasicAuthenticationData((BasicAuthenticationData) authData.get(AuthType.BASIC));
+            form.setBasicAuthenticationData(withoutPassword((BasicAuthenticationData) authData.get(AuthType.BASIC)));
+            form.setPasswordSet(hasPassword((BasicAuthenticationData) authData.get(AuthType.BASIC)));
         }
 
         return ResponseEntity.ok(form);
+    }
+
+    /**
+     * The connection types a new row may take. Email, SMS and WhatsApp are set up
+     * on the Channels page; their rows here are read only legacy.
+     */
+    static List<ProgrammedConnection> offeredConnectionTypes() {
+        List<ProgrammedConnection> offered = new ArrayList<>();
+        for (ProgrammedConnection type : ProgrammedConnection.values()) {
+            if (!CHANNEL_TYPES.contains(type)) {
+                offered.add(type);
+            }
+        }
+        return offered;
+    }
+
+    static final Set<ProgrammedConnection> CHANNEL_TYPES = EnumSet.of(ProgrammedConnection.SMTP_SERVER,
+            ProgrammedConnection.WHATSAPP_SERVER);
+
+    /**
+     * The stored secret never goes to the browser; the form says whether one is
+     * set.
+     */
+    private static BasicAuthenticationData withoutPassword(BasicAuthenticationData stored) {
+        if (stored == null) {
+            return null;
+        }
+        BasicAuthenticationData shown = new BasicAuthenticationData();
+        shown.setId(stored.getId());
+        shown.setUsername(stored.getUsername());
+        return shown;
+    }
+
+    private static boolean hasPassword(BasicAuthenticationData stored) {
+        return stored != null && stored.getPassword() != null && !stored.getPassword().isEmpty();
     }
 
     @PostMapping(value = "/ExternalConnection")
@@ -95,6 +135,10 @@ public class ExternalConnectionRestController extends BaseController {
 
         String sysUserId = getSysUserId(request);
         boolean isNew = formConnection.getId() == null || formConnection.getId() == 0;
+        if (isNew && CHANNEL_TYPES.contains(formConnection.getProgrammedConnection())) {
+            return ResponseEntity.badRequest()
+                    .body("Email, SMS and WhatsApp are set up on the Notifications > Channels page.");
+        }
 
         try {
             if (isNew) {

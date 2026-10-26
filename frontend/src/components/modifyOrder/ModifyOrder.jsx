@@ -27,9 +27,11 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import createModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
 import {
+  missingTestsTitle,
   samplesMissingTests,
   samplesWithTests,
 } from "../addOrder/orderSamples";
+import useSampleTypeNames from "../addOrder/useSampleTypeNames";
 /**
  * The edit page of the workflow an order was entered in, when that is not the
  * clinical one. Environmental and vector orders have no patient, so the
@@ -303,6 +305,7 @@ const ModifyOrder = () => {
   }, [page]);
 
   const missingTestSamples = samplesMissingTests(samples);
+  const sampleTypeNames = useSampleTypeNames();
 
   const attacheSamplesToFormValues = () => {
     let sampleXmlString = "";
@@ -474,9 +477,11 @@ const ModifyOrder = () => {
                         kind="error"
                         lowContrast
                         hideCloseButton
-                        title={intl.formatMessage(
-                          { id: "order.sample.missingTests" },
-                          { sampleNumber },
+                        title={missingTestsTitle(
+                          intl,
+                          samples,
+                          sampleNumber,
+                          sampleTypeNames,
                         )}
                         data-cy="modify-order-sample-missing-tests"
                       />

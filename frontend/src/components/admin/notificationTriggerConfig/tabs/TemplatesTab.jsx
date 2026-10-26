@@ -23,10 +23,7 @@ import {
   putToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
-import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../../common/CustomNotification";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import { TRIGGER_DESCRIPTORS } from "../descriptors";
 
 // Substitute `[token]` placeholders in `template` with values from `sampleValues`.
@@ -45,7 +42,7 @@ const CHANNEL_WHATSAPP = "WHATSAPP";
 
 export default function TemplatesTab() {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
   const [templates, setTemplates] = useState([]);
@@ -125,6 +122,23 @@ export default function TemplatesTab() {
               id: "notification.user.post.save.success",
             }),
           });
+        } else if (
+          res &&
+          Array.isArray(res.disallowedFields) &&
+          res.disallowedFields.length > 0
+        ) {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "notificationtrigger.template.disallowed" },
+              {
+                fields: res.disallowedFields
+                  .map((field) => `[${field}]`)
+                  .join(", "),
+              },
+            ),
+          });
         } else {
           addNotification({
             kind: NotificationKinds.error,
@@ -176,7 +190,7 @@ export default function TemplatesTab() {
 
   const triggerStatusLabel = (type) => {
     const descriptor = TRIGGER_DESCRIPTORS[type];
-    return descriptor
+    return descriptor && descriptor.statusKey
       ? intl.formatMessage({ id: descriptor.statusKey, defaultMessage: "" })
       : "";
   };
@@ -196,7 +210,6 @@ export default function TemplatesTab() {
 
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
       {(loading || saving) && <Loading />}
       <Grid fullWidth={true} style={{ marginTop: "1rem" }}>
         <Column lg={16} md={8} sm={4}>

@@ -164,4 +164,5 @@
   <include file="liquibase/qa/045-alert-type-union.xml" />
   <!-- OGC-1256: the laboratory's response on a provider follow-up (qa-090) -->
   <include file="liquibase/qa/048-eqa-followup-response-notes.xml" />
+    <include file="liquibase/3.3.x.x/encrypted-value-capacity.xml"/>
 </databaseChangeLog>

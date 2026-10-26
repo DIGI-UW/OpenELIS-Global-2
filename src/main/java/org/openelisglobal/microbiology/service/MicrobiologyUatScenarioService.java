@@ -24,7 +24,6 @@ import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryManagementService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -390,8 +389,8 @@ public class MicrobiologyUatScenarioService {
     }
 
     private void ensureInventoryTraceability(Test test, String performedBy) {
-        InventoryItem media = getOrCreateInventoryItem(UAT_MEDIA_NAME, ItemType.REAGENT, "plate", performedBy);
-        InventoryItem astCard = getOrCreateInventoryItem(UAT_AST_CARD_NAME, ItemType.CARTRIDGE, "card", performedBy);
+        InventoryItem media = getOrCreateInventoryItem(UAT_MEDIA_NAME, "Reagent", "plate", performedBy);
+        InventoryItem astCard = getOrCreateInventoryItem(UAT_AST_CARD_NAME, "Cartridge", "card", performedBy);
         getOrCreateReagentLink(test, media, "PRIMARY", "plate", performedBy);
         getOrCreateReagentLink(test, astCard, "SECONDARY", "card", performedBy);
 
@@ -441,7 +440,7 @@ public class MicrobiologyUatScenarioService {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
-    private InventoryItem getOrCreateInventoryItem(String name, ItemType itemType, String units, String performedBy) {
+    private InventoryItem getOrCreateInventoryItem(String name, String tag, String units, String performedBy) {
         InventoryItem item = inventoryItemService.searchByName(name).stream()
                 .filter(candidate -> name.equals(candidate.getName())).findFirst().orElse(null);
         if (item == null) {
@@ -449,7 +448,7 @@ public class MicrobiologyUatScenarioService {
             item.setFhirUuid(UUID.randomUUID());
             item.setName(name);
             item.setDescription("Property-gated microbiology UAT traceability fixture");
-            item.setItemType(itemType);
+            item.setTags(new java.util.LinkedHashSet<>(java.util.List.of(tag)));
             item.setCategory("Microbiology UAT");
             item.setUnits(units);
             item.setQuantityPerUnit(1);

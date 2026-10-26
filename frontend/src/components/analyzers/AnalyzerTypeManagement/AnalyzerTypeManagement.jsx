@@ -285,12 +285,19 @@ const AnalyzerTypeManagement = () => {
     }
     const percent = Math.round((summary.mapped / summary.total) * 100);
     if (summary.excluded > 0) {
+      // A deliberate exclusion is a decision, so the figure is rows decided.
+      const decided = summary.mapped + summary.excluded;
       return intl.formatMessage(
-        { id: "analyzerType.mapping.countWithExcluded" },
         {
+          id:
+            decided === summary.total
+              ? "analyzerType.mapping.allDecided"
+              : "analyzerType.mapping.countWithExcluded",
+        },
+        {
+          decided,
           mapped: summary.mapped,
           total: summary.total,
-          percent,
           excluded: summary.excluded,
         },
       );

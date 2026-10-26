@@ -1,5 +1,6 @@
 package org.openelisglobal.menu.controller;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.menu.service.MenuService;
+import org.openelisglobal.menu.util.MenuConfigurationExport;
 import org.openelisglobal.menu.util.MenuItem;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
@@ -23,7 +25,9 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,6 +77,13 @@ public class MenuController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<MenuItem> getEditableMenuTree() {
         return MenuUtil.getUnfilteredMenuTree();
+    }
+
+    @GetMapping(value = "/rest/admin/menu/configuration", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ObjectNode> exportMenuConfiguration() {
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"menu_config.json\"")
+                .body(MenuConfigurationExport.of(MenuUtil.getUnfilteredMenuTree()));
     }
 
     @PostMapping("/rest/admin/menu")

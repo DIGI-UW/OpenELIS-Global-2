@@ -58,10 +58,6 @@ describe("User navigates to different tiles", function () {
     home.selectOrdersRejected();
   });
 
-  it("User navigates to UnPrinted Results", function () {
-    home.selectUnPrintedResults();
-  });
-
   it("User navigates to Electronic Orders", function () {
     home.selectElectronicOrders();
   });
@@ -72,5 +68,13 @@ describe("User navigates to different tiles", function () {
 
   it("User navigates to Delayed Turn Around", function () {
     home.selectDelayedTurnAround();
+  });
+});
+
+describe("User opens the Report Print Queue from a tile", function () {
+  it("User navigates to UnPrinted Results", function () {
+    home.selectUnPrintedResults();
+    cy.url().should("include", "/ReportPrintQueue");
+    cy.contains("h2", "Report Print Queue").should("be.visible");
   });
 });
