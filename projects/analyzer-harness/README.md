@@ -107,16 +107,17 @@ A stack for recording the evidence videos starts with
 `seed-analyzers.sh --networks-only`, which creates the mock's transports and no
 analyzer: every analyzer on screen is one a story sets up.
 
-The `harness-demo-video` Playwright project records every harness story tagged
-`@evidence` and nothing else. The tags on a story also say where its video
-belongs: one lane per analyzer type (`@astm`, `@hl7`, `@file`) and one stage
-(`@admin`, `@setup`, `@results`, `@exceptions`). After
-`npm run pw:test:harness-demo-video` (which also writes the JSON report),
-`npm run pw:evidence-videos` turns each recording into one MP4 under
-`evidence-videos/<lane>/<stage>/`, with the stretches in which nothing on screen
-changes cut short, and lists them in `index.json`. A story without its three
-tags, or without a passing recording, stops the packager. The videos are
-attached to the pull request, never committed.
+The `evidence-video` Playwright project records every story tagged `@evidence`.
+The tags on an analyzer story also say where its video belongs: one lane per
+analyzer type (`@astm`, `@hl7`, `@file`) and one stage (`@admin`, `@setup`,
+`@results`, `@exceptions`). After
+`npm run pw:test:evidence-video -- --grep "@astm|@hl7|@file"` (which also writes
+`test-results/evidence-video.json`), the openelis-review-tooling packager,
+`evidence/package.mjs --site analyzers`, turns each recording into one MP4 under
+`<lane>/<stage>/`, with the stretches in which nothing on screen changes cut
+short. A story without its three tags, or without a passing recording, stops the
+packager. The videos are published or attached to the pull request, never
+committed.
 
 To remove this worktree's data explicitly:
 

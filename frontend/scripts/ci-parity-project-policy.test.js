@@ -28,7 +28,7 @@ describe("analyzer harness Playwright project policy", () => {
 
   test("reserves video mode for the final demo flow", () => {
     expect(runPolicy('resolve_harness_playwright_project "video" ""')).toBe(
-      "harness-demo-video",
+      "evidence-video",
     );
   });
 

@@ -28,15 +28,15 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 Tests are organized into projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project                | Purpose                                         | CI                  | Infra Required          |
-| ---------------------- | ----------------------------------------------- | ------------------- | ----------------------- |
-| `core-app`             | Core foundational UI verification               | Every PR (2 shards) | Build stack             |
-| `core-demo`            | UI workflow demos on build stack + SQL fixtures | Every PR (2 shards) | Build stack             |
-| `core-demo-video`      | `core-demo` + slowMo + video                    | Local only          | Build stack             |
-| `harness-foundational` | Analyzer catalog and mapping UI verification    | Every PR (2 shards) | Full harness + traffic  |
-| `harness-demo`         | Guided setup and assembled result UI stories    | Every PR (2 shards) | Full harness + traffic  |
-| `harness-demo-video`   | Final assembled analyzer story + video          | Acceptance evidence | Full harness + traffic  |
-| `harness-manual-only`  | Real-device / operator-managed hardware checks  | Local only          | Full harness + hardware |
+| Project                | Purpose                                          | CI                  | Infra Required          |
+| ---------------------- | ------------------------------------------------ | ------------------- | ----------------------- |
+| `core-app`             | Core foundational UI verification                | Every PR (2 shards) | Build stack             |
+| `core-demo`            | UI workflow demos on build stack + SQL fixtures  | Every PR (2 shards) | Build stack             |
+| `core-demo-video`      | `core-demo` + slowMo + video                     | Local only          | Build stack             |
+| `harness-foundational` | Analyzer catalog and mapping UI verification     | Every PR (2 shards) | Full harness + traffic  |
+| `harness-demo`         | Guided setup and assembled result UI stories     | Every PR (2 shards) | Full harness + traffic  |
+| `evidence-video`       | Every `@evidence` story, core or harness + video | Acceptance evidence | Stack the stories need  |
+| `harness-manual-only`  | Real-device / operator-managed hardware checks   | Local only          | Full harness + hardware |
 
 ## CI Workflows
 
@@ -60,7 +60,7 @@ produces a merged HTML report artifact:
 | Policy         | Where         | Video        | Projects                                                |
 | -------------- | ------------- | ------------ | ------------------------------------------------------- |
 | **CI**         | Every PR      | Off          | core-app, core-demo, harness-foundational, harness-demo |
-| **Acceptance** | Local or demo | Off, then on | focused harness-demo, then harness-demo-video           |
+| **Acceptance** | Local or demo | Off, then on | focused harness-demo, then evidence-video               |
 
 No `workflow_dispatch` manual workflows exist for Playwright. Video recording
 is local-only via the `-video` project variants.
@@ -106,13 +106,13 @@ Analyzer rows used by harness tests are created via REST API seeding:
 `core-demo` and `harness-demo` are UI-only stories. The analyzer result
 stories use API-created clinical prerequisites and native mock traffic, so they
 run in `harness-foundational`; they still perform setup review and result
-acceptance through the visible UI. `harness-demo-video` records the same
+acceptance through the visible UI. `evidence-video` records the same
 registered UI setup and integrated result stories with their original assertions.
 
 The ordinary CI harness run covers the M1-M2 catalog, mapping and M4 integrated
 result stories through `harness-foundational`, then M3 guided setup through
 `harness-demo`. The setup-to-result stories can run alone through `pw:test:harness-results`.
-Record those same tests with `harness-demo-video` after checking the screenshots,
+Record those same tests with `evidence-video` after checking the screenshots,
 trace, console output and runtime state.
 
 Allowed in demo stories:
@@ -261,7 +261,7 @@ push, run the full command alongside GitHub.
 Feature walkthroughs use one editorial format in addition to the shared
 recording mechanics:
 
-1. Record at 16:9 through a registered `*-demo-video` project; target 45-90
+1. Record at 16:9 through `core-demo-video` or `evidence-video`; target 45-90
    seconds for one milestone.
 2. Open with a 3.5-4.5 second full-screen card: ticket/milestone eyebrow,
    literal feature title, and one-line outcome. Use `demo.chapter()` so the
@@ -289,17 +289,19 @@ Functional readiness and assertions must continue to use observable state.
 cd frontend
 # Core stack (e.g. OGC-284 barcode stories)
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo-video
-# Full harness demo story via parity bootstrap
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo-video
+# Every @evidence story; narrow it with --grep, for example @microbiology
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:evidence-video -- --grep @microbiology
 # Videos saved to frontend/test-results/<test-name>/video.webm
 ```
 
-The harness video command runs the existing `harness-demo-video` Playwright
-project against the configured development stack. It preserves the project's
+The evidence video command runs the `evidence-video` Playwright project
+against the configured development stack and writes
+`test-results/evidence-video.json`, which the openelis-review-tooling
+`evidence/package.mjs` turns into one MP4 per story. It preserves the project's
 video pacing and presentation. Export `scripts/dev-stack env` before entering
 `frontend`; recording does not create a separate stack or load CI fixtures.
 
-Customize slowMo: `PLAYWRIGHT_SLOWMO=300 npm run pw:test:harness-demo-video`
+Customize slowMo: `PLAYWRIGHT_SLOWMO=300 npm run pw:test:evidence-video`
 
 Build a distributable report bundle from the latest run:
 
@@ -310,7 +312,7 @@ npm run pw:bundle-report
 
 `pw:bundle-report` merges `blob-report` into `playwright-report` when needed, then zips
 `playwright-report` + `test-results` into a timestamped
-`analyzer-harness-demo-video-playwright-report-*.zip`.
+`evidence-video-playwright-report-*.zip`.
 Use `PW_BUNDLE_REPORT_PREFIX=<custom-prefix>` to override the filename prefix.
 
 ### `videoPause` Pattern
@@ -323,18 +325,18 @@ import { videoPause } from "../helpers/video-pause";
 
 test("my demo test", async ({ page }, testInfo) => {
   await page.click("#submit");
-  await videoPause(page, 1000, testInfo); // No-op except in *-demo-video
+  await videoPause(page, 1000, testInfo); // No-op outside the video projects
 });
 ```
 
 - `videoPause(page, ms, testInfo)` — pauses only in `core-demo-video` /
-  `harness-demo-video`
+  `evidence-video`
 - `showTitleCard(page, title, subtitle, durationMs, testInfo)` — DOM overlay,
   skips in non-video projects
 - `showStepCard(page, stepNumber, description, durationMs, testInfo)` — step
   banner overlay, skips in non-video projects
 - `createDemoPresentation(page, testInfo)` — shared presentation wrapper so a
-  single UI-only scenario can run in both its normal and `*-demo-video` modes;
+  single UI-only scenario can run in both its normal and video projects;
   prefer its structured `chapter()` method for opening, story, and completion
   cards. A narrated story uses `intro()` (stays up while off-screen preparation
   runs), `caption()` (a narration line that survives page loads), `highlight()`
@@ -367,6 +369,6 @@ test("my demo test", async ({ page }, testInfo) => {
 | `TEST_PASS`             | —                    | Login password (required)                                                    |
 | `ANALYZER_INGRESS_USER` | `TEST_USER`, `admin` | Dedicated account with the Analyser Import role for analyzer-event scenarios |
 | `ANALYZER_INGRESS_PASS` | `TEST_PASS`, fixture | Password for the dedicated analyzer-ingress account                          |
-| `PLAYWRIGHT_SLOWMO`     | `500`                | Milliseconds of slowMo for `*-demo-video` projects                           |
-| `PLAYWRIGHT_VIDEO`      | `off`                | Global video override (prefer `*-demo-video` projects)                       |
+| `PLAYWRIGHT_SLOWMO`     | `500`                | Milliseconds of slowMo for the video projects                                |
+| `PLAYWRIGHT_VIDEO`      | `off`                | Global video override (prefer the video projects)                            |
 | `CI`                    | —                    | Set by GitHub Actions; enables CI mode settings in Playwright config         |

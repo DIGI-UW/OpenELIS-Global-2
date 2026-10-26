@@ -34,10 +34,11 @@ Keep flows granular. Prefer one behavior per test.
 - `core-app`: core UI behavior without analyzer harness dependencies
 - `core-demo` / `core-demo-video`: workflow demos on the build stack only
 - `harness`: analyzer infrastructure behavior requiring bridge/simulator/plugins
-- `harness-demo` / `harness-demo-video`: analyzer story demos (CI + local video)
+- `harness-demo`: analyzer story demos (CI)
+- `evidence-video`: every `@evidence` story, core or harness, recorded locally
 
-Recordings should run in `*-demo-video`; routine assertions should still pass in
-non-video projects.
+Recordings should run in `core-demo-video` or `evidence-video`; routine
+assertions should still pass in non-video projects.
 
 ## 4) Author + Register
 
@@ -57,9 +58,10 @@ For each planned flow:
 
 ## 6) Recording Safety Rules
 
-- Use `videoPause(page, ms, testInfo)` for pacing; no-op outside `*-demo-video`.
+- Use `videoPause(page, ms, testInfo)` for pacing; no-op outside the video
+  projects.
 - Use `showTitleCard/showStepCard` overlays only through helper APIs so they
-  no-op outside `*-demo-video`.
+  no-op outside the video projects.
 - Do not gate assertions on video-only behavior.
 
 ## 7) Artifact Verification

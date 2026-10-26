@@ -46,8 +46,7 @@ const stamp = new Date()
   .replace("T", "-")
   .slice(0, 15);
 const bundlePrefix =
-  process.env.PW_BUNDLE_REPORT_PREFIX ||
-  "analyzer-harness-demo-video-playwright-report";
+  process.env.PW_BUNDLE_REPORT_PREFIX || "evidence-video-playwright-report";
 const zipName = `${bundlePrefix}-${stamp}.zip`;
 
 execFileSync("zip", ["-r", zipName, "playwright-report", "test-results"], {

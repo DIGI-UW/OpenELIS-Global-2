@@ -14,7 +14,7 @@ export type TitleCardOptions = {
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
- * No-op when not recording video (i.e., outside *-demo-video projects, or
+ * No-op when not recording video (outside core-demo-video and evidence-video, or
  * without the test's TestInfo), as is every helper here.
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
  * Presentation only: do not use title cards to gate readiness or assertions.

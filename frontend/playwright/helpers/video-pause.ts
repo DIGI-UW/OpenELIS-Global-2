@@ -1,10 +1,10 @@
 import { Page, TestInfo } from "@playwright/test";
 
-const VIDEO_PROJECTS = new Set(["core-demo-video", "harness-demo-video"]);
+const VIDEO_PROJECTS = new Set(["core-demo-video", "evidence-video"]);
 
 /**
  * Returns true when the current test is recording video (`core-demo-video`,
- * `harness-demo-video`).
+ * `evidence-video`).
  * Used to gate video-only behaviors: pacing pauses, title cards, step banners.
  */
 export function isVideoProject(testInfo: TestInfo): boolean {
