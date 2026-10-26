@@ -113,7 +113,7 @@ public class MicroReportingRule extends BaseObject<String> {
     }
 
     public String noteFor(String interpretation) {
-        if (note == null || noteWhen == null) {
+        if (!active || note == null || noteWhen == null) {
             return null;
         }
         return switch (noteWhen) {

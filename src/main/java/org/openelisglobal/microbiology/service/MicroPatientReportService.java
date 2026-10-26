@@ -80,7 +80,6 @@ public class MicroPatientReportService {
     public MicroPatientReportForm preview(String caseId) {
         var c = cases.get(caseId).orElseThrow();
         var form = new MicroPatientReportForm();
-        var ruleNotes = new ArrayList<MicroPatientReportForm.Note>();
         form.caseId = caseId;
         form.labUnitId = c.getLabUnitId();
         form.labUnitName = units.get(c.getLabUnitId()).getLocalizedName();
@@ -145,14 +144,10 @@ public class MicroPatientReportService {
                         reading.getId(), run.getId(), reading.getRawText(), reading.getUnits(),
                         MicroAstReportChoiceService.interpretation(reading), standard.getAuthority(),
                         run.getBreakpointVersion(), reading.getMatchedBy(), run.getClinicalContext()));
-                var ruleId = agent.map(MicroAstRunAntibiotic::getReportRuleId).orElse(null);
-                if (ruleId != null) {
-                    var rule = reportingRules.get(ruleId).orElse(null);
-                    var text = rule == null ? null : rule.noteFor(MicroAstReportChoiceService.interpretation(reading));
-                    if (text != null) {
-                        ruleNotes.add(new MicroPatientReportForm.Note(text, null, null, "DRUG", reading.getId(), true));
-                    }
-                }
+                agent.map(MicroAstRunAntibiotic::getReportRuleId).flatMap(reportingRules::get)
+                        .map(rule -> rule.noteFor(MicroAstReportChoiceService.interpretation(reading)))
+                        .ifPresent(text -> form.notes
+                                .add(new MicroPatientReportForm.Note(text, null, null, "DRUG", reading.getId(), true)));
             }
             rows.sort(Comparator.comparing(MicroPatientReportForm.Susceptibility::agent));
             form.validatedResults += rows.size();
@@ -161,12 +156,11 @@ public class MicroPatientReportService {
                     selectedReadings.size()));
         }
         form.classification = dst.evaluate(caseId).classification;
-        form.notes = new ArrayList<>(
+        form.notes.addAll(0,
                 timeline.getReportNotes(caseId).stream().filter(n -> includedNoteTarget(form, n.targetType, n.targetId))
                         .map(n -> new MicroPatientReportForm.Note(n.note, n.performedByDisplay, n.occurredAt,
-                                n.targetType, n.targetId))
+                                n.targetType, n.targetId, false))
                         .toList());
-        form.notes.addAll(ruleNotes);
         return form;
     }
 
