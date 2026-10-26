@@ -247,6 +247,46 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
         calculations.add(calculationService.save(calculation).getId());
     }
 
+    private void sumOfBothComponents(long resultingTest) {
+        Calculation calculation = new Calculation();
+        calculation.setName("CalcTarget sum " + resultingTest + " " + System.nanoTime());
+        calculation.setSampleId(Integer.valueOf(specimen));
+        calculation.setTestId((int) resultingTest);
+        calculation.setActive(true);
+        calculation.setToggled(true);
+        List<Operation> operations = new ArrayList<>();
+        int order = 0;
+        for (String component : new String[] { componentA, null, componentB }) {
+            Operation operation = new Operation();
+            operation.setOrder(order++);
+            if (component == null) {
+                operation.setType(Operation.OperationType.MATH_FUNCTION);
+                operation.setValue("+");
+            } else {
+                operation.setType(Operation.OperationType.TEST_RESULT);
+                operation.setValue(String.valueOf(PCR_TEST));
+                operation.setSampleId(Integer.valueOf(specimen));
+                operation.setComponentId(component);
+            }
+            operations.add(operation);
+        }
+        calculation.setOperations(operations);
+        calculations.add(calculationService.save(calculation).getId());
+    }
+
+    private long enterGlucoseByHand(String value) {
+        long id = next("result_seq");
+        jdbc.update(
+                "INSERT INTO clinlims.result (id, analysis_id, test_result_id, result_type, value, lastupdated)"
+                        + " VALUES (?, ?, (SELECT id FROM clinlims.test_result WHERE test_id = ?), 'N', ?, NOW())",
+                id, glucoseAnalysis, GLUCOSE_TEST, value);
+        return id;
+    }
+
+    private String valueOf(long resultId) {
+        return jdbc.queryForObject("SELECT value FROM clinlims.result WHERE id = ?", String.class, resultId);
+    }
+
     private void runCalculations() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             Map<String, List<String>> reflexes = new HashMap<>();
@@ -342,5 +382,33 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
                 0.0);
         assertEquals("validation shows when the value was entered", Boolean.TRUE, jdbc.queryForObject(
                 "SELECT entry_date IS NOT NULL FROM clinlims.analysis WHERE id = ?", Boolean.class, glucoseAnalysis));
+    }
+
+    /**
+     * Component B is never measured on this order, so the rule cannot run. Once the
+     * binding was read back it no longer listed B at all, and changing A ran the
+     * rule without it and blanked the value entered by hand.
+     */
+    @Test
+    public void anOperandNeverMeasuredLeavesTheResultEnteredByHand() {
+        sumOfBothComponents(GLUCOSE_TEST);
+        runCalculations();
+        long entered = enterGlucoseByHand("10");
+
+        jdbc.update("UPDATE clinlims.result SET value = '15' WHERE id = ?", operandResult);
+        runCalculations();
+
+        assertEquals("10", valueOf(entered));
+    }
+
+    @Test
+    public void aBlankCalculationNeverReplacesTheResultEnteredByHand() {
+        calculation(GLUCOSE_TEST, null, "*", "2");
+        long entered = enterGlucoseByHand("10");
+        jdbc.update("UPDATE clinlims.result SET value = '' WHERE id = ?", operandResult);
+
+        runCalculations();
+
+        assertEquals("10", valueOf(entered));
     }
 }
