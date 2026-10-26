@@ -435,7 +435,12 @@ export default function AstRulesPage() {
           modalHeading={t("interpretationRule")}
           primaryButtonText={t("save")}
           secondaryButtonText={t("cancel")}
-          onRequestClose={() => !busy && setInterpretationDraft(null)}
+          onRequestClose={() => {
+            if (!busy) {
+              setInterpretationDraft(null);
+              setInterpretationError(false);
+            }
+          }}
           onRequestSubmit={saveInterpretation}
           primaryButtonDisabled={busy}
         >

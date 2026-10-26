@@ -499,7 +499,18 @@ export default function CaseAstWorkspace({
                                           <Tag type="teal">
                                             {t("expertRule")}
                                           </Tag>
-                                          <p>{reading.overrideReason}</p>
+                                          <p>
+                                            {intl.formatMessage(
+                                              {
+                                                id: "microbiology.m6.expertRuleLine",
+                                              },
+                                              {
+                                                organism: isolate.organism,
+                                                antibiotic:
+                                                  agent.antibioticName,
+                                              },
+                                            )}
+                                          </p>
                                         </>
                                       ) : (
                                         reading.overrideInterpretation && (

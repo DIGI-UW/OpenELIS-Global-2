@@ -146,7 +146,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
                 performedBy);
         MicroIsolate updated = isolateDAO.update(isolate);
         if (!java.util.Objects.equals(previous.getOrganismId(), isolate.getOrganismId())) {
-            astService.reapplyReportingRulesForIsolate(isolate.getId(), performedBy);
+            astService.reapplyRulesForIsolate(isolate.getId(), performedBy);
         }
         panelAssignments.assignDefault(updated, performedBy);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,

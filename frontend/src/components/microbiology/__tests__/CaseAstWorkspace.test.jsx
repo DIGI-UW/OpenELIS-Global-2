@@ -639,9 +639,6 @@ it("marks an expert rule override and asks for the identification to be checked"
   show(data);
   expect(await screen.findByText("Expert rule")).toBeInTheDocument();
   expect(
-    screen.getByText("Expert rule: Klebsiella, Ampicillin always R"),
-  ).toBeInTheDocument();
-  expect(
     screen.getByText(
       "A measured result contradicts an expected resistance. Check the identification, then acknowledge before review.",
     ),
@@ -649,4 +646,25 @@ it("marks an expert rule override and asks for the identification to be checked"
   expect(
     screen.getByRole("button", { name: "Confirm identification" }),
   ).toBeInTheDocument();
+});
+
+it("words an expert rule override from the rule, not from the stored audit reason", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(
+    await screen.findByText(
+      "Escherichia coli is always resistant to Ampicillin",
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText("Expert rule: Klebsiella, Ampicillin always R"),
+  ).not.toBeInTheDocument();
 });

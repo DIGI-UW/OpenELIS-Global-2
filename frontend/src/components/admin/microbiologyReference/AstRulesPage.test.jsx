@@ -345,3 +345,23 @@ it("asks for an organism or a group and names the interpretation rule in its err
     ),
   ).toBeInTheDocument();
 });
+
+it("clears an interpretation rule error when its dialog closes", async () => {
+  saveInterpretationRule.mockRejectedValue(new Error("Bad Request"));
+  show();
+  const add = await screen.findByRole("button", {
+    name: "Add interpretation rule",
+  });
+  fireEvent.click(add);
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  await within(dialog).findByText(
+    "The interpretation rule could not be saved.",
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  fireEvent.click(add);
+  const reopened = await screen.findByRole("dialog");
+  expect(
+    within(reopened).queryByText("The interpretation rule could not be saved."),
+  ).not.toBeInTheDocument();
+});

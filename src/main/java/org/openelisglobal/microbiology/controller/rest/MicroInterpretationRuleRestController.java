@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroInterpretationRuleForm;
 import org.openelisglobal.microbiology.service.MicroInterpretationRuleService;
-import org.openelisglobal.microbiology.valueholder.MicroInterpretationRule;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,18 +24,6 @@ public class MicroInterpretationRuleRestController extends MicrobiologyRestContr
 
     @PostMapping
     public MicroInterpretationRuleForm save(@RequestBody MicroInterpretationRuleForm form, HttpServletRequest request) {
-        return toForm(service.save(form, authenticatedUserId(request)));
-    }
-
-    private MicroInterpretationRuleForm toForm(MicroInterpretationRule rule) {
-        MicroInterpretationRuleForm form = new MicroInterpretationRuleForm();
-        form.id = rule.getId();
-        form.antibioticId = rule.getAntibioticId();
-        form.organismId = rule.getOrganismId();
-        form.organismGroup = rule.getOrganismGroup();
-        form.interpretation = rule.getInterpretation();
-        form.source = rule.getSource();
-        form.active = rule.isActive();
-        return form;
+        return service.toForm(service.save(form, authenticatedUserId(request)));
     }
 }

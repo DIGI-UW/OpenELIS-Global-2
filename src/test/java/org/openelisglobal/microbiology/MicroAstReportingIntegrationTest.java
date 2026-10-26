@@ -895,6 +895,59 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
                         && a.note != null && a.note.startsWith("Expert rule")));
     }
 
+    @Test
+    public void aValidatorOverrideReplacesTheExpertRuleOverride() {
+        alwaysResistant(reference.organism().getId(), null);
+        var run = start(isolate);
+        var entered = enter(run, "4");
+        ast.overrideReading(entered.get(1).getId(), MicroAstInterpretation.SUSCEPTIBLE,
+                "Reference laboratory confirmed susceptible", validator);
+        em.flush();
+        em.clear();
+        assertNull(readings.get(entered.get(1).getId()).orElseThrow().getOverrideRuleId());
+        ast.reviewRun(run.getId(), validator);
+    }
+
+    @Test
+    public void aContradictionAfterTheIdentificationWasConfirmedBlocksReviewAgain() {
+        var run = start(isolate);
+        enter(run, "4");
+        ast.acknowledgeAnalyzerFlags(run.getId(), "Identification confirmed", validator);
+        alwaysResistant(reference.organism().getId(), null);
+        ast.recordReading(run.getId(), drugB, new BigDecimal("4"), writer);
+        var blocked = assertThrows(MicroAstConflictException.class, () -> ast.reviewRun(run.getId(), validator));
+        assertEquals("AST_INTRINSIC_RESISTANCE_UNVERIFIED", blocked.getMessage());
+    }
+
+    @Test
+    public void reidentifyingAppliesTheNewOrganismsInterpretationRules() {
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "KLE", null);
+        alwaysResistant(klebsiella.getId(), null);
+        var entered = enter(start(isolate), "4");
+        assertNull(readings.get(entered.get(1).getId()).orElseThrow().getOverrideInterpretation());
+        reidentify(klebsiella.getId());
+        assertEquals("RESISTANT", readings.get(entered.get(1).getId()).orElseThrow().getOverrideInterpretation());
+    }
+
+    @Test
+    public void reidentifyingAwayFromTheRulesOrganismClearsItsOverride() {
+        alwaysResistant(reference.organism().getId(), null);
+        var entered = enter(start(isolate), "4");
+        reidentify(fixtures.createOrganism("Escherichia " + UUID.randomUUID(), "ECO", null).getId());
+        var reading = readings.get(entered.get(1).getId()).orElseThrow();
+        assertNull(reading.getOverrideInterpretation());
+        assertNull(reading.getOverrideRuleId());
+        assertNull(reading.getOverrideReason());
+    }
+
+    private void reidentify(String organismId) {
+        isolateService.updateIdentification(isolate, organismId, null, MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                MicroIsolateIdentificationStatus.CONFIRMED, fixtures.createMethodId(), null, "Corrected identification",
+                new Timestamp(System.currentTimeMillis() - 1000), validator);
+        em.flush();
+        em.clear();
+    }
+
     private MicroInterpretationRule alwaysResistant(String organismId, String organismGroup) {
         var form = new org.openelisglobal.microbiology.form.MicroInterpretationRuleForm();
         form.antibioticId = drugB;
