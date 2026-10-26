@@ -209,6 +209,57 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void reportingRuleFileIsAppliedWholeOrNotAtAll() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.11", "ATOMIC");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,,,,,\n" + "SPECIES," + organism.getDisplayName()
+                + ",ANY,NO_SUCH_AGENT,Missing,REPORT,,,,,,,,\n");
+        assertTrue(reloadReportingRules(false).hasErrors());
+        assertTrue(rulesFor(antibioticId).isEmpty());
+    }
+
+    @Test
+    public void exportKeepsInactiveRulesAndCustomSourcesThroughAReimport() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.12", "ROUNDTRIP");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,REPORT,,,,YES,,,,\n");
+        assertFalse(reloadReportingRules(false).hasErrors());
+        var rule = rulesFor(antibioticId).get(0);
+        rule.active = false;
+        reportingRules.save(rule, "1");
+        var resistant = interpretationRules.getRules().stream().filter(r -> antibioticId.equals(r.antibioticId))
+                .findFirst().orElseThrow();
+        resistant.source = "EUCAST expert rules";
+        interpretationRules.save(resistant, "1");
+
+        writeReportingRules(reportingRules.exportCsv());
+        assertFalse(reloadReportingRules(true).hasErrors());
+        assertFalse(rulesFor(antibioticId).get(0).active);
+        assertEquals(2, reportingRules.getHistory(rule.id).size());
+        assertEquals("EUCAST expert rules", interpretationRules.getRules().stream()
+                .filter(r -> resistant.id.equals(r.id)).findFirst().orElseThrow().source);
+    }
+
+    @Test
+    public void isolateLevelNoteRowsAreSkippedNotFatal() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.13", "ISOLATE");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName()
+                + ",ANY,(isolate),Isolate note,,,,,,Therapy is not usually indicated,ALWAYS,,\n" + "SPECIES,"
+                + organism.getDisplayName() + ",ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+        assertFalse(reloadReportingRules(false).hasErrors());
+        assertEquals(1, rulesFor(antibioticId).size());
+    }
+
+    @Test
     public void reportingRuleFileWithAnUnknownSampleTypeFails() throws Exception {
         var fixture = new ReferencePackageFixture("2099.10", "BADRULE");
         load(fixture);

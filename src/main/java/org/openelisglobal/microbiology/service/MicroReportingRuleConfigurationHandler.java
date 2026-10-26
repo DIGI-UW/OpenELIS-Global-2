@@ -59,9 +59,15 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
 
     @Override
     protected void load(List<CsvRow> rows, RowTransactionRunner transaction, CsvLoadSummary summary, String fileName) {
-        for (CsvRow row : rows) {
-            LoadedRow<String> outcome = transaction.run(() -> loadRow(row));
-            summary.record(outcome, getClass().getSimpleName(), row.lineNumber());
+        List<LoadedRow<String>> outcomes = transaction.run(() -> {
+            List<LoadedRow<String>> results = new ArrayList<>();
+            for (CsvRow row : rows) {
+                results.add(loadRow(row));
+            }
+            return results;
+        });
+        for (int i = 0; i < outcomes.size(); i++) {
+            summary.record(outcomes.get(i), getClass().getSimpleName(), rows.get(i).lineNumber());
         }
     }
 
@@ -79,6 +85,9 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         }
         String organismId = organism == null ? null : organism.getId();
         Set<String> sampleTypeIds = sampleTypeIds(row);
+        if ("(isolate)".equalsIgnoreCase(row.get("agent"))) {
+            return LoadedRow.skipped("Isolate-level notes are not supported");
+        }
         String code = required(row, "agent");
         MicroAntibiotic antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code).orElseThrow(
                 () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code));
@@ -115,7 +124,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             form.noteWhen = noteWhen;
             form.addAutomatically = row.has("add_automatically") ? "YES".equalsIgnoreCase(row.get("add_automatically"))
                     : existing != null && existing.addAutomatically;
-            form.active = true;
+            form.active = !"NO".equalsIgnoreCase(row.get("active"));
             created |= existing == null;
             changed |= existing != null && !sameReportingRule(existing, form);
             id = reportingRules.save(form, SYS_USER_ID).getId();
@@ -129,7 +138,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             form.organismId = organismId;
             form.organismGroup = organismGroup;
             form.interpretation = "RESISTANT";
-            form.source = ALWAYS_RESISTANT_SOURCE;
+            form.source = existing == null ? ALWAYS_RESISTANT_SOURCE : existing.source;
             form.active = true;
             created |= existing == null;
             changed |= existing != null && !sameInterpretationRule(existing, form);
@@ -241,7 +250,8 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
     }
 
     private static boolean sameReportingRule(MicroReportingRuleForm existing, MicroReportingRuleForm wanted) {
-        return Boolean.TRUE.equals(existing.active) && Objects.equals(existing.reportBehavior, wanted.reportBehavior)
+        return Boolean.TRUE.equals(existing.active) == Boolean.TRUE.equals(wanted.active)
+                && Objects.equals(existing.reportBehavior, wanted.reportBehavior)
                 && Objects.equals(existing.cascadeCondition, wanted.cascadeCondition)
                 && Objects.equals(existing.note, wanted.note) && Objects.equals(existing.noteWhen, wanted.noteWhen)
                 && Objects.equals(existing.clinicalContext, wanted.clinicalContext)
