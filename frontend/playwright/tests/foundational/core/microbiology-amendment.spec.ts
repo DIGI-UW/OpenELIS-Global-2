@@ -76,30 +76,42 @@ test.describe("Microbiology final-report amendments", () => {
       await accordionButton(page, "Isolates").click();
       await expect(page).toHaveURL(/section=isolates$/);
       await page.getByRole("button", { name: "Reidentify" }).click();
-      await page
-        .getByLabel("Organism")
-        .selectOption({ label: "Klebsiella pneumoniae (UAT)" });
-      await page.getByLabel("ID method").selectOption("MALDI_TOF");
-      const updateButton = page.getByRole("button", {
-        name: "Save identification",
+      const dialog = page.getByRole("dialog");
+      const organism = dialog.getByRole("combobox", {
+        name: "Organism",
+        exact: true,
+      });
+      await organism.fill("Klebsiella pneumoniae (UAT)");
+      await organism.press("ArrowDown");
+      await organism.press("Enter");
+      await dialog
+        .getByLabel("ID method", { exact: true })
+        .selectOption({ label: "UAT micro culture" });
+      const updateButton = dialog.getByRole("button", {
+        name: "Save",
+        exact: true,
       });
       await expect(updateButton).toBeDisabled();
-      await page
+      await dialog
         .getByLabel("Re-identification reason")
         .fill("MALDI-TOF repeat corrected the organism");
-      await expect(updateButton).toBeEnabled();
       await updateButton.click();
+      await expect(dialog).toHaveCount(0, { timeout: LONG_TIMEOUT });
+      const isolate = page.locator('[data-testid^="isolate-"]');
       await expect(
-        page.getByText(/ISO-1: Klebsiella pneumoniae \(UAT\)/),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-      await expect(page.getByText("Identification history")).toBeVisible();
-      await expect(
-        page
-          .getByTestId("microbiology-isolates-card")
-          .getByText(
-            "Escherichia coli to Klebsiella pneumoniae (UAT): MALDI-TOF repeat corrected the organism",
-          ),
+        isolate.getByRole("heading", { name: /ISO-1 — Klebsiella pneumoniae/ }),
       ).toBeVisible();
+      await isolate
+        .getByRole("button", { name: "Identification history", exact: true })
+        .click();
+      const history = isolate.getByRole("table", {
+        name: "Identification history",
+      });
+      await expect(history).toContainText("Escherichia coli");
+      await expect(history).toContainText("Klebsiella pneumoniae (UAT)");
+      await expect(history).toContainText(
+        "MALDI-TOF repeat corrected the organism",
+      );
     });
 
     await test.step("Release and inspect immutable report versions", async () => {
@@ -143,11 +155,11 @@ test.describe("Microbiology final-report amendments", () => {
         timeout: LONG_TIMEOUT,
       });
       await expect(
-        page.getByRole("button", { name: "Edit isolate" }),
-      ).toBeDisabled();
+        page.getByRole("button", { name: "Reidentify", exact: true }),
+      ).toHaveCount(0);
       await expect(
-        page.getByRole("button", { name: "Create isolate" }),
-      ).toBeDisabled();
+        page.getByRole("button", { name: "Pick isolate", exact: true }),
+      ).toHaveCount(0);
     });
   });
 });

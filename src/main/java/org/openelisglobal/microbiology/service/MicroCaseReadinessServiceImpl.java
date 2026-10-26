@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroIsolateWorkspaceServiceImpl isolateWorkspace;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
@@ -41,7 +43,7 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = microCase.getId();
         readiness.finalReleaseReady = true;
-        List<MicroIsolate> isolates = isolateDAO.getByCaseId(caseId);
+        List<MicroIsolate> isolates = isolateDAO.getWorkspace(caseId);
         boolean noGrowthReady = "NO_GROWTH_READY".equals(microCase.getStage());
         if (isolates.isEmpty() && !noGrowthReady) {
             readiness.finalReleaseReady = false;
@@ -52,6 +54,10 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
             readiness.blockers.add("CRITICAL_FOLLOW_UP_REQUIRED");
         }
         for (MicroIsolate isolate : isolates) {
+            if (isolateWorkspace.mismatch(isolate) && isolate.getMismatchAcknowledgedAt() == null) {
+                readiness.finalReleaseReady = false;
+                addBlocker(readiness, "REPORTED_IDENTIFICATION_MISMATCH");
+            }
             List<MicroAstRun> activeRuns = activeAstRuns(isolate.getId());
             List<MicroAstRun> reviewedRuns = activeRuns.stream()
                     .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();

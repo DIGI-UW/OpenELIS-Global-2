@@ -26,6 +26,10 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
     private final MicroCaseMembershipService membership;
     private final MicrobiologyCaseAccessService access;
     private final TestSectionService units;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.referral.dao.ReferralDAO referrals;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO cultureRows;
     private final TypeOfSampleService sampleTypes;
     private final MicroCaseActivityDAO activities;
 
@@ -88,6 +92,9 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         }
         f.canWrite = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_RESULTS);
         f.canValidate = access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
+        f.referred = referrals
+                .getWorkspaceReferrals(cultureRows.getSources(id).stream().map(si -> si.getId()).distinct().toList())
+                .stream().anyMatch(r -> r.getStatus() != null && !r.getStatus().isTerminal());
         for (var si : searchDAO.getSamples(id)) {
             MicroCaseSpecimenForm s = new MicroCaseSpecimenForm();
             s.id = si.getId();

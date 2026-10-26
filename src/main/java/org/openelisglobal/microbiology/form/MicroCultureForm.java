@@ -8,7 +8,7 @@ public class MicroCultureForm {
     public String id, parentId, sourceSampleItemId, subculturePurpose, containerIdentifier;
     public Long mediumItemId, lotId;
     public String mediumName, lotNumber, atmosphereId, atmosphereName, durationUnit, outcome, outcomeBy, positiveSource;
-    public boolean notTracked, checkDue, finalReadDue, overdue, canEditInoculatedAt;
+    public boolean receivedIsolate, notTracked, checkDue, finalReadDue, overdue, canEditInoculatedAt;
     public BigDecimal temperature, duration, checkIntervalHours, loopVolume, timeToPositivityHours;
     public Timestamp inoculatedAt, positiveAt, outcomeAt, incubationEnds, nextCheck;
     public List<Reading> readings;

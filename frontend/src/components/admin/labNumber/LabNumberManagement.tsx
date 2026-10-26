@@ -136,8 +136,8 @@ function LabNumberManagement() {
   const fetchCurrentLabNumberNoIncrement = () => {
     getFromOpenElisServer(
       "/rest/SampleEntryGenerateScanProvider?noIncrement=true",
-      (res: { status?: boolean; body: string }) => {
-        if (res.status) {
+      (res: { status?: boolean; body: string } | undefined) => {
+        if (res?.status) {
           if (configurationProperties.AccessionFormat != "ALPHANUM") {
             setCurrentLabNumForDisplay(res.body);
           } else {
@@ -164,8 +164,8 @@ function LabNumberManagement() {
   const fetchLegacyLabNumNoIncrement = () => {
     getFromOpenElisServer(
       "/rest/SampleEntryGenerateScanProvider?noIncrement=true&format=SITEYEARNUM",
-      (res: { status?: boolean; body: string }) => {
-        if (res.status) {
+      (res: { status?: boolean; body: string } | undefined) => {
+        if (res?.status) {
           setSampleLabNumForDisplay(res.body);
         }
       },

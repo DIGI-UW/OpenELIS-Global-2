@@ -142,7 +142,7 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     );
     await setup.getByRole("button", { name: "Cancel" }).click();
 
-    await createAndIdentifyMicrobiologyIsolate(page, seeded.organismId!);
+    await createAndIdentifyMicrobiologyIsolate(page, seeded);
     await openMicrobiologyCaseSection(page, "Manual AST");
     const ast = page.getByTestId("microbiology-ast-card");
     await expect(

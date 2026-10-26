@@ -27,6 +27,9 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M4-PARENT");
+  await dialog
+    .getByLabel("Medium", { exact: true })
+    .selectOption(String(seeded.mediumItemId!));
   await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
   await firstOption(dialog.getByLabel("Atmosphere", { exact: true }));
   await expect(
