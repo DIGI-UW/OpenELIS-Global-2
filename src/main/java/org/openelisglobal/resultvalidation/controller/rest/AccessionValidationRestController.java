@@ -621,6 +621,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 List<Result> results = new ArrayList<>();
                 if (areResults(analysisItem)) {
+                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     results = createResultFromAnalysisItem(analysisItem, analysis, analysis, noteUpdateList,
                             deletableList);
                     for (Result result : results) {

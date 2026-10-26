@@ -40,6 +40,7 @@ import org.openelisglobal.sample.service.SampleEditService;
 import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SampleEditFormValidator;
+import org.openelisglobal.sample.validator.SampleOrderPartiesValidator;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -59,7 +60,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -236,6 +239,13 @@ public class SampleEditRestController extends BaseSampleEntryController {
         formValidator.validate(form, result);
         if (result.hasErrors()) {
             saveErrors(result);
+            List<FieldError> partyErrors = SampleOrderPartiesValidator.partyErrors(result);
+            if (!partyErrors.isEmpty()) {
+                BeanPropertyBindingResult refused = new BeanPropertyBindingResult(form, "form");
+                partyErrors.forEach(refused::addError);
+                return ResponseEntity.badRequest().body(
+                        SamplePatientEntryRestController.buildErrorBody(refused, "Validation failed", null, false));
+            }
         }
         boolean sampleChanged = sampleUtil.accessionNumberChanged(form);
         Sample updatedSample = null;

@@ -51,11 +51,21 @@ vi.mock("../common/CustomNotification", () => ({
 
 vi.mock("../addOrder/AddOrder", () => ({ default: () => <div /> }));
 vi.mock("./EditSample", () => ({ default: () => <div /> }));
-vi.mock("./EditOrderEntryAdditionalQuestions", () => ({
-  default: () => <div />,
-}));
+vi.mock("./EditOrderEntryAdditionalQuestions", async () => {
+  const { useEffect } = await vi.importActual("react");
+  /** Like the real step, it writes back the form it mounted with. */
+  const ProgramStep = ({ orderFormValues, setOrderFormValues }) => {
+    useEffect(() => {
+      setOrderFormValues({ ...orderFormValues });
+    }, []);
+    return <div />;
+  };
+  return { default: ProgramStep };
+});
 vi.mock("../addOrder/OrderSuccessMessage", () => ({ default: () => <div /> }));
-vi.mock("../common/PatientHeader", () => ({ default: () => <div /> }));
+vi.mock("../common/PatientHeader", () => ({
+  default: () => <div data-testid="patient-header" />,
+}));
 vi.mock("../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 vi.mock("../addOrder/Index", () => ({
   sampleObject: { tests: [], sampleXML: {} },
@@ -427,10 +437,54 @@ describe("ModifyOrder — a lab number with no order (OGC-1192 walk)", () => {
     expect(screen.queryByRole("button", { name: /next/i })).toBeNull();
   });
 
-  test("a failed load leaves the page standing", () => {
+  test("a failed load says the order could not be loaded instead of an empty wizard", () => {
     const getLoad = mountAndCaptureLoad();
 
     expect(() => act(() => getLoad()(undefined))).not.toThrow();
+    expect(screen.getByText(messages["order.load.error"])).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1543 — the wizard was usable on the empty default form while the order
+// was still loading, and the late load replaced the form, dropping what the
+// user had already ticked. Nothing is editable until the order has loaded.
+// ---------------------------------------------------------------------------
+describe("ModifyOrder — nothing is editable before the order loads (OGC-1543)", () => {
+  beforeEach(() => utilsMock.getFromOpenElisServer.mockReset());
+
+  test("while the order loads, the page shows loading and offers no step or Next", () => {
+    mountAndCaptureLoad();
+
+    expect(screen.getByText(messages["label.loading"])).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /next/i })).toBeNull();
+    expect(screen.queryByText(messages["sample.add.action"])).toBeNull();
+  });
+
+  test("the patient header waits for the order, so it never shows blank details (OGC-1543 review)", () => {
+    const getLoad = mountAndCaptureLoad();
+    expect(screen.queryByTestId("patient-header")).toBeNull();
+
+    act(() => getLoad()(orderPayload()));
+
+    expect(screen.getByTestId("patient-header")).toBeInTheDocument();
+  });
+
+  test("once the order loads, the wizard opens and loading is gone", () => {
+    const getLoad = mountAndCaptureLoad();
+    act(() => getLoad()(orderPayload()));
+
+    expect(screen.queryByText(messages["label.loading"])).toBeNull();
     expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument();
+  });
+
+  test("the first step opens on the loaded order, so its copy keeps the lab number", () => {
+    const getLoad = mountAndCaptureLoad();
+    getLoad()(orderPayload());
+
+    const steps = document.querySelectorAll(".cds--progress-step-button");
+    expect(steps.length).toBe(3);
+    steps.forEach((step) => expect(step).not.toBeDisabled());
   });
 });
