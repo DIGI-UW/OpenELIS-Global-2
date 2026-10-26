@@ -39,4 +39,14 @@ public class MicroAstRunAntibioticDAOImpl extends BaseDAOImpl<MicroAstRunAntibio
         query.setParameter("antibioticId", antibioticId);
         return query.uniqueResultOptional();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstRunAntibiotic> getByAntibioticId(String antibioticId) {
+        Query<MicroAstRunAntibiotic> query = entityManager.unwrap(Session.class).createQuery(
+                "from MicroAstRunAntibiotic r where r.antibioticId = :antibioticId order by r.id",
+                MicroAstRunAntibiotic.class);
+        query.setParameter("antibioticId", antibioticId);
+        return query.list();
+    }
 }
