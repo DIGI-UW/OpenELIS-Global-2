@@ -10,4 +10,13 @@ describe("formatMicrobiologyEnum", () => {
     expect(formatMicrobiologyEnum("QC_FAILED", intl)).toBe("QC Failed");
     expect(formatMicrobiologyEnum("AST_REVIEWED", intl)).toBe("AST Reviewed");
   });
+  it("calls a partial report Partial, never Preliminary or Interim", () => {
+    for (const value of [
+      "PRELIM_RELEASED",
+      "PRELIMINARY_RELEASED",
+      "PRELIMINARY_REPORT_RELEASED",
+    ]) {
+      expect(formatMicrobiologyEnum(value, intl)).toMatch(/^Partial/);
+    }
+  });
 });
