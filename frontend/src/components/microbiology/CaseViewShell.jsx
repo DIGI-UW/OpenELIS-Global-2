@@ -330,10 +330,12 @@ export default function CaseViewShell({
                   </Column>
                   <Column lg={4} md={4} sm={4}>
                     <p className="cds--label">{t("common.status")}</p>
-                    <CaseStatusTags
-                      caseStatus={detail.caseStatus}
-                      statusTags={detail.statusTags}
-                    />
+                    <div>
+                      <CaseStatusTags
+                        caseStatus={detail.caseStatus}
+                        statusTags={detail.statusTags}
+                      />
+                    </div>
                     <p>{t(getMicrobiologyCurrentStep(detail).labelId)}</p>
                     {!detail.canWrite && (
                       <p>

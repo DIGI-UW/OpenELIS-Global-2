@@ -207,3 +207,19 @@ describe("AmendmentHistoryPanel", () => {
     expect(screen.getByRole("heading", { name: "Amendments" })).toHaveFocus();
   });
 });
+
+it("calls a partial report version Partial", async () => {
+  const service = baseService();
+  service.getCaseReportVersions.mockResolvedValue([
+    {
+      id: "version-1",
+      versionNumber: 1,
+      releaseType: "PRELIMINARY",
+      content: "Partial content",
+      report: null,
+    },
+  ]);
+  renderPanel({ service });
+  expect(await screen.findByText("Partial")).toBeInTheDocument();
+  expect(screen.queryByText("Preliminary")).not.toBeInTheDocument();
+});

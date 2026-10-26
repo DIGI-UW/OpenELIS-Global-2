@@ -107,6 +107,7 @@ const AmendmentHistoryPanel = ({
   const versionNumberFor = (versionId) =>
     reportVersions.find((version) => version.id === versionId)?.versionNumber;
 
+  // i18n-keys: microbiology.m6.release.*
   return (
     <section
       className="microbiology-card"
@@ -314,7 +315,9 @@ const AmendmentHistoryPanel = ({
                     <Tag
                       type={version.releaseType === "FINAL" ? "blue" : "purple"}
                     >
-                      {formatMicrobiologyEnum(version.releaseType, intl)}
+                      {intl.formatMessage({
+                        id: `microbiology.m6.release.${version.releaseType}`,
+                      })}
                     </Tag>
                   </div>
                   {version.report ? (
