@@ -405,6 +405,15 @@ export default function CaseAstWorkspace({
                         hideCloseButton
                       />
                     )}
+                    {run.intrinsicContradiction &&
+                      !run.analyzerFlagsAcknowledgedAt && (
+                        <InlineNotification
+                          kind="warning"
+                          lowContrast
+                          title={t("intrinsicContradiction")}
+                          hideCloseButton
+                        />
+                      )}
                     <TableContainer>
                       <Table
                         size="sm"
@@ -477,8 +486,17 @@ export default function CaseAstWorkspace({
                                           )}
                                         </p>
                                       )}
-                                      {reading.overrideInterpretation && (
-                                        <Tag type="purple">{t("manual")}</Tag>
+                                      {reading.overrideRuleId ? (
+                                        <>
+                                          <Tag type="teal">
+                                            {t("expertRule")}
+                                          </Tag>
+                                          <p>{reading.overrideReason}</p>
+                                        </>
+                                      ) : (
+                                        reading.overrideInterpretation && (
+                                          <Tag type="purple">{t("manual")}</Tag>
+                                        )
                                       )}
                                       <br />
                                       {t("breakpoint")}: {run.breakpointVersion}{" "}
@@ -593,7 +611,8 @@ export default function CaseAstWorkspace({
                         run.status === "QC_FAILED" &&
                         button("qc-override", isolate, run)}
                       {canValidate &&
-                        run.analyzerExpertFlags &&
+                        (run.analyzerExpertFlags ||
+                          run.intrinsicContradiction) &&
                         !run.analyzerFlagsAcknowledgedAt &&
                         button("acknowledge", isolate, run)}
                     </div>

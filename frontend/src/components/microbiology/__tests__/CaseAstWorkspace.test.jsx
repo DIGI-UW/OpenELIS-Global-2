@@ -624,3 +624,29 @@ it("shows a reporting rule's note under its drug, tagged as coming from the rule
   expect(await screen.findByText("Consider meropenem")).toBeInTheDocument();
   expect(screen.getByText("From rule")).toBeInTheDocument();
 });
+
+it("marks an expert rule override and asks for the identification to be checked", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.intrinsicContradiction = true;
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(await screen.findByText("Expert rule")).toBeInTheDocument();
+  expect(
+    screen.getByText("Expert rule: Klebsiella, Ampicillin always R"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "A measured result contradicts an expected resistance. Check the identification, then acknowledge before review.",
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: t("action.acknowledge") }),
+  ).toBeInTheDocument();
+});

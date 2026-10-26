@@ -47,6 +47,7 @@ public class MicroAstRunForm {
     public Timestamp analyzerCompletedAt;
     public String analyzerMessageCodes;
     public String sourceEventId;
+    public boolean intrinsicContradiction;
     public List<MicroAstRunAntibioticForm> orderedAntibiotics = new ArrayList<>();
     public List<MicroAstReadingForm> readings = new ArrayList<>();
 }

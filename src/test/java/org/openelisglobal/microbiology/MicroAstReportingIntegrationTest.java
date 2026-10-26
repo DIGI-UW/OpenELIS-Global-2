@@ -50,6 +50,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroAstResponseService astResponses;
     @Autowired
+    private MicroInterpretationRuleService interpretationRules;
+    @Autowired
     private MicroAstService ast;
     @Autowired
     private MicroIsolateService isolateService;
@@ -820,6 +822,80 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         var drug = astResponses.toRunFormWithReadings(runs.get(run.getId()).orElseThrow()).orderedAntibiotics.stream()
                 .filter(a -> drugB.equals(a.antibioticId)).findFirst().orElseThrow();
         assertNull(drug.ruleNote);
+    }
+
+    @Test
+    public void alwaysResistantRuleOverridesAMeasuredSusceptibleReadingAndBlocksReviewUntilChecked() {
+        var rule = alwaysResistant(reference.organism().getId(), null);
+        var run = start(isolate);
+        var entered = enter(run, "4");
+        var reading = readings.get(entered.get(1).getId()).orElseThrow();
+        assertEquals("SUSCEPTIBLE", reading.getInterpretation());
+        assertEquals("RESISTANT", reading.getOverrideInterpretation());
+        assertEquals(rule.getId(), reading.getOverrideRuleId());
+        var blocked = assertThrows(MicroAstConflictException.class, () -> ast.reviewRun(run.getId(), validator));
+        assertEquals("AST_INTRINSIC_RESISTANCE_UNVERIFIED", blocked.getMessage());
+        ast.acknowledgeAnalyzerFlags(run.getId(), "Identification confirmed", validator);
+        ast.reviewRun(run.getId(), validator);
+        em.flush();
+        em.clear();
+        var printed = reports.preview(c.getId()).isolates.get(0).susceptibilities().stream()
+                .filter(r -> drugB.equals(r.antibioticId())).findFirst().orElseThrow();
+        assertEquals("RESISTANT", printed.interpretation());
+    }
+
+    @Test
+    public void ruleOverrideIsRecordedAsAnExpertRuleInTheOverrideHistory() {
+        var rule = alwaysResistant(reference.organism().getId(), null);
+        var run = start(isolate);
+        enter(run, "4");
+        var history = ast.getOverrideHistoryForRun(run.getId());
+        assertEquals(1, history.size());
+        assertEquals(rule.getId(), history.get(0).ruleId);
+    }
+
+    @Test
+    public void validatorCanRevertAnExpertRuleOverride() {
+        alwaysResistant(reference.organism().getId(), null);
+        var run = start(isolate);
+        var entered = enter(run, "4");
+        ast.revertOverride(entered.get(1).getId(), "Confirmed susceptible by the reference laboratory", validator);
+        em.flush();
+        em.clear();
+        var reading = readings.get(entered.get(1).getId()).orElseThrow();
+        assertNull(reading.getOverrideInterpretation());
+        assertNull(reading.getOverrideRuleId());
+    }
+
+    @Test
+    public void groupRuleOverridesASusceptibleReadingButLeavesAResistantOneAlone() {
+        groupOrganism("Enterobacterales");
+        alwaysResistant(null, "Enterobacterales");
+        var susceptible = enter(start(isolate), "4");
+        assertEquals("RESISTANT", readings.get(susceptible.get(1).getId()).orElseThrow().getOverrideInterpretation());
+        var resistantRun = start(isolate("ISO-2"));
+        var resistant = enter(resistantRun, "64");
+        assertNull(readings.get(resistant.get(1).getId()).orElseThrow().getOverrideInterpretation());
+        ast.reviewRun(resistantRun.getId(), validator);
+    }
+
+    @Test
+    public void interpretationRuleTargetsAnOrganismOrAGroup() {
+        assertThrows(IllegalArgumentException.class, () -> alwaysResistant(null, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> alwaysResistant(reference.organism().getId(), "Enterobacterales"));
+    }
+
+    private MicroInterpretationRule alwaysResistant(String organismId, String organismGroup) {
+        var form = new org.openelisglobal.microbiology.form.MicroInterpretationRuleForm();
+        form.antibioticId = drugB;
+        form.organismId = organismId;
+        form.organismGroup = organismGroup;
+        form.interpretation = "RESISTANT";
+        form.source = "EUCAST expected phenotypes";
+        var saved = interpretationRules.save(form, writer);
+        em.flush();
+        return saved;
     }
 
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
