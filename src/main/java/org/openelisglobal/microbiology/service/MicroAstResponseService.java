@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.*;
+import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
 import org.openelisglobal.microbiology.form.*;
 import org.openelisglobal.microbiology.valueholder.*;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroAstResponseService {
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.microbiology.dao.MicroAntibioticDAO antibiotics;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroReportingRuleDAO reportingRules;
     private final MicroAstService astService;
 
     public MicroAstResponseService(MicroAstService astService) {
@@ -87,6 +90,7 @@ public class MicroAstResponseService {
         form.analyzerCompletedAt = run.getAnalyzerCompletedAt();
         form.analyzerMessageCodes = run.getAnalyzerMessageCodes();
         form.sourceEventId = run.getSourceEventId();
+        var readings = astService.getReadingsForRun(run.getId());
         for (MicroAstRunAntibiotic ordered : astService.getOrderedAntibioticsForRun(run.getId())) {
             MicroAstRunAntibioticForm orderedForm = new MicroAstRunAntibioticForm();
             orderedForm.antibioticId = ordered.getAntibioticId();
@@ -95,6 +99,14 @@ public class MicroAstResponseService {
             orderedForm.tier = ordered.getTier();
             orderedForm.reportBehavior = ordered.getReportBehavior();
             orderedForm.reportRuleId = ordered.getReportRuleId();
+            if (orderedForm.reportRuleId != null) {
+                var interpretation = readings.stream()
+                        .filter(reading -> ordered.getAntibioticId().equals(reading.getAntibioticId()))
+                        .reduce((first, second) -> second).map(MicroAstReportChoiceService::interpretation)
+                        .orElse(null);
+                var rule = reportingRules.get(orderedForm.reportRuleId).orElse(null);
+                orderedForm.ruleNote = rule == null ? null : rule.noteFor(interpretation);
+            }
             orderedForm.reported = ordered.isReported();
             orderedForm.reportManual = ordered.isReportManual();
             form.orderedAntibiotics.add(orderedForm);

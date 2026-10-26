@@ -64,7 +64,7 @@ public final class MicroPatientReportRows {
             String id) {
         for (var note : notes)
             if (Objects.equals(type, note.targetType()) && Objects.equals(id, note.targetId()))
-                text(rows, note.text() + " — " + safe(note.author()));
+                text(rows, note.fromRule() ? note.text() : note.text() + " — " + safe(note.author()));
     }
 
     private static void heading(List<MicroPatientReportRow> rows, String key) {
