@@ -7,6 +7,7 @@ import org.openelisglobal.microbiology.form.MicroReportingRuleHistoryForm;
 import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
 import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleSettingsForm;
+import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroReportingRuleService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +17,11 @@ import org.springframework.web.bind.annotation.*;
 @PreAuthorize("hasRole('ADMIN')")
 public class MicroReportingRuleRestController extends MicrobiologyRestControllerSupport {
     private final MicroReportingRuleService service;
+    private final MicroAstService astService;
 
-    public MicroReportingRuleRestController(MicroReportingRuleService service) {
+    public MicroReportingRuleRestController(MicroReportingRuleService service, MicroAstService astService) {
         this.service = service;
+        this.astService = astService;
     }
 
     @GetMapping
@@ -33,7 +36,7 @@ public class MicroReportingRuleRestController extends MicrobiologyRestController
 
     @PostMapping("/preview")
     public MicroReportingRulePreviewResultForm preview(@RequestBody MicroReportingRulePreviewForm form) {
-        return service.preview(form);
+        return astService.previewReportingRules(form);
     }
 
     @GetMapping("/{id}/history")

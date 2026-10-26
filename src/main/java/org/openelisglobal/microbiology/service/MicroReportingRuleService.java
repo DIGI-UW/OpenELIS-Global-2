@@ -13,20 +13,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
-import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
-import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
-import org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleHistoryDAO;
 import org.openelisglobal.microbiology.form.MicroReportingRuleForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleHistoryForm;
-import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
-import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleSettingsForm;
-import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
-import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
-import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroReportingRule;
 import org.openelisglobal.microbiology.valueholder.MicroReportingRuleHistory;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -50,9 +42,6 @@ public class MicroReportingRuleService {
     private final MicroReportingRuleHistoryDAO history;
     private final MicroAntibioticDAO antibiotics;
     private final MicroOrganismDAO organisms;
-    private final MicroInterpretationRuleDAO interpretationRules;
-    private final MicroAstPanelDAO panels;
-    private final MicroAstPanelAntibioticDAO panelAntibiotics;
     private final TypeOfSampleService sampleTypes;
     private final SystemUserService systemUsers;
     private final MicroBreakpointService breakpointService;
@@ -61,17 +50,13 @@ public class MicroReportingRuleService {
     private final ObjectMapper json = new ObjectMapper();
 
     public MicroReportingRuleService(MicroReportingRuleDAO rules, MicroReportingRuleHistoryDAO history,
-            MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms, MicroInterpretationRuleDAO interpretationRules,
-            MicroAstPanelDAO panels, MicroAstPanelAntibioticDAO panelAntibiotics, TypeOfSampleService sampleTypes,
+            MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms, TypeOfSampleService sampleTypes,
             SystemUserService systemUsers, MicroBreakpointService breakpointService, SiteInformationService settings,
             MicroAstService astService) {
         this.rules = rules;
         this.history = history;
         this.antibiotics = antibiotics;
         this.organisms = organisms;
-        this.interpretationRules = interpretationRules;
-        this.panels = panels;
-        this.panelAntibiotics = panelAntibiotics;
         this.sampleTypes = sampleTypes;
         this.systemUsers = systemUsers;
         this.breakpointService = breakpointService;
@@ -177,58 +162,6 @@ public class MicroReportingRuleService {
             form.sampleTypeNames = sampleTypeNames;
             return form;
         }).toList();
-    }
-
-    public MicroReportingRulePreviewResultForm preview(MicroReportingRulePreviewForm request) {
-        String organismId = trimToNull(request == null ? null : request.organismId);
-        if (organismId == null) {
-            throw new IllegalArgumentException("REPORTING_RULE_PREVIEW_ORGANISM_REQUIRED");
-        }
-        MicroOrganism organism = organisms.get(organismId)
-                .orElseThrow(() -> new IllegalArgumentException("REPORTING_RULE_PREVIEW_ORGANISM_REQUIRED"));
-        String organismGroup = organism.getOrganismGroup();
-        String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
-        String sampleTypeId = trimToNull(request.sampleTypeId);
-        String defaultPanelId = trimToNull(organism.getDefaultAstPanelId());
-        MicroReportingRulePreviewResultForm result = new MicroReportingRulePreviewResultForm();
-        result.defaultPanelName = defaultPanelId == null ? null
-                : panels.get(defaultPanelId).map(MicroAstPanel::getName).orElse(null);
-        List<MicroReportingRulePreviewForm.Reading> readings = request.readings == null ? List.of() : request.readings;
-        for (MicroReportingRulePreviewForm.Reading reading : readings) {
-            String antibioticId = reading == null ? null : trimToNull(reading.antibioticId);
-            if (antibioticId == null) {
-                continue;
-            }
-            MicroReportingRulePreviewResultForm.Row row = new MicroReportingRulePreviewResultForm.Row();
-            row.antibioticId = antibioticId;
-            String antibioticName = antibiotics.get(antibioticId).map(antibiotic -> antibiotic.getDisplayName())
-                    .orElse(null);
-            row.antibioticName = antibioticName == null ? antibioticId : antibioticName;
-            row.measured = reading.interpretation;
-            row.interpretation = reading.interpretation;
-            interpretationRules.findBest(antibioticId, organismId, organismGroup)
-                    .filter(rule -> rule.getInterpretation() != null
-                            && !rule.getInterpretation().equals(reading.interpretation))
-                    .ifPresent(rule -> {
-                        row.interpretation = rule.getInterpretation();
-                        row.expertRule = MicroAstServiceImpl.expertRuleReason(organism, antibioticId, antibioticName);
-                    });
-            var reportingRule = rules.findBest(antibioticId, organismId, organismGroup, sampleTypeId, clinicalContext);
-            if (reportingRule.isPresent()) {
-                MicroReportingRule rule = reportingRule.get();
-                row.reportBehavior = rule.getReportBehavior();
-                row.reportRuleId = rule.getId();
-                row.note = rule.noteFor(row.interpretation);
-            } else {
-                row.reportBehavior = defaultPanelId == null ? "ALWAYS"
-                        : panelAntibiotics.getByPanelId(defaultPanelId).stream()
-                                .filter(panelRow -> antibioticId.equals(panelRow.getAntibioticId()))
-                                .map(MicroAstPanelAntibiotic::getReportBehavior).findFirst().orElse("ALWAYS");
-            }
-            row.reported = MicroAstServiceImpl.defaultReported(row.reportBehavior, row.interpretation);
-            result.rows.add(row);
-        }
-        return result;
     }
 
     public List<MicroReportingRuleHistoryForm> getHistory(String ruleId) {
