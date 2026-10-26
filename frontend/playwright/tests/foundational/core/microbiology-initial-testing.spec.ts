@@ -24,8 +24,11 @@ test.describe("Microbiology initial testing", () => {
     await expect(fields).toHaveCount(2);
     await fields.nth(0).fill("12.5");
     await expect(
+      table.getByText(/saved as entered and reported rounded/),
+    ).toBeVisible();
+    await expect(
       table.getByRole("button", { name: "Save results", exact: true }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     await fields.nth(0).fill("12");
     await fields.nth(1).fill("34");
     await table
