@@ -886,6 +886,15 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
                 () -> alwaysResistant(reference.organism().getId(), "Enterobacterales"));
     }
 
+    @Test
+    public void expertRuleOverrideIsOnTheCaseTimeline() {
+        alwaysResistant(reference.organism().getId(), null);
+        enter(start(isolate), "4");
+        assertTrue(
+                timeline.getTimeline(c.getId()).stream().anyMatch(a -> "AST_READING_OVERRIDDEN".equals(a.activityType)
+                        && a.note != null && a.note.startsWith("Expert rule")));
+    }
+
     private MicroInterpretationRule alwaysResistant(String organismId, String organismGroup) {
         var form = new org.openelisglobal.microbiology.form.MicroInterpretationRuleForm();
         form.antibioticId = drugB;

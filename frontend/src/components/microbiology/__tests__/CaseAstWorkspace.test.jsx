@@ -647,6 +647,6 @@ it("marks an expert rule override and asks for the identification to be checked"
     ),
   ).toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: t("action.acknowledge") }),
+    screen.getByRole("button", { name: "Confirm identification" }),
   ).toBeInTheDocument();
 });

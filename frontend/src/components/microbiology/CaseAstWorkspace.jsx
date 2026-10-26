@@ -265,7 +265,15 @@ export default function CaseAstWorkspace({
       kind="ghost"
       onClick={() => open(action, isolate, run, reading, antibioticId)}
     >
-      {t(`action.${action}`)}
+      {t(
+        `action.${
+          action === "acknowledge" &&
+          run.intrinsicContradiction &&
+          !run.analyzerExpertFlags
+            ? "confirmIdentification"
+            : action
+        }`,
+      )}
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
