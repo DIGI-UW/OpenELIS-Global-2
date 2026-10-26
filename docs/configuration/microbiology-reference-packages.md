@@ -36,7 +36,7 @@ convention. Imports validate supported measurements and exact storage precision.
 Reporting rule files carry one rule per row:
 
 ```text
-organism_level,organism,specimen_group,agent,agent_name,report_default,cascade_when,trigger_agents,report_as,always_report_R,comment,comment_when,sop_section,note,indication,cascade_condition,add_automatically
+organism_level,organism,specimen_group,agent,agent_name,report_default,cascade_when,trigger_agents,report_as,always_report_R,comment,comment_when,sop_section,note,indication,cascade_condition,add_automatically,active
 ```
 
 Columns may appear in any order and unknown columns are ignored.
@@ -51,12 +51,17 @@ by a space. `comment` becomes the note, with `comment_when` one of `ALWAYS`,
 `NON_MENINGITIS`. `add_automatically: YES` marks a cascade rule to add its
 antibiotic without a click; when the column is absent the existing value is
 kept. `always_report_R: YES` also upserts an always-resistant interpretation
-rule for the same species or group and antibiotic.
+rule for the same species or group and antibiotic. `active: NO` keeps the rule
+inactive; blank or `YES` saves it active. An always-resistant rule that already
+exists keeps its own source. `(isolate)` rows are skipped, because isolate-level
+notes are not supported yet.
 
 Each row upserts the rule whose antibiotic, organism or group, sample types and
-indication match, and saves it active. A reload of an unchanged file writes no
-revision history. Rules absent from the file are left alone, and the AST rules
-page exports the same format, so an export re-imports without changes.
+indication match, and saves it active unless `active: NO`. A reporting rule file
+is applied whole or not at all: a bad row rolls back every row before it. A
+reload of an unchanged file writes no revision history. Rules absent from the
+file are left alone, and the AST rules page exports the same format, so an
+export re-imports without changes.
 
 ## Import, preview and reload
 

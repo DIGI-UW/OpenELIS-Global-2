@@ -43,7 +43,7 @@ public class MicroReportingRuleService {
     private static final String SETTING = "microbiologyReportingRulesStandard";
     private static final String EXPORT_HEADER = "organism_level,organism,specimen_group,agent,agent_name,"
             + "report_default,cascade_when,trigger_agents,report_as,always_report_R,comment,comment_when,"
-            + "sop_section,note,indication,cascade_condition,add_automatically";
+            + "sop_section,note,indication,cascade_condition,add_automatically,active";
 
     private final MicroReportingRuleDAO rules;
     private final MicroReportingRuleHistoryDAO history;
@@ -195,7 +195,7 @@ public class MicroReportingRuleService {
                     whonetCode(rule.antibioticId), agentName, reportDefault(rule.reportBehavior), "", "", "",
                     alwaysResistant ? "YES" : "", nullToEmpty(rule.note), nullToEmpty(rule.noteWhen), "", "",
                     nullToEmpty(rule.clinicalContext), nullToEmpty(rule.cascadeCondition),
-                    rule.addAutomatically ? "YES" : ""));
+                    rule.addAutomatically ? "YES" : "", Boolean.TRUE.equals(rule.active) ? "" : "NO"));
         }
         for (MicroInterpretationRule rule : interpretations) {
             if (!rule.isActive() || !hasTarget(rule) || exportedPairs
@@ -207,7 +207,8 @@ public class MicroReportingRuleService {
                     : nullToEmpty(rule.getOrganismGroup());
             String agentName = antibiotics.get(rule.getAntibioticId()).map(MicroAntibiotic::getDisplayName).orElse("");
             csv.append(exportRow(rule.getOrganismId() != null ? "SPECIES" : "GROUP", organism, "ANY",
-                    whonetCode(rule.getAntibioticId()), agentName, "", "", "", "", "YES", "", "", "", "", "", "", ""));
+                    whonetCode(rule.getAntibioticId()), agentName, "", "", "", "", "YES", "", "", "", "", "", "", "",
+                    ""));
         }
         return csv.toString();
     }
