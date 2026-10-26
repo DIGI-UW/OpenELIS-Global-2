@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.apache.commons.csv.CSVFormat;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
@@ -36,6 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class MicroReportingRuleService {
+    static final Map<String, String> REPORT_DEFAULTS = Map.of("REPORT", "ALWAYS", "REPORT_IF_R",
+            "SUPPRESS_UNLESS_RESISTANT", "CASCADE", "CASCADE", "DONT_REPORT", "DONT_REPORT");
     private static final Set<String> REPORT_BEHAVIORS = Set.of("ALWAYS", "SUPPRESS_UNLESS_RESISTANT", "CASCADE",
             "DONT_REPORT");
     private static final Set<String> NOTE_WHENS = Set.of("ALWAYS", "WHEN_R", "WHEN_S");
@@ -175,40 +178,36 @@ public class MicroReportingRuleService {
 
     public String exportCsv() {
         List<MicroInterpretationRule> interpretations = interpretationRules.getAll();
-        Set<String> resistantPairs = new HashSet<>();
+        Map<String, MicroInterpretationRule> activeInterpretationRules = new LinkedHashMap<>();
         for (MicroInterpretationRule rule : interpretations) {
-            if (rule.isActive() && "RESISTANT".equals(rule.getInterpretation()) && hasTarget(rule)) {
-                resistantPairs.add(pairKey(rule.getAntibioticId(), rule.getOrganismId(), rule.getOrganismGroup()));
+            if (rule.isActive()) {
+                activeInterpretationRules.putIfAbsent(
+                        pairKey(rule.getAntibioticId(), rule.getOrganismId(), rule.getOrganismGroup()), rule);
             }
         }
         StringBuilder csv = new StringBuilder(EXPORT_HEADER).append('\n');
-        Set<String> exportedPairs = new HashSet<>();
         for (MicroReportingRuleForm rule : getRules()) {
             boolean species = rule.organismId != null;
             boolean group = rule.organismGroup != null;
-            String organism = species ? nullToEmpty(rule.organismName) : nullToEmpty(rule.organismGroup);
-            String agentName = nullToEmpty(rule.antibioticName);
+            String organism = species ? rule.organismName : rule.organismGroup;
+            String agentName = rule.antibioticName;
             String pair = species || group ? pairKey(rule.antibioticId, rule.organismId, rule.organismGroup) : null;
-            boolean alwaysResistant = pair != null && resistantPairs.contains(pair) && exportedPairs.add(pair);
-            csv.append(exportRow(species ? "SPECIES" : group ? "GROUP" : "ANY", organism,
+            boolean alwaysResistant = pair != null && activeInterpretationRules.remove(pair) != null;
+            csv.append(CSVFormat.DEFAULT.format(species ? "SPECIES" : group ? "GROUP" : "ANY", organism,
                     rule.sampleTypeNames.isEmpty() ? "ANY" : String.join(";", rule.sampleTypeNames),
                     whonetCode(rule.antibioticId), agentName, reportDefault(rule.reportBehavior), "", "", "",
-                    alwaysResistant ? "YES" : "", nullToEmpty(rule.note), nullToEmpty(rule.noteWhen), "", "",
-                    nullToEmpty(rule.clinicalContext), nullToEmpty(rule.cascadeCondition),
-                    rule.addAutomatically ? "YES" : "", Boolean.TRUE.equals(rule.active) ? "" : "NO"));
+                    alwaysResistant ? "YES" : "", rule.note, rule.noteWhen, "", "", rule.clinicalContext,
+                    rule.cascadeCondition, rule.addAutomatically ? "YES" : "",
+                    Boolean.TRUE.equals(rule.active) ? "" : "NO")).append('\n');
         }
-        for (MicroInterpretationRule rule : interpretations) {
-            if (!rule.isActive() || !hasTarget(rule) || exportedPairs
-                    .contains(pairKey(rule.getAntibioticId(), rule.getOrganismId(), rule.getOrganismGroup()))) {
-                continue;
-            }
+        for (MicroInterpretationRule rule : activeInterpretationRules.values()) {
             String organism = rule.getOrganismId() != null
                     ? organisms.get(rule.getOrganismId()).map(MicroOrganism::getDisplayName).orElse("")
-                    : nullToEmpty(rule.getOrganismGroup());
+                    : rule.getOrganismGroup();
             String agentName = antibiotics.get(rule.getAntibioticId()).map(MicroAntibiotic::getDisplayName).orElse("");
-            csv.append(exportRow(rule.getOrganismId() != null ? "SPECIES" : "GROUP", organism, "ANY",
+            csv.append(CSVFormat.DEFAULT.format(rule.getOrganismId() != null ? "SPECIES" : "GROUP", organism, "ANY",
                     whonetCode(rule.getAntibioticId()), agentName, "", "", "", "", "YES", "", "", "", "", "", "", "",
-                    ""));
+                    "")).append('\n');
         }
         return csv.toString();
     }
@@ -281,13 +280,9 @@ public class MicroReportingRuleService {
         return form;
     }
 
-    private static boolean hasTarget(MicroInterpretationRule rule) {
-        return rule.getOrganismId() != null || rule.getOrganismGroup() != null;
-    }
-
     private static String pairKey(String antibioticId, String organismId, String organismGroup) {
         return organismId != null ? "species|" + antibioticId + "|" + organismId
-                : "group|" + antibioticId + "|" + nullToEmpty(organismGroup);
+                : "group|" + antibioticId + "|" + Objects.toString(organismGroup, "");
     }
 
     private String whonetCode(String antibioticId) {
@@ -298,30 +293,12 @@ public class MicroReportingRuleService {
         if (reportBehavior == null) {
             return "";
         }
-        return switch (reportBehavior) {
-        case "ALWAYS" -> "REPORT";
-        case "SUPPRESS_UNLESS_RESISTANT" -> "REPORT_IF_R";
-        case "CASCADE" -> "CASCADE";
-        case "DONT_REPORT" -> "DONT_REPORT";
-        default -> "";
-        };
-    }
-
-    private static String exportRow(String... values) {
-        return java.util.Arrays.stream(values).map(MicroReportingRuleService::quote)
-                .collect(java.util.stream.Collectors.joining(",")) + "\n";
-    }
-
-    private static String quote(String value) {
-        String text = nullToEmpty(value);
-        if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
-            return "\"" + text.replace("\"", "\"\"") + "\"";
+        for (Map.Entry<String, String> entry : REPORT_DEFAULTS.entrySet()) {
+            if (entry.getValue().equals(reportBehavior)) {
+                return entry.getKey();
+            }
         }
-        return text;
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
+        return "";
     }
 
     private String snapshot(MicroReportingRule rule) {
