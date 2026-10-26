@@ -75,6 +75,23 @@ const enter = (name, value) =>
     { target: { value } },
   );
 describe("case testing workspace", () => {
+  test("note errors stay visible while viewing the timeline", async () => {
+    const api = service();
+    api.addNote.mockRejectedValue(new Error("save failed"));
+    show(api);
+    await screen.findByText("Two-component assay");
+    fireEvent.change(screen.getByLabelText("Testing section"), {
+      target: { value: "HISTORY" },
+    });
+    fireEvent.change(screen.getByLabelText("New note"), {
+      target: { value: "Follow up" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    expect(
+      await screen.findByText(messages["microbiology.testing.saveError"]),
+    ).toBeVisible();
+  });
+
   test("rejected specimens are excluded from the test picker", async () => {
     const api = service();
     show(api, {
@@ -110,9 +127,18 @@ describe("case testing workspace", () => {
     api.placeIncoming = vi.fn().mockResolvedValue({});
     show(api);
     await screen.findByText("Two-component assay");
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "INCOMING" },
-    });
+    for (const name of [
+      "Initial testing",
+      "Culture",
+      "Isolates",
+      "AST / DST",
+      "Report and release",
+    ]) {
+      expect(screen.getByRole("button", { name, exact: true })).toBeVisible();
+    }
+    fireEvent.click(
+      screen.getByRole("button", { name: "Incoming results", exact: true }),
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Review placement" }),
     );
@@ -127,9 +153,9 @@ describe("case testing workspace", () => {
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Place result" }));
     await waitFor(() => expect(api.getTests).toHaveBeenCalledTimes(2));
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "ADDITIONAL" },
-    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Additional testing", exact: true }),
+    );
     expect(await screen.findByText("Placed assay")).toBeVisible();
     expect(screen.getByText("Awaiting validation")).toBeVisible();
     expect(screen.getByText(/12/)).toBeVisible();

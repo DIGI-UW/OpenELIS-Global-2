@@ -718,13 +718,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
         />
         <header className="microbiology-worklist__header">
           <div>
-            <p className="microbiology-worklist__eyebrow">
-              {intl.formatMessage({ id: "microbiology.worklist.sharedQueue" })}
-            </p>
             <h1>{intl.formatMessage({ id: "microbiology.worklist.title" })}</h1>
-            <p>
-              {intl.formatMessage({ id: "microbiology.worklist.subtitle" })}
-            </p>
           </div>
           <div className="microbiology-worklist__refresh-controls">
             {lastUpdatedAt !== null && (
@@ -755,44 +749,6 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
             </Tag>
           </div>
         </header>
-        {isAstGrain && (
-          <Stack orientation="horizontal" gap={3}>
-            {[
-              { grain: "", label: "microbiology.case.search" },
-              { grain: "bench", label: "microbiology.culture.title" },
-            ].map(({ grain, label }) => (
-              <Button
-                key={label}
-                kind="tertiary"
-                onClick={() => {
-                  const next = new URLSearchParams(location.search);
-                  const keys = [
-                    "from",
-                    "to",
-                    "status",
-                    "stage",
-                    "due",
-                    "specimen",
-                    "organism",
-                    "origin",
-                    "significance",
-                  ];
-                  if (keys.some((key) => next.has(key)))
-                    next.set("scopeFiltersReset", "true");
-                  keys.concat("page").forEach((key) => next.delete(key));
-                  if (grain) next.set("grain", grain);
-                  else next.delete("grain");
-                  history.push({
-                    pathname: location.pathname,
-                    search: next.toString(),
-                  });
-                }}
-              >
-                {intl.formatMessage({ id: label })}
-              </Button>
-            ))}
-          </Stack>
-        )}
         {scopeFiltersReset && (
           <InlineNotification
             kind="info"
@@ -828,6 +784,43 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
               })}
             />
           </ContentSwitcher>
+          <Stack orientation="horizontal" gap={3}>
+            {[
+              { grain: "cases", label: "microbiology.worklist.caseSearch" },
+              { grain: "bench", label: "microbiology.worklist.benchActions" },
+            ].map(({ grain, label }) => (
+              <Button
+                key={label}
+                size="sm"
+                kind="tertiary"
+                onClick={() => {
+                  const next = new URLSearchParams(location.search);
+                  const keys = [
+                    "from",
+                    "to",
+                    "status",
+                    "stage",
+                    "due",
+                    "specimen",
+                    "organism",
+                    "origin",
+                    "significance",
+                  ];
+                  if (keys.some((key) => next.has(key)))
+                    next.set("scopeFiltersReset", "true");
+                  keys.concat("page").forEach((key) => next.delete(key));
+                  if (grain) next.set("grain", grain);
+                  else next.delete("grain");
+                  history.push({
+                    pathname: location.pathname,
+                    search: next.toString(),
+                  });
+                }}
+              >
+                {intl.formatMessage({ id: label })}
+              </Button>
+            ))}
+          </Stack>
         </div>
         {hasLoadError && (
           <InlineNotification
@@ -847,16 +840,14 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
         >
           <div className="microbiology-worklist__section-heading">
             <div>
-              <h2 id="microbiology-worklist-summary-heading">
+              <h2
+                id="microbiology-worklist-summary-heading"
+                className="cds--visually-hidden"
+              >
                 {intl.formatMessage({
                   id: "microbiology.worklist.summary.title",
                 })}
               </h2>
-              <p>
-                {intl.formatMessage({
-                  id: "microbiology.worklist.summary.hint",
-                })}
-              </p>
             </div>
           </div>
           <div className="microbiology-worklist__summary-grid">
@@ -958,22 +949,6 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
               </div>
             </div>
             <>
-              <MultiSelect
-                id="ast-lab-unit"
-                titleText={intl.formatMessage({
-                  id: "microbiology.case.labUnit",
-                })}
-                label={intl.formatMessage({ id: "microbiology.case.allUnits" })}
-                items={labUnits}
-                itemToString={(u) => u?.value || ""}
-                selectedItems={(filters.labUnitIds || []).map(
-                  (id) =>
-                    labUnits.find((u) => u.id === id) || { id, value: id },
-                )}
-                onChange={({ selectedItems }) =>
-                  updateFilters({ labUnitIds: selectedItems.map((u) => u.id) })
-                }
-              />
               <MicrobiologySurveillanceFilters
                 state={filters}
                 filterOptions={worklist.filterOptions}
@@ -1010,6 +985,22 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
             </Button>
           </div>
           <div className="microbiology-worklist__filter-grid">
+            <MultiSelect
+              id="ast-lab-unit"
+              titleText={intl.formatMessage({
+                id: "microbiology.case.labUnit",
+              })}
+              label={intl.formatMessage({ id: "microbiology.case.allUnits" })}
+              items={labUnits}
+              itemToString={(u) => u?.value || ""}
+              selectedItems={(filters.labUnitIds || []).map(
+                (id) => labUnits.find((u) => u.id === id) || { id, value: id },
+              )}
+              onChange={({ selectedItems }) =>
+                updateFilters({ labUnitIds: selectedItems.map((u) => u.id) })
+              }
+            />
+
             {!isAstGrain && (
               <Select
                 id="microbiology-worklist-stage-filter"

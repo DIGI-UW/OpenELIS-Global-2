@@ -11,6 +11,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
   Button,
+  Accordion,
+  AccordionItem,
   Stack,
   Tile,
   Select,
@@ -698,6 +700,7 @@ export default function CaseTestingWorkspace({
           setEditor(null);
         }}
       >
+        <SelectItem value="" text={t("microbiology.culture.choose")} />
         <SelectItem value="INITIAL" text={t("microbiology.testing.initial")} />
         <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
         <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
@@ -721,163 +724,6 @@ export default function CaseTestingWorkspace({
           text={t("microbiology.testing.additional")}
         />
       </Select>
-      {placement === "AMENDMENT" && (
-        <AmendmentHistoryPanel
-          caseId={detail.id}
-          finalReleaseState={detail.finalReleaseState}
-          service={service}
-          canAmend={detail.canAmend}
-          onCaseUpdated={onCaseChanged}
-        />
-      )}
-      {placement === "CRITICAL" && (
-        <CriticalCommunicationPanel
-          key={`${detail.id}-${scanParams.get("action")}-${scanParams.get("targetType")}-${scanParams.get("targetId")}`}
-          onEntryComplete={() => onScopeChange?.("CRITICAL")}
-          caseId={detail.id}
-          sampleItemId={detail.samples?.[0]?.sampleItemId}
-          isolates={auxiliaryIsolates}
-          projectedResultIds={tests.flatMap((test) =>
-            test.components
-              .map((component) => component.resultId)
-              .filter(Boolean),
-          )}
-          entryTargetType={
-            scanParams.get("action") === "log-critical"
-              ? scanParams.get("targetType")
-              : ""
-          }
-          entryTargetId={
-            scanParams.get("action") === "log-critical"
-              ? scanParams.get("targetId")
-              : ""
-          }
-          service={service}
-          isReadOnly={!detail.canWrite}
-          onCaseUpdated={onCaseChanged}
-        />
-      )}
-      {placement === "NONCONFORMANCE" && detail.canWrite && (
-        <CaseNonconformancePanel
-          key={scanParams.get("action")}
-          mode={
-            scanParams.get("action") === "mark-lost"
-              ? "mark-lost"
-              : "report-nce"
-          }
-          isolates={auxiliaryIsolates}
-          caseId={detail.id}
-          service={service}
-          onComplete={() => {
-            refreshTesting();
-            onCaseChanged?.();
-            onScopeChange?.("HISTORY");
-            setPlacement("HISTORY");
-          }}
-          onCancel={() => {
-            onScopeChange?.("HISTORY");
-            setPlacement("HISTORY");
-          }}
-        />
-      )}
-      {placement === "INCOMING" && (
-        <CaseIncomingWorkspace
-          detail={detail}
-          service={service}
-          onChanged={refreshTesting}
-        />
-      )}
-      {placement === "AST" && (
-        <CaseAstWorkspace
-          entryAction={scanParams.get("action")}
-          selectedRunId={scanRow}
-          onEntryActionConsumed={() =>
-            onScopeChange?.("AST", {
-              ...(scanRow ? { row: scanRow } : {}),
-              ...(scanParams.get("astView")
-                ? { astView: scanParams.get("astView") }
-                : {}),
-            })
-          }
-          readOnly={scanParams.get("astView") === "reviewed"}
-          renderNotes={renderNotes}
-          detail={detail}
-          service={service}
-          onChanged={onCaseChanged}
-        />
-      )}
-      {placement === "REPORT" && (
-        <CaseReportWorkspace
-          detail={detail}
-          service={service}
-          onChanged={onCaseChanged}
-        />
-      )}
-      {placement === "CULTURE" && (
-        <CaseCultureWorkspace
-          entryAction={scanParams.get("action")}
-          onEntryActionConsumed={() => onScopeChange?.("CULTURE")}
-          onChanged={refreshTesting}
-          renderNotes={renderNotes}
-          detail={detail}
-          service={service}
-          selectedId={(routedScope === "CULTURE" && scanRow) || cultureId}
-          renderTests={renderTests}
-          onPickIsolate={(row) => {
-            setPickCultureId(row.id);
-            setPlacement("ISOLATES");
-          }}
-          onSelect={(row) => {
-            setCultureId(row.id);
-            setCultureSource({
-              ...row.source,
-              sampleTypeName: row.source?.specimenType,
-              tests: [],
-              panels: [],
-            });
-            setEditor(null);
-          }}
-          onChooseTests={(row, gramTest) => {
-            setCultureId(row.id);
-            setEditor(null);
-            setCultureSource({
-              ...row.source,
-              sampleTypeName: row.source?.specimenType,
-              tests: gramTest
-                ? [{ id: gramTest.id, name: gramTest.value }]
-                : [],
-              panels: [],
-            });
-            document
-              .getElementById("culture-test-chooser")
-              ?.scrollIntoView?.({ block: "center" });
-          }}
-        />
-      )}
-      {placement === "ISOLATES" && (
-        <CaseIsolateWorkspace
-          renderNotes={renderNotes}
-          onLogCritical={(isolate) =>
-            onScopeChange?.("CRITICAL", {
-              action: "log-critical",
-              targetType: "ISOLATE",
-              targetId: isolate.id,
-            })
-          }
-          key={detail.id}
-          detail={detail}
-          service={service}
-          initialCultureId={pickCultureId}
-          onClosePick={() => setPickCultureId("")}
-          onChanged={() => {
-            service
-              .getTests(detail.id)
-              .then(setTests)
-              .catch(() => setError(true));
-            onCaseChanged?.();
-          }}
-        />
-      )}
       {loading && <InlineLoading description={t("common.loading")} />}
       {error && (
         <InlineNotification
@@ -886,69 +732,268 @@ export default function CaseTestingWorkspace({
           hideCloseButton
         />
       )}
-      {["INITIAL", "ADDITIONAL"].includes(placement) && renderTests(null)}
-      {["INITIAL", "ADDITIONAL", "CULTURE"].includes(placement) &&
-        !loading &&
-        !tests.some((test) => test.placement === placement) && (
-          <p>{t("microbiology.testing.noTests")}</p>
-        )}
-      {detail.canWrite &&
-        ["INITIAL", "ADDITIONAL", "CULTURE"].includes(placement) &&
-        selection.length > 0 &&
-        (placement !== "CULTURE" || cultureId) && (
-          <>
-            <section id="culture-test-chooser">
-              <CollectTestPickerSection
-                samples={
-                  placement === "CULTURE"
-                    ? [cultureSource].filter(Boolean)
-                    : selection
-                }
-                setSamples={
-                  placement === "CULTURE"
-                    ? (update) => {
-                        const current = [cultureSource].filter(Boolean);
-                        const next =
-                          typeof update === "function"
-                            ? update(current)
-                            : update;
-                        setCultureSource(next[0] || null);
-                      }
-                    : setSelection
-                }
-                isReadOnly={adding}
-                titleId="microbiology.testing.addTests"
-                helperId="microbiology.testing.chooserHelp"
-                cataloguePath={`/rest/microbiology/cases/${detail.id}/analyses/catalog`}
-                excludedTestIdsBySample={tests
-                  .filter(
-                    (test) =>
-                      (test.cultureId || "") ===
-                      (placement === "CULTURE" ? cultureId : ""),
-                  )
-                  .reduce((bySample, test) => {
-                    (bySample[test.sampleItemId] ||= []).push(
-                      String(test.testId),
-                    );
-                    return bySample;
-                  }, {})}
-              />
-              <Button
-                onClick={addTests}
-                disabled={
-                  adding ||
-                  !(
-                    placement === "CULTURE"
-                      ? [cultureSource].filter(Boolean)
-                      : selection
-                  ).some((s) => s.tests.length || s.panels.length)
-                }
-              >
-                {t("microbiology.testing.addSelected")}
-              </Button>
-            </section>
-          </>
-        )}
+      <Accordion>
+        {[
+          ["INITIAL", "microbiology.testing.initial"],
+          ["CULTURE", "microbiology.culture.title"],
+          ["ISOLATES", "microbiology.case.isolates"],
+          ["AST", "microbiology.m6.ast"],
+          ["ADDITIONAL", "microbiology.testing.additional"],
+          ["INCOMING", "microbiology.incoming.title"],
+          ["CRITICAL", "microbiology.critical.title"],
+          ...(detail.canWrite
+            ? [["NONCONFORMANCE", "microbiology.nce.sectionTitle"]]
+            : []),
+          ["REPORT", "microbiology.m6.report"],
+          ["AMENDMENT", "microbiology.amendment.title"],
+        ].map(([scope, label]) => (
+          <AccordionItem
+            key={scope}
+            title={t(label)}
+            open={placement === scope}
+            onHeadingClick={({ isOpen }) => {
+              if (isOpen) {
+                setPlacement(scope);
+                onScopeChange?.(scope);
+                setEditor(null);
+              } else {
+                setPlacement("");
+              }
+            }}
+          >
+            {placement === scope && (
+              <Stack gap={5}>
+                {placement === "AMENDMENT" && (
+                  <AmendmentHistoryPanel
+                    caseId={detail.id}
+                    finalReleaseState={detail.finalReleaseState}
+                    service={service}
+                    canAmend={detail.canAmend}
+                    onCaseUpdated={onCaseChanged}
+                  />
+                )}
+                {placement === "CRITICAL" && (
+                  <CriticalCommunicationPanel
+                    key={`${detail.id}-${scanParams.get("action")}-${scanParams.get("targetType")}-${scanParams.get("targetId")}`}
+                    onEntryComplete={() => onScopeChange?.("CRITICAL")}
+                    caseId={detail.id}
+                    sampleItemId={detail.samples?.[0]?.sampleItemId}
+                    isolates={auxiliaryIsolates}
+                    projectedResultIds={tests.flatMap((test) =>
+                      test.components
+                        .map((component) => component.resultId)
+                        .filter(Boolean),
+                    )}
+                    entryTargetType={
+                      scanParams.get("action") === "log-critical"
+                        ? scanParams.get("targetType")
+                        : ""
+                    }
+                    entryTargetId={
+                      scanParams.get("action") === "log-critical"
+                        ? scanParams.get("targetId")
+                        : ""
+                    }
+                    service={service}
+                    isReadOnly={!detail.canWrite}
+                    onCaseUpdated={onCaseChanged}
+                  />
+                )}
+                {placement === "NONCONFORMANCE" && detail.canWrite && (
+                  <CaseNonconformancePanel
+                    key={scanParams.get("action")}
+                    mode={
+                      scanParams.get("action") === "mark-lost"
+                        ? "mark-lost"
+                        : "report-nce"
+                    }
+                    isolates={auxiliaryIsolates}
+                    caseId={detail.id}
+                    service={service}
+                    onComplete={() => {
+                      refreshTesting();
+                      onCaseChanged?.();
+                      onScopeChange?.("HISTORY");
+                      setPlacement("HISTORY");
+                    }}
+                    onCancel={() => {
+                      onScopeChange?.("HISTORY");
+                      setPlacement("HISTORY");
+                    }}
+                  />
+                )}
+                {placement === "INCOMING" && (
+                  <CaseIncomingWorkspace
+                    detail={detail}
+                    service={service}
+                    onChanged={refreshTesting}
+                  />
+                )}
+                {placement === "AST" && (
+                  <CaseAstWorkspace
+                    entryAction={scanParams.get("action")}
+                    selectedRunId={scanRow}
+                    onEntryActionConsumed={() =>
+                      onScopeChange?.("AST", {
+                        ...(scanRow ? { row: scanRow } : {}),
+                        ...(scanParams.get("astView")
+                          ? { astView: scanParams.get("astView") }
+                          : {}),
+                      })
+                    }
+                    readOnly={scanParams.get("astView") === "reviewed"}
+                    renderNotes={renderNotes}
+                    detail={detail}
+                    service={service}
+                    onChanged={onCaseChanged}
+                  />
+                )}
+                {placement === "REPORT" && (
+                  <CaseReportWorkspace
+                    detail={detail}
+                    service={service}
+                    onChanged={onCaseChanged}
+                  />
+                )}
+                {placement === "CULTURE" && (
+                  <CaseCultureWorkspace
+                    entryAction={scanParams.get("action")}
+                    onEntryActionConsumed={() => onScopeChange?.("CULTURE")}
+                    onChanged={refreshTesting}
+                    renderNotes={renderNotes}
+                    detail={detail}
+                    service={service}
+                    selectedId={
+                      (routedScope === "CULTURE" && scanRow) || cultureId
+                    }
+                    renderTests={renderTests}
+                    onPickIsolate={(row) => {
+                      setPickCultureId(row.id);
+                      setPlacement("ISOLATES");
+                      onScopeChange?.("ISOLATES");
+                    }}
+                    onSelect={(row) => {
+                      setCultureId(row.id);
+                      setCultureSource({
+                        ...row.source,
+                        sampleTypeName: row.source?.specimenType,
+                        tests: [],
+                        panels: [],
+                      });
+                      setEditor(null);
+                    }}
+                    onChooseTests={(row, gramTest) => {
+                      setCultureId(row.id);
+                      setEditor(null);
+                      setCultureSource({
+                        ...row.source,
+                        sampleTypeName: row.source?.specimenType,
+                        tests: gramTest
+                          ? [{ id: gramTest.id, name: gramTest.value }]
+                          : [],
+                        panels: [],
+                      });
+                      document
+                        .getElementById("culture-test-chooser")
+                        ?.scrollIntoView?.({ block: "center" });
+                    }}
+                  />
+                )}
+                {placement === "ISOLATES" && (
+                  <CaseIsolateWorkspace
+                    renderNotes={renderNotes}
+                    onLogCritical={(isolate) =>
+                      onScopeChange?.("CRITICAL", {
+                        action: "log-critical",
+                        targetType: "ISOLATE",
+                        targetId: isolate.id,
+                      })
+                    }
+                    key={detail.id}
+                    detail={detail}
+                    service={service}
+                    initialCultureId={pickCultureId}
+                    onClosePick={() => setPickCultureId("")}
+                    onChanged={() => {
+                      service
+                        .getTests(detail.id)
+                        .then(setTests)
+                        .catch(() => setError(true));
+                      onCaseChanged?.();
+                    }}
+                  />
+                )}
+                {["INITIAL", "ADDITIONAL"].includes(placement) &&
+                  renderTests(null)}
+                {["INITIAL", "ADDITIONAL", "CULTURE"].includes(placement) &&
+                  !loading &&
+                  !tests.some((test) => test.placement === placement) && (
+                    <p>{t("microbiology.testing.noTests")}</p>
+                  )}
+                {detail.canWrite &&
+                  ["INITIAL", "ADDITIONAL", "CULTURE"].includes(placement) &&
+                  selection.length > 0 &&
+                  (placement !== "CULTURE" || cultureId) && (
+                    <>
+                      <section id="culture-test-chooser">
+                        <CollectTestPickerSection
+                          samples={
+                            placement === "CULTURE"
+                              ? [cultureSource].filter(Boolean)
+                              : selection
+                          }
+                          setSamples={
+                            placement === "CULTURE"
+                              ? (update) => {
+                                  const current = [cultureSource].filter(
+                                    Boolean,
+                                  );
+                                  const next =
+                                    typeof update === "function"
+                                      ? update(current)
+                                      : update;
+                                  setCultureSource(next[0] || null);
+                                }
+                              : setSelection
+                          }
+                          isReadOnly={adding}
+                          titleId="microbiology.testing.addTests"
+                          helperId="microbiology.testing.chooserHelp"
+                          cataloguePath={`/rest/microbiology/cases/${detail.id}/analyses/catalog`}
+                          excludedTestIdsBySample={tests
+                            .filter(
+                              (test) =>
+                                (test.cultureId || "") ===
+                                (placement === "CULTURE" ? cultureId : ""),
+                            )
+                            .reduce((bySample, test) => {
+                              (bySample[test.sampleItemId] ||= []).push(
+                                String(test.testId),
+                              );
+                              return bySample;
+                            }, {})}
+                        />
+                        <Button
+                          onClick={addTests}
+                          disabled={
+                            adding ||
+                            !(
+                              placement === "CULTURE"
+                                ? [cultureSource].filter(Boolean)
+                                : selection
+                            ).some((s) => s.tests.length || s.panels.length)
+                          }
+                        >
+                          {t("microbiology.testing.addSelected")}
+                        </Button>
+                      </section>
+                    </>
+                  )}
+              </Stack>
+            )}
+          </AccordionItem>
+        ))}
+      </Accordion>
       <section
         id="case-history"
         tabIndex={-1}

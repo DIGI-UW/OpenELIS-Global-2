@@ -55,6 +55,25 @@ District → Sub-District → Village).
 - **Features:** shared catalog preview/apply/reload, source identities, local
   customization preservation, immutable inactive editions and exact boundaries
 
+### Microbiology order routing
+
+The existing `tests` CSV loader accepts `opensMicrobiologyCase` (Y/N),
+`microbiologyCaseRole` (CULTURE, DIRECT or CASE), and `collectedInSets` (Y/N).
+These are the same choices as the Test Catalog editor. A culture collected in
+sets must also open a case and have the CULTURE role. Invalid combinations are
+rejected; omitted or blank columns preserve existing administrator choices.
+
+A deployment needs its specimen and test catalogs as well as the independently
+pinned organism/antimicrobial/breakpoint package. The reference package does not
+choose which tests a laboratory orders or which tests open cases. For example, a
+deployment can include this row in `configuration/backend/tests/`, after its
+Microbiology lab unit and Blood Culture specimen have been configured:
+
+```csv
+testName,testSection,sampleType,localCode,opensMicrobiologyCase,microbiologyCaseRole,collectedInSets
+Blood culture,Microbiology,Blood Culture,BCULT,Y,CULTURE,Y
+```
+
 ## How Configuration Loading Works
 
 Configuration files are loaded automatically during application startup:
