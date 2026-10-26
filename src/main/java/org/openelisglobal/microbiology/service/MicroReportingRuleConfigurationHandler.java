@@ -10,7 +10,6 @@ import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
 import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
-import org.openelisglobal.configuration.service.ImportRunContext;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
@@ -59,13 +58,20 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
 
     @Override
     protected void load(List<CsvRow> rows, RowTransactionRunner transaction, CsvLoadSummary summary, String fileName) {
-        List<LoadedRow<String>> outcomes = transaction.run(() -> {
-            List<LoadedRow<String>> results = new ArrayList<>();
-            for (CsvRow row : rows) {
-                results.add(loadRow(row));
-            }
-            return results;
-        });
+        int[] currentLine = { 0 };
+        List<LoadedRow<String>> outcomes;
+        try {
+            outcomes = transaction.run(() -> {
+                List<LoadedRow<String>> results = new ArrayList<>();
+                for (CsvRow row : rows) {
+                    currentLine[0] = row.lineNumber();
+                    results.add(loadRow(row));
+                }
+                return results;
+            });
+        } finally {
+            flushUnresolvedReferences(fileName, currentLine[0]);
+        }
         for (int i = 0; i < outcomes.size(); i++) {
             summary.record(outcomes.get(i), getClass().getSimpleName(), rows.get(i).lineNumber());
         }
@@ -92,9 +98,10 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         MicroAntibiotic antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code).orElseThrow(
                 () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code));
         String behavior = reportBehavior(row);
-        String note = blankToNull(row.get("comment"));
+        String note = row.isBlank("comment") ? null : row.get("comment");
         String noteWhen = note == null ? null : noteWhen(row);
-        String clinicalContext = MicroBreakpointClinicalContext.validate(blankToNull(row.get("indication")));
+        String clinicalContext = MicroBreakpointClinicalContext
+                .validate(row.isBlank("indication") ? null : row.get("indication"));
         String cascadeCondition = cascadeCondition(row, behavior);
         boolean alwaysResistant = "YES".equalsIgnoreCase(row.get("always_report_R"));
         if (alwaysResistant && organismId == null && organismGroup == null) {
@@ -125,9 +132,10 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             form.addAutomatically = row.has("add_automatically") ? "YES".equalsIgnoreCase(row.get("add_automatically"))
                     : existing != null && existing.addAutomatically;
             form.active = !"NO".equalsIgnoreCase(row.get("active"));
+            boolean unchanged = existing != null && sameReportingRule(existing, form);
             created |= existing == null;
-            changed |= existing != null && !sameReportingRule(existing, form);
-            id = reportingRules.save(form, SYS_USER_ID).getId();
+            changed |= existing != null && !unchanged;
+            id = unchanged ? existing.id : reportingRules.save(form, SYS_USER_ID).getId();
         }
         if (alwaysResistant) {
             MicroInterpretationRuleForm existing = existingInterpretationRule(antibiotic.getId(), organismId,
@@ -140,9 +148,10 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             form.interpretation = "RESISTANT";
             form.source = existing == null ? ALWAYS_RESISTANT_SOURCE : existing.source;
             form.active = true;
+            boolean unchanged = existing != null && sameInterpretationRule(existing, form);
             created |= existing == null;
-            changed |= existing != null && !sameInterpretationRule(existing, form);
-            String savedId = interpretationRules.save(form, SYS_USER_ID).getId();
+            changed |= existing != null && !unchanged;
+            String savedId = unchanged ? existing.id : interpretationRules.save(form, SYS_USER_ID).getId();
             id = id == null ? savedId : id;
         }
         if (created) {
@@ -152,13 +161,11 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
     }
 
     private MicroOrganism species(CsvRow row) {
-        if (row.has("organism_source") && row.has("organism_code")) {
+        if (!row.isBlank("organism_source") && !row.isBlank("organism_code")) {
             String source = row.get("organism_source");
             String code = row.get("organism_code");
-            if (!source.isEmpty() && !code.isEmpty()) {
-                return organisms.findByReference(source, code).orElseThrow(() -> new IllegalArgumentException(
-                        "Line " + row.lineNumber() + ": unknown organism " + row.get("organism")));
-            }
+            return organisms.findByReference(source, code).orElseThrow(() -> new IllegalArgumentException(
+                    "Line " + row.lineNumber() + ": unknown organism " + row.get("organism")));
         }
         String name = required(row, "organism");
         return organisms.findByDisplayNameIgnoreCase(name).orElseThrow(
@@ -177,7 +184,6 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             }
             TypeOfSample sampleType = resolver.resolveSampleType(name, getDomainName());
             if (sampleType == null) {
-                ImportRunContext.drainPending();
                 throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown sample type " + name);
             }
             ids.add(sampleType.getId());
@@ -190,34 +196,29 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         if (value.isEmpty()) {
             return null;
         }
-        return switch (value.toUpperCase(Locale.ROOT)) {
-        case "REPORT" -> "ALWAYS";
-        case "REPORT_IF_R" -> "SUPPRESS_UNLESS_RESISTANT";
-        case "CASCADE" -> "CASCADE";
-        case "DONT_REPORT" -> "DONT_REPORT";
-        default -> throw new IllegalArgumentException("Line " + row.lineNumber()
-                + ": report_default must be REPORT, REPORT_IF_R, CASCADE or DONT_REPORT, was '" + value + "'");
-        };
+        String behavior = MicroReportingRuleService.REPORT_DEFAULTS.get(value.toUpperCase(Locale.ROOT));
+        if (behavior == null) {
+            throw new IllegalArgumentException("Line " + row.lineNumber()
+                    + ": report_default must be REPORT, REPORT_IF_R, CASCADE or DONT_REPORT, was '" + value + "'");
+        }
+        return behavior;
     }
 
     private static String noteWhen(CsvRow row) {
         String value = row.get("comment_when");
-        if (value.isEmpty()) {
-            return "ALWAYS";
-        }
-        String normalized = value.toUpperCase(Locale.ROOT);
-        if (!Set.of("ALWAYS", "WHEN_R", "WHEN_S").contains(normalized)) {
-            throw new IllegalArgumentException("Line " + row.lineNumber()
-                    + ": comment_when must be ALWAYS, WHEN_R or WHEN_S, was '" + value + "'");
-        }
-        return normalized;
+        String normalized = value.isEmpty() ? "ALWAYS" : value.toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+        case "ALWAYS", "WHEN_R", "WHEN_S" -> normalized;
+        default -> throw new IllegalArgumentException(
+                "Line " + row.lineNumber() + ": comment_when must be ALWAYS, WHEN_R or WHEN_S, was '" + value + "'");
+        };
     }
 
     private static String cascadeCondition(CsvRow row, String behavior) {
         if (!"CASCADE".equals(behavior)) {
             return null;
         }
-        String condition = blankToNull(row.get("cascade_condition"));
+        String condition = row.isBlank("cascade_condition") ? null : row.get("cascade_condition");
         if (condition == null && !row.isBlank("cascade_when")) {
             condition = (row.get("cascade_when") + " " + row.get("trigger_agents")).trim();
         }
@@ -240,8 +241,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
     private MicroInterpretationRuleForm existingInterpretationRule(String antibioticId, String organismId,
             String organismGroup) {
         for (MicroInterpretationRuleForm rule : interpretationRules.getRules()) {
-            if (antibioticId.equals(rule.antibioticId) && "RESISTANT".equals(rule.interpretation)
-                    && Objects.equals(organismId, rule.organismId)
+            if (antibioticId.equals(rule.antibioticId) && Objects.equals(organismId, rule.organismId)
                     && Objects.equals(organismGroup, rule.organismGroup)) {
                 return rule;
             }
@@ -254,8 +254,6 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
                 && Objects.equals(existing.reportBehavior, wanted.reportBehavior)
                 && Objects.equals(existing.cascadeCondition, wanted.cascadeCondition)
                 && Objects.equals(existing.note, wanted.note) && Objects.equals(existing.noteWhen, wanted.noteWhen)
-                && Objects.equals(existing.clinicalContext, wanted.clinicalContext)
-                && new HashSet<>(existing.sampleTypeIds).equals(new HashSet<>(wanted.sampleTypeIds))
                 && existing.addAutomatically == wanted.addAutomatically;
     }
 
@@ -269,9 +267,5 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             throw new IllegalArgumentException("Line " + row.lineNumber() + ": " + column + " is required");
         }
         return row.get(column).trim();
-    }
-
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 }

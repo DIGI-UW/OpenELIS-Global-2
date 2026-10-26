@@ -47,6 +47,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private org.openelisglobal.microbiology.service.MicroInterpretationRuleService interpretationRules;
     @Autowired
+    private MicroReportingRuleDAO reportingRuleDAO;
+    @Autowired
+    private org.openelisglobal.configuration.service.UnresolvedReferenceService unresolvedReferences;
+    @Autowired
     private MicroAstPanelDAO panels;
     @Autowired
     private MicroAstPanelAntibioticDAO panelAntibiotics;
@@ -684,6 +688,33 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
                 java.util.Set.of("microbiology-organisms", "microbiology-antimicrobials", "microbiology-breakpoints"),
                 force));
+    }
+
+    @Test
+    public void forcedReloadDoesNotRewriteUnchangedRules() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.14", "UNCHANGED");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,REPORT,,,,YES,,,,\n");
+        assertFalse(reloadReportingRules(false).hasErrors());
+        String ruleId = rulesFor(antibioticId).get(0).id;
+        var written = reportingRuleDAO.get(ruleId).orElseThrow().getLastupdated();
+        assertFalse(reloadReportingRules(true).hasErrors());
+        assertEquals(written, reportingRuleDAO.get(ruleId).orElseThrow().getLastupdated());
+    }
+
+    @Test
+    public void unknownSampleTypeInARuleFileIsListedForADecision() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.15", "UNKNOWNST");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String sampleType = "CSF " + java.util.UUID.randomUUID().toString().substring(0, 8);
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + "," + sampleType + ","
+                + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+        assertTrue(reloadReportingRules(false).hasErrors());
+        assertTrue(unresolvedReferences.getOpen().stream().anyMatch(r -> sampleType.equals(r.getReferenceValue())));
     }
 
     private static final String RULES_HEADER = "organism_level,organism,specimen_group,agent,agent_name,report_default,"
