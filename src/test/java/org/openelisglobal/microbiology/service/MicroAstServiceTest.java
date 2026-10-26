@@ -133,6 +133,8 @@ public class MicroAstServiceTest {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "authorization",
                 org.mockito.Mockito.mock(MicroCaseAuthorizationService.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "reportChoices", reportChoices);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "reportingRuleDAO",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroReportingRuleDAO.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
                 org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
         org.mockito.Mockito.lenient().when(caseDAO.getForUpdate(any(String.class)))

@@ -10,4 +10,6 @@ public interface MicroAstRunAntibioticDAO extends BaseDAO<MicroAstRunAntibiotic,
     List<MicroAstRunAntibiotic> getByRunId(String runId);
 
     Optional<MicroAstRunAntibiotic> getByRunIdAndAntibioticId(String runId, String antibioticId);
+
+    List<MicroAstRunAntibiotic> getByAntibioticId(String antibioticId);
 }

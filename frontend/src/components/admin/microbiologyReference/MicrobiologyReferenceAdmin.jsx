@@ -20,6 +20,7 @@ import {
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import MolecularDstPage from "./MolecularDstPage";
 import AstPanelPage from "./AstPanelPage";
+import AstRulesPage from "./AstRulesPage";
 import BreakpointPage from "./BreakpointPage";
 import { REFERENCE_DEFINITIONS } from "./definitions";
 import ReferenceDataPage from "./ReferenceDataPage";
@@ -87,6 +88,7 @@ const MicrobiologyReferenceAdmin = () => {
       {section === "ast-panels" && (
         <AstPanelPage query={query} setQuery={setQuery} />
       )}
+      {section === "ast-rules" && <AstRulesPage />}
       {section === "breakpoints" && (
         <BreakpointPage
           standardId={detailId}
