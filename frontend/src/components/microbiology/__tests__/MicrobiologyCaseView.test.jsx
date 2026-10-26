@@ -6,6 +6,7 @@ import { Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import messages from "../../../languages/en.json";
+import { ConfigurationContext } from "../../layout/Layout";
 
 const baseline = {
   id: "case-1",
@@ -88,16 +89,34 @@ const setup = (search = "", changes = {}) => {
     initialEntries: [`/Microbiology/cases/case-1${search}`],
   });
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <Router history={history}>
-        <MicrobiologyCaseView caseId="case-1" service={service} />
-      </Router>
-    </IntlProvider>,
+    <ConfigurationContext.Provider
+      value={{
+        configurationProperties: {
+          DEFAULT_DATE_LOCALE: changes.dateLocale || "en-US",
+        },
+      }}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <Router history={history}>
+          <MicrobiologyCaseView caseId="case-1" service={service} />
+        </Router>
+      </IntlProvider>
+    </ConfigurationContext.Provider>,
   );
   return { service, history };
 };
 
 describe("canonical case workspace", () => {
+  test("shows the date of birth in the site's date format", async () => {
+    setup("", {
+      dateLocale: "fr-FR",
+      patientName: "Demo Sepsis",
+      birthDate: "1968-03-12T12:00:00Z",
+    });
+    expect(
+      await screen.findByText(/Date of birth: 12\/03\/1968/),
+    ).toBeInTheDocument();
+  });
   test.each([
     "",
     "?view=workbench",
@@ -162,7 +181,7 @@ describe("canonical case workspace", () => {
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", {
-        name: messages["microbiology.incoming.title"],
+        name: messages["microbiology.incoming.open"],
       }),
     );
     expect(history.location.search).toContain("scope=INCOMING");

@@ -17,6 +17,17 @@ public class MicroAstRun extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Column(name = "clinical_context", length = 40)
+    private String clinicalContext;
+
+    public String getClinicalContext() {
+        return clinicalContext;
+    }
+
+    public void setClinicalContext(String value) {
+        clinicalContext = value;
+    }
+
     @Id
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();

@@ -133,9 +133,13 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
                 && request.intermediateUpperValue == null && request.resistantValue == null) {
             throw new IllegalArgumentException("At least one breakpoint threshold is required");
         }
+        String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
         String specimenTypeId = trimToNull(request.specimenTypeId);
-        Optional<org.openelisglobal.microbiology.valueholder.MicroBreakpointRule> duplicate = ruleDAO.findByNaturalKey(
-                standardId, organismId, organismGroup, antibioticId, method, specimenTypeId, breakpointType);
+        Optional<org.openelisglobal.microbiology.valueholder.MicroBreakpointRule> duplicate = clinicalContext == null
+                ? ruleDAO.findByNaturalKey(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+                        breakpointType)
+                : ruleDAO.findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId, method,
+                        specimenTypeId, breakpointType, clinicalContext);
         if (duplicate.isPresent() && !duplicate.get().getId().equals(ruleId)) {
             throw new MicroReferenceConflictException("A breakpoint rule already exists for this context");
         }
@@ -152,6 +156,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         rule.setAntibioticId(antibioticId);
         rule.setMethod(method);
         rule.setSpecimenTypeId(specimenTypeId);
+        rule.setClinicalContext(clinicalContext);
         rule.setBreakpointType(breakpointType);
         rule.setSusceptibleValue(request.susceptibleValue);
         rule.setIntermediateLowerValue(request.intermediateLowerValue);
@@ -298,6 +303,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         });
         form.method = rule.getMethod();
         form.specimenTypeId = rule.getSpecimenTypeId();
+        form.clinicalContext = rule.getClinicalContext();
         form.breakpointType = rule.getBreakpointType();
         form.susceptibleValue = rule.getSusceptibleValue();
         form.intermediateLowerValue = rule.getIntermediateLowerValue();

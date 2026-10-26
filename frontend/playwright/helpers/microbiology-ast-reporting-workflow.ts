@@ -35,9 +35,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await dialog
     .getByLabel("Breakpoint standard", { exact: true })
     .selectOption(seeded.activeBreakpointStandardId!);
-  await dialog
-    .getByLabel("Reason", { exact: true })
-    .fill("Initial susceptibility testing");
+  await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const runs = isolate.locator('[data-testid^="ast-run-"]');
   await expect(runs).toHaveCount(1, { timeout: LONG_TIMEOUT });

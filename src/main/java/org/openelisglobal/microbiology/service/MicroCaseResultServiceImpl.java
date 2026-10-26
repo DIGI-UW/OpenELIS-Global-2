@@ -118,7 +118,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (actor == null || actor.isBlank())
             throw new AccessDeniedException("Authenticated system user required");
         var c = cases.get(caseId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        var list = links.getAnalyses(caseId);
+        var list = links.getAnalyses(caseId).stream()
+                .filter(a -> !links.getByCaseAndAnalysis(caseId, a.getId()).isCultureOrder()).toList();
         var rows = loadRows(list, actor);
         List<MicroCaseTestForm> forms = new ArrayList<>();
         for (var a : list) {
@@ -547,7 +548,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     }
 
     private Analysis requireAnalysis(String caseId, String id) {
-        if (links.getByCaseAndAnalysis(caseId, id) == null)
+        if (links.getByCaseAndAnalysis(caseId, id) == null || links.getByCaseAndAnalysis(caseId, id).isCultureOrder())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         return links.getAnalyses(caseId).stream().filter(a -> a.getId().equals(id)).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));

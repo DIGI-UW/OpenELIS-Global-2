@@ -153,6 +153,18 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         em.flush();
     }
 
+    @Test
+    public void cultureOrderUsesCultureRowsInsteadOfAnEditableDuplicateResult() {
+        var submission = payload();
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        assertTrue(workspace.getTests(microCase.getId(), actor).isEmpty());
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)));
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
     @After
     public void restoreSetting() {
         ConfigurationProperties.getInstance().setPropertyValue(Property.BLOCK_SELF_VALIDATION, oldBlock);

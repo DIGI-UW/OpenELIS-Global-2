@@ -35,7 +35,12 @@ public final class MicroPatientReportRows {
                     message("breakpoint"), true));
             for (var row : isolate.susceptibilities()) {
                 rows.add(new MicroPatientReportRow(null, null, row.agent(), safe(row.raw()) + " " + safe(row.units()),
-                        message("interpretation." + row.interpretation()), row.standard() + " " + row.version(), true));
+                        message("interpretation." + row.interpretation()),
+                        row.standard() + " " + row.version()
+                                + ("NON_MENINGITIS".equals(row.clinicalContext())
+                                        ? " — " + message("clinicalContext.nonMeningitis")
+                                        : ""),
+                        true));
                 notes(rows, report.notes, "DRUG", row.readingId());
             }
         }

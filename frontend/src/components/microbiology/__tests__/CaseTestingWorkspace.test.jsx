@@ -511,20 +511,28 @@ describe("culture test chooser", () => {
     );
     await screen.findByRole("heading", { name: /PLATE-1/ });
   };
-  test("Gram shortcut visibly selects its catalog test and submits only the culture's source", async () => {
+  test("Gram shortcut adds the test under its culture and opens its result editor", async () => {
     const api = cultureApi();
+    api.addTests.mockResolvedValue([
+      assay,
+      {
+        ...assay,
+        analysisId: "21",
+        testId: "30",
+        testName: "Follow-up test",
+        placement: "CULTURE",
+        cultureId: "culture-1",
+        components: [
+          { ...component("gram", "Gram morphology"), analysisId: "21" },
+        ],
+      },
+    ]);
     await openCulture(api);
     fireEvent.click(
       screen.getByRole("button", {
         name: messages["microbiology.culture.gramStain"],
       }),
     );
-    const chooser = document.getElementById("culture-test-chooser");
-    expect(
-      within(chooser).getByRole("button", { name: /Sputum.*1/ }),
-    ).toBeInTheDocument();
-    expect(within(chooser).queryByRole("button", { name: /Blood/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Add selected tests" }));
     await waitFor(() =>
       expect(api.addTests).toHaveBeenCalledWith("case-1", {
         placement: "CULTURE",
@@ -534,9 +542,7 @@ describe("culture test chooser", () => {
         panelIds: [],
       }),
     );
-    expect(
-      screen.getByRole("button", { name: "Add selected tests" }),
-    ).toBeDisabled();
+    expect(await screen.findByLabelText(/Gram morphology/)).toBeInTheDocument();
   });
   test("manual selection updates the selected culture picker and becomes saveable", async () => {
     const api = cultureApi();

@@ -1,3 +1,4 @@
+import { labTimeZone } from "./MicrobiologyTime";
 import { labTimestamp } from "./MicrobiologyTime";
 import {
   MICROBIOLOGY_CASE_READY_MARK,
@@ -33,6 +34,7 @@ import {
   TableContainer,
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { ConfigurationContext } from "../layout/Layout";
 import { hasRole, Roles } from "../utils/Utils";
 import "./CaseWorkspace.scss";
 import "./MicrobiologyCaseView.css";
@@ -53,8 +55,9 @@ export default function CaseViewShell({
 }) {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
-  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(true);
   const params = useParams();
   const location = useLocation();
   const history = useHistory();
@@ -214,7 +217,7 @@ export default function CaseViewShell({
                     })}
                   </p>
                   <Button kind="ghost" onClick={() => selectScope("INCOMING")}>
-                    {t("microbiology.incoming.title")}
+                    {t("microbiology.incoming.open")}
                   </Button>
                 </Tile>
               )}
@@ -228,13 +231,13 @@ export default function CaseViewShell({
               <Tile>
                 <Grid condensed>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>
+                    <p className="cds--label">
                       {t(
                         detail.domain === "ENVIRONMENTAL"
                           ? "microbiology.case.site"
                           : "common.patient",
                       )}
-                    </h3>
+                    </p>
                     <p>
                       {detail.domain === "ENVIRONMENTAL"
                         ? [detail.siteName, detail.siteCode]
@@ -268,7 +271,16 @@ export default function CaseViewShell({
                         <p>
                           {t("microbiology.case.birthDate")}:{" "}
                           {detail.birthDate
-                            ? intl.formatDate(new Date(detail.birthDate))
+                            ? new Intl.DateTimeFormat(
+                                configurationProperties?.DEFAULT_DATE_LOCALE ||
+                                  intl.locale,
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  timeZone: labTimeZone(),
+                                },
+                              ).format(new Date(detail.birthDate))
                             : t("not.available")}
                         </p>
                         <p>
@@ -279,7 +291,7 @@ export default function CaseViewShell({
                     )}
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>{t("common.samples")}</h3>
+                    <p className="cds--label">{t("common.samples")}</p>
                     <p>{detail.specimenType}</p>
                     <p>
                       {t("microbiology.case.sampleCount", {
@@ -297,7 +309,9 @@ export default function CaseViewShell({
                     </p>
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>{t("microbiology.case.labUnit")}</h3>
+                    <p className="cds--label">
+                      {t("microbiology.case.labUnit")}
+                    </p>
                     <p>{detail.labUnit}</p>
                     <p>
                       {
@@ -316,7 +330,9 @@ export default function CaseViewShell({
                     )}
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <h3>{t("microbiology.case.workStage")}</h3>
+                    <p className="cds--label">
+                      {t("microbiology.case.workStage")}
+                    </p>
                     <p>{formatMicrobiologyEnum(detail.stage, intl)}</p>
                     <p>
                       {t("microbiology.case.releaseState")}:{" "}
@@ -355,14 +371,14 @@ export default function CaseViewShell({
                         })
                       }
                     >
-                      {t("microbiology.critical.title")}
+                      {t("microbiology.critical.logNotification")}
                     </Button>
                     <Button
                       size="sm"
                       kind="tertiary"
                       onClick={() => selectScope("NONCONFORMANCE")}
                     >
-                      {t("microbiology.nce.sectionTitle")}
+                      {t("microbiology.nce.report")}
                     </Button>
                     <Button
                       size="sm"

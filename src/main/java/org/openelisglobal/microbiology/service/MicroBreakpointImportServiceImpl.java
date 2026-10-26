@@ -147,8 +147,11 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 ruleDAO.evict(existingHash.get());
                 continue;
             }
-            Optional<MicroBreakpointRule> existingRule = ruleDAO.findByNaturalKey(standard.getId(), row.organismId,
-                    row.organismGroup, row.antibioticId, row.method, row.specimenTypeId, row.breakpointType);
+            Optional<MicroBreakpointRule> existingRule = row.clinicalContext == null
+                    ? ruleDAO.findByNaturalKey(standard.getId(), row.organismId, row.organismGroup, row.antibioticId,
+                            row.method, row.specimenTypeId, row.breakpointType)
+                    : ruleDAO.findByContextualNaturalKey(standard.getId(), row.organismId, row.organismGroup,
+                            row.antibioticId, row.method, row.specimenTypeId, row.breakpointType, row.clinicalContext);
             if (existingRule.isPresent() && existingRule.get().isLocallyCustomized()) {
                 preview.errors.add(error(row.rowNumber,
                         "A locally customized breakpoint exists for this organism, antibiotic, and method",
@@ -268,6 +271,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         case "ETEST" -> "MIC";
         default -> rawMethod;
         };
+        row.clinicalContext = MicroBreakpointClinicalContext
+                .validate(record.isMapped("clinical_context") ? record.get("clinical_context") : null);
         row.specimenTypeId = blankToNull(record.get("specimen_type_id"));
         if (row.specimenTypeId != null && typeOfSampleService.getTypeOfSampleById(row.specimenTypeId) == null) {
             throw new IllegalArgumentException("Unknown specimen type: " + row.specimenTypeId);
@@ -370,6 +375,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         rule.setAntibioticId(row.antibioticId);
         rule.setMethod(row.method);
         rule.setSpecimenTypeId(row.specimenTypeId);
+        rule.setClinicalContext(row.clinicalContext);
         rule.setBreakpointType(row.breakpointType);
         rule.setSusceptibleValue(row.susceptibleValue);
         rule.setIntermediateLowerValue(row.intermediateLowerValue);
@@ -435,7 +441,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 nullToEmpty(row.organismGroup), row.antibioticId, row.method, nullToEmpty(row.specimenTypeId),
                 row.breakpointType, decimalText(row.susceptibleValue), decimalText(row.intermediateLowerValue),
                 decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units,
-                Boolean.toString(row.resistantInclusive), nullToEmpty(row.notes));
+                Boolean.toString(row.resistantInclusive), nullToEmpty(row.notes))
+                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext);
     }
 
     private String editionKey(ImportRow row) {
@@ -444,7 +451,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
 
     private String naturalKey(ImportRow row) {
         return String.join("|", row.authority, row.version, nullToEmpty(row.organismId), nullToEmpty(row.organismGroup),
-                row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType);
+                row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType)
+                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext);
     }
 
     private String hash(String value) {
@@ -491,6 +499,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         private String antibioticId;
         private String method;
         private String specimenTypeId;
+        private String clinicalContext;
         private String breakpointType;
         private BigDecimal susceptibleValue;
         private BigDecimal intermediateLowerValue;

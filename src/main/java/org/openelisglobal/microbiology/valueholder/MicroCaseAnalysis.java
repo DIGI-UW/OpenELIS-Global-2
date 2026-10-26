@@ -151,6 +151,13 @@ public class MicroCaseAnalysis extends BaseObject<String> {
         this.projectedResultId = projectedResultId;
     }
 
+    /**
+     * Culture orders are fulfilled by culture rows, not an extra free-text result.
+     */
+    public boolean isCultureOrder() {
+        return caseRole == MicroCaseRole.CULTURE && cultureId == null;
+    }
+
     public MicroCaseRole getCaseRole() {
         return caseRole;
     }

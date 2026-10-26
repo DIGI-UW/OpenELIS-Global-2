@@ -151,7 +151,7 @@ test.describe("microbiology worklist and critical communication", () => {
       "/Microbiology/worklist",
     );
     await sidenav.clickMenu("Microbiology worklist");
-    await expect(page).toHaveURL(/\/Microbiology\/worklist$/);
+    await expect(page).toHaveURL(/\/Microbiology\/worklist\?grain=cultures$/);
     await expect(
       page.getByRole("heading", { name: "Microbiology worklist" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });

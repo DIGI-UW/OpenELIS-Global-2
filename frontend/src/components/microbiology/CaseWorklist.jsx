@@ -101,7 +101,7 @@ export default function CaseWorklist({ service = serviceDefault }) {
               title={t("microbiology.worklist.scopeFiltersReset")}
             />
           )}
-          <Stack orientation="horizontal" gap={3}>
+          <div className="microbiology-case-workspace__views">
             <Button kind="ghost" onClick={() => change("grain", "cultures")}>
               {t("microbiology.worklist.title")}
             </Button>
@@ -111,14 +111,14 @@ export default function CaseWorklist({ service = serviceDefault }) {
             >
               {t(
                 cultures
-                  ? "microbiology.case.search"
+                  ? "microbiology.worklist.caseSearch"
                   : "microbiology.culture.title",
               )}
             </Button>
             <Button kind="ghost" onClick={() => change("grain", "ast")}>
               {t("microbiology.worklist.grain.ast")}
             </Button>
-          </Stack>
+          </div>
           {cultures ? (
             <CultureWorklist service={service} />
           ) : (

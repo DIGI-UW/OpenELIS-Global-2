@@ -587,38 +587,6 @@ const RequestedTestsSection = ({
         )}
       </DataTable>
 
-      {/* Example multi-sample assignment note */}
-      <div className="multi-sample-example">
-        <h6>
-          <FormattedMessage
-            id="collect.multiSampleExample.title"
-            defaultMessage="Example: Multi-Sample Assignment"
-          />
-        </h6>
-        <p>
-          <FormattedMessage
-            id="collect.multiSampleExample.description"
-            defaultMessage="A test or panel can be assigned to multiple samples. The 'Sample Assignment(s)' column reflects all assignments."
-          />
-        </p>
-        <div className="example-tags">
-          <Tag type="purple" size="sm">
-            <Checkmark size={12} /> Plasma (Sample 1)
-          </Tag>
-          <span className="plus-sign">+</span>
-          <Tag type="purple" size="sm">
-            <Checkmark size={12} /> Plasma (Sample 2)
-          </Tag>
-          <span className="equals-sign">=</span>
-          <span className="example-text">
-            <FormattedMessage
-              id="collect.multiSampleExample.result"
-              defaultMessage="same test on two separate Plasma draws"
-            />
-          </span>
-        </div>
-      </div>
-
       {/* Assignment Modal */}
       <TestAssignmentModal
         isOpen={isModalOpen}

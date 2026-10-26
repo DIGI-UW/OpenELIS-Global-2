@@ -517,6 +517,30 @@ export default function CaseTestingWorkspace({
       if (mounted.current) setAdding(false);
     }
   };
+  const addGramStain = async (row, gramTest) => {
+    setAdding(true);
+    setError(false);
+    try {
+      const before = new Set(tests.map((test) => test.analysisId));
+      const data = await service.addTests(detail.id, {
+        placement: "CULTURE",
+        cultureId: row.id,
+        sampleItemId: row.source?.sampleItemId,
+        testIds: [String(gramTest.id)],
+        panelIds: [],
+      });
+      if (!mounted.current) return;
+      setTests(data);
+      const added = data.find(
+        (test) => test.cultureId === row.id && !before.has(test.analysisId),
+      );
+      setEditor(added?.analysisId || null);
+    } catch {
+      if (mounted.current) setError(true);
+    } finally {
+      if (mounted.current) setAdding(false);
+    }
+  };
   const addNote = async () => {
     setNoting(true);
     setError(false);
@@ -884,13 +908,15 @@ export default function CaseTestingWorkspace({
                     }}
                     onChooseTests={(row, gramTest) => {
                       setCultureId(row.id);
+                      if (gramTest) {
+                        addGramStain(row, gramTest);
+                        return;
+                      }
                       setEditor(null);
                       setCultureSource({
                         ...row.source,
                         sampleTypeName: row.source?.specimenType,
-                        tests: gramTest
-                          ? [{ id: gramTest.id, name: gramTest.value }]
-                          : [],
+                        tests: [],
                         panels: [],
                       });
                       document

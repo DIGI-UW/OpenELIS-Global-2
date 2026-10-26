@@ -76,6 +76,38 @@ public class MicroCaseReadinessServiceTest {
     }
 
     @Test
+    public void cultureOrdersDoNotRequireDuplicateResultsButDirectTestsStillDo() {
+        var c = new MicroCase();
+        c.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(c));
+        culture.setOutcome("NO_GROWTH");
+        var links = (org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO) org.springframework.test.util.ReflectionTestUtils
+                .getField(service, "links");
+        var analysis = new org.openelisglobal.analysis.valueholder.Analysis();
+        analysis.setId("order");
+        analysis.setStatusId("pending");
+        var sample = new org.openelisglobal.sampleitem.valueholder.SampleItem();
+        sample.setId("sample");
+        analysis.setSampleItem(sample);
+        culture.setSourceSampleItemId("sample");
+        analysis.setTest(new org.openelisglobal.test.valueholder.Test());
+        var link = new org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis();
+        link.setCaseRole(org.openelisglobal.microbiology.valueholder.MicroCaseRole.CULTURE);
+        when(links.getAnalyses("case-1")).thenReturn(List.of(analysis));
+        when(links.getByCaseAndAnalysis("case-1", "order")).thenReturn(link);
+        assertTrue(service.getReadiness("case-1").finalReleaseReady);
+        culture.setSourceSampleItemId("another-sample");
+        assertTrue(service.getReadiness("case-1").blockers.contains("CULTURE_OUTCOME_REQUIRED"));
+        culture.setSourceSampleItemId("sample");
+        link.setCaseRole(org.openelisglobal.microbiology.valueholder.MicroCaseRole.DIRECT);
+        var statuses = (org.openelisglobal.common.services.IStatusService) org.springframework.test.util.ReflectionTestUtils
+                .getField(service, "statuses");
+        when(statuses.getAnalysisStatusForID("pending"))
+                .thenReturn(org.openelisglobal.common.services.StatusService.AnalysisStatus.NotStarted);
+        assertTrue(service.getReadiness("case-1").blockers.contains("SELECTED_RESULT_VALIDATION_REQUIRED"));
+    }
+
+    @Test
     public void lateEvidenceRequiresConfirmationWhenAmending() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");

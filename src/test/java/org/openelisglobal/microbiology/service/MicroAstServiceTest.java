@@ -494,6 +494,38 @@ public class MicroAstServiceTest {
     }
 
     @Test
+    public void recordReadingUsesTheExplicitSnapshottedIndication() {
+        MicroAstRun run = new MicroAstRun();
+        run.setId("run-1");
+        run.setIsolateId("iso-1");
+        run.setBreakpointStandardId("eucast-std");
+        run.setClinicalContext("NON_MENINGITIS");
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        isolate.setOrganismId("org-1");
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        rule.setId("rule-eucast");
+        rule.setOrganismId("org-1");
+        rule.setUnits("ug/mL");
+        when(breakpointService.findContextualBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC",
+                "NON_MENINGITIS")).thenReturn(rule);
+        when(interpretationService.interpret(rule, MicroAstMethod.MIC, new BigDecimal("4")))
+                .thenReturn(MicroAstInterpretation.SUSCEPTIBLE);
+
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "1");
+
+        verify(breakpointService).findContextualBreakpointRule("eucast-std", "org-1", null, "abx-1", "MIC", null, "MIC",
+                "NON_MENINGITIS");
+        verify(breakpointService, org.mockito.Mockito.never()).getActiveStandard(any(String.class), any(String.class));
+        assertEquals("MANUAL_ENTRY", reading.getSource());
+        assertEquals("ORGANISM", reading.getMatchedBy());
+        assertEquals("ug/mL", reading.getUnits());
+    }
+
+    @Test
     public void legacyManualReadingUsesFallbackAuthorityWithMissingStandardId() {
         prepareLegacyInterpretation(null, true);
         MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.06"),
@@ -999,6 +1031,21 @@ public class MicroAstServiceTest {
 
         verify(breakpointService).findBreakpointRule("eucast-std", "org-1", "Enterobacterales", "abx-1", "VITEK_2", "7",
                 "MIC");
+    }
+
+    @Test
+    public void explicitEmptyBreakpointRuleStillBlocksRunValidation() {
+        var run = awaitingAnalyzerRun();
+        run.setStatus(MicroAstRunStatus.RESULTS_IN.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        when(runAntibioticDAO.getByRunId("run-1")).thenReturn(List.of(orderedAntibiotic("run-1", "abx-1", 1)));
+        var reading = reading("reading-1", "run-1", MicroAstInterpretation.NO_BREAKPOINT);
+        reading.setAntibioticId("abx-1");
+        reading.setMatchedBy("ORGANISM");
+        when(readingDAO.getByRunId("run-1")).thenReturn(List.of(reading));
+        assertReviewConflict("AST_NO_BREAKPOINT_UNRESOLVED");
+        verify(runDAO, never()).update(run);
     }
 
     @Test

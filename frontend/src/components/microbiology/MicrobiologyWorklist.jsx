@@ -1,3 +1,4 @@
+import { labTimeZone } from "./MicrobiologyTime";
 import { searchCases } from "./CaseWorkspaceService";
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
@@ -581,6 +582,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                     day: "2-digit",
                     hour: "2-digit",
                     minute: "2-digit",
+                    timeZone: labTimeZone(),
                   })
                 : intl.formatMessage({
                     id: "microbiology.worklist.notStarted",
@@ -1470,6 +1472,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                                                     day: "2-digit",
                                                     hour: "2-digit",
                                                     minute: "2-digit",
+                                                    timeZone: labTimeZone(),
                                                   },
                                                 )}
                                               </span>
@@ -1713,6 +1716,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                               day: "2-digit",
                               hour: "2-digit",
                               minute: "2-digit",
+                              timeZone: labTimeZone(),
                             })}
                           </span>
                         </div>

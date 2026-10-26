@@ -500,8 +500,9 @@ public class MicrobiologyUatScenarioService {
             entityManager.merge(microCase);
             membership.addSample(microCase.getId(), sampleItemId, performedBy);
         }
-        caseAnalysisService.linkAnalysis(microCase, analysis, reportableTestAnalyte.getId());
-        if (environmental && !"FINAL_RELEASED".equals(microCase.getFinalReleaseState()))
+        var caseAnalysis = caseAnalysisService.linkAnalysis(microCase, analysis, reportableTestAnalyte.getId());
+        if (environmental && !"FINAL_RELEASED".equals(microCase.getFinalReleaseState())
+                && MicroPatientReportService.selected(caseAnalysis))
             patientReports.selectAnalysis(microCase.getId(), analysis.getId(), false, performedBy);
         if (WHONET_EXPORT_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             var track = dictionaryService.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track");

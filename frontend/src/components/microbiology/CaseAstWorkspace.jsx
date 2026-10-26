@@ -48,7 +48,6 @@ const reasons = [
   "invalidate",
   "acknowledge",
   "qc-override",
-  "start",
   "resolve",
 ];
 const techniques = [
@@ -132,7 +131,12 @@ export default function CaseAstWorkspace({
     ])
       .then(([overview, instruments]) => {
         if (live) {
-          setLots(overview || { requirements: [], usages: [] });
+          setLots({
+            requirements: (overview?.requirements || []).filter(
+              (requirement) => requirement.astReagent,
+            ),
+            usages: overview?.usages || [],
+          });
           setAnalyzers(instruments || []);
         }
       })
@@ -163,6 +167,7 @@ export default function CaseAstWorkspace({
           ? data.standards[0].id
           : "",
       technique: run?.technique || techniques[0],
+      clinicalContext: run?.clinicalContext || "",
       rawValue: "",
       orderedAntibioticIds: null,
       adjustPanel: false,
@@ -252,10 +257,16 @@ export default function CaseAstWorkspace({
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
+  const panelChanged =
+    draft?.action === "start" &&
+    (draft.adjustPanel ||
+      activeIsolate?.assignments?.find((a) => a.panelId === draft.panelId)
+        ?.provenance !== "ORGANISM_DEFAULT");
+  const needsReason = draft && (reasons.includes(draft.action) || panelChanged);
   const invalid =
     draft &&
     ((draft.adjustPanel && !draft.orderedAntibioticIds?.length) ||
-      (reasons.includes(draft.action) && !draft.reason.trim()) ||
+      (needsReason && !draft.reason.trim()) ||
       (draft.action === "reading" &&
         (draft.rawValue === "" ||
           !Number.isFinite(Number(draft.rawValue)) ||
@@ -323,6 +334,14 @@ export default function CaseAstWorkspace({
                   open
                 >
                   <Stack gap={4}>
+                    <p>
+                      {t("clinicalContext")}:{" "}
+                      {t(
+                        run.clinicalContext === "NON_MENINGITIS"
+                          ? "clinicalContext.nonMeningitis"
+                          : "clinicalContext.unspecified",
+                      )}
+                    </p>
                     <ContainerLabelButton
                       detail={detail}
                       kind="AST"
@@ -688,6 +707,24 @@ export default function CaseAstWorkspace({
                     />
                   </>
                 )}
+                <Select
+                  id="ast-clinical-context"
+                  labelText={t("clinicalContext")}
+                  helperText={t("clinicalContext.help")}
+                  value={draft.clinicalContext}
+                  onChange={(event) =>
+                    setDraft({ ...draft, clinicalContext: event.target.value })
+                  }
+                >
+                  <SelectItem
+                    value=""
+                    text={t("clinicalContext.unspecified")}
+                  />
+                  <SelectItem
+                    value="NON_MENINGITIS"
+                    text={t("clinicalContext.nonMeningitis")}
+                  />
+                </Select>
                 <ReagentLotPicker
                   id="case-ast-lots"
                   requirements={lots.requirements}
@@ -891,10 +928,16 @@ export default function CaseAstWorkspace({
                 ))}
               </Select>
             )}
-            {reasons.includes(draft.action) && (
+            {needsReason && (
               <TextArea
                 id="ast-reason"
-                labelText={t("reason")}
+                labelText={
+                  panelChanged
+                    ? intl.formatMessage({
+                        id: "microbiology.ast.panelAdjustmentReason",
+                      })
+                    : t("reason")
+                }
                 value={draft.reason}
                 maxLength={4000}
                 onChange={(e) => setDraft({ ...draft, reason: e.target.value })}

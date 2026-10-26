@@ -20,6 +20,7 @@ public class MicroAstRunForm {
     public String attemptReason;
     public String method;
     public String technique;
+    public String clinicalContext;
     public String measurementType;
     public boolean reportable;
     public String status;

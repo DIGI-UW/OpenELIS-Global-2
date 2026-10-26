@@ -60,6 +60,7 @@ public class MicroAstResponseService {
         form.attemptReason = run.getAttemptReason();
         form.method = run.getMethod();
         form.technique = run.getTechnique();
+        form.clinicalContext = run.getClinicalContext();
         form.measurementType = run.getMethod();
         form.reportable = run.isReportable();
         form.status = run.getStatus();

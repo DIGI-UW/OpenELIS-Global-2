@@ -28,7 +28,12 @@ public class MicroPatientReportForm {
     }
 
     public record Susceptibility(String antibioticId, String agent, String readingId, String runId, String raw,
-            String units, String interpretation, String standard, String version, String matchedBy) {
+            String units, String interpretation, String standard, String version, String matchedBy,
+            String clinicalContext) {
+        public Susceptibility(String antibioticId, String agent, String readingId, String runId, String raw,
+                String units, String interpretation, String standard, String version, String matchedBy) {
+            this(antibioticId, agent, readingId, runId, raw, units, interpretation, standard, version, matchedBy, null);
+        }
     }
 
     public record Note(String text, String author, Timestamp at, String targetType, String targetId) {

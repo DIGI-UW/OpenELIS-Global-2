@@ -166,6 +166,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRun startRun(MicroAstRunSetupCommand command, String performedBy) {
         MicroCaseServiceImpl.requireText(command.isolateId(), "isolateId");
+        String clinicalContext = MicroBreakpointClinicalContext.validate(command.clinicalContext());
         MicroAstTechnique technique = command.technique();
         if (technique == null) {
             throw new IllegalArgumentException("AST_TECHNIQUE_REQUIRED");
@@ -214,6 +215,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setPanelAdjustmentReason(adjusted ? command.panelAdjustmentReason().trim() : null);
         run.setBreakpointStandardId(standard.getId());
         run.setBreakpointVersion(standard.getVersion());
+        run.setClinicalContext(clinicalContext);
         run.setAttemptType(MicroAstAttemptType.ORIGINAL.name());
         run.setTechnique(technique.name());
         run.setMethod(technique.measurementType().name());
@@ -330,6 +332,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         run.setPanelAdjustmentReason(source.getPanelAdjustmentReason());
         run.setBreakpointStandardId(source.getBreakpointStandardId());
         run.setBreakpointVersion(source.getBreakpointVersion());
+        run.setClinicalContext(source.getClinicalContext());
         run.setAttemptType(attemptType.name());
         run.setSourceRunId(source.getId());
         run.setAttemptReason(reason.trim());
@@ -760,7 +763,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 && run.getAnalyzerFlagsAcknowledgedAt() == null) {
             throw new MicroAstConflictException("AST_ANALYZER_FLAGS_UNRESOLVED");
         }
-        if (latestReadings.stream().anyMatch(reading -> "NONE".equals(reading.getMatchedBy())
+        if (latestReadings.stream().anyMatch(reading -> ("NONE".equals(reading.getMatchedBy())
+                || MicroAstInterpretation.NO_BREAKPOINT.name().equals(reading.getInterpretation()))
                 && (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank()))) {
             throw new MicroAstConflictException("AST_NO_BREAKPOINT_UNRESOLVED");
         }
@@ -855,6 +859,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         repeat.setPanelAdjustmentReason(source.getPanelAdjustmentReason());
         repeat.setBreakpointStandardId(source.getBreakpointStandardId());
         repeat.setBreakpointVersion(source.getBreakpointVersion());
+        repeat.setClinicalContext(source.getClinicalContext());
         repeat.setAttemptType(attemptType.name());
         repeat.setSourceRunId(source.getId());
         repeat.setAttemptReason(reason.trim());
@@ -970,15 +975,24 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         String technique = run.getTechnique();
         if (technique != null && !technique.isBlank() && !MicroAstTechnique.valueOf(technique).isLegacyUnspecified()) {
-            MicroBreakpointRule techniqueRule = breakpointService.findBreakpointRule(standardId,
-                    isolate.getOrganismId(), organismGroup, antibioticId, technique, specimenTypeId, method.name());
+            MicroBreakpointRule techniqueRule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroup,
+                    antibioticId, technique, specimenTypeId, method.name());
             if (techniqueRule != null && (!ntm || isolate.getOrganismId().equals(techniqueRule.getOrganismId()))) {
                 return techniqueRule;
             }
         }
-        var rule = breakpointService.findBreakpointRule(standardId, isolate.getOrganismId(), organismGroup,
-                antibioticId, method.name(), specimenTypeId, method.name());
+        var rule = findContextRule(run, standardId, isolate.getOrganismId(), organismGroup, antibioticId, method.name(),
+                specimenTypeId, method.name());
         return rule != null && ntm && !isolate.getOrganismId().equals(rule.getOrganismId()) ? null : rule;
+    }
+
+    private MicroBreakpointRule findContextRule(MicroAstRun run, String standardId, String organismId,
+            String organismGroup, String antibioticId, String method, String specimenTypeId, String breakpointType) {
+        if (run.getClinicalContext() == null)
+            return breakpointService.findBreakpointRule(standardId, organismId, organismGroup, antibioticId, method,
+                    specimenTypeId, breakpointType);
+        return breakpointService.findContextualBreakpointRule(standardId, organismId, organismGroup, antibioticId,
+                method, specimenTypeId, breakpointType, run.getClinicalContext());
     }
 
     private String matchedBy(MicroBreakpointRule rule) {

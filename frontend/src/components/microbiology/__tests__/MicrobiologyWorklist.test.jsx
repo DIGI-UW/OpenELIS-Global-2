@@ -10,6 +10,11 @@ import MicrobiologyWorklist from "../MicrobiologyWorklist";
 import messages from "../../../languages/en.json";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 
+vi.mock("../MicrobiologyTime", async (importOriginal) => ({
+  ...(await importOriginal()),
+  labTimeZone: () => "Asia/Tokyo",
+}));
+
 vi.mock("../CaseWorkspaceService", () => ({
   searchCases: vi.fn().mockResolvedValue({ labUnits: [] }),
 }));
@@ -100,6 +105,11 @@ describe("MicrobiologyWorklist", () => {
 
     expect(
       await screen.findByRole("heading", { name: "Microbiology worklist" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("Aug 06, 06:30 PM", {
+        selector: ".microbiology-worklist__last-activity span",
+      }),
     ).toBeInTheDocument();
     expect(service.getWorklistRows).toHaveBeenCalledWith({
       grain: "cultures",

@@ -15,6 +15,7 @@ test.describe("Microbiology V2 MVP case visibility", () => {
     expect(shell.labUnitId).toBeTruthy();
     expect(shell.labUnit).toBeTruthy();
     const query = new URLSearchParams({
+      grain: "cases",
       q: seeded.accessionNumber,
       labUnitId: shell.labUnitId,
     });

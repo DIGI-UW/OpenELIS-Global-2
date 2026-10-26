@@ -14,6 +14,10 @@ import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { Roles } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
+vi.mock("../MicrobiologyTime", async (original) => ({
+  ...(await original()),
+  labTimeZone: () => "UTC",
+}));
 vi.mock("../CaseTestingWorkspace", () => ({ default: () => null }));
 vi.mock("../MicrobiologyPerformance", async (importOriginal) => ({
   ...(await importOriginal()),
@@ -56,6 +60,15 @@ const shell = {
 };
 
 describe("MVP microbiology case workspace", () => {
+  test("does not shift a lab birthday into the previous browser day", async () => {
+    const service = {
+      getCase: vi
+        .fn()
+        .mockResolvedValue({ ...shell, birthDate: "1980-01-15T00:00:00Z" }),
+    };
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    expect(await screen.findByText(/1\/15\/1980/)).toBeVisible();
+  });
   test("marks case ready only after a successful shell load", async () => {
     markMicrobiologyReady.mockClear();
     let finish;

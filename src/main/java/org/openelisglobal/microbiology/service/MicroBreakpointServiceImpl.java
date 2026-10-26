@@ -103,4 +103,12 @@ public class MicroBreakpointServiceImpl implements MicroBreakpointService {
         return ruleDAO.findBestRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
                 breakpointType);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, String organismGroup,
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext) {
+        return ruleDAO.findContextualRule(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
+                breakpointType, MicroBreakpointClinicalContext.validate(clinicalContext));
+    }
 }
