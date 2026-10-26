@@ -37,13 +37,18 @@ test.describe("Microbiology initial testing", () => {
       await expect(fields).toHaveCount(2);
       await fields.nth(0).fill("12.5");
       await demo.caption(
-        "A value with more decimals than the test allows keeps Save disabled.",
+        "A value with more decimals than the test reports is kept as entered, with a warning that it is reported rounded.",
       );
+      const precisionWarning = table.getByText(
+        /saved as entered and reported rounded/,
+      );
+      await expect(precisionWarning).toBeVisible();
+      await demo.highlight(precisionWarning);
       await expect(
         table.getByRole("button", { name: "Save results", exact: true }),
-      ).toBeDisabled();
+      ).toBeEnabled();
       await demo.caption(
-        "With valid values for both components, the results are saved.",
+        "With whole values for both components, the results are saved.",
       );
       await fields.nth(0).fill("12");
       await fields.nth(1).fill("34");
