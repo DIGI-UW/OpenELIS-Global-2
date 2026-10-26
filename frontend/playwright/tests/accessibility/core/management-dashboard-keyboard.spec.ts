@@ -5,11 +5,7 @@ import { LONG_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
 test.describe("Management Overview keyboard-only workflow", () => {
   test("changes scope, refreshes and opens the CSV picker without a mouse", async ({
     page,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name.endsWith("-mobile"),
-      "The phone layout swaps the scope tabs for a dropdown",
-    );
+  }) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/dashboards/management", { timeout: NAV_TIMEOUT });
