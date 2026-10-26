@@ -10825,6 +10825,7 @@
   "microbiology.admin.astRules.organismGroup": "Organism group",
   "microbiology.admin.astRules.preview": "Preview",
   "microbiology.admin.astRules.previewAntibiotic": "Antibiotic {n}",
+  "microbiology.admin.astRules.previewError": "The preview could not be run.",
   "microbiology.admin.astRules.previewDefaultPanel": "Default panel: {name}",
   "microbiology.admin.astRules.previewIndication": "Preview indication",
   "microbiology.admin.astRules.previewInterpretedAs": "Interpreted as",

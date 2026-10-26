@@ -412,3 +412,50 @@ it("previews what an isolate would report and why", async () => {
   expect(within(result).getByText("Consider meropenem")).toBeInTheDocument();
   expect(screen.getByText("Default panel: Gram neg stamp")).toBeInTheDocument();
 });
+
+it("previews only once an organism is picked and shows results as S, I or R", async () => {
+  previewReportingRules.mockResolvedValue({
+    defaultPanelName: null,
+    rows: [
+      {
+        antibioticId: "cro",
+        antibioticName: "Ceftriaxone",
+        measured: "SUSCEPTIBLE",
+        interpretation: "SUSCEPTIBLE",
+        reportBehavior: "ALWAYS",
+        reported: true,
+      },
+      {
+        antibioticId: "cro",
+        antibioticName: "Ceftriaxone",
+        measured: "RESISTANT",
+        interpretation: "RESISTANT",
+        reportBehavior: "ALWAYS",
+        reported: true,
+      },
+    ],
+  });
+  show();
+  const button = await screen.findByRole("button", { name: "Preview" });
+  expect(button).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Preview organism"), {
+    target: { value: "ab" },
+  });
+  expect(button).toBeEnabled();
+  fireEvent.click(button);
+  const result = await screen.findByRole("table", { name: "Preview result" });
+  expect(within(result).getAllByText("S")).toHaveLength(2);
+  expect(within(result).getAllByText("R")).toHaveLength(2);
+});
+
+it("says when a preview could not be run", async () => {
+  previewReportingRules.mockRejectedValue(new Error("Bad Request"));
+  show();
+  fireEvent.change(await screen.findByLabelText("Preview organism"), {
+    target: { value: "ab" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+  expect(
+    await screen.findByText("The preview could not be run."),
+  ).toBeInTheDocument();
+});

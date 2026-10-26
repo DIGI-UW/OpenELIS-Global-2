@@ -57,6 +57,12 @@ const standards = {
   LOCAL: "standardLocal",
 };
 
+const results = {
+  SUSCEPTIBLE: "resultS",
+  INTERMEDIATE: "resultI",
+  RESISTANT: "resultR",
+};
+
 const noteWhens = {
   ALWAYS: "noteAlways",
   WHEN_R: "noteWhenR",
@@ -92,6 +98,7 @@ export default function AstRulesPage() {
     readings: [],
   });
   const [previewResult, setPreviewResult] = useState(null);
+  const [previewError, setPreviewError] = useState(false);
   const [error, setError] = useState(false);
   const [interpretationError, setInterpretationError] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -146,7 +153,7 @@ export default function AstRulesPage() {
   };
 
   const runPreview = async () => {
-    setError(false);
+    setPreviewError(false);
     try {
       const result = await previewReportingRules({
         organismId: preview.organismId || "",
@@ -161,7 +168,7 @@ export default function AstRulesPage() {
       });
       setPreviewResult(result);
     } catch {
-      setError(true);
+      setPreviewError(true);
     }
   };
 
@@ -777,9 +784,9 @@ export default function AstRulesPage() {
                 )
               }
             >
-              <SelectItem value="SUSCEPTIBLE" text={t("resultS")} />
-              <SelectItem value="INTERMEDIATE" text={t("resultI")} />
-              <SelectItem value="RESISTANT" text={t("resultR")} />
+              {Object.entries(results).map(([value, label]) => (
+                <SelectItem key={value} value={value} text={t(label)} />
+              ))}
             </Select>
           </div>
         ))}
@@ -797,7 +804,16 @@ export default function AstRulesPage() {
         >
           {t("addAntibiotic")}
         </Button>
-        <Button onClick={runPreview}>{t("preview")}</Button>
+        <Button onClick={runPreview} disabled={!preview.organismId}>
+          {t("preview")}
+        </Button>
+        {previewError && (
+          <InlineNotification
+            kind="error"
+            title={t("previewError")}
+            hideCloseButton
+          />
+        )}
         {previewResult?.defaultPanelName && (
           <p>
             {intl.formatMessage(
@@ -823,12 +839,12 @@ export default function AstRulesPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {previewResult.rows.map((row) => (
-                <TableRow key={row.antibioticId}>
+              {previewResult.rows.map((row, index) => (
+                <TableRow key={index}>
                   <TableCell>{row.antibioticName}</TableCell>
-                  <TableCell>{row.measured}</TableCell>
+                  <TableCell>{t(results[row.measured])}</TableCell>
                   <TableCell>
-                    {row.interpretation}
+                    {t(results[row.interpretation])}
                     {row.expertRule && <div>{row.expertRule}</div>}
                   </TableCell>
                   <TableCell>{row.reported ? t("yes") : t("no")}</TableCell>
