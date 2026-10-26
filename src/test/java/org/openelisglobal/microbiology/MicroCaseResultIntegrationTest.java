@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.*;
 import org.junit.After;
 import org.junit.Before;
@@ -71,6 +73,14 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     private ResultSelfValidationPolicy policy;
     @PersistenceContext
     private EntityManager em;
+    @Autowired
+    private MicroIncomingResultService incoming;
+    @Autowired
+    private MicroIncomingItemDAO incomingItems;
+    @Autowired
+    private org.openelisglobal.analyzerresults.service.AnalyzerResultsService analyzerStaging;
+    @Autowired
+    private org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService analyzerAcceptance;
     private MicroCase microCase;
     private Analysis analysis;
     private String actor, validator, outsider, oldBlock;
@@ -205,6 +215,257 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             p.components.add(c);
         }
         return p;
+    }
+
+    @Test
+    public void analyzerReviewAcceptanceTransfersComponentsOnlyAfterTheUserAccepts() {
+        verifyAnalyzerReview(false, false);
+    }
+
+    @Test
+    public void acceptedAnalyzerRetestCorrectsTheSelectedAnalysisWithoutLeavingAnUnplaceableItem() {
+        verifyAnalyzerReview(true, false);
+    }
+
+    @Test
+    public void analyzerReviewWithoutTheOwningLabUnitRightsLeavesSourceRowsAndResultsUntouched() {
+        verifyAnalyzerReview(false, true);
+    }
+
+    private void verifyAnalyzerReview(boolean retest, boolean denied) {
+        if (retest)
+            workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+        String priorRevision = analyses.get(analysis.getId()).getRevision();
+        var patient = fixtures.createPatient("M7PAT");
+        var human = new org.openelisglobal.samplehuman.valueholder.SampleHuman();
+        human.setSampleId(analysis.getSampleItem().getSample().getId());
+        human.setPatientId(patient.getId());
+        human.setSysUserId(actor);
+        em.persist(human);
+        var analyzer = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        analyzer.setName("M7 acceptance " + UUID.randomUUID());
+        analyzer.setActive(true);
+        analyzer.setSysUserId(actor);
+        em.persist(analyzer);
+        var stagedRows = new ArrayList<org.openelisglobal.analyzerresults.valueholder.AnalyzerResults>();
+        for (var component : payload().components) {
+            var row = new org.openelisglobal.analyzerresults.valueholder.AnalyzerResults();
+            row.setAnalyzerId(analyzer.getId());
+            row.setAccessionNumber(analysis.getSampleItem().getSample().getAccessionNumber());
+            row.setInstrumentSpecimenId(row.getAccessionNumber());
+            row.setInstrumentPatientId(patient.getExternalId());
+            row.setTestId(analysis.getTest().getId());
+            row.setTestName(analysis.getTest().getName());
+            row.setComponentId(component.componentId);
+            row.setResult(retest ? "56" : component.value);
+            row.setRawResultValue(row.getResult());
+            row.setResultType("N");
+            row.setCompleteDate(Timestamp.from(Instant.now()));
+            row.setSourceConnectionId("M7-review-connection");
+            row.setSourceMessageId("M7-review-delivery");
+            stagedRows.add(row);
+        }
+        analyzerStaging.insertAnalyzerResults(stagedRows, "1");
+        em.flush();
+        var decisions = stagedRows.stream().map(row -> {
+            var item = new org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem();
+            item.setId(row.getId());
+            item.setTestId(row.getTestId());
+            item.setAccessionNumber(row.getAccessionNumber());
+            item.setInstrumentSpecimenId(row.getInstrumentSpecimenId());
+            item.setResult(row.getResult());
+            return item;
+        }).toList();
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        assertEquals(retest ? 2 : 0, results.getResultsByAnalysis(analysis).size());
+        assertTrue(incomingItems.forCase(microCase.getId()).isEmpty());
+        stagedRows.forEach(row -> assertNotNull(analyzerStaging.get(row.getId())));
+        decisions.forEach(item -> {
+            item.setIsAccepted(true);
+            if (retest)
+                item.setChosenAnalysisId(analysis.getId());
+        });
+        if (denied) {
+            assertThrows(AccessDeniedException.class, () -> analyzerAcceptance.acceptAndPersist(decisions, outsider));
+            assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+            assertTrue(incomingItems.forCase(microCase.getId()).isEmpty());
+            stagedRows.forEach(row -> assertNotNull(analyzerStaging.get(row.getId())));
+            return;
+        }
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        assertEquals(2, results.getResultsByAnalysis(analysis).size());
+        assertEquals("TechnicalAcceptance", workspace.getTests(microCase.getId(), actor).getFirst().status);
+        var received = incomingItems.forCase(microCase.getId());
+        assertEquals(1, received.size());
+        assertEquals("PLACED", received.getFirst().getState());
+        assertEquals(actor, received.getFirst().getPlacedBy());
+        assertEquals(analysis.getId(), received.getFirst().getPlacementTarget());
+        if (retest) {
+            assertTrue(
+                    Integer.parseInt(analyses.get(analysis.getId()).getRevision()) > Integer.parseInt(priorRevision));
+            assertEquals(Set.of("56"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                    .collect(java.util.stream.Collectors.toSet()));
+        }
+        assertEquals(Long.valueOf(0),
+                em.createQuery("select count(r) from AnalyzerResults r where r.id in :ids", Long.class)
+                        .setParameter("ids", stagedRows.stream().map(row -> row.getId()).toList()).getSingleResult());
+    }
+
+    @Test
+    public void incomingSingleComponentKeepsItsCatalogIdentityDuringPlacement() {
+        var follow = fixtures.createCatalogTest();
+        follow.setTestSection(analysis.getTestSection());
+        em.merge(follow);
+        var configured = components.saveSampleResults(follow.getId(), List.of(component("PRIMARY", "Follow-up", true)),
+                null, null, actor);
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(microCase.getSampleTypeId());
+        mapping.setTestId(follow.getId());
+        mapping.setSysUserId(actor);
+        em.persist(mapping);
+        var p = new MicroCaseResultRequestForm();
+        var value = new MicroCaseResultRequestForm.ResultComponent();
+        value.componentId = configured.get(0).getId();
+        value.value = "12";
+        p.components = List.of(value);
+        var queued = incoming.receive(microCase.getId(), microCase.getSampleItemId(), follow.getId(), "ANALYZER",
+                "single-field", "12", p, false, actor);
+        var placement = new org.openelisglobal.microbiology.form.MicroIncomingPlacementForm();
+        placement.sampleItemId = microCase.getSampleItemId();
+        var placed = incoming.place(microCase.getId(), queued.id, placement, actor, request(actor));
+        assertEquals("PLACED", placed.state);
+        var saved = workspace.getTests(microCase.getId(), actor).stream().filter(t -> follow.getId().equals(t.testId))
+                .findFirst().orElseThrow();
+        assertEquals("TechnicalAcceptance", saved.status);
+        assertEquals("12", saved.components.get(0).getResultValue());
+        assertEquals(configured.get(0).getId(), saved.components.get(0).getTestResultComponentId());
+    }
+
+    @Test
+    public void placementAcknowledgementCannotReplaceTheStagedResult() {
+        String instrumentId = analyzer();
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(microCase.getSampleTypeId());
+        mapping.setTestId(analysis.getTest().getId());
+        mapping.setSysUserId(actor);
+        em.persist(mapping);
+        var original = payload();
+        original.note = "Original analyzer note";
+        var queued = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "acknowledgement-integrity", "12 / 34", original, false, actor, instrumentId);
+        var placement = new org.openelisglobal.microbiology.form.MicroIncomingPlacementForm();
+        placement.sampleItemId = microCase.getSampleItemId();
+        placement.result = payload();
+        placement.result.note = "Replacement client note";
+        placement.result.components.get(0).value = "99";
+        placement.result.components.get(0).criticalAcknowledged = true;
+        placement.result.components.remove(1);
+        var unknown = new MicroCaseResultRequestForm.ResultComponent();
+        unknown.componentId = "unknown";
+        unknown.value = "999";
+        placement.result.components.add(unknown);
+        var placed = incoming.place(microCase.getId(), queued.id, placement, actor, request(actor));
+        assertEquals("PLACED", placed.state);
+        assertEquals(Set.of("12", "34"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                .collect(java.util.stream.Collectors.toSet()));
+        var notes = em
+                .createQuery("from Note n where n.referenceId = :id and n.text = :text",
+                        org.openelisglobal.note.valueholder.Note.class)
+                .setParameter("id", analysis.getId()).setParameter("text", "Original analyzer note").getResultList();
+        assertEquals(1, notes.size());
+        assertEquals(Long.valueOf(0),
+                em.createQuery("select count(n) from Note n where n.referenceId = :id and n.text = :text", Long.class)
+                        .setParameter("id", analysis.getId()).setParameter("text", "Replacement client note")
+                        .getSingleResult());
+        em.flush();
+        em.clear();
+        assertEquals(instrumentId, analyses.get(analysis.getId()).getAnalyzerId());
+        assertEquals("Original analyzer note", placed.result.note);
+        assertEquals("12", placed.result.components.getFirst().value);
+    }
+
+    @Test
+    public void analyzerArrivalAttachesComponentsOnceAndNeverFinalizes() {
+        String instrumentId = analyzer();
+        var p = payload();
+        var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
+                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor, instrumentId);
+        assertEquals("PLACED", arrived.state);
+        assertEquals(analysis.getId(), arrived.placementTarget);
+        assertEquals("TechnicalAcceptance", workspace.getTests(microCase.getId(), actor).get(0).status);
+        assertEquals(Set.of("12", "34"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                .collect(java.util.stream.Collectors.toSet()));
+        var retry = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
+                "ANALYZER", "owned-run-1", "12 / 34", p, true, actor, instrumentId);
+        assertEquals(arrived.id, retry.id);
+        assertEquals(1, incomingItems.forCase(microCase.getId()).size());
+        assertEquals(2, results.getResultsByAnalysis(analysis).size());
+        em.flush();
+        em.clear();
+        assertEquals(instrumentId, analyses.get(analysis.getId()).getAnalyzerId());
+    }
+
+    private String analyzer() {
+        var instrument = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        instrument.setName("AMR provenance " + UUID.randomUUID());
+        instrument.setActive(true);
+        instrument.setFhirUuid(UUID.randomUUID());
+        instrument.setSysUserId(actor);
+        em.persist(instrument);
+        em.flush();
+        return instrument.getId();
+    }
+
+    @Test
+    public void laterInstrumentRunCannotOverwriteReviewPendingValues() {
+        incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(), "ANALYZER",
+                "first-run", "12", payload(), true, actor);
+        var replacement = payload();
+        replacement.components.get(0).value = "99";
+        assertThrows(IllegalArgumentException.class,
+                () -> incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                        "ANALYZER", "second-run", "99", replacement, true, actor));
+        assertEquals("12", workspace.getTests(microCase.getId(), actor).get(0).components.get(0).getResultValue());
+    }
+
+    @Test
+    public void reviewedLateResultKeepsItsTargetForPlacementDuringAmendment() {
+        workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+        microCase.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(microCase);
+        var replacement = payload();
+        replacement.components.get(0).value = "56";
+        var queued = incoming.receiveReviewed(microCase.getId(), microCase.getSampleItemId(),
+                analysis.getTest().getId(), "ANALYZER", "reviewed-late-result", "56", replacement, analysis.getId(),
+                actor, analyzer());
+        assertEquals("NEEDS_AMENDMENT", queued.state);
+        assertEquals("12",
+                workspace.getTests(microCase.getId(), actor).getFirst().components.getFirst().getResultValue());
+        // The amendment boundary unlocks case work before this explicit placement.
+        microCase.setStage("AMENDED");
+        microCase.setFinalReleaseState("AMENDMENT_IN_PROGRESS");
+        cases.update(microCase);
+        em.flush();
+        em.clear();
+        var placement = new MicroIncomingPlacementForm();
+        placement.sampleItemId = microCase.getSampleItemId();
+        var placed = incoming.place(microCase.getId(), queued.id, placement, actor, request(actor));
+        assertEquals("PLACED", placed.state);
+        assertEquals(analysis.getId(), placed.placementTarget);
+        assertEquals("56",
+                workspace.getTests(microCase.getId(), actor).getFirst().components.getFirst().getResultValue());
+    }
+
+    @Test
+    public void finalizedCaseQueuesLateEvidenceWithoutChangingResults() {
+        var p = payload();
+        microCase.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(microCase);
+        var arrived = incoming.receive(microCase.getId(), analysis.getSampleItem().getId(), analysis.getTest().getId(),
+                "ANALYZER", "owned-late-run", "12 / 34", p, true, actor);
+        assertEquals("NEEDS_AMENDMENT", arrived.state);
+        assertEquals(0, results.getResultsByAnalysis(analysis).size());
     }
 
     @Test

@@ -5,6 +5,7 @@ import java.util.List;
 
 public class MicroCaseReadinessForm {
 
+    public java.util.List<String> pendingIncomingIds = new java.util.ArrayList<>();
     public String caseId;
     public boolean finalReleaseReady;
     public List<String> blockers = new ArrayList<>();

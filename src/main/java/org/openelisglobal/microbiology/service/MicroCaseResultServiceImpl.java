@@ -46,6 +46,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.typeofsample.service.TypeOfSamplePanelService samplePanels;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCaseInoculationDAO cultureRows;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -92,15 +94,32 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         this.acknowledgements = acknowledgements;
     }
 
+    private List<TestResultItem> loadRows(List<Analysis> analyses, String actor) {
+        var loader = loaders.getObject();
+        loader.setSysUser(actor);
+        var rows = loader.getGroupedTestsForAnalysisList(analyses, true);
+        for (var analysis : analyses) {
+            var unassigned = rows.stream().filter(
+                    row -> analysis.getId().equals(row.getAnalysisId()) && row.getTestResultComponentId() == null)
+                    .toList();
+            if (unassigned.isEmpty())
+                continue;
+            // The shared loader omits component identity for a single-field test.
+            // Incoming mappings use the catalog identity even for that primary field.
+            var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+            if (configured.size() == 1)
+                unassigned.forEach(row -> row.setTestResultComponentId(configured.get(0).getId()));
+        }
+        return rows;
+    }
+
     @Override
     public List<MicroCaseTestForm> getTests(String caseId, String actor) {
         if (actor == null || actor.isBlank())
             throw new AccessDeniedException("Authenticated system user required");
         var c = cases.get(caseId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var list = links.getAnalyses(caseId);
-        var loader = loaders.getObject();
-        loader.setSysUser(actor);
-        var rows = loader.getGroupedTestsForAnalysisList(list, true);
+        var rows = loadRows(list, actor);
         List<MicroCaseTestForm> forms = new ArrayList<>();
         for (var a : list) {
             var link = links.getByCaseAndAnalysis(caseId, a.getId());
@@ -269,16 +288,37 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     public List<MicroCaseTestForm> saveResults(String caseId, String analysisId, MicroCaseResultRequestForm request,
             String actor, HttpServletRequest httpRequest) {
         writeCase(caseId, actor, Constants.ROLE_RESULTS);
+        persistResult(caseId, analysisId, request, actor, httpRequest, true);
+        return getTests(caseId, actor);
+    }
+
+    /**
+     * Trusted ingestion keeps the normal component validation and review-pending
+     * status.
+     */
+    @Override
+    @Transactional
+    public void receiveResult(String caseId, String analysisId, MicroCaseResultRequestForm request, String actor) {
+        var c = cases.getForUpdate(caseId);
+        if (c == null || actor == null || actor.isBlank())
+            throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_REQUIRED");
+        MicroCaseMutationGuard.requireMutable(c);
+        persistResult(caseId, analysisId, request, actor, null, false);
+    }
+
+    private void persistResult(String caseId, String analysisId, MicroCaseResultRequestForm request, String actor,
+            HttpServletRequest httpRequest, boolean checkToken) {
         var a = requireAnalysis(caseId, analysisId);
-        checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
+        if (checkToken)
+            checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
         requireEditable(a);
+        if (!checkToken && !"NotStarted".equals(state(a)))
+            bad("MICROBIOLOGY_INCOMING_EXISTING_RESULT");
         if (request.note != null && request.note.length() > 4000)
             bad("MICROBIOLOGY_NOTE_TOO_LONG");
         if (request.components == null || request.components.isEmpty())
             bad("MICROBIOLOGY_RESULT_REQUIRED");
-        var loader = loaders.getObject();
-        loader.setSysUser(actor);
-        var rows = loader.getGroupedTestsForAnalysisList(List.of(a), true);
+        var rows = loadRows(List.of(a), actor);
         Map<String, TestResultItem> byComponent = new HashMap<>();
         rows.forEach(row -> byComponent.put(row.getTestResultComponentId(), row));
         Set<String> supplied = new HashSet<>();
@@ -318,7 +358,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (alerts.stream().anyMatch(alert -> !alert.isAcknowledged()))
             throw new MicroCaseResultAcknowledgementException(
                     acknowledgements.refusalBody(alerts.stream().filter(alert -> !alert.isAcknowledged()).toList()));
-        ResultUtil.createResultsFromItems(data, false, false, true, "", httpRequest);
+        ResultUtil.createResultsFromItems(data, false, false, httpRequest != null, "", httpRequest);
         // The case editor submits one analysis note, not one copy per component.
         // ResultUtil compiles a note from each component carrying that text.
         data.getNoteList().forEach(note -> note.setTestResultComponentId(null));
@@ -358,7 +398,6 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         link.setSysUserId(actor);
         links.update(link);
         record(caseId, "RESULT_ENTERED", analysisId, actor);
-        return getTests(caseId, actor);
     }
 
     @Override
@@ -518,7 +557,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         return statuses.getAnalysisStatusForID(a.getStatusId()).name();
     }
 
-    private String version(Analysis a, MicroCaseAnalysis link) {
+    static String version(Analysis a, MicroCaseAnalysis link) {
         String analysisVersion = a.getLastupdated() == null ? "" : a.getLastupdated().toInstant().toString();
         String provenanceVersion = link.getLastupdated() == null ? "" : link.getLastupdated().toInstant().toString();
         return analysisVersion + "/" + provenanceVersion;

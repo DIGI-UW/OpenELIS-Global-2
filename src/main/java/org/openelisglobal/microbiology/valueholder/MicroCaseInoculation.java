@@ -13,6 +13,11 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Table(name = "micro_case_inoculation", schema = "clinlims")
 public class MicroCaseInoculation extends BaseObject<String> {
 
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "cancelled_at")
+    private Timestamp cancelledAt;
+
     private static final long serialVersionUID = 1L;
 
     @Id

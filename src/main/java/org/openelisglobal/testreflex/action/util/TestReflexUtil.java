@@ -577,6 +577,16 @@ public class TestReflexUtil {
             return Optional.empty();
         }
 
+        String requestedTestId = reflex.getAddedTestId();
+        if (!GenericValidator.isBlankOrNull(reflex.getFlags())) {
+            requestedTestId = isUserChoiceReflex(reflex) && actionSelectionId != null
+                    && actionSelectionId.startsWith("test_") ? actionSelectionId.substring("test_".length()) : null;
+        }
+        if (addTest && requestedTestId != null
+                && SpringContext.getBean(org.openelisglobal.microbiology.service.MicroIncomingReflexPolicy.class)
+                        .alreadyOnCaseOrWaiting(result.getAnalysis().getId(), requestedTestId))
+            return Optional.empty();
+
         if (addTest || handleAction) {
 
             ReflexAction reflexAction = reflexResolver.getReflexAction();

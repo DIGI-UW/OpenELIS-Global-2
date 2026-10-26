@@ -1,3 +1,4 @@
+import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -187,6 +188,12 @@ export default function CaseAstWorkspace({ detail, service, onChanged }) {
                   open
                 >
                   <Stack gap={4}>
+                    <ContainerLabelButton
+                      detail={detail}
+                      kind="AST"
+                      rowId={run.id}
+                      service={service}
+                    />
                     <TableContainer>
                       <Table
                         size="sm"
