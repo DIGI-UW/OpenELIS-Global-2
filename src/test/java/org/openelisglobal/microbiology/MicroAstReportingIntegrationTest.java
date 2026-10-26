@@ -754,6 +754,23 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer));
     }
 
+    @Test
+    public void releasedCaseShowsNoCurrentRuleNote() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "Current wording";
+        form.noteWhen = "ALWAYS";
+        reportingRules.save(form, writer);
+        var run = start(isolate);
+        enter(run, "4");
+        c.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(c);
+        em.flush();
+        em.clear();
+        var drug = astResponses.toRunFormWithReadings(runs.get(run.getId()).orElseThrow()).orderedAntibiotics.stream()
+                .filter(a -> drugB.equals(a.antibioticId)).findFirst().orElseThrow();
+        assertNull(drug.ruleNote);
+    }
+
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
             String organismGroup, List<String> sampleTypeIds, String reportBehavior) {
         var form = new org.openelisglobal.microbiology.form.MicroReportingRuleForm();
