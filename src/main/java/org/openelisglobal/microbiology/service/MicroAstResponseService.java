@@ -14,6 +14,10 @@ public class MicroAstResponseService {
     private org.openelisglobal.microbiology.dao.MicroAntibioticDAO antibiotics;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroReportingRuleDAO reportingRules;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroIsolateDAO isolates;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO cases;
     private final MicroAstService astService;
 
     public MicroAstResponseService(MicroAstService astService) {
@@ -99,7 +103,7 @@ public class MicroAstResponseService {
             orderedForm.tier = ordered.getTier();
             orderedForm.reportBehavior = ordered.getReportBehavior();
             orderedForm.reportRuleId = ordered.getReportRuleId();
-            if (orderedForm.reportRuleId != null) {
+            if (orderedForm.reportRuleId != null && !finalReleased(run)) {
                 var interpretation = readings.stream()
                         .filter(reading -> ordered.getAntibioticId().equals(reading.getAntibioticId()))
                         .reduce((first, second) -> second).map(MicroAstReportChoiceService::interpretation)
@@ -141,5 +145,10 @@ public class MicroAstResponseService {
         form.overrideHistory = overrideHistory.stream().filter(event -> reading.getId().equals(event.readingId))
                 .toList();
         return form;
+    }
+
+    private boolean finalReleased(MicroAstRun run) {
+        return isolates.get(run.getIsolateId()).flatMap(isolate -> cases.get(isolate.getCaseId()))
+                .map(c -> "FINAL_RELEASED".equals(c.getFinalReleaseState())).orElse(false);
     }
 }
