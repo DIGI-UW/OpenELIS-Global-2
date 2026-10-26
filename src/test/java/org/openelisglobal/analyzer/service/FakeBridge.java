@@ -40,6 +40,7 @@ final class FakeBridge implements AutoCloseable {
     private volatile String pairedClient;
     private volatile String announcedFingerprint;
     private volatile String stateAnswer;
+    private volatile boolean stallState;
 
     FakeBridge(String code) throws Exception {
         this.code = code;
@@ -77,6 +78,14 @@ final class FakeBridge implements AutoCloseable {
         stateAnswer = body;
     }
 
+    /**
+     * Takes a pairing-state request and answers only after the caller has given up,
+     * as a hung Bridge does.
+     */
+    void stallStateAnswers() {
+        stallState = true;
+    }
+
     /** Answers pairing with this fingerprint instead of its own certificate's. */
     void announce(String fingerprint) {
         announcedFingerprint = fingerprint;
@@ -84,6 +93,13 @@ final class FakeBridge implements AutoCloseable {
 
     private void pairing(HttpExchange exchange) throws IOException {
         if ("GET".equals(exchange.getRequestMethod())) {
+            if (stallState) {
+                try {
+                    Thread.sleep(7_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             respond(exchange, 200, stateAnswer != null ? stateAnswer
                     : "{\"paired\":" + (pairedClient != null) + ",\"open\":" + (pairedClient == null) + "}");
             return;
