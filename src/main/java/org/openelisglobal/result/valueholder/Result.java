@@ -151,6 +151,16 @@ public class Result extends EnumValueItemImpl {
         return value;
     }
 
+    /**
+     * The value as reported: a numeric result rounded half up to its decimal places
+     * (OGC-1544). Flags compare against it so the report agrees with itself, while
+     * {@link #getValue()} stays what was entered or received.
+     */
+    @JsonIgnore
+    public String getReportedValue() {
+        return "N".equals(resultType) ? StringUtil.roundToPlaces(getValue(), getSignificantDigits()) : getValue();
+    }
+
     public String getValue(Boolean getActualNumericValue) {
         if (getActualNumericValue) {
             if ((this.resultType.equals("N")) && this.value != null) {

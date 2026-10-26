@@ -114,6 +114,12 @@ public class RoleModulePermittedNamesTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void permissionKeysCoverEveryPrefixButNotUnprefixedModules() {
+        assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.eqa", "dashboards.view.management"),
+                roleModuleService.getPermittedModuleNames(List.of("Results")));
+    }
+
+    @Test
     public void roleWithoutQaGrantsYieldsNothing() {
         // Audit Trail is a real seeded role with no qa.* grants in the matrix
         assertTrue(roleModuleService.getPermittedModuleNames(List.of("Audit Trail"), Constants.QA_PERMISSION_PREFIX)

@@ -13,12 +13,16 @@ import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
 @Component
 public class SampleEditFormValidator implements Validator {
+
+    @Autowired
+    private SampleOrderPartiesValidator orderPartiesValidator;
 
     @Override
     public boolean supports(Class<?> clazz) {
@@ -28,6 +32,8 @@ public class SampleEditFormValidator implements Validator {
     @Override
     public void validate(Object target, Errors errors) {
         SampleEditForm form = (SampleEditForm) target;
+
+        orderPartiesValidator.validate(form.getSampleOrderItems(), errors);
 
         // maxAccessionNumber
         String[] maxAccessionNumberArray = form.getMaxAccessionNumber().split("-");
