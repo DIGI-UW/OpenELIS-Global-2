@@ -317,6 +317,8 @@ function ProgramManagement() {
           domain: res.domain || "",
           active: res.active !== false,
           showOnMicroCase: res.showOnMicroCase === true,
+          reportingTrackId: res.reportingTrackId,
+          reportingTracks: res.reportingTracks || [],
           questions: questionsFromParsed(parsed, id),
           rawQuestionnaire: parsed
             ? JSON.stringify(parsed, null, 2)
@@ -724,6 +726,9 @@ function ProgramEditor({
   const [code, setCode] = useState(initialProgram.code || "");
   const [labUnitIds, setLabUnitIds] = useState(detail?.labUnitIds || []);
   const [domain, setDomain] = useState(persistedDomain);
+  const [reportingTrackId, setReportingTrackId] = useState(
+    detail?.reportingTrackId || "",
+  );
   const [showOnMicroCase, setShowOnMicroCase] = useState(
     detail?.showOnMicroCase === true,
   );
@@ -933,6 +938,7 @@ function ProgramEditor({
       domain,
       active: isNew ? true : row.active !== false,
       showOnMicroCase,
+      reportingTrackId,
       labUnitIds,
       testSectionId: labUnitIds[0] || "",
       additionalOrderEntryQuestions,
@@ -1086,6 +1092,28 @@ function ProgramEditor({
         </Grid>
 
         <div style={{ marginTop: "1rem" }}>
+          {showOnMicroCase && (
+            <Select
+              id="program-reporting-track"
+              labelText={intl.formatMessage({
+                id: "microbiology.program.reportingTrack",
+              })}
+              value={reportingTrackId}
+              onChange={(e) => setReportingTrackId(e.target.value)}
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({ id: "not.available" })}
+              />
+              {(detail?.reportingTracks || []).map((track) => (
+                <SelectItem
+                  key={track.id}
+                  value={track.id}
+                  text={track.value}
+                />
+              ))}
+            </Select>
+          )}
           <Toggle
             id={`micro-program-${idSuffix}`}
             labelText={intl.formatMessage({

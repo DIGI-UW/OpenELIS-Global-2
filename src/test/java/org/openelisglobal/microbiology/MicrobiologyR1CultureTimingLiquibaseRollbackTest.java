@@ -35,7 +35,14 @@ public class MicrobiologyR1CultureTimingLiquibaseRollbackTest {
                 ClassLoaderResourceAccessor resources = new ClassLoaderResourceAccessor();
 
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
-                fullChangelog.update(new Contexts("test"));
+                var contexts = new Contexts("test");
+                var pending = fullChangelog.listUnrunChangeSets(contexts, new liquibase.LabelExpression());
+                int beforeRetirement = 0;
+                while (beforeRetirement < pending.size()
+                        && !pending.get(beforeRetirement).getId().equals("amr-v2-environmental-migration"))
+                    beforeRetirement++;
+                assertTrue(beforeRetirement < pending.size());
+                fullChangelog.update(beforeRetirement, contexts, new liquibase.LabelExpression());
                 assertTimingColumns(connection, true);
 
                 Liquibase timingChangelog = new Liquibase("liquibase/microbiology-r1-culture-timing-rollback.xml",

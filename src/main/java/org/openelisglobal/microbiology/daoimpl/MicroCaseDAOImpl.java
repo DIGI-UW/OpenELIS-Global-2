@@ -14,10 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements MicroCaseDAO {
 
-    static final String FINALIZED_BACTERIOLOGY_BY_COLLECTION_DATE_HQL = "select c from MicroCase c"
+    static final String FINALIZED_BY_COLLECTION_DATE_HQL = "select c from MicroCase c"
             + " join SampleItem sampleItem on sampleItem.id = c.sampleItemId"
-            + " where c.workflowType = :workflowType and c.finalReleaseState = :finalReleaseState"
-            + " and sampleItem.collectionDate >= :fromInclusive"
+            + " where c.finalReleaseState = :finalReleaseState" + " and sampleItem.collectionDate >= :fromInclusive"
             + " and sampleItem.collectionDate < :toExclusive order by sampleItem.collectionDate, c.id";
 
     public MicroCaseDAOImpl() {
@@ -67,11 +66,9 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
 
     @Override
     @Transactional(readOnly = true)
-    public List<MicroCase> getFinalizedBacteriologyByCollectionDateRange(Timestamp fromInclusive,
-            Timestamp toExclusive) {
-        Query<MicroCase> query = entityManager.unwrap(Session.class)
-                .createQuery(FINALIZED_BACTERIOLOGY_BY_COLLECTION_DATE_HQL, MicroCase.class);
-        query.setParameter("workflowType", "BACTERIOLOGY");
+    public List<MicroCase> getFinalizedByCollectionDateRange(Timestamp fromInclusive, Timestamp toExclusive) {
+        Query<MicroCase> query = entityManager.unwrap(Session.class).createQuery(FINALIZED_BY_COLLECTION_DATE_HQL,
+                MicroCase.class);
         query.setParameter("finalReleaseState", "FINAL_RELEASED");
         query.setParameter("fromInclusive", fromInclusive);
         query.setParameter("toExclusive", toExclusive);

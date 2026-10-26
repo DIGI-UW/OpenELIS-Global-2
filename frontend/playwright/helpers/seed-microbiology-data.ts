@@ -129,6 +129,7 @@ export interface SeededMicrobiologyWhonetExport extends SeededMicrobiologyRefere
 export type SeededFinalMicrobiologyCase = SeededReviewedMicrobiologyCase;
 
 type MicrobiologyScenario =
+  | "M8"
   | "AST_REPORTING"
   | "CASE"
   | "MVP"
@@ -1260,3 +1261,6 @@ export const seedMicrobiologyAstReporting = (page: Page) =>
 
 export const seedMicrobiologyAutomation = (page: Page) =>
   provisionMicrobiologyScenario(page, "AUTOMATION_BENCH");
+
+export const seedMicrobiologyEnvironmental = (page: Page) =>
+  provisionMicrobiologyScenario(page, "M8");

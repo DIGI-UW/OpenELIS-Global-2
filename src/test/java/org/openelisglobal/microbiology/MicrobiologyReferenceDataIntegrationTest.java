@@ -150,11 +150,11 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService orderDetails;
 
     @Test
-    public void exportScenarioPreservesUnclassifiedCulturePurpose() {
+    public void clinicalScenarioDefaultsToDiagnosticCulturePurpose() {
         var scenario = uatScenarioService.provision(scenarioRequest("M4"), scenarioActor);
         var detail = orderDetails.getOrderDetail(scenario.caseId);
         assertNotNull(detail.getPatientOrigin());
-        assertNull(detail.getCulturePurpose());
+        assertEquals("DIAGNOSTIC", detail.getCulturePurpose());
     }
 
     @Test

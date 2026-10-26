@@ -36,6 +36,11 @@ public class SampleHumanServiceImpl extends AuditableBaseObjectServiceImpl<Sampl
     @Override
     @Transactional(readOnly = true)
     public Patient getPatientForSample(Sample sample) {
+        // Site-subject orders must never inherit patient demographics, even if an old
+        // sample_human association survived a domain correction.
+        if (sample != null && org.openelisglobal.common.domain.Domain
+                .fromRaw(sample.getDomain()) == org.openelisglobal.common.domain.Domain.ENVIRONMENTAL)
+            return null;
         return baseObjectDAO.getPatientForSample(sample);
     }
 

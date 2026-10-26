@@ -56,14 +56,17 @@ public class MicroCultureLiquibaseRollbackTest {
                         "SELECT to_jsonb(i)::text FROM clinlims.micro_case_inoculation i WHERE id='stored-row'");
                 String vocabularyBefore = scalar(connection,
                         "SELECT jsonb_agg(jsonb_build_array(id,dict_entry,dictionary_category_id,is_active,lastupdated) ORDER BY id)::text FROM clinlims.dictionary d WHERE id IN (887811,887812)");
-                app.update(new Liquibase("liquibase/3.5.x.x/121-amr-v2-culture-workspace.xml", resources, database)
-                        .getDatabaseChangeLog().getChangeSets().size(), contexts, new LabelExpression());
+                String dictionaryCount = scalar(connection, "SELECT count(*) FROM clinlims.dictionary");
+                String categoryCount = scalar(connection, "SELECT count(*) FROM clinlims.dictionary_category");
+                var m4 = new Liquibase("liquibase/3.5.x.x/121-amr-v2-culture-workspace.xml", resources, database);
+                m4.update(contexts);
+                assertEquals(dictionaryCount, scalar(connection, "SELECT count(*) FROM clinlims.dictionary"));
+                assertEquals(categoryCount, scalar(connection, "SELECT count(*) FROM clinlims.dictionary_category"));
                 assertTrue(column(connection, "micro_case_inoculation", "duration"));
                 assertTrue(column(connection, "test_section", "gram_stain_test_id"));
                 String columns = "ARRAY['source_sample_item_id','subculture_purpose','medium_item_id','lot_id','not_tracked','temperature','duration','duration_unit','check_interval_hours','loop_volume','positive_at','positive_source','outcome','outcome_by','outcome_at']";
                 assertEquals(before, scalar(connection, "SELECT (to_jsonb(i) - " + columns
                         + ")::text FROM clinlims.micro_case_inoculation i WHERE id='stored-row'"));
-                var m4 = new Liquibase("liquibase/3.5.x.x/121-amr-v2-culture-workspace.xml", resources, database);
                 m4.rollback(m4.getDatabaseChangeLog().getChangeSets().size(), "test");
                 assertFalse(column(connection, "micro_case_inoculation", "duration"));
                 assertFalse(column(connection, "test_section", "gram_stain_test_id"));

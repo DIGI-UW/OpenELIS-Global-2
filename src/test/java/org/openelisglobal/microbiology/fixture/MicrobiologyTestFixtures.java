@@ -101,8 +101,29 @@ public class MicrobiologyTestFixtures {
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.dictionary.service.DictionaryService cultureDictionary;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionary.service.DictionaryConfigurationHandler dictionaryConfiguration;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.service.MicroPatientOriginConfigurationHandler patientOriginConfiguration;
+
+    public void ensureReportingTracks() {
+        try (var input = getClass().getResourceAsStream("/configuration/microbiology-patient-origins/default.csv")) {
+            patientOriginConfiguration.processConfiguration(input, "default.csv");
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not load patient origin configuration", e);
+        }
+        if (cultureDictionary.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track") != null)
+            return;
+        try (var input = getClass().getResourceAsStream("/configuration/microbiology-reporting-tracks/default.csv")) {
+            dictionaryConfiguration.processConfiguration(input, "microbiology-reporting-tracks.csv");
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not load reporting track configuration", e);
+        }
+    }
+
     @Transactional
     public void ensureCultureAtmosphere() {
+        ensureReportingTracks();
         String name = "Culture atmosphere";
         var category = cultureCategories.getDictionaryCategoryByName(name);
         if (category == null) {
@@ -358,9 +379,14 @@ public class MicrobiologyTestFixtures {
         var program = new org.openelisglobal.program.valueholder.Program();
         program.setCode("M6_" + uniqueSuffix());
         program.setProgramName("M6 release fixture");
+        ensureReportingTracks();
+        program.setReportingTrackId(
+                cultureDictionary.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track").getId());
         program.setShowOnMicroCase(true);
         program.setManuallyChanged(true);
         fixtureEntityManager.persist(program);
+        c.setProgramId(program.getId());
+        value.setProgramId(program.getId());
         var association = new org.openelisglobal.program.valueholder.ProgramSample();
         association.setProgram(program);
         association.setSample(sampleItemService.get(c.getSampleItemId()).getSample());

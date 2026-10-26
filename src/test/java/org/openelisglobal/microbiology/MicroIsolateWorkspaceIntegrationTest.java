@@ -382,6 +382,7 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         facility.setSysUserId(writer);
         organizations.insert(facility);
         var origin = new MicroIsolateWorkspaceRequestForm();
+        origin.originalSpecimenTypeId = c.getSampleTypeId();
         origin.sendingOrganizationId = facility.getId();
         origin.reportedOrganismId = organismA;
         workspace.act(c.getId(), i.id(), "received-origin", origin, writer);
@@ -630,6 +631,7 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         facility.setSysUserId(writer);
         organizations.insert(facility);
         var origin = new MicroIsolateWorkspaceRequestForm();
+        origin.originalSpecimenTypeId = c.getSampleTypeId();
         origin.sendingOrganizationId = facility.getId();
         origin.reportedOrganismId = organismA;
         workspace.act(c.getId(), id, "received-origin", origin, writer);

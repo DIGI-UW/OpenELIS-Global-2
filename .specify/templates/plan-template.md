@@ -69,7 +69,10 @@ Verify compliance with
       test-owned records, scoped reads or before and after deltas, and explicit
       dates with frozen or injected clocks when current time is used. Document
       these choices in Test Data Management below.
-- [ ] **Schema Management**: Database changes via Liquibase changesets only
+- [ ] **Schema Management**: Schema changes and historical-data conversions via
+      Liquibase; concepts, catalogs, and defaults via configuration loaders.
+      No Liquibase concept seeds. Test fresh installation, reload, and upgrades
+      while preserving referenced IDs and local customizations.
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
 - [ ] **Security & Compliance**: RBAC, audit trail, input validation included

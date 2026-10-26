@@ -60,7 +60,7 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
 
         MicroCaseOrderDetail detail = orderDetailDAO.getByCaseId(caseId);
         boolean isNew = detail == null;
-        String previousPurpose = isNew ? null : detail.getCulturePurpose();
+        String previousPurpose = microCase.getCulturePurpose();
         if (isNew) {
             detail = new MicroCaseOrderDetail();
             detail.setCaseId(caseId);
@@ -70,7 +70,11 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             detail.setUpdatedAt(MicroCaseServiceImpl.now());
             detail.setUpdatedBy(performedBy);
         }
+        detail.setCulturePurpose(previousPurpose);
         apply(detail, request, false);
+        String purpose = detail.getCulturePurpose() == null ? previousPurpose : detail.getCulturePurpose();
+        microCase.setCulturePurpose(MicroCulturePurpose.validate(purpose, microCase.getSiteId() != null));
+        caseDAO.update(microCase);
         detail.setCultureMethodId(microCase.getCultureMethodId());
 
         if (isNew) {
@@ -85,7 +89,10 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     @Override
     @Transactional(readOnly = true)
     public MicroCaseOrderDetail getOrderDetail(String caseId) {
-        return orderDetailDAO.getByCaseId(caseId);
+        var detail = orderDetailDAO.getByCaseId(caseId);
+        if (detail != null)
+            detail.setCulturePurpose(caseDAO.get(caseId).orElseThrow().getCulturePurpose());
+        return detail;
     }
 
     private void apply(MicroCaseOrderDetail detail, MicroCaseOrderDetailRequestForm request,
@@ -99,10 +106,8 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
         detail.setCultureMethodId(request.cultureMethodId);
         detail.setPatientOrigin(patientOrigin);
         String culturePurpose = normalizeCulturePurpose(request.culturePurpose, requireCulturePurpose);
-        if (culturePurpose == null && detail.getCulturePurpose() != null) {
-            throw new IllegalArgumentException("Culture purpose is required once classified");
-        }
-        detail.setCulturePurpose(culturePurpose);
+        if (culturePurpose != null)
+            detail.setCulturePurpose(culturePurpose);
         detail.setAdmissionDate(parseAdmissionDate(request.admissionDate, patientOrigin));
         detail.setNumberOfSets(request.numberOfSets);
         detail.setClinicalHistory(request.clinicalHistory);
@@ -118,7 +123,11 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             return null;
         }
         try {
-            return MicroCulturePurpose.valueOf(normalized).name();
+            return switch (normalized) {
+            case "CLINICAL_DIAGNOSTIC" -> "DIAGNOSTIC";
+            case "ACTIVE_SCREENING" -> "SCREENING";
+            default -> MicroCulturePurpose.valueOf(normalized).name();
+            };
         } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Unsupported culture purpose", exception);
         }

@@ -100,9 +100,9 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                     status(i.getIdentificationStatus()), i.getIdentificationMethod(), i.getIdentificationConfidence(),
                     i.getIdentifiedAt(), i.getCreatedBy(), i.getCreatedAt(), received(i),
                     i.getReceivedFromOrganizationId(), organizationName(i.getReceivedFromOrganizationId()),
-                    i.getReportedOrganismId(), i.getReportedOrganismText(), mismatch(i), i.getMismatchAcknowledgedBy(),
-                    i.getMismatchAcknowledgedAt(), writer && !identified(i), validator && identified(i),
-                    validator && mismatch(i), version(i), history);
+                    i.getOriginalSpecimenTypeId(), i.getReportedOrganismId(), i.getReportedOrganismText(), mismatch(i),
+                    i.getMismatchAcknowledgedBy(), i.getMismatchAcknowledgedAt(), writer && !identified(i),
+                    validator && identified(i), validator && mismatch(i), version(i), history);
         }).toList();
         var linked = referrals.getWorkspaceReferrals(sources.stream().map(SampleItem::getId).distinct().toList());
         form.referred = linked.stream().anyMatch(r -> r.getStatus() == null || !r.getStatus().isTerminal());
@@ -125,6 +125,9 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         f.organisms = organisms.getActiveOrganisms().stream().map(o -> new IdValuePair(o.getId(), o.getDisplayName()))
                 .toList();
         f.sampleTypes = sampleTypes.getAll().stream().filter(t -> t.getIsActive() && t.isMicrobiologyIsolate())
+                .map(t -> new IdValuePair(t.getId(), t.getDescription())).toList();
+        f.originalSpecimenTypes = sampleTypes.getAll().stream()
+                .filter(t -> t.getIsActive() && !t.isMicrobiologyIsolate())
                 .map(t -> new IdValuePair(t.getId(), t.getDescription())).toList();
         f.organizations = organizations.getActiveOrganizations().stream()
                 .map(o -> new IdValuePair(o.getId(), o.getOrganizationName())).toList();
@@ -222,7 +225,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                     && (r.confidence.signum() < 0 || r.confidence.compareTo(new java.math.BigDecimal("100")) > 0
                             || r.confidence.stripTrailingZeros().scale() > 2))
                 bad("CONFIDENCE");
-            if (received(i) && (i.getReceivedFromOrganizationId() == null
+            if (received(i) && (i.getOriginalSpecimenTypeId() == null || i.getReceivedFromOrganizationId() == null
                     || (i.getReportedOrganismId() == null && i.getReportedOrganismText() == null)))
                 bad("SENDER_REQUIRED");
             identification.updateIdentification(isolateId, r.organismId, null, parseSignificance(r.significance),
@@ -242,6 +245,10 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
             if (trim(r.reportedOrganismId) != null)
                 requireOrganism(r.reportedOrganismId);
             text(r.reportedOrganismText, 255, trim(r.reportedOrganismId) == null);
+            var originalType = r.originalSpecimenTypeId == null ? null : sampleTypes.get(r.originalSpecimenTypeId);
+            if (originalType == null || !originalType.getIsActive() || originalType.isMicrobiologyIsolate())
+                bad("ORIGINAL_SPECIMEN_REQUIRED");
+            i.setOriginalSpecimenTypeId(originalType.getId());
             i.setReceivedFromOrganizationId(org.getId());
             i.setReportedOrganismId(trim(r.reportedOrganismId));
             i.setReportedOrganismText(trim(r.reportedOrganismText));

@@ -15,7 +15,7 @@ public class MicroCaseOrderDetailRequestForm {
     @Size(max = 255)
     public String patientOrigin;
 
-    @Pattern(regexp = "^$|^(CLINICAL_DIAGNOSTIC|ACTIVE_SCREENING)$")
+    @Pattern(regexp = "^$|^(CLINICAL_DIAGNOSTIC|ACTIVE_SCREENING|DIAGNOSTIC|SCREENING|TREATMENT_FOLLOW_UP|SURVEY_OR_STUDY|EQA_PROFICIENCY|ROUTINE_MONITORING|POST_CLEANING_CHECK|OUTBREAK_INVESTIGATION|COMPLAINT)$")
     public String culturePurpose;
 
     @Pattern(regexp = "^$|^\\d{4}-\\d{2}-\\d{2}$")

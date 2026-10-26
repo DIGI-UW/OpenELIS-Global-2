@@ -74,6 +74,25 @@ public class MicroWhonetExportQueryForm {
         this.significance = significance;
     }
 
+    public boolean includeEnvironmentalIsolates;
+    public List<String> surveyProgramIds = new ArrayList<>();
+
+    public boolean isIncludeEnvironmentalIsolates() {
+        return includeEnvironmentalIsolates;
+    }
+
+    public void setIncludeEnvironmentalIsolates(boolean include) {
+        includeEnvironmentalIsolates = include;
+    }
+
+    public List<String> getSurveyProgramIds() {
+        return surveyProgramIds;
+    }
+
+    public void setSurveyProgramIds(List<String> ids) {
+        surveyProgramIds = ids == null ? new ArrayList<>() : new ArrayList<>(ids);
+    }
+
     public boolean isIncludeScreening() {
         return includeScreening;
     }

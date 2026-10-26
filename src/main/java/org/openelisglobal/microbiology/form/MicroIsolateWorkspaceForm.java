@@ -14,8 +14,8 @@ public class MicroIsolateWorkspaceForm {
             String sampleItemId, String sampleItemLabel, String gramStain, String colonyMorphology, String significance,
             String organismId, String organismName, String status, String method, BigDecimal confidence,
             Timestamp identifiedAt, String createdBy, Timestamp createdAt, boolean received,
-            String sendingOrganizationId, String sendingOrganizationName, String reportedOrganismId,
-            String reportedOrganismText, boolean mismatch, String mismatchAcknowledgedBy,
+            String sendingOrganizationId, String sendingOrganizationName, String originalSpecimenTypeId,
+            String reportedOrganismId, String reportedOrganismText, boolean mismatch, String mismatchAcknowledgedBy,
             Timestamp mismatchAcknowledgedAt, boolean canIdentify, boolean canReidentify, boolean canAcknowledge,
             String version, List<Identification> history) {
     }
@@ -29,7 +29,8 @@ public class MicroIsolateWorkspaceForm {
     }
 
     public static class Options {
-        public List<IdValuePair> organisms, sampleTypes, organizations, referralOrganizations, reasons, methods;
+        public List<IdValuePair> organisms, sampleTypes, originalSpecimenTypes, organizations, referralOrganizations,
+                reasons, methods;
         public List<Test> tests;
         public List<Source> sources;
     }

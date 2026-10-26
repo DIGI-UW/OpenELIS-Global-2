@@ -124,19 +124,15 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         fixtures.prepareFinalCase(caseDAO.get(scenario.caseId).orElseThrow(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
 
-        // V1 retirement left the workflow_type column readable only for this
-        // export selection, with no application writer left: stamp the stored
-        // V1 value directly to stand in for a legacy bacteriology row.
-        entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
-                .setParameter("id", released.getId()).executeUpdate();
         entityManager.flush();
         entityManager.refresh(released);
 
         assertTrue(released.getClosedAt().after(new Timestamp(collectionDate.getTime() + 1_000)));
-        assertEquals(List.of(released), caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,
+        assertEquals(List.of(released), caseDAO.getFinalizedByCollectionDateRange(collectionDate,
                 new Timestamp(collectionDate.getTime() + 1_000)));
-        assertFalse(caseDAO.getFinalizedBacteriologyByCollectionDateRange(
-                new Timestamp(collectionDate.getTime() - 1_000), collectionDate).contains(released));
+        assertFalse(caseDAO
+                .getFinalizedByCollectionDateRange(new Timestamp(collectionDate.getTime() - 1_000), collectionDate)
+                .contains(released));
 
         LocalDate exportDate = collectionDate.toLocalDateTime().toLocalDate();
         MicroWhonetExportQueryForm exportQuery = new MicroWhonetExportQueryForm();

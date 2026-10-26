@@ -2,7 +2,9 @@ package org.openelisglobal.siteinformation.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,6 +30,18 @@ public class SiteInformationConfigurationHandlerTest {
         handler = new SiteInformationConfigurationHandler();
         ReflectionTestUtils.setField(handler, "siteInformationService", siteInformationService);
         ReflectionTestUtils.setField(handler, "siteInformationDomainService", siteInformationDomainService);
+    }
+
+    @Test
+    public void createOnlyDefaultPreservesAnEnabledSetting() throws Exception {
+        var existing = new SiteInformation();
+        existing.setName("blockSelfValidation");
+        existing.setValue("true");
+        when(siteInformationService.getSiteInformationByName("blockSelfValidation")).thenReturn(existing);
+        handler.processConfiguration(csv("name,value,createOnly\nblockSelfValidation,false,true\n"), "default.csv");
+        assertEquals("true", existing.getValue());
+        verify(siteInformationService, never()).update(any());
+        verify(siteInformationService, never()).insert(any());
     }
 
     @Test

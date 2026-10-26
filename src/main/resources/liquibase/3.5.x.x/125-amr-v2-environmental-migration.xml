@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="amr-v2-environmental-migration" author="codex">
+        <sql splitStatements="false"><![CDATA[
+-- All mappings are materialized and validated before the first clinical write.
+CREATE TEMP TABLE amr_program_canonical ON COMMIT DROP AS
+SELECT id, CASE WHEN upper(trim(name)) = 'MICROBIOLOGY'
+    THEN min(id) OVER (PARTITION BY upper(trim(name)), domain) ELSE id END AS canonical_id
+FROM clinlims.program;
+
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM clinlims.program a JOIN amr_program_canonical m ON m.id=a.id
+        JOIN clinlims.program b ON b.id=m.canonical_id WHERE a.id<>b.id
+        AND (a.questionnaire_fhir_uuid IS DISTINCT FROM b.questionnaire_fhir_uuid
+             OR a.is_active IS DISTINCT FROM b.is_active
+             OR EXISTS ((SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=a.id
+                         EXCEPT SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=b.id)
+                        UNION ALL
+                        (SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=b.id
+                         EXCEPT SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=a.id)))) THEN
+        RAISE EXCEPTION 'AMR migration: duplicate Microbiology Programs differ; reconcile their questions and lab units first';
+    END IF;
+END $$;
+
+CREATE TEMP TABLE amr_case_map ON COMMIT DROP AS
+SELECT c.id, coalesce(c.sample_id, si.samp_id) sample_id,
+       coalesce(c.sample_type_id, si.typeosamp_id) sample_type_id,
+       coalesce(c.lab_unit_id, route.unit_id) lab_unit_id,
+       coalesce(existing.canonical_id, mapped.program_id) program_id,
+       route.unit_count, mapped.program_count, c.workflow_type,
+       c.lab_unit_id IS NULL needs_unit, c.program_id IS NULL needs_program
+FROM clinlims.micro_case c LEFT JOIN clinlims.sample_item si ON si.id=c.sample_item_id
+LEFT JOIN amr_program_canonical existing ON existing.id=c.program_id
+LEFT JOIN LATERAL (
+    SELECT min(t.test_section_id) unit_id, count(DISTINCT t.test_section_id) unit_count
+    FROM clinlims.micro_case_analysis ca JOIN clinlims.analysis a ON a.id=ca.analysis_id
+    JOIN clinlims.test t ON t.id=a.test_id WHERE ca.case_id=c.id
+) route ON true
+LEFT JOIN LATERAL (
+    SELECT min(m.canonical_id) program_id, count(DISTINCT m.canonical_id) program_count
+    FROM clinlims.program p JOIN amr_program_canonical m ON m.id=p.id
+    WHERE p.is_active='Y' AND upper(p.domain)='CLINICAL' AND (
+        (c.workflow_type='BACTERIOLOGY' AND upper(trim(p.code)) IN ('BACTERIOLOGY','MICROBIOLOGY')) OR
+        (c.workflow_type='MYCOBACTERIOLOGY_TB' AND upper(trim(p.code)) IN ('TB','MYCOBACTERIOLOGY_TB')) OR
+        (c.workflow_type='MYCOLOGY' AND upper(trim(p.code))='MYCOLOGY'))
+) mapped ON true;
+
+DO $$ DECLARE bad text; BEGIN
+    SELECT string_agg(id, ', ' ORDER BY id) INTO bad FROM amr_case_map
+    WHERE sample_id IS NULL OR sample_type_id IS NULL OR lab_unit_id IS NULL
+       OR (needs_unit AND unit_count<>1)
+       OR (needs_program AND workflow_type IS NOT NULL AND (program_id IS NULL OR program_count<>1));
+    IF bad IS NOT NULL THEN
+        RAISE EXCEPTION 'AMR migration: ambiguous or missing order, sample type, test-routing lab unit or Program for cases: %', bad;
+    END IF;
+    IF EXISTS (SELECT 1 FROM amr_case_map m JOIN clinlims.micro_case_analysis ca ON ca.case_id=m.id
+        JOIN clinlims.analysis a ON a.id=ca.analysis_id JOIN clinlims.sample_item si ON si.id=a.sampitem_id
+        WHERE si.samp_id<>m.sample_id) THEN
+        RAISE EXCEPTION 'AMR migration: a legacy case contains analyses from different orders';
+    END IF;
+END $$;
+
+
+        ]]></sql>
+        <addColumn schemaName="clinlims" tableName="program"><column name="reporting_track_id" type="numeric(10)"/></addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="program" baseColumnNames="reporting_track_id" referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id" constraintName="fk_program_reporting_track"/>
+        <addColumn schemaName="clinlims" tableName="micro_isolate"><column name="original_specimen_type_id" type="numeric(10)"/></addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="original_specimen_type_id" referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id" constraintName="fk_micro_isolate_original_specimen"/>
+        <addColumn tableName="micro_case" schemaName="clinlims">
+            <column name="culture_purpose" type="varchar(32)"/>
+        </addColumn>
+        <addColumn tableName="sample" schemaName="clinlims">
+            <column name="microbiology_replicate_count" type="integer"/>
+        </addColumn>
+        <sql><![CDATA[
+            UPDATE clinlims.micro_case c SET culture_purpose = CASE
+                WHEN c.site_id IS NOT NULL THEN 'ROUTINE_MONITORING'
+                WHEN EXISTS (SELECT 1 FROM clinlims.micro_case_order_detail d
+                    WHERE d.case_id = c.id AND d.culture_purpose = 'ACTIVE_SCREENING') THEN 'SCREENING'
+                ELSE 'DIAGNOSTIC' END;
+            ALTER TABLE clinlims.micro_case ADD CONSTRAINT micro_case_purpose_valid CHECK
+                (culture_purpose IN ('DIAGNOSTIC','SCREENING','TREATMENT_FOLLOW_UP','SURVEY_OR_STUDY',
+                 'EQA_PROFICIENCY','ROUTINE_MONITORING','POST_CLEANING_CHECK','OUTBREAK_INVESTIGATION','COMPLAINT'));
+            ALTER TABLE clinlims.sample ADD CONSTRAINT micro_replicate_count_valid CHECK
+                (microbiology_replicate_count BETWEEN 1 AND 999);
+        ]]></sql>
+        <addNotNullConstraint tableName="micro_case" schemaName="clinlims" columnName="culture_purpose" columnDataType="varchar(32)"/>
+        <sql splitStatements="true"><![CDATA[
+INSERT INTO clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by,note,structured_data)
+SELECT md5('M8-assignment-'||c.id),c.id,'MIGRATION_REVIEW',now(),NULL,
+       'Legacy case mapped to a laboratory unit and Program; administrator review required',
+       json_build_object('reason','LEGACY_ASSIGNMENT','workflow',m.workflow_type,'labUnitId',m.lab_unit_id,
+            'programId',m.program_id,'previousLabUnitId',c.lab_unit_id,'previousProgramId',c.program_id)::text
+FROM clinlims.micro_case c JOIN amr_case_map m ON m.id=c.id
+WHERE m.needs_unit OR (m.needs_program AND m.workflow_type IS NOT NULL);
+
+UPDATE clinlims.micro_case c SET sample_id=m.sample_id, sample_type_id=m.sample_type_id,
+    lab_unit_id=m.lab_unit_id, program_id=m.program_id,
+    status=coalesce(c.status,CASE WHEN c.stage='REJECTED' THEN 'REJECTED' ELSE 'ACTIVE' END)
+FROM amr_case_map m WHERE m.id=c.id;
+
+INSERT INTO clinlims.micro_case_sample(id,case_id,sample_item_id,joined_at,joined_by)
+SELECT md5('M8-member-'||members.case_id||'-'||members.sample_item_id),members.case_id,members.sample_item_id,
+       c.created_at,coalesce(c.created_by,'MIGRATION')
+FROM (SELECT id case_id,sample_item_id FROM clinlims.micro_case WHERE sample_item_id IS NOT NULL
+      UNION SELECT ca.case_id,a.sampitem_id FROM clinlims.micro_case_analysis ca JOIN clinlims.analysis a ON a.id=ca.analysis_id) members
+JOIN clinlims.micro_case c ON c.id=members.case_id
+WHERE NOT EXISTS (SELECT 1 FROM clinlims.micro_case_sample ms
+    WHERE ms.case_id=members.case_id AND ms.sample_item_id=members.sample_item_id AND ms.split_out_at IS NULL);
+
+UPDATE clinlims.micro_case_analysis ca SET case_role=coalesce(ca.case_role,'DIRECT'),
+    placement=coalesce(ca.placement,'INITIAL'),collected_in_sets=coalesce(ca.collected_in_sets,false);
+UPDATE clinlims.test SET opens_microbiology_case=true,microbiology_case_role='CULTURE'
+WHERE culture_workflow_type IS NOT NULL AND opens_microbiology_case=false;
+
+-- Merge only exact duplicate Program semantics; preserve every questionnaire response.
+UPDATE clinlims.program_sample ps SET program_id=m.canonical_id
+FROM amr_program_canonical m WHERE ps.program_id=m.id AND m.id<>m.canonical_id;
+UPDATE clinlims.micro_case c SET program_id=m.canonical_id
+FROM amr_program_canonical m WHERE c.program_id=m.id AND m.id<>m.canonical_id;
+DELETE FROM clinlims.program_lab_unit u USING amr_program_canonical m WHERE u.program_id=m.id AND m.id<>m.canonical_id;
+DELETE FROM clinlims.program p USING amr_program_canonical m WHERE p.id=m.id AND m.id<>m.canonical_id;
+
+UPDATE clinlims.program SET show_on_micro_case=true WHERE id IN (SELECT program_id FROM amr_case_map);
+
+-- Correct the old Bacteriology Program routing metadata only when test routing identifies one unit.
+UPDATE clinlims.program p SET test_section_id=units.id
+FROM (SELECT c.program_id,min(c.lab_unit_id) id FROM clinlims.micro_case c
+      GROUP BY c.program_id HAVING count(DISTINCT c.lab_unit_id)=1) units
+WHERE p.id=units.program_id AND upper(trim(p.code))='BACTERIOLOGY';
+DELETE FROM clinlims.program_lab_unit u USING clinlims.program p
+WHERE u.program_id=p.id AND upper(trim(p.code))='BACTERIOLOGY'
+AND u.test_section_id<>p.test_section_id AND EXISTS (SELECT 1 FROM clinlims.micro_case c WHERE c.program_id=p.id)
+AND NOT EXISTS (SELECT 1 FROM clinlims.micro_case c WHERE c.program_id=p.id AND c.lab_unit_id<>p.test_section_id);
+INSERT INTO clinlims.program_lab_unit(program_id,test_section_id)
+SELECT p.id,p.test_section_id FROM clinlims.program p WHERE upper(trim(p.code))='BACTERIOLOGY'
+AND p.test_section_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM clinlims.program_lab_unit u WHERE u.program_id=p.id AND u.test_section_id=p.test_section_id);
+
+INSERT INTO clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by,note,structured_data)
+SELECT md5('M8-group-'||c.id),c.id,'MIGRATION_REVIEW',now(),NULL,
+    'Existing cases share a V2 grouping key and remain independent; administrator review required',
+    json_build_object('reason','SHARED_GROUPING','orderId',c.sample_id,'sampleTypeId',c.sample_type_id,'labUnitId',c.lab_unit_id,'siteId',c.site_id)::text
+FROM clinlims.micro_case c WHERE EXISTS (SELECT 1 FROM clinlims.micro_case sibling WHERE sibling.id<>c.id
+    AND sibling.sample_id=c.sample_id AND sibling.sample_type_id=c.sample_type_id AND sibling.lab_unit_id=c.lab_unit_id
+    AND sibling.site_id IS NOT DISTINCT FROM c.site_id);
+
+INSERT INTO clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by,note,structured_data)
+SELECT md5('M8-history-'||a.id),a.case_id,'LEGACY_HISTORY_PRESERVED',a.occurred_at,a.performed_by,
+    replace(initcap(replace(a.activity_type,'_',' ')),'Culture Protocol','Culture protocol') || ': ' || coalesce(a.note,'') ||
+    CASE WHEN a.structured_data IS NULL THEN '' ELSE ' — '||a.structured_data END,
+    json_build_object('originalActivityId',a.id,'originalEvent',a.activity_type,'originalData',a.structured_data)::text
+FROM clinlims.micro_case_activity a WHERE a.activity_type IN ('WORKFLOW_CHANGED','CULTURE_PROTOCOL_CHANGED','CULTURE_PURPOSE_CHANGED');
+
+INSERT INTO clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by,note,structured_data)
+SELECT md5('M8-protocol-'||c.id||'-'||setup.id),c.id,'LEGACY_HISTORY_PRESERVED',c.created_at,CASE WHEN c.created_by ~ '^[0-9]+$' THEN c.created_by::numeric END,
+    'Retired culture protocol: '||setup.name,to_jsonb(setup)::text
+FROM clinlims.micro_case c JOIN clinlims.micro_culture_setup setup ON setup.method_id=c.culture_method_id
+    AND setup.workflow_type=c.workflow_type;
+
+        ]]></sql>
+        <createTable schemaName="clinlims" tableName="micro_legacy_migration_archive">
+            <column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="source_table" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="source_id" type="varchar(36)"><constraints nullable="false"/></column>
+            <column name="content" type="text"><constraints nullable="false"/></column>
+            <column name="archived_at" type="timestamp" defaultValueComputed="now()"><constraints nullable="false"/></column>
+        </createTable>
+        <sql><![CDATA[
+            INSERT INTO clinlims.micro_legacy_migration_archive(id,source_table,source_id,content)
+            SELECT md5('setup-'||id),'micro_culture_setup',id,to_jsonb(s)::text FROM clinlims.micro_culture_setup s;
+            INSERT INTO clinlims.micro_legacy_migration_archive(id,source_table,source_id,content)
+            SELECT md5('case-'||id),'micro_case',id,json_build_object('workflowType',workflow_type,'createdBy',created_by)::text
+            FROM clinlims.micro_case WHERE workflow_type IS NOT NULL;
+            INSERT INTO clinlims.micro_legacy_migration_archive(id,source_table,source_id,content)
+            SELECT md5('test-'||id),'test',id::text,json_build_object('cultureWorkflowType',culture_workflow_type)::text
+            FROM clinlims.test WHERE culture_workflow_type IS NOT NULL;
+            INSERT INTO clinlims.micro_legacy_migration_archive(id,source_table,source_id,content)
+            SELECT md5('panel-'||id),'micro_ast_panel',id,json_build_object('workflowType',workflow_type)::text
+            FROM clinlims.micro_ast_panel WHERE workflow_type IS NOT NULL;
+        ]]></sql>
+        <dropColumn schemaName="clinlims" tableName="micro_case" columnName="workflow_type"/>
+        <dropColumn schemaName="clinlims" tableName="test" columnName="culture_workflow_type"/>
+        <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="workflow_type"/>
+        <dropTable schemaName="clinlims" tableName="micro_culture_setup"/>
+        <dropColumn schemaName="clinlims" tableName="micro_case_order_detail" columnName="culture_purpose"/>
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM clinlims.micro_case)
+                       OR EXISTS (SELECT 1 FROM clinlims.micro_legacy_migration_archive)
+                       OR EXISTS (SELECT 1 FROM clinlims.program WHERE reporting_track_id IS NOT NULL)
+                       OR EXISTS (SELECT 1 FROM clinlims.sample WHERE microbiology_replicate_count IS NOT NULL) THEN
+                        RAISE EXCEPTION 'Environmental case context must be preserved before rollback';
+                    END IF;
+                END $$;
+            ]]></sql>
+            <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="original_specimen_type_id"/>
+            <dropTable schemaName="clinlims" tableName="micro_legacy_migration_archive"/>
+            <addColumn schemaName="clinlims" tableName="micro_case_order_detail"><column name="culture_purpose" type="varchar(32)"/></addColumn>
+            <addColumn schemaName="clinlims" tableName="micro_case"><column name="workflow_type" type="varchar(40)"/></addColumn>
+            <addColumn schemaName="clinlims" tableName="test"><column name="culture_workflow_type" type="varchar(40)"/></addColumn>
+            <addColumn schemaName="clinlims" tableName="micro_ast_panel"><column name="workflow_type" type="varchar(40)"/></addColumn>
+<createTable schemaName="clinlims" tableName="micro_culture_setup">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_micro_culture_setup" />
+            </column>
+            <column name="method_id" type="numeric(10)">
+                <constraints nullable="false" />
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="workflow_type" type="VARCHAR(40)">
+                <constraints nullable="false" />
+            </column>
+            <column name="media_defaults" type="TEXT" />
+            <column name="incubation_defaults" type="TEXT" />
+            <column name="atmosphere_defaults" type="TEXT" />
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false" />
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false" />
+            </column>
+            <column name="last_updated" type="TIMESTAMP" />
+        </createTable>
+        <addColumn tableName="micro_culture_setup" schemaName="clinlims">
+      <column name="reportable_test_analyte_id" type="numeric(10)" />
+    </addColumn>
+    <addColumn schemaName="clinlims" tableName="micro_culture_setup">
+            <column name="last_updated_by" type="VARCHAR(20)" />
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="micro_culture_setup">
+            <column name="incubation_hours" type="INTEGER" />
+            <column name="subculture_at_hours" type="INTEGER" />
+            <column name="max_incubation_days" type="INTEGER" />
+        </addColumn>
+                    <dropColumn schemaName="clinlims" tableName="program" columnName="reporting_track_id"/>
+            <dropColumn tableName="sample" schemaName="clinlims" columnName="microbiology_replicate_count"/>
+            <dropColumn tableName="micro_case" schemaName="clinlims" columnName="culture_purpose"/>
+<addForeignKeyConstraint
+            constraintName="fk_micro_culture_setup_method"
+            baseTableSchemaName="clinlims" baseTableName="micro_culture_setup" baseColumnNames="method_id"
+            referencedTableSchemaName="clinlims" referencedTableName="method" referencedColumnNames="id"/>
+<addUniqueConstraint
+            constraintName="uq_micro_culture_setup_method_workflow"
+            schemaName="clinlims" tableName="micro_culture_setup"
+            columnNames="method_id, workflow_type"/>
+<sql>
+            ALTER TABLE clinlims.test
+            ADD CONSTRAINT test_culture_workflow_type_chk
+            CHECK (culture_workflow_type IS NULL
+                OR culture_workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+<sql>
+            ALTER TABLE clinlims.micro_ast_panel
+            ADD CONSTRAINT micro_ast_panel_workflow_type_chk
+            CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+<sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_workflow_type_chk
+            CHECK (workflow_type IN ('BACTERIOLOGY', 'MYCOBACTERIOLOGY_TB', 'MYCOLOGY'))
+        </sql>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_culture_setup"
+      baseColumnNames="reportable_test_analyte_id" constraintName="fk_micro_culture_setup_reportable_analyte"
+      referencedTableSchemaName="clinlims" referencedTableName="test_analyte" referencedColumnNames="id"/>
+<sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_incubation_hours_chk
+            CHECK (incubation_hours IS NULL OR incubation_hours &gt; 0)
+        </sql>
+<sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_subculture_hours_chk
+            CHECK (subculture_at_hours IS NULL OR subculture_at_hours &gt; 0)
+        </sql>
+<sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_max_days_chk
+            CHECK (max_incubation_days IS NULL OR max_incubation_days &gt; 0)
+        </sql>
+<sql>ALTER TABLE clinlims.micro_case ADD CONSTRAINT micro_case_workflow_type_chk CHECK (workflow_type IN ('BACTERIOLOGY','MYCOBACTERIOLOGY_TB','MYCOLOGY','UNASSIGNED'))</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

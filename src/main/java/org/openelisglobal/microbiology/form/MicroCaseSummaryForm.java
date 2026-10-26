@@ -3,6 +3,9 @@ package org.openelisglobal.microbiology.form;
 import java.sql.Timestamp;
 
 public class MicroCaseSummaryForm {
+    public String domain;
+    public String siteName;
+    public String siteCode;
     public String id;
     public String accessionNumber;
     public String patientId;

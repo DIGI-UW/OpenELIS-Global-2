@@ -10,6 +10,9 @@ import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 
 public class MicroCaseFinalRequirementsServiceTest {
+    private final org.openelisglobal.program.service.ProgramService programs = mock(
+            org.openelisglobal.program.service.ProgramService.class);
+
     @Test
     public void disabledQuestionAndItsRequiredChildrenDoNotBlockFinalRelease() {
         var group = new Questionnaire.QuestionnaireItemComponent().setLinkId("exposure")
@@ -47,9 +50,20 @@ public class MicroCaseFinalRequirementsServiceTest {
         var details = mock(MicroCaseOrderDetailDAO.class);
         var questionnaires = mock(QuestionnaireStorageService.class);
         when(details.getProgramSamples("case")).thenReturn(List.of());
-        var service = new MicroCaseFinalRequirementsService(details, questionnaires, "patientOrigin");
+        var service = new MicroCaseFinalRequirementsService(details, cases(), questionnaires, programs,
+                "patientOrigin");
         assertEquals(List.of("CLINICAL_FIELD_REQUIRED:patientOrigin", "PROGRAM_REQUIRED"), service.blockers("case"));
         verifyZeroInteractions(questionnaires);
+    }
+
+    @Test
+    public void casePurposeDoesNotRequireAnOrderDetailRecord() {
+        var cases = cases();
+        var c = cases.get("case").orElseThrow();
+        c.setCulturePurpose("DIAGNOSTIC");
+        var service = new MicroCaseFinalRequirementsService(mock(MicroCaseOrderDetailDAO.class), cases,
+                mock(QuestionnaireStorageService.class), programs, "culturePurpose,patientOrigin");
+        assertEquals(List.of("CLINICAL_FIELD_REQUIRED:patientOrigin", "PROGRAM_REQUIRED"), service.blockers("case"));
     }
 
     @Test
@@ -57,7 +71,10 @@ public class MicroCaseFinalRequirementsServiceTest {
         var details = mock(MicroCaseOrderDetailDAO.class);
         var questionnaires = mock(QuestionnaireStorageService.class);
         var program = new org.openelisglobal.program.valueholder.Program();
+        program.setId("1");
+        program.setShowOnMicroCase(true);
         program.setProgramName("Tuberculosis");
+        when(programs.get("1")).thenReturn(program);
         program.setQuestionnaireUUID(UUID.randomUUID());
         var sample = new org.openelisglobal.program.valueholder.ProgramSample();
         sample.setProgram(program);
@@ -67,10 +84,38 @@ public class MicroCaseFinalRequirementsServiceTest {
                 .setRequired(true);
         when(details.getProgramSamples("case")).thenReturn(List.of(sample));
         when(questionnaires.getQuestionnaire(program.getQuestionnaireUUID())).thenReturn(Optional.of(questionnaire));
-        var service = new MicroCaseFinalRequirementsService(details, questionnaires, "");
+        var service = new MicroCaseFinalRequirementsService(details, casesWithProgram(), questionnaires, programs, "");
         assertEquals(List.of("QUESTIONNAIRE_FIELD_REQUIRED:exposure"), service.blockers("case"));
         assertEquals("Tuberculosis: Previous treatment",
                 service.labels("case").get("QUESTIONNAIRE_FIELD_REQUIRED:exposure"));
+    }
+
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO casesWithProgram() {
+        var dao = cases();
+        dao.get("case").orElseThrow().setProgramId("1");
+        return dao;
+    }
+
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO cases() {
+        var dao = mock(org.openelisglobal.microbiology.dao.MicroCaseDAO.class);
+        when(dao.get("case")).thenReturn(Optional.of(new org.openelisglobal.microbiology.valueholder.MicroCase()));
+        return dao;
+    }
+
+    @Test
+    public void environmentalCaseRequiresProgramButNeverClinicalFieldsOrQuestionnaires() {
+        var details = mock(MicroCaseOrderDetailDAO.class);
+        var questionnaires = mock(QuestionnaireStorageService.class);
+        var cases = cases();
+        var c = cases.get("case").orElseThrow();
+        c.setSiteId("7");
+        var service = new MicroCaseFinalRequirementsService(details, cases, questionnaires, programs,
+                "patientOrigin,clinicalHistory");
+        assertEquals(List.of("PROGRAM_REQUIRED"), service.blockers("case"));
+        c.setProgramId("1");
+        assertTrue(service.blockers("case").isEmpty());
+        assertTrue(service.labels("case").isEmpty());
+        verifyZeroInteractions(details, questionnaires);
     }
 
 }

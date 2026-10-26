@@ -66,6 +66,20 @@ public class MicroPatientReportServiceTest {
     }
 
     @Test
+    public void environmentalCaseIsExcludedFromTheClinicalPatientReportEvenWithReportRights() {
+        var c = new MicroCase();
+        c.setId("c");
+        c.setLabUnitId("unit");
+        c.setSiteId("7");
+        var link = new MicroCaseAnalysis();
+        link.setCaseId("c");
+        when(links.getActiveByAnalysisId("analysis")).thenReturn(link);
+        when(cases.get("c")).thenReturn(Optional.of(c));
+        assertEquals(Boolean.FALSE, service.mayReportAnalysis("analysis", "actor"));
+        verifyZeroInteractions(access);
+    }
+
+    @Test
     public void dictionaryQuantificationStaysWithItsVisibleParentAndHiddenComponentsStayOut() {
         var c = new MicroCase();
         c.setId("c");

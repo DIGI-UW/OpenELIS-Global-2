@@ -50,6 +50,26 @@ public class WHONETCSVRoutineColumnBuilder {
         private String method;
         private String latitude;
         private String longitude;
+        private String origin = "";
+        private String purpose = "";
+        private String provenance = "";
+        private String siteCode = "";
+        private String siteName = "";
+
+        public WHONetRow microbiologyContext(String origin, String purpose, String provenance, String siteCode,
+                String siteName) {
+            this.origin = origin;
+            this.purpose = purpose;
+            this.provenance = provenance;
+            this.siteCode = siteCode;
+            this.siteName = siteName;
+            return this;
+        }
+
+        public String getMicrobiologyRow() {
+            return getRow() + delimiter + String.join(delimiter, csvQuote(origin), csvQuote(purpose),
+                    csvQuote(provenance), csvQuote(siteCode), csvQuote(siteName));
+        }
 
         private String delimiter = ",";
 
@@ -136,6 +156,14 @@ public class WHONETCSVRoutineColumnBuilder {
                         "LAB_NUMBER", "COLLECTION_DATE", "SPECIMEN_TYPE", "ANTIBIOTIC", "ORGANISM", "RESULT",
                         "TEST_METHOD", "GPS_LATITUDE", "GPS_LONGITUDE").getRow())
                 .append(System.lineSeparator()).toString();
+    }
+
+    public static byte[] renderMicrobiologyRows(List<WHONetRow> rows) {
+        var lines = new ArrayList<String>();
+        lines.add(columnNamesLine().stripTrailing()
+                + ",\"ORIGIN\",\"CULTURE_PURPOSE\",\"RESULT_SOURCE\",\"SITE_CODE\",\"SITE_NAME\"");
+        rows.forEach(row -> lines.add(row.getMicrobiologyRow()));
+        return (String.join(System.lineSeparator(), lines) + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
     }
 
     public static byte[] renderRows(List<WHONetRow> rows) {

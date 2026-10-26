@@ -15,7 +15,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -253,9 +252,6 @@ public class MicrobiologyUatScenarioServiceTest {
                 nceCategoryService, nceTypeService, isolateService, astService, analyzerService, membership);
 
         EntityManager entityManager = mock(EntityManager.class);
-        Query bulkUpdate = mock(Query.class);
-        when(entityManager.createQuery(anyString())).thenReturn(bulkUpdate);
-        when(bulkUpdate.setParameter(anyString(), any())).thenReturn(bulkUpdate);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
         var reporting = mock(MicroPatientReportService.class);
         var cultures = mock(MicroCultureService.class);
@@ -269,6 +265,13 @@ public class MicrobiologyUatScenarioServiceTest {
         ReflectionTestUtils.setField(service, "patientReports", reporting);
         ReflectionTestUtils.setField(service, "cultures", cultures);
         ReflectionTestUtils.setField(service, "orderDetails", details);
+        var dictionary = mock(org.openelisglobal.dictionary.service.DictionaryService.class);
+        var track = new org.openelisglobal.dictionary.valueholder.Dictionary();
+        track.setId("99");
+        org.mockito.Mockito.lenient()
+                .when(dictionary.getDictionaryEntryByNameAndCategoryName("Bacterial", "Reporting track"))
+                .thenReturn(track);
+        ReflectionTestUtils.setField(service, "dictionaryService", dictionary);
         ReflectionTestUtils.setField(service, "programs", programs);
         ReflectionTestUtils.setField(service, "programSamples", programSamples);
 

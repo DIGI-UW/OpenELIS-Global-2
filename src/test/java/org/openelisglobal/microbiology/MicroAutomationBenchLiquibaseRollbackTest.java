@@ -38,9 +38,9 @@ public class MicroAutomationBenchLiquibaseRollbackTest {
                 var migration = new Liquibase("liquibase/3.5.x.x/124-amr-v2-automation-bench-labels.xml", resources,
                         database);
                 migration.update(context);
-                assertEquals("3",
+                assertEquals("0",
                         scalar(connection, "SELECT count(*) FROM clinlims.label_preset WHERE prints_per_container"));
-                migration.rollback(4, "test");
+                migration.rollback(1, "test");
                 assertEquals("0", scalar(connection,
                         "SELECT count(*) FROM information_schema.tables WHERE table_schema='clinlims' AND table_name='micro_incoming_item'"));
                 migration.update(context);
@@ -50,7 +50,7 @@ public class MicroAutomationBenchLiquibaseRollbackTest {
                 }
                 connection.commit();
                 try {
-                    migration.rollback(4, "test");
+                    migration.rollback(1, "test");
                     fail("Saved sheet must prevent destructive rollback");
                 } catch (liquibase.exception.LiquibaseException expected) {
                     assertTrue(expected.getMessage().contains("history"));

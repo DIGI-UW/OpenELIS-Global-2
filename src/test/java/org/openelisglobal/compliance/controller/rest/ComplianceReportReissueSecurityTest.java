@@ -111,6 +111,11 @@ public class ComplianceReportReissueSecurityTest extends SecuritySliceMockMvcTes
         }
 
         @Bean
+        org.openelisglobal.microbiology.service.MicroEnvironmentalReportService microbiologyReports() {
+            return mock(org.openelisglobal.microbiology.service.MicroEnvironmentalReportService.class);
+        }
+
+        @Bean
         SampleService sampleService() {
             return mock(SampleService.class);
         }

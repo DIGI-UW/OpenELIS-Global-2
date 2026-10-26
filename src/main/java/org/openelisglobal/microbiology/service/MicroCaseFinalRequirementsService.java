@@ -12,14 +12,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class MicroCaseFinalRequirementsService {
     private final MicroCaseOrderDetailDAO details;
+    private final org.openelisglobal.microbiology.dao.MicroCaseDAO cases;
     private final QuestionnaireStorageService questionnaires;
+    private final org.openelisglobal.program.service.ProgramService programs;
     private final List<String> requiredFields;
 
     public MicroCaseFinalRequirementsService(MicroCaseOrderDetailDAO details,
-            QuestionnaireStorageService questionnaires,
+            org.openelisglobal.microbiology.dao.MicroCaseDAO cases, QuestionnaireStorageService questionnaires,
+            org.openelisglobal.program.service.ProgramService programs,
             @org.springframework.beans.factory.annotation.Value("${org.openelisglobal.microbiology.requiredBeforeFinalFields:patientOrigin}") String fields) {
         this.details = details;
+        this.cases = cases;
         this.questionnaires = questionnaires;
+        this.programs = programs;
         requiredFields = Arrays.stream(fields.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
         if (!Set.of("clinicalHistory", "patientOrigin", "admissionDate", "antibioticExposure", "culturePurpose",
                 "numberOfSets").containsAll(requiredFields))
@@ -32,31 +37,44 @@ public class MicroCaseFinalRequirementsService {
 
     public List<String> blockers(String caseId) {
         var blockers = new ArrayList<String>();
+        var microCase = cases.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        if (microCase.getSiteId() != null) {
+            if (microCase.getProgramId() == null)
+                blockers.add("PROGRAM_REQUIRED");
+            return blockers;
+        }
         var detail = details.getByCaseId(caseId);
         for (String field : requiredFields) {
-            Object value = detail == null ? null : switch (field) {
-            case "clinicalHistory" -> detail.getClinicalHistory();
-            case "patientOrigin" -> detail.getPatientOrigin();
-            case "admissionDate" -> detail.getAdmissionDate();
-            case "antibioticExposure" -> detail.getAntibioticExposure();
-            case "culturePurpose" -> detail.getCulturePurpose();
-            case "numberOfSets" -> detail.getNumberOfSets();
+            Object value = switch (field) {
+            case "clinicalHistory" -> detail == null ? null : detail.getClinicalHistory();
+            case "patientOrigin" -> detail == null ? null : detail.getPatientOrigin();
+            case "admissionDate" -> detail == null ? null : detail.getAdmissionDate();
+            case "antibioticExposure" -> detail == null ? null : detail.getAntibioticExposure();
+            case "culturePurpose" -> microCase.getCulturePurpose();
+            case "numberOfSets" -> detail == null ? null : detail.getNumberOfSets();
             default -> null;
             };
             if (value == null || value instanceof String text && text.isBlank())
                 blockers.add("CLINICAL_FIELD_REQUIRED:" + field);
         }
-        var programs = details.getProgramSamples(caseId);
-        if (programs.isEmpty())
+        if (microCase.getProgramId() == null) {
             blockers.add("PROGRAM_REQUIRED");
-        for (var ps : programs) {
-            if (ps.getProgram().getQuestionnaireUUID() == null)
-                continue;
-            var q = questionnaires.getQuestionnaire(ps.getProgram().getQuestionnaireUUID()).orElse(null);
-            var response = questionnaires.getQuestionnaireResponse(ps.getQuestionnaireResponseUuid()).orElse(null);
+            return blockers;
+        }
+        var program = programs.get(microCase.getProgramId());
+        if (program == null || !program.isShowOnMicroCase()) {
+            blockers.add("PROGRAM_REQUIRED");
+            return blockers;
+        }
+        if (program.getQuestionnaireUUID() != null) {
+            var q = questionnaires.getQuestionnaire(program.getQuestionnaireUUID()).orElse(null);
+            var association = details.getProgramSamples(caseId).stream()
+                    .filter(ps -> program.getId().equals(ps.getProgram().getId())).findFirst().orElse(null);
+            var response = association == null || association.getQuestionnaireResponseUuid() == null ? null
+                    : questionnaires.getQuestionnaireResponse(association.getQuestionnaireResponseUuid()).orElse(null);
             if (q == null) {
                 blockers.add("QUESTIONNAIRE_UNAVAILABLE");
-                continue;
+                return blockers;
             }
             var answers = new HashMap<String, List<org.hl7.fhir.r4.model.Type>>();
             if (response != null && !Set.of(QuestionnaireResponse.QuestionnaireResponseStatus.ENTEREDINERROR,
@@ -69,13 +87,13 @@ public class MicroCaseFinalRequirementsService {
 
     public Map<String, String> labels(String caseId) {
         var labels = new LinkedHashMap<String, String>();
-        for (var sample : details.getProgramSamples(caseId)) {
-            var program = sample.getProgram();
-            if (program.getQuestionnaireUUID() == null)
-                continue;
+        var c = cases.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        if (c.getSiteId() != null || c.getProgramId() == null)
+            return labels;
+        var program = programs.get(c.getProgramId());
+        if (program != null && program.getQuestionnaireUUID() != null)
             questionnaires.getQuestionnaire(program.getQuestionnaireUUID())
                     .ifPresent(q -> labels(q.getItem(), program.getProgramName(), labels));
-        }
         return labels;
     }
 

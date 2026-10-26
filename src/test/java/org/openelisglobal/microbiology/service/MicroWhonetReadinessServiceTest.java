@@ -101,8 +101,8 @@ public class MicroWhonetReadinessServiceTest {
 
     /**
      * The export itself only reads finalized cases
-     * (MicroCaseDAOImpl#getFinalizedBacteriologyByCollectionDateRange), so
-     * readiness must not advertise a case the export would silently skip.
+     * (MicroCaseDAOImpl#getFinalizedByCollectionDateRange), so readiness must not
+     * advertise a case the export would silently skip.
      */
     @Test
     public void anUnfinalizedCaseIsNotWhonetReadyEvenWhenFullyMapped() {

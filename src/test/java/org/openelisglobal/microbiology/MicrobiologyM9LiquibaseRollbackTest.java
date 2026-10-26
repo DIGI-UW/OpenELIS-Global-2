@@ -36,7 +36,16 @@ public class MicrobiologyM9LiquibaseRollbackTest {
                 ClassLoaderResourceAccessor resources = new ClassLoaderResourceAccessor();
 
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
-                fullChangelog.update(new Contexts("test"));
+                var contexts = new Contexts("test");
+                var pending = fullChangelog.listUnrunChangeSets(contexts, new liquibase.LabelExpression());
+                int beforeRetirement = 0;
+                while (beforeRetirement < pending.size()
+                        && !pending.get(beforeRetirement).getId().equals("amr-v2-environmental-migration"))
+                    beforeRetirement++;
+                assertTrue("The final V1 retirement is registered", beforeRetirement < pending.size());
+                // Validate the historic migration against the schema it supported. M8
+                // separately verifies retirement of the culture-setup table.
+                fullChangelog.update(beforeRetirement, contexts, new liquibase.LabelExpression());
                 assertM9SchemaPresent(connection);
 
                 Liquibase m9Changelog = new Liquibase("liquibase/microbiology-m9-rollback.xml", resources, database);

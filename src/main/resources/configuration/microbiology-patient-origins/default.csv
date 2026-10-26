@@ -1,0 +1,7 @@
+code,displayName,whonetCode,sortOrder,isActive,createOnly
+INPATIENT,Inpatient,INP,10,Y,true
+OUTPATIENT,Outpatient,OUT,20,Y,true
+INTENSIVE_CARE,ICU,ICU,30,Y,true
+EMERGENCY,Emergency,EME,40,Y,true
+LONG_TERM_CARE,Long-term Care,LTC,50,Y,true
+UNKNOWN,Unknown,UNK,60,Y,true

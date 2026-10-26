@@ -1,6 +1,18 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Clarify schema and configuration ownership
+Version Change: 1.12.0 → 1.12.1
+Change Type: PATCH - Clarify Principle VI in line with configuration-driven variation
+Date: 2026-10-14
+Modified Sections: Principle VI; compliance checklist
+Synchronized Guidance: AGENTS.md; .specify/templates/plan-template.md;
+  docs/configuration/README.md
+Rationale: "All database changes" incorrectly suggested that concepts and
+  defaults belong in schema migrations. Configuration loaders own that content.
+-->
+
+<!--
 SYNC IMPACT REPORT - Test isolation becomes a MUST
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.11.2 → 1.12.0
@@ -1237,11 +1249,26 @@ shuffled order, report tests that pass in CI but fail there.
 
 ### VI. Database Schema Management
 
-**MANDATE**: All database changes MUST go through Liquibase. NO direct DDL/DML
-in production.
+**MANDATE**: Database schema changes and conversions of existing historical
+records MUST go through Liquibase. Concepts, catalogs, and configuration defaults
+MUST use configuration files and application configuration loaders, consistent
+with Principle I.
 
 **Rules**:
 
+- Liquibase owns tables, columns, indexes, constraints, and conversions of
+  existing records to a new schema. Historical-data conversion must preserve
+  existing records and is not permission to seed new vocabulary.
+- Configuration loaders own dictionary categories and entries, test catalogs,
+  reporting tracks, label presets, and settings defaults. Inspect existing
+  handlers and [configuration guidance](../../docs/configuration/README.md)
+  before adding a domain; extend the loader if needed.
+- Do not seed or manage concepts through Liquibase `insert`, SQL inserts,
+  `loadData`, or `loadUpdateData`. Existing seed migrations are legacy code,
+  not implementation precedent.
+- Imports must be repeatable and preserve referenced IDs and local
+  customizations. Test fresh installation, reload, and upgrade behavior.
+  Moving an existing catalog must not delete or recreate referenced concepts.
 - Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
   `3.3.x.x/`)
 - Changesets MUST have unique IDs: `{sequence}-{description}` (e.g.,
@@ -1788,6 +1815,8 @@ documenting:
 - [ ] Internationalization complete (Principle VII)
 - [ ] Tests included (Principle V)
 - [ ] Liquibase for schema changes (Principle VI)
+- [ ] Concepts, catalogs, and defaults use configuration loaders, with no
+      Liquibase seeds (Principles I and VI)
 - [ ] Security/compliance requirements met (Principle VIII)
 - [ ] Milestone scope appropriate (Principle IX) - for features >3 days
 
@@ -1828,7 +1857,7 @@ sync.
 
 ---
 
-**Version**: 1.12.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-29
+**Version**: 1.12.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-10-14
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team

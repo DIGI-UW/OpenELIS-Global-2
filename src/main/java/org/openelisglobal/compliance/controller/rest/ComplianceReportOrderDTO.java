@@ -7,6 +7,16 @@ import org.openelisglobal.compliance.service.ComplianceEvaluationResult.Paramete
 
 public class ComplianceReportOrderDTO {
 
+    private List<org.openelisglobal.microbiology.form.MicroPatientReportForm> microbiology = List.of();
+
+    public List<org.openelisglobal.microbiology.form.MicroPatientReportForm> getMicrobiology() {
+        return microbiology;
+    }
+
+    public void setMicrobiology(List<org.openelisglobal.microbiology.form.MicroPatientReportForm> reports) {
+        microbiology = reports;
+    }
+
     private Long sampleId;
     private String labNumber;
     private String siteCode;

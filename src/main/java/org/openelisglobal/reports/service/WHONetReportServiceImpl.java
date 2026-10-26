@@ -206,7 +206,7 @@ public class WHONetReportServiceImpl implements WHONetReportService {
             throw new MicroWhonetExportBlockedException("No valid WHONET rows remain after validation");
         }
 
-        byte[] content = WHONETCSVRoutineColumnBuilder.renderRows(dataset.getRows());
+        byte[] content = WHONETCSVRoutineColumnBuilder.renderMicrobiologyRows(dataset.getRows());
         String fileName = "WHONET_" + preview.from + "_to_" + preview.to + ".csv";
         MicroWhonetExportRun run = new MicroWhonetExportRun();
         run.setFromDate(Date.valueOf(preview.from));

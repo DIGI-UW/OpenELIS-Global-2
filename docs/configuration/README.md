@@ -2,6 +2,12 @@
 
 This directory contains detailed documentation for OpenELIS configuration files.
 
+Concepts, catalogs, and defaults belong in these configuration files and their
+application loaders. Liquibase handles schema changes and conversions of
+existing historical records; do not add concept seeds to migrations. Imports
+must be repeatable and preserve referenced identifiers and local customizations.
+Verify fresh installation, reload, and upgrade behavior when moving a catalog.
+
 ## Available Configurations
 
 ### [Roles Configuration](roles-configuration.md)
@@ -83,3 +89,45 @@ To add a new configuration domain:
 
 - [CONTRIBUTING.md](../../CONTRIBUTING.md) - Contributing guidelines
 - [README.md](../../README.md) - Project overview
+
+### Microbiology environmental and surveillance configuration
+
+Environmental observation types are packaged in
+`src/main/resources/configuration/observation-history-types/`. The existing
+observation-history-types loader imports them; installations can supply an
+instance-specific CSV through the configuration directory.
+
+Reporting track concepts use the existing dictionary loader and
+`configuration/microbiology-reporting-tracks/default.csv`. This catalog has its
+own configuration domain so an unrelated dictionary catalog cannot hide it.
+`configuration/program-reporting-tracks/*.csv` assigns those configured tracks
+to existing Programs, after dictionary and questionnaire loading. Its columns
+are `programCode,reportingTrack`; the track must be an active entry in the
+`Reporting track` category. Unmatched Program codes are left alone. Imports
+follow the normal configuration checksum and reload behavior. Program
+administrators can also select the track in Program management.
+
+These catalogs are configuration, not Liquibase seed data. The M8 migration only
+changes storage and converts existing legacy case data.
+
+Culture atmospheres, reading codes, quantities, and extension reasons are loaded
+from `configuration/microbiology-cultures/default.csv` through the dictionary
+importer. The former M4 concept seed changesets have been removed. Existing
+entries retain their identifiers when the configuration is imported, and
+site-specific entries are retained. Installations can override this catalog in
+the `microbiology-cultures` configuration directory.
+
+Container label presets now load from
+`configuration/label-presets/microbiology.csv`, and the self-validation default
+loads from `configuration/microbiology-settings/default.csv` through the
+site-information importer. Both catalogs use `createOnly=true` to retain
+existing administrator choices, including enabled self-validation protection. A
+site configuration can set `createOnly=false` to update existing values. Their
+former M3 and M7 seed changesets have been removed; upgrading does not delete
+existing settings or labels.
+
+The earlier patient-origin catalog also loads through configuration, from
+`configuration/microbiology-patient-origins/default.csv`. Matching codes retain
+their identifiers and existing WHONET mappings. The original migration checksum
+remains explicitly accepted so existing installations upgrade without clearing
+Liquibase checksums or recreating those concepts.

@@ -1,3 +1,4 @@
+import CaseHistory from "./CaseHistory";
 import CaseIncomingWorkspace from "./CaseIncomingWorkspace";
 import CaseAstWorkspace from "./CaseAstWorkspace";
 import CaseReportWorkspace from "./CaseReportWorkspace";
@@ -780,6 +781,7 @@ export default function CaseTestingWorkspace({
             </section>
           </>
         )}
+      <CaseHistory activities={timeline} />
       <Tile>
         <Stack gap={4}>
           <h2>{t("microbiology.testing.notes")}</h2>
