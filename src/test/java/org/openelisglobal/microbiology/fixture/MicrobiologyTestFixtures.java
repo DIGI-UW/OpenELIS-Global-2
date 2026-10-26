@@ -261,7 +261,6 @@ public class MicrobiologyTestFixtures {
         sampleItem.setSortOrder("1");
         sampleItem.setStatusId(ensureSampleEnteredStatus());
         sampleItem.setSysUserId(defaultUserId());
-        sampleItem.setTypeOfSample(getOrCreateActiveSampleType());
         sampleItemService.insert(sampleItem);
         return sampleItem;
     }

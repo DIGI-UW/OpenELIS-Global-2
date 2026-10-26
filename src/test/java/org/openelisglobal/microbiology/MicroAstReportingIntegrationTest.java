@@ -84,6 +84,7 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         validator = actor(unit.getId(), Constants.ROLE_VALIDATION);
         outsider = actor(fixtures.createLabUnit().getId(), Constants.ROLE_VALIDATION);
         var source = fixtures.createSampleWithSampleItem("M6");
+        source.setTypeOfSample(fixtures.getOrCreateActiveSampleType());
         sampleTypeId = source.getTypeOfSample().getId();
         c = new MicroCase();
         c.setSampleId(source.getSample().getId());
