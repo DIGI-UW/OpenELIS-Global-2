@@ -1196,7 +1196,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         runAntibioticDAO.update(ordered);
     }
 
-    private static boolean defaultReported(String reportBehavior, String interpretation) {
+    static boolean defaultReported(String reportBehavior, String interpretation) {
         if ("DONT_REPORT".equals(reportBehavior)) {
             return false;
         }
@@ -1249,10 +1249,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 || rule.getInterpretation().equals(reading.getInterpretation())) {
             return;
         }
-        String organismLabel = firstNonBlank(organism.getDisplayName(), organism.getOrganismGroup());
-        String antibioticLabel = antibioticDAO.get(reading.getAntibioticId()).map(MicroAntibiotic::getDisplayName)
-                .orElse(reading.getAntibioticId());
-        String reason = "Expert rule: " + organismLabel + ", " + antibioticLabel + " always R";
+        String reason = expertRuleReason(organism, reading.getAntibioticId(),
+                antibioticDAO.get(reading.getAntibioticId()).map(MicroAntibiotic::getDisplayName).orElse(null));
         reading.setOverrideInterpretation(rule.getInterpretation());
         reading.setOverrideReason(reason);
         reading.setOverrideRuleId(rule.getId());
@@ -1267,6 +1265,15 @@ public class MicroAstServiceImpl implements MicroAstService {
                 rule.getInterpretation(), reason, performedBy, rule.getId());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy, reason,
                 "{\"readingId\":\"" + reading.getId() + "\",\"ruleId\":\"" + rule.getId() + "\"}");
+    }
+
+    static String expertRuleReason(MicroOrganism organism, String antibioticId, String antibioticDisplayName) {
+        String organismLabel = organism.getDisplayName() == null || organism.getDisplayName().isBlank()
+                ? organism.getOrganismGroup()
+                : organism.getDisplayName();
+        String antibioticLabel = antibioticDisplayName == null || antibioticDisplayName.isBlank() ? antibioticId
+                : antibioticDisplayName;
+        return "Expert rule: " + organismLabel + ", " + antibioticLabel + " always R";
     }
 
     private String effectiveInterpretation(MicroAstReading reading) {

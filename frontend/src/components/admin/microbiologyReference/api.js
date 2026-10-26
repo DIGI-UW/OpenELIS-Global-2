@@ -156,6 +156,11 @@ export const saveReportingRule = (value) =>
     method: "POST",
     body: JSON.stringify(value),
   });
+export const previewReportingRules = (value) =>
+  request("/rest/microbiology/admin/reporting-rules/preview", {
+    method: "POST",
+    body: JSON.stringify(value),
+  });
 export const getInterpretationRules = (signal) =>
   request("/rest/microbiology/admin/interpretation-rules", { signal });
 export const saveInterpretationRule = (value) =>

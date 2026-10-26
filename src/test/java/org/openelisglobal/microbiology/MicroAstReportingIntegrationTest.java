@@ -960,6 +960,44 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         return saved;
     }
 
+    @Test
+    public void previewShowsHowEachDrugWouldBeInterpretedAndReported() {
+        alwaysResistant(reference.organism().getId(), null);
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "SUPPRESS_UNLESS_RESISTANT");
+        form.note = "Consider meropenem";
+        form.noteWhen = "WHEN_R";
+        var rule = reportingRules.save(form, writer);
+        var request = new org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm();
+        request.organismId = reference.organism().getId();
+        request.sampleTypeId = sampleTypeId;
+        request.readings = List.of(previewReading(drugB, "SUSCEPTIBLE"),
+                previewReading(reference.antibiotic().getId(), "SUSCEPTIBLE"));
+        var result = reportingRules.preview(request);
+        assertEquals(reference.panel().getName(), result.defaultPanelName);
+        var expert = result.rows.stream().filter(r -> drugB.equals(r.antibioticId)).findFirst().orElseThrow();
+        assertEquals("SUSCEPTIBLE", expert.measured);
+        assertEquals("RESISTANT", expert.interpretation);
+        assertNotNull(expert.expertRule);
+        assertEquals(rule.getId(), expert.reportRuleId);
+        assertTrue(expert.reported);
+        assertEquals("Consider meropenem", expert.note);
+        var plain = result.rows.stream().filter(r -> reference.antibiotic().getId().equals(r.antibioticId)).findFirst()
+                .orElseThrow();
+        assertEquals("SUSCEPTIBLE", plain.interpretation);
+        assertNull(plain.expertRule);
+        assertNull(plain.reportRuleId);
+        assertTrue(plain.reported);
+        assertNull(plain.note);
+    }
+
+    private org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm.Reading previewReading(
+            String antibioticId, String interpretation) {
+        var reading = new org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm.Reading();
+        reading.antibioticId = antibioticId;
+        reading.interpretation = interpretation;
+        return reading;
+    }
+
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
             String organismGroup, List<String> sampleTypeIds, String reportBehavior) {
         var form = new org.openelisglobal.microbiology.form.MicroReportingRuleForm();
