@@ -211,7 +211,10 @@ describe("MicrobiologyWorklist", () => {
       }),
     };
 
-    renderWorklist(service, "/Microbiology/worklist?urgency=HIGH&sort=newest");
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?grain=cultures&urgency=HIGH&sort=newest",
+    );
 
     await screen.findByRole("heading", { name: "Microbiology worklist" });
     await user.click(screen.getByRole("button", { name: "Row actions" }));
@@ -219,7 +222,7 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?urgency=HIGH&sort=newest",
+        "/Microbiology/cases/case-1?grain=cultures&urgency=HIGH&sort=newest",
       ),
     );
   });
@@ -242,7 +245,7 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?stage=AST_IN_PROGRESS",
+        "/Microbiology/worklist?grain=cultures&stage=AST_IN_PROGRESS",
       ),
     );
     await waitFor(() =>
@@ -357,7 +360,7 @@ describe("MicrobiologyWorklist", () => {
     await user.type(search, "1");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?q=1",
+        "/Microbiology/worklist?grain=cultures&q=1",
       ),
     );
     expect(
@@ -367,7 +370,7 @@ describe("MicrobiologyWorklist", () => {
     await user.type(search, "2");
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?q=12",
+        "/Microbiology/worklist?grain=cultures&q=12",
       ),
     );
     expect(
@@ -402,7 +405,10 @@ describe("MicrobiologyWorklist", () => {
         }),
     };
 
-    renderWorklist(service, "/Microbiology/worklist?sort=newest");
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?grain=cultures&sort=newest",
+    );
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -474,13 +480,16 @@ describe("MicrobiologyWorklist", () => {
       }),
     };
 
-    renderWorklist(service, "/Microbiology/worklist?status=incubating");
+    renderWorklist(
+      service,
+      "/Microbiology/worklist?grain=cultures&status=incubating",
+    );
 
     const row = await screen.findByTestId("microbiology-worklist-row-case-1");
     await user.click(within(row).getByText("Mendez, Olivia"));
 
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?status=incubating",
+      "/Microbiology/cases/case-1?grain=cultures&status=incubating",
     );
   });
 
@@ -588,7 +597,7 @@ describe("MicrobiologyWorklist", () => {
       }),
     };
 
-    renderWorklist(service, "/Microbiology/worklist?q=blood");
+    renderWorklist(service, "/Microbiology/worklist?grain=cultures&q=blood");
 
     await screen.findByRole("heading", { name: "Microbiology worklist" });
     await user.click(
@@ -597,7 +606,7 @@ describe("MicrobiologyWorklist", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?status=growth&q=blood",
+        "/Microbiology/worklist?grain=cultures&status=growth&q=blood",
       ),
     );
   });
@@ -706,7 +715,10 @@ describe("MicrobiologyWorklist", () => {
         }),
       };
 
-      renderWorklist(service, "/Microbiology/worklist?status=incubating");
+      renderWorklist(
+        service,
+        "/Microbiology/worklist?grain=cultures&status=incubating",
+      );
 
       const rowActions = await screen.findByRole("button", {
         name: "Row actions",
@@ -724,7 +736,7 @@ describe("MicrobiologyWorklist", () => {
         expect(
           screen.getByTestId("microbiology-current-url"),
         ).toHaveTextContent(
-          `/Microbiology/cases/case-1?status=incubating&section=setup&action=${action}`,
+          `/Microbiology/cases/case-1?grain=cultures&status=incubating&section=setup&action=${action}`,
         ),
       );
     },

@@ -22,12 +22,16 @@ The foundational PR stack (Milestone 1) is now complete, providing the baseline 
 
 ---
 
-## Milestone 2: MVP Case View & Access (Next Up)
+## Milestone 2: MVP Case View & Access (Implemented; validation in review)
 **Goal:** Allow users to view the cases created by Milestone 1 and manage basic case access.
-- [ ] Build the Case View shell (header, related cases, sample list).
-- [ ] Implement Case-Lab-Unit access controls (read/write permissions based on lab unit).
-- [ ] Build the Case search and worklist listing.
-- [ ] Support basic case transfers between lab units.
+- [x] Build the Case View shell (header, related cases, sample list).
+- [x] Implement Case-Lab-Unit access controls (read/write permissions based on lab unit).
+- [x] Build the Case search and worklist listing.
+- [x] Support basic case transfers between lab units.
+
+The contract and validation scope are recorded in [milestone-2.md](milestone-2.md).
+Focused checks establish implementation behavior; full local CI, GitHub
+checkpoints and owner acceptance remain separate gates.
 
 ## Milestone 3: MVP Initial Testing & Results
 **Goal:** Enable lab technicians to enter basic results for case tests.

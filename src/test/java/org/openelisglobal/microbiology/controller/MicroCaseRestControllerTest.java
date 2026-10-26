@@ -106,20 +106,23 @@ public class MicroCaseRestControllerTest {
     }
 
     @Test
-    public void getCaseDetailRejectsUserWithoutLabUnitAccessBeforeLoadingPatientData() {
+    public void getCaseDetailWithoutLabUnitRightsReturnsReadOnlyDirectView() {
         MicroCaseService service = org.mockito.Mockito.mock(MicroCaseService.class);
         MicrobiologyCaseAccessService accessService = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
         UserModuleService userModuleService = org.mockito.Mockito.mock(UserModuleService.class);
         MockHttpServletRequest request = requestFor("7");
         when(userModuleService.isUserAdmin(request)).thenReturn(false);
         when(accessService.canAccessCase("case-1", "7", false)).thenReturn(false);
+        var detail = new MicroCaseDetailForm();
+        detail.id = "case-1";
+        when(service.getCaseDetail("case-1")).thenReturn(detail);
 
         ResponseEntity<MicroCaseDetailForm> response = controller(service, accessService, userModuleService,
                 org.mockito.Mockito.mock(MicroCaseStateService.class),
                 org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCaseDetail("case-1", request);
 
-        assertEquals(403, response.getStatusCode().value());
-        verify(service, never()).getCaseDetail("case-1");
+        assertEquals(200, response.getStatusCode().value());
+        org.junit.Assert.assertTrue(response.getBody().readOnlyAccess);
     }
 
     @Test

@@ -607,7 +607,7 @@ export function seedMicrobiologyWhonetExport(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
   return seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-m4-whonet-export-r11",
+    scenarioKey: `playwright-m4-whonet-export-r11-${randomUUID()}`,
   });
 }
 
@@ -615,7 +615,7 @@ export function seedMicrobiologyWhonetExportFilters(
   page: Page,
 ): Promise<SeededMicrobiologyWhonetExport> {
   return seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r9-whonet-export-filters-r11",
+    scenarioKey: `playwright-r9-whonet-export-filters-r11-${randomUUID()}`,
     patientOrigin: "INPATIENT",
     specimenWhonetCode: "BLD",
     unmappedSignificance: "CONTAMINANT",
@@ -626,17 +626,17 @@ export async function seedMicrobiologyCulturePurposeWhonetPopulation(
   page: Page,
 ) {
   const clinical = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r11-culture-purpose-clinical",
+    scenarioKey: `playwright-r11-culture-purpose-clinical-${randomUUID()}`,
     culturePurpose: "CLINICAL_DIAGNOSTIC",
     specimenWhonetCode: "BLD",
   });
   const screening = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r11-culture-purpose-screening",
+    scenarioKey: `playwright-r11-culture-purpose-screening-${randomUUID()}`,
     culturePurpose: "ACTIVE_SCREENING",
     specimenWhonetCode: "BLD",
   });
   const unspecified = await seedMicrobiologyWhonetExportScenario(page, {
-    scenarioKey: "playwright-r11-culture-purpose-unspecified",
+    scenarioKey: `playwright-r11-culture-purpose-unspecified-${randomUUID()}`,
     culturePurpose: null,
     specimenWhonetCode: "BLD",
   });

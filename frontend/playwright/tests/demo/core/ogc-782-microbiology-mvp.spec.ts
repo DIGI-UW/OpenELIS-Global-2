@@ -77,7 +77,7 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Open the microbiology case", async () => {
       await demo.step(1, "Open the case workbench and confirm the next step");
-      await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+      await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
         waitUntil: "domcontentloaded",
       });
       await expect(
