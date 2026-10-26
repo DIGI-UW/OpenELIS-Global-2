@@ -19,10 +19,12 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
+  getInterpretationRules,
   getReferenceOptions,
   getReportingRuleHistory,
   getReportingRules,
   getReportingRuleSettings,
+  saveInterpretationRule,
   saveReportingRule,
   saveReportingRuleSettings,
 } from "./api";
@@ -71,6 +73,7 @@ export default function AstRulesPage() {
   const t = (key) =>
     intl.formatMessage({ id: `microbiology.admin.astRules.${key}` });
   const [rules, setRules] = useState([]);
+  const [interpretationRules, setInterpretationRules] = useState([]);
   const [settings, setSettings] = useState({});
   const [options, setOptions] = useState({
     antibiotics: [],
@@ -79,8 +82,10 @@ export default function AstRulesPage() {
     sampleTypes: [],
   });
   const [draft, setDraft] = useState(null);
+  const [interpretationDraft, setInterpretationDraft] = useState(null);
   const [history, setHistory] = useState(null);
   const [error, setError] = useState(false);
+  const [interpretationError, setInterpretationError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -88,6 +93,7 @@ export default function AstRulesPage() {
     Promise.all([
       getReportingRules(controller.signal),
       getReportingRuleSettings(controller.signal),
+      getInterpretationRules(controller.signal),
       getReferenceOptions("antibiotics", controller.signal),
       getReferenceOptions("organisms", controller.signal),
       getReferenceOptions("organism-groups", controller.signal),
@@ -97,6 +103,7 @@ export default function AstRulesPage() {
         ([
           nextRules,
           nextSettings,
+          nextInterpretationRules,
           antibiotics,
           organisms,
           organismGroups,
@@ -104,6 +111,7 @@ export default function AstRulesPage() {
         ]) => {
           setRules(nextRules || []);
           setSettings(nextSettings || {});
+          setInterpretationRules(nextInterpretationRules || []);
           setOptions({
             antibiotics: antibiotics || [],
             organisms: organisms || [],
@@ -156,25 +164,56 @@ export default function AstRulesPage() {
     }
   };
 
-  const selector = (field, label, items, blank, reset = {}) => (
-    <Select
-      id={`reporting-rule-${field}`}
-      labelText={t(label)}
-      value={draft?.[field] || ""}
-      onChange={(event) =>
-        setDraft({
-          ...draft,
-          ...reset,
-          [field]: event.target.value,
-        })
-      }
-      disabled={busy}
-    >
-      {blank && <SelectItem value="" text={t(blank)} />}
-      {items.map((item) => (
-        <SelectItem key={item.id} value={item.id} text={item.label} />
-      ))}
-    </Select>
+  const saveInterpretation = async () => {
+    setBusy(true);
+    setInterpretationError(false);
+    try {
+      await saveInterpretationRule({
+        id: interpretationDraft.id,
+        antibioticId: interpretationDraft.antibioticId || "",
+        organismId: interpretationDraft.organismId || "",
+        organismGroup: interpretationDraft.organismGroup || "",
+        interpretation: "RESISTANT",
+        source: interpretationDraft.source || "",
+        active: interpretationDraft.active !== false,
+      });
+      setInterpretationRules((await getInterpretationRules()) || []);
+      setInterpretationDraft(null);
+    } catch {
+      setInterpretationError(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selectorFor =
+    (idPrefix, value, setValue) =>
+    (field, label, items, blank, reset = {}) => (
+      <Select
+        id={`${idPrefix}-${field}`}
+        labelText={t(label)}
+        value={value?.[field] || ""}
+        onChange={(event) =>
+          setValue({
+            ...value,
+            ...reset,
+            [field]: event.target.value,
+          })
+        }
+        disabled={busy}
+      >
+        {blank && <SelectItem value="" text={t(blank)} />}
+        {items.map((item) => (
+          <SelectItem key={item.id} value={item.id} text={item.label} />
+        ))}
+      </Select>
+    );
+
+  const selector = selectorFor("reporting-rule", draft, setDraft);
+  const interpretationSelector = selectorFor(
+    "interpretation-rule",
+    interpretationDraft,
+    setInterpretationDraft,
   );
 
   const groups = [];
@@ -341,6 +380,122 @@ export default function AstRulesPage() {
           ))}
         </TableBody>
       </Table>
+      <h2>{t("interpretationRules")}</h2>
+      <Button onClick={() => setInterpretationDraft({ ...emptyRule })}>
+        {t("addInterpretationRule")}
+      </Button>
+      <Table aria-label={t("interpretationRules")}>
+        <TableHead>
+          <TableRow>
+            {[
+              "organism",
+              "antibiotic",
+              "then",
+              "source",
+              "status",
+              "actions",
+            ].map((header) => (
+              <TableHeader key={header}>{t(header)}</TableHeader>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {interpretationRules.map((rule) => (
+            <TableRow key={rule.id}>
+              <TableCell>{rule.organismName || rule.organismGroup}</TableCell>
+              <TableCell>{rule.antibioticName}</TableCell>
+              <TableCell>
+                {rule.interpretation === "RESISTANT" ? t("alwaysR") : ""}
+              </TableCell>
+              <TableCell>{rule.source || ""}</TableCell>
+              <TableCell>
+                {rule.active === false ? t("inactive") : t("active")}
+              </TableCell>
+              <TableCell>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setInterpretationDraft({
+                      ...rule,
+                      source: rule.source || "",
+                    })
+                  }
+                >
+                  {t("edit")}
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {interpretationDraft && (
+        <Modal
+          open
+          modalHeading={t("interpretationRule")}
+          primaryButtonText={t("save")}
+          secondaryButtonText={t("cancel")}
+          onRequestClose={() => !busy && setInterpretationDraft(null)}
+          onRequestSubmit={saveInterpretation}
+          primaryButtonDisabled={busy}
+        >
+          <Form>
+            <Stack gap={5}>
+              {interpretationError && (
+                <InlineNotification
+                  kind="error"
+                  title={t("error")}
+                  hideCloseButton
+                />
+              )}
+              {interpretationSelector(
+                "antibioticId",
+                "antibiotic",
+                options.antibiotics,
+                "choose",
+              )}
+              {interpretationSelector(
+                "organismId",
+                "organism",
+                options.organisms,
+                "anyOrganism",
+                { organismGroup: "" },
+              )}
+              {interpretationSelector(
+                "organismGroup",
+                "organismGroup",
+                options.organismGroups,
+                "anyGroup",
+                { organismId: "" },
+              )}
+              <TextInput
+                id="interpretation-rule-source"
+                labelText={t("source")}
+                value={interpretationDraft.source || ""}
+                onChange={(event) =>
+                  setInterpretationDraft({
+                    ...interpretationDraft,
+                    source: event.target.value,
+                  })
+                }
+                disabled={busy}
+              />
+              <Checkbox
+                id="interpretation-rule-active"
+                labelText={t("active")}
+                checked={interpretationDraft.active !== false}
+                onChange={(_, { checked }) =>
+                  setInterpretationDraft({
+                    ...interpretationDraft,
+                    active: checked,
+                  })
+                }
+                disabled={busy}
+              />
+            </Stack>
+          </Form>
+        </Modal>
+      )}
       {draft && (
         <Modal
           open

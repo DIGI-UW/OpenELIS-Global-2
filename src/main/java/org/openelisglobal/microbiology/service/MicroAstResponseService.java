@@ -95,10 +95,12 @@ public class MicroAstResponseService {
         form.analyzerCompletedAt = run.getAnalyzerCompletedAt();
         form.analyzerMessageCodes = run.getAnalyzerMessageCodes();
         form.sourceEventId = run.getSourceEventId();
+        var readings = astService.getReadingsForRun(run.getId());
+        form.intrinsicContradiction = intrinsicContradiction(readings);
         var orderedAntibiotics = astService.getOrderedAntibioticsForRun(run.getId());
         boolean released = orderedAntibiotics.stream().anyMatch(ordered -> ordered.getReportRuleId() != null)
                 && finalReleased(run);
-        Map<String, MicroAstReading> lastReadings = astService.getReadingsForRun(run.getId()).stream().collect(
+        Map<String, MicroAstReading> lastReadings = readings.stream().collect(
                 Collectors.toMap(MicroAstReading::getAntibioticId, reading -> reading, (first, second) -> second));
         for (MicroAstRunAntibiotic ordered : orderedAntibiotics) {
             MicroAstRunAntibioticForm orderedForm = new MicroAstRunAntibioticForm();
@@ -143,11 +145,21 @@ public class MicroAstResponseService {
         form.analyzerResultReference = reading.getAnalyzerResultReference();
         form.overrideInterpretation = reading.getOverrideInterpretation();
         form.overrideReason = reading.getOverrideReason();
+        form.overrideRuleId = reading.getOverrideRuleId();
         form.createdAt = reading.getCreatedAt();
         form.createdBy = reading.getCreatedBy();
         form.overrideHistory = overrideHistory.stream().filter(event -> reading.getId().equals(event.readingId))
                 .toList();
         return form;
+    }
+
+    private boolean intrinsicContradiction(List<MicroAstReading> readings) {
+        Map<String, MicroAstReading> latest = new HashMap<>();
+        for (MicroAstReading reading : readings) {
+            latest.merge(reading.getAntibioticId(), reading, (current,
+                    candidate) -> candidate.getEntrySequence() >= current.getEntrySequence() ? candidate : current);
+        }
+        return latest.values().stream().anyMatch(MicroAstReading::contradictsExpertRule);
     }
 
     private boolean finalReleased(MicroAstRun run) {
