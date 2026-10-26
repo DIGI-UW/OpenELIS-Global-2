@@ -46,6 +46,12 @@ const behaviors = {
   DONT_REPORT: "behaviorDontReport",
 };
 
+const standards = {
+  CLSI: "standardClsi",
+  EUCAST: "standardEucast",
+  LOCAL: "standardLocal",
+};
+
 const displayValue = (value) => {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join(", ");
@@ -199,9 +205,7 @@ export default function AstRulesPage() {
       new Set([...Object.keys(before), ...Object.keys(after)]),
     );
     return keys
-      .filter(
-        (key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]),
-      )
+      .filter((key) => displayValue(before[key]) !== displayValue(after[key]))
       .map((key) => ({
         key,
         message: intl.formatMessage(
@@ -238,13 +242,13 @@ export default function AstRulesPage() {
             title={intl.formatMessage(
               { id: "microbiology.admin.astRules.standardWarning" },
               {
-                writtenFor: settings.writtenFor,
+                writtenFor: t(standards[settings.writtenFor]),
                 activeAuthority: settings.activeAuthority,
               },
             )}
           />
         )}
-      {error && (
+      {error && !draft && (
         <InlineNotification kind="error" title={t("error")} hideCloseButton />
       )}
       <Button onClick={() => setDraft({ ...emptyRule })}>{t("addRule")}</Button>
@@ -338,6 +342,13 @@ export default function AstRulesPage() {
         >
           <Form>
             <Stack gap={5}>
+              {error && (
+                <InlineNotification
+                  kind="error"
+                  title={t("error")}
+                  hideCloseButton
+                />
+              )}
               {selector(
                 "antibioticId",
                 "antibiotic",

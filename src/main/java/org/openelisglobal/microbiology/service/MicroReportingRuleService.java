@@ -74,7 +74,7 @@ public class MicroReportingRuleService {
             throw new IllegalArgumentException("REPORTING_RULE_ANTIBIOTIC_INVALID");
         }
         String reportBehavior = trimToNull(form.reportBehavior);
-        if (!REPORT_BEHAVIORS.contains(reportBehavior)) {
+        if (reportBehavior == null || !REPORT_BEHAVIORS.contains(reportBehavior)) {
             throw new IllegalArgumentException("REPORTING_RULE_BEHAVIOR_INVALID");
         }
         String organismId = trimToNull(form.organismId);
@@ -112,6 +112,9 @@ public class MicroReportingRuleService {
             rules.update(rule);
         }
         String after = snapshot(rule);
+        if (after.equals(before)) {
+            return rule;
+        }
         List<MicroReportingRuleHistory> revisions = history.getByRuleId(rule.getId());
         int revision = revisions.isEmpty() ? 1 : revisions.get(0).getRevision() + 1;
         MicroReportingRuleHistory entry = new MicroReportingRuleHistory();
@@ -166,7 +169,7 @@ public class MicroReportingRuleService {
 
     public MicroReportingRuleSettingsForm getSettings() {
         MicroReportingRuleSettingsForm form = new MicroReportingRuleSettingsForm();
-        form.writtenFor = setting(SETTING);
+        form.writtenFor = trimToNull(setting(SETTING));
         form.activeAuthority = breakpointService.getDefaultStandard().authority;
         return form;
     }
@@ -175,10 +178,10 @@ public class MicroReportingRuleService {
     public MicroReportingRuleSettingsForm saveSettings(String writtenFor, String actor) {
         MicroCaseServiceImpl.requireText(actor, "actor");
         String normalized = trimToNull(writtenFor);
-        if (!STANDARDS.contains(normalized)) {
+        if (normalized != null && !STANDARDS.contains(normalized)) {
             throw new IllegalArgumentException("REPORTING_RULES_STANDARD_INVALID");
         }
-        saveSetting(SETTING, normalized, actor);
+        saveSetting(SETTING, normalized == null ? "" : normalized, actor);
         return getSettings();
     }
 
