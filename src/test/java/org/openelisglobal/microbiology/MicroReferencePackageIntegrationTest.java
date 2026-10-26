@@ -43,6 +43,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroAstInterpretationService interpreter;
     @Autowired
+    private org.openelisglobal.microbiology.service.MicroReportingRuleService reportingRules;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroInterpretationRuleService interpretationRules;
+    @Autowired
     private MicroAstPanelDAO panels;
     @Autowired
     private MicroAstPanelAntibioticDAO panelAntibiotics;
@@ -155,6 +159,65 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         load(fixture);
         assertEquals("Laboratory group",
                 organisms.findByReference("AMR", fixture.organism).orElseThrow().getOrganismGroup());
+    }
+
+    @Test
+    public void reportingRuleFileLoadsRulesNotesAndAlwaysResistantAndReloadsWithoutChange() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.9", "RULES");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,YES,Consider meropenem,WHEN_R,,\n" + "GROUP,Synthetic rule group,ANY,"
+                + fixture.antibiotic + ",Synthetic,CASCADE,ANY_R,CRO;GEN,,,,,,\n");
+        assertFalse(reloadReportingRules(false).hasErrors());
+
+        var loaded = rulesFor(antibioticId);
+        assertEquals(2, loaded.size());
+        var species = loaded.stream().filter(r -> organism.getId().equals(r.organismId)).findFirst().orElseThrow();
+        assertEquals("DONT_REPORT", species.reportBehavior);
+        assertEquals("Consider meropenem", species.note);
+        assertEquals("WHEN_R", species.noteWhen);
+        assertTrue(species.sampleTypeIds.isEmpty());
+        var group = loaded.stream().filter(r -> "Synthetic rule group".equals(r.organismGroup)).findFirst()
+                .orElseThrow();
+        assertEquals("CASCADE", group.reportBehavior);
+        assertEquals("ANY_R CRO;GEN", group.cascadeCondition);
+        assertEquals(1,
+                interpretationRules
+                        .getRules().stream().filter(r -> antibioticId.equals(r.antibioticId)
+                                && organism.getId().equals(r.organismId) && "RESISTANT".equals(r.interpretation))
+                        .count());
+
+        assertFalse(reloadReportingRules(true).hasErrors());
+        assertEquals(2, rulesFor(antibioticId).size());
+        assertEquals(1, reportingRules.getHistory(species.id).size());
+
+        writeReportingRules(reportingRules.exportCsv());
+        assertFalse(reloadReportingRules(true).hasErrors());
+        assertEquals(2, rulesFor(antibioticId).size());
+        assertEquals(1, reportingRules.getHistory(species.id).size());
+        assertEquals(1, reportingRules.getHistory(group.id).size());
+
+        group.addAutomatically = true;
+        reportingRules.save(group, "1");
+        writeReportingRules(reportingRules.exportCsv());
+        assertFalse(reloadReportingRules(true).hasErrors());
+        assertTrue(rulesFor(antibioticId).stream().filter(r -> group.id.equals(r.id)).findFirst()
+                .orElseThrow().addAutomatically);
+        assertEquals(2, reportingRules.getHistory(group.id).size());
+    }
+
+    @Test
+    public void reportingRuleFileWithAnUnknownSampleTypeFails() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.10", "BADRULE");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",No such sample type,"
+                + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+        assertTrue(reloadReportingRules(false).hasErrors());
+        assertTrue(rulesFor(antibioticId).isEmpty());
     }
 
     @Test
@@ -569,5 +632,24 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
                 java.util.Set.of("microbiology-organisms", "microbiology-antimicrobials", "microbiology-breakpoints"),
                 force));
+    }
+
+    private static final String RULES_HEADER = "organism_level,organism,specimen_group,agent,agent_name,report_default,"
+            + "cascade_when,trigger_agents,report_as,always_report_R,comment,comment_when,sop_section,note\n";
+
+    private java.util.List<org.openelisglobal.microbiology.form.MicroReportingRuleForm> rulesFor(String antibioticId) {
+        return reportingRules.getRules().stream().filter(r -> antibioticId.equals(r.antibioticId)).toList();
+    }
+
+    private void writeReportingRules(String csv) throws Exception {
+        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-reporting-rules")
+                .resolve("reporting-rules.csv");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, csv);
+    }
+
+    private org.openelisglobal.configuration.service.ConfigurationReloadResult reloadReportingRules(boolean force) {
+        return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
+                java.util.Set.of("microbiology-reporting-rules"), force));
     }
 }

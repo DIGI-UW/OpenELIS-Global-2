@@ -503,3 +503,11 @@ it("drops an old preview when a new one fails or an input changes", async () => 
     screen.queryByRole("table", { name: "Preview result" }),
   ).not.toBeInTheDocument();
 });
+
+it("downloads the rules in the configuration file format", async () => {
+  show();
+  expect(await screen.findByRole("link", { name: "Export" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("/rest/microbiology/admin/reporting-rules/export"),
+  );
+});

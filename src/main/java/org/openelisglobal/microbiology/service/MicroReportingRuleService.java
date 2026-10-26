@@ -13,12 +13,16 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleHistoryDAO;
 import org.openelisglobal.microbiology.form.MicroReportingRuleForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleHistoryForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleSettingsForm;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroInterpretationRule;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroReportingRule;
 import org.openelisglobal.microbiology.valueholder.MicroReportingRuleHistory;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -37,11 +41,15 @@ public class MicroReportingRuleService {
     private static final Set<String> NOTE_WHENS = Set.of("ALWAYS", "WHEN_R", "WHEN_S");
     private static final Set<String> STANDARDS = Set.of("CLSI", "EUCAST", "LOCAL");
     private static final String SETTING = "microbiologyReportingRulesStandard";
+    private static final String EXPORT_HEADER = "organism_level,organism,specimen_group,agent,agent_name,"
+            + "report_default,cascade_when,trigger_agents,report_as,always_report_R,comment,comment_when,"
+            + "sop_section,note,indication,cascade_condition,add_automatically";
 
     private final MicroReportingRuleDAO rules;
     private final MicroReportingRuleHistoryDAO history;
     private final MicroAntibioticDAO antibiotics;
     private final MicroOrganismDAO organisms;
+    private final MicroInterpretationRuleDAO interpretationRules;
     private final TypeOfSampleService sampleTypes;
     private final SystemUserService systemUsers;
     private final MicroBreakpointService breakpointService;
@@ -50,13 +58,14 @@ public class MicroReportingRuleService {
     private final ObjectMapper json = new ObjectMapper();
 
     public MicroReportingRuleService(MicroReportingRuleDAO rules, MicroReportingRuleHistoryDAO history,
-            MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms, TypeOfSampleService sampleTypes,
-            SystemUserService systemUsers, MicroBreakpointService breakpointService, SiteInformationService settings,
-            MicroAstService astService) {
+            MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms, MicroInterpretationRuleDAO interpretationRules,
+            TypeOfSampleService sampleTypes, SystemUserService systemUsers, MicroBreakpointService breakpointService,
+            SiteInformationService settings, MicroAstService astService) {
         this.rules = rules;
         this.history = history;
         this.antibiotics = antibiotics;
         this.organisms = organisms;
+        this.interpretationRules = interpretationRules;
         this.sampleTypes = sampleTypes;
         this.systemUsers = systemUsers;
         this.breakpointService = breakpointService;
@@ -164,6 +173,45 @@ public class MicroReportingRuleService {
         }).toList();
     }
 
+    public String exportCsv() {
+        List<MicroInterpretationRule> interpretations = interpretationRules.getAll();
+        Set<String> resistantPairs = new HashSet<>();
+        for (MicroInterpretationRule rule : interpretations) {
+            if (rule.isActive() && "RESISTANT".equals(rule.getInterpretation()) && hasTarget(rule)) {
+                resistantPairs.add(pairKey(rule.getAntibioticId(), rule.getOrganismId(), rule.getOrganismGroup()));
+            }
+        }
+        StringBuilder csv = new StringBuilder(EXPORT_HEADER).append('\n');
+        Set<String> exportedPairs = new HashSet<>();
+        for (MicroReportingRuleForm rule : getRules()) {
+            boolean species = rule.organismId != null;
+            boolean group = rule.organismGroup != null;
+            String organism = species ? nullToEmpty(rule.organismName) : nullToEmpty(rule.organismGroup);
+            String agentName = nullToEmpty(rule.antibioticName);
+            String pair = species || group ? pairKey(rule.antibioticId, rule.organismId, rule.organismGroup) : null;
+            boolean alwaysResistant = pair != null && resistantPairs.contains(pair) && exportedPairs.add(pair);
+            csv.append(exportRow(species ? "SPECIES" : group ? "GROUP" : "ANY", organism,
+                    rule.sampleTypeNames.isEmpty() ? "ANY" : String.join(";", rule.sampleTypeNames),
+                    whonetCode(rule.antibioticId), agentName, reportDefault(rule.reportBehavior), "", "", "",
+                    alwaysResistant ? "YES" : "", nullToEmpty(rule.note), nullToEmpty(rule.noteWhen), "", "",
+                    nullToEmpty(rule.clinicalContext), nullToEmpty(rule.cascadeCondition),
+                    rule.addAutomatically ? "YES" : ""));
+        }
+        for (MicroInterpretationRule rule : interpretations) {
+            if (!rule.isActive() || !hasTarget(rule) || exportedPairs
+                    .contains(pairKey(rule.getAntibioticId(), rule.getOrganismId(), rule.getOrganismGroup()))) {
+                continue;
+            }
+            String organism = rule.getOrganismId() != null
+                    ? organisms.get(rule.getOrganismId()).map(MicroOrganism::getDisplayName).orElse("")
+                    : nullToEmpty(rule.getOrganismGroup());
+            String agentName = antibiotics.get(rule.getAntibioticId()).map(MicroAntibiotic::getDisplayName).orElse("");
+            csv.append(exportRow(rule.getOrganismId() != null ? "SPECIES" : "GROUP", organism, "ANY",
+                    whonetCode(rule.getAntibioticId()), agentName, "", "", "", "", "YES", "", "", "", "", "", "", ""));
+        }
+        return csv.toString();
+    }
+
     public List<MicroReportingRuleHistoryForm> getHistory(String ruleId) {
         Map<String, String> userDisplayById = new java.util.HashMap<>();
         return history.getAllMatchingOrdered("ruleId", ruleId, "revision", true).stream().map(entry -> {
@@ -230,6 +278,49 @@ public class MicroReportingRuleService {
         form.addAutomatically = rule.isAddAutomatically();
         form.active = rule.isActive();
         return form;
+    }
+
+    private static boolean hasTarget(MicroInterpretationRule rule) {
+        return rule.getOrganismId() != null || rule.getOrganismGroup() != null;
+    }
+
+    private static String pairKey(String antibioticId, String organismId, String organismGroup) {
+        return organismId != null ? "species|" + antibioticId + "|" + organismId
+                : "group|" + antibioticId + "|" + nullToEmpty(organismGroup);
+    }
+
+    private String whonetCode(String antibioticId) {
+        return antibiotics.get(antibioticId).map(MicroAntibiotic::getWhonetCode).orElse("");
+    }
+
+    private static String reportDefault(String reportBehavior) {
+        if (reportBehavior == null) {
+            return "";
+        }
+        return switch (reportBehavior) {
+        case "ALWAYS" -> "REPORT";
+        case "SUPPRESS_UNLESS_RESISTANT" -> "REPORT_IF_R";
+        case "CASCADE" -> "CASCADE";
+        case "DONT_REPORT" -> "DONT_REPORT";
+        default -> "";
+        };
+    }
+
+    private static String exportRow(String... values) {
+        return java.util.Arrays.stream(values).map(MicroReportingRuleService::quote)
+                .collect(java.util.stream.Collectors.joining(",")) + "\n";
+    }
+
+    private static String quote(String value) {
+        String text = nullToEmpty(value);
+        if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
+            return "\"" + text.replace("\"", "\"\"") + "\"";
+        }
+        return text;
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private String snapshot(MicroReportingRule rule) {
