@@ -8,6 +8,8 @@ import CaseWorklist from "../CaseWorklist";
 import CaseViewShell from "../CaseViewShell";
 import messages from "../../../languages/en.json";
 
+vi.mock("../CaseTestingWorkspace", () => ({ default: () => null }));
+
 const renderPage = (component, path = "/Microbiology/worklist") => {
   const history = createMemoryHistory({ initialEntries: [path] });
   render(

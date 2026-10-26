@@ -42,6 +42,9 @@ public class ResultValidationServiceImpl implements ResultValidationService {
     private TestNotificationService testNotificationService;
 
     @Autowired
+    private ResultSelfValidationPolicy selfValidationPolicy;
+
+    @Autowired
     private ValidationQcAcknowledgmentDAO qcAcknowledgmentDAO;
     @Autowired
     private AuditTrailService auditTrailService;
@@ -65,6 +68,20 @@ public class ResultValidationServiceImpl implements ResultValidationService {
             ArrayList<Result> resultUpdateList, List<AnalysisItem> resultItemList, ArrayList<Sample> sampleUpdateList,
             ArrayList<Note> noteUpdateList, IResultSaveService resultSaveService, List<IResultUpdate> updaters,
             String sysUserId) {
+        java.util.Set<String> checked = new java.util.HashSet<>();
+        for (Analysis analysis : analysisUpdateList) {
+            selfValidationPolicy.requireCaseWriteAccess(analysis, sysUserId,
+                    org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+            checked.add(analysis.getId());
+            if (getFinalizedStatusId().equals(analysis.getStatusId()))
+                selfValidationPolicy.requireAnotherValidator(analysis, sysUserId);
+        }
+        for (Result result : java.util.stream.Stream.concat(resultUpdateList.stream(), deletableList.stream())
+                .toList()) {
+            if (result.getAnalysis() != null && checked.add(result.getAnalysis().getId()))
+                selfValidationPolicy.requireCaseWriteAccess(result.getAnalysis(), sysUserId,
+                        org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        }
         ResultSaveService.removeDeletedResultsInTransaction(deletableList, sysUserId);
 
         // S-08 FR-04 release gate: refuse to release any analysis in this batch if its

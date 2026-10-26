@@ -47,6 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
 
     @Autowired
+    private org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy selfValidationPolicy;
+
+    @Autowired
     private AnalysisService analysisService;
     @Autowired
     private ResultService resultService;
@@ -77,6 +80,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     @Transactional
     public List<Analysis> persistDataSet(ResultsUpdateDataSet actionDataSet, List<IResultUpdate> updaters,
             String sysUserId) {
+        for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
+            selfValidationPolicy.requireCaseWriteAccess(analysis, sysUserId,
+                    org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        }
         for (Note note : actionDataSet.getNoteList()) {
             noteService.insert(note);
             // Every rejection opens its NCE (trigger: TEST_REJECTION). All

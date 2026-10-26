@@ -536,6 +536,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Transactional(readOnly = true)
     public void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet)
             throws FhirLocalPersistingException {
+        transformPersistResultsEntryFhirObjects(actionDataSet, List.of());
+    }
+
+    @Override
+    @Async
+    @Transactional(readOnly = true)
+    public void transformPersistResultsEntryFhirObjects(ResultsUpdateDataSet actionDataSet,
+            List<Observation> clearedObservations) throws FhirLocalPersistingException {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistResultsEntryFhirObjects",
                 "transformPersistResultsEntryFhirObjects called");
         String method = "transformPersistResultsEntryFhirObjects";
@@ -544,6 +552,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOperations fhirOperations = new FhirOperations();
         Set<String> includedAnalyzerIds = new HashSet<>();
         Map<String, Analyzer> analyzerCache = new HashMap<>();
+
+        for (Observation snapshot : clearedObservations) {
+            Observation cancelled = snapshot.copy();
+            cancelled.setStatus(ObservationStatus.CANCELLED);
+            cancelled.setValue(null);
+            cancelled.getComponent().clear();
+            cancelled.getInterpretation().clear();
+            this.addToOperations(fhirOperations, tempIdGenerator, cancelled);
+        }
 
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
             Observation observation = observationTransformService

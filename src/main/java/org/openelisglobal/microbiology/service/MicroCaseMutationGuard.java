@@ -5,12 +5,12 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStatus;
 
-final class MicroCaseMutationGuard {
+public final class MicroCaseMutationGuard {
 
     private MicroCaseMutationGuard() {
     }
 
-    static void requireMutable(MicroCase microCase) {
+    public static void requireMutable(MicroCase microCase) {
         if (microCase.getStatus() == MicroCaseStatus.CANCELLED || microCase.getStatus() == MicroCaseStatus.REJECTED
                 || MicroCaseStage.REJECTED.name().equals(microCase.getStage())) {
             throw new MicroCaseLockedException("TERMINAL_CASE_LOCKED");

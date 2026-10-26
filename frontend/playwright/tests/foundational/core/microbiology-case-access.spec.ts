@@ -3,7 +3,7 @@ import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("Microbiology V2 MVP case visibility", () => {
-  test("finds an owned case and opens the read-only sample summary", async ({
+  test("finds an owned case and opens the sample summary and testing workspace", async ({
     page,
   }, testInfo) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
@@ -40,7 +40,7 @@ test.describe("Microbiology V2 MVP case visibility", () => {
       }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(
-      page.getByText("Case details are read-only in this view."),
+      page.getByRole("heading", { name: "Testing and results", exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Samples", exact: true }),

@@ -636,6 +636,9 @@ public class ResultUtil {
      * for a validator.
      */
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
+        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true")) {
+            alwaysValidate = true;
+        }
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected);
