@@ -7,6 +7,7 @@ vi.mock("./api", () => ({
   getReferenceOptions: vi.fn(),
   getInterpretationRules: vi.fn(),
   saveInterpretationRule: vi.fn(),
+  previewReportingRules: vi.fn(),
 }));
 
 import React from "react";
@@ -24,6 +25,7 @@ import {
   saveReportingRule,
   saveInterpretationRule,
   saveReportingRuleSettings,
+  previewReportingRules,
 } from "./api";
 import AstRulesPage from "./AstRulesPage";
 import { isKnownSection } from "./sectionConfig";
@@ -364,4 +366,49 @@ it("clears an interpretation rule error when its dialog closes", async () => {
   expect(
     within(reopened).queryByText("The interpretation rule could not be saved."),
   ).not.toBeInTheDocument();
+});
+
+it("previews what an isolate would report and why", async () => {
+  previewReportingRules.mockResolvedValue({
+    defaultPanelName: "Gram neg stamp",
+    rows: [
+      {
+        antibioticId: "cro",
+        antibioticName: "Ceftriaxone",
+        measured: "SUSCEPTIBLE",
+        interpretation: "RESISTANT",
+        expertRule: "Expert rule: Klebsiella, Ceftriaxone always R",
+        reportBehavior: "SUPPRESS_UNLESS_RESISTANT",
+        reportRuleId: "r1",
+        reported: true,
+        note: "Consider meropenem",
+      },
+    ],
+  });
+  show();
+  fireEvent.change(await screen.findByLabelText("Preview organism"), {
+    target: { value: "ab" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Add antibiotic" }));
+  fireEvent.change(screen.getByLabelText("Antibiotic 1"), {
+    target: { value: "cro" },
+  });
+  fireEvent.change(screen.getByLabelText("Result 1"), {
+    target: { value: "SUSCEPTIBLE" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+  await waitFor(() =>
+    expect(previewReportingRules).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organismId: "ab",
+        readings: [{ antibioticId: "cro", interpretation: "SUSCEPTIBLE" }],
+      }),
+    ),
+  );
+  const result = await screen.findByRole("table", { name: "Preview result" });
+  expect(
+    within(result).getByText("Expert rule: Klebsiella, Ceftriaxone always R"),
+  ).toBeInTheDocument();
+  expect(within(result).getByText("Consider meropenem")).toBeInTheDocument();
+  expect(screen.getByText("Default panel: Gram neg stamp")).toBeInTheDocument();
 });
