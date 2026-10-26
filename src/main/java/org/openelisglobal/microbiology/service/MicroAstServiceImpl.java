@@ -865,8 +865,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setMethod(method.name());
         reading.setRawValue(analyzerReading.rawValue());
         reading.setRawText(analyzerReading.rawValue() == null ? null : analyzerReading.rawValue().toPlainString());
-        String interpretation = interpretReading(run, rule, method, analyzerReading.rawValue()).name();
-        reading.setInterpretation(interpretation);
+        reading.setInterpretation(interpretReading(run, rule, method, analyzerReading.rawValue()).name());
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
         reading.setSource("ANALYZER_AUTO");
         reading.setMatchedBy(matchedBy(rule));
@@ -878,7 +877,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
                 .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
-        applyReportDefault(run, reading.getAntibioticId(), interpretation);
+        applyReportDefault(run, reading.getAntibioticId(), reading.getInterpretation());
     }
 
     /** The reading is kept as plain text too, so its exponent must be small. */

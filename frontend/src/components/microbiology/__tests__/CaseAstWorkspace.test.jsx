@@ -589,3 +589,21 @@ it("readers see report ticks they cannot change", async () => {
     screen.queryByRole("button", { name: "Reset report choices" }),
   ).not.toBeInTheDocument();
 });
+it("shows a drug's report tick only on the run whose reading is chosen for the report", async () => {
+  const data = ticks();
+  const first = data.isolates[0].runs[0];
+  data.isolates[0].choices = [{ antibioticId: "b", readingId: "r-b" }];
+  data.isolates[0].runs.push({
+    ...first,
+    id: "retest",
+    orderedAntibiotics: first.orderedAntibiotics.map((agent) => ({
+      ...agent,
+    })),
+    readings: [reading("r-a2", "a", 4), reading("r-b2", "b", 4)],
+  });
+  show(data);
+  const name = (agent) => ({ name: `Report ${agent}`, hidden: true });
+  await screen.findAllByRole("checkbox", name("Ampicillin"));
+  expect(screen.getAllByRole("checkbox", name("Ceftriaxone"))).toHaveLength(1);
+  expect(screen.getAllByRole("checkbox", name("Ampicillin"))).toHaveLength(2);
+});

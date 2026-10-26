@@ -435,6 +435,11 @@ export default function CaseAstWorkspace({
                               isolate.choices.some(
                                 (c) => c.readingId === reading.id,
                               );
+                            const showTick =
+                              selected ||
+                              !isolate.choices.some(
+                                (c) => c.antibioticId === agent.antibioticId,
+                              );
                             const editable = ![
                               "REVIEWED",
                               "INVALIDATED",
@@ -492,44 +497,45 @@ export default function CaseAstWorkspace({
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <Checkbox
-                                    id={`report-${run.id}-${agent.antibioticId}`}
-                                    labelText={intl.formatMessage(
-                                      { id: "microbiology.m6.reportAgent" },
-                                      { agent: agent.antibioticName },
-                                    )}
-                                    aria-label={intl.formatMessage(
-                                      { id: "microbiology.m6.reportAgent" },
-                                      { agent: agent.antibioticName },
-                                    )}
-                                    hideLabel
-                                    checked={!!agent.reported}
-                                    disabled={
-                                      !(canEnter || canValidate) || busy
-                                    }
-                                    onChange={(_, { checked }) =>
-                                      reportAction({
-                                        action: "report",
-                                        isolateId: isolate.id,
-                                        runId: run.id,
-                                        antibioticId: agent.antibioticId,
-                                        reported: checked,
-                                      })
-                                    }
-                                  />
-                                  {agent.reportManual ? (
-                                    <p>{t("reportReason.manual")}</p>
-                                  ) : (
-                                    [
-                                      "SUPPRESS_UNLESS_RESISTANT",
-                                      "CASCADE",
-                                    ].includes(agent.reportBehavior) && (
-                                      <p>
-                                        {t(
-                                          `reportReason.${agent.reportBehavior}`,
+                                  {showTick && (
+                                    <>
+                                      <Checkbox
+                                        id={`report-${run.id}-${agent.antibioticId}`}
+                                        labelText={intl.formatMessage(
+                                          { id: "microbiology.m6.reportAgent" },
+                                          { agent: agent.antibioticName },
                                         )}
-                                      </p>
-                                    )
+                                        aria-label={intl.formatMessage(
+                                          { id: "microbiology.m6.reportAgent" },
+                                          { agent: agent.antibioticName },
+                                        )}
+                                        hideLabel
+                                        checked={!!agent.reported}
+                                        disabled={
+                                          !(canEnter || canValidate) || busy
+                                        }
+                                        onChange={(_, { checked }) =>
+                                          reportAction({
+                                            action: "report",
+                                            isolateId: isolate.id,
+                                            runId: run.id,
+                                            antibioticId: agent.antibioticId,
+                                            reported: checked,
+                                          })
+                                        }
+                                      />
+                                      {agent.reportManual ? (
+                                        <p>{t("reportReason.manual")}</p>
+                                      ) : (
+                                        agent.reportBehavior !== "ALWAYS" && (
+                                          <p>
+                                            {t(
+                                              `reportReason.${agent.reportBehavior}`,
+                                            )}
+                                          </p>
+                                        )
+                                      )}
+                                    </>
                                   )}
                                 </TableCell>
                                 <TableCell>

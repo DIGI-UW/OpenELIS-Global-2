@@ -13796,7 +13796,7 @@
   "microbiology.m6.reportAgent": "Report {agent}",
   "microbiology.m6.reportReason.manual": "Changed by staff",
   "microbiology.m6.reportReason.SUPPRESS_UNLESS_RESISTANT": "Reported only if resistant",
-  "microbiology.m6.reportReason.CASCADE": "Reported when its cascade condition is met",
+  "microbiology.m6.reportReason.CASCADE": "Cascade: not reported unless ticked",
   "microbiology.m6.actions": "Actions",
   "microbiology.m6.manual": "Manual interpretation",
   "microbiology.m6.breakpoint": "Breakpoint standard",
