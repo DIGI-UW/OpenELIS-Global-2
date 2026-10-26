@@ -385,7 +385,12 @@ export interface BridgePairingStatus {
   clientCertificateSha256?: string | null;
   pairedAt?: string | null;
   pairsAutomatically: boolean;
-  pinCheck?: "MATCHES" | "OTHER_CERTIFICATE" | "BRIDGE_UNPAIRED" | null;
+  pinCheck?:
+    | "MATCHES"
+    | "OTHER_CERTIFICATE"
+    | "BRIDGE_UNPAIRED"
+    | "UNREACHABLE"
+    | null;
 }
 
 export type BridgePairingResponse = BridgePairingStatus & {
