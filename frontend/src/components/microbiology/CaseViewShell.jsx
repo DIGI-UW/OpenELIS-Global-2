@@ -40,7 +40,8 @@ import "./CaseWorkspace.scss";
 import "./MicrobiologyCaseView.css";
 import CaseQuestionnaire from "./CaseQuestionnaire";
 import OrderDetailPanel from "./OrderDetailPanel";
-import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
+import CaseStatusTags from "./CaseStatusTags";
+import { getMicrobiologyCurrentStep } from "./MicrobiologyCaseState";
 import CaseContextEditor from "./CaseContextEditor";
 import CaseTestingWorkspace from "./CaseTestingWorkspace";
 import serviceDefault from "./CaseWorkspaceService";
@@ -208,6 +209,9 @@ export default function CaseViewShell({
                 {t("microbiology.case.heading", {
                   accession: detail.accessionNumber || detail.id,
                 })}
+                {detail.stat && (
+                  <Tag type="red">{t("microbiology.case.stat")}</Tag>
+                )}
               </h1>
               {incomingCount > 0 && (
                 <Tile>
@@ -323,28 +327,14 @@ export default function CaseViewShell({
                     {detail.reportingTrack && (
                       <Tag type="teal">{detail.reportingTrack}</Tag>
                     )}
-                    {detail.referred && (
-                      <Tag type="purple">
-                        {t("label.results.history.event.REFERRAL")}
-                      </Tag>
-                    )}
                   </Column>
                   <Column lg={4} md={4} sm={4}>
-                    <p className="cds--label">
-                      {t("microbiology.case.workStage")}
-                    </p>
-                    <p>{formatMicrobiologyEnum(detail.stage, intl)}</p>
-                    <p>
-                      {t("microbiology.case.releaseState")}:{" "}
-                      {formatMicrobiologyEnum(detail.finalReleaseState, intl)}
-                    </p>
-                    <p>
-                      {t("microbiology.case.priority")}:{" "}
-                      {formatMicrobiologyEnum(detail.priority, intl)}
-                    </p>
-                    <Tag type="blue">
-                      {t(`microbiology.case.status.${detail.status}`)}
-                    </Tag>
+                    <p className="cds--label">{t("common.status")}</p>
+                    <CaseStatusTags
+                      caseStatus={detail.caseStatus}
+                      statusTags={detail.statusTags}
+                    />
+                    <p>{t(getMicrobiologyCurrentStep(detail).labelId)}</p>
                     {!detail.canWrite && (
                       <p>
                         {t(

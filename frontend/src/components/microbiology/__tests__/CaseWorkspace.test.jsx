@@ -136,15 +136,80 @@ describe("MVP microbiology case workspace", () => {
       "/Microbiology/worklist?page=3&labUnitId=10",
     );
     await screen.findByText("No cases match these filters.");
+    expect(
+      [...screen.getByLabelText("Status").options].map((o) => o.text),
+    ).toEqual([
+      "All case statuses",
+      "In progress",
+      "Partial",
+      "Final",
+      "Amended",
+      "Referred",
+      "Referral returned",
+      "Amendment open",
+    ]);
     fireEvent.change(screen.getByLabelText("Status"), {
-      target: { value: "CANCELLED" },
+      target: { value: "PARTIAL" },
     });
     await waitFor(() =>
       expect(service.searchCases).toHaveBeenLastCalledWith(
-        "labUnitId=10&status=CANCELLED",
+        "labUnitId=10&caseStatus=PARTIAL",
       ),
     );
-    expect(history.location.search).toBe("?labUnitId=10&status=CANCELLED");
+    expect(history.location.search).toBe("?labUnitId=10&caseStatus=PARTIAL");
+  });
+  test("each case shows its status, tags and STAT under the lab number", async () => {
+    const service = {
+      searchCases: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            ...row,
+            caseStatus: "PARTIAL",
+            statusTags: ["REFERRED"],
+            stat: true,
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+        labUnits: [],
+      }),
+    };
+    renderPage(<CaseWorklist service={service} />);
+    const cell = (await screen.findByRole("link", { name: "M2-001" })).closest(
+      "td",
+    );
+    expect(cell).toHaveTextContent("Partial");
+    expect(cell).toHaveTextContent("Referred");
+    expect(cell).toHaveTextContent("STAT");
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("columnheader").map((h) => h.textContent),
+    ).not.toContain("Status");
+  });
+  test("the header shows one status with the current step under it and STAT beside the case number", async () => {
+    const service = {
+      getCase: vi.fn().mockResolvedValue({
+        ...shell,
+        caseStatus: "FINAL",
+        statusTags: ["AMENDMENT_OPEN"],
+        stat: true,
+        stage: "AMENDED",
+        finalReleaseState: "AMENDMENT_IN_PROGRESS",
+      }),
+    };
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const heading = await screen.findByRole("heading", {
+      level: 1,
+      name: /Case M2-001/,
+    });
+    expect(heading).toHaveTextContent("STAT");
+    expect(screen.getByText("Final")).toBeVisible();
+    expect(screen.getByText("Amendment open")).toBeVisible();
+    expect(screen.getByText("Amendments")).toBeVisible();
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Work stage/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Release state/)).not.toBeInTheDocument();
   });
   test("shows patient, collected and pending samples and related links", async () => {
     const service = { getCase: vi.fn().mockResolvedValue(shell) };
