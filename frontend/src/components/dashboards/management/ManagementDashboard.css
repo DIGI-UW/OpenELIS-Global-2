@@ -1,0 +1,83 @@
+.mgmt-dashboard__header {
+  container-type: inline-size;
+  margin: 1rem 0;
+  padding: 0.875rem 1.125rem;
+  background: var(--cds-layer-01, #ffffff);
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+}
+
+.mgmt-dashboard__header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.mgmt-dashboard__header h2 {
+  margin: 0;
+}
+
+.mgmt-dashboard__subtitle {
+  margin-top: 0.25rem;
+}
+
+.mgmt-dashboard__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/* Carbon stretches the switcher and gives every button an equal share,
+   which truncates the longer labels. */
+.mgmt-dashboard__controls .mgmt-dashboard__scope,
+.mgmt-dashboard__header
+  .mgmt-dashboard__controls
+  .mgmt-dashboard__scope
+  .cds--content-switcher-btn {
+  flex: none;
+  inline-size: auto;
+}
+
+.mgmt-dashboard__controls .mgmt-dashboard__scope-select {
+  display: none;
+  min-inline-size: 11rem;
+}
+
+.mgmt-dashboard__refresh {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mgmt-dashboard__updated,
+.mgmt-dashboard__subtitle {
+  font-size: 0.875rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.mgmt-dashboard__updated {
+  white-space: nowrap;
+}
+
+@container (max-width: 54rem) {
+  .mgmt-dashboard__controls .mgmt-dashboard__scope {
+    display: none;
+  }
+
+  .mgmt-dashboard__controls .mgmt-dashboard__scope-select {
+    display: block;
+  }
+}
+
+@container (max-width: 30rem) {
+  .mgmt-dashboard__controls {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .mgmt-dashboard__updated {
+    display: none;
+  }
+}

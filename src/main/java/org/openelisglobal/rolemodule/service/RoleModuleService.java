@@ -17,4 +17,7 @@ public interface RoleModuleService extends PermissionModuleService<RoleModule> {
      * {@link #getAllPermittedPagesFromAgentId(int)}.
      */
     Set<String> getPermittedModuleNames(Collection<String> roleNames, String prefix);
+
+    /** Granted names under every prefix in Constants.PERMISSION_MODULE_PREFIXES. */
+    Set<String> getPermittedModuleNames(Collection<String> roleNames);
 }
