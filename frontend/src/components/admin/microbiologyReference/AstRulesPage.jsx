@@ -450,6 +450,8 @@ export default function AstRulesPage() {
               <TextInput
                 id="reporting-rule-note"
                 labelText={t("note")}
+                maxCount={1000}
+                enableCounter
                 value={draft.note || ""}
                 onChange={(event) =>
                   setDraft({ ...draft, note: event.target.value })
