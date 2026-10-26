@@ -406,3 +406,55 @@ it.each([
     expect(consumed).toHaveBeenCalledTimes(1);
   },
 );
+it("shows analyzer evidence and blocks validation until a QC hold is resolved", async () => {
+  const data = workspace("QC_FAILED");
+  const run = data.isolates[0].runs[0];
+  Object.assign(run, {
+    analyzerInstrumentId: "instrument-42",
+    analyzerCardId: "card-42",
+    analyzerSoftwareVersion: "2.1",
+    instrumentQcReference: "qc-42",
+  });
+  run.readings[0].instrumentInterpretation = "RESISTANT";
+  show(data);
+  expect(await screen.findByText("Analyzer QC failed")).toBeInTheDocument();
+  expect(screen.getByText("instrument-42")).toBeInTheDocument();
+  expect(screen.getByText(/Card or panel card-42/)).toBeInTheDocument();
+  expect(screen.getByText(/QC reference qc-42/)).toBeInTheDocument();
+  expect(screen.getByText("Analyzer: Resistant")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: t("action.review") }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: t("action.qc-override") }),
+  );
+  expect(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  ).toBeDisabled();
+});
+
+it.each([
+  [{ configured: true, available: true, standardId: "eucast" }, "eucast"],
+  [{ configured: false, available: false }, ""],
+  [{ configured: true, available: false, standardId: "old" }, ""],
+])(
+  "uses the configured default and never guesses from a multi-standard list (%j)",
+  async (defaultStandard, expected) => {
+    const data = workspace();
+    data.standards = [
+      { id: "clsi", label: "CLSI 2026" },
+      { id: "eucast", label: "EUCAST 2026-2026.1" },
+    ];
+    data.defaultStandard = defaultStandard;
+    show(data);
+    fireEvent.click(
+      await screen.findByRole("button", { name: t("action.start") }),
+    );
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText(t("breakpoint")),
+    ).toHaveValue(expected);
+  },
+);

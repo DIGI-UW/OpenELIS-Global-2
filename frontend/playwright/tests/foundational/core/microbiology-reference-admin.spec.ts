@@ -297,9 +297,9 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     const importVersion = `SYNTH-UAT-${randomUUID().slice(0, 8).toUpperCase()}`;
     const csv = [
       "publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_id,breakpoint_type,susceptible_value,intermediate_lower_value,intermediate_upper_value,resistant_value,units",
-      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-      `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,synthetic-mg/L`,
-      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,synthetic-mg/L`,
+      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+      `CLSI,${importVersion},Unknown organism,REFUAT,MIC,,MIC,1,2,2,4,mg/L`,
+      `CLSI,${importVersion},group:UAT_SYNTHETIC,REFUAT,MIC,,MIC,not-a-number,2,2,4,mg/L`,
     ].join("\n");
 
     const openImport = async () => {

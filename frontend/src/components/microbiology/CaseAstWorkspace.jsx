@@ -155,7 +155,13 @@ export default function CaseAstWorkspace({
       readingId: reading?.id,
       antibioticId: antibioticId || reading?.antibioticId,
       panelId: isolate?.assignments?.[0]?.panelId || "",
-      breakpointStandardId: data.standards?.[0]?.id || "",
+      breakpointStandardId: data.defaultStandard?.configured
+        ? data.defaultStandard.available
+          ? data.defaultStandard.standardId
+          : ""
+        : data.standards?.length === 1
+          ? data.standards[0].id
+          : "",
       technique: run?.technique || techniques[0],
       rawValue: "",
       orderedAntibioticIds: null,
@@ -272,6 +278,13 @@ export default function CaseAstWorkspace({
       {error && (
         <InlineNotification kind="error" title={errorMessage} hideCloseButton />
       )}
+      {data?.defaultStandard?.configured && !data.defaultStandard.available && (
+        <InlineNotification
+          kind="warning"
+          hideCloseButton
+          title={t("error.AST_BREAKPOINT_DEFAULT_NOT_AVAILABLE")}
+        />
+      )}
       {!data && !error && <InlineLoading description={t("loading")} />}
       {data?.isolates?.length === 0 && <p>{t("identifyFirst")}</p>}
       {data?.isolates?.map((isolate) => (
@@ -316,6 +329,51 @@ export default function CaseAstWorkspace({
                       rowId={run.id}
                       service={service}
                     />
+                    {run.analyzerInstrumentId && (
+                      <Stack gap={2}>
+                        <strong>
+                          {analyzers.find(
+                            (a) => a.id === run.analyzerInstrumentId,
+                          )?.name || run.analyzerInstrumentId}
+                        </strong>
+                        <p>
+                          {intl.formatMessage(
+                            { id: "microbiology.ast.analyzerProvenance" },
+                            {
+                              card: run.analyzerCardId || t("none"),
+                              version: run.analyzerSoftwareVersion || t("none"),
+                            },
+                          )}
+                        </p>
+                      </Stack>
+                    )}
+                    {run.status === "QC_FAILED" && (
+                      <InlineNotification
+                        kind="error"
+                        title={intl.formatMessage({
+                          id: "microbiology.ast.qcFailed",
+                        })}
+                        subtitle={intl.formatMessage(
+                          { id: "microbiology.ast.qcFailedDetail" },
+                          {
+                            reference: run.instrumentQcReference || t("none"),
+                          },
+                        )}
+                        hideCloseButton
+                      />
+                    )}
+                    {run.status === "RESULTS_IN" && (
+                      <InlineNotification
+                        kind="info"
+                        title={intl.formatMessage({
+                          id: "microbiology.ast.resultsReady",
+                        })}
+                        subtitle={intl.formatMessage({
+                          id: "microbiology.ast.resultsReadyDetail",
+                        })}
+                        hideCloseButton
+                      />
+                    )}
                     <TableContainer>
                       <Table
                         size="sm"
@@ -367,6 +425,20 @@ export default function CaseAstWorkspace({
                                     <>
                                       {t(
                                         `interpretation.${reading.overrideInterpretation || reading.interpretation}`,
+                                      )}
+                                      {reading.instrumentInterpretation && (
+                                        <p>
+                                          {intl.formatMessage(
+                                            {
+                                              id: "microbiology.ast.instrumentInterpretation",
+                                            },
+                                            {
+                                              interpretation: t(
+                                                `interpretation.${reading.instrumentInterpretation}`,
+                                              ),
+                                            },
+                                          )}
+                                        </p>
                                       )}
                                       {reading.overrideInterpretation && (
                                         <Tag type="purple">{t("manual")}</Tag>

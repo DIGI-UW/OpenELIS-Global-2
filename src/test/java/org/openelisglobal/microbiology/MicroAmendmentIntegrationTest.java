@@ -27,6 +27,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
 import org.openelisglobal.microbiology.service.MicroAstService;
+import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
 import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
@@ -74,6 +75,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MicrobiologyTestFixtures fixtures;
+
+    @Autowired
+    private MicroBreakpointAdminService breakpointAdminService;
 
     @Autowired
     private MicroCaseAnalysisService caseAnalysisService;
@@ -209,6 +213,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         String userId = createValidator(labUnitId);
         String methodId = fixtures.createMethodId();
         ReferenceData referenceData = fixtures.createReferenceData(methodId);
+        breakpointAdminService.activate(referenceData.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
         SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M8A");
         sampleItem.setTypeOfSample(fixtures.createTypeOfSample());
         sampleItem.setSysUserId(userId);

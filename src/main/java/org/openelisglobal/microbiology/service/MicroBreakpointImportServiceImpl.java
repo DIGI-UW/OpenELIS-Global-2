@@ -81,16 +81,70 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             throw new IllegalArgumentException("Import preview has expired or does not exist");
         }
 
+        return applyRows(preview, previewToken, actorId, null);
+    }
+
+    @Override
+    @Transactional
+    public MicroBreakpointImportPreviewForm applyConfiguration(String csv, String actorId) {
+        if (actorId == null || actorId.isBlank()) {
+            throw new IllegalArgumentException("Configuration actor is required");
+        }
+        ImportPreview preview = parse(csv);
+        if (!preview.errors.isEmpty() || preview.validRows.isEmpty()) {
+            throw new IllegalArgumentException("Invalid configuration breakpoints: "
+                    + preview.errors.stream().map(e -> e.message).collect(java.util.stream.Collectors.joining("; ")));
+        }
+        Map<String, List<String>> editionRows = new LinkedHashMap<>();
+        for (ImportRow row : preview.validRows) {
+            editionRows.computeIfAbsent(editionKey(row), ignored -> new ArrayList<>()).add(row.sourceHash);
+        }
+        Map<String, String> configurationHashes = new LinkedHashMap<>();
+        editionRows.forEach((key, rows) -> configurationHashes.put(key,
+                hash(rows.stream().sorted().collect(java.util.stream.Collectors.joining("\n")))));
+        var checkedEditions = new java.util.HashSet<String>();
+        for (ImportRow row : preview.validRows) {
+            if (!checkedEditions.add(editionKey(row))) {
+                continue;
+            }
+            var existing = standardDAO.findByAuthorityAndVersion(row.authority, row.version);
+            if (existing.isPresent()
+                    && !configurationHashes.get(editionKey(row)).equals(existing.get().getConfigurationHash())) {
+                throw new IllegalArgumentException(
+                        "Standard edition already belongs to different content: " + row.version);
+            }
+        }
+        var result = applyRows(preview, null, actorId, configurationHashes);
+        if (!result.errors.isEmpty()) {
+            throw new IllegalArgumentException("Configuration conflicts with an existing breakpoint");
+        }
+        return result;
+    }
+
+    private MicroBreakpointImportPreviewForm applyRows(ImportPreview preview, String previewToken, String actorId,
+            Map<String, String> configurationHashes) {
         int imported = 0;
         int unchanged = 0;
+        List<Integer> unchangedLines = new ArrayList<>();
+        List<Integer> importedLines = new ArrayList<>();
         Map<String, MicroBreakpointStandard> standards = new java.util.HashMap<>();
         for (ImportRow row : preview.validRows) {
-            String key = row.authority + "\n" + row.version;
+            String key = editionKey(row);
+            String configurationHash = configurationHashes == null ? null : configurationHashes.get(key);
             MicroBreakpointStandard standard = standards.computeIfAbsent(key,
-                    ignored -> findOrCreateStandard(row.authority, row.version, actorId));
+                    ignored -> findOrCreateStandard(row.authority, row.version, actorId, configurationHash != null));
+            if (standard.getConfigurationHash() != null && !standard.getConfigurationHash().equals(configurationHash)) {
+                throw new IllegalArgumentException("Configuration-managed standards cannot be changed by CSV upload");
+            }
+            if (configurationHash != null && standard.getConfigurationHash() == null) {
+                standard.setConfigurationHash(configurationHash);
+                standardDAO.update(standard);
+            }
             Optional<MicroBreakpointRule> existingHash = ruleDAO.findBySourceRowHash(row.sourceHash);
             if (existingHash.isPresent()) {
                 unchanged++;
+                unchangedLines.add(row.rowNumber);
+                ruleDAO.evict(existingHash.get());
                 continue;
             }
             Optional<MicroBreakpointRule> existingRule = ruleDAO.findByNaturalKey(standard.getId(), row.organismId,
@@ -99,18 +153,26 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 preview.errors.add(error(row.rowNumber,
                         "A locally customized breakpoint exists for this organism, antibiotic, and method",
                         row.sourceRow));
+                ruleDAO.evict(existingRule.get());
                 continue;
             }
-            MicroBreakpointRule rule = toRule(row, standard.getId(), actorId);
+            MicroBreakpointRule rule = toRule(row, standard.getId(), actorId,
+                    existingRule.orElseGet(MicroBreakpointRule::new));
             if (existingRule.isPresent()) {
-                rule.setId(existingRule.get().getId());
                 ruleDAO.update(rule);
             } else {
                 ruleDAO.insert(rule);
             }
+            // BaseDAO flushes each write. Completed rules must not remain in the
+            // persistence context and be dirty-checked again for every later row.
+            ruleDAO.evict(rule);
             imported++;
+            importedLines.add(row.rowNumber);
         }
-        return toForm(previewToken, preview, imported + unchanged, imported, unchanged);
+        var result = toForm(previewToken, preview, imported + unchanged, imported, unchanged);
+        result.importedRowNumbers = importedLines;
+        result.unchangedRowNumbers = unchangedLines;
+        return result;
     }
 
     private ImportPreview parse(String csv) {
@@ -120,10 +182,18 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
             validateHeaders(parser.getHeaderMap());
             ImportPreview preview = new ImportPreview();
             List<ImportRow> parsedRows = new ArrayList<>();
+            Map<List<String>, Optional<MicroOrganism>> organisms = new java.util.HashMap<>();
+            Map<List<String>, Optional<MicroAntibiotic>> antibiotics = new java.util.HashMap<>();
+            Map<String, String> groups = new java.util.HashMap<>();
+            for (MicroOrganism organism : organismDAO.getAll()) {
+                String group = organism.getOrganismGroup();
+                if (group != null)
+                    groups.putIfAbsent(group.toLowerCase(Locale.ROOT), group);
+            }
             for (CSVRecord record : parser) {
                 preview.totalRows++;
                 try {
-                    parsedRows.add(parseRow(record));
+                    parsedRows.add(parseRow(record, organisms, antibiotics, groups));
                 } catch (IllegalArgumentException exception) {
                     preview.errors.add(error((int) record.getRecordNumber() + 1, exception.getMessage(),
                             CSVFormat.DEFAULT.format(record.values())));
@@ -148,7 +218,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
     }
 
-    private ImportRow parseRow(CSVRecord record) {
+    private ImportRow parseRow(CSVRecord record, Map<List<String>, Optional<MicroOrganism>> organisms,
+            Map<List<String>, Optional<MicroAntibiotic>> antibiotics, Map<String, String> groups) {
         ImportRow row = new ImportRow();
         row.rowNumber = (int) record.getRecordNumber() + 1;
         row.sourceRow = CSVFormat.DEFAULT.format(record.values());
@@ -159,11 +230,16 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         row.version = required(record, "version");
 
         String organismValue = required(record, "organism_or_group");
-        if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
+        if (record.isMapped("organism_code") && !record.get("organism_code").isBlank()) {
+            var key = List.of(required(record, "organism_source"), required(record, "organism_code"));
+            row.organismId = organisms
+                    .computeIfAbsent(key, ignored -> organismDAO.findByReference(key.get(0), key.get(1)))
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown organism source code")).getId();
+        } else if (organismValue.regionMatches(true, 0, "group:", 0, "group:".length())) {
             String requestedGroup = requiredText(organismValue.substring("group:".length()), "organism group");
-            row.organismGroup = organismDAO.getActiveOrganisms().stream().map(MicroOrganism::getOrganismGroup)
-                    .filter(group -> group != null && group.equalsIgnoreCase(requestedGroup)).findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Unknown organism group: " + requestedGroup));
+            row.organismGroup = groups.get(requestedGroup.toLowerCase(Locale.ROOT));
+            if (row.organismGroup == null)
+                throw new IllegalArgumentException("Unknown organism group: " + requestedGroup);
         } else {
             MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(organismValue)
                     .orElseThrow(() -> new IllegalArgumentException("Unknown organism: " + organismValue));
@@ -171,8 +247,16 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         }
 
         String antibioticCode = required(record, "antibiotic_whonet_code").toUpperCase(Locale.ROOT);
-        MicroAntibiotic antibiotic = antibioticDAO.findByWhonetCodeIgnoreCase(antibioticCode)
-                .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic code: " + antibioticCode));
+        MicroAntibiotic antibiotic;
+        if (record.isMapped("antibiotic_code") && !record.get("antibiotic_code").isBlank()) {
+            var key = List.of(required(record, "antibiotic_source"), required(record, "antibiotic_code"));
+            antibiotic = antibiotics
+                    .computeIfAbsent(key, ignored -> antibioticDAO.findByReference(key.get(0), key.get(1)))
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic source code"));
+        } else {
+            antibiotic = antibioticDAO.findByWhonetCodeIgnoreCase(antibioticCode)
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown antibiotic code: " + antibioticCode));
+        }
         row.antibioticId = antibiotic.getId();
 
         String rawMethod = required(record, "method").toUpperCase(Locale.ROOT);
@@ -197,14 +281,74 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         row.intermediateUpperValue = decimal(record, "intermediate_upper_value");
         row.resistantValue = decimal(record, "resistant_value");
         row.units = required(record, "units");
+        if (record.isMapped("resistant_inclusive") && !record.get("resistant_inclusive").isBlank()) {
+            String inclusive = record.get("resistant_inclusive");
+            if (!List.of("true", "false").contains(inclusive)) {
+                throw new IllegalArgumentException("resistant_inclusive must be true or false");
+            }
+            row.resistantInclusive = Boolean.parseBoolean(inclusive);
+        }
+        row.notes = record.isMapped("notes") ? blankToNull(record.get("notes")) : null;
+        validateThresholds(row);
         row.sourceHash = hash(normalizedRow(row));
         return row;
     }
 
-    private MicroBreakpointStandard findOrCreateStandard(String authority, String version, String actorId) {
+    private void validateThresholds(ImportRow row) {
+        if (!row.method.equals(row.breakpointType)) {
+            throw new IllegalArgumentException("Method and breakpoint type must agree");
+        }
+        if (!("MIC".equals(row.method) ? List.of("mg/L", "ug/mL").contains(row.units) : "mm".equals(row.units))) {
+            throw new IllegalArgumentException("Unsupported measurement units");
+        }
+        var values = java.util.stream.Stream
+                .of(row.susceptibleValue, row.intermediateLowerValue, row.intermediateUpperValue, row.resistantValue)
+                .filter(java.util.Objects::nonNull).toList();
+        // An explicit empty rule blocks fallback and yields NO_BREAKPOINT in V2.
+        if (!values.isEmpty() && (row.susceptibleValue == null || row.resistantValue == null)) {
+            throw new IllegalArgumentException(
+                    "Both susceptible and resistant thresholds are required for a nonempty rule");
+        }
+        for (BigDecimal value : values) {
+            if (value.signum() <= 0 || value.stripTrailingZeros().scale() > 4
+                    || value.precision() - value.scale() > 8) {
+                throw new IllegalArgumentException("Threshold cannot be retained exactly: " + value);
+            }
+        }
+        if (row.susceptibleValue != null && row.resistantValue != null) {
+            int comparison = row.susceptibleValue.compareTo(row.resistantValue);
+            if (("MIC".equals(row.method) ? comparison > 0 : comparison < 0)
+                    || (comparison == 0 && row.resistantInclusive)) {
+                throw new IllegalArgumentException("Thresholds are out of order");
+            }
+        }
+        if ((row.intermediateLowerValue == null) != (row.intermediateUpperValue == null)
+                || (row.intermediateLowerValue != null
+                        && row.intermediateLowerValue.compareTo(row.intermediateUpperValue) > 0)) {
+            throw new IllegalArgumentException("Intermediate interval must have ordered lower and upper bounds");
+        }
+        if (row.intermediateLowerValue != null) {
+            boolean mic = "MIC".equals(row.method);
+            BigDecimal susceptibleEnd = mic ? row.intermediateLowerValue : row.intermediateUpperValue;
+            BigDecimal resistantEnd = mic ? row.intermediateUpperValue : row.intermediateLowerValue;
+            if (row.susceptibleValue != null && (mic ? susceptibleEnd.compareTo(row.susceptibleValue) <= 0
+                    : susceptibleEnd.compareTo(row.susceptibleValue) >= 0)) {
+                throw new IllegalArgumentException("Intermediate interval overlaps susceptible range");
+            }
+            if (row.resistantValue != null) {
+                int comparison = resistantEnd.compareTo(row.resistantValue);
+                if ((mic ? comparison > 0 : comparison < 0) || (comparison == 0 && row.resistantInclusive)) {
+                    throw new IllegalArgumentException("Intermediate interval overlaps resistant range");
+                }
+            }
+        }
+    }
+
+    private MicroBreakpointStandard findOrCreateStandard(String authority, String version, String actorId,
+            boolean configurationReload) {
         Optional<MicroBreakpointStandard> existing = standardDAO.findByAuthorityAndVersion(authority, version);
         if (existing.isPresent()) {
-            if ("ARCHIVED".equals(existing.get().getLifecycleStatus())) {
+            if (!configurationReload && "ARCHIVED".equals(existing.get().getLifecycleStatus())) {
                 throw new IllegalArgumentException("Cannot import into archived breakpoint standard");
             }
             return existing.get();
@@ -219,8 +363,7 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         return standard;
     }
 
-    private MicroBreakpointRule toRule(ImportRow row, String standardId, String actorId) {
-        MicroBreakpointRule rule = new MicroBreakpointRule();
+    private MicroBreakpointRule toRule(ImportRow row, String standardId, String actorId, MicroBreakpointRule rule) {
         rule.setStandardId(standardId);
         rule.setOrganismId(row.organismId);
         rule.setOrganismGroup(row.organismGroup);
@@ -232,6 +375,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         rule.setIntermediateLowerValue(row.intermediateLowerValue);
         rule.setIntermediateUpperValue(row.intermediateUpperValue);
         rule.setResistantValue(row.resistantValue);
+        rule.setResistantInclusive(row.resistantInclusive);
+        rule.setNotes(row.notes);
         rule.setUnits(row.units);
         rule.setSeeded(true);
         rule.setLocallyCustomized(false);
@@ -286,10 +431,15 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     }
 
     private String normalizedRow(ImportRow row) {
-        return String.join("|", row.authority, row.version, nullToEmpty(row.organismId), nullToEmpty(row.organismGroup),
-                row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType,
-                decimalText(row.susceptibleValue), decimalText(row.intermediateLowerValue),
-                decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units);
+        return CSVFormat.DEFAULT.format(row.authority, row.version, nullToEmpty(row.organismId),
+                nullToEmpty(row.organismGroup), row.antibioticId, row.method, nullToEmpty(row.specimenTypeId),
+                row.breakpointType, decimalText(row.susceptibleValue), decimalText(row.intermediateLowerValue),
+                decimalText(row.intermediateUpperValue), decimalText(row.resistantValue), row.units,
+                Boolean.toString(row.resistantInclusive), nullToEmpty(row.notes));
+    }
+
+    private String editionKey(ImportRow row) {
+        return row.authority + "\n" + row.version;
     }
 
     private String naturalKey(ImportRow row) {
@@ -347,6 +497,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         private BigDecimal intermediateUpperValue;
         private BigDecimal resistantValue;
         private String units;
+        private boolean resistantInclusive = true;
+        private String notes;
         private String sourceHash;
         private String sourceRow;
     }

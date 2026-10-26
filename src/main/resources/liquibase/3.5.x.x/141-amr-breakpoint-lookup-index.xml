@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="141-amr-breakpoint-lookup-index" author="openelis">
+  <createIndex schemaName="clinlims" tableName="micro_breakpoint_rule" indexName="idx_micro_breakpoint_rule_lookup">
+   <column name="standard_id"/>
+   <column name="antibiotic_id"/>
+   <column name="organism_id"/>
+  </createIndex>
+  <rollback>
+   <dropIndex schemaName="clinlims" tableName="micro_breakpoint_rule" indexName="idx_micro_breakpoint_rule_lookup"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

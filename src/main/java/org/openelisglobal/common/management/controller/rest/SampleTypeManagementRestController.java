@@ -249,7 +249,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
 
                 // Calculate and set actual test count for this sample type
                 try {
-                    int testCount = typeOfSampleService.getAllTestsBySampleTypeId(typeOfSample.getId()).size();
+                    int testCount = typeOfSampleService.countTestsBySampleTypeId(typeOfSample.getId());
                     dto.setTestCount(testCount);
                 } catch (Exception e) {
                     LogEvent.logWarn("SampleTypeManagementRestController", "getAllSampleTypes",
@@ -275,7 +275,7 @@ public class SampleTypeManagementRestController extends BaseRestController {
             return ResponseEntity.notFound().build();
         }
         SampleTypeManagementDTO dto = new SampleTypeManagementDTO(typeOfSample);
-        dto.setTestCount(typeOfSampleService.getAllTestsBySampleTypeId(sampleTypeId).size());
+        dto.setTestCount(typeOfSampleService.countTestsBySampleTypeId(sampleTypeId));
         return ResponseEntity.ok(new ApiResponse<>(true, "Sample type retrieved successfully", dto));
     }
 

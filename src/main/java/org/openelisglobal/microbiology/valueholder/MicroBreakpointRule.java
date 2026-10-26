@@ -74,6 +74,17 @@ public class MicroBreakpointRule extends BaseObject<String> {
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
+    @Column(name = "resistant_inclusive", nullable = false)
+    private boolean resistantInclusive = true;
+
+    public boolean isResistantInclusive() {
+        return resistantInclusive;
+    }
+
+    public void setResistantInclusive(boolean value) {
+        resistantInclusive = value;
+    }
+
     @Override
     public String getId() {
         return id;

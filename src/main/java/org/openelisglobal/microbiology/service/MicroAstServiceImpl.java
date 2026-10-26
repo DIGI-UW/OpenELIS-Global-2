@@ -387,7 +387,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                 org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
         MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         MicroBreakpointRule rule = findRule(run, isolate, microCase, antibioticId, method);
-        MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
+        MicroAstInterpretation interpretation = interpretReading(run, rule, method, rawValue);
 
         MicroAstReading reading = new MicroAstReading();
         reading.setAstRunId(runId);
@@ -787,6 +787,18 @@ public class MicroAstServiceImpl implements MicroAstService {
         return List.copyOf(latestByAntibiotic.values());
     }
 
+    private MicroAstInterpretation interpretReading(MicroAstRun run, MicroBreakpointRule rule, MicroAstMethod method,
+            BigDecimal rawValue) {
+        String standardId = run.getBreakpointStandardId();
+        MicroBreakpointStandard standard = standardId == null || standardId.isBlank()
+                ? breakpointService.getActiveStandard(defaultBreakpointAuthority, defaultBreakpointVersion)
+                : breakpointService.getStandard(standardId);
+        if (standard != null && "CLSI".equals(standard.getAuthority())) {
+            return interpretationService.interpret(rule, method, rawValue, standard.getAuthority());
+        }
+        return interpretationService.interpret(rule, method, rawValue);
+    }
+
     private void appendAnalyzerReading(MicroAstRun run, MicroIsolate isolate, MicroCase microCase,
             MicroAstAnalyzerReading analyzerReading, String performedBy) {
         MicroCaseServiceImpl.requireText(analyzerReading.antibioticId(), "antibioticId");
@@ -801,7 +813,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setMethod(method.name());
         reading.setRawValue(analyzerReading.rawValue());
         reading.setRawText(analyzerReading.rawValue() == null ? null : analyzerReading.rawValue().toPlainString());
-        reading.setInterpretation(interpretationService.interpret(rule, method, analyzerReading.rawValue()).name());
+        reading.setInterpretation(interpretReading(run, rule, method, analyzerReading.rawValue()).name());
         reading.setBreakpointRuleId(rule == null ? null : rule.getId());
         reading.setSource("ANALYZER_AUTO");
         reading.setMatchedBy(matchedBy(rule));
@@ -1095,10 +1107,19 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private MicroBreakpointStandard resolveStandard(String requestedStandardId) {
+        if (requestedStandardId == null || requestedStandardId.isBlank()) {
+            var preferred = breakpointService.getDefaultStandard();
+            if (preferred != null && preferred.configured) {
+                if (!preferred.available) {
+                    throw new IllegalArgumentException("AST_BREAKPOINT_DEFAULT_NOT_AVAILABLE");
+                }
+                requestedStandardId = preferred.standardId;
+            }
+        }
         if (requestedStandardId != null && !requestedStandardId.isBlank()) {
             MicroBreakpointStandard selected = breakpointService.getStandard(requestedStandardId);
-            if (selected == null || "N".equals(selected.getIsActive())
-                    || "ARCHIVED".equals(selected.getLifecycleStatus())) {
+            if (selected == null || !"Y".equals(selected.getIsActive())
+                    || !"ACTIVE".equals(selected.getLifecycleStatus())) {
                 throw new IllegalArgumentException("AST_BREAKPOINT_STANDARD_NOT_AVAILABLE");
             }
             return selected;

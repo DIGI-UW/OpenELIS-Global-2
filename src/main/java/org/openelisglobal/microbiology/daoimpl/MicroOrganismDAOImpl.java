@@ -58,6 +58,15 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<MicroOrganism> findByReference(String source, String code) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroOrganism e where e.referenceSource = :source and e.referenceCode = :code",
+                        MicroOrganism.class)
+                .setParameter("source", source).setParameter("code", code).uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countWorkflowReferences(String organismId) {
         Query<Long> query = entityManager.unwrap(Session.class)
                 .createQuery("select count(i.id) from MicroIsolate i where i.organismId = :organismId", Long.class);

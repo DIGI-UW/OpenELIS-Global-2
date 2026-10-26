@@ -56,6 +56,7 @@ public class MicroAstWorkspaceService {
         }
         form.canEnter = mutable && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS);
         form.canValidate = mutable && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_VALIDATION);
+        form.defaultStandard = breakpoints.getDefaultStandard();
         form.standards = breakpoints.getActiveStandards().stream().filter(s -> "ACTIVE".equals(s.getLifecycleStatus()))
                 .map(s -> new MicroAstWorkspaceForm.Option(s.getId(), s.getAuthority() + " " + s.getVersion()))
                 .toList();

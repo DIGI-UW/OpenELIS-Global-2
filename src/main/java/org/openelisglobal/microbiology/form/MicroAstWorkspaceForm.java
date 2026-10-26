@@ -6,6 +6,7 @@ public class MicroAstWorkspaceForm {
     public boolean canEnter, canValidate;
     public List<Isolate> isolates;
     public List<Option> standards;
+    public MicroBreakpointDefaultForm defaultStandard;
     public MicroDstForm dst;
 
     public record Option(String id, String label) {

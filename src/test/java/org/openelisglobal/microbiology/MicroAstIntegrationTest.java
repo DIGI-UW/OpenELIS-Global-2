@@ -70,6 +70,8 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
         AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
+        breakpointAdminService.activate(alternative.standard().getId(), new Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
         microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",

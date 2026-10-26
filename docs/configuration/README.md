@@ -46,6 +46,15 @@ District → Sub-District → Village).
 - **Features:** Configurable hierarchy levels, parent-child relationships,
   backward compatible with Health Region/District
 
+### [Microbiology Reference Configuration](microbiology-reference-packages.md)
+
+- **Locations:** `configuration/backend/microbiology-organisms/`,
+  `microbiology-antimicrobials/`, and `microbiology-breakpoints/`
+- **Format:** ordinary configuration CSVs, optionally installed from an
+  independently published, deployment-pinned metadata package
+- **Features:** shared catalog preview/apply/reload, source identities, local
+  customization preservation, immutable inactive editions and exact boundaries
+
 ## How Configuration Loading Works
 
 Configuration files are loaded automatically during application startup:
@@ -131,3 +140,37 @@ The earlier patient-origin catalog also loads through configuration, from
 their identifiers and existing WHONET mappings. The original migration checksum
 remains explicitly accepted so existing installations upgrade without clearing
 Liquibase checksums or recreating those concepts.
+
+### Default susceptibility breakpoint edition
+
+In **Admin → Microbiology reference data → Breakpoint standards**, open the
+approved edition, activate it if needed, and select **Use as default**. This
+preselects that edition for new susceptibility tests. Explicit selection of
+another active standard remains possible; existing runs and repeat runs keep the
+standard saved on the original run. Activation alone does not select a preferred
+publisher.
+
+The default uses existing site-information settings, loaded through
+`microbiology-settings/*.csv`:
+
+```csv
+name,value,domainName,valueType,description,instructionKey,group,encrypted,createOnly
+microbiologyDefaultBreakpointAuthority,EUCAST,resultConfiguration,text,Default breakpoint authority,,0,false,false
+microbiologyDefaultBreakpointVersion,2026-2026.1,resultConfiguration,text,Default breakpoint edition,,0,false,false
+```
+
+Use the **exact imported version**, including the package revision. The example
+selects the AMR reference package's 2026 EUCAST edition; it is a testing choice,
+not a clinical policy recommendation. Configuration stores portable publisher
+and edition names, not installation-specific identifiers. It does not activate
+an edition. An administrator must approve activation before it can be used.
+
+Built-in values are empty and `createOnly=true`, preserving administrator
+choices. A deployment override with `createOnly=false` sets both values when
+that file is imported; unchanged files are skipped on restart. If the pinned
+edition is missing or inactive, OpenELIS warns and does not substitute another
+publisher or year. Without a configured default, a single active edition is
+selected automatically; multiple active editions require an explicit selection.
+The older Java properties named `defaultBreakpointAuthority` and
+`defaultBreakpointVersion` only support legacy runs without a saved standard;
+they do not configure this default for new tests.

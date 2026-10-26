@@ -7,6 +7,8 @@ vi.mock("./api", () => ({
   getAstPanel: vi.fn(),
   publishAstPanel: vi.fn(),
   getBreakpointStandards: vi.fn(),
+  getDefaultBreakpointStandard: vi.fn(),
+  setDefaultBreakpointStandard: vi.fn(),
   getBreakpointStandard: vi.fn(),
   getBreakpointRules: vi.fn(),
   getBreakpointRule: vi.fn(),
@@ -31,6 +33,8 @@ import {
   getBreakpointRule,
   getBreakpointStandard,
   getBreakpointStandards,
+  getDefaultBreakpointStandard,
+  setDefaultBreakpointStandard,
   getReferenceItem,
   getReferenceOptions,
   getReferencePage,
@@ -61,6 +65,10 @@ const query = { ...DEFAULT_REFERENCE_QUERY };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getDefaultBreakpointStandard.mockResolvedValue({
+    configured: false,
+    available: false,
+  });
   getReferenceItem.mockResolvedValue({});
   getReferenceOptions.mockResolvedValue([]);
 });
@@ -491,6 +499,43 @@ describe("microbiology reference administration", () => {
     expect(setReferenceActive).toHaveBeenCalledWith("organisms", "eco", false);
   });
 
+  it("saves an active edition as the site default without changing its rules", async () => {
+    const user = userEvent.setup();
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-eu",
+      authority: "EUCAST",
+      version: "2026-2026.1",
+      lifecycleStatus: "ACTIVE",
+      configurationManaged: true,
+    });
+    getBreakpointRules.mockResolvedValue({ rows: [], total: 0 });
+    setDefaultBreakpointStandard.mockResolvedValue({
+      configured: true,
+      available: true,
+      standardId: "std-eu",
+      authority: "EUCAST",
+      version: "2026-2026.1",
+    });
+    renderPage(
+      <BreakpointPage
+        standardId="std-eu"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+    const button = await screen.findByRole("button", {
+      name: "Use as default",
+    });
+    await user.click(button);
+    expect(setDefaultBreakpointStandard).toHaveBeenCalledWith("std-eu");
+    expect(
+      await screen.findByText(/EUCAST 2026-2026.1 is preselected/),
+    ).toBeInTheDocument();
+    expect(button).toBeDisabled();
+    expect(saveBreakpointRule).not.toHaveBeenCalled();
+  });
+
   it("renders breakpoint lifecycle detail and opens activation state", async () => {
     const user = userEvent.setup();
     const setQuery = vi.fn();
@@ -603,6 +648,60 @@ describe("microbiology reference administration", () => {
     expect(screen.queryByText("1 valid")).not.toBeInTheDocument();
     expect(container.querySelector('input[type="file"]')).not.toBeNull();
   });
+
+  it.each(["rule:rule-1", "rule:new"])(
+    "keeps package rules read-only even with edit link %s",
+    async (edit) => {
+      getBreakpointStandard.mockResolvedValue({
+        id: "std-1",
+        authority: "EUCAST",
+        version: "2026-2026.1",
+        lifecycleStatus: "LOADED",
+        configurationManaged: true,
+      });
+      getBreakpointRules.mockResolvedValue({
+        rows: [
+          {
+            id: "rule-1",
+            method: "MIC",
+            organismName: "Synthetic organism",
+            antibioticName: "Synthetic agent",
+            susceptibleValue: 0.0001,
+            resistantValue: 0.0001,
+            resistantInclusive: false,
+            seeded: true,
+          },
+        ],
+        total: 1,
+      });
+      renderPage(
+        <BreakpointPage
+          standardId="std-1"
+          basePath="/MasterListsPage"
+          query={{ ...query, edit }}
+          setQuery={vi.fn()}
+        />,
+      );
+      await screen.findByText(
+        messages["microbiology.admin.breakpoints.configurationManaged.title"],
+      );
+      expect(await screen.findByText("> 0.0001")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(messages["microbiology.admin.field.notes"]),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: messages["microbiology.admin.breakpoints.correction.add"],
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: messages["microbiology.admin.actions"],
+        }),
+      ).not.toBeInTheDocument();
+      expect(saveBreakpointRule).not.toHaveBeenCalled();
+    },
+  );
 
   it("loads a directly linked breakpoint correction and saves it as local", async () => {
     const user = userEvent.setup();
