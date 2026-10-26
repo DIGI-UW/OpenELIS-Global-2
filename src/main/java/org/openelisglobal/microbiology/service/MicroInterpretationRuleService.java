@@ -72,7 +72,7 @@ public class MicroInterpretationRuleService {
         }).toList();
     }
 
-    private MicroInterpretationRuleForm toForm(MicroInterpretationRule rule) {
+    public MicroInterpretationRuleForm toForm(MicroInterpretationRule rule) {
         MicroInterpretationRuleForm form = new MicroInterpretationRuleForm();
         form.id = rule.getId();
         form.antibioticId = rule.getAntibioticId();
