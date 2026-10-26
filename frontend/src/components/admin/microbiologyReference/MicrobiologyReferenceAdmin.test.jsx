@@ -375,6 +375,46 @@ describe("microbiology reference administration", () => {
     await waitFor(() => expect(importCsv).toHaveFocus());
   });
 
+  it("renders a replaced page of breakpoint standards without the earlier rows", async () => {
+    const user = userEvent.setup();
+    const standard = (id, version) => ({
+      id,
+      authority: "CLSI",
+      version,
+      lifecycleStatus: "LOADED",
+      ruleCount: 1,
+      unresolvedRunCount: 0,
+      configurationManaged: false,
+    });
+    getBreakpointStandards.mockImplementation(async (requestQuery) =>
+      new URLSearchParams(requestQuery).get("q") === "NEXT"
+        ? { rows: [standard("c", "NEXT")], total: 1 }
+        : {
+            rows: [standard("a", "FIRST"), standard("b", "SECOND")],
+            total: 2,
+          },
+    );
+
+    const Harness = () => {
+      const [currentQuery, setCurrentQuery] = React.useState(query);
+      const setQuery = (updates) =>
+        setCurrentQuery((current) => ({ ...current, ...updates }));
+      return (
+        <BreakpointPage
+          basePath="/MasterListsPage"
+          query={currentQuery}
+          setQuery={setQuery}
+        />
+      );
+    };
+
+    renderPage(<Harness />);
+    expect(await screen.findByText("FIRST")).toBeInTheDocument();
+    await user.type(screen.getByRole("searchbox"), "NEXT");
+    expect(await screen.findByText("NEXT")).toBeInTheDocument();
+    expect(screen.queryByText("FIRST")).not.toBeInTheDocument();
+  });
+
   it("renders the refreshed AST panel rows after publishing a version", async () => {
     const user = userEvent.setup();
     let published = false;
