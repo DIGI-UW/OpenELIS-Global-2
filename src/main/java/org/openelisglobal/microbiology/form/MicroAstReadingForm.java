@@ -25,6 +25,7 @@ public class MicroAstReadingForm {
     public String analyzerResultReference;
     public String overrideInterpretation;
     public String overrideReason;
+    public String overrideRuleId;
     public Timestamp createdAt;
     public String createdBy;
     public List<MicroAstOverrideEventForm> overrideHistory = new ArrayList<>();

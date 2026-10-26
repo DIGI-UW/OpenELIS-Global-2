@@ -39,6 +39,9 @@ public class MicroAstOverrideEvent extends BaseObject<String> {
     @Column(name = "performed_by", nullable = false, length = 20)
     private String performedBy;
 
+    @Column(name = "rule_id", length = 36)
+    private String ruleId;
+
     @Override
     public String getId() {
         return id;
@@ -103,5 +106,13 @@ public class MicroAstOverrideEvent extends BaseObject<String> {
 
     public void setPerformedBy(String performedBy) {
         this.performedBy = performedBy;
+    }
+
+    public String getRuleId() {
+        return ruleId;
+    }
+
+    public void setRuleId(String ruleId) {
+        this.ruleId = ruleId;
     }
 }
