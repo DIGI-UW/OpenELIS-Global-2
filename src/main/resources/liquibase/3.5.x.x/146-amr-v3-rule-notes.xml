@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="146-amr-v3-rule-notes" author="openelis">
+<addColumn schemaName="clinlims" tableName="micro_reporting_rule"><column name="note" type="varchar(1000)"/><column name="note_when" type="varchar(10)"/></addColumn>
+<sql>ALTER TABLE clinlims.micro_reporting_rule ADD CONSTRAINT chk_micro_reporting_rule_note_when CHECK (note_when IN ('ALWAYS','WHEN_R','WHEN_S'));</sql>
+<sql>ALTER TABLE clinlims.micro_reporting_rule ADD CONSTRAINT chk_micro_reporting_rule_note_pair CHECK ((note IS NULL) = (note_when IS NULL));</sql>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_reporting_rule WHERE note IS NOT NULL) THEN
+  RAISE EXCEPTION 'Cannot discard reporting rule notes';
+ END IF;
+END $$;
+]]></sql><dropColumn schemaName="clinlims" tableName="micro_reporting_rule" columnName="note_when"/><dropColumn schemaName="clinlims" tableName="micro_reporting_rule" columnName="note"/></rollback>
+</changeSet>
+</databaseChangeLog>

@@ -36,9 +36,9 @@ public class MicroPatientReportForm {
         }
     }
 
-    public record Note(String text, String author, Timestamp at, String targetType, String targetId) {
+    public record Note(String text, String author, Timestamp at, String targetType, String targetId, boolean fromRule) {
         public Note(String text, String author, Timestamp at) {
-            this(text, author, at, null, null);
+            this(text, author, at, null, null, false);
         }
     }
 

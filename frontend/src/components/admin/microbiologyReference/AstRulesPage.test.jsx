@@ -217,3 +217,50 @@ it("shows a failed save inside the rule editor", async () => {
     ),
   ).toBeInTheDocument();
 });
+
+it("saves a rule note with when it applies", async () => {
+  saveReportingRule.mockResolvedValue({});
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(await within(dialog).findByLabelText("Antibiotic"), {
+    target: { value: "cro" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Note"), {
+    target: { value: "Consider meropenem" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Note applies"), {
+    target: { value: "WHEN_R" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(saveReportingRule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        antibioticId: "cro",
+        note: "Consider meropenem",
+        noteWhen: "WHEN_R",
+      }),
+    ),
+  );
+});
+
+it("shows a rule's note and when it applies", async () => {
+  getReportingRules.mockResolvedValue([
+    { ...rule, note: "Consider meropenem", noteWhen: "WHEN_R" },
+  ]);
+  show();
+  expect(
+    await screen.findByText("When R: Consider meropenem"),
+  ).toBeInTheDocument();
+});
+
+it("limits a rule note to 1,000 characters and counts them", async () => {
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByLabelText("Note")).toHaveAttribute(
+    "maxlength",
+    "1000",
+  );
+  expect(within(dialog).getByText("0/1000")).toBeInTheDocument();
+});

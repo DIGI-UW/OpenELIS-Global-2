@@ -616,3 +616,11 @@ it("says when a reporting rule leaves a drug off the report", async () => {
     await screen.findByText("Not reported by a reporting rule"),
   ).toBeInTheDocument();
 });
+it("shows a reporting rule's note under its drug, tagged as coming from the rule", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], ruleNote: "Consider meropenem" };
+  show(data);
+  expect(await screen.findByText("Consider meropenem")).toBeInTheDocument();
+  expect(screen.getByText("From rule")).toBeInTheDocument();
+});
