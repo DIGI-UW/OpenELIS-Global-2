@@ -614,6 +614,24 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * OGC-1544 — the acknowledgement judges the value as reported: 49.6 on a test
+     * reported to no decimal places reads 50, which is not below the critical bound
+     * of 50, so nothing is owed and the save goes through.
+     */
+    @Test
+    public void save_valueCriticalOnlyBeforeRounding_needsNoAcknowledgement() throws Exception {
+        seedNumericResultLimit();
+        jdbc.update("UPDATE clinlims.test_result SET significant_digits = '0' WHERE test_id = 1");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "49.6", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+
+        assertEquals("49.6", resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(0), acknowledgementCount());
+    }
+
+    /**
      * OGC-1417 — a critical value is refused until the person entering it has
      * acknowledged it: nothing is written, and the refusal names what is owed and
      * the custom message Result Configuration carries.

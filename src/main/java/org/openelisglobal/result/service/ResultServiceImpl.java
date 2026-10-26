@@ -147,24 +147,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             if (StringUtil.isScientificNotation(result.getEnteredValue())) {
                 return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces);
             }
-            if (significantPlaces == 0) {
-                return result.getValue().split("\\.")[0];
-            }
-            StringBuilder value = new StringBuilder();
-            value.append(result.getValue());
-            int startFill = 0;
-
-            if (!result.getValue().contains(".")) {
-                value.append(".");
-            } else {
-                startFill = result.getValue().length() - result.getValue().lastIndexOf(".") - 1;
-            }
-
-            for (int i = startFill; i < significantPlaces; i++) {
-                value.append("0");
-            }
-
-            return value.toString();
+            return StringUtil.roundToPlaces(result.getValue(), significantPlaces);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -263,27 +246,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
                 return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
                         + appendUOM(result, includeUOM);
             }
-            if (significantPlaces == -1) {
-                return result.getValue() + appendUOM(result, includeUOM);
-            }
-            if (significantPlaces == 0) {
-                return result.getValue().split("\\.")[0] + appendUOM(result, includeUOM);
-            }
-            StringBuilder value = new StringBuilder();
-            value.append(result.getValue());
-            int startFill = 0;
-
-            if (!result.getValue().contains(".")) {
-                value.append(".");
-            } else {
-                startFill = result.getValue(true).length() - result.getValue(true).lastIndexOf(".") - 1;
-            }
-
-            for (int i = startFill; i < significantPlaces; i++) {
-                value.append("0");
-            }
-
-            return value.toString() + appendUOM(result, includeUOM);
+            return StringUtil.roundToPlaces(result.getValue(), significantPlaces) + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -366,27 +329,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
                 return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
                         + appendUOM(result, includeUOM);
             }
-            if (significantPlaces == -1) {
-                return result.getValue() + appendUOM(result, includeUOM);
-            }
-            if (significantPlaces == 0) {
-                return result.getValue().split("\\.")[0] + appendUOM(result, includeUOM);
-            }
-            StringBuilder value = new StringBuilder();
-            value.append(result.getValue());
-            int startFill = 0;
-
-            if (!result.getValue().contains(".")) {
-                value.append(".");
-            } else {
-                startFill = result.getValue(true).length() - result.getValue(true).lastIndexOf(".") - 1;
-            }
-
-            for (int i = startFill; i < significantPlaces; i++) {
-                value.append("0");
-            }
-
-            return value.toString() + appendUOM(result, includeUOM);
+            return StringUtil.roundToPlaces(result.getValue(), significantPlaces) + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();

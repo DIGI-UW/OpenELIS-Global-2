@@ -210,6 +210,28 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(screen.queryByTestId("review-note-external-warning")).toBeNull();
   });
 
+  it("Modify starts from the value as entered, not as rounded for display (OGC-1544)", () => {
+    renderPanel(row({ result: "1", storedResult: "0.9" }));
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByDisplayValue("0.9")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("review-cancel-modification"));
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByDisplayValue("0.9")).toBeInTheDocument();
+  });
+
+  it("a viral load shown as its count starts Modify from that count (OGC-1544)", () => {
+    renderPanel(
+      row({
+        result: "1234",
+        storedResult: "1234 (3.09)",
+        displayResultAsLog: true,
+      }),
+    );
+    fireEvent.click(screen.getByTestId("review-modify"));
+    expect(screen.getByDisplayValue("1234")).toBeInTheDocument();
+  });
+
   it("a modification reason defaults to Internal unless the validator chose a visibility", () => {
     renderPanel(row());
     fireEvent.click(screen.getByTestId("review-modify"));
