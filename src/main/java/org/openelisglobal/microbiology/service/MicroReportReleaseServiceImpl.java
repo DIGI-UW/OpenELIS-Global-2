@@ -57,8 +57,8 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         MicroCase updated = caseDAO.update(microCase);
         reportVersionService.recordPreliminary(caseId, projection, performedBy);
         recordActivity(caseId, MicroCaseActivityType.PRELIMINARY_REPORT_RELEASED, performedBy,
-                projection.isMappingConfigured() ? "Preliminary report released and projected"
-                        : "Preliminary report released; standard report mapping is not configured");
+                projection.isMappingConfigured() ? "Partial report released and projected"
+                        : "Partial report released; standard report mapping is not configured");
         return updated;
     }
 
