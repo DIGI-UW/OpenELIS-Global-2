@@ -24,9 +24,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import CollectTestPickerSection from "../order/steps/sections/CollectTestPickerSection";
-import PolymorphicResultCell, {
-  blocksSaveOnPrecision,
-} from "../resultPage/unified/PolymorphicResultCell";
+import PolymorphicResultCell from "../resultPage/unified/PolymorphicResultCell";
 import ESignatureButton from "../esignature/ESignatureButton";
 import ResultAlertModal, {
   acknowledgementRefusal,
@@ -36,7 +34,6 @@ import { normalizeScientificNotation } from "../resultPage/scientificNotation";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 function valid(row) {
-  if (blocksSaveOnPrecision(row)) return false;
   if (!row.resultValue) return true;
   if (row.resultType === "N")
     return Number.isFinite(
