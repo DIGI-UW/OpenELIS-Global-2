@@ -69,6 +69,8 @@ public class MicroIsolateServiceTest {
                 org.mockito.Mockito.mock(MicroAstReportChoiceService.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "organismDAO",
                 org.mockito.Mockito.mock(MicroOrganismDAO.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "astService",
+                org.mockito.Mockito.mock(MicroAstService.class));
         lenient().when(access.hasLabUnitRole(any(), any(), any())).thenReturn(true);
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");

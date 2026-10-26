@@ -55,7 +55,6 @@ const standards = {
 const displayValue = (value) => {
   if (value === null || value === undefined) return "";
   if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 };
 
@@ -136,18 +135,7 @@ export default function AstRulesPage() {
     setBusy(true);
     setError(false);
     try {
-      await saveReportingRule({
-        id: draft.id,
-        antibioticId: draft.antibioticId || "",
-        organismId: draft.organismId || "",
-        organismGroup: draft.organismGroup || "",
-        sampleTypeIds: draft.sampleTypeIds || [],
-        clinicalContext: draft.clinicalContext || "",
-        reportBehavior: draft.reportBehavior || "",
-        cascadeCondition: draft.cascadeCondition || "",
-        addAutomatically: Boolean(draft.addAutomatically),
-        active: draft.active !== false,
-      });
+      await saveReportingRule(draft);
       setRules((await getReportingRules()) || []);
       setDraft(null);
     } catch {
