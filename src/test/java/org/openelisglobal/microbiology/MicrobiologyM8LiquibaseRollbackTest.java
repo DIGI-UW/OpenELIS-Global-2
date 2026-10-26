@@ -38,6 +38,10 @@ public class MicrobiologyM8LiquibaseRollbackTest {
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
                 fullChangelog.update(new Contexts("test"));
                 assertM8SchemaPresent(connection);
+                // Reverse the dependent per-drug reporting migration before its run-level
+                // predecessor.
+                new Liquibase("liquibase/3.5.x.x/123-amr-v2-ast-reporting.xml", resources, database).rollback(1,
+                        "test");
 
                 Liquibase m8Changelog = new Liquibase("liquibase/microbiology-m8-rollback.xml", resources, database);
                 m8Changelog.rollback(5, "test");

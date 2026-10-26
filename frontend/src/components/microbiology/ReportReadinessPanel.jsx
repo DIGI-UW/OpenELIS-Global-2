@@ -10,6 +10,7 @@ import { useIntl } from "react-intl";
 import { Link as RouterLink } from "react-router-dom";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
+import { MicrobiologyReportBlock } from "./CaseReportWorkspace";
 
 const ReportReadinessPanel = ({
   caseId,
@@ -214,9 +215,13 @@ const ReportReadinessPanel = ({
           {intl.formatMessage({ id: "microbiology.release.patientReport" })}
         </h4>
         {projection?.reportableContent ? (
-          <p data-testid="microbiology-report-projection-content">
-            {projection.content}
-          </p>
+          <div data-testid="microbiology-report-projection-content">
+            {projection.report ? (
+              <MicrobiologyReportBlock report={projection.report} />
+            ) : (
+              <p>{projection.content}</p>
+            )}
+          </div>
         ) : (
           <p>
             {intl.formatMessage({

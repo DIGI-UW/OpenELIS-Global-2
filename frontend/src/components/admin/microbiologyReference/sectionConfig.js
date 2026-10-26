@@ -2,6 +2,7 @@ export const MICROBIOLOGY_REFERENCE_BASE =
   "/MasterListsPage/MicrobiologyReference";
 
 export const MICROBIOLOGY_REFERENCE_SECTIONS = [
+  { key: "dst-bindings", label: "microbiology.m6.bindings" },
   {
     key: "organisms",
     label: "microbiology.admin.organisms.title",

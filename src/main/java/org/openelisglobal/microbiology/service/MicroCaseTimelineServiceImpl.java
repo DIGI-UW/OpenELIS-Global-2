@@ -68,7 +68,7 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
         }
         for (Note note : microCase.getSampleItemId() == null ? List.<Note>of()
                 : noteService.getNotesChronologicallyByRefIdAndRefTableAndType(microCase.getSampleItemId(),
-                        sampleItemTableId(), List.of(Note.INTERNAL))) {
+                        sampleItemTableId(), List.of(Note.INTERNAL, Note.EXTERNAL))) {
             if (subject(caseId).equals(note.getSubject())) {
                 timeline.add(toForm(note, caseId, userDisplayById));
             }
@@ -80,6 +80,12 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
     @Override
     @Transactional
     public MicroCaseActivityForm addNote(String caseId, String text, String performedBy) {
+        return addNote(caseId, text, false, performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroCaseActivityForm addNote(String caseId, String text, boolean sendWithResult, String performedBy) {
         MicroCaseServiceImpl.requireText(text, "text");
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
         MicroCase microCase = caseDAO.getForUpdate(caseId);
@@ -96,19 +102,28 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
             activity.setCaseId(caseId);
             activity.setActivityType(MicroCaseActivityType.MANUAL_NOTE.name());
             activity.setNote(text.trim());
+            activity.setStructuredData(sendWithResult ? "SEND_RESULT" : "IN_LAB_ONLY");
             activity.setOccurredAt(MicroCaseServiceImpl.now());
             activity.setPerformedBy(performedBy);
             activity.setSysUserId(performedBy);
             activityDAO.insert(activity);
             return toForm(activity, new HashMap<>());
         }
-        Note note = noteService.createSavableNote(binding(microCase), NoteServiceImpl.NoteType.INTERNAL, text.trim(),
+        Note note = noteService.createSavableNote(binding(microCase),
+                sendWithResult ? NoteServiceImpl.NoteType.EXTERNAL : NoteServiceImpl.NoteType.INTERNAL, text.trim(),
                 subject(caseId), performedBy);
         if (note == null) {
             throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TEXT_REQUIRED");
         }
         noteService.insert(note);
         return toForm(note, caseId, new HashMap<>());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCaseActivityForm> getReportNotes(String caseId) {
+        return getTimeline(caseId).stream()
+                .filter(f -> "MANUAL_NOTE".equals(f.activityType) && "SEND_RESULT".equals(f.structuredData)).toList();
     }
 
     private MicroCase requireCase(String caseId) {
@@ -159,6 +174,7 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
         form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, form.performedBy,
                 userDisplayById);
         form.note = note.getText();
+        form.structuredData = Note.EXTERNAL.equals(note.getNoteType()) ? "SEND_RESULT" : "IN_LAB_ONLY";
         return form;
     }
 

@@ -158,4 +158,15 @@ public class MicroOrganism extends BaseObject<String> {
     public void setIsActive(String isActive) {
         this.isActive = isActive;
     }
+
+    @Column(name = "susceptibility_protocol", nullable = false, length = 24)
+    private String susceptibilityProtocol = "GENERAL";
+
+    public String getSusceptibilityProtocol() {
+        return susceptibilityProtocol;
+    }
+
+    public void setSusceptibilityProtocol(String value) {
+        susceptibilityProtocol = value;
+    }
 }

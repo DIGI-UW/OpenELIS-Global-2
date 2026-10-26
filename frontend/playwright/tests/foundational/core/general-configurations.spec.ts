@@ -133,3 +133,16 @@ test.describe("General Configurations", () => {
     await expect(page.locator("table")).toBeVisible({ timeout: UI_TIMEOUT });
   });
 });
+
+test("configuration stays usable when the browser reports no internet", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "onLine", { get: () => false });
+  });
+  await page.goto("/MasterListsPage");
+  await navigateToConfig(page, /Site Information$/i);
+  await expect(
+    page.getByRole("row").filter({ hasText: "electronicSignatureEnabled" }),
+  ).toBeVisible({ timeout: UI_TIMEOUT });
+});

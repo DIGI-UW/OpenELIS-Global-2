@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="MicrobiologyBlock" pageWidth="552" pageHeight="792" columnWidth="552" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0">
+<field name="heading" class="java.lang.String"/>
+<field name="text" class="java.lang.String"/>
+<field name="agent" class="java.lang.String"/>
+<field name="raw" class="java.lang.String"/>
+<field name="interpretation" class="java.lang.String"/>
+<field name="standard" class="java.lang.String"/>
+<field name="grid" class="java.lang.Boolean"/><detail>
+<band height="24" splitType="Stretch"><printWhenExpression><![CDATA[$F{heading} != null]]></printWhenExpression><textField textAdjust="StretchHeight"><reportElement x="0" y="0" width="552" height="24"/><textElement><font size="10" isBold="true"/></textElement><textFieldExpression><![CDATA[$F{heading}]]></textFieldExpression></textField></band>
+<band height="20" splitType="Stretch"><printWhenExpression><![CDATA[$F{text} != null]]></printWhenExpression><textField textAdjust="StretchHeight"><reportElement x="0" y="0" width="552" height="20"/><textElement><font size="10" isBold="false"/></textElement><textFieldExpression><![CDATA[$F{text}]]></textFieldExpression></textField></band>
+<band height="22" splitType="Stretch"><printWhenExpression><![CDATA[$F{grid}]]></printWhenExpression><frame><reportElement x="0" y="0" width="552" height="22"/>
+<textField textAdjust="StretchHeight" isBlankWhenNull="true"><reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="180" height="22"/><box padding="3"><pen lineWidth="0.5"/></box><textElement><font size="9"/></textElement><textFieldExpression><![CDATA[$F{agent}]]></textFieldExpression></textField>
+<textField textAdjust="StretchHeight" isBlankWhenNull="true"><reportElement stretchType="RelativeToTallestObject" x="180" y="0" width="110" height="22"/><box padding="3"><pen lineWidth="0.5"/></box><textElement><font size="9"/></textElement><textFieldExpression><![CDATA[$F{raw}]]></textFieldExpression></textField>
+<textField textAdjust="StretchHeight" isBlankWhenNull="true"><reportElement stretchType="RelativeToTallestObject" x="290" y="0" width="132" height="22"/><box padding="3"><pen lineWidth="0.5"/></box><textElement><font size="9"/></textElement><textFieldExpression><![CDATA[$F{interpretation}]]></textFieldExpression></textField>
+<textField textAdjust="StretchHeight" isBlankWhenNull="true"><reportElement stretchType="RelativeToTallestObject" x="422" y="0" width="130" height="22"/><box padding="3"><pen lineWidth="0.5"/></box><textElement><font size="9"/></textElement><textFieldExpression><![CDATA[$F{standard}]]></textFieldExpression></textField>
+</frame></band></detail></jasperReport>

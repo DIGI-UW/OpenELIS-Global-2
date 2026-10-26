@@ -11,6 +11,7 @@ public class MicroReportVersionForm {
     public Integer versionNumber;
     public String releaseType;
     public String content;
+    public MicroPatientReportForm report;
     public Timestamp releasedAt;
     public String releasedBy;
     public String correctsVersionId;

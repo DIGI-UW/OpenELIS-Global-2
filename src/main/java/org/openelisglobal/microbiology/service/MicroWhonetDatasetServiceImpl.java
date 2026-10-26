@@ -467,8 +467,8 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
                 .flatMap(candidate -> valuesFor(runsByIsolate, candidate.isolate.getId()).stream())
                 .filter(this::isReportableReviewed).toList();
         List<String> runIds = reportableRuns.stream().map(MicroAstRun::getId).toList();
-        Map<String, List<MicroAstReading>> readingsByRun = runIds.isEmpty() ? Map.of()
-                : groupBy(astReadingDAO.getByRunIds(runIds), MicroAstReading::getAstRunId);
+        Map<String, List<MicroAstReading>> readingsByRun = groupBy(astReadingDAO.getSelectedByRunIds(runIds),
+                MicroAstReading::getAstRunId);
         return new AstData(groupBy(reportableRuns, MicroAstRun::getIsolateId), readingsByRun);
     }
 

@@ -167,6 +167,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                     validatedAnalysisStatusIds);
         }
 
+        analysisList = includeIssuedMicrobiologyAnalyses(analysisList);
         List<Analysis> filteredAnalysisList = filterAnalysesForReportUser(analysisList);
         List<ClinicalPatientData> currentSampleReportItems = new ArrayList<>(filteredAnalysisList.size());
         currentConclusion = null;
@@ -177,6 +178,16 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
                 if (analysis.getTest() != null) {
                     currentAnalysis = analysis;
                     work.analyses.add(analysis);
+                    var microReport = microbiologyReports().issuedForAnalysis(analysis.getId());
+                    if (microReport != null) {
+                        if (reportedMicroCases.add(microReport.caseId)) {
+                            var data = buildMicrobiologyPatientData(microReport, hasParentResult);
+                            describeAnalysis(data, analysis, work);
+                            reportItems.add(data);
+                            currentSampleReportItems.add(data);
+                        }
+                        continue;
+                    }
                     ClinicalPatientData resultsData = buildClinicalPatientData(hasParentResult);
                     // Reflect the analysis's real status (in progress / waiting
                     // validation / validated / rejected) rather than always "in

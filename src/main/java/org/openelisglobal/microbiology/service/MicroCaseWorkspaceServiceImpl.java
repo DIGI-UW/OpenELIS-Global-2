@@ -91,7 +91,9 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
             mutable = false;
         }
         f.canWrite = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_RESULTS);
-        f.canValidate = access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
+        f.finalReleaseState = c.getFinalReleaseState();
+        f.amendmentOpen = "AMENDMENT_IN_PROGRESS".equals(c.getFinalReleaseState());
+        f.canValidate = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_VALIDATION);
         f.referred = referrals
                 .getWorkspaceReferrals(cultureRows.getSources(id).stream().map(si -> si.getId()).distinct().toList())
                 .stream().anyMatch(r -> r.getStatus() != null && !r.getStatus().isTerminal());

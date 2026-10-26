@@ -63,7 +63,9 @@ describe("Calculated Value Tests Management", () => {
       reflexTestsConfigPage.selectThirdSample(test.sample);
       reflexTestsConfigPage.enterFinalResult(test.searchTest);
       reflexTestsConfigPage.addFinalExternatNote(test.externalNote);
+      cy.intercept("POST", "**/rest/test-calculation").as("saveCalculation");
       reflexTestsConfigPage.submitButton();
+      cy.wait("@saveCalculation").its("response.statusCode").should("eq", 200);
     });
   });
 

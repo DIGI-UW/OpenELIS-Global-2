@@ -23,6 +23,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroPatientReportService patientReports;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstReportChoiceService choices;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroReportVersionDAO versions;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO analyses;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseAmendmentDAO amendmentDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -109,6 +117,18 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
         for (MicroIsolate isolate : isolateDAO.getByAmendmentId(amendment.getId())) {
             isolate.setCancelledAt(cancelledAt);
             isolateDAO.update(isolate);
+        }
+        var baseline = versions.getLatestByCaseId(caseId);
+        if (baseline != null && baseline.getStructuredContent() != null) {
+            var report = patientReports.decode(baseline.getStructuredContent());
+            choices.restore(caseId, report, performedBy);
+            var selected = java.util.stream.Stream.concat(report.initial.stream(), report.additional.stream())
+                    .map(org.openelisglobal.microbiology.form.MicroPatientReportForm.Test::analysisId)
+                    .collect(java.util.stream.Collectors.toSet());
+            for (var analysis : analyses.getByCaseId(caseId)) {
+                analysis.setSelectedForReport(selected.contains(analysis.getAnalysisId()));
+                analyses.update(analysis);
+            }
         }
         close(amendment, MicroCaseAmendmentStatus.CANCELLED, reason.trim(), performedBy);
         relock(microCase, performedBy);

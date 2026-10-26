@@ -96,12 +96,79 @@ public class MicrobiologyTestFixtures {
         this.patientService = patientService;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionarycategory.service.DictionaryCategoryService cultureCategories;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService cultureDictionary;
+
+    @Transactional
+    public void ensureCultureAtmosphere() {
+        String name = "Culture atmosphere";
+        var category = cultureCategories.getDictionaryCategoryByName(name);
+        if (category == null) {
+            category = new org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory();
+            category.setCategoryName(name);
+            category.setDescription(name);
+            category.setLocalAbbreviation("M6" + UUID.randomUUID().toString().substring(0, 8));
+            category.setSysUserId(defaultUserId());
+            cultureCategories.insert(category);
+        }
+        if (cultureDictionary.getActiveSortedEntriesByCategoryName(name).isEmpty()) {
+            var entry = new org.openelisglobal.dictionary.valueholder.Dictionary();
+            entry.setDictionaryCategory(category);
+            entry.setDictEntry("Synthetic aerobic atmosphere");
+            entry.setIsActive("Y");
+            entry.setSortOrder(1);
+            entry.setSysUserId(defaultUserId());
+            cultureDictionary.insert(entry);
+        }
+    }
+
     public String defaultUserId() {
         return systemUserService.getAllSystemUsers().stream().filter(user -> "Y".equalsIgnoreCase(user.getIsActive()))
                 .sorted(Comparator.comparing(SystemUser::getId)).findFirst()
                 .orElseThrow(
                         () -> new IllegalStateException("No active system user is available for microbiology tests"))
                 .getId();
+    }
+
+    /**
+     * Owns the permissions needed by scenarios that create their lab unit
+     * dynamically.
+     */
+    @Transactional
+    public String createScenarioActor() {
+        var user = new SystemUser();
+        user.setLoginName("Micro" + uniqueSuffix());
+        user.setFirstName("Scenario " + uniqueSuffix());
+        user.setLastName("Operator");
+        user.setIsActive("Y");
+        user.setIsEmployee("Y");
+        user.setSysUserId(defaultUserId());
+        String id = systemUserService.insert(user);
+        var roleIds = new HashSet<String>();
+        for (String name : List.of(org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION,
+                org.openelisglobal.common.constants.Constants.ROLE_REPORTS)) {
+            var role = fixtureRoles.getRoleByName(name);
+            if ("-1".equals(role.getId())) {
+                role = new org.openelisglobal.role.valueholder.Role();
+                role.setName(name);
+                role.setDescription("Microbiology scenario " + name);
+                role.setSysUserId(id);
+                fixtureRoles.insert(role);
+            }
+            roleIds.add(role.getId());
+        }
+        var assignment = new org.openelisglobal.userrole.valueholder.UserLabUnitRoles();
+        assignment.setId(Integer.valueOf(id));
+        var mapping = new org.openelisglobal.userrole.valueholder.LabUnitRoleMap();
+        mapping.setLabUnit(org.openelisglobal.systemuser.controller.UnifiedSystemUserController.ALL_LAB_UNITS);
+        mapping.setRoles(roleIds);
+        assignment.setLabUnitRoleMap(Set.of(mapping));
+        fixtureEntityManager.persist(assignment);
+        fixtureEntityManager.flush();
+        return id;
     }
 
     @Transactional
@@ -230,6 +297,105 @@ public class MicrobiologyTestFixtures {
         return sampleType;
     }
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager fixtureEntityManager;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.role.service.RoleService fixtureRoles;
+
+    @Transactional
+    public org.openelisglobal.microbiology.valueholder.MicroCase prepareAstCase(
+            org.openelisglobal.microbiology.valueholder.MicroCase value, String actor) {
+        var c = fixtureEntityManager.find(org.openelisglobal.microbiology.valueholder.MicroCase.class, value.getId());
+        if (c.getLabUnitId() == null)
+            c.setLabUnitId(createLabUnit().getId());
+        var source = sampleItemService.get(c.getSampleItemId());
+        if (source.getTypeOfSample() == null) {
+            source.setTypeOfSample(createTypeOfSample());
+            sampleItemService.update(source);
+        }
+        c.setSampleId(source.getSample().getId());
+        c.setSampleTypeId(source.getTypeOfSample().getId());
+        var assignment = fixtureEntityManager.find(org.openelisglobal.userrole.valueholder.UserLabUnitRoles.class,
+                Integer.valueOf(actor));
+        boolean fresh = assignment == null;
+        if (fresh) {
+            assignment = new org.openelisglobal.userrole.valueholder.UserLabUnitRoles();
+            assignment.setId(Integer.valueOf(actor));
+        }
+        var mappings = new HashSet<>(assignment.getLabUnitRoleMap() == null
+                ? Set.<org.openelisglobal.userrole.valueholder.LabUnitRoleMap>of()
+                : assignment.getLabUnitRoleMap());
+        var unit = new org.openelisglobal.userrole.valueholder.LabUnitRoleMap();
+        unit.setLabUnit(c.getLabUnitId());
+        unit.setRoles(java.util.stream.Stream
+                .of(org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
+                        org.openelisglobal.common.constants.Constants.ROLE_VALIDATION,
+                        org.openelisglobal.common.constants.Constants.ROLE_REPORTS)
+                .map(name -> fixtureRoles.getRoleByName(name).getId()).collect(java.util.stream.Collectors.toSet()));
+        mappings.removeIf(m -> c.getLabUnitId().equals(m.getLabUnit()));
+        mappings.add(unit);
+        assignment.setLabUnitRoleMap(mappings);
+        if (fresh)
+            fixtureEntityManager.persist(assignment);
+        fixtureEntityManager.flush();
+        return c;
+    }
+
+    @Transactional
+    public void prepareFinalCase(org.openelisglobal.microbiology.valueholder.MicroCase value, String actor) {
+        var c = prepareAstCase(value, actor);
+        var detail = fixtureEntityManager
+                .createQuery("from MicroCaseOrderDetail d where d.caseId=:id",
+                        org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail.class)
+                .setParameter("id", c.getId()).getResultStream().findFirst().orElse(null);
+        if (detail == null) {
+            detail = new org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail();
+            detail.setCaseId(c.getId());
+            detail.setCreatedBy(actor);
+            fixtureEntityManager.persist(detail);
+        }
+        detail.setPatientOrigin("OUTPATIENT");
+        var program = new org.openelisglobal.program.valueholder.Program();
+        program.setCode("M6_" + uniqueSuffix());
+        program.setProgramName("M6 release fixture");
+        program.setShowOnMicroCase(true);
+        program.setManuallyChanged(true);
+        fixtureEntityManager.persist(program);
+        var association = new org.openelisglobal.program.valueholder.ProgramSample();
+        association.setProgram(program);
+        association.setSample(sampleItemService.get(c.getSampleItemId()).getSample());
+        fixtureEntityManager.persist(association);
+        var event = new org.openelisglobal.microbiology.valueholder.MicroCaseActivity();
+        event.setCaseId(c.getId());
+        event.setActivityType("CULTURE_INOCULATED");
+        event.setPerformedBy(actor);
+        event.setOccurredAt(new Timestamp(System.currentTimeMillis()));
+        fixtureEntityManager.persist(event);
+        var row = new org.openelisglobal.microbiology.valueholder.MicroCaseInoculation();
+        row.setCaseId(c.getId());
+        row.setActivityId(event.getId());
+        row.setSourceSampleItemId(c.getSampleItemId());
+        row.setContainerIdentifier("M6-FINAL-" + uniqueSuffix());
+        row.setMedia("Release fixture medium");
+        row.setNotTracked(true);
+        row.setAtmosphere("Aerobic");
+        row.setTemperature(new BigDecimal("37"));
+        row.setDuration(new BigDecimal("48"));
+        row.setDurationUnit("HOURS");
+        row.setOccurredAt(new Timestamp(System.currentTimeMillis() - 172800000));
+        row.setPerformedBy(actor);
+        row.setOutcome("GROWTH");
+        row.setOutcomeBy(actor);
+        row.setOutcomeAt(new Timestamp(System.currentTimeMillis()));
+        fixtureEntityManager.persist(row);
+        for (var link : fixtureEntityManager
+                .createQuery("from MicroCaseAnalysis a where a.caseId=:id",
+                        org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis.class)
+                .setParameter("id", c.getId()).getResultList())
+            link.setSelectedForReport(false);
+        fixtureEntityManager.flush();
+    }
+
     public ReferenceData createReferenceData(String methodId) {
         String suffix = uniqueSuffix();
 
@@ -242,6 +408,8 @@ public class MicrobiologyTestFixtures {
         MicroAstPanel panel = new MicroAstPanel();
         panel.setName("Enterobacterales panel " + suffix);
         panel.setOrganismGroup("Enterobacterales");
+        panel.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        panel.setPublishedBy(defaultUserId());
         configurationService.createAstPanel(panel);
 
         MicroOrganism organism = new MicroOrganism();

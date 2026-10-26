@@ -20,6 +20,16 @@ public class MicroCaseOrderDetailDAOImpl extends BaseDAOImpl<MicroCaseOrderDetai
 
     @Override
     @Transactional(readOnly = true)
+    public List<org.openelisglobal.program.valueholder.ProgramSample> getProgramSamples(String caseId) {
+        return entityManager.createQuery(
+                "select ps from ProgramSample ps join fetch ps.program p join fetch ps.sample s, MicroCase c "
+                        + "left join SampleItem si on si.id = c.sampleItemId where c.id = :caseId and s.id = coalesce(c.sampleId, si.sample.id) and p.showOnMicroCase = true",
+                org.openelisglobal.program.valueholder.ProgramSample.class).setParameter("caseId", caseId)
+                .getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MicroCaseOrderDetail getByCaseId(String caseId) {
         Query<MicroCaseOrderDetail> query = entityManager.unwrap(Session.class)
                 .createQuery("from MicroCaseOrderDetail d where d.caseId = :caseId", MicroCaseOrderDetail.class);

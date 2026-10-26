@@ -18,6 +18,46 @@ const renderPanel = (service, props = {}) =>
   );
 
 describe("ReportReadinessPanel", () => {
+  it("renders a structured no-growth report when the retired text field is empty", async () => {
+    const service = {
+      getCaseReadiness: vi
+        .fn()
+        .mockResolvedValue({ finalReleaseReady: true, blockers: [] }),
+      getWhonetReadiness: vi
+        .fn()
+        .mockResolvedValue({ whonetReady: true, blockers: [] }),
+      getReportProjection: vi.fn().mockResolvedValue({
+        content: "",
+        reportableContent: true,
+        mappingConfigured: true,
+        report: {
+          labUnitName: "Culture unit",
+          classification: "NOT_APPLICABLE",
+          initial: [],
+          cultures: [
+            {
+              id: "row-1",
+              label: "Bottle 1",
+              outcome: "NO_GROWTH",
+              incubationHours: 48,
+            },
+          ],
+          isolates: [],
+          additional: [],
+          notes: [],
+        },
+      }),
+    };
+    renderPanel(service);
+    expect(await screen.findByText(/Bottle 1: No growth/)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Culture findings" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Release final report" }),
+    ).toBeEnabled();
+  });
+
   it("disables final release until readiness passes", async () => {
     const service = {
       getCaseReadiness: vi.fn().mockResolvedValue({

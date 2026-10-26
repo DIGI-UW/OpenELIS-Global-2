@@ -56,6 +56,10 @@ public class MicroReportReleaseServiceTest {
     public void setUp() {
         service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO,
                 reportProjectionService, reportVersionService, amendmentService);
+        var authorization = org.mockito.Mockito.mock(MicroCaseAuthorizationService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "authorization", authorization);
+        org.mockito.Mockito.lenient().when(authorization.requireWrite(anyString(), anyString(), anyString()))
+                .thenReturn(new MicroCase());
     }
 
     @Test

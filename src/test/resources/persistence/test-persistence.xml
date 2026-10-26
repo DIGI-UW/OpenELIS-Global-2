@@ -72,6 +72,11 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstReportChoice</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroMolecularDstBinding</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroDstResolution</class>
+
         <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>
