@@ -749,9 +749,11 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
         form.note = "Sometimes";
         form.noteWhen = "SOMETIMES";
-        assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer));
+        assertEquals("REPORTING_RULE_NOTE_WHEN_INVALID",
+                assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer)).getMessage());
         form.noteWhen = null;
-        assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer));
+        assertEquals("REPORTING_RULE_NOTE_WHEN_INVALID",
+                assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer)).getMessage());
     }
 
     @Test
@@ -766,6 +768,55 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         cases.update(c);
         em.flush();
         em.clear();
+        var drug = astResponses.toRunFormWithReadings(runs.get(run.getId()).orElseThrow()).orderedAntibiotics.stream()
+                .filter(a -> drugB.equals(a.antibioticId)).findFirst().orElseThrow();
+        assertNull(drug.ruleNote);
+    }
+
+    @Test
+    public void ruleNotePrintsWithoutAnAuthor() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "Interpret with the clinical picture";
+        form.noteWhen = "ALWAYS";
+        reportingRules.save(form, writer);
+        var run = start(isolate);
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+        em.flush();
+        em.clear();
+        assertTrue(MicroPatientReportRows.of(reports.preview(c.getId())).stream()
+                .anyMatch(row -> "Interpret with the clinical picture".equals(row.getText())));
+    }
+
+    @Test
+    public void ruleNoteLongerThanAThousandCharactersIsRejected() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "x".repeat(1001);
+        form.noteWhen = "ALWAYS";
+        var rejected = assertThrows(IllegalArgumentException.class, () -> reportingRules.save(form, writer));
+        assertEquals("REPORTING_RULE_NOTE_TOO_LONG", rejected.getMessage());
+    }
+
+    @Test
+    public void ruleTurnedOffAfterReleaseShowsNoNoteOnAnAmendment() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        form.note = "Old advice";
+        form.noteWhen = "ALWAYS";
+        var saved = reportingRules.save(form, writer);
+        var run = start(isolate);
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+        c.setFinalReleaseState("FINAL_RELEASED");
+        cases.update(c);
+        em.flush();
+        form.id = saved.getId();
+        form.active = false;
+        reportingRules.save(form, writer);
+        c.setFinalReleaseState("AMENDMENT_IN_PROGRESS");
+        cases.update(c);
+        em.flush();
+        em.clear();
+        assertTrue(reports.preview(c.getId()).notes.stream().noneMatch(n -> n.fromRule()));
         var drug = astResponses.toRunFormWithReadings(runs.get(run.getId()).orElseThrow()).orderedAntibiotics.stream()
                 .filter(a -> drugB.equals(a.antibioticId)).findFirst().orElseThrow();
         assertNull(drug.ruleNote);

@@ -253,3 +253,14 @@ it("shows a rule's note and when it applies", async () => {
     await screen.findByText("When R: Consider meropenem"),
   ).toBeInTheDocument();
 });
+
+it("limits a rule note to 1,000 characters and counts them", async () => {
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  expect(within(dialog).getByLabelText("Note")).toHaveAttribute(
+    "maxlength",
+    "1000",
+  );
+  expect(within(dialog).getByText("0/1000")).toBeInTheDocument();
+});
