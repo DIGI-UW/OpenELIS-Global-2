@@ -583,6 +583,46 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertTrue(reportingRules.getHistory(saved.getId()).get(0).changedByName.contains(Constants.ROLE_RESULTS));
     }
 
+    @Test
+    public void resetAfterARuleChangeUsesTheNewRule() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        var run = start(isolate);
+        ast.setReported(run.getId(), drugB, true, writer);
+        var edit = reportingRuleForm(reference.organism().getId(), null, List.of(), "DONT_REPORT");
+        edit.id = saved.getId();
+        reportingRules.save(edit, writer);
+        assertTrue(agent(run, drugB).isReported());
+        assertEquals("DONT_REPORT", agent(run, drugB).getReportBehavior());
+        ast.resetReportDefaults(isolate, writer);
+        assertFalse(agent(run, drugB).isReported());
+    }
+
+    @Test
+    public void blankReportDefaultIsRejectedNotACrash() {
+        assertThrows(IllegalArgumentException.class,
+                () -> reportingRule(reference.organism().getId(), null, List.of(), ""));
+        assertThrows(IllegalArgumentException.class,
+                () -> reportingRule(reference.organism().getId(), null, List.of(), null));
+    }
+
+    @Test
+    public void blankWrittenForClearsTheSetting() {
+        reportingRules.saveSettings("EUCAST", writer);
+        assertNull(reportingRules.saveSettings("", writer).writtenFor);
+        em.flush();
+        em.clear();
+        assertNull(reportingRules.getSettings().writtenFor);
+    }
+
+    @Test
+    public void savingAnUnchangedRuleAddsNoHistory() {
+        var saved = reportingRule(reference.organism().getId(), null, List.of(), "ALWAYS");
+        var same = reportingRuleForm(reference.organism().getId(), null, List.of(), "ALWAYS");
+        same.id = saved.getId();
+        reportingRules.save(same, writer);
+        assertEquals(1, reportingRules.getHistory(saved.getId()).size());
+    }
+
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
             String organismGroup, List<String> sampleTypeIds, String reportBehavior) {
         var form = new org.openelisglobal.microbiology.form.MicroReportingRuleForm();

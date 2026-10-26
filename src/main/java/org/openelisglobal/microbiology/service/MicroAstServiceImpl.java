@@ -772,18 +772,17 @@ public class MicroAstServiceImpl implements MicroAstService {
                     && MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
                 continue;
             }
-            if (ordered.isReportManual()) {
-                continue;
-            }
             var rule = findReportingRule(run, antibioticId);
             String reportBehavior = rule.map(MicroReportingRule::getReportBehavior)
                     .orElseGet(() -> panelReportBehavior(run.getPanelId(), antibioticId));
             ordered.setReportBehavior(reportBehavior);
             ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
-            String interpretation = latestReadings(run.getId()).stream()
-                    .filter(reading -> antibioticId.equals(reading.getAntibioticId()))
-                    .map(MicroAstReportChoiceService::interpretation).findFirst().orElse(null);
-            ordered.setReported(defaultReported(reportBehavior, interpretation));
+            if (!ordered.isReportManual()) {
+                String interpretation = latestReadings(run.getId()).stream()
+                        .filter(reading -> antibioticId.equals(reading.getAntibioticId()))
+                        .map(MicroAstReportChoiceService::interpretation).findFirst().orElse(null);
+                ordered.setReported(defaultReported(reportBehavior, interpretation));
+            }
             runAntibioticDAO.update(ordered);
         }
     }

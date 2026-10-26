@@ -13836,6 +13836,7 @@
   "microbiology.m6.selected": "Selected for report",
   "microbiology.m6.reportTick": "Report",
   "microbiology.m6.reportAgent": "Report {agent}",
+  "microbiology.m6.reportReason.DONT_REPORT": "Not reported by a reporting rule",
   "microbiology.m6.reportReason.manual": "Changed by staff",
   "microbiology.m6.reportReason.SUPPRESS_UNLESS_RESISTANT": "Reported only if resistant",
   "microbiology.m6.reportReason.CASCADE": "Cascade: not reported unless ticked",

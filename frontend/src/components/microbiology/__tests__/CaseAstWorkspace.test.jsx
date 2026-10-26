@@ -607,3 +607,12 @@ it("shows a drug's report tick only on the run whose reading is chosen for the r
   expect(screen.getAllByRole("checkbox", name("Ceftriaxone"))).toHaveLength(1);
   expect(screen.getAllByRole("checkbox", name("Ampicillin"))).toHaveLength(2);
 });
+it("says when a reporting rule leaves a drug off the report", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], reportBehavior: "DONT_REPORT", reported: false };
+  show(data);
+  expect(
+    await screen.findByText("Not reported by a reporting rule"),
+  ).toBeInTheDocument();
+});
