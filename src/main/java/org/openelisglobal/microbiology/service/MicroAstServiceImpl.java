@@ -1259,6 +1259,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         readingDAO.update(reading);
         recordOverrideEvent(reading.getId(), MicroAstOverrideAction.OVERRIDE, reading.getInterpretation(),
                 rule.getInterpretation(), reason, performedBy, rule.getId());
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy, reason,
+                "{\"readingId\":\"" + reading.getId() + "\",\"ruleId\":\"" + rule.getId() + "\"}");
     }
 
     private String effectiveInterpretation(MicroAstReading reading) {

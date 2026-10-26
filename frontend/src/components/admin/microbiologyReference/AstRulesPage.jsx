@@ -444,7 +444,7 @@ export default function AstRulesPage() {
               {interpretationError && (
                 <InlineNotification
                   kind="error"
-                  title={t("error")}
+                  title={t("interpretationError")}
                   hideCloseButton
                 />
               )}
@@ -458,14 +458,14 @@ export default function AstRulesPage() {
                 "organismId",
                 "organism",
                 options.organisms,
-                "anyOrganism",
+                "chooseOrganism",
                 { organismGroup: "" },
               )}
               {interpretationSelector(
                 "organismGroup",
                 "organismGroup",
                 options.organismGroups,
-                "anyGroup",
+                "chooseGroup",
                 { organismId: "" },
               )}
               <TextInput

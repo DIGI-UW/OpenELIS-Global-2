@@ -324,3 +324,24 @@ it("adds an always resistant rule", async () => {
   );
   await waitFor(() => expect(getInterpretationRules).toHaveBeenCalledTimes(2));
 });
+
+it("asks for an organism or a group and names the interpretation rule in its error", async () => {
+  saveInterpretationRule.mockRejectedValue(new Error("Bad Request"));
+  show();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Add interpretation rule" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    await within(dialog).findByRole("option", { name: "Choose an organism" }),
+  ).toBeInTheDocument();
+  expect(
+    within(dialog).getByRole("option", { name: "Choose a group" }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  expect(
+    await within(dialog).findByText(
+      "The interpretation rule could not be saved.",
+    ),
+  ).toBeInTheDocument();
+});
