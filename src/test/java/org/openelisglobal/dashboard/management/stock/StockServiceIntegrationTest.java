@@ -61,8 +61,9 @@ public class StockServiceIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     private void insertItem(long id, String name, Integer threshold) {
-        jdbc.update("INSERT INTO clinlims.inventory_item (id, code, fhir_uuid, name, item_type, units,"
-                + " low_stock_threshold, is_active) VALUES (?, ?, gen_random_uuid(), ?, 'CARTRIDGE', 'units', ?, 'Y')",
+        jdbc.update(
+                "INSERT INTO clinlims.inventory_item (id, code, fhir_uuid, name, units, low_stock_threshold,"
+                        + " is_active) VALUES (?, ?, gen_random_uuid(), ?, 'units', ?, 'Y')",
                 id, "STOCK_" + id, name, threshold);
     }
 
