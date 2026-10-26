@@ -8,5 +8,6 @@ public class MicroAstRunAntibioticForm {
     public Integer tier;
     public String reportBehavior;
     public String reportRuleId;
+    public String ruleNote;
     public boolean reported, reportManual;
 }

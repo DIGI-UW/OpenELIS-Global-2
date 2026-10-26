@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroReportingRuleService {
     private static final Set<String> REPORT_BEHAVIORS = Set.of("ALWAYS", "SUPPRESS_UNLESS_RESISTANT", "CASCADE",
             "DONT_REPORT");
+    private static final Set<String> NOTE_WHENS = Set.of("ALWAYS", "WHEN_R", "WHEN_S");
     private static final Set<String> STANDARDS = Set.of("CLSI", "EUCAST", "LOCAL");
     private static final String SETTING = "microbiologyReportingRulesStandard";
 
@@ -77,6 +78,17 @@ public class MicroReportingRuleService {
         if (reportBehavior == null || !REPORT_BEHAVIORS.contains(reportBehavior)) {
             throw new IllegalArgumentException("REPORTING_RULE_BEHAVIOR_INVALID");
         }
+        String note = trimToNull(form.note);
+        String noteWhen = null;
+        if (note != null) {
+            if (note.length() > 1000) {
+                throw new IllegalArgumentException("REPORTING_RULE_NOTE_TOO_LONG");
+            }
+            noteWhen = trimToNull(form.noteWhen);
+            if (noteWhen == null || !NOTE_WHENS.contains(noteWhen)) {
+                throw new IllegalArgumentException("REPORTING_RULE_NOTE_WHEN_INVALID");
+            }
+        }
         String organismId = trimToNull(form.organismId);
         String organismGroup = trimToNull(form.organismGroup);
         if (organismId != null && organismGroup != null) {
@@ -97,6 +109,8 @@ public class MicroReportingRuleService {
         rule.setReportBehavior(reportBehavior);
         boolean cascade = "CASCADE".equals(reportBehavior);
         rule.setCascadeCondition(cascade ? trimToNull(form.cascadeCondition) : null);
+        rule.setNote(note);
+        rule.setNoteWhen(noteWhen);
         rule.setSampleTypeIds(sampleTypeIds);
         rule.setAddAutomatically(cascade && form.addAutomatically);
         rule.setActive(form.active == null || form.active);
@@ -210,6 +224,8 @@ public class MicroReportingRuleService {
         form.clinicalContext = rule.getClinicalContext();
         form.reportBehavior = rule.getReportBehavior();
         form.cascadeCondition = rule.getCascadeCondition();
+        form.note = rule.getNote();
+        form.noteWhen = rule.getNoteWhen();
         form.sampleTypeIds = new ArrayList<>(new TreeSet<>(rule.getSampleTypeIds()));
         form.addAutomatically = rule.isAddAutomatically();
         form.active = rule.isActive();
@@ -225,6 +241,8 @@ public class MicroReportingRuleService {
         values.put("clinicalContext", rule.getClinicalContext());
         values.put("reportBehavior", rule.getReportBehavior());
         values.put("cascadeCondition", rule.getCascadeCondition());
+        values.put("note", rule.getNote());
+        values.put("noteWhen", rule.getNoteWhen());
         values.put("addAutomatically", rule.isAddAutomatically());
         values.put("active", rule.isActive());
         try {
