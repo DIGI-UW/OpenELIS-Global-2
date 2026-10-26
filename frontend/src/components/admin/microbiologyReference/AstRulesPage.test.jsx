@@ -171,3 +171,49 @@ it("saves which standard the rules were written for", async () => {
     }),
   );
 });
+
+it("lists only the fields a rule was created with", async () => {
+  getReportingRuleHistory.mockResolvedValue([
+    {
+      revision: 1,
+      changedAt: "2026-10-26T10:00:00Z",
+      changedBy: "5",
+      changedByName: "Kila Lavu",
+      before: null,
+      after: '{"organismGroup":null,"reportBehavior":"DONT_REPORT"}',
+    },
+  ]);
+  show();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "History Ceftriaxone" }),
+  );
+  expect(await screen.findByText("Kila Lavu")).toBeInTheDocument();
+  expect(screen.getByText(/reportBehavior/)).toBeInTheDocument();
+  expect(screen.queryByText(/organismGroup/)).not.toBeInTheDocument();
+});
+
+it("names a local standard the way the picker does", async () => {
+  getReportingRuleSettings.mockResolvedValue({
+    writtenFor: "LOCAL",
+    activeAuthority: "CLSI",
+  });
+  show();
+  expect(
+    await screen.findByText(
+      "These rules were written for Local, but the active breakpoint standard is CLSI.",
+    ),
+  ).toBeInTheDocument();
+});
+
+it("shows a failed save inside the rule editor", async () => {
+  saveReportingRule.mockRejectedValue(new Error("Bad Request"));
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  expect(
+    await within(dialog).findByText(
+      messages["microbiology.admin.astRules.error"],
+    ),
+  ).toBeInTheDocument();
+});
