@@ -623,6 +623,19 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(1, reportingRules.getHistory(saved.getId()).size());
     }
 
+    @Test
+    public void leavingCascadeDropsItsCondition() {
+        var form = reportingRuleForm(reference.organism().getId(), null, List.of(), "CASCADE");
+        form.cascadeCondition = "Report if ceftriaxone is resistant";
+        form.addAutomatically = true;
+        var saved = reportingRules.save(form, writer);
+        form.id = saved.getId();
+        form.reportBehavior = "ALWAYS";
+        var report = reportingRules.save(form, writer);
+        assertNull(report.getCascadeCondition());
+        assertFalse(report.isAddAutomatically());
+    }
+
     private org.openelisglobal.microbiology.form.MicroReportingRuleForm reportingRuleForm(String organismId,
             String organismGroup, List<String> sampleTypeIds, String reportBehavior) {
         var form = new org.openelisglobal.microbiology.form.MicroReportingRuleForm();
