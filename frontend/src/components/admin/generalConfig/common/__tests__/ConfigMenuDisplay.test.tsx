@@ -149,6 +149,43 @@ describe("ConfigMenuDisplay", () => {
     expect(await screen.findByText("Results only")).toBeInTheDocument();
   });
 
+  it("shows a stored setting key under its translated name and description (OGC-1547)", async () => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) =>
+        callback(
+          url === `/rest/${MENU}`
+            ? {
+                menuList: [
+                  {
+                    ...config("{part}{n}"),
+                    id: "8",
+                    name: "pathology.identifier.blockFormat",
+                    description: "stored English text",
+                    valueType: "text",
+                  },
+                  config("false"),
+                ],
+              }
+            : undefined,
+        ),
+    );
+    renderScreen();
+
+    expect(
+      await screen.findByText("Pathology: block designation pattern"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Pattern for a block designation; {part} is the part, {n} the block number within it",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("pathology.identifier.blockFormat"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("resultsOnly")).toBeInTheDocument();
+    expect(screen.getByText("Results only")).toBeInTheDocument();
+  });
+
   it("names the menu in its breadcrumb with its translated title", async () => {
     const errors = vi.spyOn(console, "error");
     renderScreen();
