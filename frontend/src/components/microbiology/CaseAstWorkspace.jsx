@@ -1,5 +1,6 @@
 import ReagentLotPicker, { formatReagentLotConflict } from "./ReagentLotPicker";
 import ReagentUsageHistory from "./ReagentUsageHistory";
+import CaseAstRunQc from "./CaseAstRunQc";
 import { labTimestamp } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -393,6 +394,11 @@ export default function CaseAstWorkspace({
                         </p>
                       </Stack>
                     )}
+                    <CaseAstRunQc
+                      caseId={detail.id}
+                      runId={run.id}
+                      service={service}
+                    />
                     {run.status === "QC_FAILED" && (
                       <InlineNotification
                         kind="error"
