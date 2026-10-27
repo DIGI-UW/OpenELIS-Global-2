@@ -102,7 +102,9 @@ public class AppConfig implements WebMvcConfigurer {
                 .excludePathPatterns(SecurityConfig.RESOURCE_PAGES) //
                 .excludePathPatterns(SecurityConfig.AUTH_OPEN_PAGES) //
                 // authorized by the Bridge certificate chain; no user modules apply
-                .excludePathPatterns(SecurityConfig.BRIDGE_INGRESS_PATHS);
+                .excludePathPatterns(SecurityConfig.BRIDGE_INGRESS_PATHS)
+                // authorized by an add-on token or key; add-ons hold no user modules
+                .excludePathPatterns(SecurityConfig.ADDON_API_PATHS);
         // TO DO ,we need to have a better way to handle user roles for rest controllers
         // .excludePathPatterns(SecurityConfig.REST_CONTROLLERS);
         registry.addInterceptor(urlLocatedErrorsInterceptor).addPathPatterns("/**");

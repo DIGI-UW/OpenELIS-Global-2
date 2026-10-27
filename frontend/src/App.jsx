@@ -123,6 +123,7 @@ import ReportingRoute from "./components/reports/CustomDataExport/ReportingRoute
 import { REPORTING_ROUTE_PATHS } from "./components/reports/CustomDataExport/routes";
 import VectorSurveillanceReport from "./components/reports/vectorSurveillance/Index";
 import StudyValidation from "./components/validation/Index";
+import ExtensionPage from "./components/addons/ExtensionPage";
 const AnalyserResultIndex = lazyWithRetry(
   () => import("./components/analyserResults/Index"),
 );
@@ -1610,6 +1611,13 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
 
+                {/* The page of a menu entry contributed by an add-on (app-menu-slot) */}
+                <SecureRoute
+                  path="/extensions/:addonId/:extension"
+                  exact
+                  render={() => <ExtensionPage />}
+                  role=""
+                />
                 <SecureRoute
                   path="/PatientResults/:patientId"
                   exact
