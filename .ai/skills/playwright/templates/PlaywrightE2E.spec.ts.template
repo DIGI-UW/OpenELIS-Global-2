@@ -43,7 +43,7 @@ test.describe("Feature Name", () => {
     //   throw e;
     // }
 
-    // Optional demo pacing (no-op outside core-demo-video / harness-demo-video)
+    // Optional demo pacing (no-op outside core-demo-video / evidence-video)
     await videoPause(page, 750, testInfo);
   });
 });

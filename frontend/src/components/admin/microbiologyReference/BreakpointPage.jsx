@@ -549,17 +549,14 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                 </TableHead>
                 <TableBody>
                   {rows.map((row) => {
-                    const source = standards.rows.find(
-                      (standard) => standard.id === row.id,
-                    );
                     return (
                       <TableRow key={row.id}>
                         {row.cells.map((cell) => (
                           <TableCell key={cell.id}>
                             {cell.info.header === "lifecycleStatus" ? (
-                              <Tag type={tagType(source.lifecycleStatus)}>
+                              <Tag type={tagType(cell.value)}>
                                 {intl.formatMessage({
-                                  id: lifecycleMessage(source.lifecycleStatus),
+                                  id: lifecycleMessage(cell.value),
                                 })}
                               </Tag>
                             ) : cell.info.header === "actions" ? (
@@ -573,7 +570,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
                                   itemText={intl.formatMessage({
                                     id: "microbiology.admin.breakpoints.view",
                                   })}
-                                  onClick={() => openDetail(source.id)}
+                                  onClick={() => openDetail(row.id)}
                                 />
                               </OverflowMenu>
                             ) : (

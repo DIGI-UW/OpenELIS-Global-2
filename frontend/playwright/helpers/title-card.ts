@@ -14,7 +14,7 @@ export type TitleCardOptions = {
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
- * No-op when not recording video (i.e., outside *-demo-video projects, or
+ * No-op when not recording video (outside core-demo-video and evidence-video, or
  * without the test's TestInfo), as is every helper here.
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
  * Presentation only: do not use title cards to gate readiness or assertions.
@@ -165,6 +165,16 @@ export async function showHighlight(
   await locator.evaluate((el: HTMLElement) => {
     el.style.outline = "3px solid #f1c21b";
     el.style.outlineOffset = "2px";
+    // A caption over the highlighted element moves to the top while it shows.
+    const caption = document.getElementById("e2e-caption");
+    if (caption) {
+      const target = el.getBoundingClientRect();
+      const line = caption.getBoundingClientRect();
+      if (target.bottom > line.top - 8 && target.top < line.bottom) {
+        caption.style.bottom = "auto";
+        caption.style.top = "64px";
+      }
+    }
   });
   await videoPause(locator.page(), durationMs, testInfo);
   // The element may have left the page meanwhile.
@@ -172,6 +182,16 @@ export async function showHighlight(
     .evaluate((el: HTMLElement) => {
       el.style.outline = "";
       el.style.outlineOffset = "";
+    })
+    .catch(() => undefined);
+  await locator
+    .page()
+    .evaluate(() => {
+      const caption = document.getElementById("e2e-caption");
+      if (caption) {
+        caption.style.top = "";
+        caption.style.bottom = "28px";
+      }
     })
     .catch(() => undefined);
 }

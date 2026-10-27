@@ -22,7 +22,7 @@ Interpret input best-effort:
    - Confirm target user story / acceptance criteria.
    - Identify feature route and expected user-visible behavior.
    - Decide project target: `core-app`, `core-demo`, `harness`, `harness-demo`,
-     or the matching `*-demo-video` for recording.
+     or `core-demo-video` / `evidence-video` for recording.
 
 2. **Read source before writing selectors**
 

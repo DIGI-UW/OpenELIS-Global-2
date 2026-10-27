@@ -132,3 +132,18 @@ export const selectCultureMedium = async (page: Page, mediumId: number) => {
     })
     .click();
 };
+
+/**
+ * Enters a container label the way a barcode scanner does: one burst of key
+ * presses, then Enter. The worklist treats keys more than 80 ms apart as
+ * typing, so the burst must not be paced by slowMo.
+ */
+export const scanContainerLabel = async (page: Page, code: string) => {
+  await page.evaluate((text) => {
+    for (const key of [...text, "Enter"]) {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true }),
+      );
+    }
+  }, code);
+};

@@ -532,6 +532,41 @@ class DevStackContractTest(unittest.TestCase):
 
         self.assertEqual(base_url, "https://localhost:49152")
 
+    def test_service_container_name_is_read_from_the_worktree_project(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
+
+        with patch.object(
+            self.dev_stack,
+            "run",
+            return_value=subprocess.CompletedProcess(
+                [], 0, stdout=f"{context.project}-db.openelis.org-1\n"
+            ),
+        ) as run:
+            name = self.dev_stack.service_container_name(
+                context, environment, "db.openelis.org"
+            )
+
+        self.assertEqual(name, f"{context.project}-db.openelis.org-1")
+        self.assertEqual(
+            run.call_args.args[0][-4:],
+            ["ps", "--format", "{{.Name}}", "db.openelis.org"],
+        )
+
+    def test_endpoints_name_the_worktree_database_container_for_test_seeding(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = self.dev_stack.build_environment(context)
+
+        with patch.object(self.dev_stack, "published_port", return_value=49152), patch.object(
+            self.dev_stack,
+            "service_container_name",
+            return_value=f"{context.project}-db.openelis.org-1",
+        ) as names:
+            endpoints = self.dev_stack.endpoint_environment(context, environment)
+
+        self.assertEqual(endpoints["DB_CONTAINER"], f"{context.project}-db.openelis.org-1")
+        names.assert_called_once_with(context, environment, "db.openelis.org")
+
     def test_proxy_resolves_replaceable_services_through_docker_dns(self):
         for config_name in ("nginx.conf.template", "nginx.conf"):
             with self.subTest(config_name=config_name):

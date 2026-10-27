@@ -14,7 +14,8 @@ Interpret input best-effort:
 - `/plan-record-playwright` - plan from current PR/worktree context
 - `/plan-record-playwright <feature-or-pr-scope>` - plan specific scope
 - `/plan-record-playwright --flows <csv>` - plan and run a predefined flow set
-- `/plan-record-playwright --record` - include `*-demo-video` recording stage
+- `/plan-record-playwright --record` - include a `core-demo-video` or
+  `evidence-video` recording stage
 
 ## Workflow
 
@@ -50,9 +51,9 @@ Interpret input best-effort:
 
    - Run normal validation first in target project (`core-app`, `core-demo`,
      `harness`, or `harness-demo`).
-   - Use `core-demo-video` / `harness-demo-video` only for recording output.
+   - Use `core-demo-video` / `evidence-video` only for recording output.
    - Keep pauses/title cards project-aware (`videoPause`, `showTitleCard`,
-     `showStepCard`) so behavior is no-op outside `*-demo-video`.
+     `showStepCard`) so behavior is no-op outside the video projects.
 
 6. **Artifact verification**
 

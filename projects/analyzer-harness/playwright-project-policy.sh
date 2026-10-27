@@ -9,7 +9,7 @@ resolve_harness_playwright_project() {
     return
   fi
   if [[ "$mode" == "video" ]]; then
-    echo "harness-demo-video"
+    echo "evidence-video"
   else
     echo "harness-demo"
   fi
@@ -18,11 +18,11 @@ resolve_harness_playwright_project() {
 validate_harness_playwright_project() {
   local project="$1"
   case "$project" in
-    harness-foundational|harness-demo|harness-demo-video)
+    harness-foundational|harness-demo|evidence-video)
       echo "$project"
       ;;
     *)
-      echo "ERROR: unsupported project '$project' (expected harness-foundational, harness-demo, or harness-demo-video)" >&2
+      echo "ERROR: unsupported project '$project' (expected harness-foundational, harness-demo, or evidence-video)" >&2
       return 2
       ;;
   esac

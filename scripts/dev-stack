@@ -477,6 +477,16 @@ def published_port(context: StackContext, service: str, target: int, environment
     return parse_published_port(result.stdout)
 
 
+def service_container_name(context: StackContext, environment: dict[str, str], service: str) -> str:
+    result = run(
+        compose_command(context, "ps", "--format", "{{.Name}}", service),
+        cwd=context.project_dir,
+        environment=environment,
+        capture=True,
+    )
+    return result.stdout.strip().splitlines()[0]
+
+
 def endpoint_environment(context: StackContext, environment: dict[str, str]) -> dict[str, str]:
     domain = environment["LETSENCRYPT_DOMAIN"]
     https_port = published_port(context, "proxy", 443, environment)
@@ -487,6 +497,8 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
         "FHIR_URL": f"https://localhost:{published_port(context, 'fhir.openelis.org', 8443, environment)}",
         "DB_PORT": str(published_port(context, "db.openelis.org", 5432, environment)),
         "COMPOSE_PROJECT_NAME": context.project,
+        # Playwright helpers that seed through psql exec into this container.
+        "DB_CONTAINER": service_container_name(context, environment, "db.openelis.org"),
     }
     subnet_prefix = environment["ANALYZER_SUBNET_PREFIX"]
     endpoints.update(

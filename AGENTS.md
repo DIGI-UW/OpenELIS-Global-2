@@ -1871,15 +1871,15 @@ Tests are organized into projects by infrastructure requirement. New test files
 must be explicitly added to a project's `testMatch` allowlist in
 `playwright.config.ts`.
 
-| Project                | Purpose                                        | CI job               | Infra Required   |
-| ---------------------- | ---------------------------------------------- | -------------------- | ---------------- |
-| `core-app`             | Core UI tests (no Bridge)                      | `Playwright Core`    | Build stack only |
-| `core-demo`            | UI demos on build stack + SQL fixtures         | `Playwright Core`    | Build stack only |
-| `core-demo-video`      | `core-demo` + `slowMo` + video                 | Local only           | Build stack only |
-| `harness-foundational` | Analyzer workflows through Bridge and the mock | `Playwright Harness` | Full harness     |
-| `harness-demo`         | UI demos requiring the full analyzer harness   | `Playwright Harness` | Full harness     |
-| `harness-demo-video`   | `harness-demo` + `slowMo` + video              | Local only           | Full harness     |
-| `harness-manual-only`  | Real-hardware / manual-only coverage           | Not run in CI        | Full harness     |
+| Project                | Purpose                                                                  | CI job               | Infra Required         |
+| ---------------------- | ------------------------------------------------------------------------ | -------------------- | ---------------------- |
+| `core-app`             | Core UI tests (no Bridge)                                                | `Playwright Core`    | Build stack only       |
+| `core-demo`            | UI demos on build stack + SQL fixtures                                   | `Playwright Core`    | Build stack only       |
+| `core-demo-video`      | `core-demo` + `slowMo` + video                                           | Local only           | Build stack only       |
+| `harness-foundational` | Analyzer workflows through Bridge and the mock                           | `Playwright Harness` | Full harness           |
+| `harness-demo`         | UI demos requiring the full analyzer harness                             | `Playwright Harness` | Full harness           |
+| `evidence-video`       | Every `@evidence` story, core or harness, with `slowMo`, video and trace | Local only           | Stack the stories need |
+| `harness-manual-only`  | Real-hardware / manual-only coverage                                     | Not run in CI        | Full harness           |
 
 #### CI Workflows
 
@@ -1897,7 +1897,7 @@ which calls `e2e-playwright-reusable.yml` once per lane.
   must add the glob pattern to the appropriate project in
   `playwright.config.ts`.
 - **`videoPause(page, ms, testInfo)`** (`helpers/video-pause.ts`): Conditional
-  timeout — pauses only in `core-demo-video` / `harness-demo-video`, no-op
+  timeout — pauses only in `core-demo-video` / `evidence-video`, no-op
   elsewhere. Use this instead of `page.waitForTimeout()` for video pacing.
 - **`showTitleCard()` / `showStepCard()`** (`helpers/title-card.ts`): DOM
   overlay helpers for demo videos. Pass `testInfo` to skip overlays in non-video
@@ -1905,8 +1905,10 @@ which calls `e2e-playwright-reusable.yml` once per lane.
 - **`testInfo`**: Playwright's 2nd test callback parameter
   (`async ({ page }, testInfo)`). Provides `testInfo.project.name` to determine
   which project is running.
-- **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between each demo
-  pair and its `*-demo-video` project — defined in `playwright.config.ts`.
+- **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between the demo
+  projects and the video projects (`core-demo-video` records the core demos;
+  `evidence-video` records every `@evidence` story) — defined in
+  `playwright.config.ts`.
 
 #### Playwright Anti-Patterns (MUST AVOID)
 
@@ -1988,7 +1990,7 @@ npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
 npm run pw:test -- --project=core-demo-video
-npm run pw:test -- --project=harness-demo-video
+npm run pw:test:evidence-video
 
 # Run specific test file
 npm run pw:test -- playwright/tests/demo/harness/ogc-1054-m3-guided-setup.spec.ts
@@ -2022,7 +2024,8 @@ not reset one to imitate the other.
 2. Add the glob pattern to the appropriate project's `testMatch` array in
    `playwright.config.ts`
 3. For demo workflow tests, add globs to `CORE_DEMO_TESTS` or
-   `HARNESS_DEMO_TESTS` (each pairs with its `*-demo-video` project)
+   `HARNESS_DEMO_TESTS`; tag a story `@evidence` with its lane and stage to
+   record it in `evidence-video`
 4. Use `videoPause()` instead of `page.waitForTimeout()` for any video pacing
 
 ### Testing Resources

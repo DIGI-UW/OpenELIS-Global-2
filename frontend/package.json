@@ -76,13 +76,12 @@
     "pw:test:harness-demo": "playwright test --project=harness-demo --workers=1",
     "pw:test:demo": "playwright test --project=harness-demo",
     "pw:test:core-demo-video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=core-demo-video",
-    "pw:test:harness-demo-video": "PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/harness-demo-video.json playwright test --project=harness-demo-video --reporter=line,json",
-    "pw:evidence-videos": "node scripts/pw-evidence-videos.mjs",
+    "pw:test:evidence-video": "PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/evidence-video.json playwright test --project=evidence-video --reporter=line,json",
     "pw:show-report": "playwright show-report playwright-report",
     "pw:bundle-report": "node scripts/pw-bundle-report.mjs",
     "pw:test:ui": "playwright test --ui",
     "pw:test:headed": "playwright test --headed",
-    "pw:test:video": "npm run pw:test:harness-demo-video"
+    "pw:test:video": "npm run pw:test:evidence-video"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
