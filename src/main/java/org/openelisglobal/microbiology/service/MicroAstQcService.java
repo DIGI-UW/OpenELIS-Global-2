@@ -3,8 +3,11 @@ package org.openelisglobal.microbiology.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,10 +23,12 @@ import org.openelisglobal.microbiology.dao.MicroAstQcLotDAO;
 import org.openelisglobal.microbiology.dao.MicroAstQcResultDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroInventoryUsageLinkDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroAstQcRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstQcResultForm;
+import org.openelisglobal.microbiology.form.MicroAstQcViewForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstQcLot;
@@ -31,6 +36,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstQcResult;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroQcRange;
 import org.openelisglobal.qaevent.service.NCEventService;
@@ -72,12 +78,15 @@ public class MicroAstQcService {
     private final NCEventService ncEvents;
     private final QcHoldService qcHold;
     private final MicroCaseAuthorizationService authorization;
+    private final MicroCaseDAO cases;
+    private final MicrobiologyCaseAccessService access;
 
     public MicroAstQcService(MicroAstRunDAO runs, MicroIsolateDAO isolates, SiteInformationService siteInformation,
             QCControlLotService controlLots, MicroAstRunAntibioticDAO runAntibiotics, MicroAntibioticDAO antibiotics,
             MicroQcRangeService qcRanges, QCResultService qcResults, MicroAstQcResultDAO astQcResults,
             MicroAstQcLotDAO astQcLots, MicroInventoryUsageLinkDAO usageLinks, InventoryLotService inventoryLots,
-            NCEventService ncEvents, QcHoldService qcHold, MicroCaseAuthorizationService authorization) {
+            NCEventService ncEvents, QcHoldService qcHold, MicroCaseAuthorizationService authorization,
+            MicroCaseDAO cases, MicrobiologyCaseAccessService access) {
         this.runs = runs;
         this.isolates = isolates;
         this.siteInformation = siteInformation;
@@ -93,6 +102,8 @@ public class MicroAstQcService {
         this.ncEvents = ncEvents;
         this.qcHold = qcHold;
         this.authorization = authorization;
+        this.cases = cases;
+        this.access = access;
     }
 
     @Transactional
@@ -105,20 +116,11 @@ public class MicroAstQcService {
             throw new IllegalArgumentException("AST control lot is required");
         }
 
-        SiteInformation setting = siteInformation.getSiteInformationByName(AST_QC_TEST_SETTING);
-        if (setting == null || setting.getValue() == null || setting.getValue().isBlank()) {
+        Test qcTest = configuredQcTest();
+        if (qcTest == null) {
             throw new MicroAstConflictException("AST_QC_TEST_NOT_CONFIGURED");
         }
-        String qcTestId = setting.getValue().trim();
-        Test qcTest;
-        try {
-            qcTest = SpringContext.getBean(TestService.class).get(qcTestId);
-        } catch (ObjectNotFoundException e) {
-            throw new MicroAstConflictException("AST_QC_TEST_NOT_CONFIGURED");
-        }
-        if (qcTest == null || qcTest.getTestSection() == null) {
-            throw new MicroAstConflictException("AST_QC_TEST_NOT_CONFIGURED");
-        }
+        String qcTestId = qcTest.getId();
         String testSectionId = qcTest.getTestSection().getId();
 
         QCControlLot controlLot;
@@ -222,6 +224,144 @@ public class MicroAstQcService {
         form.passed = passed;
         form.rows = rows;
         return form;
+    }
+
+    public MicroAstRun requireRunInCase(String caseId, String runId) {
+        MicroAstRun run = runs.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
+        MicroIsolate isolate = isolates.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("AST run not found"));
+        if (!caseId.equals(isolate.getCaseId())) {
+            throw new IllegalArgumentException("AST run not found");
+        }
+        return run;
+    }
+
+    public MicroAstQcViewForm getView(String caseId, String runId, String actor) {
+        MicroAstRun run = requireRunInCase(caseId, runId);
+        MicroCase microCase = cases.get(caseId).orElseThrow();
+        MicroAstQcViewForm form = new MicroAstQcViewForm();
+        Test qcTest = configuredQcTest();
+        form.configured = qcTest != null;
+        if (form.configured) {
+            boolean mutable = true;
+            try {
+                MicroCaseMutationGuard.requireMutable(microCase);
+            } catch (MicroCaseLockedException e) {
+                mutable = false;
+            }
+            form.canRecord = mutable && access.hasLabUnitRole(actor, microCase.getLabUnitId(), Constants.ROLE_RESULTS);
+        }
+
+        List<MicroAstRunAntibiotic> ordered = runAntibiotics.getByRunId(runId);
+        for (MicroAstRunAntibiotic runAntibiotic : ordered) {
+            MicroAstQcViewForm.Antibiotic antibiotic = new MicroAstQcViewForm.Antibiotic();
+            antibiotic.id = runAntibiotic.getAntibioticId();
+            antibiotic.name = antibiotics.get(antibiotic.id).map(MicroAntibiotic::getDisplayName).orElse(antibiotic.id);
+            form.antibiotics.add(antibiotic);
+        }
+
+        MicroAstMethod method = MicroAstTechnique.valueOf(run.getTechnique()).measurementType();
+        String standardId = run.getBreakpointStandardId();
+        if (qcTest != null) {
+            for (QCControlLot controlLot : controlLots.getActiveBenchControlLots(qcTest.getId())) {
+                MicroAstQcViewForm.ControlLot lot = new MicroAstQcViewForm.ControlLot();
+                lot.id = controlLot.getId();
+                lot.label = controlLot.getProductName() + " \u00b7 " + controlLot.getLotNumber();
+                for (MicroAstRunAntibiotic runAntibiotic : ordered) {
+                    qcRanges.find(controlLot.getProductName(), runAntibiotic.getAntibioticId(), method,
+                            runAntibiotic.getDiskContent(), standardId).ifPresent(range -> {
+                                MicroAstQcViewForm.Range viewRange = new MicroAstQcViewForm.Range();
+                                viewRange.low = range.getLow();
+                                viewRange.high = range.getHigh();
+                                lot.ranges.put(runAntibiotic.getAntibioticId(), viewRange);
+                            });
+                }
+                form.controlLots.add(lot);
+            }
+        }
+
+        Set<Long> lotIds = new LinkedHashSet<>(usageLinks.getAstRunLotIds(runId));
+        Set<Long> itemIds = new LinkedHashSet<>();
+        for (Long lotId : lotIds) {
+            InventoryLot inventoryLot = inventoryLots.get(lotId);
+            if (inventoryLot == null) {
+                continue;
+            }
+            form.lots.add(viewLot(inventoryLot));
+            if (inventoryLot.getInventoryItem() != null) {
+                itemIds.add(inventoryLot.getInventoryItem().getId());
+            }
+        }
+        for (Long itemId : itemIds) {
+            for (InventoryLot inventoryLot : inventoryLots.getByInventoryItemId(itemId)) {
+                if (QCStatus.PENDING.equals(inventoryLot.getQcStatus()) && !lotIds.contains(inventoryLot.getId())) {
+                    form.candidateLots.add(viewLot(inventoryLot));
+                }
+            }
+        }
+
+        Map<String, List<MicroAstQcResult>> byControl = new LinkedHashMap<>();
+        for (MicroAstQcResult result : astQcResults.getByRunId(runId)) {
+            byControl.computeIfAbsent(result.getControlId(), key -> new ArrayList<>()).add(result);
+        }
+        for (Map.Entry<String, List<MicroAstQcResult>> entry : byControl.entrySet()) {
+            MicroAstQcViewForm.Control control = new MicroAstQcViewForm.Control();
+            control.controlId = entry.getKey();
+            control.passed = true;
+            for (MicroAstQcResult stored : entry.getValue()) {
+                QCResult qcResult = qcResults.get(stored.getQcResultId());
+                if (qcResult == null) {
+                    control.passed = false;
+                    continue;
+                }
+                MicroAstQcResultForm.Row row = new MicroAstQcResultForm.Row();
+                row.antibioticId = stored.getAntibioticId();
+                row.low = qcResult.getExpectedValue().subtract(qcResult.getUncertainty());
+                row.high = qcResult.getExpectedValue().add(qcResult.getUncertainty());
+                row.measuredValue = qcResult.getResultValue();
+                row.outcome = "REJECTED".equals(qcResult.getResultStatus()) ? "FAIL" : "PASS";
+                row.qcResultId = stored.getQcResultId();
+                control.rows.add(row);
+                control.passed = control.passed && "PASS".equals(row.outcome);
+                if (control.recordedAt == null) {
+                    control.recordedAt = qcResult.getRunDateTime();
+                    QCControlLot controlLot = controlLots.get(qcResult.getControlLotId());
+                    if (controlLot != null) {
+                        control.controlLotLabel = controlLot.getProductName() + " \u00b7 " + controlLot.getLotNumber();
+                    }
+                }
+            }
+            form.controls.add(control);
+        }
+        form.controls.sort(Comparator.comparing((MicroAstQcViewForm.Control control) -> control.recordedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return form;
+    }
+
+    private MicroAstQcViewForm.Lot viewLot(InventoryLot inventoryLot) {
+        MicroAstQcViewForm.Lot lot = new MicroAstQcViewForm.Lot();
+        lot.id = inventoryLot.getId();
+        lot.lotNumber = inventoryLot.getLotNumber();
+        lot.itemName = inventoryLot.getInventoryItem().getName();
+        lot.qcStatus = inventoryLot.getQcStatus().name();
+        return lot;
+    }
+
+    private Test configuredQcTest() {
+        SiteInformation setting = siteInformation.getSiteInformationByName(AST_QC_TEST_SETTING);
+        if (setting == null || setting.getValue() == null || setting.getValue().isBlank()) {
+            return null;
+        }
+        Test qcTest;
+        try {
+            qcTest = SpringContext.getBean(TestService.class).get(setting.getValue().trim());
+        } catch (ObjectNotFoundException e) {
+            return null;
+        }
+        if (qcTest == null || qcTest.getTestSection() == null) {
+            return null;
+        }
+        return qcTest;
     }
 
     public boolean blocksValidation(String runId) {

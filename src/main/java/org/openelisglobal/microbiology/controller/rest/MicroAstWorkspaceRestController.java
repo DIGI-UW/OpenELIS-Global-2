@@ -13,17 +13,34 @@ public class MicroAstWorkspaceRestController extends MicrobiologyRestControllerS
     private final MicroAstWorkspaceService workspace;
     private final MicroPatientReportService reports;
     private final MicroDstService dst;
+    private final MicroAstQcService astQc;
 
     public MicroAstWorkspaceRestController(MicroAstWorkspaceService workspace, MicroPatientReportService reports,
-            MicroDstService dst) {
+            MicroDstService dst, MicroAstQcService astQc) {
         this.workspace = workspace;
         this.reports = reports;
         this.dst = dst;
+        this.astQc = astQc;
     }
 
     @GetMapping("/ast")
     public MicroAstWorkspaceForm get(@PathVariable String caseId, HttpServletRequest request) {
         return workspace.get(caseId, authenticatedUserId(request));
+    }
+
+    @GetMapping("/ast/runs/{runId}/qc")
+    public MicroAstQcViewForm getQc(@PathVariable String caseId, @PathVariable String runId,
+            HttpServletRequest request) {
+        return astQc.getView(caseId, runId, authenticatedUserId(request));
+    }
+
+    @PostMapping("/ast/runs/{runId}/qc")
+    public MicroAstQcViewForm recordQc(@PathVariable String caseId, @PathVariable String runId,
+            @RequestBody MicroAstQcRequestForm body, HttpServletRequest request) {
+        String actor = authenticatedUserId(request);
+        astQc.requireRunInCase(caseId, runId);
+        astQc.recordControl(runId, body, actor);
+        return astQc.getView(caseId, runId, actor);
     }
 
     @PostMapping("/ast/entry")

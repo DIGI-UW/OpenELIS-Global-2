@@ -25,6 +25,7 @@ import org.openelisglobal.microbiology.dao.*;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.form.MicroAstQcRequestForm;
 import org.openelisglobal.microbiology.form.MicroAstQcResultForm;
+import org.openelisglobal.microbiology.form.MicroAstQcViewForm;
 import org.openelisglobal.microbiology.service.*;
 import org.openelisglobal.microbiology.valueholder.*;
 import org.openelisglobal.qaevent.service.NCEventService;
@@ -314,6 +315,67 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
                 .setParameter("lot", controlLot.getId()).getSingleResult().longValue());
         em.clear();
         assertEquals(QCStatus.PENDING, inventoryLots.get(newLot.getId()).getQcStatus());
+    }
+
+    @Test
+    public void viewListsLotsCandidatesRangesPerControlLotAndRecordedControlsForTheRunsCase() {
+        InventoryLot usedLot = lot(QCStatus.PASSED);
+        InventoryLot newLot = lot(QCStatus.PENDING);
+        var reagentLink = reagentLink();
+        var analysis = fixtures.createAnalysis(
+                em.find(org.openelisglobal.sampleitem.valueholder.SampleItem.class, c.getSampleItemId()),
+                em.find(org.openelisglobal.test.valueholder.Test.class, reagentLink.getTestId()));
+        caseAnalyses.linkAnalysis(c, analysis, null);
+        var run = start(isolate("ISO-1"),
+                List.of(new MicroLotSelection(analysis.getId(), reagentLink.getId(), usedLot.getId())));
+        var aureus = QCControlLotBuilder.create().withId(UUID.randomUUID().toString())
+                .withProductName("S. aureus ATCC 29213")
+                .withLotNumber("ATCC-" + UUID.randomUUID().toString().substring(0, 8)).withTestId(qcTest.getId())
+                .withInstrumentId(null).asActive().build();
+        aureus.setSystemUserId(Integer.valueOf(fixtures.defaultUserId()));
+        controlLots.insert(aureus);
+        em.flush();
+
+        MicroAstQcViewForm view = qc.getView(c.getId(), run.getId(), writer);
+
+        assertTrue(view.configured);
+        assertTrue(view.canRecord);
+        assertEquals(List.of(reference.antibiotic().getId(), drugB), view.antibiotics.stream().map(a -> a.id).toList());
+        assertEquals(List.of(usedLot.getId()), view.lots.stream().map(l -> l.id).toList());
+        assertEquals("PASSED", view.lots.get(0).qcStatus);
+        assertTrue(view.candidateLots.stream().anyMatch(l -> newLot.getId().equals(l.id)));
+        assertTrue(view.candidateLots.stream().noneMatch(l -> usedLot.getId().equals(l.id)));
+        var ecoli = view.controlLots.stream().filter(l -> controlLot.getId().equals(l.id)).findFirst().orElseThrow();
+        assertTrue(ecoli.label.contains(STRAIN));
+        assertEquals(0, new BigDecimal("2").compareTo(ecoli.ranges.get(drugB).low));
+        assertEquals(0, new BigDecimal("8").compareTo(ecoli.ranges.get(drugB).high));
+        assertTrue(view.controlLots.stream().filter(l -> aureus.getId().equals(l.id)).findFirst().orElseThrow().ranges
+                .isEmpty());
+        assertTrue(view.controls.isEmpty());
+
+        qc.recordControl(run.getId(), request(List.of(newLot.getId()), "2", "50"), writer);
+        em.flush();
+        view = qc.getView(c.getId(), run.getId(), validator);
+
+        assertFalse(view.canRecord);
+        assertEquals(1, view.controls.size());
+        var control = view.controls.get(0);
+        assertFalse(control.passed);
+        assertTrue(control.controlLotLabel.contains(STRAIN));
+        assertNotNull(control.recordedAt);
+        var failing = control.rows.stream().filter(r -> drugB.equals(r.antibioticId)).findFirst().orElseThrow();
+        assertEquals("FAIL", failing.outcome);
+        assertEquals(0, new BigDecimal("2").compareTo(failing.low));
+        assertEquals(0, new BigDecimal("8").compareTo(failing.high));
+        assertEquals(0, new BigDecimal("50").compareTo(failing.measuredValue));
+
+        var other = new MicroCase();
+        other.setSampleId(c.getSampleId());
+        other.setSampleItemId(fixtures.createSampleWithSampleItem("AQX").getId());
+        other.setLabUnitId(c.getLabUnitId());
+        other.setCreatedBy(writer);
+        cases.insert(other);
+        assertThrows(IllegalArgumentException.class, () -> qc.getView(other.getId(), run.getId(), writer));
     }
 
     private void assertHeld(MicroAstRun run) {
