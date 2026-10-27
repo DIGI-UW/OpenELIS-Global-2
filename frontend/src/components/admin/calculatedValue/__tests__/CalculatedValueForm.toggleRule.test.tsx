@@ -46,7 +46,7 @@ vi.mock("../../../utils/Utils", () => ({
       return;
     }
     if (url === "/rest/math-functions") {
-      callback([{ id: "ABS", value: "abs" }]);
+      callback([{ id: "+", value: "Plus" }]);
       return;
     }
     if (url === "/rest/displayList/SAMPLE_TYPE_ACTIVE") {

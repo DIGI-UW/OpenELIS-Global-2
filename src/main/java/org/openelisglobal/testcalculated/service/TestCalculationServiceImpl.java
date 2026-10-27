@@ -20,4 +20,9 @@ public class TestCalculationServiceImpl extends AuditableBaseObjectServiceImpl<C
     protected TestCalculationDAO getBaseObjectDAO() {
         return testCalculationDAOdao;
     }
+
+    @Override
+    public void validateExpression(Calculation calculation) {
+        CalculationExpression.compile(calculation.getOperations());
+    }
 }

@@ -69,8 +69,13 @@ public class CalculatedValueRestController {
     @PostMapping(value = "test-calculation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void saveReflexRule(HttpServletRequest request, @RequestBody Calculation calculation) {
-        normalizeBlankComponents(calculation);
-        validateDestination(calculation);
+        try {
+            testCalculationService.validateExpression(calculation);
+            normalizeBlankComponents(calculation);
+            validateDestination(calculation);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid calculation logic", e);
+        }
         if (calculation.getId() != null) {
             if (testCalculationService.get(calculation.getId()) != null) {
                 testCalculationService.update(calculation);
@@ -146,9 +151,13 @@ public class CalculatedValueRestController {
             if (calculation == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
+            if (active)
+                testCalculationService.validateExpression(calculation);
             calculation.setActive(active);
             testCalculationService.update(calculation);
             return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (RuntimeException e) {
             // Replaces a silent empty catch that swallowed every error (OGC-655) —
             // the FE used to fire-and-forget without status feedback.

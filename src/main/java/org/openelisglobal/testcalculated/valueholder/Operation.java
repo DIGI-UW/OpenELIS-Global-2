@@ -161,7 +161,7 @@ public class Operation implements Comparable<Operation> {
     }
 
     public enum PatientAttribute {
-        AGE("Patient Age(Years)"), WEIGHT("Patient Weight(Kg)");
+        AGE("Patient Age(Years)");
 
         private String displayName;
 

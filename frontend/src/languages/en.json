@@ -1,4 +1,5 @@
 {
+  "error.invalid.calculation.logic": "The calculation is invalid. Check its operations and numeric values.",
   "analyzer.mapping.error.profileUnavailable": "The analyzer profile could not be read. Retry confirmation when the Bridge is available.",
   "reporting.title": "Custom Data Export",
   "reporting.description": "Choose your report, reporting period and columns, then download a spreadsheet-ready CSV.",

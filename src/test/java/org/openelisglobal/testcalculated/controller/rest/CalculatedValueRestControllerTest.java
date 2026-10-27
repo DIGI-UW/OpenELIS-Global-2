@@ -173,4 +173,45 @@ public class CalculatedValueRestControllerTest {
         mockMvc.perform(get("/rest/test-calculations?id=")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
     }
+
+    @Test
+    public void invalidExpressionIsRejectedBeforeAnyWrite() throws Exception {
+        org.mockito.Mockito.doAnswer(invocation -> {
+            new org.openelisglobal.testcalculated.service.TestCalculationServiceImpl()
+                    .validateExpression(invocation.getArgument(0));
+            return null;
+        }).when(testCalculationService).validateExpression(any(Calculation.class));
+        String body = "{\"name\":\"invalid\",\"operations\":[{\"order\":0,\"type\":\"MATH_FUNCTION\",\"value\":\"Java.type('java.lang.System')\"}]}";
+        mockMvc.perform(post("/rest/test-calculation").contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+        verify(testCalculationService, never()).save(any(Calculation.class));
+        verify(testCalculationService, never()).update(any(Calculation.class));
+    }
+
+    @Test
+    public void validArithmeticCanBeSavedWithoutBrowserEvaluation() throws Exception {
+        org.mockito.Mockito.doAnswer(invocation -> {
+            new org.openelisglobal.testcalculated.service.TestCalculationServiceImpl()
+                    .validateExpression(invocation.getArgument(0));
+            return null;
+        }).when(testCalculationService).validateExpression(any(Calculation.class));
+        String body = "{\"name\":\"half\",\"operations\":[{\"order\":0,\"type\":\"INTEGER\",\"value\":\"1\"},{\"order\":1,\"type\":\"MATH_FUNCTION\",\"value\":\"/\"},{\"order\":2,\"type\":\"INTEGER\",\"value\":\"2\"}]}";
+        mockMvc.perform(post("/rest/test-calculation").contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        verify(testCalculationService).save(any(Calculation.class));
+    }
+
+    @Test
+    public void anInvalidStoredRuleCannotBeActivatedButCanBeDeactivated() throws Exception {
+        Calculation calculation = new Calculation();
+        calculation.setId(7);
+        when(testCalculationService.get(7)).thenReturn(calculation);
+        doThrow(new IllegalArgumentException("Invalid expression")).when(testCalculationService)
+                .validateExpression(calculation);
+        mockMvc.perform(post("/rest/activate-test-calculation/7")).andExpect(status().isBadRequest());
+        verify(testCalculationService, never()).update(calculation);
+        mockMvc.perform(post("/rest/deactivate-test-calculation/7")).andExpect(status().isOk());
+        verify(testCalculationService, times(1)).validateExpression(calculation);
+        verify(testCalculationService).update(calculation);
+    }
 }
