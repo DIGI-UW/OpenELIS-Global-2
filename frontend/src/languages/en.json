@@ -13885,7 +13885,7 @@
   "microbiology.m6.fromRule": "From rule",
   "microbiology.m6.expertRule": "Expert rule",
   "microbiology.m6.expertRuleLine": "{organism} is always resistant to {antibiotic}",
-  "microbiology.m6.intrinsicContradiction": "A measured result contradicts an expected resistance. Check the identification, then acknowledge before review.",
+  "microbiology.m6.intrinsicContradiction": "A measured result contradicts an expected resistance. Check the identification, then confirm it before review.",
   "microbiology.m6.amendedRelease": "Release amended report",
   "microbiology.m6.protocol": "Susceptibility protocol",
   "microbiology.m6.resistanceRole": "TB resistance role",

@@ -640,11 +640,14 @@ it("marks an expert rule override and asks for the identification to be checked"
   expect(await screen.findByText("Expert rule")).toBeInTheDocument();
   expect(
     screen.getByText(
-      "A measured result contradicts an expected resistance. Check the identification, then acknowledge before review.",
+      "A measured result contradicts an expected resistance. Check the identification, then confirm it before review.",
     ),
   ).toBeInTheDocument();
-  expect(
+  fireEvent.click(
     screen.getByRole("button", { name: "Confirm identification" }),
+  );
+  expect(
+    await screen.findByRole("dialog", { name: "Confirm identification" }),
   ).toBeInTheDocument();
 });
 
