@@ -60,6 +60,24 @@ const TILE_ICONS: Record<string, any> = {
   AVERAGE_TURN_AROUND_TIME: Time,
   DELAYED_TURN_AROUND: WarningSquareFilled,
 };
+
+/**
+ * Class names of a metric tile. Besides "dashboard-tile", each tile carries a
+ * modifier named after its metric type (ORDERS_IN_PROGRESS ->
+ * "dashboard-tile--orders-in-progress") and "dashboard-tile--zero" while its
+ * count is zero, so a site stylesheet can theme tiles through the custom
+ * properties documented in Dashboard.css.
+ */
+export const tileClassName = (type: string, value: unknown) => {
+  const classes = [
+    "dashboard-tile",
+    `dashboard-tile--${type.toLowerCase().replace(/_/g, "-")}`,
+  ];
+  if (value === 0 || (typeof value === "string" && value.trim() === "0")) {
+    classes.push("dashboard-tile--zero");
+  }
+  return classes.join(" ");
+};
 import { useState, useEffect, useContext, useRef } from "react";
 import {
   getFromOpenElisServer,
@@ -553,7 +571,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
             return (
               <ClickableTile
                 key={index}
-                className="dashboard-tile"
+                className={tileClassName(tile.type, tile.value)}
                 onClick={() =>
                   tile.type === "UN_PRINTED_RESULTS"
                     ? navigate(

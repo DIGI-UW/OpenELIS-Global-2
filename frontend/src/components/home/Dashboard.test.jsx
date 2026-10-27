@@ -85,3 +85,18 @@ test("tile counts are text under their tile title, not headings", () => {
     screen.queryByRole("heading", { name: "127" }),
   ).not.toBeInTheDocument();
 });
+
+test("each tile is named after its metric type, and marked while its count is zero", () => {
+  openDashboard();
+  act(() =>
+    requests[0].callback({ ordersInProgress: 127, ordersRejectedToday: 0 }),
+  );
+  const inProgress = screen.getByText("In Progress").closest(".dashboard-tile");
+  expect(inProgress).toHaveClass("dashboard-tile--orders-in-progress");
+  expect(inProgress).not.toHaveClass("dashboard-tile--zero");
+  const rejected = screen
+    .getByText("127")
+    .closest(".home-dashboard-container")
+    .querySelector(".dashboard-tile--orders-rejected-today");
+  expect(rejected).toHaveClass("dashboard-tile--zero");
+});
