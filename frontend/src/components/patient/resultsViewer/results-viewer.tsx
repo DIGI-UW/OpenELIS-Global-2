@@ -18,6 +18,8 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import config from "../../../config.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientHeader from "../../common/PatientHeader";
+import ExtensionSlot, { useSlot } from "../../addons/ExtensionSlot";
+import { SLOT_PATIENT_RESULTS } from "../../addons/slots";
 
 interface ResultsViewerProps {
   basePath: string;
@@ -69,6 +71,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
   const intl = useIntl();
 
   const { roots, loading, error } = useGetManyObstreeData(patientId);
+  const hasAddons = useSlot(SLOT_PATIENT_RESULTS).length > 0;
 
   if (error) {
     return (
@@ -143,6 +146,19 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
         </Column>
       </Grid>
 
+      {/* Add-on panels (result-lookup-side-panel-slot). The server turns the
+          patient id into that patient's lab numbers; the add-on never gets
+          the id. No add-on: nothing is rendered. */}
+      {hasAddons && (
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <ExtensionSlot
+              name={SLOT_PATIENT_RESULTS}
+              state={{ page: "patient-results", patientId }}
+            />
+          </Column>
+        </Grid>
+      )}
       {roots?.length ? (
         <Grid fullWidth={true} className="orderLegendBody">
           <Column lg={16} md={8} sm={4}>
