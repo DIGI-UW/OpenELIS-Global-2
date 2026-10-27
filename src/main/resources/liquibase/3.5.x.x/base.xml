@@ -703,4 +703,5 @@
   <include file="146-amr-v3-rule-notes.xml" relativeToChangelogFile="true"/>
   <include file="147-amr-v3-interpretation-rules.xml" relativeToChangelogFile="true"/>
   <include file="148-amr-v3-qc-ranges.xml" relativeToChangelogFile="true"/>
+  <include file="149-amr-v3-ast-qc.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

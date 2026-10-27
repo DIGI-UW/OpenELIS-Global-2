@@ -72,6 +72,8 @@ public class MicroAstServiceImpl implements MicroAstService {
     private MicroAstReportChoiceService reportChoices;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroAstPanelAssignmentService panelAssignments;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstQcService astQc;
     private final String defaultBreakpointAuthority;
     private final String defaultBreakpointVersion;
 
@@ -520,6 +522,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         authorization.requireWrite(isolate.getCaseId(), performedBy,
                 org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
         requireMutableRun(run, isolate.getCaseId());
+        if (astQc.blocksValidation(runId))
+            throw new MicroAstConflictException("AST_QC_HOLD");
         requireReviewableLifecycle(run);
         if (selfValidation.blockedForEntryUsers(java.util.stream.Stream
                 .concat(latestReadings(runId).stream().map(MicroAstReading::getCreatedBy),
