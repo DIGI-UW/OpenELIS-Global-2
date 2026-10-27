@@ -39,6 +39,9 @@ import { getFromOpenElisServer, putToOpenElisServer } from "../utils/Utils";
 import SearchBar from "./search/searchBar";
 import { getBranding } from "../utils/BrandingUtils";
 import config from "../../config.json";
+import { useExtensions } from "../addons/ExtensionSlot";
+import { withAddonMenu } from "../addons/slots";
+import HeaderActionsSlot from "../addons/HeaderActionsSlot";
 
 function OEHeader({
   onChangeLanguage,
@@ -130,6 +133,21 @@ function OEHeader({
       ? intl.formatMessage({ id: "header.icon.user" })
       : intl.formatMessage({ id: "header.icon.lang" });
   };
+
+  // Menu entries contributed by add-ons (app-menu-slot); none: menus.menu as is.
+  const addonExtensions = useExtensions(
+    userSessionDetails.authenticated === true,
+  );
+  const mainMenus = React.useMemo(
+    () =>
+      withAddonMenu(
+        menus.menu,
+        addonExtensions,
+        "addon.admin.title",
+        intl.locale,
+      ),
+    [menus.menu, addonExtensions, intl.locale],
+  );
 
   const handleMenuItems = (tag, res) => {
     if (res) {
@@ -348,6 +366,7 @@ function OEHeader({
               {userSessionDetails.authenticated && (
                 <>
                   {searchBar && <SearchBar />}
+                  <HeaderActionsSlot />
                   <HeaderGlobalAction
                     id="search-Icon"
                     aria-label={intl.formatMessage({
@@ -546,7 +565,7 @@ function OEHeader({
                     />
                   ) : (
                     <SideNavItems>
-                      <ConfiguredSideNav menus={menus.menu} />
+                      <ConfiguredSideNav menus={mainMenus} />
                     </SideNavItems>
                   )}
                 </SideNav>

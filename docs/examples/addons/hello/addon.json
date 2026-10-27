@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "hello",
+  "name": "Hello add-on",
+  "version": "1.0.0",
+  "publisher": "example",
+  "description": "Demo: counts the results of validated orders and shows the orders on screen.",
+  "image": {
+    "ref": "ghcr.io/example/openelis-addon-hello@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "runtime": { "port": 8080, "eventsPath": "/events" },
+  "scopes": ["orders.read", "results.read"],
+  "events": ["result.validated"],
+  "extensions": [
+    {
+      "name": "hello-lookup-panel",
+      "slot": "result-lookup-side-panel-slot",
+      "page": "panel.html",
+      "order": 10,
+      "meta": { "title": "Hello", "height": 220 }
+    }
+  ],
+  "config": [
+    { "key": "greeting", "type": "string", "label": "Greeting", "default": "Hello" }
+  ]
+}
