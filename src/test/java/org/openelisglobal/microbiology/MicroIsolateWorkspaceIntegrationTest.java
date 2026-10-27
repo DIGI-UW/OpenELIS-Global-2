@@ -57,6 +57,8 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroCaseMembershipService membership;
     @Autowired
+    private MicroCaseWorkspaceService caseWorkspace;
+    @Autowired
     private MicroCaseAmendmentService amendments;
     @Autowired
     private MicroReportVersionService reports;
@@ -478,40 +480,37 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void openAndReturnedReferralsTagTheCaseAndFilterTheSearch() {
+        refer(List.of(pick()));
+        assertReferralTags("REFERRED");
+        var referral = referrals
+                .getWorkspaceReferrals(
+                        reload().isolates.stream().map(MicroIsolateWorkspaceForm.Isolate::sampleItemId).toList())
+                .getFirst();
+        referral.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED);
+        referrals.update(referral);
+        assertReferralTags("REFERRAL_RETURNED");
+        referral.setReconciled(true);
+        referrals.update(referral);
+        assertReferralTags();
+    }
+
+    private void assertReferralTags(String... tags) {
+        em.flush();
+        assertEquals(List.of(tags), caseWorkspace.get(c.getId(), writer).statusTags);
+        for (String tag : List.of("REFERRED", "REFERRAL_RETURNED")) {
+            var q = new MicroCaseSearchForm();
+            q.accessionNumber = source.getSample().getAccessionNumber();
+            q.caseStatus = tag;
+            assertEquals(tag, List.of(tags).contains(tag),
+                    caseWorkspace.search(q, writer).rows.stream().anyMatch(r -> r.id.equals(c.getId())));
+        }
+    }
+
+    @Test
     public void sameTestOnTwoIsolatesProducesTwoCorrectlyLinkedReferrals() {
         String first = pick(), second = pick();
-        var test = fixtures.createCatalogTest();
-        test.setTestSection(org.openelisglobal.spring.util.SpringContext
-                .getBean(org.openelisglobal.test.service.TestSectionService.class).get(c.getLabUnitId()));
-        tests.update(test);
-        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
-        mapping.setTypeOfSampleId(isolateType.getId());
-        mapping.setTestId(test.getId());
-        mapping.setSysUserId(writer);
-        sampleTests.insert(mapping);
-        var facility = new org.openelisglobal.organization.valueholder.Organization();
-        facility.setOrganizationName("M5 reference " + UUID.randomUUID());
-        facility.setIsActive("Y");
-        facility.setMlsSentinelLabFlag("N");
-        facility.setSysUserId(writer);
-        organizations.insert(facility);
-        markReferralLab(facility);
-        var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
-        reason.setName("M5 " + UUID.randomUUID().toString().substring(0, 12));
-        reason.setSysUserId(writer);
-        reasons.insert(reason);
-        for (String id : List.of(first, second)) {
-            var r = new MicroIsolateWorkspaceRequestForm();
-            r.sampleTypeId = isolateType.getId();
-            r.testId = test.getId();
-            r.referral = new ReferralItem();
-            r.referral.setReferredInstituteId(facility.getId());
-            r.referral.setReferralReasonId(reason.getId());
-            r.referral.setReferredSendDate(org.openelisglobal.common.util.DateUtil.getCurrentDateAsText());
-            r.referral.setSubcontractNotes("Transport at room temperature");
-            workspace.act(c.getId(), id, "referral", r, writer);
-            reload();
-        }
+        refer(List.of(first, second));
         var form = reload();
         assertTrue(form.referred);
         assertEquals(2, form.referrals.size());
@@ -538,6 +537,41 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
             referrals.update(ref);
         }
         assertFalse(reload().referred);
+    }
+
+    private void refer(List<String> isolateIds) {
+        var test = fixtures.createCatalogTest();
+        test.setTestSection(org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.test.service.TestSectionService.class).get(c.getLabUnitId()));
+        tests.update(test);
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(isolateType.getId());
+        mapping.setTestId(test.getId());
+        mapping.setSysUserId(writer);
+        sampleTests.insert(mapping);
+        var facility = new org.openelisglobal.organization.valueholder.Organization();
+        facility.setOrganizationName("M5 reference " + UUID.randomUUID());
+        facility.setIsActive("Y");
+        facility.setMlsSentinelLabFlag("N");
+        facility.setSysUserId(writer);
+        organizations.insert(facility);
+        markReferralLab(facility);
+        var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
+        reason.setName("M5 " + UUID.randomUUID().toString().substring(0, 12));
+        reason.setSysUserId(writer);
+        reasons.insert(reason);
+        for (String id : isolateIds) {
+            var r = new MicroIsolateWorkspaceRequestForm();
+            r.sampleTypeId = isolateType.getId();
+            r.testId = test.getId();
+            r.referral = new ReferralItem();
+            r.referral.setReferredInstituteId(facility.getId());
+            r.referral.setReferralReasonId(reason.getId());
+            r.referral.setReferredSendDate(org.openelisglobal.common.util.DateUtil.getCurrentDateAsText());
+            r.referral.setSubcontractNotes("Transport at room temperature");
+            workspace.act(c.getId(), id, "referral", r, writer);
+            reload();
+        }
     }
 
     @Test

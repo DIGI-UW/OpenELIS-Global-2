@@ -28,6 +28,7 @@ import {
   Link,
 } from "@carbon/react";
 import serviceDefault from "./CaseWorkspaceService";
+import CaseStatusTags from "./CaseStatusTags";
 import "./CaseWorkspace.scss";
 import { MICROBIOLOGY_CASE_PATH } from "./MicrobiologyRoutes";
 
@@ -65,13 +66,13 @@ export default function CaseWorklist({ service = serviceDefault }) {
     const next = new URLSearchParams(location.search);
     if (key === "grain" && value === "ast") {
       if (
-        ["status", "cultureFilter", "needsAttention"].some((filter) =>
-          next.has(filter),
+        ["status", "caseStatus", "cultureFilter", "needsAttention"].some(
+          (filter) => next.has(filter),
         )
       )
         next.set("scopeFiltersReset", "true");
-      ["status", "cultureFilter", "needsAttention"].forEach((filter) =>
-        next.delete(filter),
+      ["status", "caseStatus", "cultureFilter", "needsAttention"].forEach(
+        (filter) => next.delete(filter),
       );
     }
     if (value) next.set(key, String(value));
@@ -84,11 +85,10 @@ export default function CaseWorklist({ service = serviceDefault }) {
     { key: "subject", header: t("microbiology.case.subject") },
     { key: "labUnit", header: t("microbiology.case.labUnit") },
     { key: "specimenType", header: t("microbiology.worklist.column.specimen") },
-    { key: "status", header: t("common.status") },
     { key: "createdAt", header: t("microbiology.case.opened") },
   ];
-  const formatStatus = (status) => t(`microbiology.case.status.${status}`);
-  // i18n-keys: microbiology.case.status.*
+  const rowsById = new Map((data?.rows || []).map((r) => [r.id, r]));
+  // i18n-keys: microbiology.case.status.*, microbiology.case.tag.*
   return (
     <Grid fullWidth className="microbiology-case-workspace">
       <Column lg={16} md={8} sm={4}>
@@ -177,16 +177,29 @@ export default function CaseWorklist({ service = serviceDefault }) {
                   <Select
                     id="case-status"
                     labelText={t("common.status")}
-                    value={params.get("status") || ""}
-                    onChange={(e) => change("status", e.target.value)}
+                    value={params.get("caseStatus") || ""}
+                    onChange={(e) => change("caseStatus", e.target.value)}
                   >
                     <SelectItem
                       value=""
                       text={t("microbiology.case.allStatuses")}
                     />
-                    {["ACTIVE", "CANCELLED", "REJECTED"].map((s) => (
-                      <SelectItem key={s} value={s} text={formatStatus(s)} />
+                    {["IN_PROGRESS", "PARTIAL", "FINAL", "AMENDED"].map((s) => (
+                      <SelectItem
+                        key={s}
+                        value={s}
+                        text={t(`microbiology.case.status.${s}`)}
+                      />
                     ))}
+                    {["REFERRED", "REFERRAL_RETURNED", "AMENDMENT_OPEN"].map(
+                      (s) => (
+                        <SelectItem
+                          key={s}
+                          value={s}
+                          text={t(`microbiology.case.tag.${s}`)}
+                        />
+                      ),
+                    )}
                   </Select>
                 </Column>
                 <Column lg={4} md={4} sm={4}>
@@ -283,27 +296,34 @@ export default function CaseWorklist({ service = serviceDefault }) {
                               {row.cells.map((cell) => (
                                 <TableCell key={cell.id}>
                                   {cell.info.header === "accessionNumber" ? (
-                                    <Link
-                                      href={`${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(row.id)}${location.search}`}
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        history.push(
-                                          `${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(row.id)}${location.search}`,
-                                        );
-                                      }}
-                                    >
-                                      {cell.value || row.id}
-                                    </Link>
-                                  ) : cell.info.header === "status" ? (
-                                    <Tag
-                                      type={
-                                        cell.value === "ACTIVE"
-                                          ? "blue"
-                                          : "gray"
-                                      }
-                                    >
-                                      {formatStatus(cell.value)}
-                                    </Tag>
+                                    <>
+                                      <Link
+                                        href={`${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(row.id)}${location.search}`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          history.push(
+                                            `${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(row.id)}${location.search}`,
+                                          );
+                                        }}
+                                      >
+                                        {cell.value || row.id}
+                                      </Link>
+                                      <div>
+                                        <CaseStatusTags
+                                          caseStatus={
+                                            rowsById.get(row.id)?.caseStatus
+                                          }
+                                          statusTags={
+                                            rowsById.get(row.id)?.statusTags
+                                          }
+                                        />
+                                        {rowsById.get(row.id)?.stat && (
+                                          <Tag type="red">
+                                            {t("microbiology.case.stat")}
+                                          </Tag>
+                                        )}
+                                      </div>
+                                    </>
                                   ) : cell.info.header === "createdAt" &&
                                     cell.value ? (
                                     intl.formatDate(new Date(cell.value), {

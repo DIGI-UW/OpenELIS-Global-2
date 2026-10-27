@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.form;
 public class MicroCaseSearchForm {
     public boolean migrationReview;
     public String status;
+    public String caseStatus;
     public String from;
     public String to;
     public String q;
