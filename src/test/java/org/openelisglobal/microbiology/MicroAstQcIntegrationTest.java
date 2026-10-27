@@ -222,9 +222,12 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
                 List.of(new MicroLotSelection(analysis.getId(), reagentLink.getId(), usedLot.getId())));
         var recordedOn = start(isolate("ISO-QC"), List.of());
         var unrelated = start(isolate("ISO-OTHER"), List.of());
-        for (var run : List.of(usedRun, recordedOn, unrelated)) {
+        var reviewedRun = start(isolate("ISO-DONE"),
+                List.of(new MicroLotSelection(analysis.getId(), reagentLink.getId(), usedLot.getId())));
+        for (var run : List.of(usedRun, recordedOn, unrelated, reviewedRun)) {
             enter(run, "4");
         }
+        ast.reviewRun(reviewedRun.getId(), validator);
         InventoryLot newLot = lot(QCStatus.PENDING);
 
         MicroAstQcResultForm recorded = qc.recordControl(recordedOn.getId(),
@@ -239,6 +242,8 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(QCStatus.PENDING, inventoryLots.get(newLot.getId()).getQcStatus());
         assertHeld(recordedOn);
         assertHeld(usedRun);
+        assertFalse(qc.getView(c.getId(), unrelated.getId(), writer).held);
+        assertFalse(qc.getView(c.getId(), reviewedRun.getId(), writer).held);
         ast.reviewRun(unrelated.getId(), validator);
 
         QCResult failingResult = qcResults.get(failing.qcResultId);
@@ -263,6 +268,7 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         nce.setStatus("Closed");
         ncEvents.update(nce);
         em.flush();
+        assertFalse(qc.getView(c.getId(), recordedOn.getId(), writer).held);
         ast.reviewRun(recordedOn.getId(), validator);
         ast.reviewRun(usedRun.getId(), validator);
     }
@@ -274,6 +280,7 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
         qc.recordControl(run.getId(), request(List.of(), "2", "50"), writer);
         em.flush();
         ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION, "false");
+        assertFalse(qc.getView(c.getId(), run.getId(), writer).held);
         ast.reviewRun(run.getId(), validator);
     }
 
@@ -379,6 +386,7 @@ public class MicroAstQcIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     private void assertHeld(MicroAstRun run) {
+        assertTrue(qc.getView(c.getId(), run.getId(), writer).held);
         var error = assertThrows(MicroAstConflictException.class, () -> ast.reviewRun(run.getId(), validator));
         assertEquals("AST_QC_HOLD", error.getMessage());
     }

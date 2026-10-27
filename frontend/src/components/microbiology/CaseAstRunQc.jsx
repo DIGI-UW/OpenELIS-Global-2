@@ -101,8 +101,19 @@ export default function CaseAstRunQc({ caseId, runId, service, onRecorded }) {
 
   // i18n-keys: microbiology.reagentLots.qc.*
   return (
-    <section aria-label={t("microbiology.astQc.title")}>
+    <section
+      aria-label={t("microbiology.astQc.title")}
+      className="microbiology-case-workspace__run-qc"
+    >
       <h4>{t("microbiology.astQc.title")}</h4>
+      {view.held && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title={t("microbiology.m6.error.AST_QC_HOLD")}
+        />
+      )}
       {view.lots.length === 0 ? (
         <p>{t("microbiology.astQc.noLots")}</p>
       ) : (

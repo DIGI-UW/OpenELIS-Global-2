@@ -31,6 +31,9 @@ const view = (overrides = {}) => ({
   ...overrides,
 });
 
+const holdText =
+  "A failing AST control covers this run. Close its nonconformity before validating.";
+
 const show = (service) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -70,7 +73,17 @@ it("shows the run's lots with their QC status and the controls recorded on it", 
     within(region).getByText("E. coli ATCC 25922 · L1"),
   ).toBeInTheDocument();
   expect(within(region).getByText("Failed")).toBeInTheDocument();
+  expect(within(region).queryByText(holdText)).not.toBeInTheDocument();
   expect(service.getAstQc).toHaveBeenCalledWith("c1", "run");
+});
+
+it("warns when a failing control holds the run's validation", async () => {
+  const service = {
+    getAstQc: vi.fn().mockResolvedValue(view({ held: true })),
+  };
+  show(service);
+  const region = await screen.findByRole("region", { name: "Run QC" });
+  expect(within(region).getByText(holdText)).toBeInTheDocument();
 });
 
 it("names every lot QC status, quarantine included, and keeps tags out of paragraphs", async () => {
