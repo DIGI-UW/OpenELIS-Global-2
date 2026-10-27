@@ -10805,6 +10805,7 @@
   "microbiology.admin.astRules.edit": "Edit",
   "microbiology.admin.astRules.editRule": "Edit rule",
   "microbiology.admin.astRules.error": "The reporting rules could not be updated.",
+  "microbiology.admin.astRules.export": "Export",
   "microbiology.admin.astRules.history": "History",
   "microbiology.admin.astRules.historyFor": "History {antibiotic}",
   "microbiology.admin.astRules.historyTitle": "Change history",
