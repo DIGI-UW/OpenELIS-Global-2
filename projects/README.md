@@ -19,3 +19,7 @@ runtime code.
   launcher is `scripts/dev-stack`; full local CI is `scripts/run-ci-checks.sh`.
 - `projects/reporting-uat/` — runtime qualification tools for the isolated
   reporting UAT deployment.
+- `projects/addons/mcp/` — the MCP server add-on: read-only access for outside
+  AI agents (Claude Code, Claude Desktop, other MCP clients) with per-agent
+  tokens, a separate service and package built on the add-on mechanism
+  (`docs/addons/design.md`), not part of the OpenELIS build.

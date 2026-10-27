@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!-- Add-ons: the access log of the add-on API, one row per authenticated
+       request (which add-on, which credential, the agent and purpose the add-on
+       reports, the endpoint, the order or patient, the answer). Kept
+       addons.accessLog.retentionDays days. Design: docs/addons/design.md -->
+
+  <changeSet id="026-addon-access-log" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="addon_access_log"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="addon_access_log">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="at" type="TIMESTAMPTZ" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="addon_id" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="credential" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="user_id" type="VARCHAR(64)"/>
+      <column name="actor" type="VARCHAR(100)"/>
+      <column name="purpose" type="VARCHAR(64)"/>
+      <column name="method" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="endpoint" type="VARCHAR(120)"><constraints nullable="false"/></column>
+      <column name="subject_type" type="VARCHAR(10)"><constraints nullable="false"/></column>
+      <column name="subject" type="VARCHAR(200)"/>
+      <column name="status" type="INT"><constraints nullable="false"/></column>
+      <column name="row_count" type="INT"/>
+    </createTable>
+    <createIndex schemaName="clinlims" tableName="addon_access_log" indexName="idx_addon_access_log_addon_at">
+      <column name="addon_id"/>
+      <column name="at"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="addon_access_log" indexName="idx_addon_access_log_at">
+      <column name="at"/>
+    </createIndex>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="addon_access_log"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
