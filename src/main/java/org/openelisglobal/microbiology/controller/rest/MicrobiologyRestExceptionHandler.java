@@ -6,6 +6,7 @@ import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
 import org.openelisglobal.microbiology.service.MicroReferenceConflictException;
+import org.openelisglobal.microbiology.service.MicroReleaseBlockedException;
 import org.openelisglobal.microbiology.service.MicroWhonetExportBlockedException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -47,6 +48,13 @@ public class MicrobiologyRestExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleLockedCase(MicroCaseLockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("status", HttpStatus.CONFLICT.value(), "error",
                 "MICROBIOLOGY_CASE_LOCKED", "message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(MicroReleaseBlockedException.class)
+    public ResponseEntity<Map<String, Object>> handleReleaseBlocked(MicroReleaseBlockedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("status", HttpStatus.CONFLICT.value(), "error", "MICROBIOLOGY_RELEASE_BLOCKED", "message",
+                        exception.getMessage(), "blockers", exception.getBlockers()));
     }
 
     @ExceptionHandler(MicroReferenceConflictException.class)

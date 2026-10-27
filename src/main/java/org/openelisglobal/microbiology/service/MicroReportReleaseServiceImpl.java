@@ -79,10 +79,12 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         if (confirmedIncomingIds == null || !confirmedIncomingIds.containsAll(readiness.pendingIncomingIds))
             throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE");
         if (!readiness.finalReleaseReady) {
-            throw new IllegalStateException("Final release is blocked: " + String.join(", ", readiness.blockers));
+            throw new MicroReleaseBlockedException("Final release is blocked: " + String.join(", ", readiness.blockers),
+                    readiness.blockers);
         }
         if (hasOpenCriticalFollowUp(caseId)) {
-            throw new IllegalStateException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
+            throw new MicroReleaseBlockedException("Final release is blocked: CRITICAL_FOLLOW_UP_REQUIRED",
+                    java.util.List.of("CRITICAL_FOLLOW_UP_REQUIRED"));
         }
         MicroReportProjectionResult projection = reportProjectionService.releaseFinal(caseId, performedBy);
         MicroCase microCase = getCase(caseId);
@@ -110,10 +112,12 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         if (confirmedIncomingIds == null || !confirmedIncomingIds.containsAll(readiness.pendingIncomingIds))
             throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_CONFIRM_RELEASE");
         if (!readiness.finalReleaseReady) {
-            throw new IllegalStateException("Amended release is blocked: " + String.join(", ", readiness.blockers));
+            throw new MicroReleaseBlockedException(
+                    "Amended release is blocked: " + String.join(", ", readiness.blockers), readiness.blockers);
         }
         if (hasOpenCriticalFollowUp(caseId)) {
-            throw new IllegalStateException("Amended release is blocked: CRITICAL_FOLLOW_UP_REQUIRED");
+            throw new MicroReleaseBlockedException("Amended release is blocked: CRITICAL_FOLLOW_UP_REQUIRED",
+                    java.util.List.of("CRITICAL_FOLLOW_UP_REQUIRED"));
         }
         MicroReportProjectionResult projection = reportProjectionService.releaseAmended(caseId, performedBy);
         amendmentService.completeAmendment(caseId, projection, performedBy);

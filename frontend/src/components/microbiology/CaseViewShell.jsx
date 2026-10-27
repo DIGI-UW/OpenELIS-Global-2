@@ -41,6 +41,7 @@ import "./MicrobiologyCaseView.css";
 import CaseQuestionnaire from "./CaseQuestionnaire";
 import OrderDetailPanel from "./OrderDetailPanel";
 import CaseStatusTags from "./CaseStatusTags";
+import CaseReleaseActions from "./CaseReleaseActions";
 import { getMicrobiologyCurrentStep } from "./MicrobiologyCaseState";
 import CaseContextEditor from "./CaseContextEditor";
 import CaseTestingWorkspace from "./CaseTestingWorkspace";
@@ -108,6 +109,9 @@ export default function CaseViewShell({
   const [detail, setDetail] = useState(null);
   const [incomingCount, setIncomingCount] = useState(0);
   const [incomingError, setIncomingError] = useState(false);
+  const [readiness, setReadiness] = useState(null);
+  const [partialReady, setPartialReady] = useState(false);
+  const [jump, setJump] = useState(null);
   useEffect(() => {
     let live = true;
     if (!detail || !service.getIncoming) return undefined;
@@ -123,6 +127,29 @@ export default function CaseViewShell({
       })
       .catch(() => {
         if (live) setIncomingError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [detail, service]);
+  useEffect(() => {
+    let live = true;
+    if (!detail || !service.getReadiness || !service.getReport)
+      return undefined;
+    setReadiness(null);
+    setPartialReady(false);
+    Promise.all([service.getReadiness(detail.id), service.getReport(detail.id)])
+      .then(([value, report]) => {
+        if (live) {
+          setReadiness(value);
+          setPartialReady(report.validatedResults > 0);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setReadiness(null);
+          setPartialReady(false);
+        }
       });
     return () => {
       live = false;
@@ -181,6 +208,13 @@ export default function CaseViewShell({
         if (visitGeneration.current === requestedVisit) setSaving(false);
       });
   };
+  const reloadCase = () =>
+    service
+      .getCase(id)
+      .then((next) => {
+        if (currentCase.current === id) setDetail(next);
+      })
+      .catch(() => setError(true));
   // i18n-keys: microbiology.case.status.*
   return (
     <Grid
@@ -205,6 +239,60 @@ export default function CaseViewShell({
           )}
           {detail && (
             <>
+              <div
+                role="region"
+                aria-label={t("microbiology.case.bar")}
+                className="microbiology-case-workspace__case-bar"
+              >
+                <div className="microbiology-case-workspace__case-bar-identity">
+                  <span>
+                    <strong>{detail.accessionNumber || detail.id}</strong>
+                    {" · "}
+                    {detail.patientName || t("not.available")}
+                  </span>
+                  <div>
+                    <CaseStatusTags
+                      caseStatus={detail.caseStatus}
+                      statusTags={detail.statusTags}
+                    />
+                    {detail.stat && (
+                      <Tag type="red">{t("microbiology.case.stat")}</Tag>
+                    )}
+                  </div>
+                </div>
+                <nav
+                  aria-label={t("microbiology.case.jumpTo")}
+                  className="microbiology-case-workspace__case-bar-jump"
+                >
+                  {[
+                    ["INITIAL", "microbiology.testing.initial"],
+                    ["CULTURE", "microbiology.culture.title"],
+                    ["ISOLATES", "microbiology.case.isolates"],
+                    ["AST", "microbiology.m6.ast"],
+                    ["REPORT", "microbiology.m6.report"],
+                    ["HISTORY", "microbiology.case.timeline"],
+                  ].map(([scope, label]) => (
+                    <Button
+                      key={scope}
+                      size="sm"
+                      kind="ghost"
+                      onClick={() => {
+                        selectScope(scope);
+                        setJump({ scope });
+                      }}
+                    >
+                      {t(label)}
+                    </Button>
+                  ))}
+                </nav>
+                <CaseReleaseActions
+                  detail={detail}
+                  service={service}
+                  readiness={readiness}
+                  partialReady={partialReady}
+                  onReleased={reloadCase}
+                />
+              </div>
               <h1>
                 {t("microbiology.case.heading", {
                   accession: detail.accessionNumber || detail.id,
@@ -593,19 +681,13 @@ export default function CaseViewShell({
                 </Accordion>
               </section>
               <CaseTestingWorkspace
+                jump={jump}
                 onScopeChange={selectScope}
                 scanSearch={location.search}
                 key={id}
                 detail={detail}
                 service={service}
-                onCaseChanged={() =>
-                  service
-                    .getCase(id)
-                    .then((next) => {
-                      if (currentCase.current === id) setDetail(next);
-                    })
-                    .catch(() => setError(true))
-                }
+                onCaseChanged={reloadCase}
               />
             </>
           )}

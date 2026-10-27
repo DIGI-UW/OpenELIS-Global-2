@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import { Router, Route } from "react-router-dom";
@@ -204,9 +204,12 @@ describe("MVP microbiology case workspace", () => {
       name: /Case M2-001/,
     });
     expect(heading).toHaveTextContent("STAT");
-    expect(screen.getByText("Final")).toBeVisible();
-    expect(screen.getByText("Amendment open")).toBeVisible();
-    expect(screen.getByText("Amendments")).toBeVisible();
+    const status = within(
+      screen.getByText("Status", { selector: "p.cds--label" }).parentElement,
+    );
+    expect(status.getByText("Final")).toBeVisible();
+    expect(status.getByText("Amendment open")).toBeVisible();
+    expect(status.getByText("Amendments")).toBeVisible();
     expect(screen.queryByText("Active")).not.toBeInTheDocument();
     expect(screen.queryByText(/Work stage/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Release state/)).not.toBeInTheDocument();
@@ -389,3 +392,140 @@ test.each([
     else expect(link).not.toBeInTheDocument();
   },
 );
+
+const barService = (
+  readiness = { blockers: [], finalReleaseReady: true, pendingIncomingIds: [] },
+) => ({
+  getCase: vi.fn().mockResolvedValue({
+    ...shell,
+    caseStatus: "PARTIAL",
+    statusTags: [],
+    stat: true,
+    canValidate: true,
+  }),
+  getReadiness: vi.fn().mockResolvedValue(readiness),
+  getReport: vi.fn().mockResolvedValue({ validatedResults: 3 }),
+  getReportVersions: vi.fn().mockResolvedValue([{ id: "v1" }]),
+  releaseReport: vi.fn().mockResolvedValue({}),
+});
+
+describe("case bar", () => {
+  test("names the case, its status and STAT, and opens a section from its links", async () => {
+    const history = renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(bar).toHaveTextContent("M2-001");
+    expect(bar).toHaveTextContent("Test Patient");
+    expect(bar).toHaveTextContent("Partial");
+    expect(bar).toHaveTextContent("STAT");
+    fireEvent.click(
+      within(bar).getByRole("button", { name: "Report and release" }),
+    );
+    expect(new URLSearchParams(history.location.search).get("scope")).toBe(
+      "REPORT",
+    );
+  });
+
+  test("partial release waits for a validated result", async () => {
+    const service = barService();
+    service.getReport.mockResolvedValue({ validatedResults: 0 });
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    await waitFor(() => expect(service.getReport).toHaveBeenCalled());
+    expect(
+      await within(bar).findByRole("button", {
+        name: "Release partial report",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("the confirmation counts a single result in the singular", async () => {
+    const service = barService();
+    service.getReport.mockResolvedValue({ validatedResults: 1 });
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(
+      await within(dialog).findByText(
+        "The case will be locked. 1 result will be released as report version 2. Any later change needs an amendment.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("says how many items keep final release blocked", async () => {
+    renderPage(
+      <CaseViewShell
+        service={barService({
+          blockers: ["ISOLATE_REQUIRED", "PROGRAM_REQUIRED"],
+          finalReleaseReady: false,
+          pendingIncomingIds: [],
+        })}
+        caseId="case-1"
+      />,
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(
+      await within(bar).findByRole("button", {
+        name: "Release final report (2 missing)",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("final release asks for confirmation and says what will happen", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(
+      await within(dialog).findByText(
+        "The case will be locked. 3 results will be released as report version 2. Any later change needs an amendment.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(service.releaseReport).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(bar).getByRole("button", { name: "Release final report" }),
+    );
+    const again = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    fireEvent.click(
+      await within(again).findByRole("button", { name: "Release final" }),
+    );
+    await waitFor(() =>
+      expect(service.releaseReport).toHaveBeenCalledWith("case-1", "final", []),
+    );
+    await waitFor(() => expect(service.getCase).toHaveBeenCalledTimes(2));
+  });
+
+  test("partial release stays one click", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", {
+        name: "Release partial report",
+      }),
+    );
+    await waitFor(() =>
+      expect(service.releaseReport).toHaveBeenCalledWith(
+        "case-1",
+        "preliminary",
+        [],
+      ),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
