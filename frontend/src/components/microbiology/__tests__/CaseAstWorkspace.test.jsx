@@ -7,6 +7,26 @@ import messages from "../../../languages/en.json";
 import CaseAstWorkspace from "../CaseAstWorkspace";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 const t = (key) => messages[`microbiology.m6.${key}`];
+const astActionFormFields = [
+  "isolateId",
+  "action",
+  "runId",
+  "readingId",
+  "panelId",
+  "technique",
+  "breakpointStandardId",
+  "antibioticId",
+  "interpretation",
+  "reason",
+  "analyzerCardId",
+  "analyzerInstrumentId",
+  "clinicalContext",
+  "awaitAnalyzerResults",
+  "reported",
+  "lotSelections",
+  "orderedAntibioticIds",
+  "rawValue",
+];
 const reading = (id, antibioticId, value) => ({
   id,
   antibioticId,
@@ -89,6 +109,11 @@ it("selects only the requested validated drug with a recorded reason", async () 
       true,
     ),
   );
+  expect(
+    Object.keys(service.astAction.mock.calls[0][1]).filter(
+      (field) => !astActionFormFields.includes(field),
+    ),
+  ).toEqual([]);
 });
 it("outside readers see readings and history without mutation controls", async () => {
   show(workspace(), { canWrite: false, canValidate: false });
@@ -623,4 +648,51 @@ it("shows a reporting rule's note under its drug, tagged as coming from the rule
   show(data);
   expect(await screen.findByText("Consider meropenem")).toBeInTheDocument();
   expect(screen.getByText("From rule")).toBeInTheDocument();
+});
+
+it("marks an expert rule override and asks for the identification to be checked", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.intrinsicContradiction = true;
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(await screen.findByText("Expert rule")).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "A measured result contradicts an expected resistance. Check the identification, then confirm it before review.",
+    ),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirm identification" }),
+  );
+  expect(
+    await screen.findByRole("dialog", { name: "Confirm identification" }),
+  ).toBeInTheDocument();
+});
+
+it("words an expert rule override from the rule, not from the stored audit reason", async () => {
+  const data = ticks();
+  const run = data.isolates[0].runs[0];
+  run.readings[0] = {
+    ...run.readings[0],
+    interpretation: "SUSCEPTIBLE",
+    overrideInterpretation: "RESISTANT",
+    overrideRuleId: "rule-1",
+    overrideReason: "Expert rule: Klebsiella, Ampicillin always R",
+  };
+  show(data);
+  expect(
+    await screen.findByText(
+      "Escherichia coli is always resistant to Ampicillin",
+    ),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText("Expert rule: Klebsiella, Ampicillin always R"),
+  ).not.toBeInTheDocument();
 });

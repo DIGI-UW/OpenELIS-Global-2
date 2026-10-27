@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="147-amr-v3-interpretation-rules" author="openelis">
+<createTable schemaName="clinlims" tableName="micro_interpretation_rule"><column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column><column name="antibiotic_id" type="varchar(36)"><constraints nullable="false"/></column><column name="organism_id" type="varchar(36)"/><column name="organism_group" type="varchar(100)"/><column name="interpretation" type="varchar(20)"><constraints nullable="false"/></column><column name="source" type="varchar(200)"/><column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column><column name="last_updated" type="timestamp"/></createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_interpretation_rule" baseColumnNames="antibiotic_id" referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id" constraintName="fk_micro_interpretation_rule_antibiotic_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_interpretation_rule" baseColumnNames="organism_id" referencedTableSchemaName="clinlims" referencedTableName="micro_organism" referencedColumnNames="id" constraintName="fk_micro_interpretation_rule_organism_id"/>
+<sql>ALTER TABLE clinlims.micro_interpretation_rule ADD CONSTRAINT chk_micro_interpretation_rule_interpretation CHECK (interpretation IN ('RESISTANT'));</sql>
+<sql>ALTER TABLE clinlims.micro_interpretation_rule ADD CONSTRAINT chk_micro_interpretation_rule_target CHECK ((organism_id IS NULL) &lt;&gt; (organism_group IS NULL));</sql>
+<addColumn schemaName="clinlims" tableName="micro_ast_reading"><column name="override_rule_id" type="varchar(36)"/></addColumn>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_reading" baseColumnNames="override_rule_id" referencedTableSchemaName="clinlims" referencedTableName="micro_interpretation_rule" referencedColumnNames="id" constraintName="fk_micro_ast_reading_override_rule_id"/>
+<addColumn schemaName="clinlims" tableName="micro_ast_override_event"><column name="rule_id" type="varchar(36)"/></addColumn>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_override_event" baseColumnNames="rule_id" referencedTableSchemaName="clinlims" referencedTableName="micro_interpretation_rule" referencedColumnNames="id" constraintName="fk_micro_ast_override_event_rule_id"/>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_interpretation_rule) THEN
+  RAISE EXCEPTION 'Cannot discard the laboratory interpretation rules';
+ END IF;
+END $$;
+]]></sql><dropColumn schemaName="clinlims" tableName="micro_ast_override_event" columnName="rule_id"/><dropColumn schemaName="clinlims" tableName="micro_ast_reading" columnName="override_rule_id"/><dropTable schemaName="clinlims" tableName="micro_interpretation_rule"/></rollback>
+</changeSet>
+</databaseChangeLog>

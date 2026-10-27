@@ -20,6 +20,7 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
@@ -46,6 +47,7 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroInterpretationRule;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
@@ -90,6 +92,8 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAntibioticDAO antibioticDAO;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroReportingRuleDAO reportingRuleDAO;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroInterpretationRuleDAO interpretationRuleDAO;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
@@ -413,7 +417,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
                 .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
-        applyReportDefault(run, antibioticId, interpretation.name());
+        applyInterpretationRule(run, isolate, reading, performedBy);
+        applyReportDefault(run, antibioticId, effectiveInterpretation(reading));
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_RECORDED, performedBy,
                 "AST reading recorded", "{\"astRunId\":\"" + runId + "\",\"readingId\":\"" + reading.getId() + "\"}");
         return reading;
@@ -441,8 +446,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         String fromInterpretation = effectiveInterpretation(reading);
         reading.setOverrideInterpretation(overrideInterpretation.name());
         reading.setOverrideReason(overrideReason.trim());
+        reading.setOverrideRuleId(null);
         recordOverrideEvent(readingId, MicroAstOverrideAction.OVERRIDE, fromInterpretation,
-                overrideInterpretation.name(), overrideReason, performedBy);
+                overrideInterpretation.name(), overrideReason, performedBy, null);
         MicroAstReading updated = readingDAO.update(reading);
         applyReportDefault(run, reading.getAntibioticId(), overrideInterpretation.name());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
@@ -469,9 +475,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         requireMutableRun(run, isolate.getCaseId());
         requireUnreviewedRun(run);
         recordOverrideEvent(readingId, MicroAstOverrideAction.REVERT, reading.getOverrideInterpretation(),
-                reading.getInterpretation(), reason, performedBy);
+                reading.getInterpretation(), reason, performedBy, null);
         reading.setOverrideInterpretation(null);
         reading.setOverrideReason(null);
+        reading.setOverrideRuleId(null);
         MicroAstReading updated = readingDAO.update(reading);
         applyReportDefault(run, reading.getAntibioticId(), reading.getInterpretation());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
@@ -496,6 +503,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             form.performedBy = event.getPerformedBy();
             form.performedByDisplay = MicrobiologyUserDisplayResolver.resolve(systemUserService, event.getPerformedBy(),
                     userDisplayById);
+            form.ruleId = event.getRuleId();
             return form;
         }).toList();
     }
@@ -777,7 +785,7 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     @Override
     @Transactional
-    public void reapplyReportingRulesForIsolate(String isolateId, String performedBy) {
+    public void reapplyRulesForIsolate(String isolateId, String performedBy) {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroIsolate isolate = isolateDAO.get(isolateId).orElse(null);
         if (isolate == null) {
@@ -787,6 +795,26 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (microCase != null
                 && MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())) {
             return;
+        }
+        for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
+            if (Set.of("REVIEWED", "INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus())) {
+                continue;
+            }
+            for (MicroAstReading reading : latestReadings(run.getId())) {
+                if (reading.getOverrideRuleId() != null) {
+                    String reason = "Expert rule no longer applies after re-identification";
+                    recordOverrideEvent(reading.getId(), MicroAstOverrideAction.REVERT,
+                            reading.getOverrideInterpretation(), reading.getInterpretation(), reason, performedBy,
+                            reading.getOverrideRuleId());
+                    reading.setOverrideInterpretation(null);
+                    reading.setOverrideReason(null);
+                    reading.setOverrideRuleId(null);
+                    readingDAO.update(reading);
+                    recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy,
+                            reason, "{\"readingId\":\"" + reading.getId() + "\"}");
+                }
+                applyInterpretationRule(run, isolate, reading, performedBy);
+            }
         }
         boolean changed = false;
         for (MicroAstRun run : runDAO.getByIsolateId(isolateId)) {
@@ -888,6 +916,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (latestReadings.stream().anyMatch(this::hasUnresolvedInstrumentMismatch)) {
             throw new MicroAstConflictException("AST_INSTRUMENT_INTERPRETATION_MISMATCH");
         }
+        if (run.getAnalyzerFlagsAcknowledgedAt() == null
+                && latestReadings.stream().anyMatch(MicroAstReading::contradictsExpertRule)) {
+            throw new MicroAstConflictException("AST_INTRINSIC_RESISTANCE_UNVERIFIED");
+        }
     }
 
     private boolean hasUnresolvedInstrumentMismatch(MicroAstReading reading) {
@@ -896,7 +928,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 && (reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank());
     }
 
-    private List<MicroAstReading> latestReadings(String runId) {
+    @Override
+    public List<MicroAstReading> latestReadings(String runId) {
         Map<String, MicroAstReading> latestByAntibiotic = new HashMap<>();
         Comparator<MicroAstReading> revisionOrder = Comparator.comparingLong(MicroAstReading::getEntrySequence)
                 .thenComparing(MicroAstReading::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
@@ -946,7 +979,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setEntrySequence(readingDAO.getByRunId(reading.getAstRunId()).stream()
                 .mapToLong(MicroAstReading::getEntrySequence).max().orElse(0) + 1);
         readingDAO.insert(reading);
-        applyReportDefault(run, reading.getAntibioticId(), reading.getInterpretation());
+        applyInterpretationRule(run, isolate, reading, performedBy);
+        applyReportDefault(run, reading.getAntibioticId(), effectiveInterpretation(reading));
     }
 
     /** The reading is kept as plain text too, so its exponent must be small. */
@@ -1200,6 +1234,41 @@ public class MicroAstServiceImpl implements MicroAstService {
                 .map(MicroAstPanelAntibiotic::getReportBehavior).findFirst().orElse("ALWAYS");
     }
 
+    private void applyInterpretationRule(MicroAstRun run, MicroIsolate isolate, MicroAstReading reading,
+            String performedBy) {
+        if (isolate == null || isolate.getOrganismId() == null) {
+            return;
+        }
+        MicroOrganism organism = organismDAO.get(isolate.getOrganismId()).orElse(null);
+        if (organism == null) {
+            return;
+        }
+        MicroInterpretationRule rule = interpretationRuleDAO
+                .findBest(reading.getAntibioticId(), isolate.getOrganismId(), organism.getOrganismGroup()).orElse(null);
+        if (rule == null || rule.getInterpretation() == null
+                || rule.getInterpretation().equals(reading.getInterpretation())) {
+            return;
+        }
+        String organismLabel = firstNonBlank(organism.getDisplayName(), organism.getOrganismGroup());
+        String antibioticLabel = antibioticDAO.get(reading.getAntibioticId()).map(MicroAntibiotic::getDisplayName)
+                .orElse(reading.getAntibioticId());
+        String reason = "Expert rule: " + organismLabel + ", " + antibioticLabel + " always R";
+        reading.setOverrideInterpretation(rule.getInterpretation());
+        reading.setOverrideReason(reason);
+        reading.setOverrideRuleId(rule.getId());
+        if (reading.contradictsExpertRule()) {
+            run.setAnalyzerFlagsAcknowledgedAt(null);
+            run.setAnalyzerFlagsAcknowledgedBy(null);
+            run.setAnalyzerFlagsAcknowledgementReason(null);
+            runDAO.update(run);
+        }
+        readingDAO.update(reading);
+        recordOverrideEvent(reading.getId(), MicroAstOverrideAction.OVERRIDE, reading.getInterpretation(),
+                rule.getInterpretation(), reason, performedBy, rule.getId());
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy, reason,
+                "{\"readingId\":\"" + reading.getId() + "\",\"ruleId\":\"" + rule.getId() + "\"}");
+    }
+
     private String effectiveInterpretation(MicroAstReading reading) {
         return reading.getOverrideInterpretation() == null || reading.getOverrideInterpretation().isBlank()
                 ? reading.getInterpretation()
@@ -1207,7 +1276,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     }
 
     private void recordOverrideEvent(String readingId, MicroAstOverrideAction action, String fromInterpretation,
-            String toInterpretation, String reason, String performedBy) {
+            String toInterpretation, String reason, String performedBy, String ruleId) {
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
         MicroAstOverrideEvent event = new MicroAstOverrideEvent();
         event.setReadingId(readingId);
@@ -1217,6 +1286,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         event.setReason(reason.trim());
         event.setPerformedAt(MicroCaseServiceImpl.now());
         event.setPerformedBy(performedBy);
+        event.setRuleId(ruleId);
         overrideEventDAO.insert(event);
     }
 

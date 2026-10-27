@@ -5,6 +5,8 @@ vi.mock("./api", () => ({
   getReportingRuleSettings: vi.fn(),
   saveReportingRuleSettings: vi.fn(),
   getReferenceOptions: vi.fn(),
+  getInterpretationRules: vi.fn(),
+  saveInterpretationRule: vi.fn(),
 }));
 
 import React from "react";
@@ -14,11 +16,13 @@ import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import {
+  getInterpretationRules,
   getReferenceOptions,
   getReportingRuleHistory,
   getReportingRules,
   getReportingRuleSettings,
   saveReportingRule,
+  saveInterpretationRule,
   saveReportingRuleSettings,
 } from "./api";
 import AstRulesPage from "./AstRulesPage";
@@ -62,6 +66,19 @@ beforeEach(() => {
     writtenFor: "CLSI",
     activeAuthority: "CLSI",
   });
+  getInterpretationRules.mockResolvedValue([
+    {
+      id: "i1",
+      antibioticId: "amp",
+      antibioticName: "Ampicillin",
+      organismId: null,
+      organismName: null,
+      organismGroup: "Klebsiella",
+      interpretation: "RESISTANT",
+      source: "EUCAST expected phenotypes",
+      active: true,
+    },
+  ]);
   getReferenceOptions.mockImplementation((resource) =>
     Promise.resolve(options[resource] || []),
   );
@@ -263,4 +280,88 @@ it("limits a rule note to 1,000 characters and counts them", async () => {
     "1000",
   );
   expect(within(dialog).getByText("0/1000")).toBeInTheDocument();
+});
+
+it("lists interpretation rules on the same page", async () => {
+  show();
+  const table = await screen.findByRole("table", {
+    name: "Interpretation rules",
+  });
+  expect(within(table).getByText("Klebsiella")).toBeInTheDocument();
+  expect(within(table).getByText("Ampicillin")).toBeInTheDocument();
+  expect(within(table).getByText("Always R")).toBeInTheDocument();
+  expect(
+    within(table).getByText("EUCAST expected phenotypes"),
+  ).toBeInTheDocument();
+});
+
+it("adds an always resistant rule", async () => {
+  saveInterpretationRule.mockResolvedValue({});
+  show();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Add interpretation rule" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.change(await within(dialog).findByLabelText("Antibiotic"), {
+    target: { value: "amk" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Organism group"), {
+    target: { value: "Enterobacterales" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Source"), {
+    target: { value: "Local" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(saveInterpretationRule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        antibioticId: "amk",
+        organismGroup: "Enterobacterales",
+        interpretation: "RESISTANT",
+        source: "Local",
+      }),
+    ),
+  );
+  await waitFor(() => expect(getInterpretationRules).toHaveBeenCalledTimes(2));
+});
+
+it("asks for an organism or a group and names the interpretation rule in its error", async () => {
+  saveInterpretationRule.mockRejectedValue(new Error("Bad Request"));
+  show();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Add interpretation rule" }),
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    await within(dialog).findByRole("option", { name: "Choose an organism" }),
+  ).toBeInTheDocument();
+  expect(
+    within(dialog).getByRole("option", { name: "Choose a group" }),
+  ).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  expect(
+    await within(dialog).findByText(
+      "The interpretation rule could not be saved.",
+    ),
+  ).toBeInTheDocument();
+});
+
+it("clears an interpretation rule error when its dialog closes", async () => {
+  saveInterpretationRule.mockRejectedValue(new Error("Bad Request"));
+  show();
+  const add = await screen.findByRole("button", {
+    name: "Add interpretation rule",
+  });
+  fireEvent.click(add);
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  await within(dialog).findByText(
+    "The interpretation rule could not be saved.",
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  fireEvent.click(add);
+  const reopened = await screen.findByRole("dialog");
+  expect(
+    within(reopened).queryByText("The interpretation rule could not be saved."),
+  ).not.toBeInTheDocument();
 });
