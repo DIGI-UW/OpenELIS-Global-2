@@ -3,20 +3,27 @@ package org.openelisglobal.reports.tat.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.engine.spi.EntityKey;
 import org.hibernate.stat.Statistics;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
 import org.openelisglobal.reports.tat.bean.TATResult;
 import org.openelisglobal.reports.tat.bean.TATSegment;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +37,9 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     public void eachRowCarriesItsOwnSamplesOrderingSite() {
@@ -64,6 +74,25 @@ public class TATReportOrderingSiteIntegrationTest extends BaseWebContextSensitiv
             sample("C" + i + run, site);
         }
         assertEquals(twoRows, queriesForOneDay());
+    }
+
+    @Test
+    public void reportRowsDoNotStayInTheSession() {
+        String run = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        sample("A" + run, organization("Clinic " + run));
+        sample("B" + run);
+
+        List<String> labNumbers = allResults().stream().map(TATResult::getLabNumber).filter(n -> n.endsWith(run))
+                .sorted().toList();
+
+        assertEquals(List.of("A" + run, "B" + run), labNumbers);
+        assertEquals(List.of(), rowEntitiesInSession());
+    }
+
+    private List<String> rowEntitiesInSession() {
+        Set<String> rowEntities = Set.of(Analysis.class.getName(), Sample.class.getName(), SampleItem.class.getName());
+        return entityManager.unwrap(Session.class).getStatistics().getEntityKeys().stream()
+                .map(key -> ((EntityKey) key).getEntityName()).filter(rowEntities::contains).toList();
     }
 
     private long queriesForOneDay() {

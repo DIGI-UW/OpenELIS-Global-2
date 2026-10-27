@@ -258,6 +258,13 @@ public class TATReportServiceImpl implements TATReportService {
 
             results.add(result);
         }
+        // Left in the session, every row would be flushed again by each later query in
+        // the caller's transaction.
+        for (Object[] row : rows) {
+            entityManager.detach(row[0]);
+            entityManager.detach(row[1]);
+            entityManager.detach(row[2]);
+        }
 
         return results;
     }
