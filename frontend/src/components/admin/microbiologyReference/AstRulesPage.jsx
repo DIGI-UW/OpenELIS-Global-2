@@ -841,7 +841,19 @@ export default function AstRulesPage() {
                   <TableCell>{t(results[row.measured])}</TableCell>
                   <TableCell>
                     {t(results[row.interpretation])}
-                    {row.expertRule && <div>{row.expertRule}</div>}
+                    {row.expertRule && (
+                      <div>
+                        {intl.formatMessage(
+                          { id: "microbiology.m6.expertRuleLine" },
+                          {
+                            organism: options.organisms.find(
+                              (item) => item.id === preview.organismId,
+                            )?.label,
+                            antibiotic: row.antibioticName,
+                          },
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>{row.reported ? t("yes") : t("no")}</TableCell>
                   <TableCell>
