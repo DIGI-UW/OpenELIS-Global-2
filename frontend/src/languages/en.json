@@ -8760,6 +8760,8 @@
   "shipment.error.generateLabel": "Error generating shipping label",
   "shipment.error.generateManifest": "Error generating manifest",
   "shipment.error.invalidState": "Invalid box state for this operation",
+  "shipment.error.linkDestinationNotLoaded": "The destination in this link could not be loaded.",
+  "shipment.error.linkSampleNotLoaded": "The sample in this link could not be loaded.",
   "shipment.error.markAsLost": "Failed to mark sample as lost",
   "shipment.error.markReady": "Failed to mark box as ready to send",
   "shipment.error.noDestinationFacility": "No destination facility specified for this sample",
