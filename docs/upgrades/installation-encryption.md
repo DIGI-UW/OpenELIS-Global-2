@@ -20,7 +20,9 @@ this step.
 
 1. Stop OpenELIS and every other writer to the database. Take a database backup
    and a matching backup of the existing configuration and key volume.
-2. Generate or retain the destination installation key with `certs`. Keep the
+2. Retain the destination installation key, or deliberately generate a new key
+   file for this conversion. Ordinary `certs` startup never replaces an existing
+   encryption key; TLS adoption retains the effective previous key. Keep the
    previous encryption password in a protected file. Do not put keys in command
    arguments, logs, Git, or shell history. Key and password files preserve
    spaces and other characters; only trailing LF line endings are removed,

@@ -3,22 +3,31 @@ services:
     container_name: oe-certs
     image: certgen
     build:
-      context: ./frontend
-      dockerfile: ./Dockerfile.certs
+      context: .
+      dockerfile: ./frontend/Dockerfile.certs
     restart: "no"
     # Gives the install its own TLS key on first start and keeps the stores built from it.
-    entrypoint: ["/bin/sh", "/ensure-install-keys.sh"]
     environment:
         - KEYSTORE_PW=${SSL_KEYSTORE_PASSWORD:-kspass}
         - TRUSTSTORE_PW=${SSL_TRUSTSTORE_PASSWORD:-tspass}
     networks:
         - default  
     volumes:
-        - key_trust-store-volume:/etc/openelis-global
-        - keys-vol:/etc/ssl/private/
-        - certs-vol:/etc/ssl/certs/
-        - ./scripts/certs/ensure-install-keys.sh:/ensure-install-keys.sh:ro
-
+        - type: volume
+          source: key_trust-store-volume
+          target: /etc/openelis-global
+          volume:
+            nocopy: true
+        - type: volume
+          source: keys-vol
+          target: /etc/ssl/private/
+          volume:
+            nocopy: true
+        - type: volume
+          source: certs-vol
+          target: /etc/ssl/certs/
+          volume:
+            nocopy: true
   db.openelis.org:
       build:
         context: .
@@ -79,7 +88,11 @@ services:
         # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
         - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
-        -  key_trust-store-volume:/etc/openelis-global
+        - type: volume
+          source: key_trust-store-volume
+          target: /etc/openelis-global
+          volume:
+            nocopy: true
         - ./volume/lucene:/var/lib/lucene_index
         - ./volume/programs/:/var/lib/openelis-global/programs
         - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
@@ -134,8 +147,11 @@ services:
         FHIR_DATASOURCE_PASSWORD: ${OE_DB_PASSWORD:-clinlims}
         FHIR_SERVER_ADRESS: "http://fhir.openelis.org:8080/fhir/"
     volumes:
-      -  key_trust-store-volume:/etc/openelis-global
-      
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
   frontend.openelis.org:
     image: frontend
     # No `target:` → defaults to the final stage of the multi-stage
@@ -167,8 +183,16 @@ services:
         - -c
         - "envsubst '$$OE_HTTPS_PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"
     volumes:
-        - certs-vol:/etc/nginx/certs/
-        - keys-vol:/etc/nginx/keys/
+        - type: volume
+          source: certs-vol
+          target: /etc/nginx/certs/
+          volume:
+            nocopy: true
+        - type: volume
+          source: keys-vol
+          target: /etc/nginx/keys/
+          volume:
+            nocopy: true
         - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf.template:ro
     networks:
         - default  

@@ -1,27 +1,9 @@
-##
-# Build Stage
-#
-FROM ubuntu:focal AS build
-
-
-##
-# Prerequesites
-#
-RUN sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' \
-        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true \
-    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
-        --allow-releaseinfo-change -y update \
-    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
-        -y upgrade \
-    && DEBIAN_FRONTEND=noninteractive apt-get \
-        -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
-        -y --no-install-recommends install \
-        openssl net-tools default-jdk maven \
-        apache2-utils git apt-transport-https \
-        ca-certificates curl gnupg lsb-release software-properties-common \
-    && apt-get clean
-
-##
-# The certs service runs scripts/certs/ensure-install-keys.sh with this image's
-# openssl and keytool; no key is built into the image.
-RUN mkdir -p /etc/openelis-global /etc/ssl/private /etc/ssl/certs
+# Build from the repository root. Only tools and the initializer are packaged;
+# installation keys are created after persistent volumes are mounted.
+FROM eclipse-temurin:21-jre-noble
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /etc/openelis-global /etc/ssl/private /etc/ssl/certs
+COPY scripts/certs/ensure-install-keys.sh /usr/local/bin/ensure-install-keys
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/ensure-install-keys"]

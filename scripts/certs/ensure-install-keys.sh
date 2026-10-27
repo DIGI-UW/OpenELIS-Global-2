@@ -1,16 +1,15 @@
 #!/bin/sh
-# Gives this install its own TLS key and keeps the key and trust stores built from it,
-# and its own key for database secrets (install/encryption.key).
-#
-# Run by the compose `certs` service on every start. Only the certificate baked into
-# the public certgen image, which every install shared, is replaced: the first start
-# generates the install's key and certificate under /etc/openelis-global/install and
-# rebuilds the stores and the proxy certificate that still hold the image's. A keystore
-# that holds a certificate of the site's own is kept, and its key becomes the install's.
-# A store that does not open with KEYSTORE_PW or TRUSTSTORE_PW stops startup unchanged. The
-# proxy's certificate files are written only when they are missing or still hold the
-# image's certificate, so a Let's Encrypt or locally issued one is kept.
+# Creates keys only for an empty installation. Ordinary restarts validate and retain
+# the complete existing identity. --upgrade-existing is a separate, explicit TLS
+# adoption step; it preserves the supplied effective database-secret password and
+# never converts encrypted database values.
 set -eu
+umask 077
+
+fail() { echo "Install keys: $*" >&2; exit 1; }
+mode=${1:-start}
+case "$mode" in start|--upgrade-existing) ;; *) fail "Usage: $0 [--upgrade-existing]" ;; esac
+[ "$#" -le 1 ] || fail "Too many arguments"
 
 STORES=/etc/openelis-global
 INSTALL="$STORES/install"
@@ -57,6 +56,33 @@ truststore_cert() {
     -storepass:env TRUSTSTORE_PW 2>/dev/null
 }
 
+# Validate before changing any files, including operator-provided proxy keys.
+[ "${#KEYSTORE_PW}" -ge 6 ] && [ "${#TRUSTSTORE_PW}" -ge 6 ] || fail "Store passwords must have at least six characters"
+if [ -e "$PROXY_CERT" ] || [ -L "$PROXY_CERT" ] || [ -e "$PROXY_KEY" ] || [ -L "$PROXY_KEY" ]; then
+  [ -s "$PROXY_CERT" ] && [ -s "$PROXY_KEY" ] || fail "Incomplete proxy identity; restore both certificate and key"
+  proxy_public=$(openssl x509 -in "$PROXY_CERT" -pubkey -noout) || fail "Invalid proxy certificate"
+  key_public=$(openssl pkey -in "$PROXY_KEY" -pubout 2>/dev/null) || fail "Invalid proxy key"
+  [ "$proxy_public" = "$key_public" ] || fail "Proxy key does not match its certificate"
+fi
+
+fresh=false
+if [ ! -d "$STORES" ] || [ -z "$(ls -A "$STORES")" ]; then
+  fresh=true
+fi
+if [ "$fresh" = true ] && [ "$mode" = start ] && { [ -e "$PROXY_CERT" ] || [ -e "$PROXY_KEY" ]; }; then
+  fail "Proxy identity exists without its stores; restore the complete backup or explicitly adopt the installation"
+fi
+if [ "$fresh" = false ] && [ "$mode" = start ]; then
+  for file in keystore client_facing_keystore truststore install/server.key install/server.crt install/encryption.key; do
+    [ -s "$STORES/$file" ] || fail "Incomplete security material ($file); restore the complete backup. Existing installations require explicit --upgrade-existing adoption"
+  done
+  [ ! -e "$INSTALL/.initializing" ] || fail "Initialization was interrupted; restore the complete backup"
+  [ -s "$PROXY_CERT" ] && [ -s "$PROXY_KEY" ] || fail "Missing proxy identity; restore both certificate and key"
+fi
+if [ "$mode" = --upgrade-existing ] && [ ! -s "$INSTALL/encryption.key" ]; then
+  [ -n "${OE_ENCRYPTION_PASSWORD:-}" ] || fail "Existing installations require their effective OE_ENCRYPTION_PASSWORD; no database encryption key will be guessed or generated"
+fi
+
 if [ -s "$STORES/keystore" ] && ! keystore_opens; then
   echo "ERROR: KEYSTORE_PW cannot open the existing keystore; restore its configured password before restarting" >&2
   exit 1
@@ -66,13 +92,33 @@ if [ -s "$STORES/truststore" ] && ! truststore_opens; then
   exit 1
 fi
 
+if [ -e "$STORES/client_facing_keystore" ]; then
+  openssl pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -noout >/dev/null 2>&1 || fail "KEYSTORE_PW cannot open the existing client_facing_keystore"
+fi
+if [ "$fresh" = false ] && [ "$mode" = start ]; then
+  keystore_cert | is_image_cert && fail "Shared image identity requires explicit --upgrade-existing adoption"
+  openssl pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null | is_image_cert && fail "Shared client-facing identity requires explicit --upgrade-existing adoption"
+  install_public=$(openssl x509 -in "$CERT" -pubkey -noout) || fail "Invalid installation certificate"
+  key_public=$(openssl pkey -in "$KEY" -pubout 2>/dev/null) || fail "Invalid installation private key"
+  [ "$install_public" = "$key_public" ] || fail "Installation key does not match its certificate"
+  [ "$(keystore_cert | fingerprint)" = "$(fingerprint <"$CERT")" ] || fail "Keystore changed; use explicit --upgrade-existing after checking the replacement"
+  [ "$(truststore_cert | fingerprint)" = "$(fingerprint <"$CERT")" ] || fail "Truststore no longer trusts this installation; restore or explicitly adopt the replacement"
+fi
+
 mkdir -p "$INSTALL"
+chown 0:0 "$STORES" "$INSTALL"
+chmod 755 "$STORES"
 chmod 700 "$INSTALL"
+if [ "$fresh" = true ]; then touch "$INSTALL/.initializing"; fi
 
 # The install's key for database secrets, read by the webapp's entrypoint.
 if [ ! -s "$INSTALL/encryption.key" ]; then
-  echo "Generating this install's encryption key for database secrets"
-  (umask 077 && openssl rand -hex 32 >"$INSTALL/encryption.key.tmp")
+  if [ "$mode" = --upgrade-existing ]; then
+    printf '%s' "$OE_ENCRYPTION_PASSWORD" >"$INSTALL/encryption.key.tmp"
+  else
+    echo "Generating this install's encryption key for database secrets"
+    openssl rand -hex 32 >"$INSTALL/encryption.key.tmp"
+  fi
   mv "$INSTALL/encryption.key.tmp" "$INSTALL/encryption.key"
 fi
 
@@ -108,6 +154,10 @@ if [ ! -s "$STORES/keystore" ] || keystore_cert | is_image_cert; then
   cp "$STORES/keystore" "$STORES/client_facing_keystore"
 fi
 
+if [ ! -s "$STORES/client_facing_keystore" ] || openssl pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null | is_image_cert; then
+  cp "$STORES/keystore" "$STORES/client_facing_keystore"
+fi
+
 if [ ! -s "$STORES/truststore" ] || [ "$(truststore_cert | fingerprint)" != "$current" ]; then
   echo "Trusting this install's certificate in the truststore"
   rm -f "$STORES/truststore.tmp"
@@ -121,9 +171,15 @@ if [ ! -s "$STORES/truststore" ] || [ "$(truststore_cert | fingerprint)" != "$cu
   mv "$STORES/truststore.tmp" "$STORES/truststore"
 fi
 
-for store in keystore client_facing_keystore truststore; do
-  if [ -f "$STORES/$store" ]; then chmod a+r "$STORES/$store"; fi
+# Both Tomcat consumers already belong to TLS group 8443. The Bridge needs only
+# the public truststore; it must not gain access to the private stores or key.
+for store in keystore client_facing_keystore; do
+  chown 0:8443 "$STORES/$store"
+  chmod 640 "$STORES/$store"
 done
+chmod 644 "$STORES/truststore"
+chown 0:0 "$KEY" "$INSTALL/encryption.key"
+chmod 600 "$KEY" "$INSTALL/encryption.key"
 
 # Missing, or still the image's certificate; a symlink or any other certificate is kept.
 if [ -d "$(dirname "$PROXY_CERT")" ] && [ -d "$(dirname "$PROXY_KEY")" ] && {
@@ -137,4 +193,5 @@ if [ -d "$(dirname "$PROXY_CERT")" ] && [ -d "$(dirname "$PROXY_KEY")" ] && {
   chmod 600 "$PROXY_KEY"
 fi
 
+rm -f "$INSTALL/.initializing"
 echo "TLS stores hold this install's certificate (SHA-256 $current)"

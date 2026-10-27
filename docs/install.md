@@ -68,49 +68,29 @@ This Option can be used where there is fast internet connectivity
 
 2. Install [git](https://github.com/git-guides/install-git)
 
-#### Steps to Run Online Setup
+#### Supported online installation
 
-1.  Clone the
-    [OpenELIS-Global docker](https://github.com/DIGI-UW/openelis-docker)
-    repository.
+Use a released version of
+[openelis-docker](https://github.com/DIGI-UW/openelis-docker) and its
+installation instructions. A release pins matching images; the repository's
+`main` branch tracks development images for testing. Configure `.env`, then run:
 
-        git clone https://github.com/DIGI-UW/openelis-docker.git
+```sh
+docker compose pull
+docker compose up -d --no-build
+docker compose ps
+```
 
-1.  Move to the Project directory
+The installation uses published images and persistent Docker volumes. Its
+`certs` container creates installation keys automatically on a fresh
+installation and finishes before the application starts. No host Java
+installation, manual key creation or source build is part of this path. Existing
+installations must follow the separate adoption instructions before changing
+security material.
 
-         cd  openelis-docker
-
-##### Running OpenELIS Global 3x in Docker
-
-    docker compose up -d
-
-###### The Instaces can be accesed at
-
-| Instance     |                   URL                   | credentials (user : password) |
-| ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/  |            admin: adminADMIN! |
-| New React UI |           https://localhost/            |            admin: adminADMIN! |
-
-##### Running OpenELIS Global 2x in Docker
-
-    docker compose -f docker-compose-2x.yml up -d
-
-###### The Instaces can be accesed at
-
-| Instance |                   URL                    | credentials (user : password) |
-| -------- | :--------------------------------------: | ----------------------------: |
-| OpenElis | https://localhost:8443/OpenELIS-Global/  |            admin: adminADMIN! |
-
-##### Running OpenELIS-Global2 from source code in docker
-
-1.  Clone the [OpenELIS Global](https://github.com/DIGI-UW/OpenELIS-Global-2)
-    repository.
-
-         git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
-
-1.  Build and Run the docker images from source code
-
-    docker compose -f build.docker-compose.yml up -d --build
+For source development, use [the development guide](dev_setup.md). Development
+builds and historical 2.x instructions are not alternative production
+installers.
 
 ### Downloaded Installer Offline Setup
 

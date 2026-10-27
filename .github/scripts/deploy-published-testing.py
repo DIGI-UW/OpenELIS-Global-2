@@ -31,18 +31,16 @@ SERVICES = {
     "fhir.openelis.org": "openelis-global-2-fhir",
     "frontend.openelis.org": "openelis-global-2-frontend",
     "proxy": "openelis-global-2-proxy",
+    "certs": "openelis-global-2-certs",
     "openelis-analyzer-bridge": "openelis-global-2-analyzer-bridge",
     "astm-simulator": "openelis-global-2-analyzer-mock",
 }
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
-# The compose `certs` service mounts this script and every service waits for it.
-CERTS_SCRIPT = "scripts/certs/ensure-install-keys.sh"
 BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
     SEED_SCRIPT,
-    CERTS_SCRIPT,
 )
 PAIRING_CODE = "ANALYZER_BRIDGE_PAIRING_CODE"
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
