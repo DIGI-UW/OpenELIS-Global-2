@@ -26,6 +26,8 @@ import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroReportingRuleDAO;
 import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
@@ -1029,15 +1031,16 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (values == null || values.isEmpty()) {
             return null;
         }
-        return values.stream().map(this::trimToNull).filter(value -> value != null).collect(Collectors.joining("|"));
+        return values.stream().map(MicroAstServiceImpl::trimToNull).filter(value -> value != null)
+                .collect(Collectors.joining("|"));
     }
 
-    private String firstNonBlank(String preferred, String fallback) {
+    private static String firstNonBlank(String preferred, String fallback) {
         String normalized = trimToNull(preferred);
         return normalized == null ? trimToNull(fallback) : normalized;
     }
 
-    private String trimToNull(String value) {
+    private static String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
@@ -1196,7 +1199,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         runAntibioticDAO.update(ordered);
     }
 
-    private static boolean defaultReported(String reportBehavior, String interpretation) {
+    static boolean defaultReported(String reportBehavior, String interpretation) {
         if ("DONT_REPORT".equals(reportBehavior)) {
             return false;
         }
@@ -1234,6 +1237,55 @@ public class MicroAstServiceImpl implements MicroAstService {
                 .map(MicroAstPanelAntibiotic::getReportBehavior).findFirst().orElse("ALWAYS");
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public MicroReportingRulePreviewResultForm previewReportingRules(MicroReportingRulePreviewForm request) {
+        MicroOrganism organism = java.util.Optional.ofNullable(trimToNull(request.organismId)).flatMap(organismDAO::get)
+                .orElseThrow(() -> new IllegalArgumentException("REPORTING_RULE_PREVIEW_ORGANISM_REQUIRED"));
+        String organismId = organism.getId();
+        String organismGroup = organism.getOrganismGroup();
+        String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
+        String sampleTypeId = trimToNull(request.sampleTypeId);
+        String defaultPanelId = defaultPanelId(organism);
+        MicroReportingRulePreviewResultForm result = new MicroReportingRulePreviewResultForm();
+        result.defaultPanelName = defaultPanelId == null ? null
+                : panelDAO.get(defaultPanelId).map(MicroAstPanel::getName).orElse(null);
+        List<MicroReportingRulePreviewForm.Reading> readings = request.readings == null ? List.of() : request.readings;
+        for (MicroReportingRulePreviewForm.Reading reading : readings) {
+            String antibioticId = reading == null ? null : trimToNull(reading.antibioticId);
+            if (antibioticId == null) {
+                continue;
+            }
+            MicroReportingRulePreviewResultForm.Row row = new MicroReportingRulePreviewResultForm.Row();
+            row.antibioticId = antibioticId;
+            row.antibioticName = antibioticDAO.get(antibioticId).map(MicroAntibiotic::getDisplayName)
+                    .orElse(antibioticId);
+            row.measured = reading.interpretation;
+            row.interpretation = reading.interpretation;
+            interpretationRuleDAO.findBest(antibioticId, organismId, organismGroup)
+                    .filter(rule -> rule.getInterpretation() != null
+                            && !rule.getInterpretation().equals(reading.interpretation))
+                    .ifPresent(rule -> {
+                        row.interpretation = rule.getInterpretation();
+                        row.expertRule = expertRuleReason(organism, antibioticId, row.antibioticName);
+                    });
+            var reportingRule = reportingRuleDAO.findBest(antibioticId, organismId, organismGroup, sampleTypeId,
+                    clinicalContext);
+            if (reportingRule.isPresent()) {
+                MicroReportingRule rule = reportingRule.get();
+                row.reportBehavior = rule.getReportBehavior();
+                row.reportRuleId = rule.getId();
+                row.note = rule.noteFor(row.interpretation);
+            } else {
+                row.reportBehavior = defaultPanelId == null ? "ALWAYS"
+                        : panelReportBehavior(defaultPanelId, antibioticId);
+            }
+            row.reported = defaultReported(row.reportBehavior, row.interpretation);
+            result.rows.add(row);
+        }
+        return result;
+    }
+
     private void applyInterpretationRule(MicroAstRun run, MicroIsolate isolate, MicroAstReading reading,
             String performedBy) {
         if (isolate == null || isolate.getOrganismId() == null) {
@@ -1249,10 +1301,8 @@ public class MicroAstServiceImpl implements MicroAstService {
                 || rule.getInterpretation().equals(reading.getInterpretation())) {
             return;
         }
-        String organismLabel = firstNonBlank(organism.getDisplayName(), organism.getOrganismGroup());
-        String antibioticLabel = antibioticDAO.get(reading.getAntibioticId()).map(MicroAntibiotic::getDisplayName)
-                .orElse(reading.getAntibioticId());
-        String reason = "Expert rule: " + organismLabel + ", " + antibioticLabel + " always R";
+        String reason = expertRuleReason(organism, reading.getAntibioticId(),
+                antibioticDAO.get(reading.getAntibioticId()).map(MicroAntibiotic::getDisplayName).orElse(null));
         reading.setOverrideInterpretation(rule.getInterpretation());
         reading.setOverrideReason(reason);
         reading.setOverrideRuleId(rule.getId());
@@ -1267,6 +1317,12 @@ public class MicroAstServiceImpl implements MicroAstService {
                 rule.getInterpretation(), reason, performedBy, rule.getId());
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_READING_OVERRIDDEN, performedBy, reason,
                 "{\"readingId\":\"" + reading.getId() + "\",\"ruleId\":\"" + rule.getId() + "\"}");
+    }
+
+    static String expertRuleReason(MicroOrganism organism, String antibioticId, String antibioticDisplayName) {
+        String organismLabel = firstNonBlank(organism.getDisplayName(), organism.getOrganismGroup());
+        String antibioticLabel = firstNonBlank(antibioticDisplayName, antibioticId);
+        return "Expert rule: " + organismLabel + ", " + antibioticLabel + " always R";
     }
 
     private String effectiveInterpretation(MicroAstReading reading) {
@@ -1319,9 +1375,12 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
     }
 
+    private String defaultPanelId(MicroOrganism organism) {
+        return "NTM".equals(organism.getSusceptibilityProtocol()) ? null : organism.getDefaultAstPanelId();
+    }
+
     private PanelSelection resolvePanel(MicroOrganism organism, String requestedPanelId) {
-        String orderedPanelId = "NTM".equals(organism.getSusceptibilityProtocol()) ? null
-                : organism.getDefaultAstPanelId();
+        String orderedPanelId = defaultPanelId(organism);
         String selectedPanelId = requestedPanelId == null || requestedPanelId.isBlank() ? orderedPanelId
                 : requestedPanelId;
         if (selectedPanelId == null || selectedPanelId.isBlank()) {

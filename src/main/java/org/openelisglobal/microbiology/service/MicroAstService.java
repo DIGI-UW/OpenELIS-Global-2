@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroAstOverrideEventForm;
 import org.openelisglobal.microbiology.form.MicroAstSetupForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm;
+import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
 import org.openelisglobal.microbiology.valueholder.MicroAstInterpretation;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
@@ -101,4 +103,6 @@ public interface MicroAstService {
     List<MicroAstRunAntibiotic> getOrderedAntibioticsForRun(String runId);
 
     List<MicroAstPanelAntibiotic> getPanelAntibiotics(String panelId);
+
+    MicroReportingRulePreviewResultForm previewReportingRules(MicroReportingRulePreviewForm request);
 }
