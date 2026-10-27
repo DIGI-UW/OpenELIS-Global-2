@@ -80,6 +80,33 @@ const show = (data, rights = { canWrite: true, canValidate: true }) => {
   );
   return service;
 };
+it("each AST run shows its Run QC", async () => {
+  const service = {
+    getAstWorkspace: vi.fn().mockResolvedValue(workspace()),
+    astAction: vi.fn(),
+    getAstQc: vi.fn().mockResolvedValue({
+      configured: true,
+      canRecord: false,
+      antibiotics: [],
+      controlLots: [],
+      lots: [],
+      candidateLots: [],
+      controls: [],
+    }),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("region", { name: "Run QC" }),
+  ).toBeInTheDocument();
+  expect(service.getAstQc).toHaveBeenCalledWith("c1", "run");
+});
 it("selects only the requested validated drug with a recorded reason", async () => {
   const service = show(workspace());
   fireEvent.click(
@@ -183,6 +210,24 @@ it("requires and submits a replacement card when invalidating an instrument run"
   );
 });
 
+it("says a failing QC control holds validation until its NCE is closed", async () => {
+  const service = show(workspace("IN_PROGRESS"));
+  service.astAction.mockRejectedValue({ response: { message: "AST_QC_HOLD" } });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.review") }),
+  );
+  fireEvent.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: t("save"),
+      exact: true,
+    }),
+  );
+  expect(
+    await within(screen.getByRole("dialog")).findByText(
+      "A failing AST control covers this run. Close its nonconformity before validating.",
+    ),
+  ).toBeInTheDocument();
+});
 it("explains a validation blocker and clears it when another action opens", async () => {
   const service = show(workspace("IN_PROGRESS"));
   service.astAction.mockRejectedValue({
