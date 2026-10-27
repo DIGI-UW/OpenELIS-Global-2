@@ -21,5 +21,6 @@ public interface MicroBreakpointService {
             String antibioticId, String method, String specimenTypeId, String breakpointType);
 
     MicroBreakpointRule findContextualBreakpointRule(String standardId, String organismId, String organismGroup,
-            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext);
+            String antibioticId, String method, String specimenTypeId, String breakpointType, String clinicalContext,
+            String diskContent);
 }

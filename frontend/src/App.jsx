@@ -292,7 +292,7 @@ export default function App() {
     const retrier = createServerRetrier();
     state.retrier = retrier;
     try {
-      for (let failures = 0; ;) {
+      for (let failures = 0; ; ) {
         try {
           const jsonResp = await requestSession(
             config.serverBaseUrl + `/session`,

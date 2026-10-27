@@ -81,4 +81,15 @@ public class MicroAstRunAntibiotic extends BaseObject<String> {
     public void setReportBehavior(String reportBehavior) {
         this.reportBehavior = reportBehavior;
     }
+
+    @Column(name = "disk_content", length = 40)
+    private String diskContent;
+
+    public String getDiskContent() {
+        return diskContent;
+    }
+
+    public void setDiskContent(String diskContent) {
+        this.diskContent = diskContent;
+    }
 }

@@ -35,9 +35,18 @@ public class MicroReferenceConceptService {
     public LoadedRow<String> loadOrganism(CsvRow row) {
         String source = required(row, "source", 80), code = required(row, "code", 120);
         String name = required(row, "displayName", 255), whonet = optional(row, "whonetCode", 50);
+        String group = optional(row, "organism_group", 255);
         var existing = organisms.findByReference(source, code);
-        if (existing.isPresent())
-            return LoadedRow.skipped("Existing source identity; local values preserved");
+        if (existing.isPresent()) {
+            // A group the package supplies fills a blank; a laboratory's own group stays.
+            MicroOrganism known = existing.get();
+            if (group == null || (known.getOrganismGroup() != null && !known.getOrganismGroup().isBlank()))
+                return LoadedRow.skipped("Existing source identity; local values preserved");
+            known.setOrganismGroup(group);
+            known.setLastUpdatedBy(ACTOR);
+            organisms.update(known);
+            return LoadedRow.updated(known.getId());
+        }
         var byName = organisms.findByDisplayNameIgnoreCase(name);
         var byCode = whonet == null ? Optional.<MicroOrganism>empty() : organisms.findByWhonetCodeIgnoreCase(whonet);
         if (byName.isPresent() && byCode.isPresent() && !byName.get().getId().equals(byCode.get().getId())) {
@@ -53,6 +62,8 @@ public class MicroReferenceConceptService {
             organism.setGramStain(optional(row, "gramStain", 20));
             organism.setSeeded(true);
         }
+        if (group != null && (organism.getOrganismGroup() == null || organism.getOrganismGroup().isBlank()))
+            organism.setOrganismGroup(group);
         organism.setReferenceSource(source);
         organism.setReferenceCode(code);
         organism.setLastUpdatedBy(ACTOR);

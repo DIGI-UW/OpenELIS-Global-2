@@ -541,6 +541,21 @@ const AstPanelPage = ({ query, setQuery }) => {
                         })}
                       />
                     </Select>
+                    <TextInput
+                      id={`microbiology-disk-${row.antibioticId}`}
+                      labelText={intl.formatMessage({
+                        id: "microbiology.admin.astPanels.diskContent",
+                      })}
+                      helperText={intl.formatMessage({
+                        id: "microbiology.admin.astPanels.diskContent.help",
+                      })}
+                      value={row.diskContent || ""}
+                      maxLength={40}
+                      readOnly={readOnly}
+                      onChange={(event) =>
+                        updateRow(index, { diskContent: event.target.value })
+                      }
+                    />
                     <div className="microbiology-admin__row-actions">
                       <Button
                         kind="ghost"

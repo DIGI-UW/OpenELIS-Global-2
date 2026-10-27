@@ -16,6 +16,8 @@ public interface MicroOrganismDAO extends BaseDAO<MicroOrganism, String> {
 
     Optional<MicroOrganism> findByReference(String source, String code);
 
+    List<MicroOrganism> getByDefaultAstPanelId(String panelId);
+
     long countWorkflowReferences(String organismId);
 
     List<MicroOrganism> search(String q, String status, String category, String sort, int offset, int limit);
