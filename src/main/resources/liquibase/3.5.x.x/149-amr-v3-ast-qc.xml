@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="149-amr-v3-ast-qc" author="openelis">
+<createTable schemaName="clinlims" tableName="micro_ast_qc_result"><column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column><column name="control_id" type="varchar(36)"><constraints nullable="false"/></column><column name="ast_run_id" type="varchar(36)"><constraints nullable="false"/></column><column name="antibiotic_id" type="varchar(36)"><constraints nullable="false"/></column><column name="qc_result_id" type="varchar(36)"><constraints nullable="false"/></column><column name="last_updated" type="timestamp"/></createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_qc_result" baseColumnNames="ast_run_id" referencedTableSchemaName="clinlims" referencedTableName="micro_ast_run" referencedColumnNames="id" constraintName="fk_micro_ast_qc_result_ast_run_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_qc_result" baseColumnNames="antibiotic_id" referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id" constraintName="fk_micro_ast_qc_result_antibiotic_id"/>
+<createIndex schemaName="clinlims" tableName="micro_ast_qc_result" indexName="idx_micro_ast_qc_result_run"><column name="ast_run_id"/></createIndex>
+<createIndex schemaName="clinlims" tableName="micro_ast_qc_result" indexName="idx_micro_ast_qc_result_control"><column name="control_id"/></createIndex>
+<createTable schemaName="clinlims" tableName="micro_ast_qc_lot"><column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column><column name="control_id" type="varchar(36)"><constraints nullable="false"/></column><column name="inventory_lot_id" type="bigint"><constraints nullable="false"/></column><column name="last_updated" type="timestamp"/></createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_qc_lot" baseColumnNames="inventory_lot_id" referencedTableSchemaName="clinlims" referencedTableName="inventory_lot" referencedColumnNames="id" constraintName="fk_micro_ast_qc_lot_inventory_lot_id"/>
+<createIndex schemaName="clinlims" tableName="micro_ast_qc_lot" indexName="idx_micro_ast_qc_lot_control"><column name="control_id"/></createIndex>
+<createIndex schemaName="clinlims" tableName="micro_ast_qc_lot" indexName="idx_micro_ast_qc_lot_inventory_lot"><column name="inventory_lot_id"/></createIndex>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_ast_qc_result) OR EXISTS (SELECT 1 FROM clinlims.micro_ast_qc_lot) THEN
+  RAISE EXCEPTION 'Cannot discard the AST QC results';
+ END IF;
+END $$;
+]]></sql><dropTable schemaName="clinlims" tableName="micro_ast_qc_lot"/><dropTable schemaName="clinlims" tableName="micro_ast_qc_result"/></rollback>
+</changeSet>
+</databaseChangeLog>
