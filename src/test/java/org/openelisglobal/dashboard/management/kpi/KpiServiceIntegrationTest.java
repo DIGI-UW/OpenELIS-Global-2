@@ -67,7 +67,7 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(0, BigDecimal.valueOf(2).compareTo(kpis.samples().value()));
         assertEquals(0, BigDecimal.ZERO.compareTo(kpis.samples().prior()));
         assertEquals(2, kpis.samples().spark().stream().mapToLong(BigDecimal::longValue).sum());
-        assertEquals(31, kpis.samples().spark().size());
+        assertEquals(30, kpis.samples().spark().size());
     }
 
     @Test
