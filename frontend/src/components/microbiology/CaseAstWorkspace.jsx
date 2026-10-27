@@ -150,11 +150,18 @@ export default function CaseAstWorkspace({
   }, [detail.id, data, service, canListAnalyzers]);
   const canEnter = !readOnly && detail.canWrite && data?.canEnter;
   const canValidate = !readOnly && detail.canValidate && data?.canValidate;
+  const actionLabel = (action, run) =>
+    action === "acknowledge" &&
+    run?.intrinsicContradiction &&
+    !run?.analyzerExpertFlags
+      ? "confirmIdentification"
+      : action;
   const open = (action, isolate, run, reading, antibioticId) => {
     setError(false);
     setSelectedLots({});
     setDraft({
       action,
+      label: actionLabel(action, run),
       isolateId: isolate?.id,
       runId: run?.id,
       readingId: reading?.id,
@@ -273,15 +280,7 @@ export default function CaseAstWorkspace({
       kind="ghost"
       onClick={() => open(action, isolate, run, reading, antibioticId)}
     >
-      {t(
-        `action.${
-          action === "acknowledge" &&
-          run.intrinsicContradiction &&
-          !run.analyzerExpertFlags
-            ? "confirmIdentification"
-            : action
-        }`,
-      )}
+      {t(`action.${actionLabel(action, run)}`)}
     </Button>
   );
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
@@ -762,7 +761,7 @@ export default function CaseAstWorkspace({
       {draft && (
         <Modal
           open
-          modalHeading={t(`action.${draft.action}`)}
+          modalHeading={t(`action.${draft.label || draft.action}`)}
           primaryButtonText={t("save")}
           secondaryButtonText={t("cancel")}
           primaryButtonDisabled={
