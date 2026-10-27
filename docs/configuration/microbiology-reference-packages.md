@@ -13,6 +13,7 @@ read release archives, download metadata or run R.
 | `microbiology-antimicrobials/`        | `source,code,displayName,whonetCode`                          | 320   |
 | `microbiology-breakpoints/`           | Existing breakpoint import columns below                      | 330   |
 | `microbiology-reporting-rules/`       | `organism_level,organism,specimen_group,agent,report_default` | 350   |
+| `microbiology-qc-ranges/`             | `qc_strain,agent,method,guideline,version,low,high`           | 360   |
 
 Organisms also accept `gramStain`; antimicrobials accept `antibioticClass`.
 `source` and `code` identify a reference concept independently of its local name
@@ -62,6 +63,14 @@ is applied whole or not at all: a bad row rolls back every row before it. A
 reload of an unchanged file writes no revision history. Rules absent from the
 file are left alone, and the AST rules page exports the same format, so an
 export re-imports without changes.
+
+QC range files carry one expected range per row:
+`qc_strain,agent,method,disk_content,guideline,version,low,high`. `agent` is a
+WHONET code, `method` is `MIC` or `ZONE`, `disk_content` only for `ZONE`, and
+`guideline` and `version` name a loaded breakpoint standard. Each row upserts
+the range for its strain, antibiotic, method, disk content and standard. The
+file is applied whole or not at all, and ranges absent from the file are left
+alone.
 
 ## Import, preview and reload
 
