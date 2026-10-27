@@ -135,6 +135,11 @@
         <class>org.openelisglobal.notification.valueholder.NotificationLog</class>
         <class>org.openelisglobal.notification.valueholder.NotificationLogAttempt</class>
         <class>org.openelisglobal.delivery.valueholder.DeliveryChannel</class>
+
+        <!-- Add-on entities -->
+        <class>org.openelisglobal.addon.valueholder.Addon</class>
+        <class>org.openelisglobal.addon.valueholder.AddonAsset</class>
+        <class>org.openelisglobal.addon.valueholder.AddonSecret</class>
         <class>org.openelisglobal.notifications.entity.Notification</class>
 
         <!-- Dictionary entities (required by NoteBook.type relationship) -->
