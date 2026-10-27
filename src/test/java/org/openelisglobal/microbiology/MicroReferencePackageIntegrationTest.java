@@ -56,6 +56,9 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     private MicroAstPanelAntibioticDAO panelAntibiotics;
 
     @Autowired
+    private MicroQcRangeService qcRanges;
+
+    @Autowired
     private MicroBreakpointImportService importer;
     @Autowired
     private MicrobiologyConfigurationService configuration;
@@ -715,6 +718,82 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                 + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
         assertTrue(reloadReportingRules(false).hasErrors());
         assertTrue(unresolvedReferences.getOpen().stream().anyMatch(r -> sampleType.equals(r.getReferenceValue())));
+    }
+
+    @Test
+    public void qcRangeFileLoadsRangesPerMethodAndDiskContentAndUpdatesInPlace() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.16", "QCRANGE");
+        load(fixture);
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        String standardId = standard(fixture).getId();
+        writeQcRanges(QC_RANGES_HEADER + "E. coli ATCC 25922," + fixture.antibiotic + ",ZONE,10,EUCAST,"
+                + fixture.edition + ",19,25\n" + "E. coli ATCC 25922," + fixture.antibiotic + ",MIC,,EUCAST,"
+                + fixture.edition + ",0.25,1\n");
+        assertFalse(reloadQcRanges(false).hasErrors());
+
+        var zone = qcRanges.find("e. coli atcc 25922", antibioticId, MicroAstMethod.ZONE, "10", standardId)
+                .orElseThrow();
+        assertEquals(0, new BigDecimal("19").compareTo(zone.getLow()));
+        assertEquals(0, new BigDecimal("25").compareTo(zone.getHigh()));
+        assertTrue(qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.ZONE, "30", standardId).isEmpty());
+        var mic = qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.MIC, null, standardId).orElseThrow();
+        assertEquals(0, new BigDecimal("0.25").compareTo(mic.getLow()));
+
+        var written = zone.getLastupdated();
+        assertFalse(reloadQcRanges(true).hasErrors());
+        assertEquals(written, qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.ZONE, "10", standardId)
+                .orElseThrow().getLastupdated());
+
+        writeQcRanges(QC_RANGES_HEADER + "E. coli ATCC 25922," + fixture.antibiotic + ",ZONE,10,EUCAST,"
+                + fixture.edition + ",19,26\n");
+        assertFalse(reloadQcRanges(true).hasErrors());
+        var updated = qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.ZONE, "10", standardId)
+                .orElseThrow();
+        assertEquals(zone.getId(), updated.getId());
+        assertEquals(0, new BigDecimal("26").compareTo(updated.getHigh()));
+        assertTrue(qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.MIC, null, standardId).isPresent());
+    }
+
+    @Test
+    public void qcRangeFileIsAppliedWholeOrNotAtAll() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.17", "QCATOMIC");
+        load(fixture);
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeQcRanges(QC_RANGES_HEADER + "E. coli ATCC 25922," + fixture.antibiotic + ",ZONE,10,EUCAST,"
+                + fixture.edition + ",19,25\n" + "E. coli ATCC 25922,NO_SUCH_AGENT,ZONE,10,EUCAST," + fixture.edition
+                + ",19,25\n");
+        assertTrue(reloadQcRanges(false).hasErrors());
+        assertTrue(
+                qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.ZONE, "10", standard(fixture).getId())
+                        .isEmpty());
+    }
+
+    @Test
+    public void qcRangeFileRejectsAnUnknownGuidelineAnInvertedRangeAndAMicWithDiskContent() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.18", "QCBAD");
+        load(fixture);
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        String standardId = standard(fixture).getId();
+        for (String row : new String[] { "ZONE,10,EUCAST,1900.1,19,25", "ZONE,10,EUCAST," + fixture.edition + ",25,19",
+                "MIC,10,EUCAST," + fixture.edition + ",0.25,1", "DISK,10,EUCAST," + fixture.edition + ",19,25" }) {
+            writeQcRanges(QC_RANGES_HEADER + "E. coli ATCC 25922," + fixture.antibiotic + "," + row + "\n");
+            assertTrue(row, reloadQcRanges(true).hasErrors());
+        }
+        assertTrue(qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.ZONE, "10", standardId).isEmpty());
+        assertTrue(qcRanges.find("E. coli ATCC 25922", antibioticId, MicroAstMethod.MIC, "10", standardId).isEmpty());
+    }
+
+    private static final String QC_RANGES_HEADER = "qc_strain,agent,method,disk_content,guideline,version,low,high\n";
+
+    private void writeQcRanges(String csv) throws Exception {
+        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-qc-ranges").resolve("qc-ranges.csv");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, csv);
+    }
+
+    private org.openelisglobal.configuration.service.ConfigurationReloadResult reloadQcRanges(boolean force) {
+        return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
+                java.util.Set.of("microbiology-qc-ranges"), force));
     }
 
     private static final String RULES_HEADER = "organism_level,organism,specimen_group,agent,agent_name,report_default,"
