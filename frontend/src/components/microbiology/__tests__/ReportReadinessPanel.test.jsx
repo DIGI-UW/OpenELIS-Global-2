@@ -162,7 +162,9 @@ describe("ReportReadinessPanel", () => {
     await waitFor(() =>
       expect(service.releasePreliminaryReport).toHaveBeenCalledWith("case-1"),
     );
-    expect(await screen.findByText("Partial report released")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Partial report released"),
+    ).toBeInTheDocument();
     await waitFor(() =>
       expect(onProjectionLoaded).toHaveBeenCalledWith(["result-1"]),
     );
