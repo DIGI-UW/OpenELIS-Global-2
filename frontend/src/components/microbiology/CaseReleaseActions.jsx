@@ -16,7 +16,7 @@ export default function CaseReleaseActions({
   service,
   readiness,
   onReleased,
-  partialReady = true,
+  partialReady,
 }) {
   const intl = useIntl();
   const online = useOnline();
