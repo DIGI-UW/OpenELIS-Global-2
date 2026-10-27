@@ -48,6 +48,10 @@
     gap: spacing.$spacing-03;
   }
 
+  .microbiology-case-workspace__run-qc > .cds--inline-notification {
+    margin-block: spacing.$spacing-03;
+  }
+
   .cds--accordion__content {
     padding-inline-end: 0;
   }
