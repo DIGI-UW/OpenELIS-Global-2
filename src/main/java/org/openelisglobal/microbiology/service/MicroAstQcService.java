@@ -251,6 +251,8 @@ public class MicroAstQcService {
             }
             form.canRecord = mutable && access.hasLabUnitRole(actor, microCase.getLabUnitId(), Constants.ROLE_RESULTS);
         }
+        form.held = !Set.of("REVIEWED", "INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus())
+                && blocksValidation(runId);
 
         List<MicroAstRunAntibiotic> ordered = runAntibiotics.getByRunId(runId);
         for (MicroAstRunAntibiotic runAntibiotic : ordered) {
