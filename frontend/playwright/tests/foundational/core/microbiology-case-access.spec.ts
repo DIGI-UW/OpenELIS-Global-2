@@ -106,9 +106,12 @@ test.describe("Microbiology V2 MVP case visibility", () => {
         .filter({ hasNot: page.locator(".cds--side-nav__link-text") })
         .click();
       await expect(page).toHaveURL(`/Microbiology/worklist?${query}`);
-      await expect(
-        page.getByRole("link", { name: seeded.accessionNumber, exact: true }),
-      ).toBeVisible();
+      const caseLink = page.getByRole("link", {
+        name: seeded.accessionNumber,
+        exact: true,
+      });
+      await expect(caseLink).toBeVisible();
+      await demo.highlight(caseLink);
       await demo.verified(
         "The case is one click from the worklist and back",
         `${seeded.accessionNumber} opened with its sample and testing, and the worklist kept its filter.`,

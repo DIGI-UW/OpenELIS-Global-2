@@ -22,7 +22,7 @@ test(
       "A repeat result replaces one drug's reading on the report, partial reports stay as issued, and the final release locks the case.",
     );
     await demo.caption(
-      "Off screen: an identified isolate is ready for AST, with its panel and breakpoints configured. Two case notes are added, one sent with the result.",
+      "Off screen: an identified isolate is ready for AST, with its panel and breakpoints configured. On the case, two notes are added, one sent with the result.",
     );
     await runMicrobiologyAstReportingWorkflow(page, testInfo, (step) =>
       demo.caption(CHECKPOINT_CAPTIONS[step]),

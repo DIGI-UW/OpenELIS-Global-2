@@ -33,6 +33,9 @@ test.describe("Microbiology final-report amendments", () => {
       const seeded = await seedFinalizedMicrobiologyCase(page);
 
       await test.step("Verify the original issued patient report", async () => {
+        await demo.caption(
+          "The issued report, version 1, is printed: it names Escherichia coli.",
+        );
         const { text, pdf } = await readMicrobiologyPatientReport(page, seeded);
         expect(text).toContain("ISO-1: Escherichia coli");
         expect(text).toContain("Ciprofloxacin (UAT) 4 ug/mL Susceptible");

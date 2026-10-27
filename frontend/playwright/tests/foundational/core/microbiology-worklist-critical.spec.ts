@@ -212,7 +212,13 @@ test.describe("microbiology worklist and critical communication", () => {
         /\/Microbiology\/worklist\?grain=cultures&sort=newest$/,
       );
       await sortResponse;
+      await demo.highlight(
+        page.getByTestId("microbiology-worklist-summary-critical"),
+      );
 
+      await demo.caption(
+        "On the case, a critical communication is logged: who was called and what was said.",
+      );
       await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
         waitUntil: "domcontentloaded",
       });
@@ -220,9 +226,6 @@ test.describe("microbiology worklist and critical communication", () => {
         page.getByRole("heading", { name: `Case ${seeded.accessionNumber}` }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
-      await demo.caption(
-        "On the case, a critical communication is logged: who was called and what was said.",
-      );
       await openCaseSection(
         page,
         "Critical communication",

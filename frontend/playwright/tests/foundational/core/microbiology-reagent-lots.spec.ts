@@ -75,7 +75,7 @@ test(
     await expect(row).toContainText("UAT-MICRO-MEDIA-FEFO");
     await demo.highlight(row);
     await demo.caption(
-      "Off screen: an isolate is picked and identified. Starting AST asks for the card lot.",
+      "An isolate is picked and identified. Starting AST asks for the card lot.",
     );
     await createAndIdentifyMicrobiologyIsolate(page, seeded);
     await openMicrobiologyCaseSection(page, "Manual AST");

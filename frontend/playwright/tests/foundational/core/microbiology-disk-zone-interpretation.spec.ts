@@ -105,7 +105,7 @@ test(
 
     await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`);
     await demo.caption(
-      "Off screen: a culture grows. On the case, an isolate is picked and identified as the new organism.",
+      "The culture has grown off screen. On the case, an isolate is picked and identified as the new organism.",
     );
     await createMicrobiologyIsolate(page, seeded);
     await identifyMicrobiologyIsolate(page, organism.id);

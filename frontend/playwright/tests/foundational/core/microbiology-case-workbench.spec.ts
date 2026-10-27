@@ -139,6 +139,7 @@ test(
     await demo.caption("Off screen: a culture case with growth is set up.");
     const seeded = await seedMicrobiologyMvpCase(page);
     await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`);
+    await demo.caption("An isolate is picked from the growth.");
     await createMicrobiologyIsolate(page, seeded);
     const isolate = page.locator('[data-testid^="isolate-"]');
     await expect(
