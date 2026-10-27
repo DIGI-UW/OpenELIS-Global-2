@@ -139,6 +139,8 @@ public class MicroAstServiceTest {
                 org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroInterpretationRuleDAO.class));
         org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
                 org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "astQc",
+                org.mockito.Mockito.mock(MicroAstQcService.class));
         org.mockito.Mockito.lenient().when(caseDAO.getForUpdate(any(String.class)))
                 .thenAnswer(invocation -> caseDAO.get((String) invocation.getArgument(0)).orElse(null));
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
