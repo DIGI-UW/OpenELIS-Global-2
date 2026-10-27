@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="148-amr-v3-qc-ranges" author="openelis">
+<createTable schemaName="clinlims" tableName="micro_qc_range"><column name="id" type="varchar(36)"><constraints primaryKey="true" nullable="false"/></column><column name="qc_strain" type="varchar(200)"><constraints nullable="false"/></column><column name="antibiotic_id" type="varchar(36)"><constraints nullable="false"/></column><column name="method" type="varchar(10)"><constraints nullable="false"/></column><column name="disk_content" type="varchar(40)"/><column name="standard_id" type="varchar(36)"><constraints nullable="false"/></column><column name="low" type="numeric(12,4)"><constraints nullable="false"/></column><column name="high" type="numeric(12,4)"><constraints nullable="false"/></column><column name="last_updated" type="timestamp"/></createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_qc_range" baseColumnNames="antibiotic_id" referencedTableSchemaName="clinlims" referencedTableName="micro_antibiotic" referencedColumnNames="id" constraintName="fk_micro_qc_range_antibiotic_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_qc_range" baseColumnNames="standard_id" referencedTableSchemaName="clinlims" referencedTableName="micro_breakpoint_standard" referencedColumnNames="id" constraintName="fk_micro_qc_range_standard_id"/>
+<sql>ALTER TABLE clinlims.micro_qc_range ADD CONSTRAINT chk_micro_qc_range_method CHECK (method IN ('MIC', 'ZONE'));</sql>
+<sql>ALTER TABLE clinlims.micro_qc_range ADD CONSTRAINT chk_micro_qc_range_bounds CHECK (low &lt;= high);</sql>
+<sql>ALTER TABLE clinlims.micro_qc_range ADD CONSTRAINT chk_micro_qc_range_disk_content CHECK (method = 'ZONE' OR disk_content IS NULL);</sql>
+<sql>CREATE UNIQUE INDEX ux_micro_qc_range_key ON clinlims.micro_qc_range (lower(qc_strain), antibiotic_id, method, coalesce(disk_content, ''), standard_id);</sql>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_qc_range) THEN
+  RAISE EXCEPTION 'Cannot discard the laboratory QC ranges';
+ END IF;
+END $$;
+]]></sql><dropTable schemaName="clinlims" tableName="micro_qc_range"/></rollback>
+</changeSet>
+</databaseChangeLog>

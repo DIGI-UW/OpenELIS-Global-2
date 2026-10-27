@@ -111,6 +111,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroMolecularDstBinding</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportingRule</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroInterpretationRule</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroQcRange</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportingRuleHistory</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroDstResolution</class>
 
