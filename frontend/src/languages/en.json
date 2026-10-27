@@ -10636,7 +10636,7 @@
   "microbiology.release.final.confirmTitle": "Release final report?",
   "microbiology.release.amended.confirmTitle": "Release amended report?",
   "microbiology.release.final.confirm": "Release final",
-  "microbiology.release.final.confirmBody": "The case will be locked. {count} results will be released as report version {version}. Any later change needs an amendment.",
+  "microbiology.release.final.confirmBody": "The case will be locked. {count, plural, one {# result} other {# results}} will be released as report version {version}. Any later change needs an amendment.",
   "microbiology.release.finalReleased": "Final report released",
   "microbiology.release.hint": "Release reports only when readiness checks pass.",
   "microbiology.release.mappingConfigured": "Patient-report mapping configured",

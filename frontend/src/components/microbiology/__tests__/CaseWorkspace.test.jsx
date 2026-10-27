@@ -428,6 +428,37 @@ describe("case bar", () => {
     );
   });
 
+  test("partial release waits for a validated result", async () => {
+    const service = barService();
+    service.getReport.mockResolvedValue({ validatedResults: 0 });
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    await waitFor(() => expect(service.getReport).toHaveBeenCalled());
+    expect(
+      await within(bar).findByRole("button", {
+        name: "Release partial report",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("the confirmation counts a single result in the singular", async () => {
+    const service = barService();
+    service.getReport.mockResolvedValue({ validatedResults: 1 });
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    fireEvent.click(
+      await within(bar).findByRole("button", { name: "Release final report" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Release final report?",
+    });
+    expect(
+      await within(dialog).findByText(
+        "The case will be locked. 1 result will be released as report version 2. Any later change needs an amendment.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   test("says how many items keep final release blocked", async () => {
     renderPage(
       <CaseViewShell

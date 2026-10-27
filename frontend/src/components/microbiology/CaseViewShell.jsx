@@ -110,6 +110,8 @@ export default function CaseViewShell({
   const [incomingCount, setIncomingCount] = useState(0);
   const [incomingError, setIncomingError] = useState(false);
   const [readiness, setReadiness] = useState(null);
+  const [partialReady, setPartialReady] = useState(false);
+  const [jump, setJump] = useState(null);
   useEffect(() => {
     let live = true;
     if (!detail || !service.getIncoming) return undefined;
@@ -132,15 +134,22 @@ export default function CaseViewShell({
   }, [detail, service]);
   useEffect(() => {
     let live = true;
-    if (!detail || !service.getReadiness) return undefined;
+    if (!detail || !service.getReadiness || !service.getReport)
+      return undefined;
     setReadiness(null);
-    service
-      .getReadiness(detail.id)
-      .then((value) => {
-        if (live) setReadiness(value);
+    setPartialReady(false);
+    Promise.all([service.getReadiness(detail.id), service.getReport(detail.id)])
+      .then(([value, report]) => {
+        if (live) {
+          setReadiness(value);
+          setPartialReady(report.validatedResults > 0);
+        }
       })
       .catch(() => {
-        if (live) setReadiness(null);
+        if (live) {
+          setReadiness(null);
+          setPartialReady(false);
+        }
       });
     return () => {
       live = false;
@@ -267,7 +276,10 @@ export default function CaseViewShell({
                       key={scope}
                       size="sm"
                       kind="ghost"
-                      onClick={() => selectScope(scope)}
+                      onClick={() => {
+                        selectScope(scope);
+                        setJump({ scope });
+                      }}
                     >
                       {t(label)}
                     </Button>
@@ -277,6 +289,7 @@ export default function CaseViewShell({
                   detail={detail}
                   service={service}
                   readiness={readiness}
+                  partialReady={partialReady}
                   onReleased={reloadCase}
                 />
               </div>
@@ -668,6 +681,7 @@ export default function CaseViewShell({
                 </Accordion>
               </section>
               <CaseTestingWorkspace
+                jump={jump}
                 onScopeChange={selectScope}
                 scanSearch={location.search}
                 key={id}

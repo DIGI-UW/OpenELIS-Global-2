@@ -722,6 +722,58 @@ test("consumes a critical communication target after saving and unlocks the next
   expect(screen.getByLabelText("Critical result target")).toHaveValue("CASE");
 });
 
+test("a case bar jump scrolls to its section and focuses the heading on every jump", async () => {
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const api = service();
+  const view = (jump) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=ADDITIONAL"
+        jump={jump}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view({ scope: "ADDITIONAL" }));
+  const heading = await screen.findByRole("button", {
+    name: messages["microbiology.testing.additional"],
+    expanded: true,
+  });
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(1);
+  heading.blur();
+  rerender(view({ scope: "ADDITIONAL" }));
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(2);
+  scroll.mockRestore();
+});
+test("a case bar jump to the timeline scrolls to and focuses its heading on every jump", async () => {
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const api = service();
+  const view = (jump) => (
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=HISTORY"
+        jump={jump}
+      />
+    </IntlProvider>
+  );
+  const { rerender } = render(view({ scope: "HISTORY" }));
+  const heading = await screen.findByRole("button", {
+    name: messages["microbiology.case.timeline"],
+    expanded: true,
+  });
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(1);
+  heading.blur();
+  rerender(view({ scope: "HISTORY" }));
+  await waitFor(() => expect(heading).toHaveFocus());
+  expect(scroll.mock.contexts.filter((el) => el === heading)).toHaveLength(2);
+  scroll.mockRestore();
+});
 test("pending AST links focus the requested isolate after loading and navigation", async () => {
   const api = service();
   api.getAstWorkspace = vi.fn().mockResolvedValue({
