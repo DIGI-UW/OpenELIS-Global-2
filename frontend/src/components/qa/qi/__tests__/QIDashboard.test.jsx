@@ -2,7 +2,7 @@ import React from "react";
 import { act, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
-import QIDashboard from "../QIDashboard";
+import QIDashboard, { windowDates } from "../QIDashboard";
 import { renderQa } from "../../testUtils";
 import { isoDaysFromToday } from "../../common/qaDates";
 
@@ -119,7 +119,7 @@ const nceList = [
 // Each windowed endpoint fires current-window before prior-window.
 // The window the dashboard opens on (30 days) tells the current read from the
 // prior one, whose fromDate is further back.
-const currentWindow = () => `fromDate=${isoDaysFromToday(-30)}`;
+const currentWindow = () => `fromDate=${isoDaysFromToday(-29)}`;
 
 const mockApis = ({
   tatCurrent = currentSummary,
@@ -164,6 +164,32 @@ const mockApis = ({
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+});
+
+describe("windowDates", () => {
+  test("the last N days cover N days, after the N days before them", () => {
+    expect(windowDates("7d", new Date(2028, 1, 29, 15))).toEqual({
+      fromDate: "2028-02-23",
+      toDate: "2028-02-29",
+      priorFromDate: "2028-02-16",
+      priorToDate: "2028-02-22",
+    });
+  });
+
+  test("year to date compares with the same span of last year", () => {
+    expect(windowDates("ytd", new Date(2026, 9, 27, 15))).toEqual({
+      fromDate: "2026-01-01",
+      toDate: "2026-10-27",
+      priorFromDate: "2025-01-01",
+      priorToDate: "2025-10-27",
+    });
+    expect(windowDates("ytd", new Date(2028, 1, 29)).priorToDate).toBe(
+      "2027-02-28",
+    );
+    expect(windowDates("ytd", new Date(2029, 1, 28)).priorToDate).toBe(
+      "2028-02-29",
+    );
+  });
 });
 
 describe("QIDashboard", () => {
@@ -337,7 +363,7 @@ describe("QIDashboard", () => {
     await renderPage();
 
     const from = new Date();
-    from.setDate(from.getDate() - 7);
+    from.setDate(from.getDate() - 6);
     // local date components, matching toLocalIsoDate (not UTC toISOString)
     const expectedFrom = `${from.getFullYear()}-${String(
       from.getMonth() + 1,

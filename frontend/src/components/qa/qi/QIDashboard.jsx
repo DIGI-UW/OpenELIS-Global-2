@@ -50,17 +50,31 @@ const WINDOWS = [
   { id: "ytd", labelKey: "qa.qi.dashboard.window.ytd" },
 ];
 
-function windowDates(windowId) {
-  const to = labNow();
-  const from = labNow();
+const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+
+export function windowDates(windowId, now = labNow()) {
+  const to = new Date(now);
+  const from = new Date(now);
   const days = WINDOWS.find((w) => w.id === windowId)?.days;
+  let priorFrom;
+  let priorTo;
   if (days) {
-    from.setDate(from.getDate() - days);
+    from.setDate(from.getDate() - (days - 1));
+    priorTo = new Date(from.getTime() - DAY_MS);
+    priorFrom = new Date(from.getTime() - DAY_MS - (to - from));
   } else {
-    from.setMonth(0, 1); // year to date
+    // Year to date compares with the same span of last year; a month end with the whole month.
+    from.setMonth(0, 1);
+    const year = to.getFullYear() - 1;
+    const month = to.getMonth();
+    const monthEnd = to.getDate() === daysInMonth(to.getFullYear(), month);
+    priorFrom = new Date(year, 0, 1);
+    priorTo = new Date(
+      year,
+      month,
+      monthEnd ? daysInMonth(year, month) : to.getDate(),
+    );
   }
-  const priorTo = new Date(from.getTime() - DAY_MS);
-  const priorFrom = new Date(from.getTime() - DAY_MS - (to - from));
   return {
     fromDate: toLocalIsoDate(from),
     toDate: toLocalIsoDate(to),
