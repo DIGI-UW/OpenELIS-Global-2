@@ -22,7 +22,7 @@ import { labTimestamp } from "./MicrobiologyTime";
 const qcStatusType = (status) =>
   status === "PASSED" ? "green" : status === "FAILED" ? "red" : "gray";
 
-export default function CaseAstRunQc({ caseId, runId, service }) {
+export default function CaseAstRunQc({ caseId, runId, service, onRecorded }) {
   const intl = useIntl();
   const [view, setView] = useState(null);
   const [open, setOpen] = useState(false);
@@ -51,7 +51,7 @@ export default function CaseAstRunQc({ caseId, runId, service }) {
   if (!view) return null;
 
   const t = (id, values) => intl.formatMessage({ id }, values);
-  const statusLabel = (status) => t(`microbiology.astQc.qcStatus.${status}`);
+  const statusLabel = (status) => t(`microbiology.reagentLots.qc.${status}`);
   const antibioticName = (id) =>
     view.antibiotics.find((antibiotic) => antibiotic.id === id)?.name || id;
   const allLots = [...view.lots, ...view.candidateLots];
@@ -91,6 +91,7 @@ export default function CaseAstRunQc({ caseId, runId, service }) {
       });
       setView(updated);
       setOpen(false);
+      onRecorded?.();
     } catch (error) {
       setSaveError(true);
     } finally {
@@ -98,7 +99,7 @@ export default function CaseAstRunQc({ caseId, runId, service }) {
     }
   };
 
-  // i18n-keys: microbiology.astQc.qcStatus.*
+  // i18n-keys: microbiology.reagentLots.qc.*
   return (
     <section aria-label={t("microbiology.astQc.title")}>
       <h4>{t("microbiology.astQc.title")}</h4>
@@ -106,12 +107,12 @@ export default function CaseAstRunQc({ caseId, runId, service }) {
         <p>{t("microbiology.astQc.noLots")}</p>
       ) : (
         view.lots.map((lot) => (
-          <p key={lot.id}>
+          <div key={lot.id}>
             <span>{lot.lotNumber}</span> · <span>{lot.itemName}</span>{" "}
             <Tag type={qcStatusType(lot.qcStatus)}>
               {statusLabel(lot.qcStatus)}
             </Tag>
-          </p>
+          </div>
         ))
       )}
       {view.controls.length === 0 ? (
@@ -119,7 +120,7 @@ export default function CaseAstRunQc({ caseId, runId, service }) {
       ) : (
         view.controls.map((control) => (
           <div key={control.controlId}>
-            <p>
+            <div>
               <span>{control.controlLotLabel}</span> ·{" "}
               {labTimestamp(intl, control.recordedAt)}{" "}
               <Tag type={control.passed ? "green" : "red"}>
@@ -129,7 +130,7 @@ export default function CaseAstRunQc({ caseId, runId, service }) {
                     : "microbiology.astQc.failed",
                 )}
               </Tag>
-            </p>
+            </div>
             <TableContainer>
               <Table size="sm" aria-label={t("microbiology.astQc.title")}>
                 <TableHead>

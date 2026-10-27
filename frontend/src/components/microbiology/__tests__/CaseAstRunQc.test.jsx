@@ -73,6 +73,38 @@ it("shows the run's lots with their QC status and the controls recorded on it", 
   expect(service.getAstQc).toHaveBeenCalledWith("c1", "run");
 });
 
+it("names every lot QC status, quarantine included, and keeps tags out of paragraphs", async () => {
+  const service = {
+    getAstQc: vi.fn().mockResolvedValue(
+      view({
+        lots: [
+          {
+            id: 13,
+            lotNumber: "CARD-3",
+            itemName: "GN cards",
+            qcStatus: "QUARANTINED",
+          },
+        ],
+        controls: [
+          {
+            controlId: "k1",
+            controlLotLabel: "E. coli ATCC 25922 · L1",
+            recordedAt: 1793000000000,
+            passed: true,
+            rows: [],
+          },
+        ],
+      }),
+    ),
+  };
+  show(service);
+  const region = await screen.findByRole("region", { name: "Run QC" });
+  expect(within(region).getByText("QC quarantined")).toBeInTheDocument();
+  for (const tag of region.querySelectorAll(".cds--tag")) {
+    expect(tag.closest("p")).toBeNull();
+  }
+});
+
 it("records one value per antibiotic with the lots under test, showing pass or fail as values are typed", async () => {
   const service = {
     getAstQc: vi.fn().mockResolvedValue(view()),

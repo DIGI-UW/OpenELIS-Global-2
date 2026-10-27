@@ -398,6 +398,12 @@ export default function CaseAstWorkspace({
                       caseId={detail.id}
                       runId={run.id}
                       service={service}
+                      onRecorded={() =>
+                        service
+                          .getAstWorkspace(detail.id)
+                          .then(setData)
+                          .catch(() => setError(true))
+                      }
                     />
                     {run.status === "QC_FAILED" && (
                       <InlineNotification
