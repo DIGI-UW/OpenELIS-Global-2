@@ -7,6 +7,26 @@ import messages from "../../../languages/en.json";
 import CaseAstWorkspace from "../CaseAstWorkspace";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 const t = (key) => messages[`microbiology.m6.${key}`];
+const astActionFormFields = [
+  "isolateId",
+  "action",
+  "runId",
+  "readingId",
+  "panelId",
+  "technique",
+  "breakpointStandardId",
+  "antibioticId",
+  "interpretation",
+  "reason",
+  "analyzerCardId",
+  "analyzerInstrumentId",
+  "clinicalContext",
+  "awaitAnalyzerResults",
+  "reported",
+  "lotSelections",
+  "orderedAntibioticIds",
+  "rawValue",
+];
 const reading = (id, antibioticId, value) => ({
   id,
   antibioticId,
@@ -89,6 +109,11 @@ it("selects only the requested validated drug with a recorded reason", async () 
       true,
     ),
   );
+  expect(
+    Object.keys(service.astAction.mock.calls[0][1]).filter(
+      (field) => !astActionFormFields.includes(field),
+    ),
+  ).toEqual([]);
 });
 it("outside readers see readings and history without mutation controls", async () => {
   show(workspace(), { canWrite: false, canValidate: false });

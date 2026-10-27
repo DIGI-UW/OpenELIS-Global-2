@@ -219,7 +219,7 @@ export default function CaseAstWorkspace({
     setBusy(true);
     setError(false);
     try {
-      const { adjustPanel, ...request } = draft;
+      const { adjustPanel, label, ...request } = draft;
       if (draft.action === "resolve") {
         const { antibioticId, evidenceFingerprint, interpretation, reason } =
           draft;
