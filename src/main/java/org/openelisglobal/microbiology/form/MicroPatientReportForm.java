@@ -24,7 +24,7 @@ public class MicroPatientReportForm {
             BigDecimal incubationHours) {
     }
 
-    public record Isolate(String id, String label, String organism, List<Susceptibility> susceptibilities) {
+    public record Isolate(String id, String label, String organism, List<Susceptibility> susceptibilities, int tested) {
     }
 
     public record Susceptibility(String antibioticId, String agent, String readingId, String runId, String raw,

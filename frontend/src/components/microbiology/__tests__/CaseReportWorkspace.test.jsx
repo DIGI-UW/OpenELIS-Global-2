@@ -22,6 +22,7 @@ const report = () => ({
       id: "i1",
       label: "ISO-1",
       organism: "E. coli",
+      tested: 3,
       susceptibilities: [
         {
           antibioticId: "a",
@@ -174,4 +175,10 @@ it("allows a partial report from no-growth-ready without requiring final release
     screen.getByRole("button", { name: t("partialRelease") }),
   ).toBeEnabled();
   expect(screen.getByRole("button", { name: t("finalRelease") })).toBeEnabled();
+});
+it("says how many of the isolate's tested antibiotics are reported", async () => {
+  show();
+  expect(
+    await screen.findByText("1 of 3 antibiotics reported"),
+  ).toBeInTheDocument();
 });

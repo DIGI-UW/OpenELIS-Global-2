@@ -512,3 +512,98 @@ it("asks for a panel adjustment reason only when the run does not use the organi
   );
   expect(save).toBeEnabled();
 });
+const ticks = () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].runs[0].orderedAntibiotics = [
+    {
+      antibioticId: "a",
+      antibioticName: "Ampicillin",
+      reportBehavior: "ALWAYS",
+      reported: true,
+      reportManual: false,
+    },
+    {
+      antibioticId: "b",
+      antibioticName: "Ceftriaxone",
+      reportBehavior: "SUPPRESS_UNLESS_RESISTANT",
+      reported: false,
+      reportManual: false,
+    },
+  ];
+  return data;
+};
+it("shows each drug's report tick with its reason only when the reason is not routine", async () => {
+  show(ticks());
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "Report Ceftriaxone" }),
+  ).not.toBeChecked();
+  expect(screen.getByText("Reported only if resistant")).toBeInTheDocument();
+  expect(screen.queryByText("Changed by staff")).not.toBeInTheDocument();
+});
+it("unticking a drug saves the report choice for that run", async () => {
+  const service = show(ticks());
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  );
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "report",
+        isolateId: "i1",
+        runId: "run",
+        antibioticId: "a",
+        reported: false,
+      }),
+      false,
+    ),
+  );
+});
+it("a tick changed by hand says so and can be reset to the defaults", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[1] = { ...drugs[1], reported: true, reportManual: true };
+  const service = show(data);
+  expect(await screen.findByText("Changed by staff")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reset report choices" }));
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ action: "report-reset", isolateId: "i1" }),
+      false,
+    ),
+  );
+});
+it("readers see report ticks they cannot change", async () => {
+  const data = ticks();
+  const drugs = data.isolates[0].runs[0].orderedAntibiotics;
+  drugs[0] = { ...drugs[0], reportManual: true };
+  show(data, { canWrite: false, canValidate: false });
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeDisabled();
+  expect(
+    screen.queryByRole("button", { name: "Reset report choices" }),
+  ).not.toBeInTheDocument();
+});
+it("shows a drug's report tick only on the run whose reading is chosen for the report", async () => {
+  const data = ticks();
+  const first = data.isolates[0].runs[0];
+  data.isolates[0].choices = [{ antibioticId: "b", readingId: "r-b" }];
+  data.isolates[0].runs.push({
+    ...first,
+    id: "retest",
+    orderedAntibiotics: first.orderedAntibiotics.map((agent) => ({
+      ...agent,
+    })),
+    readings: [reading("r-a2", "a", 4), reading("r-b2", "b", 4)],
+  });
+  show(data);
+  const name = (agent) => ({ name: `Report ${agent}`, hidden: true });
+  await screen.findAllByRole("checkbox", name("Ampicillin"));
+  expect(screen.getAllByRole("checkbox", name("Ceftriaxone"))).toHaveLength(1);
+  expect(screen.getAllByRole("checkbox", name("Ampicillin"))).toHaveLength(2);
+});
