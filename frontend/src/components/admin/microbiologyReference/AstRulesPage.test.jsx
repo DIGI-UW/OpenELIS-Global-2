@@ -407,8 +407,13 @@ it("previews what an isolate would report and why", async () => {
   );
   const result = await screen.findByRole("table", { name: "Preview result" });
   expect(
-    within(result).getByText("Expert rule: Klebsiella, Ceftriaxone always R"),
+    within(result).getByText(
+      "Acinetobacter baumannii is always resistant to Ceftriaxone",
+    ),
   ).toBeInTheDocument();
+  expect(
+    within(result).queryByText("Expert rule: Klebsiella, Ceftriaxone always R"),
+  ).not.toBeInTheDocument();
   expect(within(result).getByText("Consider meropenem")).toBeInTheDocument();
   expect(screen.getByText("Default panel: Gram neg stamp")).toBeInTheDocument();
 });
