@@ -111,6 +111,19 @@ public class SurveillanceServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void resultsReleasedBetweenThePriorPeriodAndTheScopeCountInNeither() {
+        map("HIV", VL_PLASMA, "VL_SUPPRESSED", 1, "NUMERIC_BELOW", null, null, "1000");
+        numeric(VL_PLASMA, IN_SCOPE, "300", null, null);
+        numeric(VL_PLASMA, "2026-02-15 10:00:00", "100", null, null);
+        numeric(VL_PLASMA, "2026-01-15 10:00:00", "5000", null, null);
+        ScopeRange marchAgainstJanuary = new ScopeRange(MARCH.from(), MARCH.to(), LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 1, 31));
+
+        assertEquals(List.of(new Metric("VL_SUPPRESSED", "VL_SUPPRESSED label", 100.0, 1, 1, 100.0)),
+                program(marchAgainstJanuary, "HIV").metrics());
+    }
+
+    @Test
     public void denominatorCodesNarrowWhatCountsAsTested() {
         map("TB", RIF, "RIF_RESISTANT", 1, "SPECIFIC_CODES", "RIF DETECTED", "RIF DETECTED,RIF NOT DETECTED", null);
         coded(RIF, IN_SCOPE, "8904", "8905");
@@ -149,7 +162,11 @@ public class SurveillanceServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     private Program program(String code) {
-        return surveillanceService.getSurveillance(MARCH).programs().stream().filter(p -> p.code().equals(code))
+        return program(MARCH, code);
+    }
+
+    private Program program(ScopeRange scope, String code) {
+        return surveillanceService.getSurveillance(scope).programs().stream().filter(p -> p.code().equals(code))
                 .findFirst().orElseThrow();
     }
 

@@ -74,12 +74,15 @@ public class SurveillanceDAOImpl implements SurveillanceDAO {
                 + " AND d.id = CAST(CASE WHEN res.value ~ '^[0-9]+$' THEN res.value END AS numeric)"
                 + " CROSS JOIN LATERAL (SELECT " + NUMBER + " AS num) n"
                 + " WHERE m.is_active AND COALESCE(res.value, '') <> ''"
-                + " AND a.released_date >= :priorFrom AND a.released_date < :to)"
+                + " AND a.released_date >= :priorFrom AND a.released_date < :to"
+                // Quarter and year to date leave a gap between the prior period and the scope.
+                + " AND (a.released_date >= :from OR a.released_date < :priorEnd))"
                 + " SELECT program_id, metric_key, period, count(DISTINCT analysis_id) FILTER (WHERE tested) AS tested,"
                 + " count(DISTINCT analysis_id) FILTER (WHERE tested AND positive) AS positive FROM r"
                 + " GROUP BY GROUPING SETS ((program_id, metric_key, period), (program_id, period))";
         return entityManager.createNativeQuery(sql).setParameter("from", QiReportSupport.startOf(scope.from()))
                 .setParameter("priorFrom", QiReportSupport.startOf(scope.priorFrom()))
+                .setParameter("priorEnd", QiReportSupport.endOf(scope.priorTo()))
                 .setParameter("to", QiReportSupport.endOf(scope.to())).getResultList();
     }
 
