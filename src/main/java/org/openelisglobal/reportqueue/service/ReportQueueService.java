@@ -63,6 +63,12 @@ public interface ReportQueueService {
 
     ReportQueuePageDTO list(ReportQueueRequest request, String sysUserId);
 
+    /**
+     * The orders the queue lists as Unprinted for the user, whenever they were
+     * released: the home dashboard tile that opens that list shows this number.
+     */
+    long unprintedCount(String sysUserId);
+
     Optional<ReportQueueRowDetailDTO> detail(Long sampleId, String sysUserId);
 
     /**

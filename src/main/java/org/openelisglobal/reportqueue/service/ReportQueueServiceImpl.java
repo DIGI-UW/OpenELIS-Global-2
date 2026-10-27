@@ -505,6 +505,14 @@ public class ReportQueueServiceImpl implements ReportQueueService {
 
     @Override
     @Transactional(readOnly = true)
+    public long unprintedCount(String sysUserId) {
+        ReportQueueCriteria criteria = baseCriteria(sysUserId);
+        criteria.setPrintStatus("UNPRINTED");
+        return queryDAO.count(criteria);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<ReportQueueRowDetailDTO> detail(Long sampleId, String sysUserId) {
         Sample sample = findSample(String.valueOf(sampleId));
         if (sample == null || !queryDAO.isInScope(sampleId, baseCriteria(sysUserId))) {

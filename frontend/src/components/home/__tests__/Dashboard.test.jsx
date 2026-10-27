@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import HomeDashBoard from "../Dashboard";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
@@ -187,5 +187,56 @@ describe("Home dashboard order list", () => {
 
     expect(await screen.findByText("ACC0000000000001")).toBeInTheDocument();
     expect(screen.queryByText("HAEM000000000001")).not.toBeInTheDocument();
+  });
+});
+
+describe("Home dashboard Unprinted results tile", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("opens the Report Print Queue from its expand icon too, never the old order list", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/home-dashboard/metrics")) {
+        callback({ unPritendResults: 2 });
+      } else {
+        callback({});
+      }
+    });
+    const user = userEvent.setup();
+    let location;
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <MemoryRouter>
+          <UserSessionDetailsContext.Provider value={userSessionDetails}>
+            <NotificationContext.Provider value={notificationContext}>
+              <HomeDashBoard />
+              <Route
+                path="*"
+                render={(props) => {
+                  location = props.location;
+                  return null;
+                }}
+              />
+            </NotificationContext.Provider>
+          </UserSessionDetailsContext.Provider>
+        </MemoryRouter>
+      </IntlProvider>,
+    );
+
+    const tile = await screen.findByRole("button", {
+      name: /Unprinted results/,
+    });
+    await user.click(tile.querySelector(".icon-wrapper"));
+
+    expect(location.pathname + location.search).toBe(
+      "/ReportPrintQueue?type=patient&printStatus=unprinted",
+    );
+    expect(
+      getFromOpenElisServer.mock.calls
+        .map(([url]) => url)
+        .filter((url) => url.includes("UN_PRINTED_RESULTS")),
+    ).toEqual([]);
+    expect(notificationContext.addNotification).not.toHaveBeenCalled();
   });
 });

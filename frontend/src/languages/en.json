@@ -2981,7 +2981,7 @@
   "dashboard.rejected.orders": "Orders Rejected Today",
   "dashboard.turn.around.label": "Delayed Turn Around",
   "dashboard.turn.around.subtitle.label": "More Than 96 hours",
-  "dashboard.unprints.results.label": "UnPrinted Results Today",
+  "dashboard.unprinted.results.label": "Unprinted results",
   "dashboard.user.orders.label": "Orders Entered By Users Today",
   "dashboard.user.orders.today.label": "Orders Entered By User Today",
   "dashboard.user.ordersEntered": "Orders Entered",

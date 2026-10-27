@@ -279,6 +279,26 @@ describe("ReportPrintQueue", () => {
     ).toBeInTheDocument();
   });
 
+  it("announces the status tiles as buttons that show the filter they apply", async () => {
+    renderPage();
+    const toPrint = await screen.findByRole("button", { name: /^1\s*To print/ });
+    const amended = screen.getByRole("button", { name: /Amended to print/ });
+    expect(toPrint).toHaveAttribute("aria-pressed", "false");
+    expect(amended).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.keyDown(amended, { key: " ", code: "Space" });
+    await waitFor(() =>
+      expect(amended).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(toPrint).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(toPrint);
+    await waitFor(() =>
+      expect(toPrint).toHaveAttribute("aria-pressed", "true"),
+    );
+    expect(amended).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("applies a lab number lookup on Enter, shows the active search strip and clears it", async () => {
     renderPage();
     await waitFor(() =>
