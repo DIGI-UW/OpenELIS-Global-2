@@ -10,6 +10,7 @@ import java.util.Map;
 public class MicroAstQcViewForm {
     public boolean configured;
     public boolean canRecord;
+    public boolean held;
     public List<Antibiotic> antibiotics = new ArrayList<>();
     public List<ControlLot> controlLots = new ArrayList<>();
     public List<Lot> lots = new ArrayList<>();
