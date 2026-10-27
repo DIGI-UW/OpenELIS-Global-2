@@ -14,8 +14,11 @@ import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServer,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../../utils/Utils";
+import StaleSaveNotice, {
+  isStaleConflict,
+} from "../../../common/StaleSaveNotice";
 
 const TRIGGER_TYPES = [
   "ALL",
@@ -61,6 +64,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
   const [form, setForm] = useState(blankRule());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [stale, setStale] = useState(false);
   const [roles, setRoles] = useState([]);
   // A rule names a measurement, and on a multi-component test the test name
   // does not: Ct Value and the coded PCR Result beside it are different things
@@ -73,6 +77,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
       return;
     }
     setError(null);
+    setStale(false);
     setForm(rule && rule.id ? { ...blankRule(), ...rule } : blankRule());
     getFromOpenElisServer(`/rest/test-catalog/${testId}/alerts/roles`, (data) =>
       setRoles(Array.isArray(data) ? data : []),
@@ -120,7 +125,12 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
         onClose();
       } else {
         setError(
-          intl.formatMessage({ id: "label.testCatalog.alerts.saveError" }),
+          intl.formatMessage({
+            id:
+              status === 400
+                ? "label.testCatalog.alerts.saveRefused"
+                : "label.testCatalog.alerts.saveError",
+          }),
         );
       }
     };
@@ -142,12 +152,24 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
       notifyRoleId: form.notifyRoleId,
       acknowledgmentRequired: form.acknowledgmentRequired,
       enabled: form.enabled,
+      ...(isEdit ? { version: form.version } : {}),
     });
     if (isEdit) {
-      putToOpenElisServer(
+      putToOpenElisServerFullResponse(
         `/rest/test-catalog/${testId}/alerts/${rule.id}`,
         payload,
-        cb,
+        async (response) => {
+          const status = response ? response.status : 0;
+          if (status === 409) {
+            const body = await response.json().catch(() => null);
+            if (isStaleConflict(status, body)) {
+              setSaving(false);
+              setStale(true);
+              return;
+            }
+          }
+          cb(status);
+        },
       );
     } else {
       postToOpenElisServer(`/rest/test-catalog/${testId}/alerts`, payload, cb);
@@ -166,7 +188,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
       })}
       primaryButtonText={intl.formatMessage({ id: "button.save" })}
       secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-      primaryButtonDisabled={saving}
+      primaryButtonDisabled={saving || stale}
       size="md"
     >
       <Stack gap={5}>
@@ -176,6 +198,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
             id: "label.testCatalog.alerts.field.name",
           })}
           value={form.name}
+          maxLength={100}
           onChange={(e) => set("name", e.target.value)}
           invalid={!!error && !form.name.trim()}
         />
@@ -278,6 +301,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
               id: "label.testCatalog.alerts.field.specificValue",
             })}
             value={form.triggerValue || ""}
+            maxLength={100}
             onChange={(e) => set("triggerValue", e.target.value)}
             invalid={!!error && !form.triggerValue}
           />
@@ -347,6 +371,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
               id: "label.testCatalog.alerts.recipient.customPhone",
             })}
             value={form.notifyCustomPhone || ""}
+            maxLength={20}
             onChange={(e) => set("notifyCustomPhone", e.target.value)}
           />
           <TextInput
@@ -355,6 +380,7 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
               id: "label.testCatalog.alerts.recipient.customEmail",
             })}
             value={form.notifyCustomEmail || ""}
+            maxLength={100}
             onChange={(e) => set("notifyCustomEmail", e.target.value)}
           />
           <Dropdown
@@ -388,6 +414,15 @@ const AlertRuleModal = ({ open, onClose, testId, rule, onSaved }) => {
           onToggle={(checked) => set("acknowledgmentRequired", checked)}
         />
 
+        {stale && (
+          <StaleSaveNotice
+            testId="alert-rule-stale-save"
+            onRefresh={() => {
+              onSaved();
+              onClose();
+            }}
+          />
+        )}
         {error && (
           <InlineNotification
             kind="error"

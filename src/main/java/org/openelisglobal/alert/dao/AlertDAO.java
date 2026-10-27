@@ -37,6 +37,9 @@ public interface AlertDAO extends BaseDAO<Alert, Long> {
      */
     List<Alert> getAlertsByEntityRef(String entityType, String entityRef);
 
+    /** Outstanding means OPEN or ACKNOWLEDGED. */
+    List<Alert> getOutstandingAlerts(String entityType, AlertType alertType);
+
     /**
      * Get all alerts of a specific type.
      *

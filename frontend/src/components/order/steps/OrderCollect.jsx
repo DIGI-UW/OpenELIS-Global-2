@@ -29,8 +29,12 @@ import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
 import { samplesFromPendingRequests } from "./pendingRequestSamples";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -168,10 +172,10 @@ const OrderCollect = () => {
   // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
   // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
-  // human subject, so consent never applies to them.
+  // human subject, so consent never applies to them, and neither does an EQA
+  // proficiency sample, which has no person to consent (OGC-1483).
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
-  const consentRequired =
-    configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
+  const consentRequired = consentApplies(configurationProperties, orderData);
   const consentSatisfied = !consentRequired || consentData.consentGiven;
   const canSave = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
   const toContinue = prepareSamplesToContinue({
@@ -197,7 +201,10 @@ const OrderCollect = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
       return true;

@@ -3,10 +3,13 @@ package org.openelisglobal.analyzer.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.nio.channels.UnresolvedAddressException;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
@@ -34,6 +37,9 @@ import org.springframework.stereotype.Service;
 public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingService {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
+    // The pin is checked whenever the Analyzers page loads; an unreachable Bridge
+    // must not hold the page for the full pairing timeout.
+    private static final Duration PIN_CHECK_TIMEOUT = Duration.ofSeconds(5);
     private static final Set<String> REFUSALS = Set.of("analyzer.bridgePairing.error.wrongCode",
             "analyzer.bridgePairing.error.closed");
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -72,7 +78,9 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         String clientFingerprint = record.map(this::clientFingerprint).orElse(null);
         boolean paired = record.map(r -> r.getBridgeCertificateSha256() != null).orElse(false);
         return new Status(bridgeUrl, paired, paired ? record.get().getBridgeCertificateSha256() : null,
-                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null, !configuredCode.isEmpty());
+                clientFingerprint, paired ? record.get().getPairedAt().toInstant() : null,
+                !configuredCode.isEmpty() && !configuredCodeRefused,
+                paired && !bridgeUrl.isEmpty() ? checkPin(record.get()).orElse(null) : null);
     }
 
     @Override
@@ -149,8 +157,19 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
     @Override
     @Scheduled(initialDelay = 5_000, fixedDelay = 30_000)
     public void pairWithConfiguredCode() {
-        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || configuredCodeRefused || getStatus().paired()) {
+        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || configuredCodeRefused) {
             return;
+        }
+        Optional<AnalyzerBridgePairing> pinned = dao.findCurrent().filter(r -> r.getBridgeCertificateSha256() != null);
+        if (pinned.isPresent()) {
+            Optional<PinCheck> check = checkPin(pinned.get());
+            if (check.isEmpty() || check.get() == PinCheck.MATCHES || check.get() == PinCheck.UNREACHABLE) {
+                return;
+            }
+            LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
+                    "The Analyzer Bridge at " + bridgeUrl + " no longer matches the pinned certificate "
+                            + pinned.get().getBridgeCertificateSha256() + " (" + check.get()
+                            + "); pairing again with the configured code.");
         }
         try {
             pair(configuredCode, null);
@@ -165,6 +184,46 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
             }
             LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
                     "Could not pair with the Analyzer Bridge at " + bridgeUrl + " yet: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Asks the Bridge at the configured address for its pairing state, observing
+     * the certificate it presents. {@code UNREACHABLE} when nothing answers at the
+     * address in time (refused, unknown host, or no answer before the timeout),
+     * empty when the answer cannot be read.
+     */
+    private Optional<PinCheck> checkPin(AnalyzerBridgePairing record) {
+        BridgeTls.ObservingServerTrustManager observed = new BridgeTls.ObservingServerTrustManager();
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(PIN_CHECK_TIMEOUT)
+                    .sslContext(BridgeTls.context(clientIdentity(record), observed)).build();
+            HttpResponse<String> response = client.send(
+                    HttpRequest.newBuilder(URI.create(bridgeUrl + "/pairing")).timeout(PIN_CHECK_TIMEOUT).GET().build(),
+                    HttpResponse.BodyHandlers.ofString());
+            X509Certificate served = observed.observed();
+            if (served == null) {
+                return Optional.empty();
+            }
+            if (!BridgeTls.sha256(served).equalsIgnoreCase(record.getBridgeCertificateSha256())) {
+                return Optional.of(PinCheck.OTHER_CERTIFICATE);
+            }
+            if (response.statusCode() != 200) {
+                return Optional.empty();
+            }
+            JsonNode answer = JSON.readTree(response.body());
+            JsonNode paired = answer == null ? null : answer.get("paired");
+            if (paired == null || !paired.isBoolean()) {
+                return Optional.empty();
+            }
+            return Optional.of(paired.booleanValue() ? PinCheck.MATCHES : PinCheck.BRIDGE_UNPAIRED);
+        } catch (ConnectException | HttpTimeoutException | UnresolvedAddressException e) {
+            return Optional.of(PinCheck.UNREACHABLE);
+        } catch (GeneralSecurityException | IOException e) {
+            return Optional.empty();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
         }
     }
 

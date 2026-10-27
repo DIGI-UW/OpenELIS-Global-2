@@ -104,6 +104,32 @@ public class SampleTypeCreateRestControllerValidationIntegrationTest extends Bas
         assertEquals(Integer.valueOf(1), sampleTypeCount());
     }
 
+    /**
+     * OGC-1467: a name or description longer than type_of_sample.description (40)
+     * is a field error, not a 500 from the insert.
+     */
+    @Test
+    public void create_withANameOrDescriptionOver40Characters_is400_andCreatesNothing() throws Exception {
+        String name41 = (NAME_PREFIX + " " + "n".repeat(40)).substring(0, 41);
+        validatingMvc
+                .perform(post("/rest/SampleTypeCreate").contentType(MediaType.APPLICATION_JSON).content(body(name41))
+                        .session(adminSession()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[*].field", CoreMatchers.hasItem("sampleTypeEnglishName")));
+        String longDescription = body(NAME_PREFIX + " d41").replace("\"domain\"",
+                "\"description\":\"" + NAME_PREFIX + "d".repeat(36) + "\",\"domain\"");
+        validatingMvc
+                .perform(post("/rest/SampleTypeCreate").contentType(MediaType.APPLICATION_JSON).content(longDescription)
+                        .session(adminSession()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[*].field", CoreMatchers.hasItem("description")));
+
+        assertEquals(Integer.valueOf(0), sampleTypeCount());
+        validatingMvc.perform(post("/rest/SampleTypeCreate").contentType(MediaType.APPLICATION_JSON)
+                .content(body(name41.substring(0, 40))).session(adminSession())).andExpect(status().isOk());
+        assertEquals(Integer.valueOf(1), sampleTypeCount());
+    }
+
     private String body(String name) {
         String json = name.replace("\"", "\\\"");
         return "{\"sampleTypeEnglishName\":\"" + json + "\",\"sampleTypeFrenchName\":\"" + json

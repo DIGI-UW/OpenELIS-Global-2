@@ -171,6 +171,7 @@ public class SampleTypeTestAssignRestController extends BaseController {
             return saveFailure(e);
         }
 
+        typeOfSampleService.clearCache();
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);

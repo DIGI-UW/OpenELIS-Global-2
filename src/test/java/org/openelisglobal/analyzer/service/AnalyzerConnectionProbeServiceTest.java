@@ -79,6 +79,22 @@ public class AnalyzerConnectionProbeServiceTest {
     }
 
     @Test
+    public void evidenceNamingThePinnedRevisionIsAcceptedWhateverContentTheBridgeLastSaw() throws Exception {
+        ObjectNode connection = fixture("analyzer-connection.json");
+        ObjectNode evidence = fixture("connection-probe-result.json");
+        String edited = "sha256:" + "9".repeat(64);
+        connection.withObject("profileRef").put("fingerprint", edited);
+        evidence.withObject("profileRef").put("fingerprint", edited);
+        when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
+        when(bridgeClient.probe(CONNECTION_ID, 4, "probe-fixture-004")).thenReturn(evidence);
+
+        AnalyzerConnectionProbeView result = service.probe(ANALYZER_ID);
+
+        assertEquals("SUCCEEDED", result.status());
+    }
+
+    @Test
     public void rejectsEvidenceForAStaleSavedRevision() throws Exception {
         ObjectNode evidence = fixture("connection-probe-result.json");
         evidence.put("configRevision", 3);

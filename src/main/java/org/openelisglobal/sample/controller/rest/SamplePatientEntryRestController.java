@@ -32,6 +32,7 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.EQAOrderEntryValidator;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
@@ -68,11 +69,14 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -206,6 +210,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     @Autowired
     private org.openelisglobal.dictionary.service.SampleContainerClassificationService containers;
 
+    @Autowired
+    @Lazy
+    private EQAOrderEntryValidator eqaOrderEntryValidator;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -325,7 +333,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             if (hasNonPatientErrors) {
                 saveErrors(result);
                 logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
-                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
+                return ResponseEntity.badRequest()
+                        .body(buildErrorBody(result, "Validation failed", workflowType, ordersWithoutPatient));
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
@@ -408,6 +417,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         boolean requireSampleItems = !form.isOrderEntryOnly();
 
         validateTestRemovals(form, updateData, result);
+        validateEqa(sampleOrder, result);
         updateData.validateSample(result, requireSampleItems, sampleOrder, workflowType);
 
         if (!Boolean.TRUE.equals(form.getWarning()) && updateData.getSampleItemsTests() != null) {
@@ -465,7 +475,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (hasNonPatientErrors) {
             saveErrors(result);
             logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
-            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
+            return ResponseEntity.badRequest()
+                    .body(buildErrorBody(result, "Validation failed", workflowType, ordersWithoutPatient));
         }
 
         // OGC-584: track persistence failure so we can return a proper HTTP
@@ -593,7 +604,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
                 return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
             }
-            return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order", workflowType));
+            return ResponseEntity.status(status)
+                    .body(buildErrorBody(result, "Failed to save order", workflowType, ordersWithoutPatient));
         }
 
         // OGC-1201 AL/AB: record the decision alongside the order it belongs
@@ -632,6 +644,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * after the save. A failure here is logged and never fails a save that already
      * succeeded.
      */
+    /** An EQA order names its enrollment and, optionally, a cycle of it. */
+    private void validateEqa(SampleOrderItem sampleOrder, Errors errors) {
+        if (sampleOrder == null || !sampleOrder.getIsEQASample()) {
+            return;
+        }
+        eqaOrderEntryValidator.check(sampleOrder.getLabNo(), sampleOrder.getEqaProgramId(), sampleOrder.getEqaCycleId())
+                .ifPresent(refusal -> errors.rejectValue(refusal.field(), refusal.code(), refusal.code()));
+    }
+
     private void validateTestRemovals(SamplePatientEntryForm form, SamplePatientUpdateData updateData,
             BindingResult result) {
         if (form.getSampleOrderItems() == null
@@ -976,7 +997,36 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage,
             String workflowType) {
-        boolean dropPatientErrors = "environmental".equals(workflowType) || "vector".equals(workflowType);
+        return buildErrorBody(result, fallbackMessage, workflowType, false);
+    }
+
+    /**
+     * An order without a patient (environmental, vector, EQA or a declared
+     * no-patient order) reports only the errors that refused it, not the empty
+     * patient form it never had (OGC-1483).
+     */
+    /**
+     * A field error's message in the user's language, from its message key and
+     * arguments, so a refusal such as an unknown requester reads in French on a
+     * French session; its English default when the key has no message.
+     */
+    private static String localized(org.springframework.validation.FieldError error) {
+        String fallback = error.getDefaultMessage() != null ? error.getDefaultMessage() : "invalid value";
+        if (error.getCode() == null) {
+            return fallback;
+        }
+        try {
+            return MessageUtil.getMessage(error.getCode(), error.getArguments(), fallback,
+                    LocaleContextHolder.getLocale());
+        } catch (RuntimeException noMessageSource) {
+            return fallback;
+        }
+    }
+
+    static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage, String workflowType,
+            boolean withoutPatient) {
+        boolean dropPatientErrors = withoutPatient || "environmental".equals(workflowType)
+                || "vector".equals(workflowType);
         // The field errors actually surfaced to the client. For environmental/vector
         // drop patient-form errors so the reported message reflects the real cause
         // (e.g. missing requester) rather than a spurious "patientProperties.*" that
@@ -987,8 +1037,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         org.springframework.validation.FieldError firstFe = fieldErrors.isEmpty() ? null : fieldErrors.get(0);
         String message;
         if (firstFe != null) {
-            message = firstFe.getField() + ": "
-                    + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
+            message = firstFe.getField() + ": " + localized(firstFe);
         } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
             message = result.getGlobalErrors().get(0).getDefaultMessage();
         } else {
@@ -999,7 +1048,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         body.put("fieldErrors", fieldErrors.stream().map(fe -> {
             Map<String, String> entry = new java.util.HashMap<>();
             entry.put("field", fe.getField());
-            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? localized(fe) : "");
             return entry;
         }).collect(Collectors.toList()));
         // OGC-743: include globalErrors so reject(...) calls aren't silently

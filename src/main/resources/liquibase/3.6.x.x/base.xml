@@ -27,5 +27,20 @@
   <include relativeToChangelogFile="true" file="014-sample-collection-set-details.xml"/>
   <include relativeToChangelogFile="true" file="015-microbiology-program-visibility.xml"/>
   <include relativeToChangelogFile="true" file="016-microbiology-environmental-site-routing.xml"/>
+  <!-- OGC-431: Report Print Queue V1, versions, archive, print events, per-user preferences, access and menu -->
+  <include relativeToChangelogFile="true" file="017-report-print-queue.xml"/>
+  <!-- OGC-439: Result Delivery foundation: channels, outbox on the notification log, delivery settings, Sent Messages -->
+  <include relativeToChangelogFile="true" file="018-result-delivery-foundation.xml"/>
+  <!-- A component of a multi-component test is validated on its own -->
+  <include relativeToChangelogFile="true" file="019-result-component-validation.xml"/>
+  <!-- Terminology mappings seeded by SQL backfills carry no @Version stamp: stamp them and default the column -->
+  <include relativeToChangelogFile="true" file="020-terminology-mapping-version-backfill.xml"/>
+  <!-- The workflow-type observation the vector and environmental dashboards read is seeded by Liquibase, not by an optional CSV -->
+  <include relativeToChangelogFile="true" file="021-env-workflow-type-observation.xml"/>
+  <!-- OGC-1517: every observation type the application writes is seeded by Liquibase, not by an optional CSV -->
+  <include relativeToChangelogFile="true" file="022-observation-types-seed.xml"/>
+  <!-- OGC-1507: shipped NCE and dictionary labels read through display keys; stored labels record who wrote them -->
+  <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
+  <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
 
 </databaseChangeLog>

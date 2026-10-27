@@ -92,11 +92,21 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         }
         Analyzer analyzer = copyForUpdate(find(analyzerId));
         AnalyzerProfilePin profile = analyzer.getPinnedProfile();
-        String requestedProfileId = requireText(request.getProfileId(), "Profile ID");
-        int requestedRevision = request.getProfileRevision() == null ? 0 : request.getProfileRevision();
         String exactActor = requireText(actor, "actor");
         String name = requireText(request.getName(), "Analyzer name");
         List<String> labUnitIds = normalizeLabUnits(request.getTestUnitIds());
+        boolean renamingOnly = profile == null && (request.getProfileId() == null || request.getProfileId().isBlank());
+        if (renamingOnly) {
+            // An analyzer with no type yet, such as one the baseline migration left,
+            // can still be renamed and moved between lab units.
+            analyzer.setName(name);
+            analyzer.setTestUnitIds(labUnitIds);
+            analyzer.setSysUserId(exactActor);
+            analyzerService.update(analyzer);
+            return state(analyzer);
+        }
+        String requestedProfileId = requireText(request.getProfileId(), "Profile ID");
+        int requestedRevision = request.getProfileRevision() == null ? 0 : request.getProfileRevision();
         if (requestedRevision < 1) {
             throw new IllegalArgumentException("Profile revision must be at least 1");
         }

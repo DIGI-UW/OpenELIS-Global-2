@@ -16,6 +16,7 @@
 
 package org.openelisglobal.common.services;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -315,18 +316,33 @@ public class ResultSaveService {
         result.setValue(value);
         result.setSysUserId(currentUserId);
         result.setSortOrder("0");
+        result.setValidatedDate(null);
+    }
+
+    private boolean isSameValue(String value, Result result) {
+        return isSameValue(value, result.getEnteredValue(), result.getResultType());
     }
 
     /**
-     * A numeric result rewritten in another scientific notation is the same result,
-     * so it must not book a correction against a report that has already gone out.
+     * A numeric result rewritten in another scientific notation, or padded to its
+     * significant digits as Validation saves it back ("1.2" as "1.20"), is the same
+     * result, so it must not book a correction against a report that has already
+     * gone out.
      */
-    private boolean isSameValue(String value, Result result) {
-        String entered = StringUtil.blankIfNull(result.getEnteredValue());
+    static boolean isSameValue(String value, String enteredValue, String resultType) {
+        String entered = StringUtil.blankIfNull(enteredValue);
         String incoming = StringUtil.blankIfNull(value);
-        if ("N".equals(result.getResultType())) {
-            return StringUtil.normalizeScientificNotation(incoming.trim())
-                    .equals(StringUtil.normalizeScientificNotation(entered.trim()));
+        if ("N".equals(resultType)) {
+            String normalizedIncoming = StringUtil.normalizeScientificNotation(incoming.trim());
+            String normalizedEntered = StringUtil.normalizeScientificNotation(entered.trim());
+            if (normalizedIncoming.equals(normalizedEntered)) {
+                return true;
+            }
+            try {
+                return new BigDecimal(normalizedIncoming).compareTo(new BigDecimal(normalizedEntered)) == 0;
+            } catch (NumberFormatException e) {
+                return false;
+            }
         }
         return incoming.equals(entered);
     }

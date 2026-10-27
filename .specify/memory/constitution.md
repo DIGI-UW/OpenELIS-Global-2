@@ -1732,7 +1732,8 @@ scripts/dev-stack url
 ```
 
 Use the endpoints printed by the launcher. Frontend source changes hot reload;
-re-run `scripts/dev-stack up` after backend or dependency changes. Run
+re-run `scripts/dev-stack up` after backend changes, and
+`scripts/dev-stack up --build` after dependency or image changes. Run
 `scripts/run-ci-checks.sh` for the committed candidate while GitHub CI runs.
 Native builds and published-image deployments remain separate modes described
 in the setup guide. These operational commands do not alter the constitutional

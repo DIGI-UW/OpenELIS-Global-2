@@ -2,8 +2,6 @@ package org.openelisglobal.panel.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -136,7 +134,7 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         String headerLine = reader.readLine();
         if (headerLine == null) {
@@ -164,23 +162,27 @@ public class PanelConfigurationHandler implements DomainConfigurationHandler {
         String line;
         int lineNumber = 1;
 
-        while ((line = reader.readLine()) != null) {
-            lineNumber++;
-            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
-                continue;
+        try {
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                if (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                    continue;
+                }
+                String[] values = CsvParsingUtil.parseCsvLine(line);
+                int rowLine = lineNumber;
+                LoadedRow<Panel> result;
+                try {
+                    result = rowTransaction
+                            .run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex,
+                                    sortOrderIndex, loincIndex, domainIndex, localizationColumns, rowLine, fileName));
+                } catch (Exception e) {
+                    result = LoadedRow.skipped(CsvLoadSummary.reason(e));
+                }
+                summary.record(result, getClass().getSimpleName(), rowLine);
+                recordUnresolved(fileName, rowLine);
             }
-            String[] values = CsvParsingUtil.parseCsvLine(line);
-            int rowLine = lineNumber;
-            LoadedRow<Panel> result;
-            try {
-                result = rowTransaction
-                        .run(() -> processRow(values, panelNameIndex, sampleTypesIndex, testsIndex, isActiveIndex,
-                                sortOrderIndex, loincIndex, domainIndex, localizationColumns, rowLine, fileName));
-            } catch (Exception e) {
-                result = LoadedRow.skipped(CsvLoadSummary.reason(e));
-            }
-            summary.record(result, getClass().getSimpleName(), rowLine);
-            recordUnresolved(fileName, rowLine);
+        } finally {
+            rowTransaction.close();
         }
 
         DisplayListService.getInstance().refreshLists();

@@ -1,5 +1,16 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
+
+const csrfToken = async (page: Page): Promise<string> => {
+  const state = await page.context().storageState();
+  for (const origin of state.origins) {
+    for (const item of origin.localStorage) {
+      if (item.name === "CSRF") return item.value;
+    }
+  }
+  return "";
+};
 
 /**
  * OGC-1201 AL/W end to end: an EQA order saves without a patient, and the
@@ -15,6 +26,19 @@ test("AL/W: an EQA order saves with no patient and records why", async ({
 }) => {
   test.setTimeout(180_000);
 
+  // OGC-1483: an EQA order names the lab's enrollment it belongs to.
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  const scheme = `PW1201 scheme ${Date.now()}`.slice(0, 40);
+  const enrolled = await page.request.post(
+    "/api/OpenELIS-Global/rest/eqa/my-programs",
+    {
+      headers: { "X-CSRF-Token": await csrfToken(page) },
+      data: { programName: scheme, provider: "PW" },
+    },
+  );
+  expect(enrolled.status()).toBe(201);
+  const enrollmentId = String((await enrolled.json()).id);
+
   await page.goto("/order/clinical/enter?eqa=true", {
     waitUntil: "domcontentloaded",
   });
@@ -29,6 +53,10 @@ test("AL/W: an EQA order saves with no patient and records why", async ({
   // Arriving through the EQA link declares both decisions up front.
   await expect(page.locator("#isEQASample")).toBeChecked();
   await expect(page.locator("#noPatientOverride")).toBeChecked();
+  await expect(
+    page.locator(`#eqaProgramId option[value="${enrollmentId}"]`),
+  ).toHaveCount(1, { timeout: LONG_TIMEOUT });
+  await page.locator("#eqaProgramId").selectOption(enrollmentId);
 
   // A sample type is the only other thing the save gate wants; no patient is
   // chosen anywhere in this flow.
@@ -77,4 +105,9 @@ test("AL/W: an EQA order saves with no patient and records why", async ({
         reasonCode: "EQA",
       }),
     );
+
+  await page.request.delete(
+    `/api/OpenELIS-Global/rest/eqa/my-programs/${enrollmentId}`,
+    { headers: { "X-CSRF-Token": await csrfToken(page) } },
+  );
 });

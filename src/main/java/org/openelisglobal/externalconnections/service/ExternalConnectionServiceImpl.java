@@ -106,7 +106,9 @@ public class ExternalConnectionServiceImpl extends AuditableBaseObjectServiceImp
             }
             basicAuth.setSysUserId(sysUserId);
             basicAuth.setUsername(basicUsername);
-            basicAuth.setPassword(basicPassword);
+            if (basicPassword != null && !basicPassword.isEmpty()) {
+                basicAuth.setPassword(basicPassword);
+            }
             externalConnectionAuthenticationDataService.save(basicAuth);
         }
     }

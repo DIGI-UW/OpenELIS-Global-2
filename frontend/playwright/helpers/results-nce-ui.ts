@@ -179,7 +179,7 @@ export async function referViaApi(
   expect(reasons.length, "a referral reason is configured").toBeGreaterThan(0);
   const row = (worklist.testResult || []).find((r) => r.testId === testId);
   expect(row, `${accession} has test ${testId} to refer`).toBeTruthy();
-  const { serverDate } = await serverToday(page);
+  const { siteDate } = await serverToday(page);
   const item: Record<string, unknown> = { ...row, isModified: true };
   delete item.result;
   delete item.analysisNotes;
@@ -190,7 +190,7 @@ export async function referViaApi(
   item.referralItem = {
     referralReasonId: reasons[0].id,
     referredInstituteId: labs[0].id,
-    referredSendDate: serverDate,
+    referredSendDate: siteDate,
     referredTestId: testId,
   };
   const saved = await page.request.post(
@@ -204,13 +204,30 @@ export async function referViaApi(
   return { referenceLab: labs[0].value };
 }
 
-/** Today on the server, as dd/MM/yyyy (the app's display format). */
+/**
+ * Today on the server: as dd/MM/yyyy, as yyyy-MM-dd, and as the site writes it
+ * (siteDate), which is the format the server reads a typed date in.
+ */
 export async function serverToday(
   page: Page,
-): Promise<{ serverDate: string; iso: string }> {
-  const time = await getJson<{ date: string }>(page, "/rest/server-time");
+): Promise<{ serverDate: string; iso: string; siteDate: string }> {
+  const [time, config] = await Promise.all([
+    getJson<{ date: string }>(page, "/rest/server-time"),
+    getJson<{ currentDateAsText?: string }>(
+      page,
+      "/rest/open-configuration-properties",
+    ),
+  ]);
   const [yyyy, mm, dd] = time.date.split("-");
-  return { serverDate: `${dd}/${mm}/${yyyy}`, iso: time.date };
+  expect(
+    config.currentDateAsText,
+    "the server publishes today in its date format",
+  ).toBeTruthy();
+  return {
+    serverDate: `${dd}/${mm}/${yyyy}`,
+    iso: time.date,
+    siteDate: config.currentDateAsText!,
+  };
 }
 
 /**

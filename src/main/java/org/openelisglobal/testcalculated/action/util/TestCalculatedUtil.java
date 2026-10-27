@@ -167,9 +167,9 @@ public class TestCalculatedUtil {
 
             if (!resultCalculations.isEmpty()) {
                 for (ResultCalculation resultCalculation : resultCalculations) {
-                    Boolean isMissingParams = false;
+                    Boolean isMissingParams = hasUnboundOperand(resultCalculation);
                     for (Map.Entry<Integer, Integer> entry : resultCalculation.getOperandResultMap().entrySet()) {
-                        if (entry.getValue() == null) {
+                        if (isMissingParams || entry.getValue() == null) {
                             isMissingParams = true;
                             break;
                         }
@@ -263,13 +263,39 @@ public class TestCalculatedUtil {
         return analyses;
     }
 
+    /**
+     * Whether a parameter of the calculation has no result yet. The binding is an
+     * element collection, which stores no null values, so a parameter never
+     * measured on the order (its test not ordered) is missing from the map once it
+     * is read back rather than present as null. Asking the map for a null missed
+     * it: the rule ran without that parameter, failed, and wrote an empty value
+     * over a result entered by hand, released or not.
+     */
+    static boolean hasUnboundOperand(ResultCalculation resultCalculation) {
+        Map<Integer, Integer> bound = resultCalculation.getOperandResultMap();
+        for (Operation operation : resultCalculation.getCalculation().getOperations()) {
+            if (Operation.OperationType.TEST_RESULT.equals(operation.getType())
+                    && (bound == null || bound.get(operation.getId()) == null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A calculation that has not written this order's result yet never replaces a
+     * value already recorded there with an empty one: that value was entered by
+     * hand, and a rule that cannot produce a value has nothing to put in its place.
+     */
     private Analysis createCalculatedResult(ResultCalculation resultCalculation, ResultSet resultSet,
             Calculation calculation, String value, String systemUserId) {
         Test test = testService.get(calculation.getTestId().toString());
-        String resultType = testService.getResultType(test);
+        String resultType = test == null ? null
+                : ruleResultScope.resultTypeForComponent(test.getId(), calculation.getComponentId(),
+                        testService.getResultType(test));
         Analysis analysis = null;
         if (test != null) {
-            if (resultCalculation.getOperandResultMap().containsValue(null)) {
+            if (hasUnboundOperand(resultCalculation)) {
                 if (Boolean.valueOf(value)) {
                     if (StringUtils.isNotBlank(calculation.getNote())) {
                         Note note = noteService.createSavableNote(resultSet.result.getAnalysis(), NoteType.EXTERNAL,
@@ -292,7 +318,7 @@ public class TestCalculatedUtil {
             if (testResult.getSignificantDigits() != null) {
                 result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
             }
-            result.setResultType(testService.getResultType(test));
+            result.setResultType(resultType);
             result.setSysUserId(systemUserId);
             Boolean resultCalculated = false;
             if (value != null) {
@@ -331,6 +357,10 @@ public class TestCalculatedUtil {
             }
             if (resultCalculation.getResult() == null) {
                 Result recorded = recordedResultFor(analysis, testResult);
+                if (recorded != null && StringUtils.isBlank(result.getValue())
+                        && StringUtils.isNotBlank(recorded.getValue())) {
+                    return null;
+                }
                 if (recorded != null) {
                     recorded.setTestResult(result.getTestResult());
                     recorded.setSignificantDigits(result.getSignificantDigits());
@@ -360,7 +390,7 @@ public class TestCalculatedUtil {
             String systemUserId, String externalNote) {
         List<Note> notes = new ArrayList<>();
         Note note = noteService.createSavableNote(newAnalysis, NoteType.INTERNAL,
-                "Result Succesfully Calculated From Calculation Rule :" + calculatioName, CALCULATION_SUBJECT,
+                "Result Successfully Calculated From Calculation Rule :" + calculatioName, CALCULATION_SUBJECT,
                 systemUserId);
         if (!noteService.duplicateNoteExists(note)) {
             notes.add(note);

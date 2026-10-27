@@ -290,6 +290,7 @@ public class NceEnhancementRestController extends BaseRestController {
                     NceCategoryDTO dto = new NceCategoryDTO();
                     dto.id = String.valueOf(cat.getId());
                     dto.name = cat.getLocalizedName();
+                    dto.displayKey = cat.getDisplayKey();
 
                     List<NceType> types = nceTypeService.getNceTypesByCategoryId(cat.getId());
                     dto.types = types.stream()
@@ -298,6 +299,7 @@ public class NceEnhancementRestController extends BaseRestController {
                                 NceTypeDTO typeDto = new NceTypeDTO();
                                 typeDto.id = String.valueOf(type.getId());
                                 typeDto.name = type.getLocalizedName();
+                                typeDto.displayKey = type.getDisplayKey();
                                 return typeDto;
                             }).collect(Collectors.toList());
 
@@ -502,12 +504,14 @@ public class NceEnhancementRestController extends BaseRestController {
     public static class NceCategoryDTO {
         public String id;
         public String name;
+        public String displayKey;
         public List<NceTypeDTO> types;
     }
 
     public static class NceTypeDTO {
         public String id;
         public String name;
+        public String displayKey;
     }
 
     public static class NceDashboardItemDTO {

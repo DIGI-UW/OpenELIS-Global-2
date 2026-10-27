@@ -16,11 +16,15 @@ public final class ReportingAudit {
 
     public enum Action {
         SUBMITTED, STARTED, READY, FAILED, INTERRUPTED, RETRIED, CANCELLED, EXPIRED, DOWNLOAD_OPENED,
-        DEFINITION_CREATED, DEFINITION_UPDATED, DEFINITION_DELETED, ACCESS_DENIED
+        DEFINITION_CREATED, DEFINITION_UPDATED, DEFINITION_DELETED, ACCESS_DENIED, SURVEILLANCE_MAPPING_IMPORTED
     }
 
     private record Entry(Action action, String actor, String ownerId, String targetType, String targetId,
             String parentId, String timestamp) {
+    }
+
+    private record ImportEntry(Action action, String actor, String targetType, int rowsAdded, int rowsUpdated,
+            int rowsSkipped, String sourceFile, String timestamp) {
     }
 
     private ReportingAudit() {
@@ -34,10 +38,19 @@ public final class ReportingAudit {
         committed(action, actor, null, "definition", id, null);
     }
 
+    public static void surveillanceMappingsImported(String actor, int added, int updated, int skipped,
+            String sourceFile) {
+        afterCommit(() -> log(new ImportEntry(Action.SURVEILLANCE_MAPPING_IMPORTED, identifier(actor),
+                "surveillance_mapping", added, updated, skipped, fileName(sourceFile), Instant.now().toString())));
+    }
+
     private static void committed(Action action, String actor, String owner, String type, String id, String parent) {
         // Capture identifiers now; a later lifecycle transition must not change this
         // event.
-        Runnable write = () -> write(action, actor, owner, type, id, parent);
+        afterCommit(() -> write(action, actor, owner, type, id, parent));
+    }
+
+    private static void afterCommit(Runnable write) {
         if (TransactionSynchronizationManager.isActualTransactionActive()
                 && TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -62,9 +75,16 @@ public final class ReportingAudit {
         return value.matches("[A-Za-z0-9_.:-]{1,128}") ? value : "invalid-identifier";
     }
 
+    private static String fileName(String value) {
+        return value == null ? null : identifier(value.replaceAll("[^A-Za-z0-9_.:-]", "_"));
+    }
+
     private static void write(Action action, String actor, String owner, String type, String id, String parent) {
-        Entry entry = new Entry(action, identifier(actor), identifier(owner), type, identifier(id), identifier(parent),
-                Instant.now().toString());
+        log(new Entry(action, identifier(actor), identifier(owner), type, identifier(id), identifier(parent),
+                Instant.now().toString()));
+    }
+
+    private static void log(Record entry) {
         try {
             LOG.info("REPORTING_AUDIT {}", JSON.writeValueAsString(entry));
         } catch (JsonProcessingException impossibleForScalarMetadata) {

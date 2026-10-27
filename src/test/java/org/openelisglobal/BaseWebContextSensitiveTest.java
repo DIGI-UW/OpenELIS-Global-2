@@ -647,6 +647,19 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     /**
+     * Idempotently ensure a {@code clinlims.system_role} row with this name exists.
+     * Several fixtures replace the whole role table with their own rows and leave
+     * the seeded roles out for the rest of the JVM run, so a test that grants a
+     * seeded role by name would otherwise grant nothing. Insert-if-absent only; the
+     * id comes from the role sequence.
+     */
+    protected void ensureSystemRole(String name) {
+        jdbcTemplate.update("INSERT INTO clinlims.system_role (id, name, description, active, editable) "
+                + "SELECT nextval('clinlims.system_role_seq'), ?, ?, true, false "
+                + "WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_role WHERE name = ?)", name, name, name);
+    }
+
+    /**
      * Resync all tracked entity sequences to MAX(id)+1. Convenience method for
      * tests that insert multiple records programmatically across different
      * entities.

@@ -88,8 +88,6 @@ const SampleType = (props) => {
   );
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const [rejectionReasonsDisabled, setRejectionReasonsDisabled] =
-    useState(true);
   const [selectedPanels, setSelectedPanels] = useState(sample?.panels || []);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [uomList, setUomList] = useState([]);
@@ -448,7 +446,6 @@ const SampleType = (props) => {
       ...sampleXml,
       rejected: checked,
     });
-    setRejectionReasonsDisabled(!rejectionReasonsDisabled);
   }
 
   const removedPanelFromSelectedPanels = (panel) => {
@@ -551,10 +548,10 @@ const SampleType = (props) => {
 
   useEffect(() => {
     props.sampleTypeObject({
-      sampleRejected: !rejectionReasonsDisabled,
+      sampleRejected: Boolean(sampleXml.rejected),
       sampleObjectIndex: index,
     });
-  }, [rejectionReasonsDisabled]);
+  }, [sampleXml.rejected]);
 
   useEffect(() => {
     props.sampleTypeObject({
@@ -651,15 +648,22 @@ const SampleType = (props) => {
 
         <CustomCheckBox
           id={"reject_" + index}
+          checked={Boolean(sampleXml.rejected)}
           onChange={(value) => handleRejection(value)}
           label={intl.formatMessage({ id: "sample.reject.label" })}
         />
         {sampleXml.rejected && (
           <CustomSelect
             id={"rejectedReasonId_" + index}
+            labelText={intl.formatMessage({ id: "sample.reject.reason.label" })}
+            aria-required="true"
             options={rejectSampleReasons}
-            disabled={rejectionReasonsDisabled}
+            disabled={!sampleXml.rejected}
             value={sampleXml.rejectionReason}
+            invalid={!sampleXml.rejectionReason}
+            invalidText={intl.formatMessage({
+              id: "sample.reject.reasonRequired",
+            })}
             onChange={(e) => handleReasons(e)}
           />
         )}
@@ -846,10 +850,10 @@ const SampleType = (props) => {
               orderLabelText={intl.formatMessage({
                 id: "barcode.labels.order.row",
               })}
-              specimenLabelFormatter={(sampleNumber) =>
+              specimenLabelFormatter={() =>
                 intl.formatMessage(
                   { id: "barcode.labels.sample.row" },
-                  { sampleNumber },
+                  { sampleNumber: index + 1 },
                 )
               }
               runningTotalLabel={intl.formatMessage({

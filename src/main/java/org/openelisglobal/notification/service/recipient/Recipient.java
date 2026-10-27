@@ -35,7 +35,7 @@ public class Recipient {
     public boolean canReceive(NotificationChannel channel) {
         return switch (channel) {
         case EMAIL -> !GenericValidator.isBlankOrNull(email);
-        case WHATSAPP -> !GenericValidator.isBlankOrNull(phone);
+        case SMS, WHATSAPP -> !GenericValidator.isBlankOrNull(phone);
         };
     }
 }

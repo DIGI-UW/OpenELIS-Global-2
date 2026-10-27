@@ -63,8 +63,9 @@ import useActiveLocales from "../../common/useActiveLocales";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-  putToOpenElisServer,
+  putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import StaleSaveNotice, { isStaleConflict } from "../../common/StaleSaveNotice";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -104,6 +105,7 @@ const mapLabUnit = (item) => ({
   active: item.isActive !== undefined ? item.isActive : true,
   testCount: item.testCount || 0,
   sortOrder: item.sortOrder || 0,
+  lastupdated: item.lastupdated || null,
 });
 
 function LabUnitManagement({ intl }) {
@@ -167,6 +169,7 @@ function LabUnitManagement({ intl }) {
 
   // Form validation and state
   const [formErrors, setFormErrors] = useState({});
+  const [staleSave, setStaleSave] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const nameInputRef = useRef(null);
@@ -194,6 +197,9 @@ function LabUnitManagement({ intl }) {
   const [deactivationDestination, setDeactivationDestination] = useState("");
   const [deactivationConfirmText, setDeactivationConfirmText] = useState("");
   const [deactivationBusy, setDeactivationBusy] = useState(false);
+  // The server's reason when it refuses the deactivation (OGC-1459).
+  const [deactivationError, setDeactivationError] = useState(null);
+  const [deactivationStale, setDeactivationStale] = useState(false);
 
   const refreshLabUnits = useCallback(async () => {
     return await new Promise((resolve, reject) => {
@@ -322,11 +328,39 @@ function LabUnitManagement({ intl }) {
       return;
     }
     setEditingUnit({ ...unit });
+    setStaleSave(false);
     setFormErrors({});
     setShowSuccess(false);
     setPendingDomain(null);
     setAssignedTests([]);
   }, [view, labUnitId, labUnits, editingUnit]);
+
+  // Other sections of this page (Display Order) change the unit too, so coming
+  // back to Basic Info takes the stored version; otherwise the next save here
+  // would be refused as stale (OGC-1463).
+  const editingUnitId = editingUnit ? editingUnit.id : null;
+  useEffect(() => {
+    if (
+      view !== "editor" ||
+      activeSection !== "basic-info" ||
+      !editingUnitId ||
+      String(editingUnitId) !== String(labUnitId)
+    ) {
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/lab-units-management/${editingUnitId}`,
+      (res) => {
+        if (res && res.success && res.data) {
+          setEditingUnit((prev) =>
+            prev && String(prev.id) === String(res.data.id)
+              ? { ...prev, lastupdated: res.data.lastupdated || null }
+              : prev,
+          );
+        }
+      },
+    );
+  }, [view, activeSection, editingUnitId, labUnitId]);
 
   // Seed the "add" form once when we land on /LabUnitManagement/new.
   useEffect(() => {
@@ -501,17 +535,28 @@ function LabUnitManagement({ intl }) {
           domain: editingUnit.domain || "CLINICAL",
           isActive:
             editingUnit.active !== undefined ? editingUnit.active : true,
+          lastupdated: editingUnit.lastupdated || null,
         };
         await new Promise((resolve, reject) => {
-          putToOpenElisServer(
+          putToOpenElisServerFullResponse(
             `/rest/lab-units-management/${editingUnit.id}`,
             JSON.stringify(updateData),
-            (status) => {
+            async (response) => {
+              const status = response ? response.status : 0;
               if (status === 200) {
                 resolve(status);
-              } else {
-                reject(new Error(`Update failed (HTTP ${status})`));
+                return;
               }
+              const body = response
+                ? await response.json().catch(() => null)
+                : null;
+              const refusal = new Error(
+                status === 409 && !isStaleConflict(status, body)
+                  ? intl.formatMessage({ id: "error.labUnit.name.duplicate" })
+                  : `Update failed (HTTP ${status})`,
+              );
+              refusal.stale = isStaleConflict(status, body);
+              reject(refusal);
             },
           );
         });
@@ -534,6 +579,10 @@ function LabUnitManagement({ intl }) {
         setFormErrors({});
       }
     } catch (error) {
+      if (error.stale) {
+        setStaleSave(true);
+        return;
+      }
       const operation = view === "add" ? "create" : "update";
       setFormErrors({
         submit: `Failed to ${operation} lab unit: ${error.message}`,
@@ -549,6 +598,7 @@ function LabUnitManagement({ intl }) {
     listUrl,
     labUnits,
     refreshLabUnits,
+    intl,
   ]);
 
   // Domain radio handler: in the editor an actual change is staged behind the
@@ -620,6 +670,8 @@ function LabUnitManagement({ intl }) {
     setDeactivationOption("");
     setDeactivationDestination("");
     setDeactivationConfirmText("");
+    setDeactivationError(null);
+    setDeactivationStale(false);
     setDeactivationOpen(true);
     getFromOpenElisServer(
       `/rest/lab-units-management/${labUnitId}/deactivation-impact`,
@@ -633,14 +685,30 @@ function LabUnitManagement({ intl }) {
     );
   }, [labUnitId]);
 
+  /**
+   * After a stale refusal, load the unit as it is now so the deactivation can be
+   * confirmed against the current version (OGC-1463).
+   */
+  const refreshAfterStaleDeactivation = useCallback(() => {
+    getFromOpenElisServer(`/rest/lab-units-management/${labUnitId}`, (res) => {
+      if (res && res.success && res.data) {
+        setEditingUnit(mapLabUnit(res.data));
+        setDeactivationStale(false);
+      }
+    });
+  }, [labUnitId]);
+
   const confirmDeactivation = useCallback(() => {
     setDeactivationBusy(true);
+    setDeactivationError(null);
+    setDeactivationStale(false);
     postToOpenElisServerJsonResponse(
       `/rest/lab-units-management/${labUnitId}/deactivate`,
       JSON.stringify({
         option: deactivationOption,
         destinationLabUnitId: deactivationDestination,
         confirmation: deactivationConfirmText,
+        lastupdated: editingUnit?.lastupdated || null,
       }),
       (response) => {
         setDeactivationBusy(false);
@@ -648,6 +716,25 @@ function LabUnitManagement({ intl }) {
           setDeactivationOpen(false);
           setEditingUnit((prev) => ({ ...prev, active: false }));
           setShowSuccess(true);
+          getFromOpenElisServer(
+            `/rest/lab-units-management/${labUnitId}`,
+            (res) => {
+              if (res && res.success && res.data) {
+                setEditingUnit(mapLabUnit(res.data));
+              }
+            },
+          );
+        } else if (isStaleConflict(response?.status, response)) {
+          setDeactivationStale(true);
+        } else {
+          setDeactivationError(
+            response?.refusal === "destination.inactive"
+              ? intl.formatMessage({
+                  id: "error.labUnit.deactivate.destinationInactive",
+                })
+              : response?.message ||
+                  intl.formatMessage({ id: "error.labUnit.deactivate.failed" }),
+          );
         }
       },
     );
@@ -656,6 +743,8 @@ function LabUnitManagement({ intl }) {
     deactivationOption,
     deactivationDestination,
     deactivationConfirmText,
+    editingUnit,
+    intl,
   ]);
 
   // ─── LIST VIEW ────────────────────────────────────────────────
@@ -1100,7 +1189,21 @@ function LabUnitManagement({ intl }) {
                 Toggle) would mount with undefined and not reflect the saved
                 status. */}
             {view === "editor" &&
-            !(editingUnit && String(editingUnit.id) === String(labUnitId)) ? (
+            !isLoading &&
+            !labUnits.some((item) => String(item.id) === String(labUnitId)) ? (
+              <InlineNotification
+                kind="error"
+                lowContrast
+                hideCloseButton
+                data-testid="lab-unit-not-found"
+                title={intl.formatMessage({
+                  id: loadError
+                    ? "label.labUnit.editorLoadError"
+                    : "label.labUnit.notFound",
+                })}
+              />
+            ) : view === "editor" &&
+              !(editingUnit && String(editingUnit.id) === String(labUnitId)) ? (
               <div
                 style={{
                   display: "flex",
@@ -1116,6 +1219,11 @@ function LabUnitManagement({ intl }) {
               <>
                 {activeSection === "basic-info" && (
                   <div>
+                    {staleSave && (
+                      <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
+                        <StaleSaveNotice testId="lab-unit-stale-save" />
+                      </div>
+                    )}
                     {(showSuccess || formErrors.submit) && (
                       <div style={{ marginBottom: "var(--cds-spacing-06)" }}>
                         <Stack gap={5}>
@@ -1368,6 +1476,7 @@ function LabUnitManagement({ intl }) {
                             onClick={saveEditor}
                             disabled={
                               isSubmitting ||
+                              staleSave ||
                               !!Object.keys(formErrors).filter(
                                 (key) => formErrors[key],
                               ).length ||
@@ -1447,6 +1556,21 @@ function LabUnitManagement({ intl }) {
                       onRequestSubmit={confirmDeactivation}
                     >
                       <Stack gap={5}>
+                        {deactivationError && (
+                          <InlineNotification
+                            kind="error"
+                            lowContrast
+                            hideCloseButton
+                            title={intl.formatMessage({ id: "error.title" })}
+                            subtitle={deactivationError}
+                          />
+                        )}
+                        {deactivationStale && (
+                          <StaleSaveNotice
+                            testId="lab-unit-deactivate-stale"
+                            onRefresh={refreshAfterStaleDeactivation}
+                          />
+                        )}
                         {!deactivationImpact ? (
                           <p>
                             <FormattedMessage id="label.labUnit.deactivate.loading" />
@@ -1567,7 +1691,8 @@ function LabUnitManagement({ intl }) {
                                 {labUnits
                                   .filter(
                                     (unit) =>
-                                      String(unit.id) !== String(labUnitId),
+                                      String(unit.id) !== String(labUnitId) &&
+                                      unit.active !== false,
                                   )
                                   .map((unit) => (
                                     <SelectItem

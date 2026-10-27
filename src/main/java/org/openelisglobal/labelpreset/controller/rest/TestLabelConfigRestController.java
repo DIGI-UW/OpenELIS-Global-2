@@ -73,6 +73,11 @@ public class TestLabelConfigRestController extends BaseRestController {
             errors.put("fieldErrors", buildFieldErrors(bindingResult));
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errors);
         }
+        if (form.getLinks() == null || form.getLinks().stream().anyMatch(java.util.Objects::isNull)) {
+            Map<String, Object> errors = new LinkedHashMap<>();
+            errors.put("message", "links is required; send [] for no label presets");
+            return ResponseEntity.badRequest().body(errors);
+        }
 
         try {
             String sysUserId = ControllerUtills.getSysUserId(request);

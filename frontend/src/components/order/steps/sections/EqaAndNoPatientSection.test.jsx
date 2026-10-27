@@ -3,16 +3,38 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import messages from "../../../../languages/en.json";
 
 const { getFromOpenElisServer } = vi.hoisted(() => ({
   getFromOpenElisServer: vi.fn(),
 }));
-vi.mock("../../../utils/Utils", () => ({ getFromOpenElisServer }));
-vi.mock("../../../common/CustomDatePicker", () => ({
-  default: () => <div data-testid="date-picker" />,
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
+vi.mock("../../../common/CustomDatePicker", () => ({
+  default: ({ value }) => <div data-testid="date-picker">{value}</div>,
+}));
+
+const ENROLLMENTS = [{ id: 7, programName: "WHO Malaria", provider: "WHO" }];
+const CYCLES = [
+  {
+    id: 31,
+    name: "Malaria 2026-1",
+    cycleNumber: 1,
+    deadline: "2026-11-30",
+    panelCodes: ["MAL-01", "MAL-02"],
+  },
+];
+const serve =
+  ({ enrollments = ENROLLMENTS, cycles = CYCLES } = {}) =>
+  (url, cb) => {
+    if (url.startsWith("/rest/eqa/my-programs?active=true")) cb(enrollments);
+    else if (url.includes("/open-cycles")) cb(cycles);
+    else cb([]);
+  };
 
 import EqaAndNoPatientSection from "./EqaAndNoPatientSection";
 
@@ -23,26 +45,29 @@ const renderSection = (sampleOrderItems = {}, options = {}) => {
     patientProperties: options.patientProperties || {},
   };
   render(
-    <IntlProvider locale="en" messages={messages}>
-      <EqaAndNoPatientSection
-        orderData={orderData}
-        setOrderData={setOrderData}
-        isReadOnly={false}
-        patientRequired={options.patientRequired !== false}
-      />
-    </IntlProvider>,
+    <MemoryRouter>
+      <IntlProvider locale="en" messages={messages}>
+        <EqaAndNoPatientSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={false}
+          patientRequired={options.patientRequired !== false}
+        />
+      </IntlProvider>
+    </MemoryRouter>,
   );
-  const applied = () => {
+  const appliedOrder = () => {
     const updater = setOrderData.mock.calls.at(-1)[0];
-    return updater(orderData).sampleOrderItems;
+    return updater(orderData);
   };
-  return { setOrderData, applied };
+  const applied = () => appliedOrder().sampleOrderItems;
+  return { setOrderData, applied, appliedOrder };
 };
 
 describe("EqaAndNoPatientSection", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
-    getFromOpenElisServer.mockImplementation((_url, cb) => cb([]));
+    getFromOpenElisServer.mockImplementation(serve());
   });
 
   // OGC-1201 AL/W: EQA used to satisfy the patient gate by creating one
@@ -115,9 +140,12 @@ describe("EqaAndNoPatientSection", () => {
     expect(screen.getByLabelText(/This order has no patient/)).toBeDisabled();
   });
 
-  it("offers it under EQA even so", () => {
+  // OGC-1483: a proficiency sample never has a patient.
+  it("keeps an EQA order patient-less, ticked and locked", () => {
     renderSection({ isEQASample: true, noPatientOverride: true });
-    expect(screen.getByLabelText(/This order has no patient/)).toBeEnabled();
+    const noPatient = screen.getByLabelText(/This order has no patient/);
+    expect(noPatient).toBeChecked();
+    expect(noPatient).toBeDisabled();
   });
 
   it("offers it where the deployment does not require a patient", () => {
@@ -125,9 +153,11 @@ describe("EqaAndNoPatientSection", () => {
     expect(screen.getByLabelText(/This order has no patient/)).toBeEnabled();
   });
 
-  it("reveals the EQA detail only when EQA is ticked", () => {
+  it("reveals the EQA detail only when EQA is ticked", async () => {
     renderSection({ isEQASample: true });
-    expect(screen.getByLabelText(/Provider Sample ID/)).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText(/Provider Sample ID/),
+    ).toBeInTheDocument();
   });
 
   it("keeps the EQA detail hidden otherwise", () => {
@@ -137,12 +167,117 @@ describe("EqaAndNoPatientSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Default, not lock: some schemes do use identified specimens.
-  it("lets a user attach a patient to an EQA order", () => {
-    renderSection(
-      { isEQASample: true, noPatientOverride: true },
-      { patientProperties: { lastName: "Ada" } },
+  it("ticking EQA drops a patient already on the order", async () => {
+    const { appliedOrder } = renderSection(
+      {},
+      { patientProperties: { lastName: "Ada", nationalId: "N1" } },
     );
-    expect(screen.getByText(/will not be recorded/)).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByLabelText(/EQA\) sample/));
+
+    expect(appliedOrder().patientProperties.lastName || "").toBe("");
+    expect(appliedOrder().patientProperties.nationalId || "").toBe("");
+  });
+
+  // OGC-1483: the scheme is one of this lab's active enrollments.
+  it("offers only the lab's active enrollments", async () => {
+    renderSection({ isEQASample: true });
+
+    expect(
+      await screen.findByRole("option", { name: "WHO Malaria (WHO)" }),
+    ).toBeInTheDocument();
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/eqa/my-programs?active=true",
+      expect.any(Function),
+    );
+    expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
+      "/rest/eqa/programs",
+      expect.any(Function),
+    );
+  });
+
+  it("shows a note instead of a scheme list when the lab has no enrollment", () => {
+    getFromOpenElisServer.mockImplementation(serve({ enrollments: [] }));
+    renderSection({ isEQASample: true });
+
+    expect(
+      screen.getByText(messages["order.eqa.noEnrollments.title"]),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(messages["order.eqa.scheme"]),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Provider Sample ID/)).toBeInTheDocument();
+  });
+
+  it("stores the chosen enrollment's id and clears an earlier cycle", async () => {
+    const { applied } = renderSection({ isEQASample: true, eqaCycleId: "9" });
+
+    await userEvent
+      .setup()
+      .selectOptions(
+        await screen.findByLabelText(messages["order.eqa.scheme"]),
+        "7",
+      );
+
+    expect(applied()).toEqual(
+      expect.objectContaining({ eqaProgramId: "7", eqaCycleId: "" }),
+    );
+  });
+
+  it("warns, without blocking, when no cycle is chosen", async () => {
+    renderSection({ isEQASample: true, eqaProgramId: "7" });
+
+    expect(
+      await screen.findByText(messages["order.eqa.noCycle.warning"]),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: messages["order.eqa.newCycle"] }),
+    ).toBeInTheDocument();
+  });
+
+  it("a chosen cycle prefills its deadline", async () => {
+    const { applied } = renderSection({ isEQASample: true, eqaProgramId: "7" });
+
+    await userEvent
+      .setup()
+      .selectOptions(
+        await screen.findByLabelText(messages["order.eqa.cycle"]),
+        "31",
+      );
+
+    expect(applied()).toEqual(
+      expect.objectContaining({ eqaCycleId: "31", eqaDeadline: "11/30/2026" }),
+    );
+  });
+
+  it("No cycle drops the deadline the previous cycle filled in", async () => {
+    const { applied } = renderSection({
+      isEQASample: true,
+      eqaProgramId: "7",
+      eqaCycleId: "31",
+      eqaDeadline: "11/30/2026",
+    });
+    await screen.findByRole("option", { name: "Malaria 2026-1" });
+
+    await userEvent
+      .setup()
+      .selectOptions(screen.getByLabelText(messages["order.eqa.cycle"]), "");
+
+    expect(applied()).toEqual(
+      expect.objectContaining({ eqaCycleId: "", eqaDeadline: "" }),
+    );
+  });
+
+  it("warns when the provider sample id matches none of the cycle's panel codes", async () => {
+    renderSection({
+      isEQASample: true,
+      eqaProgramId: "7",
+      eqaCycleId: "31",
+      eqaProviderSampleId: "MAL-99",
+    });
+
+    expect(
+      await screen.findByText(/matches none of the cycle's panel codes/),
+    ).toBeInTheDocument();
   });
 });

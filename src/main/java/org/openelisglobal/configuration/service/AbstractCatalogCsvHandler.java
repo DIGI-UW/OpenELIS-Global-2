@@ -92,7 +92,9 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
         ImportRunContext.clearPending();
-        load(rows, new RowTransactionRunner(transactionManager, dryRun), summary, fileName);
+        try (RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun)) {
+            load(rows, rowTransaction, summary, fileName);
+        }
         summary.log(getClass().getSimpleName());
         lastSummary = summary;
     }

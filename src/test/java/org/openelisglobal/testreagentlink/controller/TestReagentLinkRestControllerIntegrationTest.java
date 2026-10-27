@@ -14,7 +14,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
@@ -61,7 +60,7 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     private TestReagentLinkRestController controller;
     private JdbcTemplate jdbc;
     private Long reagentId;
-    private Long nonReagentId;
+    private Long otherItemId;
 
     @Before
     @Override
@@ -79,8 +78,8 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
                         + " VALUES (?, ?, ?, 'Y', ?, NOW())",
                 TEST_ID, "ReagentLinkIT", "ReagentLinkIT desc", UUID.randomUUID().toString());
-        reagentId = createInventoryItem("ReagentLinkIT Reagent", ItemType.REAGENT);
-        nonReagentId = createInventoryItem("ReagentLinkIT RDT", ItemType.RDT);
+        reagentId = createInventoryItem("ReagentLinkIT Reagent");
+        otherItemId = createInventoryItem("ReagentLinkIT RDT");
     }
 
     @After
@@ -88,10 +87,9 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         cleanup();
     }
 
-    private Long createInventoryItem(String name, ItemType type) {
+    private Long createInventoryItem(String name) {
         InventoryItem item = new InventoryItem();
         item.setName(name);
-        item.setItemType(type);
         item.setUnits("mL");
         item.setManufacturer("Acme Diagnostics");
         item.setFhirUuid(UUID.randomUUID());
@@ -167,12 +165,12 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
     }
 
     @Test
-    public void link_anyInventoryItem_succeedsWhateverItsLegacyType() {
-        ReagentLinkResponse r = controller.link(testId(), req(nonReagentId, "PRIMARY", "1", "mL"), authedRequest())
+    public void link_anyInventoryItem_succeeds() {
+        ReagentLinkResponse r = controller.link(testId(), req(otherItemId, "PRIMARY", "1", "mL"), authedRequest())
                 .getBody();
 
         assertNotNull(r);
-        assertEquals(nonReagentId, r.reagentId);
+        assertEquals(otherItemId, r.reagentId);
     }
 
     @Test
@@ -211,5 +209,25 @@ public class TestReagentLinkRestControllerIntegrationTest extends BaseWebContext
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> controller.unlink(testId(), reagentId, authedRequest()));
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    /**
+     * OGC-1465: a quantity or unit the column cannot hold is refused, never stored.
+     */
+    @Test
+    public void link_negativeHugeOrLongValuesAreRefused() {
+        for (String[] c : new String[][] { { "-1", "mL" }, { "10000000000", "mL" }, { "1", "u".repeat(51) },
+                { "1", " " + "u".repeat(50) + " " } }) {
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> controller.link(testId(), req(reagentId, "PRIMARY", c[0], c[1]), authedRequest()));
+            assertEquals(c[0] + " " + c[1].length(), HttpStatus.UNPROCESSABLE_ENTITY, ex.getStatusCode());
+        }
+        assertTrue(controller.list(testId()).isEmpty());
+
+        controller.link(testId(), req(reagentId, "PRIMARY", "2", "mL"), authedRequest());
+        ResponseStatusException edit = assertThrows(ResponseStatusException.class,
+                () -> controller.update(testId(), reagentId, req(reagentId, "PRIMARY", "-0.5", "mL"), authedRequest()));
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, edit.getStatusCode());
+        assertEquals(0, new BigDecimal("2").compareTo(controller.list(testId()).get(0).quantityPerTest));
     }
 }

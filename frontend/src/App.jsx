@@ -14,6 +14,7 @@ import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import ManagementDashboard from "./components/dashboards/management/ManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
@@ -39,7 +40,11 @@ import CallbackReport from "./components/qa/qi/CallbackReport";
 import ESignatureLog from "./components/qa/qms/ESignatureLog";
 import CapaRegister from "./components/qa/qms/CapaRegister";
 import Accreditation from "./components/qa/qms/Accreditation";
-import InventoryManagement from "./components/inventory/InventoryManagement";
+import {
+  InventoryItemsPage,
+  InventoryReceivePage,
+  InventoryReportsPage,
+} from "./components/inventory/InventoryManagement";
 import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
@@ -142,6 +147,8 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index";
 import LaporanHasilReport from "./components/reports/compliance/LaporanHasilReport";
+import ReportPrintQueue from "./components/reports/printQueue/ReportPrintQueue";
+import SentMessages from "./components/reports/sentMessages/SentMessages";
 import ManualEntryHelper from "./components/reports/vectorSurveillance/ManualEntryHelper";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
@@ -939,6 +946,13 @@ export default function App() {
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
+                <SecureRoute
+                  path="/dashboards/management"
+                  exact
+                  render={() => <ManagementDashboard />}
+                  permission="dashboards.view.management"
+                  role={Roles.GLOBAL_ADMIN}
+                />
                 {/* QA v0.5 IA rehome (OGC-691): EQA and QC pages moved under
                     /qa/*. Kept so bookmarks and anything still linking an old
                     path land on the new page. */}
@@ -1366,9 +1380,21 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/inventory/receive"
+                  exact
+                  render={() => <InventoryReceivePage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/inventory/reports"
+                  exact
+                  render={() => <InventoryReportsPage />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/inventory"
                   exact
-                  render={() => <InventoryManagement />}
+                  render={() => <InventoryItemsPage />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
@@ -1717,6 +1743,18 @@ export default function App() {
                   exact
                   render={() => <LaporanHasilReport />}
                   role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/ReportPrintQueue"
+                  exact
+                  render={() => <ReportPrintQueue />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/SentMessages"
+                  exact
+                  render={() => <SentMessages />}
+                  role={[Roles.REPORTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/VectorManualEntry"

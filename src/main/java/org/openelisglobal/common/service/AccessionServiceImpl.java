@@ -17,13 +17,10 @@ public class AccessionServiceImpl implements AccessionService {
 
     @Override
     public long getNextNumberNoIncrement(String prefix, AccessionFormat accessionFormat) {
-        long value;
-        if (accessionDAO.exists(new AccessionIdentity(prefix, accessionFormat))) {
-            value = accessionDAO.getNextNumberNoIncrement(prefix, accessionFormat);
-        } else {
-            value = createAccessionInfo(prefix, accessionFormat, 0L).getCurVal();
-        }
-        return value;
+        AccessionIdentity identity = new AccessionIdentity(prefix, accessionFormat);
+        // Previewing a new prefix must not create a counter: concurrent page reads
+        // would otherwise race to insert it. The first reserved number is one.
+        return accessionDAO.exists(identity) ? accessionDAO.getNextNumberNoIncrement(prefix, accessionFormat) : 1L;
     }
 
     @Override
@@ -50,13 +47,7 @@ public class AccessionServiceImpl implements AccessionService {
 
     @Override
     public long getNextNumberNoIncrement(AccessionIdentity accessionIdentity) {
-        long value;
-        if (accessionDAO.exists(accessionIdentity)) {
-            value = accessionDAO.getNextNumberIncrement(accessionIdentity.getPrefix(), accessionIdentity.getType());
-        } else {
-            value = createAccessionInfo(accessionIdentity.getPrefix(), accessionIdentity.getType(), 0L).getCurVal();
-        }
-        return value;
+        return getNextNumberNoIncrement(accessionIdentity.getPrefix(), accessionIdentity.getType());
     }
 
     private AccessionNumberInfo createAccessionInfo(String prefix, AccessionFormat accessionFormat, long value) {

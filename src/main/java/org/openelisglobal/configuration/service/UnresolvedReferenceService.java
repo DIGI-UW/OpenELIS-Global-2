@@ -9,7 +9,9 @@ public interface UnresolvedReferenceService extends BaseObjectService<Unresolved
     /**
      * Writes the references the resolver noticed since the last flush (see
      * {@link ImportRunContext}) as open decision items of the current import run,
-     * folding repeats of the same kind and spelling into the existing open item.
+     * folding repeats of the same kind and spelling into the existing open item. A
+     * preview opens the item once, so it can be resolved before the apply, but
+     * never counts an occurrence: only an apply does (OGC-1466).
      */
     void recordPending(String domain, String fileName, int lineNumber);
 

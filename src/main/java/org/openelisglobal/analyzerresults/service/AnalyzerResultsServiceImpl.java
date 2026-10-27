@@ -84,101 +84,37 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     }
 
     /**
-     * Persists normalized Bridge results in the OpenELIS review queue. A matching
-     * held row advances in place once its local binding can resolve the same raw
-     * observation. Exact replays are ignored, while a genuinely changed observation
-     * remains linked for explicit review instead of silently replacing clinical
-     * data.
+     * Stage each distinct delivery. The importer owns replay prevention through
+     * durable receipts; similar results remain visible for explicit local review.
+     * Held recovery updates its retained row by ID, never by value or timestamp.
      */
     @Override
     @Transactional
     public void insertAnalyzerResults(List<AnalyzerResults> results, String sysUserId) {
         try {
             for (AnalyzerResults result : results) {
-                boolean duplicateByAccessionAndTestOnly = false;
-                List<AnalyzerResults> previousResults = baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
-                AnalyzerResults previousResult = null;
-
-                AnalyzerResults heldResult = findMatchingHeldResult(previousResults, result);
-                if (heldResult != null && isActionable(result)) {
-                    result.setId(heldResult.getId());
-                    result.setLastupdated(heldResult.getLastupdated());
-                    result.setDuplicateAnalyzerResultId(null);
-                    result.setSysUserId(sysUserId);
-                    update(result);
-                    continue;
-                }
-
-                // Duplicate detection: skip insert if an existing staging entry matches.
-                // Match on timestamp (instrument date) OR result value (re-import of same
-                // data).
-                // This makes re-importing the same file idempotent while still staging
-                // genuinely new results (corrections with different values) for user review.
-                if (previousResults != null) {
-                    duplicateByAccessionAndTestOnly = true;
-                    for (AnalyzerResults foundResult : previousResults) {
-                        previousResult = foundResult;
-                        if (foundResult.getCompleteDate() != null
-                                && foundResult.getCompleteDate().equals(result.getCompleteDate())) {
-                            duplicateByAccessionAndTestOnly = false;
-                            break;
-                        }
-                        if (foundResult.getResult() != null && foundResult.getResult().equals(result.getResult())) {
-                            duplicateByAccessionAndTestOnly = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (duplicateByAccessionAndTestOnly && previousResult != null) {
-                    result.setDuplicateAnalyzerResultId(previousResult.getId());
+                // A control material is reused across independent runs. Delivery receipts
+                // reject retransmissions; patient duplicate review must not suppress QC.
+                List<AnalyzerResults> previous = result.getIsControl() ? List.of()
+                        : baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
+                AnalyzerResults prior = previous == null || previous.isEmpty() ? null : previous.get(0);
+                if (prior != null) {
+                    result.setDuplicateAnalyzerResultId(prior.getId());
                     result.setReadOnly(true);
                 }
-
-                if (previousResults == null || duplicateByAccessionAndTestOnly) {
-                    result.setSysUserId(sysUserId);
-                    String id = insert(result);
-                    result.setId(id);
-
-                    if (duplicateByAccessionAndTestOnly && previousResult != null) {
-                        previousResult.setDuplicateAnalyzerResultId(id);
-                        previousResult.setSysUserId(sysUserId);
-                    }
-
-                    if (duplicateByAccessionAndTestOnly) {
-                        update(previousResult);
-                    }
+                result.setSysUserId(sysUserId);
+                String id = insert(result);
+                result.setId(id);
+                if (prior != null) {
+                    prior.setDuplicateAnalyzerResultId(id);
+                    prior.setSysUserId(sysUserId);
+                    update(prior);
                 }
             }
-
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AnalyzerResult insertAnalyzerResult()", e);
         }
-    }
-
-    private AnalyzerResults findMatchingHeldResult(List<AnalyzerResults> previousResults, AnalyzerResults incoming) {
-        if (previousResults == null) {
-            return null;
-        }
-        return previousResults.stream()
-                .filter(previous -> previous.isReadOnly()
-                        && !GenericValidator.isBlankOrNull(previous.getImportIssueReason())
-                        && sameText(previous.getSourceConnectionId(), incoming.getSourceConnectionId())
-                        && sameText(previous.getSourceProfileId(), incoming.getSourceProfileId())
-                        && Objects.equals(previous.getSourceProfileRevision(), incoming.getSourceProfileRevision())
-                        && sameText(previous.getRawTestCode(), incoming.getRawTestCode())
-                        && Objects.equals(previous.getRawSubIdentity(), incoming.getRawSubIdentity())
-                        && sameText(previous.getRawResultValue(), incoming.getRawResultValue()))
-                .findFirst().orElse(null);
-    }
-
-    private boolean isActionable(AnalyzerResults result) {
-        return !result.isReadOnly() && GenericValidator.isBlankOrNull(result.getImportIssueReason());
-    }
-
-    private boolean sameText(String left, String right) {
-        return !GenericValidator.isBlankOrNull(left) && left.equals(right);
     }
 
     @Override

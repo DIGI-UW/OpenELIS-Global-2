@@ -316,6 +316,15 @@
   <!-- OGC-438: the manufacturer's product barcode (UPC or GTIN) on the item -->
   <include relativeToChangelogFile="true" file="106-inventory-item-upc.xml"/>
 
+  <!-- OGC-438: a UPC is unique ignoring leading zeros; must follow 106 -->
+  <include relativeToChangelogFile="true" file="139-inventory-item-upc-digits.xml"/>
+
+  <!-- OGC-438: Items, Receive and Reports each get a menu row under Inventory -->
+  <include relativeToChangelogFile="true" file="111-inventory-sidenav-routes.xml"/>
+
+  <!-- OGC-438: drop item_type; must follow 105, which copied it into inventory_item_tag -->
+  <include relativeToChangelogFile="true" file="112-drop-inventory-item-type.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 
@@ -669,4 +678,16 @@
 
   <!-- Result component codes are unique among a test's active components (OGC-1458). -->
   <include relativeToChangelogFile="true" file="136-result-component-active-code-unique.xml"/>
+
+  <!-- QC targets that no longer fit their test's result type are retired once (OGC-1462). -->
+  <include relativeToChangelogFile="true" file="137-qc-targets-retire-stale.xml"/>
+
+  <!-- Terminology codes are stored trimmed (OGC-1465). -->
+  <include relativeToChangelogFile="true" file="138-terminology-codes-trimmed.xml"/>
+  <!-- A mapping confirmation keeps how the profile read each row (spec point 13). -->
+  <include relativeToChangelogFile="true" file="140-analyzer-mapping-confirmation-readings.xml"/>
+  <include relativeToChangelogFile="true" file="141-menu-config-source.xml"/>
+  <!-- A held analyzer result keeps how its record read on arrival (spec point 13). -->
+  <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
+  <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
 </databaseChangeLog>

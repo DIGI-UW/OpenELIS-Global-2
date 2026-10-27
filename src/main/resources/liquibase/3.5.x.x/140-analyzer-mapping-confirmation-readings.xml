@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- How the profile read each confirmed row and the type when the mapping
+         was confirmed, and the fingerprint of the content read (spec point 13). A confirmation from before this column
+         has none; it gains them the first time the served profile is the one
+         it was confirmed against. -->
+    <changeSet id="140-analyzer-mapping-confirmation-readings" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+                    columnName="row_readings_json"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="analyzer_mapping_confirmation">
+            <column name="readings_fingerprint" type="VARCHAR(71)"/>
+            <column name="row_readings_json" type="TEXT"/>
+            <column name="type_reading_json" type="TEXT"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+                columnName="type_reading_json"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+                columnName="row_readings_json"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_mapping_confirmation"
+                columnName="readings_fingerprint"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

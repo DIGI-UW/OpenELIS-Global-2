@@ -596,7 +596,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 }
             }
 
-            // If no existing sample item, create new one
+            boolean createdInThisSave = savedItem == null;
             if (savedItem == null) {
                 if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
                     sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
@@ -624,17 +624,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 createQcProfile(sampleTestCollection, updateData, savedItem);
             }
 
-            if (savedItem.isRejected()) {
-                String rejectReasonId = savedItem.getRejectReasonId();
-                String currentUserId = savedItem.getSysUserId();
-                for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
-                    if (rejectReasonId.equals(rejectReason.getId())) {
-                        Note note = noteService.createSavableNote(savedItem, NoteType.REJECTION_REASON,
-                                rejectReason.getValue(), SAMPLE_SUBJECT, currentUserId);
-                        noteService.insert(note);
-                        break;
-                    }
-                }
+            if (rejectionNoteDue(savedItem, createdInThisSave)) {
+                recordRejectionReasonNote(savedItem,
+                        DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
             }
             sampleTestCollection.analysises = new ArrayList<>();
             for (Test test : sampleTestCollection.tests) {
@@ -731,9 +723,35 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
+    /**
+     * The rejection reason of a specimen rejected on this order screen, kept as its
+     * note. Only a specimen created in this save gets one: every later step
+     * re-saves the order's specimens, and one rejected earlier already has its note
+     * (OGC-1488).
+     */
+    static boolean rejectionNoteDue(SampleItem item, boolean createdInThisSave) {
+        return createdInThisSave && item.isRejected();
+    }
+
+    void recordRejectionReasonNote(SampleItem item, List<IdValuePair> rejectionReasons) {
+        for (IdValuePair rejectReason : rejectionReasons) {
+            if (rejectReason.getId().equals(item.getRejectReasonId())) {
+                Note note = noteService.createSavableNote(item, NoteType.REJECTION_REASON, rejectReason.getValue(),
+                        SAMPLE_SUBJECT, item.getSysUserId());
+                noteService.insert(note);
+                return;
+            }
+        }
+    }
+
     // Package-private so the EQA order/receipt wiring can be exercised directly
-    // (same reason as persistOrderSpecimenBarcodeCounts below).
+    // (same reason as persistOrderSpecimenBarcodeCounts below). Every later step
+    // re-saves the order with its EQA flag, so an order that already has its EQA
+    // record keeps it (OGC-1483).
     void persistSampleEQAData(SamplePatientUpdateData updateData) {
+        if (sampleEQAService.findBySampleId(Long.parseLong(updateData.getSample().getId())).isPresent()) {
+            return;
+        }
         SampleEQA sampleEQA = new SampleEQA();
         sampleEQA.setSampleId(Long.parseLong(updateData.getSample().getId()));
         sampleEQA.setIsEqaSample(true);

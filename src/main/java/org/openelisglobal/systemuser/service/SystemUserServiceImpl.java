@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.ObjectUtils;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.systemuser.dao.SystemUserDAO;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -71,37 +70,6 @@ public class SystemUserServiceImpl extends AuditableBaseObjectServiceImpl<System
     @Transactional(readOnly = true)
     public SystemUser getUserById(String userId) {
         return getBaseObjectDAO().getUserById(userId);
-    }
-
-    @Override
-    public String insert(SystemUser systemUser) {
-        if (duplicateSystemUserExists(systemUser)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for " + systemUser.getFirstName()
-                    + IActionConstants.BLANK + systemUser.getFirstName());
-        }
-        return super.insert(systemUser);
-    }
-
-    @Override
-    public SystemUser save(SystemUser systemUser) {
-        if (duplicateSystemUserExists(systemUser)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for " + systemUser.getFirstName()
-                    + IActionConstants.BLANK + systemUser.getFirstName());
-        }
-        return super.save(systemUser);
-    }
-
-    @Override
-    public SystemUser update(SystemUser systemUser) {
-        if (duplicateSystemUserExists(systemUser)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for " + systemUser.getFirstName()
-                    + IActionConstants.BLANK + systemUser.getFirstName());
-        }
-        return super.update(systemUser);
-    }
-
-    private boolean duplicateSystemUserExists(SystemUser systemUser) {
-        return baseObjectDAO.duplicateSystemUserExists(systemUser);
     }
 
     @Override

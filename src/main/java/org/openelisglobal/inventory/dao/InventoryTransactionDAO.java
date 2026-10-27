@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.dao;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
@@ -19,10 +20,15 @@ public interface InventoryTransactionDAO extends BaseDAO<InventoryTransaction, L
      */
     List<InventoryTransaction> getByTransactionType(TransactionType transactionType) throws LIMSRuntimeException;
 
-    /**
-     * Get transactions within a date range
-     */
+    /** Get transactions within a half-open date range. */
     List<InventoryTransaction> getByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException;
+
+    /** Get transactions of one type within a half-open date range. */
+    List<InventoryTransaction> getByTypeAndDateRange(TransactionType transactionType, Timestamp startDate,
+            Timestamp endDate) throws LIMSRuntimeException;
+
+    /** Balance by lot id before {@code asOf}; a lot not yet logged is absent. */
+    Map<Long, Double> getQuantityOnHandAsOf(Timestamp asOf) throws LIMSRuntimeException;
 
     /**
      * Get transactions by reference (e.g., test result ID)

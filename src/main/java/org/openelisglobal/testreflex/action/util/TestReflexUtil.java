@@ -332,7 +332,7 @@ public class TestReflexUtil {
         if (reflexBean.getResult().getTestResult() == null) {
             return new ArrayList<>();
         }
-        String resultType = testService.getResultType(reflexBean.getResult().getTestResult().getTest());
+        String resultType = resultTypeOf(reflexBean.getResult());
         List<TestReflex> reflexesForResult;
         if (resultType.equals("D")) {
             reflexesForResult = reflexResolver.getTestReflexsByAnalyteAndTest(reflexBean.getResult());
@@ -829,8 +829,19 @@ public class TestReflexUtil {
                 && (CONCLUSION_ANAYLETE_ID.equals(analyte.getId()) || CD4_ANAYLETE.getId().equals(analyte.getId()));
     }
 
+    /**
+     * The type of the measurement a result records. On a multi-component test the
+     * component owns it: a numeric Ct beside a coded primary is numeric, whatever
+     * type the test lists first.
+     */
+    private String resultTypeOf(Result result) {
+        Test test = result.getTestResult().getTest();
+        return ruleResultScope.resultTypeForComponent(test.getId(), ruleResultScope.componentIdOf(result),
+                testService.getResultType(test));
+    }
+
     public boolean isTestTriggeredByResult(Test potentialReflexTest, Result potentialTriggerResult) {
-        String resultType = testService.getResultType(potentialTriggerResult.getTestResult().getTest());
+        String resultType = resultTypeOf(potentialTriggerResult);
         if (resultType.equals("D")) {
             return doesDictionaryRelationRulesForReflexApply(potentialReflexTest, potentialTriggerResult);
         } else if (!resultType.equals("D")) {

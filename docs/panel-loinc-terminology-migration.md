@@ -11,8 +11,8 @@ A panel's LOINC lives in two places.
 - `panel.loinc` — the original column. FHIR intake still routes electronic
   orders by it (`getPanelByLoincCode`), and the panel lists display it.
 - `panel_terminology_mapping` — the newer store, which the **Panel Editor**
-  reads and writes, and which can hold several systems (LOINC, SNOMED, CIEL,
-  OCL) with a relationship for each.
+  reads and writes, and which can hold codes in several systems (LOINC, SNOMED,
+  CIEL, OCL or the catalog's own) with a relationship for each.
 
 The Panel Editor is new, so on any real deployment the only LOINC a panel has is
 the legacy one and the mapping store is empty for it. The editor showed such a

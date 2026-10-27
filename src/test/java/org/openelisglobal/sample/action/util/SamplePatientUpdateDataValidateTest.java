@@ -14,6 +14,7 @@ import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -221,6 +222,59 @@ public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitive
         FieldError birthDate = result.getFieldError("patientProperties.birthDateForDisplay");
         assertNotNull("a patient field error must land under the form's patientProperties path", birthDate);
         assertEquals("error.birthdate.format", birthDate.getCode());
+    }
+
+    /**
+     * OGC-1488: a specimen ticked Reject with no reason is refused, instead of
+     * being saved rejected with no reason recorded.
+     */
+    @Test
+    public void rejectedSpecimenWithoutAReason_isRefused() {
+        assertEquals("sample.reject.reasonRequired", rejectionError(null).getCode());
+        assertEquals("sample.reject.reasonRequired", rejectionError(" ").getCode());
+    }
+
+    @Test
+    public void rejectedSpecimenWithAReason_isAccepted() {
+        assertEquals(null, rejectionError("9501"));
+    }
+
+    /**
+     * OGC-1488: a specimen rejected earlier (by a resample or a pool reject, which
+     * carry no reason id) comes back on every later save of the order; it is not
+     * being rejected now, so the order still saves.
+     */
+    @Test
+    public void aSpecimenRejectedEarlier_doesNotHoldALaterSave() {
+        assertEquals(null, rejectionError(null, "10475"));
+    }
+
+    private FieldError rejectionError(String rejectReasonId) {
+        return rejectionError(rejectReasonId, null);
+    }
+
+    private FieldError rejectionError(String rejectReasonId, String existingSampleItemId) {
+        SampleItem item = new SampleItem();
+        item.setRejected(true);
+        item.setRejectReasonId(rejectReasonId);
+        SampleAddService outer = new SampleAddService(null, "1", null, null);
+        SampleTestCollection collection = outer.new SampleTestCollection(item,
+                Collections.singletonList(new org.openelisglobal.test.valueholder.Test()), null, null, null, null,
+                null);
+        collection.existingSampleItemId = existingSampleItemId;
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1");
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(collection));
+        updateData.setPatientErrors(new BeanPropertyBindingResult(new Object(), "ignored"));
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true);
+
+        return result.getFieldErrors("sampleOrderItems").stream()
+                .filter(error -> "sample.reject.reasonRequired".equals(error.getCode())).findFirst().orElse(null);
     }
 
     private SampleTestCollection nonEmptySampleTestCollection() {

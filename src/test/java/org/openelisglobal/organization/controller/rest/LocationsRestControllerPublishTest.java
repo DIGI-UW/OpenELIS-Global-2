@@ -45,6 +45,8 @@ public class LocationsRestControllerPublishTest {
     private OrganizationService organizationService;
     @Mock
     private FhirTransformService fhirTransformService;
+    @Mock
+    private org.openelisglobal.common.services.DisplayListService displayListService;
 
     @InjectMocks
     private LocationsRestController controller;
@@ -122,5 +124,23 @@ public class LocationsRestControllerPublishTest {
         controller.update("404", body(), request);
 
         verify(fhirTransformService, never()).transformPersistOrganization(any());
+    }
+
+    /**
+     * The reference labs Refer Out offers are a cached list; a save, a new
+     * organization and an activation change reload it, so a new or renamed
+     * reference lab is offered without a restart.
+     */
+    @Test
+    public void everySaveReloadsTheOrganizationPickLists() throws Exception {
+        when(locationsService.save(any(SaveRequest.class), anyString())).thenReturn(savedAs("4"));
+        when(locationsService.setActive(any(ActiveRequest.class), anyString()))
+                .thenReturn(new ActiveResult(List.of("4"), List.of("ACEH")));
+
+        controller.create(body(), request);
+        controller.update("4", body(), request);
+        controller.setActive(new ActiveRequest(List.of("4"), true, false), request);
+
+        verify(displayListService, org.mockito.Mockito.times(3)).refreshOrganizationLists();
     }
 }

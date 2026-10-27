@@ -164,4 +164,10 @@
   <include file="liquibase/qa/045-alert-type-union.xml" />
   <!-- OGC-1256: the laboratory's response on a provider follow-up (qa-090) -->
   <include file="liquibase/qa/048-eqa-followup-response-notes.xml" />
+    <include file="liquibase/3.3.x.x/encrypted-value-capacity.xml"/>
+  <!-- OGC-897: management dashboard. After qa/, so its grants can follow qa.eqa.provider -->
+  <include file="liquibase/dashboards/001-management-dashboard-access.xml" />
+  <include file="liquibase/dashboards/005-analyzer-activity-indexes.xml" />
+  <include file="liquibase/dashboards/002-surveillance-programs.xml" />
+  <include file="liquibase/dashboards/003-qi-weights.xml" />
 </databaseChangeLog>

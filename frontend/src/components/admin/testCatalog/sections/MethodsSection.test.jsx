@@ -177,6 +177,55 @@ describe("MethodsSection", () => {
     );
   });
 
+  it("a failed remove says so and reloads the links that are stored (OGC-1461)", async () => {
+    deleteFromOpenElisServer.mockImplementation((url, cb) => cb(500));
+    renderSection();
+    await screen.findByText("PCR");
+    const loadsBefore = getFromOpenElisServer.mock.calls.length;
+
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: messages["admin.testCatalog.methods.action.remove"],
+      })[0],
+    );
+
+    expect(
+      screen.getByText(
+        messages["admin.testCatalog.methods.error.removeFailed"],
+      ),
+    ).toBeInTheDocument();
+    expect(getFromOpenElisServer.mock.calls.length).toBeGreaterThan(
+      loadsBefore,
+    );
+  });
+
+  it("a remove that succeeds after a failure clears the failure (OGC-1461)", async () => {
+    deleteFromOpenElisServer.mockImplementationOnce((url, cb) => cb(500));
+    renderSection();
+    await screen.findByText("PCR");
+    const remove = () =>
+      fireEvent.click(
+        screen.getAllByRole("button", {
+          name: messages["admin.testCatalog.methods.action.remove"],
+        })[0],
+      );
+    remove();
+    expect(
+      screen.getByText(
+        messages["admin.testCatalog.methods.error.removeFailed"],
+      ),
+    ).toBeInTheDocument();
+
+    deleteFromOpenElisServer.mockImplementationOnce((url, cb) => cb(204));
+    remove();
+
+    expect(
+      screen.queryByText(
+        messages["admin.testCatalog.methods.error.removeFailed"],
+      ),
+    ).toBeNull();
+  });
+
   it("reveals the inline create-method form when 'Create New Method' is clicked (OGC-955)", async () => {
     renderSection();
     await screen.findByText("PCR");
@@ -260,6 +309,27 @@ describe("MethodsSection", () => {
     ).toHaveValue("QAM0923");
     expect(
       screen.queryByText(messages["admin.testCatalog.methods.created"]),
+    ).toBeNull();
+  });
+
+  /** OGC-1464: a taken method name is reported as the name, not the code. */
+  it("a duplicate method name (409, field name) says the name is taken", async () => {
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({ status: 409, field: "name", message: "taken" }),
+    );
+    const { container } = renderSection();
+    await openInlineCreate(container);
+    fireEvent.click(createAndLinkButton());
+
+    expect(
+      screen.getByText(
+        messages["admin.testCatalog.methods.error.duplicateName"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        messages["admin.testCatalog.methods.error.duplicateCode"],
+      ),
     ).toBeNull();
   });
 

@@ -661,7 +661,12 @@ export const NceDashboard = () => {
       {/* Header */}
       <div className="nce-dashboard-header">
         <div className="nce-dashboard-title">
-          <span className="nce-breadcrumb">NCE &gt; All NCEs</span>
+          <span className="nce-breadcrumb">
+            <FormattedMessage
+              id="nce.dashboard.breadcrumb"
+              defaultMessage="NCE > All NCEs"
+            />
+          </span>
           <h1>
             <Warning size={24} />
             <FormattedMessage
@@ -750,10 +755,13 @@ export const NceDashboard = () => {
               defaultMessage: "All Severities",
             })}
           />
-          <SelectItem value="CRITICAL" text="Critical" />
-          <SelectItem value="MAJOR" text="Major" />
-          <SelectItem value="MINOR" text="Minor" />
-          <SelectItem value="LOW" text="Low" />
+          {["critical", "major", "minor", "low"].map((severity) => (
+            <SelectItem
+              key={severity}
+              value={severity.toUpperCase()}
+              text={intl.formatMessage({ id: `nce.severity.${severity}` })}
+            />
+          ))}
         </Select>
         <Select
           id="source-filter"
@@ -908,7 +916,10 @@ export const NceDashboard = () => {
               <div className="nce-item-days">
                 {getDaysSince(nce.dateOfEvent) !== null && (
                   <span className={isOverdue(nce) ? "overdue" : ""}>
-                    {getDaysSince(nce.dateOfEvent)} days
+                    <FormattedMessage
+                      id="nce.dashboard.daysSince"
+                      values={{ count: getDaysSince(nce.dateOfEvent) }}
+                    />
                   </span>
                 )}
               </div>
@@ -1475,6 +1486,27 @@ export const NceDashboard = () => {
           setCurrentPage(page);
           setPageSize(newPageSize);
         }}
+        forwardText={intl.formatMessage({ id: "pagination.forward" })}
+        backwardText={intl.formatMessage({ id: "pagination.backward" })}
+        itemsPerPageText={intl.formatMessage({
+          id: "pagination.items-per-page",
+        })}
+        itemRangeText={(min, max, total) =>
+          intl.formatMessage(
+            { id: "pagination.item-range" },
+            { min, max, total },
+          )
+        }
+        pageRangeText={(_current, total) =>
+          intl.formatMessage({ id: "pagination.page-range" }, { total })
+        }
+        pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+        pageText={(page, pagesUnknown) =>
+          intl.formatMessage(
+            { id: "pagination.page" },
+            { page: pagesUnknown ? "" : page },
+          )
+        }
       />
     </div>
   );

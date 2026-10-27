@@ -646,7 +646,7 @@ exists in one of them.
 
 Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
 supported interactive development launcher and starts the complete core
-OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+OpenELIS + analyzer harness with checkout-scoped containers, images, networks,
 ports, and volumes.
 
 ```bash
@@ -662,8 +662,10 @@ application scenario services. `scripts/dev-stack down --volumes --yes` is the
 only supported destructive reset. CI-parity and release tooling are separate
 interfaces and are not replacements for this development path.
 
-Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
-servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+Localhost uses random loopback ports and mkcert TLS. Install mkcert as a
+prerequisite; `up` handles first-use system trust before building and may
+request administrator authentication. Later starts reuse trust. Domain-enabled
+dev servers use the same command after setting `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
 existing Let's Encrypt flow.
 
@@ -671,12 +673,15 @@ existing Let's Encrypt flow.
 
 Use the mode matching the work:
 
-- `scripts/dev-stack up` builds this checkout using worktree-specific images,
-  including the Bridge and analyzer mock exactly as checked out in their
-  submodules. It initializes only empty submodules, never moves or resets a
-  populated one, and prints a line for each submodule that differs from the
-  recorded commit or has uncommitted changes. It does not reuse published
-  application images.
+- `scripts/dev-stack up` builds this checkout's WAR and runs it, with the
+  frontend source mounted, in the published development images named in the
+  harness compose files. It never builds container images by default; only
+  `up --build` builds them from the checkout, which Bridge, mock, frontend
+  dependency and image build changes need. Without `--build` it warns when the
+  checkout differs from what the published images contain. It initializes only
+  empty submodules, never moves or resets a populated one, and prints a line for
+  each submodule that differs from the recorded commit or has uncommitted
+  changes.
 - `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
   revision and its recorded submodule commits, concurrently with GitHub after
   each push. Targeted tests alone are not full parity. Retain and inspect the

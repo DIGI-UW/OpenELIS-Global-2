@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { samplesMissingTests, samplesWithTests } from "./orderSamples";
+import { createIntl } from "react-intl";
+import messages from "../../languages/en.json";
+import {
+  missingTestsTitle,
+  samplesMissingTests,
+  samplesWithTests,
+} from "./orderSamples";
 
 const blank = { sampleTypeId: "", tests: [] };
 const withTest = (sampleTypeId, id) => ({
@@ -40,5 +46,27 @@ describe("samplesMissingTests", () => {
   test("ignores a blank sample and complete samples", () => {
     expect(samplesMissingTests([blank, withTest("37", "322")])).toEqual([]);
     expect(samplesMissingTests(undefined)).toEqual([]);
+  });
+});
+
+describe("missingTestsTitle", () => {
+  const intl = createIntl({ locale: "en", messages });
+
+  test("names the sample's type as the Result Reporting headings do", () => {
+    const samples = [withTest("2", "4"), { sampleTypeId: "37", tests: [] }];
+
+    expect(
+      missingTestsTitle(intl, samples, 2, { 37: "Respiratory Swab" }),
+    ).toBe(
+      "Sample 2: Respiratory Swab has no test. Add a test or remove the sample before saving.",
+    );
+  });
+
+  test("falls back to the sample number while the type names are unknown", () => {
+    const samples = [{ sampleTypeId: "37", tests: [] }];
+
+    expect(missingTestsTitle(intl, samples, 1, {})).toBe(
+      "Sample 1 has a sample type but no test. Add a test or remove the sample before saving.",
+    );
   });
 });

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-1465 (product ruling, 11 Oct 2026): terminology codes are stored trimmed.
+    Codes saved with surrounding spaces were missed by exact-match routing and by
+    the duplicate checks. A row whose trimmed code another row of the same scope
+    already holds is left as it is, and of several padded rows that trim to one
+    code only the first is trimmed, so the unique indexes never block the upgrade.
+    -->
+    <changeSet author="openelis" id="138-terminology-codes-trimmed-one-per-code">
+        <comment>Trim the codes of existing terminology mappings.</comment>
+        <sql>
+            UPDATE clinlims.test_terminology_mapping t SET code = trim(t.code)
+            WHERE t.code &lt;&gt; trim(t.code) AND NOT EXISTS (
+                SELECT 1 FROM clinlims.test_terminology_mapping o
+                WHERE o.id &lt;&gt; t.id AND o.test_id = t.test_id AND o.source = t.source
+                  AND o.component_id IS NOT DISTINCT FROM t.component_id
+                  AND o.sample_type_id IS NOT DISTINCT FROM t.sample_type_id
+                  AND trim(o.code) = trim(t.code)
+                  AND (o.code = trim(o.code) OR o.id &lt; t.id));
+            UPDATE clinlims.sample_type_terminology_mapping t SET code = trim(t.code)
+            WHERE t.code &lt;&gt; trim(t.code) AND NOT EXISTS (
+                SELECT 1 FROM clinlims.sample_type_terminology_mapping o
+                WHERE o.id &lt;&gt; t.id AND o.sample_type_id = t.sample_type_id AND o.source = t.source
+                  AND trim(o.code) = trim(t.code)
+                  AND (o.code = trim(o.code) OR o.id &lt; t.id));
+            UPDATE clinlims.panel_terminology_mapping t SET code = trim(t.code)
+            WHERE t.code &lt;&gt; trim(t.code) AND NOT EXISTS (
+                SELECT 1 FROM clinlims.panel_terminology_mapping o
+                WHERE o.id &lt;&gt; t.id AND o.panel_id = t.panel_id AND o.source = t.source
+                  AND trim(o.code) = trim(t.code)
+                  AND (o.code = trim(o.code) OR o.id &lt; t.id));
+            UPDATE clinlims.dictionary_terminology_mapping t SET code = trim(t.code)
+            WHERE t.code &lt;&gt; trim(t.code) AND NOT EXISTS (
+                SELECT 1 FROM clinlims.dictionary_terminology_mapping o
+                WHERE o.id &lt;&gt; t.id AND o.dictionary_id = t.dictionary_id AND o.source = t.source
+                  AND trim(o.code) = trim(t.code)
+                  AND (o.code = trim(o.code) OR o.id &lt; t.id));
+        </sql>
+        <rollback/>
+    </changeSet>
+</databaseChangeLog>

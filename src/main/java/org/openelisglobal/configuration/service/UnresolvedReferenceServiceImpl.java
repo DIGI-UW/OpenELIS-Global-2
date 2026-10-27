@@ -39,8 +39,13 @@ public class UnresolvedReferenceServiceImpl extends BaseObjectServiceImpl<Unreso
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordPending(String domain, String fileName, int lineNumber) {
-        for (PendingReference pending : ImportRunContext.drainPending()) {
+        List<PendingReference> noticed = ImportRunContext.drainPending();
+        boolean preview = ImportRunContext.isPreview();
+        for (PendingReference pending : noticed) {
             UnresolvedReference open = baseObjectDAO.getOpen(pending.referenceType(), pending.referenceValue());
+            if (open != null && preview) {
+                continue;
+            }
             if (open != null) {
                 open.setOccurrences(open.getOccurrences() + 1);
                 open.setImportRunId(ImportRunContext.getRunId());
@@ -61,6 +66,9 @@ public class UnresolvedReferenceServiceImpl extends BaseObjectServiceImpl<Unreso
             reference.setReferenceValue(pending.referenceValue());
             reference.setContext(pending.context());
             reference.setStatus(UnresolvedReference.STATUS_OPEN);
+            if (preview) {
+                reference.setOccurrences(0);
+            }
             reference.setSysUserId(SYSTEM_USER);
             insert(reference);
         }

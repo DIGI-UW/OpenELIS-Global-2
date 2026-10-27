@@ -31,6 +31,7 @@ public class NotificationRecipientResolver {
             case ORDERING_PROVIDER -> resolveOrderingProvider(ctx);
             case SUBMITTING_USER -> resolveSubmittingUser(ctx);
             case COC_CONTACT -> resolveCocContact(ctx);
+            case PATIENT, FACILITY, TYPED_ADDRESS -> null;
             };
         } catch (RuntimeException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "resolve",

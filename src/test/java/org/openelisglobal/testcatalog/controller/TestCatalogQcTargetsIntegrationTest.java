@@ -1,6 +1,7 @@
 package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -14,6 +15,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController;
+import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.OptionDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogQcTargetsRestController;
@@ -39,6 +41,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
     private static final long TEST_ID = 95321L;
     private static final String LOT_ID = "qc-target-it-lot-0001";
     private static final String ANALYZER_NAME = "QcTargetIT";
+    private static final String CODED_ANSWER = "QcTargetIT positive";
 
     @Autowired
     private org.openelisglobal.testcatalog.service.TestQcTargetService targetService;
@@ -127,6 +130,7 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
         jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE dict_entry = ?", CODED_ANSWER);
     }
 
     private static MockHttpServletRequest authedRequest() {
@@ -230,6 +234,156 @@ public class TestCatalogQcTargetsIntegrationTest extends BaseWebContextSensitive
                         body(target("NORMAL", null, 5.5d, 0.4d), target("NORMAL", null, 6d, 0.4d)), authedRequest())
                         .getStatusCode().value());
         assertTrue(controller.getTargets(testId()).getBody().targets.isEmpty());
+    }
+
+    private void insertTarget(String id, String level, Double expected, Double uncertainty, String dictId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test_qc_target (id, test_id, control_level, expected_value, uncertainty,"
+                        + " expected_dict_result_id, is_active, last_updated) VALUES (?, ?, ?, ?, ?, ?, true, NOW())",
+                id, TEST_ID, level, expected, uncertainty, dictId == null ? null : Long.valueOf(dictId));
+    }
+
+    private boolean targetActive(String id) {
+        return jdbc.queryForObject("SELECT is_active FROM clinlims.test_qc_target WHERE id = ?", Boolean.class, id);
+    }
+
+    private void runUpgradeRetire() throws Exception {
+        String xml = new String(getClass().getClassLoader()
+                .getResourceAsStream("liquibase/3.5.x.x/137-qc-targets-retire-stale.xml").readAllBytes(),
+                java.nio.charset.StandardCharsets.UTF_8);
+        jdbc.update(xml.substring(xml.indexOf("<sql>") + 5, xml.indexOf("</sql>")));
+    }
+
+    /**
+     * OGC-1462: a test whose result type changed before the fix kept its old
+     * targets active; the upgrade retires them once, keeping their values, and
+     * leaves the targets that fit.
+     */
+    @org.junit.Test
+    public void theUpgradeRetiresTargetsOfTheOldShape_andKeepsTheirValues() throws Exception {
+        String answerId = makeCoded();
+        jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
+        insertTarget("upgrade-numeric", "LOW", 5d, 1d, null);
+        insertTarget("upgrade-coded", "NORMAL", null, null, answerId);
+
+        runUpgradeRetire();
+
+        assertFalse("a numeric target on a coded test is retired", targetActive("upgrade-numeric"));
+        assertEquals(0,
+                new BigDecimal("5").compareTo(jdbc.queryForObject(
+                        "SELECT expected_value FROM clinlims.test_qc_target WHERE id = 'upgrade-numeric'",
+                        BigDecimal.class)));
+        assertTrue("a coded target on a coded test stays", targetActive("upgrade-coded"));
+
+        jdbc.update("UPDATE clinlims.test_result_component SET result_type = 'N' WHERE test_id = ? AND is_primary",
+                TEST_ID);
+        jdbc.update("UPDATE clinlims.test_qc_target SET is_active = true WHERE id = 'upgrade-numeric'");
+
+        runUpgradeRetire();
+
+        assertTrue("a numeric target on a numeric test stays", targetActive("upgrade-numeric"));
+        assertFalse("a coded target on a numeric test is retired", targetActive("upgrade-coded"));
+    }
+
+    /**
+     * OGC-1467: a value wider than numeric(15,5) and an expected answer that is not
+     * a dictionary entry are refused instead of failing the write with a 500.
+     */
+    @org.junit.Test
+    public void valuesTheColumnsCannotHold_andUnknownAnswers_are422() {
+        assertEquals(422,
+                controller.saveTargets(testId(), body(target("NORMAL", null, 12345678901d, 0.4d)), authedRequest())
+                        .getStatusCode().value());
+        assertEquals(422,
+                controller.saveTargets(testId(), body(target("NORMAL", null, 5.5d, 12345678901d)), authedRequest())
+                        .getStatusCode().value());
+        for (String answer : new String[] { "abc", "99999999" }) {
+            QcTargetDto coded = target("NORMAL", null, 5.5d, 0.4d);
+            coded.expectedDictResultId = answer;
+            assertEquals(answer, 422,
+                    controller.saveTargets(testId(), body(coded), authedRequest()).getStatusCode().value());
+        }
+        assertTrue(controller.getTargets(testId()).getBody().targets.isEmpty());
+
+        QcTargets widest = saved(target("NORMAL", null, 9999999999d, 0.4d));
+        assertEquals(0, new BigDecimal("9999999999").compareTo(widest.targets.get(0).expectedValue));
+    }
+
+    /** Switches the primary component to a coded result with one answer. */
+    private String makeCoded() {
+        SampleResults current = editor.getSampleResults(testId()).getBody();
+        ResultComponentDto primary = current.components.get(0);
+        primary.resultType = "D";
+        OptionDto answer = new OptionDto();
+        answer.value = CODED_ANSWER;
+        answer.valueName = CODED_ANSWER;
+        answer.freeText = true;
+        answer.resultType = "D";
+        answer.sortOrder = 1;
+        answer.normal = false;
+        primary.options = List.of(answer);
+        ResponseEntity<?> resp = editor.saveSampleResults(testId(), current, authedRequest());
+        assertEquals(String.valueOf(resp.getBody()), 200, resp.getStatusCode().value());
+        QcTargets loaded = controller.getTargets(testId()).getBody();
+        assertFalse("the test is coded now", loaded.quantitative);
+        return loaded.dictionaryOptions.get(0).id;
+    }
+
+    /** OGC-1462: a row added and switched off before it was filled. */
+    @org.junit.Test
+    public void aBlankTargetDeactivatedBeforeItWasFilled_savesAndStoresNothing() {
+        QcTargetDto blank = new QcTargetDto();
+        blank.controlLevel = "HIGH";
+        blank.active = false;
+
+        QcTargets after = saved(blank);
+
+        assertTrue(after.targets.isEmpty());
+    }
+
+    /**
+     * OGC-1462: changing the result type retires the targets of the old shape (so
+     * Results Entry stops prefilling them) and keeps their values; the section can
+     * then save targets of the new shape, sending the retired rows back empty.
+     */
+    @org.junit.Test
+    public void afterTheResultTypeChanges_oldTargetsAreRetired_andNewOnesSave() {
+        QcTargetDto numeric = saved(target("LOW", null, 5d, 1d)).targets.get(0);
+        assertEquals("LEVEL", effective("LOW", null).source);
+
+        String answerId = makeCoded();
+
+        QcTargetDto retired = controller.getTargets(testId()).getBody().targets.get(0);
+        assertEquals(numeric.id, retired.id);
+        assertFalse("a numeric target does not fit a coded test", retired.active);
+        assertEquals(0, new BigDecimal("5").compareTo(retired.expectedValue));
+        assertEquals("NONE", effective("LOW", null).source);
+
+        retired.expectedValue = null;
+        retired.uncertainty = null;
+        QcTargetDto coded = new QcTargetDto();
+        coded.controlLevel = "NORMAL";
+        coded.expectedDictResultId = answerId;
+        QcTargets after = saved(retired, coded);
+
+        QcTargetDto kept = after.targets.stream().filter(t -> numeric.id.equals(t.id)).findFirst().get();
+        assertFalse(kept.active);
+        assertEquals("a retired target keeps what it held", 0, new BigDecimal("5").compareTo(kept.expectedValue));
+        assertEquals(answerId, effective("NORMAL", null).target.expectedDictResultId);
+    }
+
+    /**
+     * OGC-1462: reactivating a retired target needs values of the current shape.
+     */
+    @org.junit.Test
+    public void aRetiredTargetReactivatedWithoutValuesOfTheNewShape_isRefused() {
+        saved(target("LOW", null, 5d, 1d));
+        makeCoded();
+        QcTargetDto retired = controller.getTargets(testId()).getBody().targets.get(0);
+        retired.active = true;
+
+        assertEquals(422, controller.saveTargets(testId(), body(retired), authedRequest()).getStatusCode().value());
+        assertFalse(controller.getTargets(testId()).getBody().targets.get(0).active);
     }
 
     @org.junit.Test

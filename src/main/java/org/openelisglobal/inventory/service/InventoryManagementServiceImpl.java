@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,10 +105,15 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Quantity needed must be greater than 0");
         }
 
+        // Lock in id order so concurrent consumers queue without deadlocking.
+        List<InventoryLot> fefoLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
+        fefoLots.stream().sorted(Comparator.comparing(InventoryLot::getId))
+                .forEach(inventoryLotService::refreshForUpdate);
+
         // The FEFO query has no expiry predicate; isAvailableForUse is the rule
         // check-availability answers with, so it decides here too.
-        List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId).stream()
-                .filter(InventoryLot::isAvailableForUse).collect(Collectors.toList());
+        List<InventoryLot> availableLots = fefoLots.stream().filter(InventoryLot::isAvailableForUse)
+                .collect(Collectors.toList());
 
         if (availableLots == null || availableLots.isEmpty()) {
             throw noAvailableLots(itemId);
@@ -221,6 +227,24 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
     private LocalizedValidationException refusal(String errorCode, String message, InventoryItem item, long count) {
         return new LocalizedValidationException(errorCode, message,
                 Map.of("code", item.getCode(), "name", item.getName(), "count", Long.toString(count)));
+    }
+
+    @Override
+    @Transactional
+    public List<InventoryLot> receiveInventoryBatch(List<InventoryLot> lots, String sysUserId) {
+        List<InventoryLot> received = new java.util.ArrayList<>();
+        if (lots == null || lots.isEmpty()) {
+            return received;
+        }
+        for (InventoryLot lot : lots) {
+            if (lot == null) {
+                continue;
+            }
+            // An id would turn the receipt into an overwrite of that lot.
+            lot.setId(null);
+            received.add(receiveInventory(lot, sysUserId));
+        }
+        return received;
     }
 
     @Override

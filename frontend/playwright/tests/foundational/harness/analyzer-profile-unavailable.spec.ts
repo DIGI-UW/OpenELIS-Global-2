@@ -101,13 +101,11 @@ test.describe("An analyzer whose type the Bridge has lost", () => {
       await setup.selectProfile(GENEXPERT.displayName, GENEXPERT);
       await setup.continueToVerify();
       const confirm = page.getByRole("button", {
-        name: "Confirm mappings and control recognition",
+        name: "Confirm mappings",
       });
       await expect(confirm).toBeEnabled();
       await confirm.click();
-      await expect(
-        page.getByText("Mappings and control recognition confirmed"),
-      ).toBeVisible();
+      await expect(page.getByText("Mappings confirmed")).toBeVisible();
       await setup.continueToConnect();
       await page.getByRole("button", { name: "Finish and activate" }).click();
 

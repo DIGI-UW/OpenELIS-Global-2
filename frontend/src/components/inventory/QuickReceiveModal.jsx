@@ -17,6 +17,7 @@ import {
   InventoryLotStorageAPI,
 } from "./InventoryService";
 import { toLocalIsoDate } from "../utils/Utils";
+import { gtinMatches } from "./gs1";
 import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
 import {
   selectionToHierarchicalPath,
@@ -60,8 +61,8 @@ const QuickReceiveModal = ({
   const resolveScan = (code) => {
     const normalized = code.trim();
     if (!normalized) return;
-    const match = options.find(
-      (option) => option.row.upc && option.row.upc.trim() === normalized,
+    const match = options.find((option) =>
+      gtinMatches(option.row.upc, normalized),
     );
     if (match) {
       setItemId(match.id);

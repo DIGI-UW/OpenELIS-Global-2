@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Tile,
   Grid,
@@ -9,9 +10,14 @@ import {
   SelectItem,
   TextInput,
   InlineNotification,
+  Button,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import CustomDatePicker from "../../../common/CustomDatePicker";
+import { ConfigurationContext } from "../../../layout/Layout";
+import { createSampleOrderFormValues } from "../../../formModel/innitialValues/OrderEntryFormValues";
+import NewEqaCycleModal from "../../../eqa/MyCycles/NewEqaCycleModal";
+import { formatIsoDateForBackend } from "../../dateUtils";
 
 const EQA_PRIORITIES = ["STANDARD", "URGENT"];
 
@@ -28,16 +34,28 @@ const EQA_PRIORITIES = ["STANDARD", "URGENT"];
  * EQA is orthogonal to domain: a proficiency panel on a water sample is
  * perfectly coherent, so this is a control on the shared form rather than a
  * fourth lane.
+ *
+ * An EQA sample names the lab's active enrollment it belongs to, and the
+ * cycle when the lab tracks it here (OGC-1483). The cycle is optional, since
+ * some labs track cycles in other software, but an order without one is not
+ * submitted or scored from OpenELIS, and the section says so.
  */
 const EqaAndNoPatientSection = ({
   orderData,
   setOrderData,
   isReadOnly,
   patientRequired,
+  fieldErrors = {},
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
-  const [programs, setPrograms] = useState([]);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
+  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
+  const [enrollments, setEnrollments] = useState(null);
+  const [cycles, setCycles] = useState([]);
+  const [schemeTouched, setSchemeTouched] = useState(false);
+  const [newCycleOpen, setNewCycleOpen] = useState(false);
 
   const sampleOrderItems = orderData?.sampleOrderItems || {};
   const isEqa = Boolean(sampleOrderItems.isEQASample);
@@ -47,17 +65,53 @@ const EqaAndNoPatientSection = ({
     orderData?.patientProperties?.nationalId,
   );
 
+  const enrollmentId = sampleOrderItems.eqaProgramId || "";
+  const cycleId = sampleOrderItems.eqaCycleId || "";
+  const selectedEnrollment = (enrollments || []).find(
+    (enrollment) => String(enrollment.id) === String(enrollmentId),
+  );
+  const selectedCycle = cycles.find(
+    (cycle) => String(cycle.id) === String(cycleId),
+  );
+  const panelCodes = selectedCycle?.panelCodes || [];
+  const noEnrollments = enrollments !== null && enrollments.length === 0;
+  const providerSampleId = sampleOrderItems.eqaProviderSampleId || "";
+  const codeMatchesNoPanelSample =
+    panelCodes.length > 0 &&
+    providerSampleId.trim() !== "" &&
+    !panelCodes.includes(providerSampleId.trim());
+
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/eqa/programs", (data) => {
-      if (componentMounted.current && Array.isArray(data)) {
-        setPrograms(data);
+    getFromOpenElisServer("/rest/eqa/my-programs?active=true", (data) => {
+      if (componentMounted.current) {
+        setEnrollments(Array.isArray(data) ? data : []);
       }
     });
     return () => {
       componentMounted.current = false;
     };
   }, []);
+
+  const loadCycles = (id, then) => {
+    if (!id) {
+      setCycles([]);
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/eqa/my-programs/${encodeURIComponent(id)}/open-cycles`,
+      (data) => {
+        if (!componentMounted.current) return;
+        const list = Array.isArray(data) ? data : [];
+        setCycles(list);
+        then?.(list);
+      },
+    );
+  };
+
+  useEffect(() => {
+    loadCycles(isEqa ? enrollmentId : "");
+  }, [isEqa, enrollmentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateOrder = (changes) =>
     setOrderData((prev) => ({
@@ -71,14 +125,22 @@ const EqaAndNoPatientSection = ({
   // outlive the flag that revealed it.
   const handleEqaChange = (_event, { checked }) => {
     if (checked) {
-      updateOrder({
-        isEQASample: true,
-        noPatientOverride: true,
-        noPatientReasonCode: "EQA",
-        noPatientReason: intl.formatMessage({
-          id: "order.noPatient.reason.eqa",
-        }),
-      });
+      setOrderData((prev) => ({
+        ...prev,
+        patientProperties: {
+          ...createSampleOrderFormValues().patientProperties,
+          patientUpdateStatus: "NO_ACTION",
+        },
+        sampleOrderItems: {
+          ...prev.sampleOrderItems,
+          isEQASample: true,
+          noPatientOverride: true,
+          noPatientReasonCode: "EQA",
+          noPatientReason: intl.formatMessage({
+            id: "order.noPatient.reason.eqa",
+          }),
+        },
+      }));
       return;
     }
     updateOrder({
@@ -87,6 +149,7 @@ const EqaAndNoPatientSection = ({
       noPatientReasonCode: "",
       noPatientReason: "",
       eqaProgramId: "",
+      eqaCycleId: "",
       eqaProviderSampleId: "",
       eqaDeadline: "",
       eqaPriority: "",
@@ -110,7 +173,7 @@ const EqaAndNoPatientSection = ({
   // PatientRequired governs the manual override only. A site that requires
   // patients for clinical work still runs proficiency testing, so EQA can set
   // no-patient even where the manual tick is not on offer.
-  const offerManualOverride = !patientRequired || isEqa;
+  const offerManualOverride = !patientRequired && !isEqa;
   const warnAboutNoPatient = noPatient && !isEqa;
 
   return (
@@ -142,7 +205,7 @@ const EqaAndNoPatientSection = ({
               id: "order.noPatient",
               defaultMessage: "This order has no patient",
             })}
-            checked={noPatient}
+            checked={noPatient || isEqa}
             onChange={handleNoPatientChange}
             disabled={isReadOnly || !offerManualOverride}
           />
@@ -180,7 +243,7 @@ const EqaAndNoPatientSection = ({
         />
       )}
 
-      {noPatient && hasPatient && (
+      {noPatient && hasPatient && !isEqa && (
         <InlineNotification
           kind="info"
           lowContrast
@@ -195,29 +258,128 @@ const EqaAndNoPatientSection = ({
 
       {isEqa && (
         <Grid className="eqa-detail-grid">
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="eqaProgramId"
-              labelText={intl.formatMessage({
-                id: "order.eqa.program",
-                defaultMessage: "EQA Programme",
-              })}
-              value={sampleOrderItems.eqaProgramId || ""}
-              onChange={(e) => updateOrder({ eqaProgramId: e.target.value })}
-              disabled={isReadOnly}
-            >
-              <SelectItem value="" text="" />
-              {programs.map((program) => (
+          {noEnrollments && (
+            <Column lg={16} md={8} sm={4}>
+              <InlineNotification
+                kind="info"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "order.eqa.noEnrollments.title",
+                })}
+              />
+              <RouterLink to="/qa/eqa/my-programs">
+                <FormattedMessage id="order.eqa.noEnrollments.link" />
+              </RouterLink>
+            </Column>
+          )}
+          {!noEnrollments && (
+            <Column lg={8} md={4} sm={4}>
+              <Select
+                id="eqaProgramId"
+                labelText={intl.formatMessage({ id: "order.eqa.scheme" })}
+                aria-required="true"
+                value={enrollmentId}
+                invalid={Boolean(
+                  fieldErrors["sampleOrderItems.eqaProgramId"] ||
+                  (schemeTouched && !enrollmentId),
+                )}
+                invalidText={intl.formatMessage({
+                  id:
+                    fieldErrors["sampleOrderItems.eqaProgramId"] &&
+                    intl.messages[fieldErrors["sampleOrderItems.eqaProgramId"]]
+                      ? fieldErrors["sampleOrderItems.eqaProgramId"]
+                      : "order.eqa.schemeRequired",
+                })}
+                onBlur={() => setSchemeTouched(true)}
+                onChange={(e) => {
+                  setSchemeTouched(true);
+                  updateOrder({
+                    eqaProgramId: e.target.value,
+                    eqaCycleId: "",
+                    ...(selectedCycle?.deadline ? { eqaDeadline: "" } : {}),
+                  });
+                }}
+                disabled={isReadOnly}
+              >
                 <SelectItem
-                  key={program.id}
-                  value={String(program.id)}
-                  text={
-                    program.name || program.programName || String(program.id)
-                  }
+                  value=""
+                  text={intl.formatMessage({ id: "order.eqa.scheme.choose" })}
                 />
-              ))}
-            </Select>
-          </Column>
+                {(enrollments || []).map((enrollment) => (
+                  <SelectItem
+                    key={enrollment.id}
+                    value={String(enrollment.id)}
+                    text={
+                      enrollment.provider
+                        ? `${enrollment.programName} (${enrollment.provider})`
+                        : enrollment.programName || String(enrollment.id)
+                    }
+                  />
+                ))}
+              </Select>
+            </Column>
+          )}
+          {!noEnrollments && (
+            <Column lg={8} md={4} sm={4}>
+              <Select
+                id="eqaCycleId"
+                labelText={intl.formatMessage({ id: "order.eqa.cycle" })}
+                value={cycleId}
+                invalid={Boolean(fieldErrors["sampleOrderItems.eqaCycleId"])}
+                invalidText={intl.formatMessage({
+                  id: "order.eqa.cycleNotInScheme",
+                })}
+                onChange={(e) => {
+                  const cycle = cycles.find(
+                    (candidate) => String(candidate.id) === e.target.value,
+                  );
+                  updateOrder({
+                    eqaCycleId: e.target.value,
+                    eqaDeadline: cycle?.deadline
+                      ? formatIsoDateForBackend(cycle.deadline, dateLocale)
+                      : selectedCycle?.deadline
+                        ? ""
+                        : sampleOrderItems.eqaDeadline || "",
+                  });
+                }}
+                disabled={isReadOnly || !enrollmentId}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({ id: "order.eqa.cycle.none" })}
+                />
+                {cycles.map((cycle) => (
+                  <SelectItem
+                    key={cycle.id}
+                    value={String(cycle.id)}
+                    text={cycle.name}
+                  />
+                ))}
+              </Select>
+            </Column>
+          )}
+          {enrollmentId && !cycleId && (
+            <Column lg={16} md={8} sm={4}>
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "order.eqa.noCycle.warning",
+                })}
+              />
+              {!isReadOnly && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => setNewCycleOpen(true)}
+                >
+                  <FormattedMessage id="order.eqa.newCycle" />
+                </Button>
+              )}
+            </Column>
+          )}
           <Column lg={8} md={4} sm={4}>
             <TextInput
               id="eqaProviderSampleId"
@@ -225,12 +387,33 @@ const EqaAndNoPatientSection = ({
                 id: "order.eqa.providerSampleId",
                 defaultMessage: "Provider Sample ID",
               })}
-              value={sampleOrderItems.eqaProviderSampleId || ""}
+              list={panelCodes.length > 0 ? "eqaPanelCodes" : undefined}
+              value={providerSampleId}
+              warn={codeMatchesNoPanelSample}
+              warnText={intl.formatMessage(
+                { id: "order.eqa.providerSampleId.noMatch" },
+                { codes: panelCodes.join(", ") },
+              )}
+              helperText={
+                panelCodes.length > 0
+                  ? intl.formatMessage(
+                      { id: "order.eqa.providerSampleId.codes" },
+                      { codes: panelCodes.join(", ") },
+                    )
+                  : undefined
+              }
               onChange={(e) =>
                 updateOrder({ eqaProviderSampleId: e.target.value })
               }
               disabled={isReadOnly}
             />
+            {panelCodes.length > 0 && (
+              <datalist id="eqaPanelCodes">
+                {panelCodes.map((code) => (
+                  <option key={code} value={code} />
+                ))}
+              </datalist>
+            )}
           </Column>
           <Column lg={8} md={4} sm={4}>
             <CustomDatePicker
@@ -240,6 +423,7 @@ const EqaAndNoPatientSection = ({
                 defaultMessage: "Submission Deadline",
               })}
               value={sampleOrderItems.eqaDeadline || ""}
+              updateStateValue={true}
               onChange={(date) => updateOrder({ eqaDeadline: date })}
               disabled={isReadOnly}
             />
@@ -261,6 +445,34 @@ const EqaAndNoPatientSection = ({
             </Select>
           </Column>
         </Grid>
+      )}
+
+      {newCycleOpen && (
+        <NewEqaCycleModal
+          schemeName={selectedEnrollment?.programName || ""}
+          onClose={() => setNewCycleOpen(false)}
+          onCreated={(created) => {
+            setNewCycleOpen(false);
+            loadCycles(enrollmentId, (list) => {
+              const match = list.find(
+                (cycle) => String(cycle.id) === String(created?.id),
+              );
+              if (match) {
+                updateOrder({
+                  eqaCycleId: String(match.id),
+                  ...(match.deadline
+                    ? {
+                        eqaDeadline: formatIsoDateForBackend(
+                          match.deadline,
+                          dateLocale,
+                        ),
+                      }
+                    : {}),
+                });
+              }
+            });
+          }}
+        />
       )}
     </Tile>
   );

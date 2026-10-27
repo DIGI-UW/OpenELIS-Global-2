@@ -2,6 +2,7 @@ package org.openelisglobal.testcatalog.controller;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestContr
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.ResultComponentDto;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.SampleResults;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
@@ -431,5 +433,40 @@ public class TestCatalogSampleResultsLifecycleIntegrationTest extends BaseWebCon
                 .post("/rest/test-catalog/tests/" + testId() + "/sample-results/copy-from/" + testId())
                 .session((MockHttpSession) authedRequest().getSession())).andReturn().getResponse().getStatus();
         assertTrue("got " + status, status == 404 || status == 405 || status == 410);
+    }
+
+    // -- OGC-1463: two editors ----------------------------------------------
+
+    @org.junit.Test
+    public void anOldCopyNamingARemovedComponentIsRefusedAsStale_evenWithoutAVersion() {
+        String primary = primaryId();
+        assertEquals(200, save(comp(primary, "PRIMARY", "Result", true, 0), comp(null, "SECOND", "Second", false, 1)));
+        SampleResults pageA = load();
+        assertEquals(200, save(comp(primary, "PRIMARY", "Result", true, 0)));
+
+        pageA.version = null;
+        pageA.components.forEach(c -> c.label = "A " + c.label);
+        ResponseEntity<SampleResults> stale = controller.saveSampleResults(testId(), pageA, authedRequest());
+
+        assertEquals(409, stale.getStatusCode().value());
+        assertEquals("stale", stale.getBody().conflict);
+        assertNull("the removal stands", byCode("SECOND"));
+        assertEquals("Result", byCode("PRIMARY").label);
+    }
+
+    @org.junit.Test
+    public void aSaveSentWithAnOlderVersionIsRefused_andTheCurrentOneSaves() {
+        String primary = primaryId();
+        SampleResults pageA = load();
+        assertEquals(200, save(comp(primary, "PRIMARY", "Renamed by B", true, 0)));
+
+        pageA.components.get(0).label = "Renamed by A";
+        assertEquals(409, controller.saveSampleResults(testId(), pageA, authedRequest()).getStatusCode().value());
+        assertEquals("Renamed by B", byCode("PRIMARY").label);
+
+        SampleResults reloaded = load();
+        reloaded.components.get(0).label = "Renamed by A";
+        assertEquals(200, controller.saveSampleResults(testId(), reloaded, authedRequest()).getStatusCode().value());
+        assertEquals("Renamed by A", byCode("PRIMARY").label);
     }
 }

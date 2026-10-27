@@ -3,7 +3,10 @@
  * collector is optional: many tubes arrive with no name on them, so a sample
  * with a type and a collection date and time can move on without one.
  */
-import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
+import {
+  prepareSamplesToContinue,
+  consentApplies,
+} from "./prepareSamplesChecklist";
 
 const intl = {
   formatMessage: ({ id }, values) =>
@@ -107,5 +110,23 @@ describe("prepareSamplesToContinue — a sample with no tests (OGC-1443)", () =>
     expect(
       itemsFor([serum(), serum({ tests: [], sampleRejected: true })]),
     ).toEqual([]);
+  });
+});
+
+describe("consentApplies (OGC-1483)", () => {
+  const required = { CONSENT_REQUIRED_FOR_COLLECTION: "true" };
+
+  it("holds a clinical order where the laboratory requires consent", () => {
+    expect(consentApplies(required, { sampleOrderItems: {} })).toBe(true);
+  });
+
+  it("never holds an EQA order, which has no person to consent", () => {
+    expect(
+      consentApplies(required, { sampleOrderItems: { isEQASample: true } }),
+    ).toBe(false);
+  });
+
+  it("holds nothing where consent is advisory", () => {
+    expect(consentApplies({}, { sampleOrderItems: {} })).toBe(false);
   });
 });

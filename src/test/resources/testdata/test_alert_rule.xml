@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DBUnit Flat XML fixture for TestAlertRuleService integration tests.
+    Fixture rows: rule id=rule-001 : ALL-trigger rule for CBC (test_id=1), email
+    + SMS, enabled rule id=rule-002 : CRITICAL-trigger rule for CBC (test_id=1),
+    email + physician, ack required rule id=rule-003 : ABNORMAL-trigger rule
+    for Urinalysis (test_id=2), disabled rule id=rule-004 : SPECIFIC_VALUE rule
+    for CBC (test_id=1), custom contacts, ack required -->
+<dataset>
+
+    <!-- prerequisite: localization rows -->
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- method / unit_of_measure / test_section / test_formats (FK chain) -->
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="g/L"
+        description="Grams per liter" />
+
+    <method id="1" name="Spectrophotometry"
+        description="Spectrophotometric method"
+        lastupdated="2025-01-01 00:00:00" />
+    <method id="2" name="Dipstick"
+        description="Dipstick urinalysis method"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <test_section id="1" name="Hematology"
+        description="Hematology section" is_active="Y" sort_order="1"
+        lastupdated="2025-01-01 00:00:00" name_localization_id="1" />
+    <test_section id="2" name="Urinalysis"
+        description="Urinalysis section" is_active="Y" sort_order="2"
+        lastupdated="2025-01-01 00:00:00" name_localization_id="2" />
+
+    <test_formats id="1" lastupdated="2025-03-21 12:00:00" />
+    <test_formats id="2" lastupdated="2025-03-21 12:00:00" />
+
+    <scriptlet id="1" name="ScriptletA" code_type="T"
+        code_source="Source1" lastupdated="2025-01-01 00:00:00" />
+    <scriptlet id="2" name="ScriptletB" code_type="T"
+        code_source="Source2" lastupdated="2025-01-01 00:00:00" />
+
+    <test_trailer id="1" name="Trailer1" text="Footer text 1"
+        lastupdated="2025-01-01 00:00:00" />
+    <test_trailer id="2" name="Trailer2" text="Footer text 2"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <label id="1" name="Label1" lastupdated="2025-01-01 00:00:00" />
+    <label id="2" name="Label2" lastupdated="2025-01-01 00:00:00" />
+
+    <!-- tests (FK target for test_alert_rule.test_id) -->
+    <test id="1" method_id="1" uom_id="1" description="Blood Test"
+        loinc="123456" reporting_description="Complete Blood Count"
+        sticker_req_flag="Y" is_active="Y" active_begin="2025-01-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="N" time_holding="30"
+        time_wait="15" time_ta_average="60" time_ta_warning="90"
+        time_ta_max="120" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        label_id="1" test_trailer_id="1" test_section_id="1" scriptlet_id="1"
+        test_format_id="1" local_code="CBC" sort_order="2147483646"
+        name="Complete Blood Count" orderable="true" guid="abc-123"
+        name_localization_id="1" antimicrobial_resistance="true" />
+
+    <test id="2" method_id="2" uom_id="2" description="Urine Test"
+        loinc="543216" reporting_description="Urinalysis" sticker_req_flag="N"
+        is_active="Y" active_begin="2025-02-01 12:00:00"
+        active_end="2025-12-31 12:00:00" is_reportable="Y" time_holding="25"
+        time_wait="10" time_ta_average="50" time_ta_warning="70"
+        time_ta_max="90" label_qty="1" lastupdated="2025-03-20 12:00:00"
+        label_id="2" test_trailer_id="2" test_section_id="2" scriptlet_id="2"
+        test_format_id="2" local_code="UA" sort_order="2147483646"
+        name="Urinalysis" orderable="true" guid="def-456"
+        name_localization_id="2" antimicrobial_resistance="false" />
+
+    <!-- test_alert_rule rows -->
+
+    <!-- rule 1: ALL trigger, CBC, email + SMS, enabled -->
+    <test_alert_rule id="rule-001" test_id="1"
+        name="CBC All-Results Alert" is_enabled="true" trigger_type="ALL"
+        notify_sms="true" notify_email="true"
+        notify_ordering_physician="false" notify_patient="false"
+        notify_referring_facility="false" acknowledgment_required="false"
+        lastupdated="2025-06-01 08:00:00" last_updated="2025-06-01 08:00:00" />
+
+    <!-- rule 2: CRITICAL trigger, CBC, email + ordering physician, ack required -->
+    <test_alert_rule id="rule-002" test_id="1"
+        name="CBC Critical Alert" is_enabled="true" trigger_type="CRITICAL"
+        notify_sms="false" notify_email="true"
+        notify_ordering_physician="true" notify_patient="false"
+        notify_referring_facility="false" acknowledgment_required="true"
+        lastupdated="2025-06-01 08:00:00" last_updated="2025-06-01 08:00:00" />
+
+    <!-- rule 3: ABNORMAL trigger, Urinalysis, disabled -->
+    <test_alert_rule id="rule-003" test_id="2"
+        name="UA Abnormal Alert" is_enabled="false" trigger_type="ABNORMAL"
+        notify_sms="false" notify_email="true"
+        notify_ordering_physician="false" notify_patient="false"
+        notify_referring_facility="false" acknowledgment_required="false"
+        lastupdated="2025-06-02 09:00:00" last_updated="2025-06-02 09:00:00" />
+
+    <!-- rule 4: SPECIFIC_VALUE trigger, CBC, custom contacts, ack required -->
+    <test_alert_rule id="rule-004" test_id="1"
+        name="CBC Specific Value Alert" is_enabled="true"
+        trigger_type="SPECIFIC_VALUE" trigger_value="&gt;500"
+        notify_sms="false" notify_email="false"
+        notify_ordering_physician="false" notify_patient="false"
+        notify_referring_facility="false" notify_custom_phone="+1234567890"
+        notify_custom_email="lab-alerts@hospital.org"
+        acknowledgment_required="true" lastupdated="2025-06-03 10:00:00"
+        last_updated="2025-06-03 10:00:00" />
+
+</dataset>

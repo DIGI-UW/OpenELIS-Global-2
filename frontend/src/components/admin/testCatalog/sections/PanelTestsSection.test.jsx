@@ -269,3 +269,43 @@ describe("PanelTestsSection membership refusals (OGC-1456)", () => {
     );
   });
 });
+
+describe("PanelTestsSection two editors (OGC-1463)", () => {
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.includes("/test-order")) {
+        cb({ tests: [], version: "v1" });
+      } else if (url.startsWith("/rest/sample-types")) {
+        cb([]);
+      }
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    wrap(ENV_PANEL);
+    const memberLoads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.includes("/test-order"),
+      ).length;
+
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    expect(
+      await screen.findByTestId("panel-tests-stale-save"),
+    ).toBeInTheDocument();
+    expect(
+      JSON.parse(putToOpenElisServerFullResponse.mock.calls[0][1]).version,
+    ).toBe("v1");
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeDisabled();
+    const before = memberLoads();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
+    );
+    await waitFor(() => expect(memberLoads()).toBe(before + 1));
+    expect(notification.addNotification).not.toHaveBeenCalled();
+  });
+});

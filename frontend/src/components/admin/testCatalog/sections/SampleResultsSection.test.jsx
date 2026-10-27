@@ -1203,6 +1203,46 @@ describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
     expect(options[0].freeText).toBeUndefined();
   });
 
+  /** OGC-1463: a save refused as stale says so; Refresh loads the stored copy. */
+  it("sends the loaded version and shows a stale save with Refresh", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/sample-results")) {
+        cb({ ...clone(SAMPLE_RESULTS), version: "v1" });
+      } else if (url.startsWith("/rest/test-catalog/dictionary")) {
+        cb([{ id: "500", name: "Positive" }]);
+      } else {
+        cb([]);
+      }
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        ok: false,
+        status: 409,
+        json: () => Promise.resolve({ conflict: "stale", version: "v2" }),
+      }),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+    const loads = () =>
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.endsWith("/sample-results"),
+      ).length;
+
+    fireEvent.click(saveButton());
+
+    expect(
+      await screen.findByTestId("sample-results-stale-save"),
+    ).toHaveTextContent(messages["error.staleSave.section"]);
+    expect(savedPayload().version).toBe("v1");
+    expect(saveButton()).toBeDisabled();
+    const before = loads();
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["label.results.refresh"] }),
+    );
+    expect(loads()).toBe(before + 1);
+    expect(screen.queryByTestId("sample-results-stale-save")).toBeNull();
+  });
+
   it("explains that an active test keeps at least one component", async () => {
     const addNotification = vi.fn();
     putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
@@ -1295,4 +1335,47 @@ describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
       ),
     );
   });
+
+  it("stops each text field at its column width (OGC-1467)", async () => {
+    await renderWithNotifications(vi.fn());
+    await screen.findByDisplayValue("SYS");
+
+    expect(document.getElementById("comp-label-0")).toHaveAttribute(
+      "maxLength",
+      "255",
+    );
+  });
+
+  it.each([
+    ["value.tooLong", "longer than"],
+    ["unit.unknown", "unit of measure"],
+  ])(
+    "explains the %s refusal on the named component (OGC-1467)",
+    async (refusal, wording) => {
+      const addNotification = vi.fn();
+      putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+        cb({
+          ok: false,
+          status: 422,
+          json: () =>
+            Promise.resolve({ refusal, refusedComponent: "Systolic" }),
+        }),
+      );
+      await renderWithNotifications(addNotification);
+      await screen.findByDisplayValue("SYS");
+
+      fireEvent.click(saveButton());
+
+      await vi.waitFor(() =>
+        expect(addNotification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            kind: "error",
+            message: expect.stringMatching(
+              new RegExp(`Systolic[\\s\\S]*${wording}`, "i"),
+            ),
+          }),
+        ),
+      );
+    },
+  );
 });

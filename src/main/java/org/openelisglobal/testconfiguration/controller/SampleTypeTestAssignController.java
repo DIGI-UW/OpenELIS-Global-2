@@ -165,6 +165,7 @@ public class SampleTypeTestAssignController extends BaseController {
             LogEvent.logError(e);
         }
 
+        typeOfSampleService.clearCache();
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);

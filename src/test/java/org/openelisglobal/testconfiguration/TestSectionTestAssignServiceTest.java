@@ -38,7 +38,7 @@ public class TestSectionTestAssignServiceTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void assignTestsToSection_shouldMoveTestsAndActivateInactiveTargetSection() {
+    public void assignTestsToSection_shouldMoveTestsAndLeaveTheTargetSectionsStatusAlone() {
         Localization localization = new Localization();
         localization.setDescription("test unit name");
         localization.setLocalizedValue("en", "Serology");
@@ -60,7 +60,8 @@ public class TestSectionTestAssignServiceTest extends BaseWebContextSensitiveTes
         assertEquals(2, updated.size());
         assertEquals(targetId, testService.get("1").getTestSection().getId());
         assertEquals(targetId, testService.get("2").getTestSection().getId());
-        assertEquals("Y", testSectionService.getTestSectionById(targetId).getIsActive());
+        assertEquals("moving tests never reactivates a unit (OGC-1459)", "N",
+                testSectionService.getTestSectionById(targetId).getIsActive());
     }
 
     @Test

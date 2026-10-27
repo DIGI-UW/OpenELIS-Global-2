@@ -98,9 +98,7 @@ test.describe("Vector Surveillance — full user story", () => {
       await demo.evidence("story-3-collection-entered");
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await expect(
-        page
-          .getByText("Sample Order Entry has been saved successfully")
-          .first(),
+        page.getByText(/Order \S+ has been saved\./).first(),
       ).toBeVisible({ timeout: 20_000 });
       await demo.pause(1500);
     });

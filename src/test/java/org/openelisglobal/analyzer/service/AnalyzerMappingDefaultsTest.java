@@ -15,6 +15,7 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.terminology.Coding;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -66,9 +67,49 @@ public class AnalyzerMappingDefaultsTest {
     }
 
     @Test
+    public void bindsATestNamedOnlyInADistroSystemToTheOneTestCarryingThatCode() throws Exception {
+        when(catalog.searchActiveTests(null)).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.TestOption("1", "HIV viral load", "VL", List.of(new Coding("CPHL", "VL-HIV"))),
+                new AnalyzerMappingCatalogService.TestOption("2", "Other", "OTH", List.of(new Coding("CPHL", "OTHER")))));
+        when(catalog.getActiveResultOptions("1"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED))));
+
+        var draft = defaults.resolve(distroProfile("CPHL", "vl-hiv"));
+
+        assertEquals(AnalyzerMappingState.BOUND, draft.tests().get(0).mappingState());
+        assertEquals("1", draft.tests().get(0).testId());
+        assertEquals("21", draft.results().get(0).testResultId());
+    }
+
+    @Test
+    public void leavesADistroCodeTwoTestsCarryUnresolvedAsAmbiguous() throws Exception {
+        when(catalog.searchActiveTests(null)).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.TestOption("1", "HIV viral load", "VL", List.of(new Coding("CPHL", "VL-HIV"))),
+                new AnalyzerMappingCatalogService.TestOption("2", "HIV VL (old)", "VL2", List.of(new Coding("CPHL", "VL-HIV")))));
+        for (String id : List.of("1", "2")) {
+            when(catalog.getActiveResultOptions(id)).thenReturn(
+                    List.of(new AnalyzerMappingCatalogService.ResultOption("2" + id, "99" + id, "Detected", loinc(DETECTED))));
+        }
+
+        var draft = defaults.resolve(distroProfile("CPHL", "VL-HIV"));
+
+        assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, draft.tests().get(0).unresolvedReason());
+    }
+
+    @Test
+    public void aDistroCodeInAnotherSystemIsNoMatch() throws Exception {
+        when(catalog.searchActiveTests(null)).thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("1",
+                "HIV viral load", "VL", List.of(new Coding("OTHER-LAB", "VL-HIV")))));
+
+        var draft = defaults.resolve(distroProfile("CPHL", "VL-HIV"));
+
+        assertEquals(AnalyzerUnresolvedReason.NO_MATCH, draft.tests().get(0).unresolvedReason());
+    }
+
+    @Test
     public void reportsNoMatchWhenNoActiveTestCarriesTheLoinc() throws Exception {
         when(catalog.searchActiveTests(null)).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.TestOption("1", "Other", "OTH", List.of("99999-9"))));
+                new AnalyzerMappingCatalogService.TestOption("1", "Other", "OTH", List.of(Coding.loinc("99999-9")))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertEquals(AnalyzerUnresolvedReason.NO_MATCH, draft.tests().get(0).unresolvedReason());
         assertFalse("no local test carries its code, so it starts off", draft.tests().get(0).isEnabled());
@@ -77,7 +118,7 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void doesNotMatchOnLocalCodeOrNameWithoutTheLoinc() throws Exception {
         when(catalog.searchActiveTests(null)).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.TestOption("1", "RAW-A", "RAW-A", List.of("99999-9"))));
+                new AnalyzerMappingCatalogService.TestOption("1", "RAW-A", "RAW-A", List.of(Coding.loinc("99999-9")))));
         when(catalog.getActiveResultOptions("1"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
@@ -162,8 +203,8 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void aValueCodedOnlyInSnomedBindsToTheAnswerCarryingThatSnomedCode() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption(
-                "21", "991", "Detected", List.of(new AnalyzerMappingCatalogService.AnswerCoding(LOINC_SYSTEM, DETECTED),
-                        new AnalyzerMappingCatalogService.AnswerCoding(SNOMED_SYSTEM, "260373001")))));
+                "21", "991", "Detected", List.of(new Coding(LOINC_SYSTEM, DETECTED),
+                        new Coding(SNOMED_SYSTEM, "260373001")))));
 
         var draft = defaults.resolve(profile("qualitative", SNOMED_SYSTEM, codes("DETECTED", "260373001")));
 
@@ -173,7 +214,7 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void theSameCodeInAnotherSystemDoesNotBind() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption(
-                "21", "991", "Detected", List.of(new AnalyzerMappingCatalogService.AnswerCoding(LOINC_SYSTEM, "123")))));
+                "21", "991", "Detected", List.of(new Coding(LOINC_SYSTEM, "123")))));
 
         var draft = defaults.resolve(profile("qualitative", SNOMED_SYSTEM, codes("DETECTED", "123")));
 
@@ -195,8 +236,8 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void ignoresTheRetiredSpecimenAndResultValueHints() throws Exception {
         when(catalog.searchActiveTests(null)).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.TestOption("1", "Test 1", null, List.of(LOINC), List.of("Serum")),
-                new AnalyzerMappingCatalogService.TestOption("2", "Test 2", null, List.of(LOINC), List.of("Plasma"))));
+                new AnalyzerMappingCatalogService.TestOption("1", "Test 1", null, List.of(Coding.loinc(LOINC)), List.of("Serum")),
+                new AnalyzerMappingCatalogService.TestOption("2", "Test 2", null, List.of(Coding.loinc(LOINC)), List.of("Plasma"))));
         for (String id : List.of("1", "2")) {
             when(catalog.getActiveResultOptions(id)).thenReturn(List.of(
                     new AnalyzerMappingCatalogService.ResultOption("2" + id, "99" + id, "Target RNA detected")));
@@ -212,9 +253,9 @@ public class AnalyzerMappingDefaultsTest {
     }
 
     @Test
-    public void resolvesATestWithoutALoincAsNoMatch() throws Exception {
-        var definition = new BridgeAnalyzerProfile.TestDefinition("OBSERVED", List.of(), null, null, null, null,
-                List.of(), null, Map.of());
+    public void resolvesATestWithoutCodingsAsNoMatch() throws Exception {
+        var definition = new BridgeAnalyzerProfile.TestDefinition("OBSERVED", List.of(), null, List.of(), null, null,
+                List.of(), Map.of());
         var row = defaults.resolveTest(definition, List.of(test("1")));
         assertEquals(AnalyzerMappingState.UNRESOLVED, row.mappingState());
         assertEquals(AnalyzerUnresolvedReason.NO_MATCH, row.unresolvedReason());
@@ -313,14 +354,13 @@ public class AnalyzerMappingDefaultsTest {
     // Cepheid 303-0251 §3: a French-language instrument sends NON DÉTECTÉ for NOT
     // DETECTED.
     @Test
-    public void aTranslatedValueBindsToTheSameAnswerAsItsValue() throws Exception {
+    public void onlyTheCanonicalAnswerNeedsALocalMapping() throws Exception {
         viralLoadCatalog(List.of("call", "LOG", "HIV-1"));
 
         var draft = defaults.resolve(viralLoadProfile());
 
         assertEquals("opt-call-NOT DETECTED", answer(draft, "", "NOT DETECTED").testResultId());
-        assertEquals("opt-call-NOT DETECTED", answer(draft, "", "NON DÉTECTÉ").testResultId());
-        assertEquals(AnalyzerMappingState.BOUND, answer(draft, "", "NON DÉTECTÉ").mappingState());
+        assertTrue(draft.results().stream().noneMatch(row -> "NON DÉTECTÉ".equals(row.rawValue())));
     }
 
     private void viralLoadCatalog(List<String> componentCodes) {
@@ -389,7 +429,7 @@ public class AnalyzerMappingDefaultsTest {
     }
 
     private AnalyzerMappingCatalogService.TestOption test(String id) {
-        return new AnalyzerMappingCatalogService.TestOption(id, "Local test " + id, null, List.of(LOINC));
+        return new AnalyzerMappingCatalogService.TestOption(id, "Local test " + id, null, List.of(Coding.loinc(LOINC)));
     }
 
     private BridgeAnalyzerProfile profile(String type, Map<String, String> codes, String... uncodedValues)
@@ -425,7 +465,23 @@ public class AnalyzerMappingDefaultsTest {
         return BridgeAnalyzerProfile.from(document);
     }
 
-    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
-        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
+    private BridgeAnalyzerProfile distroProfile(String system, String code) throws Exception {
+        var mapper = new ObjectMapper();
+        var document = mapper.createObjectNode();
+        document.putObject("profileMeta").put("id", "fixture.distro").put("displayName", "Distro coded");
+        document.putObject("catalog").put("revision", 1).put("revisionFingerprint", "sha256:" + "c".repeat(64))
+                .put("source", "SITE").put("status", "ACTIVE");
+        document.putObject("protocol").put("name", "ASTM");
+        var definition = document.putArray("default_test_mappings").addObject();
+        definition.put("test_code", "RAW-A").put("result_type", "qualitative");
+        definition.putArray("codings").addObject().put("system", system).put("code", code);
+        definition.putArray("values").add("DETECTED");
+        definition.putObject("value_codes").putArray("DETECTED").addObject().put("system", LOINC_SYSTEM).put("code",
+                DETECTED);
+        return BridgeAnalyzerProfile.from(document);
+    }
+
+    private static List<Coding> loinc(String code) {
+        return List.of(new Coding("http://loinc.org", code));
     }
 }

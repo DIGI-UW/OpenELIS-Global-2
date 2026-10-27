@@ -78,6 +78,7 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
+import org.openelisglobal.reports.action.implementation.reportBeans.ReportComponentLine;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.result.service.ResultService;
@@ -634,7 +635,14 @@ public abstract class PatientReport extends Report {
             if (sampleCompleteMap != null) {
                 sampleCompleteMap.put(convertToAlphaNumericDisplay(currentSample), Boolean.FALSE);
             }
-            setEmptyResult(data);
+            List<TestResultComponent> activeComponents = SpringContext.getBean(TestResultComponentService.class)
+                    .getActiveComponentsByTestId(test.getId());
+            if (activeComponents.size() > 1 && SpringContext.getBean(IStatusService.class)
+                    .matches(analysisService.getStatusId(currentAnalysis), AnalysisStatus.TechnicalAcceptance)) {
+                buildMultiComponentRow(resultList, activeComponents, data, true);
+            } else {
+                setEmptyResult(data);
+            }
         } else {
             if (resultList.isEmpty()) {
                 setEmptyResult(data);
@@ -734,9 +742,10 @@ public abstract class PatientReport extends Report {
                     && !GenericValidator.isBlankOrNull(result.getValue())) {
                 if (result.getMinNormal() != null & result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    if (Double.valueOf(result.getValue(true)) < result.getMinNormal()) {
+                    double reported = Double.valueOf(StringUtil.getActualNumericValue(result.getReportedValue()));
+                    if (reported < result.getMinNormal()) {
                         flag = "B";
-                    } else if (Double.valueOf(result.getValue(true)) > result.getMaxNormal()) {
+                    } else if (reported > result.getMaxNormal()) {
                         flag = "E";
                     }
                 }
@@ -761,6 +770,7 @@ public abstract class PatientReport extends Report {
             if (!GenericValidator.isBlankOrNull(flag)) {
                 if (data != null) {
                     data.setAbnormalResult(Boolean.TRUE);
+                    data.setFlagCode(flag);
                 }
                 if (!GenericValidator.isBlankOrNull(imbed)) {
                     return " <b>" + flag + "," + imbed + "</b>";
@@ -817,7 +827,7 @@ public abstract class PatientReport extends Report {
         try {
             ResultLimit limit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(currentAnalysis,
                     result, currentPatient);
-            return ResultAlertFlags.criticalLetter(limit, result.getValue(true));
+            return ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(result.getReportedValue()));
         } catch (RuntimeException e) {
             LogEvent.logError("No critical alert flag for analysis " + currentAnalysis.getId() + ", result "
                     + result.getId() + ": the report prints the value without it", e);
@@ -976,10 +986,24 @@ public abstract class PatientReport extends Report {
      * cell, and the matching line in the Unit and Reference-value cells. A
      * component carries its own unit, and its own range for the patient's age and
      * sex, this specimen and that component — resolved through the same selection
-     * Results Entry and Validation use, so all three agree.
+     * Results Entry and Validation use, so all three agree. A component the report
+     * carries that has no result yet prints as in progress, as a whole test without
+     * a result does, instead of being left out.
      */
     private void buildMultiComponentRow(List<Result> resultList, List<TestResultComponent> components,
             ClinicalPatientData data) {
+        buildMultiComponentRow(resultList, components, data, false);
+    }
+
+    /**
+     * @param validatedOnly the analysis is not released yet: its components are
+     *                      validated one by one, so a component prints its value
+     *                      only once it was validated on its own and otherwise
+     *                      prints its own status, awaiting validation with a value
+     *                      and in progress without one
+     */
+    private void buildMultiComponentRow(List<Result> resultList, List<TestResultComponent> components,
+            ClinicalPatientData data, boolean validatedOnly) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
         UnitOfMeasureService unitOfMeasureService = SpringContext.getBean(UnitOfMeasureService.class);
@@ -988,6 +1012,7 @@ public abstract class PatientReport extends Report {
         StringBuilder uoms = new StringBuilder();
         StringBuilder ranges = new StringBuilder();
         List<String> alerts = new ArrayList<>();
+        List<ReportComponentLine> lines = new ArrayList<>();
         for (TestResultComponent component : components) {
             // OGC-1127: a component flagged not to print is omitted from the report.
             // The primary is always kept so the test never renders with no result.
@@ -1004,17 +1029,27 @@ public abstract class PatientReport extends Report {
                     componentResults.add(result);
                 }
             }
-            if (componentResults.isEmpty()) {
-                continue;
-            }
-            String componentValue = formatComponentResults(component, componentResults, resultResultService);
+            String componentValue = componentResults.isEmpty() ? null
+                    : formatComponentResults(component, componentResults, resultResultService);
+            String status = null;
             if (GenericValidator.isBlankOrNull(componentValue)) {
+                status = componentInProgressText();
+            } else if (validatedOnly
+                    && componentResults.stream().noneMatch(result -> result.getValidatedDate() != null)) {
+                status = componentAwaitingValidationText();
+            }
+            if (status != null) {
+                results.append(component.getLabel()).append(": ").append(status).append("\n");
+                uoms.append("\n");
+                ranges.append("\n");
+                lines.add(new ReportComponentLine(component.getLabel(), status, "", "", ""));
                 continue;
             }
             Result first = componentResults.get(0);
             ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
                     component.getId());
-            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(), first.getValue(true));
+            String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(),
+                    StringUtil.getActualNumericValue(first.getReportedValue()));
             alerts.add(letter);
             results.append(component.getLabel()).append(": ").append(componentValue);
             if (!letter.isEmpty()) {
@@ -1022,7 +1057,8 @@ public abstract class PatientReport extends Report {
             }
             results.append("\n");
 
-            uoms.append(componentUomName(component, unitOfMeasureService)).append("\n");
+            String uom = componentUomName(component, unitOfMeasureService);
+            uoms.append(uom).append("\n");
 
             String significantDigits = first.getTestResult() == null ? "0"
                     : first.getTestResult().getSignificantDigits();
@@ -1030,7 +1066,9 @@ public abstract class PatientReport extends Report {
                     : resultLimitService.getDisplayReferenceRange(limit,
                             GenericValidator.isBlankOrNull(significantDigits) ? "0" : significantDigits, " - ");
             ranges.append(range).append("\n");
+            lines.add(new ReportComponentLine(component.getLabel(), componentValue, letter, range, uom));
         }
+        data.setComponents(lines);
         trimTrailingNewline(results);
         trimTrailingNewline(uoms);
         trimTrailingNewline(ranges);
@@ -1043,6 +1081,19 @@ public abstract class PatientReport extends Report {
             data.setAbnormalResult(Boolean.TRUE);
             data.setAlerts(" <b>" + ResultAlertFlags.ABNORMAL + "</b>");
         }
+    }
+
+    /** What a component without a result prints in place of its value. */
+    protected String componentInProgressText() {
+        return MessageUtil.getMessage("report.test.status.inProgress");
+    }
+
+    /**
+     * What a component whose value is entered but not validated prints in place of
+     * its value.
+     */
+    protected String componentAwaitingValidationText() {
+        return MessageUtil.getMessage("report.test.status.waitingValidation");
     }
 
     private static void trimTrailingNewline(StringBuilder builder) {

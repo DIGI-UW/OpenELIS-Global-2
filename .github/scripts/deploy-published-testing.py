@@ -35,11 +35,14 @@ SERVICES = {
     "astm-simulator": "openelis-global-2-analyzer-mock",
 }
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
+# The compose `certs` service mounts this script and every service waits for it.
+CERTS_SCRIPT = "scripts/certs/ensure-install-keys.sh"
 BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
     SEED_SCRIPT,
+    CERTS_SCRIPT,
 )
 PAIRING_CODE = "ANALYZER_BRIDGE_PAIRING_CODE"
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
@@ -201,13 +204,26 @@ def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, au
         return json.load(response)
 
 
+def smoke_analyzer(analyzers):
+    """The smoke test's analyzer, refused with the reason when it cannot receive a result."""
+    matches = [item for item in analyzers if item.get("name") == SMOKE_ANALYZER]
+    if len(matches) != 1:
+        raise RuntimeError(f"expected one analyzer named {SMOKE_ANALYZER!r}; found {len(matches)}")
+    analyzer = matches[0]
+    if analyzer.get("status") != "ACTIVE" or not analyzer.get("bridgeConnectionId"):
+        raise RuntimeError(
+            f"{SMOKE_ANALYZER} cannot receive the smoke result: status {analyzer.get('status')}, "
+            f"profile {analyzer.get('profileId') or 'none'}, "
+            f"Bridge connection {analyzer.get('bridgeConnectionId') or 'none'}")
+    return analyzer
+
+
 def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, sleep=time.sleep, timeout=120):
+    analyzer_id = smoke_analyzer(http("GET", api_base + "/analyzer/analyzers").get("analyzers", []))["id"]
     pushed = http("POST", mock_url + "/simulate/fixture/genexpert_astm/hivvl/quantified",
                   {"destination": SMOKE_DESTINATION, "sample_id": accession, "sender_id": SMOKE_SENDER_ID})
     if pushed.get("pushed") != 1:
         raise RuntimeError(f"Mock did not deliver the smoke result: {pushed}")
-    analyzers = http("GET", api_base + "/analyzer/analyzers").get("analyzers", [])
-    analyzer_id = next(item["id"] for item in analyzers if item.get("name") == SMOKE_ANALYZER)
     deadline = time.monotonic() + timeout
     while True:
         response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}")
@@ -224,11 +240,37 @@ def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, slee
         sleep(3)
 
 
-def prune_releases(site_dir, current, previous):
+PRUNE_IMAGE = "alpine:3.21"
+
+
+def prune_releases(site_dir, current, previous, diagnostics=None):
+    """Remove releases other than the current and previous one.
+
+    This runs after the deployment is ready, so it never fails it. Containers can leave
+    files in an old release that the deploy user cannot delete (testing, 2026-10-20:
+    "[Errno 13] Permission denied: 'backend'"); such a release is removed through
+    Docker, and one that still cannot be removed is reported and left in place.
+    """
+    releases = site_dir / "releases"
     keep = {current.resolve()} | ({pathlib.Path(previous).resolve()} if previous else set())
-    for release in (site_dir / "releases").iterdir():
-        if release.resolve() not in keep:
+    warnings = []
+    for release in releases.iterdir():
+        if release.resolve() in keep:
+            continue
+        try:
             shutil.rmtree(release)
+            continue
+        except OSError:
+            pass
+        try:
+            run(["docker", "run", "--rm", "-v", f"{releases}:/releases", PRUNE_IMAGE,
+                 "rm", "-rf", f"/releases/{release.name}"], site_dir)
+        except (OSError, subprocess.CalledProcessError) as error:
+            warnings.append(f"could not remove old release {release}: {error}")
+    for warning in warnings:
+        print(f"Warning: {warning}", flush=True)
+    if warnings and diagnostics is not None:
+        (diagnostics / "prune-warnings.txt").write_text("\n".join(warnings) + "\n", encoding="utf-8")
 
 
 def deploy(request, diagnostics, bundle):
@@ -300,7 +342,7 @@ def deploy(request, diagnostics, bundle):
                   "verification": {"readiness": report, "url": contract["url"], "analyzerDelivery": delivery}}
         write_json(target_path, target)
         write_json(diagnostics / "target.json", target)
-        prune_releases(site_dir, release, previous_release)
+        prune_releases(site_dir, release, previous_release, diagnostics)
         run(["docker", "image", "prune", "--all", "--force"], site_dir)
         print(f"Testing is ready at {manifest['appSha']}", flush=True)
     finally:

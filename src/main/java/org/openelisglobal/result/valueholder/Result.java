@@ -69,6 +69,13 @@ public class Result extends EnumValueItemImpl {
 
     private BigDecimal coverageFactor;
 
+    /**
+     * When this result was validated on its own, as one component of a
+     * multi-component test whose other components were still waiting. Null
+     * otherwise.
+     */
+    private java.sql.Timestamp validatedDate;
+
     public Result() {
         super();
         analysis = new ValueHolder();
@@ -142,6 +149,16 @@ public class Result extends EnumValueItemImpl {
     /** The value exactly as it was entered, for display. */
     public String getEnteredValue() {
         return value;
+    }
+
+    /**
+     * The value as reported: a numeric result rounded half up to its decimal places
+     * (OGC-1544). Flags compare against it so the report agrees with itself, while
+     * {@link #getValue()} stays what was entered or received.
+     */
+    @JsonIgnore
+    public String getReportedValue() {
+        return "N".equals(resultType) ? StringUtil.roundToPlaces(getValue(), getSignificantDigits()) : getValue();
     }
 
     public String getValue(Boolean getActualNumericValue) {
@@ -301,6 +318,14 @@ public class Result extends EnumValueItemImpl {
 
     public void setCoverageFactor(BigDecimal coverageFactor) {
         this.coverageFactor = coverageFactor;
+    }
+
+    public java.sql.Timestamp getValidatedDate() {
+        return validatedDate;
+    }
+
+    public void setValidatedDate(java.sql.Timestamp validatedDate) {
+        this.validatedDate = validatedDate;
     }
 
     @Override

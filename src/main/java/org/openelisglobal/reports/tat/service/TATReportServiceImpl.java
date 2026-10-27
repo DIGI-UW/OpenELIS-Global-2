@@ -28,11 +28,7 @@ import org.openelisglobal.reports.tat.bean.TATSummaryResponse.HistogramBin;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendDataPoint;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendSeries;
-import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
-import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.test.valueholder.TestSection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,16 +37,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TATReportServiceImpl implements TATReportService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TATReportServiceImpl.class);
-
     @PersistenceContext
     private EntityManager entityManager;
 
     @Autowired
     private TATCalculationService tatCalculationService;
-
-    @Autowired
-    private SampleOrganizationService sampleOrganizationService;
 
     @Autowired
     private AnalysisService analysisService;
@@ -61,6 +52,13 @@ public class TATReportServiceImpl implements TATReportService {
 
     private static final String[] HISTOGRAM_LABELS = { "0-1h", "1-2h", "2-3h", "3-4h", "4-6h", "6-8h", "8-12h",
             "12-24h", "24-48h", "48h+" };
+
+    // The site and its department are both organization requesters.
+    private static final String REFERRING_SITE = " FROM SampleRequester sr, Organization site"
+            + " WHERE sr.sampleId = s.id AND site.id = sr.requesterId"
+            + " AND sr.requesterTypeId = (SELECT rt.id FROM RequesterType rt WHERE rt.requesterType = 'organization')"
+            + " AND site.id NOT IN (SELECT dept.id FROM Organization dept JOIN dept.organizationTypes deptType"
+            + " WHERE deptType.name = 'dept')";
 
     @Override
     public TATSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate, TATSegment segment,
@@ -174,7 +172,9 @@ public class TATReportServiceImpl implements TATReportService {
             String sampleTypeId, String orderingSiteId, boolean includeCancelled) {
 
         StringBuilder hql = new StringBuilder();
-        hql.append("SELECT a, s, si FROM Analysis a ");
+        hql.append("SELECT a, s, si, COALESCE((SELECT min(site.organizationName)" + REFERRING_SITE + "),");
+        hql.append(" (SELECT min(o.organizationName) FROM SampleOrganization ordering");
+        hql.append(" JOIN ordering.organization o WHERE ordering.sample = s)) FROM Analysis a ");
         hql.append("JOIN a.sampleItem si ");
         hql.append("JOIN si.sample s ");
         hql.append("WHERE s.receivedTimestamp BETWEEN :fromDate AND :toDate ");
@@ -201,8 +201,10 @@ public class TATReportServiceImpl implements TATReportService {
             hql.append("AND si.typeOfSample.id = :sampleTypeId ");
         }
         if (orderingSiteId != null && !orderingSiteId.isBlank()) {
+            hql.append("AND (EXISTS (SELECT 1" + REFERRING_SITE + " AND site.id = :orderingSiteId) ");
+            hql.append("OR (NOT EXISTS (SELECT 1" + REFERRING_SITE + ") ");
             hql.append("AND EXISTS (SELECT 1 FROM SampleOrganization so ");
-            hql.append("WHERE so.sample.id = s.id AND so.organization.id = :orderingSiteId) ");
+            hql.append("WHERE so.sample.id = s.id AND so.organization.id = :orderingSiteId))) ");
         }
 
         Query query = entityManager.unwrap(Session.class).createQuery(hql.toString());
@@ -244,15 +246,7 @@ public class TATReportServiceImpl implements TATReportService {
                     ? analysis.getSampleItem().getTypeOfSample().getLocalizedName()
                     : "");
 
-            // Ordering site via SampleOrganization lookup
-            try {
-                SampleOrganization sampleOrg = sampleOrganizationService.getDataBySample(sample);
-                if (sampleOrg != null && sampleOrg.getOrganization() != null) {
-                    result.setOrderingSite(sampleOrg.getOrganization().getOrganizationName());
-                }
-            } catch (Exception e) {
-                logger.debug("No organization found for sample {}: {}", sample.getId(), e.getMessage());
-            }
+            result.setOrderingSite((String) row[3]);
 
             // Timestamps
             result.setOrderCreated(
@@ -273,6 +267,13 @@ public class TATReportServiceImpl implements TATReportService {
                     tatCalculationService.calculateTatHours(result.getOrderCreated(), result.getValidated(), mode));
 
             results.add(result);
+        }
+        // Left in the session, every row would be flushed again by each later query in
+        // the caller's transaction.
+        for (Object[] row : rows) {
+            entityManager.detach(row[0]);
+            entityManager.detach(row[1]);
+            entityManager.detach(row[2]);
         }
 
         return results;

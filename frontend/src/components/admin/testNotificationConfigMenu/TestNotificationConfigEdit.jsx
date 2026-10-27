@@ -234,7 +234,25 @@ function TestNotificationConfigEdit() {
   }
 
   function testNotificationConfigEditSavePostCallBack(res) {
-    if (res) {
+    if (
+      res &&
+      Array.isArray(res.disallowedFields) &&
+      res.disallowedFields.length > 0
+    ) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage(
+          { id: "notificationtrigger.template.disallowed" },
+          {
+            fields: res.disallowedFields
+              .map((field) => `[${field}]`)
+              .join(", "),
+          },
+        ),
+      });
+      setNotificationVisible(true);
+    } else if (res && !res.status) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
@@ -388,12 +406,6 @@ function TestNotificationConfigEdit() {
               <br />
               <br />
               <FormattedMessage id="testnotification.instructionis.variables.body.0" />
-              <br />
-              <br />
-              <FormattedMessage id="testnotification.instructionis.variables.body.1" />
-              <br />
-              <br />
-              <FormattedMessage id="testnotification.instructionis.variables.body.2" />
               <br />
               <br />
             </Column>

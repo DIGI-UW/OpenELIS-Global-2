@@ -93,7 +93,7 @@ public class AnalyzerActivationServiceTest {
         when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
         when(mappingService.findById(snapshot.mapping().getId())).thenReturn(Optional.of(snapshot));
-        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
+        when(confirmationService.assessCurrent(snapshot))
                 .thenReturn(AnalyzerMappingVerificationAssessment.current(confirmation));
         TestSection activeUnit = new TestSection();
         activeUnit.setId("4");
@@ -131,6 +131,19 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void aRetiredAnalyzerIsRestoredBeforeItCanBeActivated() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.RETIRED);
+
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
+
+        assertFalse(result.activated());
+        assertTrue(result.blockers().stream().map(AnalyzerActivationBlocker::code).toList()
+                .contains("analyzer.activation.blocker.retired"));
+        assertEquals(Analyzer.AnalyzerStatus.RETIRED, analyzer.getStatus());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
+    }
+
+    @Test
     public void readinessReadsButDoesNotMutateTheSavedConnection() {
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
@@ -142,6 +155,18 @@ public class AnalyzerActivationServiceTest {
         verify(analyzerService, never()).update(any(Analyzer.class));
         verify(analyzerService, never()).findByIdForUpdate(any());
         assertUnchanged();
+    }
+
+    @Test
+    public void aTypeFileEditedUnderItsRevisionDoesNotBlockActivation() {
+        BridgeProfileCatalog.ProfileRevision edited = profileRevision();
+        ((ObjectNode) edited.profile().path("catalog")).put("revisionFingerprint", "sha256:" + "9".repeat(64));
+        when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(edited);
+        connection.withObject("profileRef").put("fingerprint", "sha256:" + "9".repeat(64));
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertTrue(result.blockers().toString(), result.ready());
     }
 
     @Test
@@ -159,6 +184,38 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
+    public void aConnectionThatFailedToRestoreIsActivatedBecauseActivatingRestoresIt() {
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenReturn(retained);
+
+        assertTrue(service.readiness(ANALYZER_ID).ready());
+        AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.activated());
+        verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004");
+    }
+
+    @Test
+    public void aFailedRestoreDoesNotHideAnotherBridgeBlocker() {
+        connection.with("readiness").put("ready", false);
+        var bridgeBlockers = connection.with("readiness").putArray("blockers");
+        bridgeBlockers.addObject().put("key", "restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        bridgeBlockers.addObject().put("key", "listener-port").put("messageKey",
+                "analyzer.connection.listenerPort.unavailable");
+
+        AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
+
+        assertEquals(List.of("analyzer.connection.listenerPort.unavailable"),
+                result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
+    }
+
+    @Test
     public void rejectsAConnectionOwnedByAnotherOpenElisAnalyzer() {
         connection.put("clientAnalyzerId", "another-analyzer");
 
@@ -169,13 +226,13 @@ public class AnalyzerActivationServiceTest {
     }
 
     @Test
-    public void requiresCurrentLocalMappingAndRecognitionVerification() {
-        when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(new AnalyzerMappingVerificationAssessment(false, false, confirmation));
+    public void requiresCurrentLocalMappingApproval() {
+        when(confirmationService.assessCurrent(snapshot))
+                .thenReturn(new AnalyzerMappingVerificationAssessment(false, confirmation));
 
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
-        assertEquals(List.of("analyzer.activation.blocker.mappings", "analyzer.activation.blocker.recognition"),
+        assertEquals(List.of("analyzer.activation.blocker.mappings"),
                 result.blockers().stream().map(AnalyzerActivationBlocker::code).toList());
         verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), any(), any());
     }
@@ -214,6 +271,27 @@ public class AnalyzerActivationServiceTest {
 
         verify(bridgeClient).applyRuntimeCommand(eq(CONNECTION_ID), eq(4), eq("DEACTIVATE"), any(String.class));
         assertUnchanged();
+    }
+
+    @Test
+    public void failedRestoreKeepsActiveIntentWhenRetainingOrUpdatingLocalStateFails() {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        connection.with("readiness").put("ready", false);
+        connection.with("readiness").putArray("blockers").addObject().put("key", "restore-failed").put("messageKey",
+                "analyzer.connection.readiness.restoreFailed");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
+                "ACTIVE", ACTOR)).thenThrow(new IllegalStateException("retain failed"));
+        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+        org.mockito.Mockito.doReturn(retained).when(activationRecordService).retain(analyzer, snapshot.mapping(),
+                confirmation, activationAcknowledgement, "ACTIVE", ACTOR);
+        doThrow(new IllegalStateException("update failed")).when(analyzerService).update(analyzer);
+        assertThrows(IllegalStateException.class, () -> service.activate(ANALYZER_ID, ACTOR));
+        assertEquals(Analyzer.AnalyzerStatus.ACTIVE, analyzer.getStatus());
+        assertTrue(analyzer.isActive());
+        verify(bridgeClient, never()).applyRuntimeCommand(any(), any(Integer.class), eq("DEACTIVATE"), any());
     }
 
     @Test

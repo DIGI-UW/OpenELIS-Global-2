@@ -6,6 +6,7 @@ import {
   Stack,
   Grid,
   Column,
+  InlineLoading,
   InlineNotification,
 } from "@carbon/react";
 import EditSample from "./EditSample";
@@ -27,9 +28,11 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import createModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
 import {
+  missingTestsTitle,
   samplesMissingTests,
   samplesWithTests,
 } from "../addOrder/orderSamples";
+import useSampleTypeNames from "../addOrder/useSampleTypeNames";
 /**
  * The edit page of the workflow an order was entered in, when that is not the
  * clinical one. Environmental and vector orders have no patient, so the
@@ -82,6 +85,7 @@ const ModifyOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [patientId, setPatientId] = useState("");
   const [orderNotFound, setOrderNotFound] = useState(false);
+  const [orderLoad, setOrderLoad] = useState("loading");
   const [patientHeaderInfo, setPatientHeaderInfo] = useState({
     patientName: "",
     gender: "",
@@ -168,10 +172,21 @@ const ModifyOrder = () => {
       });
   }, [changed, configurationProperties, orderFormValues]);
 
+  /**
+   * The wizard opens only once the order has loaded (OGC-1543): the load
+   * replaces the whole form, so anything entered before it landed was lost.
+   * The loaded state is set last, so the wizard's first render already holds
+   * the order; its steps copy the form they mount with.
+   */
   const loadOrderValues = (data) => {
     if (componentMounted.current) {
+      if (!data) {
+        setOrderLoad("failed");
+        return;
+      }
       if (data?.noSampleFound) {
         setOrderNotFound(true);
+        setOrderLoad("loaded");
         return;
       }
       if (data?.sampleOrderItems) {
@@ -190,6 +205,7 @@ const ModifyOrder = () => {
           accessionNumber: data.accessionNumber || "",
         });
       }
+      setOrderLoad("loaded");
     }
   };
 
@@ -302,7 +318,12 @@ const ModifyOrder = () => {
     }
   }, [page]);
 
+  const showWizard =
+    orderLoad === "loaded" &&
+    !orderNotFound &&
+    orderFormValues?.sampleOrderItems;
   const missingTestSamples = samplesMissingTests(samples);
+  const sampleTypeNames = useSampleTypeNames();
 
   const attacheSamplesToFormValues = () => {
     let sampleXmlString = "";
@@ -365,7 +386,7 @@ const ModifyOrder = () => {
           lowContrast
           title={intl.formatMessage({ id: "sample.search.nosample" })}
         />
-      ) : (
+      ) : orderLoad !== "loaded" ? null : (
         <PatientHeader
           id={patientId}
           patientName={patientHeaderInfo.patientName}
@@ -386,7 +407,22 @@ const ModifyOrder = () => {
           <Stack gap={10}>
             <div className="pageContent">
               {notificationVisible === true ? <AlertDialog /> : ""}
-              {!orderNotFound && orderFormValues?.sampleOrderItems && (
+              {orderLoad === "loading" && (
+                <InlineLoading
+                  data-cy="modify-order-loading"
+                  description={intl.formatMessage({ id: "label.loading" })}
+                />
+              )}
+              {orderLoad === "failed" && (
+                <InlineNotification
+                  kind="error"
+                  hideCloseButton
+                  lowContrast
+                  title={intl.formatMessage({ id: "order.load.error" })}
+                  data-cy="modify-order-load-error"
+                />
+              )}
+              {showWizard && (
                 <div className="orderWorkFlowDiv">
                   <h1 className="page-heading-05">
                     <FormattedMessage id="order.test.request.heading" />
@@ -474,9 +510,11 @@ const ModifyOrder = () => {
                         kind="error"
                         lowContrast
                         hideCloseButton
-                        title={intl.formatMessage(
-                          { id: "order.sample.missingTests" },
-                          { sampleNumber },
+                        title={missingTestsTitle(
+                          intl,
+                          samples,
+                          sampleNumber,
+                          sampleTypeNames,
                         )}
                         data-cy="modify-order-sample-missing-tests"
                       />

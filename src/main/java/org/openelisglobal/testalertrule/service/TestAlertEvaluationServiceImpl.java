@@ -14,6 +14,7 @@ import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.notification.service.sender.AsyncNotificationDispatcher;
 import org.openelisglobal.notification.valueholder.EmailNotification;
+import org.openelisglobal.notification.valueholder.NotificationRecipientType;
 import org.openelisglobal.notification.valueholder.RemoteNotification;
 import org.openelisglobal.notification.valueholder.SMSNotification;
 import org.openelisglobal.notifications.service.HeaderNotificationService;
@@ -261,23 +262,25 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
     private void dispatchExternal(TestAlertRule rule, String subject, String message, Result result) {
         if (Boolean.TRUE.equals(rule.getNotifySms())) {
             if (notBlank(rule.getNotifyCustomPhone())) {
-                sendSms(rule.getNotifyCustomPhone(), subject, message);
+                sendSms(rule, result, rule.getNotifyCustomPhone(), subject, message,
+                        NotificationRecipientType.TYPED_ADDRESS);
             }
             if (Boolean.TRUE.equals(rule.getNotifyPatient())) {
                 String phone = patientContact(result, true);
                 if (notBlank(phone)) {
-                    sendSms(phone, subject, message);
+                    sendSms(rule, result, phone, subject, message, NotificationRecipientType.PATIENT);
                 }
             }
         }
         if (Boolean.TRUE.equals(rule.getNotifyEmail())) {
             if (notBlank(rule.getNotifyCustomEmail())) {
-                sendEmail(rule.getNotifyCustomEmail(), subject, message);
+                sendEmail(rule, result, rule.getNotifyCustomEmail(), subject, message,
+                        NotificationRecipientType.TYPED_ADDRESS);
             }
             if (Boolean.TRUE.equals(rule.getNotifyPatient())) {
                 String email = patientContact(result, false);
                 if (notBlank(email)) {
-                    sendEmail(email, subject, message);
+                    sendEmail(rule, result, email, subject, message, NotificationRecipientType.PATIENT);
                 }
             }
         }
@@ -285,24 +288,35 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         // follow-up; custom + patient channels are wired here.
     }
 
-    private void sendSms(String phone, String subject, String message) {
+    private void sendSms(TestAlertRule rule, Result result, String phone, String subject, String message,
+            NotificationRecipientType recipientType) {
         SMSNotification sms = new SMSNotification();
         sms.setReceiverPhoneNumber(phone);
         sms.setPayload(new AlertNotificationPayload(subject, message));
-        dispatch(sms);
+        dispatch(rule, result, sms, recipientType);
     }
 
-    private void sendEmail(String email, String subject, String message) {
+    private void sendEmail(TestAlertRule rule, Result result, String email, String subject, String message,
+            NotificationRecipientType recipientType) {
         EmailNotification mail = new EmailNotification();
         mail.setRecipientEmailAddress(email);
         mail.setPayload(new AlertNotificationPayload(subject, message));
-        dispatch(mail);
+        dispatch(rule, result, mail, recipientType);
     }
 
-    private void dispatch(RemoteNotification notification) {
-        // Fire-and-forget on a separate thread; the notification already carries
-        // a fully-resolved string payload, so no Hibernate session is needed.
-        asyncNotificationDispatcher.dispatch(notification);
+    /**
+     * Queued in the delivery outbox under product Alert with the rule's name and
+     * the order's lab number; the delivery worker sends and retries it.
+     */
+    private void dispatch(TestAlertRule rule, Result result, RemoteNotification notification,
+            NotificationRecipientType recipientType) {
+        String accession = null;
+        try {
+            accession = result.getAnalysis().getSampleItem().getSample().getAccessionNumber();
+        } catch (RuntimeException e) {
+            // an alert without an order reference is still queued
+        }
+        asyncNotificationDispatcher.dispatch(notification, rule.getName(), accession, recipientType, null);
     }
 
     private String patientContact(Result result, boolean phone) {

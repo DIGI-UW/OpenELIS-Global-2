@@ -14,11 +14,11 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * Prerequisite for the v2 Reagents tab (OGC-762).
  *
  * <p>
- * A "reagent" is an {@code inventory_item} with {@code item_type = 'REAGENT'}
- * (see {@code org.openelisglobal.inventory}); there is no standalone reagent
- * table, so {@code reagentId} is a FK to {@code inventory_item.id}.
- * {@code test_id} (a {@code numeric(10)} FK to {@code test.id}) maps to String
- * via {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
+ * A "reagent" is any {@code inventory_item} (see
+ * {@code org.openelisglobal.inventory}); there is no standalone reagent table,
+ * so {@code reagentId} is a FK to {@code inventory_item.id}. {@code test_id} (a
+ * {@code numeric(10)} FK to {@code test.id}) maps to String via
+ * {@code LIMSStringNumberUserType}, the established OpenELIS idiom (see
  * {@code TestResultComponent}). {@code reagent_id} is a {@code bigint} FK to
  * {@code inventory_item.id} ({@code Long}) and is mapped as a plain
  * {@code Long} — {@code LIMSStringNumberUserType} is int-only and would

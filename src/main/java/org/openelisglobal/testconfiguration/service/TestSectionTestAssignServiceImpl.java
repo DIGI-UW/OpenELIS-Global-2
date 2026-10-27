@@ -56,13 +56,6 @@ public class TestSectionTestAssignServiceImpl implements TestSectionTestAssignSe
             testService.update(test);
             updated.add(test);
         }
-
-        if ("N".equals(targetSection.getIsActive())) {
-            targetSection.setIsActive("Y");
-            targetSection.setSysUserId(sysUserId);
-            testSectionService.update(targetSection);
-        }
-
         return updated;
     }
 }

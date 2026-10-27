@@ -165,7 +165,7 @@ test.describe("Microbiology analyzer AST review", () => {
       `/AnalyzerResults?id=${seeded.analyzerInstrumentId}`,
     );
     await expect(
-      page.getByRole("button", { name: /retry|reprocess/i }),
+      row.getByRole("button", { name: /retry|reprocess/i }),
     ).toHaveCount(0);
   });
 });

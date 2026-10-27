@@ -7,6 +7,10 @@ services:
     image: itechuw/certgen:main
     platform: linux/amd64
     restart: "no"
+    # Gives the install its own TLS key on first start and keeps the stores built from it.
+    entrypoint: ["/bin/sh", "/ensure-install-keys.sh"]
+    volumes:
+      - ../../scripts/certs/ensure-install-keys.sh:/ensure-install-keys.sh:ro
 
   db.openelis.org:
     networks:
@@ -21,7 +25,9 @@ services:
       - ./volume/database/dbInit:/docker-entrypoint-initdb.d
 
   oe.openelis.org:
-    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-backend:dev
+    # Published development image; the locally built WAR is mounted below.
+    # `scripts/dev-stack up --build` builds this image from the checkout instead.
+    image: ${DEV_STACK_BACKEND_IMAGE:-itechuw/openelis-global-2-dev:develop}
     build:
       context: ../..
       dockerfile: Dockerfile.dev
@@ -30,12 +36,12 @@ services:
       db.openelis.org:
         condition: service_healthy
       certs:
-        condition: service_started
+        condition: service_completed_successfully
       fhir.openelis.org:
         condition: service_healthy
     restart: always
     environment:
-      CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+      CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       JDK_JAVA_OPTIONS: -Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
       - key_trust-store-volume:/etc/openelis-global
@@ -50,6 +56,7 @@ services:
       - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
       - configuration-data:/var/lib/openelis-global/configuration
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+      - ../../volume/translation:/var/lib/openelis-global/translation:ro
     secrets:
       - source: datasource.password
       - source: common.properties
@@ -63,7 +70,7 @@ services:
       db.openelis.org:
         condition: service_started
       certs:
-        condition: service_started
+        condition: service_completed_successfully
     restart: always
     environment:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
@@ -74,10 +81,10 @@ services:
         -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
-        -Djavax.net.ssl.trustStorePassword=tspass
+        -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
         -Djavax.net.ssl.trustStoreType=pkcs12
         -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
-        -Djavax.net.ssl.keyStorePassword=kspass
+        -Djavax.net.ssl.keyStorePassword=${SSL_KEYSTORE_PASSWORD:-kspass}
         -Djavax.net.ssl.keyStoreType=pkcs12"
     volumes:
       - key_trust-store-volume:/etc/openelis-global
@@ -96,7 +103,9 @@ services:
       start_period: 60s
 
   frontend.openelis.org:
-    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-frontend:dev
+    # Published development image; src and public are mounted below.
+    # `scripts/dev-stack up --build` builds this image from the checkout instead.
+    image: ${DEV_STACK_FRONTEND_IMAGE:-itechuw/openelis-global-2-frontend-dev:develop}
     # Local-dev default: `target: dev` selects the Vite dev-server stage
     # of the single multi-stage Dockerfile — HMR + unminified React for
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
@@ -124,7 +133,7 @@ services:
     restart: unless-stopped
     depends_on:
       certs:
-        condition: service_started
+        condition: service_completed_successfully
       oe.openelis.org:
         condition: service_started
 

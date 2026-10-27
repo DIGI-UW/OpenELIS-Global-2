@@ -76,7 +76,7 @@ const currentMapping = {
         id: "301",
         name: "MTB Detection",
         code: "MTB",
-        loincCodes: ["85362-2"],
+        codings: [{ system: "http://loinc.org", code: "85362-2" }],
       },
       results: [
         {

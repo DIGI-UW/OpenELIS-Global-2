@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-upc-digits.xml">
+
+    <!-- OGC-438: a UPC and its zero-padded GTIN-14 name one product -->
+    <changeSet author="OGC" id="OGC-438-unique-upc-ignoring-leading-zeros">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="uq_inventory_item_upc_digits" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <sql>
+            DROP INDEX IF EXISTS clinlims.uq_inventory_item_upc;
+            CREATE UNIQUE INDEX uq_inventory_item_upc_digits
+            ON clinlims.inventory_item (ltrim(upc, '0'))
+            WHERE upc IS NOT NULL;
+        </sql>
+
+        <rollback>
+            <sql>
+                DROP INDEX IF EXISTS clinlims.uq_inventory_item_upc_digits;
+                CREATE UNIQUE INDEX uq_inventory_item_upc
+                ON clinlims.inventory_item (upc)
+                WHERE upc IS NOT NULL;
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

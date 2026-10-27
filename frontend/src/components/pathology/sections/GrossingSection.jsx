@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Button,
   Heading,
   Section,
   Select,
@@ -9,64 +8,38 @@ import {
   TextArea,
   TextInput,
 } from "@carbon/react";
-import { Subtract } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
+import IdentifiedRow, { ListToolbar } from "../IdentifiedRow";
+import {
+  cassetteStateBadge,
+  countedRows,
+  deactivatedCount,
+  labelStreamUrl,
+  rowListEditors,
+  unsavedPosition,
+} from "../pathologyRows";
 import "../pathologyCaseView.scss";
 
 /**
- * FR-3: what the bench did with the specimen at grossing — the macroscopic
- * description, the blocks cut from it, and who worked it.
- *
- * The description comes first and is the tallest thing in the section,
- * because it is the work: the blocks record what the description was cut
- * into, and the technician selector is an attribution the case mostly fills
- * in by itself. Laid out the other way round, as the flat form had it, the
- * description read as a footnote to a dropdown.
- *
- * The gross description is available to everyone who can open the case. The
- * bench writes it while the specimen is in front of them (FR-3.1) and the
- * pathologist completes the same field at reading (FR-12.3), so gating it on
- * the pathologist role, as the flat form did, meant the person actually
- * holding the specimen could not record what they saw.
+ * FR-3: what the bench did with the specimen at grossing: the macroscopic
+ * description, the cassettes cut from it, and who worked it.
+ * A saved cassette is named by the server and only ever deactivated (S-10.4).
  */
 const GrossingSection = ({
   caseInfo,
   updateCase,
   readOnly,
   technicianUsers,
+  dirty,
+  saving,
+  onDeactivate,
 }) => {
   const intl = useIntl();
-  const [blocksToAdd, setBlocksToAdd] = useState(1);
+  const [showDeactivated, setShowDeactivated] = useState(false);
 
   const blocks = caseInfo.blocks ?? [];
-
-  // Every edit replaces the row rather than writing through to the object the
-  // case is still holding, so the case state is only ever changed by the one
-  // update helper and a rejected save leaves nothing half-applied.
-  const patchBlock = (index, patch) =>
-    updateCase((prev) => ({
-      blocks: (prev.blocks ?? []).map((block, position) =>
-        position === index ? { ...block, ...patch } : block,
-      ),
-    }));
-
-  const removeBlock = (index) =>
-    updateCase((prev) => ({
-      blocks: (prev.blocks ?? []).filter((_, position) => position !== index),
-    }));
-
-  const addBlocks = () => {
-    const highest = blocks.reduce(
-      (max, block) => Math.ceil(Math.max(max, block.blockNumber || 0)),
-      0,
-    );
-    const added = Array.from({ length: blocksToAdd }, (_, index) => ({
-      id: "",
-      blockNumber: highest + 1 + index,
-    }));
-    updateCase((prev) => ({ blocks: [...(prev.blocks ?? []), ...added] }));
-  };
+  const { patchRow, removeRow, addRow } = rowListEditors("blocks", updateCase);
 
   return (
     <Stack gap={6}>
@@ -81,87 +54,63 @@ const GrossingSection = ({
       <div>
         <Section>
           <Heading className="pathology-case-view__heading">
-            <FormattedMessage id="pathology.label.blocks" />
+            <FormattedMessage id="pathology.label.cassettes" />
           </Heading>
         </Section>
         {blocks.map((block, index) => (
-          <div className="pathology-case-view__row" key={index}>
-            <div className="pathology-case-view__row-field">
-              <TextInput
-                id={"blockNumber" + index}
-                disabled={readOnly}
-                labelText={intl.formatMessage({
-                  id: "pathology.label.block.number",
-                })}
-                value={block.blockNumber}
-                type="number"
-                onChange={(e) =>
-                  patchBlock(index, { blockNumber: e.target.value })
-                }
-              />
-            </div>
-            <div className="pathology-case-view__row-field">
-              <TextInput
-                id={"blockLocation" + index}
-                disabled={readOnly}
-                labelText={intl.formatMessage({
-                  id: "pathology.label.location",
-                })}
-                value={block.location ?? ""}
-                onChange={(e) =>
-                  patchBlock(index, { location: e.target.value })
-                }
-              />
-            </div>
-            <div className="pathology-case-view__row-actions">
-              <Button
-                kind="tertiary"
-                size="md"
-                disabled={readOnly}
-                onClick={() =>
-                  window.open(
-                    config.serverBaseUrl +
-                      "/LabelMakerServlet?labelType=block&code=" +
-                      block.blockNumber,
-                    "_blank",
-                  )
-                }
-              >
-                <FormattedMessage id="pathology.label.printlabel" />
-              </Button>
-              {/* A Carbon IconButton renders its children as the icon, so the
-                  word forced in beside the glyph was laid over it and clipped
-                  by the button's square box. A ghost button takes both, and
-                  its label is text rather than a tooltip. */}
-              <Button
-                kind="ghost"
-                size="md"
-                renderIcon={Subtract}
-                disabled={readOnly}
-                onClick={() => removeBlock(index)}
-              >
-                <FormattedMessage id="label.button.remove.block" />
-              </Button>
-            </div>
-          </div>
+          <IdentifiedRow
+            key={block.id ?? block.clientKey}
+            kind="block"
+            row={block}
+            position={unsavedPosition(blocks, index)}
+            readOnly={readOnly}
+            showDeactivated={showDeactivated}
+            deactivateLocked={dirty || saving}
+            deactivateLockedReason={intl.formatMessage({
+              id: "pathology.locked.saveBeforeDeactivate",
+            })}
+            stateBadge={cassetteStateBadge(block)}
+            onRemove={() => removeRow(index)}
+            onDeactivate={onDeactivate}
+          >
+            {({ objectName, disabled }) => (
+              <div className="pathology-case-view__row-field">
+                <TextInput
+                  id={"blockLocation" + index}
+                  disabled={disabled}
+                  labelText={
+                    <>
+                      {intl.formatMessage({ id: "pathology.label.location" })}
+                      <span className="cds--visually-hidden">
+                        {" " + objectName}
+                      </span>
+                    </>
+                  }
+                  value={block.location ?? ""}
+                  onChange={(e) =>
+                    patchRow(index, { location: e.target.value })
+                  }
+                />
+              </div>
+            )}
+          </IdentifiedRow>
         ))}
-        <div className="pathology-case-view__add-row">
-          <div className="pathology-case-view__add-count">
-            <TextInput
-              id="blocksToAdd"
-              disabled={readOnly}
-              labelText={intl.formatMessage({
-                id: "pathology.label.block.add.number",
-              })}
-              value={blocksToAdd}
-              type="number"
-              onChange={(e) => setBlocksToAdd(e.target.value)}
-            />
-          </div>
-          <Button size="md" disabled={readOnly} onClick={addBlocks}>
-            <FormattedMessage id="pathology.label.addblock" />
-          </Button>
-        </div>
+        <ListToolbar
+          addLabelKey="pathology.action.addCassette"
+          onAdd={() => addRow({ location: "" })}
+          addDisabled={readOnly}
+          printLabelKey="pathology.action.printCassetteLabels"
+          printUrl={labelStreamUrl(
+            config.serverBaseUrl,
+            "block",
+            caseInfo.labNumber,
+          )}
+          canPrint={countedRows(blocks).length > 0}
+          deactivatedCount={deactivatedCount(blocks)}
+          showDeactivated={showDeactivated}
+          onToggleDeactivated={setShowDeactivated}
+          toggleId="showDeactivatedCassettes"
+        />
       </div>
       <div className="pathology-case-view__field-group">
         <Select
