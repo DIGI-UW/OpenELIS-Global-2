@@ -94,6 +94,9 @@ public class ImmunohistochemistrySampleServiceImpl
     @Transactional
     @Override
     public void updateWithFormValues(Integer immunohistochemistrySampleId, ImmunohistochemistrySampleForm form) {
+        if (form.getReports() != null) {
+            form.getReports().forEach(ClinicalAttachmentService::validate);
+        }
         ImmunohistochemistrySample immunohistochemistrySample = get(immunohistochemistrySampleId);
         if (!GenericValidator.isBlankOrNull(form.getAssignedPathologistId())) {
             immunohistochemistrySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));

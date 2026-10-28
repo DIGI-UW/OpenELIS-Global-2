@@ -267,6 +267,12 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     @Transactional
     @Override
     public void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form) {
+        if (form.getSlides() != null) {
+            form.getSlides().forEach(ClinicalAttachmentService::validate);
+        }
+        if (form.getReports() != null) {
+            form.getReports().forEach(ClinicalAttachmentService::validate);
+        }
         // copying is so we get an object that is detached from hibernate
         PathologySample storedCase = get(pathologySampleId);
         PathologySample pathologySample = copyPathologySample(storedCase);
