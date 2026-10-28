@@ -107,9 +107,74 @@ export function slideOnBlockName(slide, blocks) {
  * waiting for embedding.
  */
 export function cassetteStateBadge(block) {
-  return block?.cassetteState === "BLOCK"
+  return isEmbeddedRow(block)
     ? { kind: "verified", textKey: "pathology.label.block" }
     : { kind: "pending", textKey: "pathology.label.cassette" };
+}
+
+/**
+ * A cassette that has been embedded is a block. A row with no state is a
+ * cassette, as the server reads it.
+ */
+export function isEmbeddedRow(block) {
+  return block?.cassetteState === "BLOCK";
+}
+
+// The saved cassettes in use that are not blocks yet, in list order.
+function outstandingRows(blocks) {
+  return countedRows(blocks).filter((block) => !isEmbeddedRow(block));
+}
+
+/**
+ * How far embedding has got on a case: the saved cassettes in use, how many
+ * of them are blocks, the ones still outstanding, named in list order, and
+ * whether there is nothing left to embed (FR-6.3). Derived on the screen from
+ * the rows every time, and never stored anywhere (FR-9.6).
+ */
+export function embeddingSummary(blocks) {
+  const total = countedRows(blocks).length;
+  const outstanding = outstandingRows(blocks).map(blockIdentifier);
+
+  return {
+    embedded: total - outstanding.length,
+    total,
+    outstanding,
+    complete: total > 0 && outstanding.length === 0,
+  };
+}
+
+/**
+ * The saved cassette still waiting after the given one, in list order and
+ * wrapping to the first, or undefined when the given one is the last left.
+ * Ids arrive as numbers or strings, so they are compared as strings.
+ */
+export function nextOutstandingCassette(blocks, block) {
+  const outstanding = outstandingRows(blocks);
+  const at = outstanding.findIndex(
+    (candidate) => String(candidate.id) === String(block?.id),
+  );
+  const rest = [...outstanding.slice(at + 1), ...outstanding.slice(0, at)];
+  return rest.find((candidate) => String(candidate.id) !== String(block?.id));
+}
+
+/**
+ * The tissue types a cassette's picker offers: the served ones, plus the one
+ * the cassette already holds when it is not among them. The served list holds
+ * active entries only, so without that row a tissue type retired after it was
+ * recorded would leave the cassette looking as if none had been.
+ */
+export function tissueTypeItems(served, block, names) {
+  const items = served ?? [];
+  const held = block?.tissueTypeId;
+  if (
+    held === null ||
+    held === undefined ||
+    held === "" ||
+    items.some((item) => String(item.id) === String(held))
+  ) {
+    return items;
+  }
+  return [...items, { id: held, value: names?.[held] ?? String(held) }];
 }
 
 /**

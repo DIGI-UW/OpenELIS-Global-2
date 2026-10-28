@@ -21,6 +21,7 @@ import { postToOpenElisServerFullResponse } from "../../utils/Utils";
 import { serverQuery } from "../../utils/queryClient";
 import { navigationIcons } from "../../layout/navigationIcons";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import config from "../../../config.json";
 import { withoutRetiredMenus } from "../../layout/retiredMenus";
 import "./GlobalMenuManagement.scss";
 
@@ -68,10 +69,6 @@ const saveMenus = (items) =>
 function MenuSettings({ item, drafts, onChange, saving, label }) {
   const { menu, childMenus = [] } = item;
   const current = drafts[menu.elementId] || menu;
-  const controlled = (field) =>
-    menu.configurationOnly || menu.configurationFields?.includes(field);
-  const note = (field) =>
-    controlled(field) ? label("menu.configuration.managed") : undefined;
   const iconNames = Object.keys(navigationIcons);
   const Icon = navigationIcons[current.icon];
   return (
@@ -80,75 +77,65 @@ function MenuSettings({ item, drafts, onChange, saving, label }) {
       data-testid={`menu-settings-${menu.elementId}`}
     >
       <Stack gap={5}>
-        {menu.configurationOnly && <p>{label("menu.configuration.managed")}</p>}
-        {!menu.configurationOnly && (
-          <div
-            className="menu-settings-fields"
-            data-testid={`menu-fields-${menu.elementId}`}
+        <div
+          className="menu-settings-fields"
+          data-testid={`menu-fields-${menu.elementId}`}
+        >
+          <Toggle
+            id={`${menu.elementId}-active`}
+            labelText={label("common.active")}
+            toggled={current.isActive}
+            disabled={saving}
+            onToggle={(value) => onChange(menu, "isActive", value)}
+          />
+          <Select
+            id={`${menu.elementId}-style`}
+            labelText={label("menu.presentation.style")}
+            value={current.presentationStyle || ""}
+            disabled={saving}
+            helperText={
+              current.presentationStyle === "section"
+                ? label("menu.presentation.sectionHint")
+                : undefined
+            }
+            onChange={(event) =>
+              onChange(menu, "presentationStyle", event.target.value)
+            }
           >
-            <Toggle
-              id={`${menu.elementId}-active`}
-              labelText={label("common.active")}
-              toggled={current.isActive}
-              disabled={saving || controlled("isActive")}
-              onToggle={(value) => onChange(menu, "isActive", value)}
+            <SelectItem value="" text={label("menu.presentation.item")} />
+            <SelectItem
+              value="section"
+              text={label("menu.presentation.section")}
             />
-            {note("isActive") && <p>{note("isActive")}</p>}
-            <Select
-              id={`${menu.elementId}-style`}
-              labelText={label("menu.presentation.style")}
-              value={current.presentationStyle || ""}
-              disabled={saving || controlled("presentationStyle")}
-              helperText={
-                note("presentationStyle") ||
-                (current.presentationStyle === "section"
-                  ? label("menu.presentation.sectionHint")
-                  : undefined)
-              }
-              onChange={(event) =>
-                onChange(menu, "presentationStyle", event.target.value)
-              }
-            >
-              <SelectItem value="" text={label("menu.presentation.item")} />
-              <SelectItem
-                value="section"
-                text={label("menu.presentation.section")}
-              />
-            </Select>
-            <Select
-              id={`${menu.elementId}-icon`}
-              labelText={label("common.icon")}
-              value={current.icon || ""}
-              disabled={
-                saving ||
-                controlled("icon") ||
-                current.presentationStyle === "section"
-              }
-              helperText={
-                note("icon") ||
-                (current.presentationStyle === "section"
-                  ? label("menu.presentation.sectionIconHint")
-                  : undefined)
-              }
-              onChange={(event) => onChange(menu, "icon", event.target.value)}
-            >
-              <SelectItem value="" text={label("common.none")} />
-              {current.icon && !iconNames.includes(current.icon) && (
-                <SelectItem value={current.icon} text={current.icon} />
-              )}
-              {iconNames.map((name) => (
-                <SelectItem
-                  key={name}
-                  value={name}
-                  text={label(iconLabels[name])}
-                />
-              ))}
-            </Select>
-            {Icon && current.presentationStyle !== "section" && (
-              <Icon size={24} aria-hidden="true" />
+          </Select>
+          <Select
+            id={`${menu.elementId}-icon`}
+            labelText={label("common.icon")}
+            value={current.icon || ""}
+            disabled={saving || current.presentationStyle === "section"}
+            helperText={
+              current.presentationStyle === "section"
+                ? label("menu.presentation.sectionIconHint")
+                : undefined
+            }
+            onChange={(event) => onChange(menu, "icon", event.target.value)}
+          >
+            <SelectItem value="" text={label("common.none")} />
+            {current.icon && !iconNames.includes(current.icon) && (
+              <SelectItem value={current.icon} text={current.icon} />
             )}
-          </div>
-        )}
+            {iconNames.map((name) => (
+              <SelectItem
+                key={name}
+                value={name}
+                text={label(iconLabels[name])}
+              />
+            ))}
+          </Select>
+          {Icon && current.presentationStyle !== "section" && (
+            <Icon size={24} aria-hidden="true" />
+          )}
+        </div>
         {childMenus.length > 0 && (
           <Accordion>
             {childMenus.map((child) => (
@@ -258,12 +245,21 @@ export default function GlobalMenuManagement() {
                   ))}
                 </Accordion>
               )}
-              <Button
-                type="submit"
-                disabled={!Object.keys(drafts).length || mutation.isLoading}
-              >
-                {label("common.save")}
-              </Button>
+              <div className="menu-settings-actions">
+                <Button
+                  type="submit"
+                  disabled={!Object.keys(drafts).length || mutation.isLoading}
+                >
+                  {label("common.save")}
+                </Button>
+                <Button
+                  kind="tertiary"
+                  href={`${config.serverBaseUrl}${endpoint}/configuration`}
+                  data-testid="menu-configuration-export"
+                >
+                  {label("menu.configuration.export")}
+                </Button>
+              </div>
             </Stack>
           </Form>
         </Column>

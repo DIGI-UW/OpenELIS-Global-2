@@ -16,6 +16,8 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.projectorganization.valueholder.ProjectOrganization</class>
+        <class>org.openelisglobal.patient.valueholder.PatientIdDocument</class>
         <class>org.openelisglobal.menu.valueholder.Menu</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
@@ -189,6 +191,10 @@
 
         <!-- QI Configuration (OGC-709) -->
         <class>org.openelisglobal.qaevent.qiconfig.valueholder.QiConfig</class>
+        <class>org.openelisglobal.dashboard.management.quality.QiWeights</class>
+        <!-- Management dashboard surveillance (OGC-897) -->
+        <class>org.openelisglobal.dashboard.management.surveillance.valueholder.SurveillanceProgram</class>
+        <class>org.openelisglobal.dashboard.management.surveillance.valueholder.TestSurveillanceMapping</class>
 
         <!-- Critical Callback capture (OGC-714) -->
         <class>org.openelisglobal.qaevent.criticalcallback.valueholder.CriticalCallback</class>
@@ -249,30 +255,13 @@
         <!-- Batch Workplan foundation (OGC-427 / OGC-811 M1) -->
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplan</class>
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanQcRelease</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
-            <!--
-                Tomcat deploys this WAR twice into one JVM (/OpenELIS-Global and
-                /api/OpenELIS-Global, see conf/server.xml), and each context gets
-                its own classloader, EntityManagerFactory and Hibernate Search
-                backend over this one directory. A Lucene index allows a single
-                writer, so whichever context did not take the lock fails every
-                save with OverlappingFileLockException - after the row is
-                committed, so the caller sees a 500 for a patient that was
-                actually created. Patient search is served from the database, so
-                nothing reads this index; it is left unmaintained rather than
-                maintained unsafely. Rebuild it on demand with GET /rest/reindex,
-                and solve the double deployment before relying on it again.
-            -->
+            <!-- Patient search reads the database, so nothing reads this index. Rebuild it with GET /rest/reindex. -->
             <property name="hibernate.search.automatic_indexing.enabled" value="false" />
-            <!--
-                And do not create or validate that index at start-up either: both
-                contexts try it, one loses the writer lock and logs an
-                OverlappingFileLockException on every boot. Nothing reads the
-                index, so there is nothing to manage.
-            -->
             <property name="hibernate.search.schema_management.strategy" value="none" />
             <property name="hibernate.search.backend.directory.type" value="local-filesystem" />
             <property name="hibernate.search.backend.directory.root" value="/var/lib/lucene_index" />

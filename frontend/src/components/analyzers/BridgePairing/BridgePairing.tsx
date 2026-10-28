@@ -43,8 +43,23 @@ const BridgePairing = () => {
     return () => controller.abort();
   }, []);
 
-  if (!status || !status.bridgeUrl) {
+  if (!status) {
     return null;
+  }
+
+  if (!status.bridgeUrl) {
+    return (
+      <div data-testid="bridge-pairing">
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="bridge-pairing-not-configured"
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.error.notConfigured",
+          })}
+        />
+      </div>
+    );
   }
 
   const submit = (event: React.FormEvent) => {
@@ -66,6 +81,11 @@ const BridgePairing = () => {
       }
     });
   };
+
+  const stalePin =
+    status.paired &&
+    (status.pinCheck === "OTHER_CERTIFICATE" ||
+      status.pinCheck === "BRIDGE_UNPAIRED");
 
   const form = (
     <form
@@ -93,7 +113,7 @@ const BridgePairing = () => {
       >
         {intl.formatMessage({ id: "analyzer.bridgePairing.pair" })}
       </Button>
-      {status.paired && (
+      {status.paired && !stalePin && (
         <Button
           kind="ghost"
           size="md"
@@ -116,6 +136,51 @@ const BridgePairing = () => {
       )}
     </form>
   );
+
+  if (status.paired && status.pinCheck === "UNREACHABLE") {
+    return (
+      <div data-testid="bridge-pairing">
+        <Callout
+          kind="error"
+          lowContrast
+          data-testid="bridge-pairing-unreachable"
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.error.unreachable",
+          })}
+          subtitle={status.bridgeUrl}
+        />
+      </div>
+    );
+  }
+
+  if (stalePin) {
+    const key =
+      status.pinCheck === "OTHER_CERTIFICATE"
+        ? "analyzer.bridgePairing.stale.otherCertificate"
+        : "analyzer.bridgePairing.stale.bridgeUnpaired";
+    return (
+      <div data-testid="bridge-pairing">
+        <Callout
+          kind="warning"
+          lowContrast
+          data-testid="bridge-pairing-stale"
+          title={intl.formatMessage({ id: `${key}.title` })}
+          subtitle={`${intl.formatMessage(
+            { id: `${key}.subtitle` },
+            {
+              url: status.bridgeUrl,
+              fingerprint: (status.bridgeCertificateSha256 || "").slice(0, 16),
+            },
+          )} ${intl.formatMessage({
+            id: status.pairsAutomatically
+              ? "analyzer.bridgePairing.automatic"
+              : "analyzer.bridgePairing.unpaired.subtitle",
+          })}`}
+        />
+        {form}
+      </div>
+    );
+  }
 
   if (!status.paired) {
     return (

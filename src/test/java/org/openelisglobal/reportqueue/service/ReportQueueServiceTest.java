@@ -143,7 +143,7 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void printingCreatesVersionOneArchivedWithItsHashAndTheRowTurnsPrinted() {
+    public void printingCreatesVersionOneArchivedWithItsHashAndTheRowTurnsPrinted() throws Exception {
         PrintOutcome print = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
 
         assertEquals(1, print.getVersion());
@@ -253,6 +253,97 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(0, list("all").getAmendedToPrint() - 1);
     }
 
+    /**
+     * OGC-1529: a printed result corrected on Results waits for validation before
+     * the order is due again. A print in that window reprints the version on file,
+     * and the version printed after validation names the old and the new value
+     * instead of removing the result and adding it back.
+     */
+    @Test
+    public void aCorrectionAwaitingValidationKeepsTheOrderPrintedUntilItIsValidated() {
+        PrintOutcome first = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        correctAwaitingValidation("9301", "7.1");
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("PRINTED", row.getPrintStatus());
+        assertTrue(row.isAwaitingValidation());
+        assertEquals("not Amended before validation", "PARTIAL", row.getState());
+        assertEquals(0, list("all").getAmendedToPrint());
+        assertEquals(0, list("all").getToPrint());
+        assertTrue("the home dashboard reads the same definition",
+                analysisService.patientReportHasBeenDone(analysisService.get("9305")));
+
+        PrintOutcome waiting = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertTrue("a print before validation is a reprint", waiting.isReprint());
+        assertEquals(1, waiting.getVersion());
+        assertArrayEquals(first.getPdf(), waiting.getPdf());
+        assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM clinlims.report_version WHERE sample_id = ?", Integer.class, SAMPLE));
+
+        release("9301");
+        row = row(list("all"));
+        assertEquals("AMENDED", row.getState());
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertFalse(row.isAwaitingValidation());
+        assertEquals(1, list("all").getAmendedToPrint());
+
+        PrintOutcome corrected = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertEquals(2, corrected.getVersion());
+        assertFalse(corrected.isReprint());
+        Map<String, Object> version = jdbcTemplate.queryForMap(
+                "SELECT amended, change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2",
+                SAMPLE);
+        assertEquals(Boolean.TRUE, version.get("amended"));
+        String summary = String.valueOf(version.get("change_summary"));
+        assertTrue(summary, summary.contains("Glucose") && summary.contains("6.3") && summary.contains("7.1"));
+        assertFalse(summary, summary.contains("Removed") || summary.contains("Added"));
+    }
+
+    /**
+     * A result released while a printed one awaits validation waits with it, so the
+     * next version carries both changes and never drops the corrected result.
+     */
+    @Test
+    public void aNewReleaseWaitsForACorrectionAwaitingValidation() {
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        correctAwaitingValidation("9301", "7.1");
+        release("9302");
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("PRINTED", row.getPrintStatus());
+        assertEquals("the corrected result is not released again yet", "PARTIAL", row.getState());
+        assertTrue(reportQueueService.print(SAMPLE, ADMIN).orElseThrow().isReprint());
+
+        release("9301");
+        assertEquals("UNPRINTED", row(list("all")).getPrintStatus());
+        assertEquals(2, reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getVersion());
+        String summary = jdbcTemplate.queryForObject(
+                "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
+                SAMPLE);
+        assertTrue(summary, summary.contains("6.3") && summary.contains("7.1") && summary.contains("Added: Urea"));
+        assertFalse(summary, summary.contains("Removed"));
+    }
+
+    /**
+     * A printed result that is cancelled is still removed from the next version,
+     * whatever else is pending: only a correction awaiting validation holds.
+     */
+    @Test
+    public void aCancelledPrintedResultIsStillRemoved() {
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = CAST(? AS numeric) WHERE id = 9305",
+                statusService.getStatusID(AnalysisStatus.Canceled));
+
+        ReportQueueRowDTO row = row(list("all"));
+        assertEquals("AMENDED", row.getState());
+        assertEquals("UNPRINTED", row.getPrintStatus());
+        assertEquals(2, reportQueueService.print(SAMPLE, ADMIN).orElseThrow().getVersion());
+        String summary = jdbcTemplate.queryForObject(
+                "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
+                SAMPLE);
+        assertTrue(summary, summary.contains("Removed"));
+    }
+
     @Test
     public void theTimeWindowHidesOnlyPrintedRows() {
         assertNotNull("an unprinted row released on 2026-10-01 shows under Last 24 hours", find(list("24h")));
@@ -277,6 +368,12 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("a correction after a legacy print is an amendment", "AMENDED", row(list("all")).getState());
 
         jdbcTemplate.update("UPDATE clinlims.analysis SET corrected = false WHERE id = 9301");
+        correctAwaitingValidation("9305", "81");
+        row = row(list("all"));
+        assertEquals("a correction awaiting validation is not an amendment yet", "PARTIAL", row.getState());
+        assertEquals("PRINTED", row.getPrintStatus());
+        release("9305");
+        jdbcTemplate.update("UPDATE clinlims.analysis SET corrected = false WHERE id = 9305");
         jdbcTemplate.update(
                 "UPDATE clinlims.report_version SET issued_at = '2026-09-30 09:00:00+00' WHERE sample_id = ?", SAMPLE);
         row = row(list("all"));
@@ -306,9 +403,10 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * The only released result goes back for correction after version 1 was
-     * printed: the order leaves the queue, but its lookup row and its detail keep
-     * the version that is on file instead of claiming nothing was ever printed.
+     * Every released result goes back for correction after version 1 was printed:
+     * the order leaves the queue, but its lookup row says a correction awaits
+     * validation, keeps the version that is on file, and a print reprints it
+     * (OGC-1529) instead of claiming nothing was ever released.
      */
     @Test
     public void aPrintedOrderWhoseResultsGoBackKeepsItsVersionInTheLookupAndTheDetail() {
@@ -325,15 +423,58 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         ReportQueueRequest request = new ReportQueueRequest();
         request.setLabNo(LAB_NO);
         ReportQueueRowDTO row = reportQueueService.list(request, ADMIN).getRows().get(0);
-        assertTrue(row.isNothingReleased());
+        assertFalse(row.isNothingReleased());
+        assertTrue(row.isAwaitingValidation());
+        assertEquals("PARTIAL", row.getState());
+        assertEquals(0, row.getReleasedCount());
+        assertEquals(3, row.getTotalCount());
         assertEquals(Integer.valueOf(1), row.getVersion());
         assertEquals("PRINTED", row.getPrintStatus());
         assertEquals("Nambi, Ruth", row.getRequester());
+        PrintOutcome reprint = reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        assertTrue(reprint.isReprint());
+        assertEquals(1, reprint.getVersion());
 
         ReportQueueRowDetailDTO detail = reportQueueService.detail(SAMPLE, ADMIN).orElseThrow();
         assertEquals(1, detail.getVersions().size());
         assertEquals(1, detail.getVersions().get(0).getVersion());
         assertEquals("Nambi, Ruth", detail.getRequester());
+    }
+
+    /**
+     * OGC-1544: a correction that does not change the value as reported (6.3 to 6.4
+     * at no decimal places, both reported as 6) still amends the report, and the
+     * change line names the values entered, not "6 → 6".
+     */
+    @Test
+    public void aCorrectionWithinTheReportedPrecisionAmendsAndNamesTheEnteredValues() {
+        jdbcTemplate.update("UPDATE clinlims.result SET significant_digits = 0 WHERE id = 9301");
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '6.4', lastupdated = now() WHERE id = 9301");
+
+        assertEquals("AMENDED", row(list("all")).getState());
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        String summary = jdbcTemplate.queryForObject(
+                "SELECT change_summary FROM clinlims.report_version WHERE sample_id = ? AND version = 2", String.class,
+                SAMPLE);
+        assertTrue(summary, summary.contains("6.3") && summary.contains("6.4"));
+    }
+
+    /**
+     * OGC-1544: the queue shows a result as reported, rounded to its test's places,
+     * and flags it on that value, so the page agrees with the printed report: 5.84
+     * to one place is 5.8, inside 3.9-5.8, so it is not flagged high.
+     */
+    @Test
+    public void aResultIsShownAndFlaggedAsReported() {
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '5.84', significant_digits = 1 WHERE id = 9301");
+
+        ReportQueueRowDetailDTO.TestRowDTO test = reportQueueService.detail(SAMPLE, ADMIN).orElseThrow().getTests()
+                .stream().filter(t -> "9301".equals(String.valueOf(t.getAnalysisId()))).findFirst().orElseThrow();
+
+        assertTrue(test.getResult(), test.getResult().startsWith("5.8"));
+        assertFalse(test.getResult(), test.getResult().startsWith("5.84"));
+        assertEquals("", test.getFlag() == null ? "" : test.getFlag());
     }
 
     /**
@@ -398,6 +539,74 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(0, page.getRows().size());
         assertEquals(0, page.getTotal());
         assertEquals(0, page.getToPrint());
+    }
+
+    /**
+     * BR-9: the scope that hides a row also closes its detail, its print and its
+     * archived file, whose ids are sequential and easy to guess.
+     */
+    @Test
+    public void aUserWithoutLabUnitsCannotOpenPrintOrDownloadAnOrder() {
+        reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
+        long versionId = jdbcTemplate.queryForObject("SELECT id FROM clinlims.report_version WHERE sample_id = ?",
+                Long.class, SAMPLE);
+        assertTrue(reportQueueService.version(versionId, ADMIN).isPresent());
+        assertTrue(reportQueueService.detail(SAMPLE, ADMIN).isPresent());
+
+        assertTrue(reportQueueService.detail(SAMPLE, USER_WITHOUT_LAB_UNITS).isEmpty());
+        assertTrue(reportQueueService.print(SAMPLE, USER_WITHOUT_LAB_UNITS).isEmpty());
+        assertTrue(reportQueueService.version(versionId, USER_WITHOUT_LAB_UNITS).isEmpty());
+        ReportQueueRequest lookup = new ReportQueueRequest();
+        lookup.setLabNo(LAB_NO);
+        assertEquals("a lab number lookup does not reach outside the user's units either", 0,
+                reportQueueService.list(lookup, USER_WITHOUT_LAB_UNITS).getRows().size());
+        assertEquals("the refused print issued nothing", Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM clinlims.report_version WHERE sample_id = ?", Integer.class, SAMPLE));
+    }
+
+    @Test
+    public void anOrderIsInScopeOnlyThroughOneOfItsSections() {
+        ReportQueueCriteria criteria = new ReportQueueCriteria();
+        criteria.setSectionIds(null);
+        assertTrue("no scope means the whole lab", queryDAO.isInScope(SAMPLE, criteria));
+        criteria.setSectionIds(List.of("9301"));
+        assertTrue("the order's own section", queryDAO.isInScope(SAMPLE, criteria));
+        criteria.setSectionIds(List.of("9302"));
+        assertFalse("another section", queryDAO.isInScope(SAMPLE, criteria));
+        criteria.setSectionIds(List.of());
+        assertFalse("no sections at all", queryDAO.isInScope(SAMPLE, criteria));
+    }
+
+    /**
+     * The Critical tag comes from the same BB / EE rule as the report, now from one
+     * query per page instead of a report snapshot per row (NFR-1).
+     */
+    @Test
+    public void aReleasedResultBeyondItsCriticalBoundMarksTheRowCritical() {
+        assertFalse("6.3 is only above normal", row(list("all")).isCritical());
+        jdbcTemplate.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order,"
+                + " allow_multiple_readings, is_active, lastupdated, is_primary, show_on_report)"
+                + " VALUES ('cba2e26b-537a-417d-ab03-b375e4246daf', 9301, 'GLU', 'Glucose', 1, false, 'Y', now(),"
+                + " true, true)");
+        jdbcTemplate.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, component_id, lastupdated)"
+                + " VALUES (99301, 9301, 'N', 'cba2e26b-537a-417d-ab03-b375e4246daf', now())");
+        jdbcTemplate.update("UPDATE clinlims.result SET test_result_id = 99301 WHERE id = 9301");
+        assertFalse("a result answering a component (UUID id) is read like any other", row(list("all")).isCritical());
+        jdbcTemplate.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " low_critical, high_critical, always_validate, lastupdated) VALUES (99301, 9301, 4, 0, 'Infinity',"
+                + " 3.5, 5.5, '-Infinity', 'Infinity', '-Infinity', 'Infinity', 2.0, 6.0, false, NOW())");
+
+        assertTrue("6.3 is beyond the critical bound of 6.0", row(list("all")).isCritical());
+    }
+
+    @After
+    public void removeCriticalLimit() {
+        jdbcTemplate.update("DELETE FROM clinlims.result_limits WHERE id = 99301");
+        jdbcTemplate.update("UPDATE clinlims.result SET test_result_id = NULL WHERE test_result_id = 99301");
+        jdbcTemplate.update("DELETE FROM clinlims.test_result WHERE id = 99301");
+        jdbcTemplate
+                .update("DELETE FROM clinlims.test_result_component WHERE id = 'cba2e26b-537a-417d-ab03-b375e4246daf'");
     }
 
     /**
@@ -490,6 +699,20 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
                 "UPDATE clinlims.analysis SET status_id = CAST(? AS numeric), released_date = now(),"
                         + " lastupdated = now() WHERE id = CAST(? AS numeric)",
                 statusService.getStatusID(AnalysisStatus.Finalized), analysisId);
+    }
+
+    /**
+     * What a correction saved on Results leaves behind: the new value, the analysis
+     * back at technical acceptance, and the corrected flag.
+     */
+    private void correctAwaitingValidation(String analysisId, String value) {
+        jdbcTemplate.update(
+                "UPDATE clinlims.result SET value = ?, lastupdated = now() WHERE analysis_id = CAST(? AS" + " numeric)",
+                value, analysisId);
+        jdbcTemplate.update(
+                "UPDATE clinlims.analysis SET status_id = CAST(? AS numeric), corrected = true, lastupdated = now()"
+                        + " WHERE id = CAST(? AS numeric)",
+                statusService.getStatusID(AnalysisStatus.TechnicalAcceptance), analysisId);
     }
 
     private void insertLegacyVersion(String issuedAt) {

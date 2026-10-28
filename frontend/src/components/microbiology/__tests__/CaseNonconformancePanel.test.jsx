@@ -80,6 +80,63 @@ describe("CaseNonconformancePanel", () => {
     });
   });
 
+  it("finds the pre-analytical category and the specimen-lost type by key in any language", async () => {
+    const french = [
+      {
+        id: "3",
+        name: "Échantillon",
+        displayKey: "nce.category.sample",
+        types: [],
+      },
+      {
+        id: "10",
+        name: "Pré-analytique",
+        displayKey: "nce.category.preanalytical",
+        types: [
+          { id: "12", name: "Contenant incorrect" },
+          {
+            id: "11",
+            name: "Échantillon perdu",
+            displayKey: "microbiology.uat.nce.specimenLost",
+          },
+        ],
+      },
+    ];
+    renderPanel({
+      service: {
+        getNceCategories: vi.fn().mockResolvedValue(french),
+        getNceReportingUnits: vi.fn().mockResolvedValue([]),
+      },
+    });
+    expect(await screen.findByLabelText("Category")).toHaveValue("10");
+  });
+
+  it("presets the French specimen-lost type by its key", async () => {
+    const french = [
+      {
+        id: "10",
+        name: "Pré-analytique",
+        displayKey: "nce.category.preanalytical",
+        types: [
+          {
+            id: "11",
+            name: "Échantillon perdu",
+            displayKey: "microbiology.uat.nce.specimenLost",
+          },
+        ],
+      },
+    ];
+    renderPanel({
+      mode: "mark-lost",
+      service: {
+        getNceCategories: vi.fn().mockResolvedValue(french),
+        getNceReportingUnits: vi.fn().mockResolvedValue([]),
+      },
+    });
+    expect(await screen.findByLabelText("Category")).toHaveValue("10");
+    expect(screen.getByLabelText("Type")).toHaveValue("11");
+  });
+
   it("presets specimen loss and rejects the shared specimen", async () => {
     const user = userEvent.setup();
     const { service } = renderPanel({ mode: "mark-lost" });

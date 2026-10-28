@@ -89,6 +89,9 @@ const caseAtStage = (status, overrides = {}) => ({
   assignedPathologistId: "8",
   assignedPathologist: "Paula Path",
   grossExam: "",
+  // Flagged, so the stage-order and stage-switch tests below see only the rule
+  // they are about; the tests of the flag itself set it.
+  decalcificationRequired: true,
   microscopyExam: "",
   conclusionText: "",
   // Set here on purpose so the posted key set below is deterministic. The
@@ -107,6 +110,7 @@ const caseAtStage = (status, overrides = {}) => ({
 });
 
 let servedCase;
+let tissueCatalogue;
 let requestCatalogue;
 let requestStatusCatalogue;
 
@@ -331,6 +335,10 @@ beforeEach(() => {
   hasRole.mockReset();
   hasRole.mockReturnValue(false);
   servedCase = caseAtStage("GROSSING");
+  tissueCatalogue = [
+    { id: "21", value: "Skin" },
+    { id: "22", value: "Bone" },
+  ];
   requestCatalogue = [];
   requestStatusCatalogue = [
     { id: "OPENED", value: "Opened" },
@@ -340,6 +348,9 @@ beforeEach(() => {
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url === "/rest/displayList/PATHOLOGY_STATUS") {
       return callback(STATUS_LIST);
+    }
+    if (url === "/rest/dictionary/category/pathology_tissue_types") {
+      return callback(tissueCatalogue);
     }
     if (url === "/rest/displayList/PATHOLOGIST_REQUESTS") {
       return callback(requestCatalogue);
@@ -766,6 +777,7 @@ describe("PathologyCaseView sections", () => {
       "blocks",
       "conclusionText",
       "conclusions",
+      "decalcificationRequired",
       "grossExam",
       "immunoHistoChemistryTestIds",
       "microscopyExam",
@@ -930,7 +942,7 @@ describe("PathologyCaseView sections", () => {
       messages["caseView.badge.readOnly"],
     );
     expect(
-      screen.getByLabelText(messages["pathology.label.microexam"]),
+      screen.getByLabelText(messages["pathology.label.microscopyExam"]),
     ).toBeDisabled();
   });
 
@@ -942,7 +954,7 @@ describe("PathologyCaseView sections", () => {
     await waitFor(() => expect(statusSelect()).not.toBeNull());
 
     expect(
-      screen.getByLabelText(messages["pathology.label.microexam"]),
+      screen.getByLabelText(messages["pathology.label.microscopyExam"]),
     ).toBeEnabled();
   });
 
@@ -995,7 +1007,7 @@ describe("PathologyCaseView sections", () => {
   // technician is an attribution the case usually fills in by itself. Laid
   // out the other way round, as the flat form had it, the description read as
   // a footnote to a dropdown.
-  it("puts the macroscopic description first in grossing, the cassettes under it and the attribution last", async () => {
+  it("puts the macroscopic description first in grossing, the decalcification flag and the cassettes under it and the attribution last", async () => {
     servedCase = caseAtStage("GROSSING", { blocks: [{ id: "1" }] });
     renderCaseView();
 
@@ -1004,6 +1016,7 @@ describe("PathologyCaseView sections", () => {
     const grossing = section("pathology-section-grossing");
     const order = [
       grossing.querySelector("#grossExam"),
+      grossing.querySelector("#decalcificationRequired"),
       within(grossing).getByText(messages["pathology.label.cassettes"]),
       grossing.querySelector("#assignedTechnician"),
     ];
@@ -1053,7 +1066,12 @@ describe("PathologyCaseView sections", () => {
 
     fireEvent.click(showDeactivatedSwitch("pathology-section-grossing"));
     const deactivated = rowIn("pathology-section-grossing", "A2");
-    expect(within(deactivated).queryAllByRole("button")).toHaveLength(0);
+    // Scoped to the row's actions: its disabled fields keep their own toggles.
+    expect(
+      within(
+        deactivated.querySelector(".pathology-case-view__row-actions"),
+      ).queryAllByRole("button"),
+    ).toHaveLength(0);
   });
 
   it("names each row's controls after the object the row stands for", async () => {
@@ -1063,12 +1081,14 @@ describe("PathologyCaseView sections", () => {
     await waitFor(() => expect(statusSelect()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
+    // The embedding list names the same saved cassette's field the same way.
+    const grossing = within(section("pathology-section-grossing"));
     expect(
-      screen.getByLabelText(messages["pathology.label.location"] + " A1"),
+      grossing.getByLabelText(messages["common.storageLocation"] + " A1"),
     ).toBe(document.getElementById("blockLocation0"));
     expect(
-      screen.getByLabelText(
-        messages["pathology.label.location"] + " " + newCassette(1),
+      grossing.getByLabelText(
+        messages["common.storageLocation"] + " " + newCassette(1),
       ),
     ).toBe(document.getElementById("blockLocation1"));
     expect(
@@ -1770,9 +1790,10 @@ describe("PathologyCaseView sections", () => {
     );
   });
 
-  // The server's rule text is English and names the case's internal id, so a
-  // refusal without a meaning of its own reads as the ordinary save failure.
-  it("never shows the server's own sentence for a refused save", async () => {
+  // The server's rule text is English and names the case's internal id. On
+  // this screen a broken case rule means a row someone else changed first, so
+  // the bench is told to reload rather than shown the server's words.
+  it("never shows the server's own sentence for a refused save, and says to reload the case", async () => {
     renderCaseView();
 
     await waitFor(() => expect(statusSelect()).not.toBeNull());
@@ -1781,8 +1802,7 @@ describe("PathologyCaseView sections", () => {
       expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
     );
     const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
-    const sentence =
-      "a slide must name the block it was cut from on pathology case 9";
+    const sentence = "block 7 is not on pathology case 9";
 
     await act(async () => {
       await callback({
@@ -1794,10 +1814,35 @@ describe("PathologyCaseView sections", () => {
     expect(addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: "error",
-        message: messages["error.save.msg"],
+        message: messages["pathology.error.reloadCase"],
       }),
     );
     expect(JSON.stringify(addNotification.mock.calls)).not.toContain(sentence);
+  });
+
+  it("reports any other refused save as the ordinary save failure", async () => {
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    fireEvent.click(saveDraftButton());
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+
+    await act(async () => {
+      await callback({
+        status: 500,
+        json: async () => ({ error: "could not execute statement" }),
+      });
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["error.save.msg"],
+      }),
+    );
   });
 
   // The bar sits at the foot of a long page, where the native select the
@@ -1939,5 +1984,622 @@ describe("PathologyCaseView sections", () => {
       messages["pathology.locked.releaseNoPathologist"],
     );
     expect(hint.closest(".cds--checkbox-wrapper")).not.toBeNull();
+  });
+
+  describe("grossing records whether the specimen needs decalcifying", () => {
+    const decalcificationBox = () =>
+      screen.getByLabelText(
+        messages["pathology.label.decalcificationRequired"],
+      );
+
+    const decalcificationHeader = () =>
+      screen.getByRole("button", { name: /^3\. Decalcification/ });
+
+    const decalcificationStep = () =>
+      rail()
+        .getByText(messages["pathology.stage.decalcification"])
+        .closest("li");
+
+    it("posts an untouched case as not needing decalcification, and a ticked one as needing it", async () => {
+      servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(decalcificationBox()).not.toBeChecked();
+      expect((await postedCase()).decalcificationRequired).toBe(false);
+
+      const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+      await act(async () => {
+        await callback({ status: 200, json: async () => ({}) });
+      });
+
+      fireEvent.click(decalcificationBox());
+      expect(decalcificationBox()).toBeChecked();
+      expect((await postedCase()).decalcificationRequired).toBe(true);
+    });
+
+    it("locks decalcification as not required on a specimen grossing did not flag, and marks its rail step not applicable", async () => {
+      servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+      expect(decalcificationHeader()).toBeDisabled();
+      expect(
+        section("pathology-section-decalcification").textContent,
+      ).toContain(messages["pathology.locked.decalcNotRequired"]);
+      expect(decalcificationStep()).toHaveTextContent(
+        messages["caseView.badge.notApplicable"],
+      );
+    });
+
+    // FR-4.1: the stage is enterable only for a specimen grossing flagged,
+    // and a case already standing there must still be able to say so.
+    it("offers the decalcification stage only for a flagged specimen, or a case already standing at it", async () => {
+      const decalcification = messages["pathology.stage.decalcification"];
+
+      servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
+      const unflagged = renderCaseView();
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(statusOptionTexts()).not.toContain(decalcification);
+      unflagged.unmount();
+
+      servedCase = caseAtStage("GROSSING", { decalcificationRequired: true });
+      const flagged = renderCaseView();
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(statusOptionTexts()).toContain(decalcification);
+      flagged.unmount();
+
+      servedCase = caseAtStage("DECALCIFICATION", {
+        decalcificationRequired: false,
+      });
+      renderCaseView();
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(statusOptionTexts()).toContain(decalcification);
+    });
+
+    // The flag records what was done to the specimen once the case has gone
+    // past the stage, and the server ignores it from then on.
+    it("freezes the flag on a case stored past decalcification, says why, and keeps it frozen when the stage control is moved back", async () => {
+      servedCase = caseAtStage("PROCESSING");
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(decalcificationBox()).toBeDisabled();
+      expect(decalcificationBox()).toHaveAccessibleDescription(
+        messages["pathology.locked.decalcificationPassed"],
+      );
+
+      setStage("pathology.stage.grossing");
+      expect(decalcificationBox()).toBeDisabled();
+    });
+
+    it("leaves the flag editable at grossing and at decalcification, even with a later stage picked but not saved", async () => {
+      servedCase = caseAtStage("DECALCIFICATION");
+      const atDecalcification = renderCaseView();
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(decalcificationBox()).toBeEnabled();
+      expect(
+        screen.queryByText(messages["pathology.locked.decalcificationPassed"]),
+      ).toBeNull();
+      atDecalcification.unmount();
+
+      servedCase = caseAtStage("GROSSING");
+      renderCaseView();
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(decalcificationBox()).toBeEnabled();
+
+      setStage("pathology.stage.processing");
+      expect(decalcificationBox()).toBeEnabled();
+      expect(decalcificationBox()).not.toHaveAccessibleDescription(
+        messages["pathology.locked.decalcificationPassed"],
+      );
+    });
+
+    it("says on the summary whether the specimen needs decalcifying", async () => {
+      servedCase = caseAtStage("GROSSING", { decalcificationRequired: true });
+      const { unmount } = renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(
+        summaryRow(messages["pathology.label.decalcificationRequired"]),
+      ).toBeDefined();
+      expect(
+        summaryValue(messages["pathology.label.decalcificationRequired"]),
+      ).toBe(messages["label.yes"]);
+      unmount();
+
+      servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      expect(
+        summaryValue(messages["pathology.label.decalcificationRequired"]),
+      ).toBe(messages["label.no"]);
+    });
+  });
+
+  it("labels the grossing description as the macroscopic description", async () => {
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+    expect(
+      screen.getByLabelText(messages["pathology.label.grossExam"]),
+    ).toHaveAttribute("id", "grossExam");
+  });
+
+  describe("the tissue each cassette holds", () => {
+    // Named after the row it sits in, so the label starts with the field's
+    // word.
+    const tissueCombobox = (row) =>
+      within(row).getByRole("combobox", {
+        name: new RegExp("^" + messages["pathology.label.tissueType"]),
+      });
+
+    it("shows a cassette's recorded tissue, offers the served ones, and posts the one picked on that cassette alone", async () => {
+      servedCase = caseAtStage("GROSSING", {
+        blocks: [
+          savedBlock("1", "A1", { tissueTypeId: "21" }),
+          savedBlock("2", "A2"),
+        ],
+      });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+      expect(
+        tissueCombobox(rowIn("pathology-section-grossing", "A1")),
+      ).toHaveValue("Skin");
+
+      const user = userEvent.setup();
+      const a2 = rowIn("pathology-section-grossing", "A2");
+      await user.click(tissueCombobox(a2));
+      const offered = within(a2).getAllByRole("option");
+      expect(offered.map((option) => option.textContent)).toEqual([
+        "Skin",
+        "Bone",
+      ]);
+      await user.click(offered[1]);
+
+      const body = await postedCase();
+      expect(body.blocks.map((block) => block.tissueTypeId)).toEqual([
+        "21",
+        "22",
+      ]);
+    });
+
+    // The served list holds active entries only, so a tissue type retired
+    // after a cassette recorded it would otherwise leave the row looking as
+    // if nothing had been recorded.
+    it("still names a tissue type a cassette holds after the laboratory has retired it, and keeps it on save", async () => {
+      servedCase = caseAtStage("GROSSING", {
+        blocks: [savedBlock("1", "A1", { tissueTypeId: "23" })],
+        tissueTypeNames: { 23: "Cartilage" },
+      });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+      expect(
+        tissueCombobox(rowIn("pathology-section-grossing", "A1")),
+      ).toHaveValue("Cartilage");
+      expect((await postedCase()).blocks[0].tissueTypeId).toBe("23");
+    });
+
+    it("holds the picker back without claiming none are configured while the tissue types have not arrived", async () => {
+      // What the server helper hands back when the request fails.
+      tissueCatalogue = undefined;
+      servedCase = caseAtStage("GROSSING", {
+        blocks: [savedBlock("1", "A1")],
+      });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+      const a1 = rowIn("pathology-section-grossing", "A1");
+      expect(tissueCombobox(a1)).toBeDisabled();
+      expect(
+        within(a1).queryByText(messages["pathology.empty.noTissueTypes"]),
+      ).toBeNull();
+    });
+
+    // A refused save tells the bench to reload, and one of the things that
+    // can have changed is the tissue type list itself.
+    it("reads the tissue types again whenever it reads the case again", async () => {
+      servedCase = caseAtStage("GROSSING", {
+        blocks: [savedBlock("1", "A1")],
+      });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await postedCase();
+      tissueCatalogue = [...tissueCatalogue, { id: "24", value: "Fat" }];
+      const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
+      await act(async () => {
+        await callback({ status: 200, json: async () => ({}) });
+      });
+
+      const user = userEvent.setup();
+      const a1 = rowIn("pathology-section-grossing", "A1");
+      await user.click(tissueCombobox(a1));
+      expect(
+        within(a1)
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ).toEqual(["Skin", "Bone", "Fat"]);
+    });
+
+    it("holds the picker back and says why when the laboratory has configured no tissue types, but says nothing on a row locked for its own reasons", async () => {
+      tissueCatalogue = [];
+      servedCase = caseAtStage("GROSSING", {
+        blocks: [
+          savedBlock("1", "A1"),
+          savedBlock("2", "A2", { active: false }),
+        ],
+      });
+      renderCaseView();
+
+      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      fireEvent.click(showDeactivatedSwitch("pathology-section-grossing"));
+
+      const a1 = rowIn("pathology-section-grossing", "A1");
+      expect(tissueCombobox(a1)).toBeDisabled();
+      expect(
+        within(a1).getByText(messages["pathology.empty.noTissueTypes"]),
+      ).toBeInTheDocument();
+
+      const a2 = rowIn("pathology-section-grossing", "A2");
+      expect(tissueCombobox(a2)).toBeDisabled();
+      expect(
+        within(a2).queryByText(messages["pathology.empty.noTissueTypes"]),
+      ).toBeNull();
+    });
+  });
+});
+
+describe("Embedding section", () => {
+  const EMBEDDING = "pathology-section-embedding";
+
+  const embedName = (designation) =>
+    intl.formatMessage(
+      { id: "pathology.action.embedCassette" },
+      { designation },
+    );
+
+  const embedButton = (designation) =>
+    screen.getByRole("button", { name: embedName(designation) });
+
+  const embeddedOf = (embedded, total) =>
+    intl.formatMessage(
+      { id: "pathology.badge.embeddedOf" },
+      { embedded, total },
+    );
+
+  const outstanding = (designations) =>
+    intl.formatMessage({ id: "pathology.badge.outstanding" }, { designations });
+
+  // The badge sits in the section's header; the body repeats the count in
+  // its banner, so the header is where the badge is looked for.
+  const header = () =>
+    within(section(EMBEDDING).querySelector(".cds--accordion__heading"));
+
+  const asBlock = (row) => ({ ...row, cassetteState: "BLOCK" });
+
+  const oneOfThree = () => [
+    asBlock(savedBlock("1", "A1", { tissueTypeId: "21" })),
+    savedBlock("2", "A2"),
+    savedBlock("3", "A3"),
+  ];
+
+  const openAtEmbedding = async (blocks, overrides = {}) => {
+    servedCase = caseAtStage("EMBEDDING", {
+      blocks,
+      tissueTypeNames: { 21: "Skin" },
+      ...overrides,
+    });
+    renderCaseView();
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+  };
+
+  it("lists every saved cassette and block with its tissue type, and not a cassette added since the last save", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(
+      within(rowIn(EMBEDDING, "A1")).getByText("Skin"),
+    ).toBeInTheDocument();
+    expect(
+      within(rowIn(EMBEDDING, "A2")).getByText(
+        messages["caseView.label.notRecorded"],
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(addCassetteButton());
+
+    expect(pendingRows("pathology-section-grossing")).toHaveLength(1);
+    expect(pendingRows(EMBEDDING)).toHaveLength(0);
+    expect(
+      section(EMBEDDING).querySelectorAll(".pathology-case-view__row"),
+    ).toHaveLength(3);
+  });
+
+  // The grossing list already deactivates these rows; a second button of the
+  // same name here would be announced twice. Remove never arises: the list
+  // holds saved rows only.
+  it("offers Embed on a cassette only, and no Deactivate on any row", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(embedButton("A2")).toBeEnabled();
+    expect(embedButton("A2")).toHaveAttribute("id", "embedCassette-2");
+    expect(
+      within(rowIn(EMBEDDING, "A1")).queryByRole("button", {
+        name: embedName("A1"),
+      }),
+    ).toBeNull();
+    expect(
+      within(section(EMBEDDING)).queryByText(messages["common.deactivate"], {
+        selector: "button",
+      }),
+    ).toBeNull();
+  });
+
+  it("posts the cassette's own id, then reads the case back and says it was embedded", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    const [url, , callback] = postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/pathology/block/2/embed");
+    // One embedding at a time, so the read-back answers for one cassette.
+    expect(embedButton("A3")).toBeDisabled();
+
+    const fetchesBefore = caseFetchCount();
+    act(() => callback(asBlock(savedBlock("2", "A2"))));
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: intl.formatMessage(
+          { id: "pathology.toast.embedded" },
+          { designation: "A2" },
+        ),
+      }),
+    );
+  });
+
+  it("posts nothing for a second Embed while the first is unanswered", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+    fireEvent.click(embedButton("A3"));
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+  });
+
+  // A refusal can mean another change landed on the row, so a clean form is
+  // read again to show the row as it is stored.
+  it("says the embedding failed and reads the case back when the server refuses it", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+    const callback = postToOpenElisServerJsonResponse.mock.calls[0][2];
+    const fetchesBefore = caseFetchCount();
+    act(() => callback({ error: "Block 2 is deactivated", status: 400 }));
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.toast.embedFailed" },
+          { designation: "A2" },
+        ),
+      }),
+    );
+    await waitFor(() => expect(embedButton("A2")).toHaveFocus());
+  });
+
+  // The bench can type while the request is out; reading the case back then
+  // would throw the typing away, so only the embedded row changes.
+  it("keeps what was typed while an embedding was answered, and marks the row a block", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+    const field = document.getElementById("embeddingLocation2");
+    field.focus();
+    fireEvent.change(field, { target: { value: "Tray 4" } });
+    const fetchesBefore = caseFetchCount();
+    act(() =>
+      postToOpenElisServerJsonResponse.mock.calls[0][2](
+        asBlock(savedBlock("2", "A2")),
+      ),
+    );
+    // The answer's focus move is deferred; let it run before looking.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(caseFetchCount()).toBe(fetchesBefore);
+    expect(field).toHaveValue("Tray 4");
+    expect(field, "typing goes on where it was").toHaveFocus();
+    expect(
+      within(rowIn(EMBEDDING, "A2")).getByText(
+        messages["pathology.label.block"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(rowIn(EMBEDDING, "A2")).queryByRole("button", {
+        name: embedName("A2"),
+      }),
+    ).toBeNull();
+    // Still unsaved, so the next Embed waits for a save.
+    expect(embedButton("A3")).toBeDisabled();
+    expect(embedButton("A3")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeEmbed"],
+    );
+  });
+
+  it("moves focus to the next cassette still waiting, and to the section header once none is", async () => {
+    const [a1, a2, a3] = oneOfThree();
+    await openAtEmbedding([a1, a2, a3]);
+
+    fireEvent.click(embedButton("A2"));
+    servedCase = { ...servedCase, blocks: [a1, asBlock(a2), a3] };
+    act(() => postToOpenElisServerJsonResponse.mock.calls[0][2](asBlock(a2)));
+    await waitFor(() => expect(embedButton("A3")).toHaveFocus());
+
+    fireEvent.click(embedButton("A3"));
+    servedCase = { ...servedCase, blocks: [a1, asBlock(a2), asBlock(a3)] };
+    act(() => postToOpenElisServerJsonResponse.mock.calls[1][2](asBlock(a3)));
+    await waitFor(() =>
+      expect(
+        section(EMBEDDING).querySelector("button.cds--accordion__heading"),
+      ).toHaveFocus(),
+    );
+  });
+
+  // The case is read back after an embedding, so an edit not yet saved
+  // would be thrown away by it without a word.
+  it("holds Embed back while there are unsaved changes, and says why", async () => {
+    await openAtEmbedding(oneOfThree());
+    expect(embedButton("A2")).toBeEnabled();
+
+    fireEvent.change(document.getElementById("embeddingLocation1"), {
+      target: { value: "Rack 3, shelf B" },
+    });
+
+    expect(embedButton("A2")).toBeDisabled();
+    expect(embedButton("A2")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeEmbed"],
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["caseView.action.discard"] }),
+    );
+
+    expect(embedButton("A2")).toBeEnabled();
+    expect(embedButton("A2")).not.toHaveAttribute("title");
+  });
+
+  it("edits the location of the row it is typed into", async () => {
+    await openAtEmbedding([
+      savedBlock("1", "A1", { active: false }),
+      savedBlock("2", "A2"),
+    ]);
+
+    fireEvent.change(document.getElementById("embeddingLocation1"), {
+      target: { value: "Rack 3, shelf B" },
+    });
+
+    const posted = await postedCase();
+    expect(posted.blocks.map((block) => block.location)).toEqual([
+      "",
+      "Rack 3, shelf B",
+    ]);
+  });
+
+  it("labels the storage location and says it is free text for now", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    const field = within(rowIn(EMBEDDING, "A2")).getByLabelText(
+      new RegExp("^" + messages["common.storageLocation"]),
+    );
+    expect(field).toHaveAttribute("id", "embeddingLocation1");
+    expect(
+      within(rowIn(EMBEDDING, "A2")).getByText(
+        messages["pathology.label.storageLocationInterim"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("badges the section with how many are embedded, out of the cassettes in use", async () => {
+    const retired = savedBlock("4", "A4", { active: false });
+    await openAtEmbedding([...oneOfThree(), retired]);
+
+    expect(header().getByText(embeddedOf(1, 3))).toBeInTheDocument();
+  });
+
+  it("badges the section Complete once every cassette is a block", async () => {
+    await openAtEmbedding(oneOfThree().map(asBlock));
+
+    expect(header().getByText(messages["common.complete"])).toBeInTheDocument();
+    expect(within(section(EMBEDDING)).queryByText(embeddedOf(3, 3))).toBeNull();
+  });
+
+  it("badges nothing and says how cassettes arrive when none has been cut", async () => {
+    await openAtEmbedding([]);
+
+    expect(
+      section(EMBEDDING)
+        .querySelector(".cds--accordion__heading")
+        .querySelector(".cds--tag"),
+    ).toBeNull();
+    expect(
+      within(section(EMBEDDING)).getByText(
+        messages["pathology.empty.noCassettes"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("opens on a warning that counts the cassettes and names the outstanding ones", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    const body = within(section(EMBEDDING));
+    expect(
+      body.getByText(embeddedOf(1, 3), {
+        selector: ".cds--inline-notification__title",
+      }),
+    ).toBeInTheDocument();
+    expect(body.getByText(outstanding("A2, A3"))).toBeInTheDocument();
+  });
+
+  it("names the outstanding cassettes on the rail at embedding", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(rail().getByText(outstanding("A2, A3"))).toBeInTheDocument();
+  });
+
+  it("names nothing on the rail for a case still at grossing", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: oneOfThree() });
+    renderCaseView();
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+    expect(rail().queryByText(outstanding("A2, A3"))).toBeNull();
+  });
+
+  it("sums embedding up in the summary and names the outstanding cassettes on the row", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    const label = messages["pathology.stage.embedding"];
+    expect(summaryValue(label)).toBe(embeddedOf(1, 3));
+    expect(summaryRow(label)).toHaveAttribute("title", outstanding("A2, A3"));
+  });
+
+  it("keeps a deactivated cassette out of the list until the list's switch is on", async () => {
+    await openAtEmbedding([
+      ...oneOfThree(),
+      savedBlock("4", "A4", { active: false }),
+    ]);
+
+    expect(queryRowIn(EMBEDDING, "A4")).toBeNull();
+
+    fireEvent.click(showDeactivatedSwitch(EMBEDDING));
+
+    const deactivated = rowIn(EMBEDDING, "A4");
+    expect(
+      within(deactivated).getByText(messages["caseView.badge.deactivated"]),
+    ).toBeInTheDocument();
+    expect(
+      within(deactivated).queryByRole("button", { name: embedName("A4") }),
+    ).toBeNull();
+  });
+
+  it("offers no count input in the embedding section", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(section(EMBEDDING).querySelector('input[type="number"]')).toBeNull();
+    expect(section(EMBEDDING).querySelector(".cds--number")).toBeNull();
   });
 });

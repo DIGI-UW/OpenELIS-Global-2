@@ -66,3 +66,172 @@ tr.oddRowHead {
     margin-top: 1rem;
   }
 }
+
+.batch-workplan__filters,
+.batch-workplan__create,
+.batch-workplan__qc-entry-row {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.batch-workplan__filters > * {
+  min-inline-size: 11rem;
+}
+
+.batch-workplan__create .cds--form-item {
+  flex: 0 1 18rem;
+}
+
+.batch-workplan__batches-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.batch-workplan__tile {
+  background: var(--cds-layer-01, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  margin-bottom: 0.5rem;
+}
+
+.batch-workplan__tile--alert {
+  border: 2px solid var(--cds-support-error, #da1e28);
+}
+
+.batch-workplan__tile-header {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.batch-workplan__tile-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.batch-workplan__tile-tags {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.batch-workplan__tile-body {
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  padding: 1rem;
+}
+
+.batch-workplan__section-title {
+  margin: 1rem 0 0.5rem;
+}
+
+.batch-workplan__phase {
+  margin-top: 1rem;
+}
+
+.batch-workplan__muted {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+}
+
+.batch-workplan__mono {
+  font-family: var(--cds-code-01-font-family, monospace);
+  font-weight: 600;
+}
+
+.batch-workplan__lot {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.batch-workplan__qc-entry {
+  background: var(--cds-layer-02, #fff);
+  border: 1px solid var(--cds-border-subtle-02, #c6c6c6);
+  margin-top: 0.5rem;
+  padding: 1rem;
+}
+
+.batch-workplan__qc-entry > * + * {
+  margin-top: 0.75rem;
+}
+
+.batch-workplan__history {
+  margin: 0.25rem 0 0.5rem 1rem;
+}
+
+.batch-workplan__generate {
+  align-items: center;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+}
+
+.batch-workplan__nce-link {
+  text-decoration: none;
+}
+
+.batch-workplan__modal-body + .batch-workplan__modal-body {
+  margin-top: 0.75rem;
+}
+
+.batch-workplan-print {
+  padding: 1rem 2rem;
+}
+
+.batch-workplan-print__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.batch-workplan-print__facts {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: max-content 1fr;
+  margin: 1rem 0;
+}
+
+.batch-workplan-print__facts dt {
+  font-weight: 600;
+}
+
+.batch-workplan-print h3 {
+  margin: 1.5rem 0 0.5rem;
+}
+
+.batch-workplan-print__blank {
+  min-inline-size: 8rem;
+}
+
+@media print {
+  .batch-workplan-print__actions {
+    display: none;
+  }
+}
+
+.batch-workplan__notification-link {
+  padding: 0 0.75rem 0.5rem;
+}
+
+@media print {
+  body:has(.batch-workplan-print) #mainHeader,
+  body:has(.batch-workplan-print) .cds--side-nav,
+  body:has(.batch-workplan-print) .cds--side-nav__overlay,
+  body:has(.batch-workplan-print) .cds--breadcrumb {
+    display: none;
+  }
+
+  body:has(.batch-workplan-print) .cds--content {
+    margin: 0;
+    padding: 0;
+  }
+}

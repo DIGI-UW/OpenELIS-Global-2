@@ -77,6 +77,27 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
         assertEquals(842f, PdfText.pageHeight(a4, 1), 0.5f);
     }
 
+    /**
+     * OGC-1031 FR-4.6: a report issued by the Report Print Queue names its version
+     * and first issue time in the footer of every page, corrected or not; a print
+     * outside the queue keeps the plain issue time.
+     */
+    @Test
+    public void footerNamesTheVersionAndItsIssueTimeOfAQueuePrint() throws Exception {
+        PatientReportOrder order = order();
+        order.setVersion(2);
+        order.setIssueTime("10/20/26 07:40");
+
+        String text = PdfText.of(render(rows(ORDER), Map.of(ORDER, order)));
+
+        assertTrue(text, text.contains("Version 2 · Issued 10/20/26 07:40"));
+        assertFalse("not amended, so no corrected banner", text.contains("Corrected report"));
+
+        String plain = PdfText.of(render(rows(ORDER), Map.of(ORDER, order())));
+        assertTrue(plain.contains("Issued "));
+        assertFalse(plain.contains("Version"));
+    }
+
     @Test
     public void headerNamesTheLabTheFinalOrPartialTitleTheDirectorAndTheAccreditingBodies() throws Exception {
         PatientReportOrder order = order();

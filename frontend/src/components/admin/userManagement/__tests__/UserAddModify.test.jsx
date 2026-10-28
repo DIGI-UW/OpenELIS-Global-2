@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -292,6 +292,24 @@ describe("UserAddModify", () => {
     });
   });
 
+  describe("password", () => {
+    it("marks a password the server would refuse as invalid (OGC-1545 walk)", async () => {
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(document.getElementById("login-password")).not.toBeNull(),
+      );
+      const password = document.getElementById("login-password");
+
+      await userEvent.clear(password);
+      await userEvent.type(password, "abc-def*1");
+      expect(password).toHaveAttribute("data-invalid", "true");
+
+      await userEvent.clear(password);
+      await userEvent.type(password, "abc_def*1");
+      expect(password).not.toHaveAttribute("data-invalid");
+    });
+  });
+
   describe("save", () => {
     const save = async () => {
       await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -329,6 +347,47 @@ describe("UserAddModify", () => {
 
       expect(notification.kind).toBe("error");
       expect(notification.message).toBe(messages["server.error.msg"]);
+    });
+
+    it("names why the server refused the save (OGC-1545)", async () => {
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({
+          forward: "unifiedSystemUserDefinition",
+          errorKey: "errors.loginName.duplicated",
+          error:
+            "Login name, qa_heme, is already in use.  Please select another.",
+          statusCode: 400,
+        }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.kind).toBe("error");
+      expect(notification.message).toBe(
+        "Login name, qa_heme, is already in use.  Please select another.",
+      );
+    });
+
+    it("sends one save for a double click while the first is in flight (OGC-1545 review)", async () => {
+      let answer;
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
+        answer = cb;
+      });
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const saveButton = screen.getByRole("button", { name: "Save" });
+      fireEvent.click(saveButton);
+      fireEvent.click(saveButton);
+
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+      act(() => answer({ forward: "redirect:/UnifiedSystemUser" }));
     });
 
     it("does not report success when the server refuses the save", async () => {

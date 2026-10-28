@@ -185,6 +185,11 @@ jobs:
       - name: Install Playwright browsers
         timeout-minutes: 15
         run: |
+          # --with-deps runs apt-get update, which fails the whole install when
+          # any source fails; packages.microsoft.com answered 403 on a runner
+          # (2026-10-20). Chromium's dependencies come from the Ubuntu archive.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+            /etc/apt/sources.list.d/microsoft-prod.sources
           for attempt in 1 2 3; do
             echo "::group::Playwright install attempt $attempt"
             # A timed-out --with-deps attempt orphans apt-get still holding the

@@ -415,12 +415,24 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
         private final boolean amended;
         private final String changeSummary;
         private final String replacedIssueTime;
+        private final String issueTime;
 
         public IssueContext(int version, boolean amended, String changeSummary, String replacedIssueTime) {
+            this(version, amended, changeSummary, replacedIssueTime, null);
+        }
+
+        /**
+         * @param issueTime when this version was first issued, as
+         *                  {@link #reportTime(Timestamp)} prints it; the footer shows
+         *                  it instead of the render time (FRS OGC-1031 FR-4.6)
+         */
+        public IssueContext(int version, boolean amended, String changeSummary, String replacedIssueTime,
+                String issueTime) {
             this.version = version;
             this.amended = amended;
             this.changeSummary = changeSummary;
             this.replacedIssueTime = replacedIssueTime;
+            this.issueTime = issueTime;
         }
     }
 
@@ -443,6 +455,7 @@ public class PatientCILNSPClinical_vreduit extends PatientReport implements IRep
     private void describeCorrection(PatientReportOrder order, OrderWork work) {
         if (issueContext != null) {
             order.setVersion(issueContext.version);
+            order.setIssueTime(issueContext.issueTime);
             order.setChangeSummary(issueContext.changeSummary);
             order.setCorrected(issueContext.amended);
             order.setReplacedIssueTime(issueContext.replacedIssueTime);

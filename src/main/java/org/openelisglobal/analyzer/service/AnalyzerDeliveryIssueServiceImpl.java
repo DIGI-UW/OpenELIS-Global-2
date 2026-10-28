@@ -58,7 +58,7 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
         Analyzer analyzer = connectionId == null ? null : byConnection.get(connectionId);
         String state = text(row, "state");
         return new AnalyzerDeliveryIssue(text(row, "id"), state, analyzer == null ? null : analyzer.getId(),
-                analyzer == null ? null : analyzer.getName(), connectionId, text(row, "sourceId"),
+                analyzer == null ? null : analyzer.getName(), connectionId, text(row, "sourceId"), text(row, "sender"),
                 text(row, "protocol"), text(row, "accession"), row.path("attempts").asInt(0), text(row, "receivedAt"),
                 text(row, "failureReason"),
                 row.path("lastHttpStatus").isNumber() ? row.path("lastHttpStatus").asInt() : null,

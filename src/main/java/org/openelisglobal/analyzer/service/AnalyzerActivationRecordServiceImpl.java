@@ -92,9 +92,7 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
     }
 
     private static boolean matchesProfile(AnalyzerProfilePin profile, JsonNode profileRef) {
-        return profile.getProfileId().equals(profileRef.path("profileId").asText(null))
-                && profile.getProfileRevision() == profileRef.path("revision").asInt(0)
-                && profile.getProfileFingerprint().equals(profileRef.path("fingerprint").asText(null));
+        return profile.names(profileRef.path("profileId").asText(null), profileRef.path("revision").asInt(0));
     }
 
     private static boolean matchesIntent(String intent, JsonNode acknowledgement) {

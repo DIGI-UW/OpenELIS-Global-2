@@ -130,6 +130,23 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
+    public List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead) throws LIMSRuntimeException {
+        try {
+            Timestamp cutoff = new Timestamp(System.currentTimeMillis() + ((long) daysAhead * 24 * 60 * 60 * 1000));
+            String hql = "FROM InventoryLot l WHERE l.status IN (:statuses) AND l.currentQuantity > 0"
+                    + " AND coalesce(least(l.expirationDate, l.calculatedExpiryAfterOpening), l.expirationDate,"
+                    + " l.calculatedExpiryAfterOpening) < :cutoff ORDER BY l.expirationDate";
+            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
+            query.setParameterList("statuses", List.of(LotStatus.ACTIVE, LotStatus.IN_USE));
+            query.setParameter("cutoff", cutoff);
+            return query.list();
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting stocked lots expiring within " + daysAhead + " days", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryLot getByLotNumber(String lotNumber) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryLot l WHERE l.lotNumber = :lotNumber";

@@ -6,12 +6,15 @@ import {
   SeededPathologyCase,
 } from "../../../helpers/seed-pathology-data";
 import {
+  cassetteRows,
   expandSection,
   openCase,
   overlaps,
+  rowNamed,
   saveDraft,
   sectionHeader,
   setStage,
+  slideRows,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
@@ -46,25 +49,6 @@ import { UI_TIMEOUT } from "../../../helpers/timeouts";
  */
 
 let seeded: SeededPathologyCase;
-
-/** Every cassette row on the grossing list, retired ones included when shown. */
-function cassetteRows(page: Page) {
-  return page.locator("#pathology-section-grossing .pathology-case-view__row");
-}
-
-/** Every slide row on the microtomy list. */
-function slideRows(page: Page) {
-  return page.locator("#pathology-section-microtomy .pathology-case-view__row");
-}
-
-/** The one row on a list carrying a designation, matched whole. */
-function rowNamed(rows: ReturnType<typeof cassetteRows>, designation: string) {
-  return rows.filter({
-    has: rows.page().locator(".pathology-case-view__row-designation", {
-      hasText: new RegExp(`^${designation}$`),
-    }),
-  });
-}
 
 /** A barcode as the row renders it, behind its visually hidden label. */
 function barcodeText(barcode: string) {
@@ -197,7 +181,7 @@ test.describe
     await expandSection(page, "pathology-section-grossing");
 
     const location = rowNamed(cassetteRows(page), "A1").getByLabel(
-      "Location A1",
+      "Storage Location A1",
       {
         exact: true,
       },
@@ -217,7 +201,7 @@ test.describe
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-grossing");
     await expect(
-      rowNamed(cassetteRows(page), "A1").getByLabel("Location A1", {
+      rowNamed(cassetteRows(page), "A1").getByLabel("Storage Location A1", {
         exact: true,
       }),
     ).toHaveValue("Drawer 5");
@@ -328,7 +312,7 @@ test.describe
         retiredRow.locator(".cds--tag", { hasText: /^Deactivated$/ }),
       ).toBeVisible();
       await expect(
-        retiredRow.getByLabel("Location A2", { exact: true }),
+        retiredRow.getByLabel("Storage Location A2", { exact: true }),
       ).toBeDisabled();
       await expect(
         retiredRow.getByRole("button", {
@@ -476,7 +460,7 @@ test.describe
     await expect(deactivate).toBeEnabled();
 
     const location = rowNamed(cassetteRows(page), "A1").getByLabel(
-      "Location A1",
+      "Storage Location A1",
       {
         exact: true,
       },

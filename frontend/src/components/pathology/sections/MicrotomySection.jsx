@@ -62,11 +62,7 @@ const MicrotomySection = ({
     );
   };
 
-  const hiddenName = (objectName) => (
-    <span className="cds--visually-hidden">{" " + objectName}</span>
-  );
-
-  const parentField = (slide, index, objectName, disabled) => {
+  const parentField = (slide, index, hiddenName, disabled) => {
     const parent = parentBlockOf(slide, blocks);
 
     if (isUnsavedRow(slide)) {
@@ -79,7 +75,7 @@ const MicrotomySection = ({
             titleText={
               <>
                 {intl.formatMessage({ id: "pathology.label.parentBlock" })}
-                {hiddenName(objectName)}
+                {hiddenName}
               </>
             }
             placeholder={intl.formatMessage({ id: "common.select" })}
@@ -180,9 +176,9 @@ const MicrotomySection = ({
             </>
           )}
         >
-          {({ objectName, disabled }) => (
+          {({ hiddenName, disabled }) => (
             <>
-              {parentField(slide, index, objectName, disabled)}
+              {parentField(slide, index, hiddenName, disabled)}
               <div className="pathology-case-view__row-field">
                 <TextInput
                   id={"slideLocation" + index}
@@ -190,7 +186,7 @@ const MicrotomySection = ({
                   labelText={
                     <>
                       {intl.formatMessage({ id: "pathology.label.location" })}
-                      {hiddenName(objectName)}
+                      {hiddenName}
                     </>
                   }
                   value={slide.location ?? ""}

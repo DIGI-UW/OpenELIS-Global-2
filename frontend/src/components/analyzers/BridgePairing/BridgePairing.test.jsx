@@ -93,10 +93,91 @@ describe("BridgePairing", () => {
     expect(screen.getByTestId("bridge-pairing-form")).toBeInTheDocument();
   });
 
-  it("shows nothing when no Bridge is configured", () => {
+  it("says when the Bridge presents a different certificate and asks for its code", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...PAIRED, pinCheck: "OTHER_CERTIFICATE" }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "Paired with a different Bridge certificate",
+    );
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "abababababababab",
+    );
+    expect(screen.queryByTestId("bridge-pairing-paired")).toBeNull();
+    expect(screen.getByTestId("bridge-pairing-form")).toBeInTheDocument();
+  });
+
+  it("says when the Bridge lost the pairing", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({
+        ...PAIRED,
+        pinCheck: "BRIDGE_UNPAIRED",
+        pairsAutomatically: true,
+      }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "The Analyzer Bridge lost its pairing",
+    );
+    expect(screen.getByTestId("bridge-pairing-stale")).toHaveTextContent(
+      "OpenELIS pairs with the code it is configured with on its own.",
+    );
+  });
+
+  it("shows a pin the Bridge confirms as paired", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...PAIRED, pinCheck: "MATCHES" }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-paired")).toBeInTheDocument();
+    expect(screen.queryByTestId("bridge-pairing-stale")).toBeNull();
+  });
+
+  it("says when no Bridge is configured instead of showing nothing (OGC-1546)", () => {
     getBridgePairing.mockImplementation((callback) =>
       callback({ ...UNPAIRED, bridgeUrl: "" }),
     );
+    renderPairing();
+
+    expect(
+      screen.getByTestId("bridge-pairing-not-configured"),
+    ).toHaveTextContent(
+      "No Analyzer Bridge address is configured for OpenELIS.",
+    );
+  });
+
+  it("says no Bridge is configured when a paired install lost its address (OGC-1546)", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...PAIRED, bridgeUrl: "", pinCheck: null }),
+    );
+    renderPairing();
+
+    expect(
+      screen.getByTestId("bridge-pairing-not-configured"),
+    ).toHaveTextContent(
+      "No Analyzer Bridge address is configured for OpenELIS.",
+    );
+    expect(screen.queryByText("Paired with the Analyzer Bridge")).toBeNull();
+  });
+
+  it("says when the paired Bridge cannot be reached instead of showing it paired (OGC-1546)", () => {
+    getBridgePairing.mockImplementation((callback) =>
+      callback({ ...PAIRED, pinCheck: "UNREACHABLE" }),
+    );
+    renderPairing();
+
+    expect(screen.getByTestId("bridge-pairing-unreachable")).toHaveTextContent(
+      "OpenELIS could not reach the Analyzer Bridge.",
+    );
+    expect(screen.queryByTestId("bridge-pairing-paired")).toBeNull();
+  });
+
+  it("shows nothing when the pairing status cannot be read", () => {
+    getBridgePairing.mockImplementation((callback) => callback(undefined));
     renderPairing();
 
     expect(screen.queryByTestId("bridge-pairing")).toBeNull();

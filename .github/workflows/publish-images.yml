@@ -75,6 +75,7 @@ jobs:
     if: needs.setup.outputs.head_sha != '' && (needs.setup.outputs.event_name == 'push' || needs.setup.outputs.event_name == 'release') && needs.setup.outputs.image_transfer != 'none' && github.event.workflow_run.conclusion != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       statuses: read
       checks: read
@@ -355,6 +356,7 @@ jobs:
             .github/scripts
             volume
             projects/analyzer-harness
+            scripts/certs
       - name: Build the deployment bundle
         run: |
           set -euo pipefail
@@ -366,7 +368,7 @@ jobs:
           mkdir -p "bundle/tools/openelis-analyzer-bridge/$(dirname "$profiles")"
           cp -R "bridge/$profiles" "bundle/tools/openelis-analyzer-bridge/$profiles"
           tar -czf deploy-bundle.tgz docker-compose.yml docker-compose.analyzers.yml volume \
-            projects/analyzer-harness/seed-analyzers.sh \
+            projects/analyzer-harness/seed-analyzers.sh scripts/certs/ensure-install-keys.sh \
             -C bundle tools
       - name: Validate deployment request
         env:

@@ -1,7 +1,11 @@
 package org.openelisglobal.batchworkplan.daoimpl;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.batchworkplan.dao.BatchWorkplanDAO;
@@ -52,6 +56,32 @@ public class BatchWorkplanDAOImpl extends BaseDAOImpl<BatchWorkplan, Long> imple
             return query.uniqueResultOptional();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting batch workplan", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> getPatientNamesBySampleIds(Collection<String> sampleIds) {
+        Map<String, String> names = new HashMap<>();
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return names;
+        }
+        try {
+            String hql = "SELECT sh.sampleId, p.person.lastName, p.person.firstName FROM SampleHuman sh, Patient p"
+                    + " WHERE p.id = sh.patientId AND sh.sampleId IN (:sampleIds)";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("sampleIds", sampleIds);
+            for (Object[] row : query.list()) {
+                String last = StringUtils.trimToEmpty((String) row[1]);
+                String first = StringUtils.trimToEmpty((String) row[2]);
+                String name = last.isEmpty() || first.isEmpty() ? last + first : last + ", " + first;
+                if (!name.isEmpty()) {
+                    names.put(String.valueOf(row[0]), name);
+                }
+            }
+            return names;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting patient names for batch workplan samples", e);
         }
     }
 }

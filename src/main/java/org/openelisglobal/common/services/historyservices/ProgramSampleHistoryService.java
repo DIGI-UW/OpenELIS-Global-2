@@ -39,6 +39,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
     private static String REPORTS_ATTRIBUTE = "reports";
     private static String GROSS_EXAM_ATTRIBUTE = "grossExam";
     private static String MICROSCOPY_EXAM_ATTRIBUTE = "microscopyExam";
+    private static String DECALCIFICATION_REQUIRED_ATTRIBUTE = "decalcificationRequired";
     private static String REFERRED_ATTRIBUTE = "reffered";
     private static String CYTO_PATHOLOGIST_ATTRIBUTE = "cytoPathologist";
     private static String SPECIMEN_ADEQUACY_ATTRIBUTE = "specimenAdequacy";
@@ -89,6 +90,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
             attributeToIdentifierMap.put(REPORTS_ATTRIBUTE, REPORTS_ATTRIBUTE);
             attributeToIdentifierMap.put(GROSS_EXAM_ATTRIBUTE, GROSS_EXAM_ATTRIBUTE);
             attributeToIdentifierMap.put(MICROSCOPY_EXAM_ATTRIBUTE, MICROSCOPY_EXAM_ATTRIBUTE);
+            attributeToIdentifierMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, DECALCIFICATION_REQUIRED_ATTRIBUTE);
             newValueMap.put(TECHNICIAN_ATTRIBUTE, pathology.getTechnician_Audit());
             newValueMap.put(PATHOLOGIST_ATTRIBUTE, pathology.getPathologist_Audit());
             newValueMap.put(STATUS_ATTRIBUTE, pathology.getStatus() == null ? "" : pathology.getStatus().getDisplay());
@@ -100,6 +102,7 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
             newValueMap.put(REPORTS_ATTRIBUTE, pathology.getReports_Audit());
             newValueMap.put(GROSS_EXAM_ATTRIBUTE, pathology.getGrossExam());
             newValueMap.put(MICROSCOPY_EXAM_ATTRIBUTE, pathology.getMicroscopyExam());
+            newValueMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, String.valueOf(pathology.isDecalcificationRequired()));
         } else if (programSample instanceof ImmunohistochemistrySample) {
             ImmunohistochemistrySample immunohistochemitry = (ImmunohistochemistrySample) programSample;
             attributeToIdentifierMap.put(TECHNICIAN_ATTRIBUTE, TECHNICIAN_ATTRIBUTE);
@@ -229,6 +232,8 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
         simpleChange(changeMap, changes, GROSS_EXAM_ATTRIBUTE);
         changeMap.put(MICROSCOPY_EXAM_ATTRIBUTE, "");
         simpleChange(changeMap, changes, MICROSCOPY_EXAM_ATTRIBUTE);
+        changeMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, "");
+        simpleChange(changeMap, changes, DECALCIFICATION_REQUIRED_ATTRIBUTE);
     }
 
     @Override

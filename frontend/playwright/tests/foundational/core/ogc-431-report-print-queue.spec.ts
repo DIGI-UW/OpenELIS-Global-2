@@ -124,7 +124,12 @@ test("a released order is queued, printed as version 1, archived and reprinted",
 
   await test.step("before release the lookup finds it with nothing to print", async () => {
     const row = await queueRow(page, accession);
-    await expect(row).toContainText("Not printed");
+    // "Not issued" in en.json; a regional overlay keeps "Not printed" until Transifex syncs.
+    await expect(row).toContainText(/Not (issued|printed)/);
+    // The tag repeats its text in a hidden definition tooltip.
+    await expect(
+      row.getByTestId(`nothing-released-${accession}`),
+    ).toContainText("Nothing released yet on this order");
     await expect(
       row.getByRole("button", { name: "Print", exact: true }),
     ).toBeDisabled();
@@ -136,7 +141,7 @@ test("a released order is queued, printed as version 1, archived and reprinted",
     const released = await queueRow(page, accession);
     await expect(released).toContainText("Final");
     await expect(released).toContainText("Unprinted");
-    await expect(released).toContainText("Not printed");
+    await expect(released).toContainText(/Not (issued|printed)/);
     return released;
   });
 
@@ -192,19 +197,204 @@ test("a released order is queued, printed as version 1, archived and reprinted",
   });
 });
 
-test("the home dashboard's unprinted results tile opens the queue", async ({
+/** The queue's detail of an order: its versions, newest last. */
+async function versionsOf(page: Page, accession: string) {
+  const detail = await page.request.get(
+    `${API_PREFIX}/rest/reportQueue/orders/${await sampleIdOf(page, accession)}`,
+  );
+  expect(detail.status(), "queue detail").toBe(200);
+  return (
+    (await detail.json()) as {
+      versions: { version: number; changeSummary?: string }[];
+    }
+  ).versions;
+}
+
+/** The first two numeric tests the server offers on Serum, by id and name. */
+async function twoNumericSerumTests(page: Page) {
+  const response = await page.request.get(
+    `${API_PREFIX}/rest/sample-type-tests?sampleType=2`,
+  );
+  expect(response.status(), "Serum test list").toBe(200);
+  const tests = (
+    (await response.json()) as {
+      tests?: { id: string; name: string; resultType?: string }[];
+    }
+  ).tests?.filter((t) => t.resultType === "N");
+  expect(tests?.length, "two numeric Serum tests").toBeGreaterThan(1);
+  return tests!.slice(0, 2);
+}
+
+/** The same value with its last digit moved up by one, keeping its precision. */
+function bumped(value: string): string {
+  const last = Number(value.slice(-1));
+  return last < 9
+    ? `${value.slice(0, -1)}${last + 1}`
+    : `${value.slice(0, -1)}${last - 1}`;
+}
+
+/**
+ * OGC-1529: a printed result corrected on Results waits for validation. Until
+ * then the order stays Printed and a print reprints version 1; once the
+ * correction is validated the next print is one corrected version naming the
+ * old and the new value, never one that removes the result and adds it back.
+ */
+test("a correction awaiting validation keeps the order printed until it is validated", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const tests = await twoNumericSerumTests(page);
+  const accession =
+    await test.step("print version 1 of a released order", async () => {
+      const labNo = await createSampleOrder(page, {
+        labNo: "",
+        receivedDate: "",
+        receivedTime: "",
+        sampleTypeId: "2",
+        testIds: tests.map((t) => t.id).join(","),
+        ...(await orderParties(page)),
+      });
+      expect(labNo).not.toBe("");
+      await enterResults(page, labNo);
+      await validateResults(page, labNo);
+      const row = await queueRow(page, labNo);
+      const print = await printFromRow(page, row);
+      expect(print.headers()["x-report-version"]).toBe("1");
+      return labNo;
+    });
+
+  const corrected =
+    await test.step("correct one result on Results without validating it", async () => {
+      await page.goto(`/Results?accessionNumber=${accession}`, {
+        waitUntil: "domcontentloaded",
+        timeout: NAV_TIMEOUT,
+      });
+      const row = page
+        .getByRole("row")
+        .filter({ hasText: `${tests[1].name}(Serum)` });
+      const edit = row.getByRole("button", { name: "Edit", exact: true });
+      await expect(edit).toBeVisible({ timeout: UI_TIMEOUT });
+      await edit.click();
+      const box = row.getByRole("textbox", { name: /^Result for / });
+      await expect(box).toBeVisible({ timeout: UI_TIMEOUT });
+      const before = await box.inputValue();
+      const after = bumped(before);
+      await box.fill(after);
+      await box.press("Tab");
+      const saved = page.waitForResponse(
+        (response) =>
+          /\/rest\/results-entry\/analysis\/\d+\/result/.test(response.url()) &&
+          response.request().method() === "POST",
+      );
+      await row.getByRole("button", { name: "Save", exact: true }).click();
+      expect((await saved).status()).toBe(200);
+      return after;
+    });
+
+  await test.step("the order stays Printed and a print is a reprint", async () => {
+    const row = await queueRow(page, accession);
+    await expect(row).toContainText("Printed");
+    await expect(row).not.toContainText("Unprinted");
+    await expect(row).not.toContainText("Amended");
+    await expect(
+      row.getByTestId(`awaiting-validation-${accession}`),
+    ).toContainText("Correction awaiting validation");
+    const print = await printFromRow(page, row);
+    expect(print.headers()["x-report-version"]).toBe("1");
+    expect(print.headers()["x-report-reprint"]).toBe("true");
+    expect(await versionsOf(page, accession)).toHaveLength(1);
+  });
+
+  await test.step("once validated it prints one corrected version", async () => {
+    await validateResults(page, accession);
+    const row = await queueRow(page, accession);
+    await expect(row).toContainText("Amended");
+    await expect(row).toContainText("Unprinted");
+    const print = await printFromRow(page, row);
+    expect(print.headers()["x-report-version"]).toBe("2");
+    const versions = await versionsOf(page, accession);
+    expect(versions).toHaveLength(2);
+    const summary = versions.find((v) => v.version === 2)?.changeSummary ?? "";
+    expect(summary).toContain(`→ ${corrected}`);
+    expect(summary).not.toMatch(/Removed|Added/);
+  });
+});
+
+test("the home dashboard's unprinted results tile counts and opens the queue", async ({
   page,
 }) => {
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
-  const tile = page.getByText("UnPrinted Results Today");
+  const tile = page.getByRole("button", { name: /Unprinted results/ });
   await expect(tile).toBeVisible({ timeout: UI_TIMEOUT });
+  // Casey's ruling (22 Oct 2026): the tile counts every unprinted order, the
+  // list it opens. Other specs print and add orders, so compare one snapshot.
+  await expect
+    .poll(
+      async () => {
+        const [metrics, queue] = await Promise.all([
+          page.request.get(`${API_PREFIX}/rest/home-dashboard/metrics`),
+          page.request.get(
+            `${API_PREFIX}/rest/reportQueue?printStatus=UNPRINTED`,
+          ),
+        ]);
+        return (
+          (await metrics.json()).unPritendResults - (await queue.json()).total
+        );
+      },
+      { timeout: UI_TIMEOUT },
+    )
+    .toBe(0);
+  // The queue lists as soon as it mounts, so listen before the click.
+  const listed = page.waitForResponse(
+    (response) =>
+      response.url().includes("/rest/reportQueue?") &&
+      response.url().includes("printStatus=UNPRINTED"),
+  );
   await tile.click();
-  await expect(page).toHaveURL(/\/ReportPrintQueue\?type=patient/, {
-    timeout: UI_TIMEOUT,
+  await expect(page).toHaveURL(
+    /\/ReportPrintQueue\?type=patient&printStatus=unprinted/,
+    { timeout: UI_TIMEOUT },
+  );
+  await expect(
+    page.getByRole("heading", { name: "Report Print Queue" }),
+  ).toBeVisible({ timeout: UI_TIMEOUT });
+  await listed;
+  // "Print status" is also a column header; the filter is the combobox,
+  // whose title is the selected item (its text adds the icon's label).
+  await expect(
+    page.getByRole("combobox", { name: "Print status" }),
+  ).toHaveAttribute("title", "Unprinted", { timeout: UI_TIMEOUT });
+});
+
+test("a lab number range whose end comes first is refused on the page", async ({
+  page,
+}) => {
+  await page.goto("/ReportPrintQueue", {
+    waitUntil: "domcontentloaded",
+    timeout: NAV_TIMEOUT,
   });
   await expect(
     page.getByRole("heading", { name: "Report Print Queue" }),
   ).toBeVisible({ timeout: UI_TIMEOUT });
+  // The toggle's label sits over the switch and takes the click.
+  await page.locator('label[for="queue-lab-range"]').click();
+  await expect(page.getByRole("switch", { name: "Range" })).toBeChecked();
+  const from = page.getByRole("textbox", { name: "Lab Number", exact: true });
+  const to = page.getByRole("textbox", { name: "To lab number" });
+  await from.fill("DEV01260000000000900");
+  await to.fill("DEV01260000000000100");
+  await to.press("Enter");
+
+  await expect(
+    page.getByText("The To lab number is before the From lab number"),
+  ).toBeVisible({ timeout: UI_TIMEOUT });
+  await expect(page.getByTestId("active-search")).toHaveCount(0);
+
+  const refused = await page.request.get(
+    `${API_PREFIX}/rest/reportQueue?labNo=DEV01260000000000900&labNoTo=DEV01260000000000100`,
+  );
+  expect(refused.status()).toBe(400);
+  expect((await refused.json()).code).toBe("labRangeReversed");
 });
 
 test.describe("as a user without the Reports role", () => {

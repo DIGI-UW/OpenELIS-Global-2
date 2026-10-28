@@ -306,7 +306,7 @@ export const NCECorrectiveAction = () => {
                     <SelectItem
                       key={statusOption.value}
                       value={statusOption.value}
-                      text={statusOption.text}
+                      text={intl.formatMessage({ id: statusOption.labelId })}
                     />
                   ))}
                 </Select>
@@ -366,7 +366,7 @@ export const NCECorrectiveAction = () => {
                         <TableHeader key="checkbox" />
                         {headers.map((header) => (
                           <TableHeader id={header.key} key={header.key}>
-                            {header.value}
+                            {intl.formatMessage({ id: header.labelId })}
                           </TableHeader>
                         ))}
                       </TableRow>

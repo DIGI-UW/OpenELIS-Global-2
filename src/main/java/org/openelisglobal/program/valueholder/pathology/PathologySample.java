@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
@@ -104,6 +105,13 @@ public class PathologySample extends ProgramSample {
 
     @Column(name = "microscopy_exam")
     private String microscopyExam;
+
+    /**
+     * Whether the specimen needs decalcifying before processing, which is what
+     * makes the DECALCIFICATION stage apply to this case.
+     */
+    @Column(name = "decalcification_required", nullable = false)
+    private boolean decalcificationRequired;
 
     public List<PathologyRequest> getRequests() {
         return requests;
@@ -210,7 +218,7 @@ public class PathologySample extends ProgramSample {
         return blocks;
     }
 
-    /** Names each block by the identifier written on it. */
+    /** Names each block by the identifier written on it and the tissue it holds. */
     public String getBlocks_Audit() {
         if (blocks == null) {
             return null;
@@ -218,9 +226,22 @@ public class PathologySample extends ProgramSample {
             return StringUtils.join(blocks.stream()
                     .map(e -> "Block: " + e.displayIdentifier() + ", Cassette State: "
                             + (e.getCassetteState() == null ? "" : e.getCassetteState().name()) + ", Location: "
-                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive())
+                            + StringUtils.defaultString(e.getLocation()) + ", Tissue: "
+                            + tissueTypeName(e.getTissueTypeId()) + ", Active: " + e.isActive())
                     .collect(Collectors.toList()), "; ");
         }
+    }
+
+    /**
+     * The tissue type by its dictionary name, so a history row says what the
+     * cassette held rather than a bare id; the id stands in for a missing entry.
+     */
+    private static String tissueTypeName(String tissueTypeId) {
+        if (StringUtils.isBlank(tissueTypeId)) {
+            return "";
+        }
+        Dictionary entry = SpringContext.getBean(DictionaryService.class).getDataForId(tissueTypeId);
+        return entry == null ? tissueTypeId : entry.getDisplayValue();
     }
 
     public void setBlocks(List<PathologyBlock> blocks) {
@@ -263,6 +284,14 @@ public class PathologySample extends ProgramSample {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public boolean isDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
     }
 
     public List<PathologyReport> getReports() {

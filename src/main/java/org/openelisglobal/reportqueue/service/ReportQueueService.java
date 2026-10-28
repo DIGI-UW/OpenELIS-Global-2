@@ -63,6 +63,12 @@ public interface ReportQueueService {
 
     ReportQueuePageDTO list(ReportQueueRequest request, String sysUserId);
 
+    /**
+     * The orders the queue lists as Unprinted for the user, whenever they were
+     * released: the home dashboard tile that opens that list shows this number.
+     */
+    long unprintedCount(String sysUserId);
+
     Optional<ReportQueueRowDetailDTO> detail(Long sampleId, String sysUserId);
 
     /**
@@ -77,7 +83,11 @@ public interface ReportQueueService {
      */
     byte[] printPatientReports(List<String> sampleIds, String sysUserId);
 
-    Optional<ReportVersion> version(Long versionId);
+    /**
+     * The archived version, when it exists and its order is within the user's
+     * scope.
+     */
+    Optional<ReportVersion> version(Long versionId, String sysUserId);
 
     ReportQueuePreferenceDTO preferences(String sysUserId);
 

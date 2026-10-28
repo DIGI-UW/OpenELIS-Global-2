@@ -186,7 +186,8 @@ const lot = (overrides) => ({
 });
 
 // Lot expiry ships as epoch milliseconds (java.sql.Timestamp), not an ISO string.
-const expiry = (daysFromNow) => shiftDays(daysFromNow).getTime();
+// Expiry tags count elapsed 24-hour periods, including across daylight-saving changes.
+const expiry = (daysFromNow) => TODAY.getTime() + daysFromNow * 86400000;
 
 const LOTS = [
   lot({

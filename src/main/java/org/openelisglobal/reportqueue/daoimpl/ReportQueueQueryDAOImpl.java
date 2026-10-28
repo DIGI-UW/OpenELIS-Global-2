@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.reportqueue.dao.ReleasedNumericResultRecord;
 import org.openelisglobal.reportqueue.dao.ReportQueueCriteria;
 import org.openelisglobal.reportqueue.dao.ReportQueueQueryDAO;
 import org.openelisglobal.reportqueue.dao.ReportQueueRowRecord;
@@ -26,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
  * counts, the latest release, and against the last printed version whether
  * content was added, changed or removed. Those decide Unprinted/Printed and
  * Partial/Final/Amended (FRS BR-3), so filters, paging and tile counts all
- * agree because they read the same rows.
+ * agree because they read the same rows. A printed result that is back awaiting
+ * validation holds the order as it was printed: nothing counts as changed until
+ * the correction is validated (OGC-1529).
  */
 @Component
 @Transactional(readOnly = true)
@@ -41,7 +44,7 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                      COUNT(*) FILTER (WHERE a.status_id = :finalized) AS released_count,
                      COUNT(*) AS total_count,
                      MAX(a.released_date) FILTER (WHERE a.status_id = :finalized) AS latest_release,
-                     BOOL_OR(a.corrected = true) AS any_corrected,
+                     BOOL_OR(a.corrected = true AND a.status_id = :finalized) AS any_corrected,
                      (SELECT sh.patient_id FROM clinlims.sample_human sh WHERE sh.samp_id = s.id ORDER BY sh.id LIMIT 1) AS patient_id
               FROM clinlims.sample s
               JOIN clinlims.sample_item si ON si.samp_id = s.id
@@ -68,10 +71,16 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                         JOIN clinlims.test t2 ON t2.id = a2.test_id
                         WHERE i.report_version_id = lv.id
                           AND (a2.status_id IN (:excluded)
-                               OR COALESCE((SELECT string_agg(r.value, '|' ORDER BY r.id)
-                                            FROM clinlims.result r WHERE r.analysis_id = a2.id), '')
-                                  <> COALESCE(i.printed_value, '')
-                               OR COALESCE(CAST(t2.uom_id AS TEXT), '') <> COALESCE(i.printed_unit, '')))) AS changed_or_removed,
+                               OR (a2.status_id = :finalized
+                                   AND (COALESCE((SELECT string_agg(r.value, '|' ORDER BY r.id)
+                                                  FROM clinlims.result r WHERE r.analysis_id = a2.id), '')
+                                        <> COALESCE(i.printed_value, '')
+                                        OR COALESCE(CAST(t2.uom_id AS TEXT), '') <> COALESCE(i.printed_unit, '')))))) AS changed_or_removed,
+                     (lv.id IS NOT NULL AND NOT lv.legacy AND EXISTS (
+                        SELECT 1 FROM clinlims.report_version_item iw
+                        JOIN clinlims.analysis aw ON aw.id = iw.analysis_id
+                        WHERE iw.report_version_id = lv.id
+                          AND aw.status_id <> :finalized AND aw.status_id NOT IN (:excluded))) AS awaiting_validation,
                      (lv.id IS NOT NULL AND NOT lv.legacy AND EXISTS (
                         SELECT 1 FROM clinlims.analysis a3
                         JOIN clinlims.sample_item si3 ON si3.id = a3.sampitem_id
@@ -85,8 +94,9 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
               SELECT st.*,
                      (st.version_id IS NULL
                       OR (st.legacy AND st.latest_release > st.issued_at)
-                      OR st.added OR st.changed_or_removed) AS unprinted,
-                     (st.version_amended OR st.changed_or_removed OR (st.legacy AND st.any_corrected)) AS amended,
+                      OR (NOT st.awaiting_validation AND (st.added OR st.changed_or_removed))) AS unprinted,
+                     (st.version_amended OR (NOT st.awaiting_validation AND st.changed_or_removed)
+                      OR (st.legacy AND st.any_corrected)) AS amended,
                      (st.released_count < st.total_count) AS partial
               FROM state st
             )
@@ -111,7 +121,8 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                    (SELECT string_agg(TRIM(BOTH ', ' FROM COALESCE(rp.last_name, '') || ', ' || COALESCE(rp.first_name, '')), ' / ' ORDER BY rp.id)
                       FROM clinlims.sample_requester sr2
                       JOIN clinlims.person rp ON rp.id = sr2.requester_id
-                      WHERE sr2.sample_id = r.sample_id AND sr2.requester_type_id = :providerType) AS requester_name
+                      WHERE sr2.sample_id = r.sample_id AND sr2.requester_type_id = :providerType) AS requester_name,
+                   r.awaiting_validation
             FROM rows r
             LEFT JOIN clinlims.patient p ON p.id = r.patient_id
             LEFT JOIN clinlims.person pp ON pp.id = p.person_id
@@ -255,6 +266,84 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in ReportQueueQuery isPrinted()", e);
         }
+    }
+
+    @Override
+    public boolean isInScope(Long sampleId, ReportQueueCriteria criteria) {
+        if (criteria.getSectionIds() == null) {
+            return true;
+        }
+        if (criteria.getSectionIds().isEmpty()) {
+            return false;
+        }
+        try {
+            Object count = entityManager
+                    .createNativeQuery("SELECT COUNT(*) FROM clinlims.analysis ax"
+                            + " JOIN clinlims.sample_item six ON six.id = ax.sampitem_id"
+                            + " WHERE six.samp_id = :sampleId AND ax.test_sect_id IN (:sections)")
+                    .setParameter("sampleId", sampleId).setParameter("sections", toLongs(criteria.getSectionIds()))
+                    .getSingleResult();
+            return toLong(count) > 0;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ReportQueueQuery isInScope()", e);
+        }
+    }
+
+    private static final String FIRST_RESULTS_SQL = """
+            SELECT * FROM (
+              SELECT DISTINCT ON (a.id) si.samp_id, a.id AS analysis_id, a.test_id, si.typeosamp_id,
+                     (SELECT sh.patient_id FROM clinlims.sample_human sh WHERE sh.samp_id = si.samp_id
+                        ORDER BY sh.id LIMIT 1) AS patient_id,
+                     tr.component_id, r.value, r.result_type, r.significant_digits
+              FROM clinlims.result r
+              JOIN clinlims.analysis a ON a.id = r.analysis_id
+              JOIN clinlims.sample_item si ON si.id = a.sampitem_id
+              LEFT JOIN clinlims.test_result tr ON tr.id = r.test_result_id
+              WHERE si.samp_id IN (:sampleIds) AND a.status_id = :finalized
+              ORDER BY a.id, r.id
+            ) first
+            WHERE first.result_type = 'N' AND first.value IS NOT NULL AND first.value <> ''
+            ORDER BY first.analysis_id
+            """;
+
+    @Override
+    public List<ReleasedNumericResultRecord> releasedNumericResults(List<Long> sampleIds, String finalizedStatusId) {
+        if (sampleIds == null || sampleIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> raw = entityManager.createNativeQuery(FIRST_RESULTS_SQL).setParameter("sampleIds", sampleIds)
+                    .setParameter("finalized", new BigDecimal(finalizedStatusId)).getResultList();
+            List<ReleasedNumericResultRecord> records = new ArrayList<>();
+            for (Object[] c : raw) {
+                ReleasedNumericResultRecord record = new ReleasedNumericResultRecord();
+                record.setSampleId(toLong(c[0]));
+                record.setAnalysisId(toLong(c[1]));
+                record.setTestId(idOrNull(c[2]));
+                record.setSampleTypeId(idOrNull(c[3]));
+                record.setPatientId(idOrNull(c[4]));
+                record.setComponentId(idOrNull(c[5]));
+                record.setValue((String) c[6]);
+                record.setSignificantDigits(c[8] == null ? -1 : ((Number) c[8]).intValue());
+                records.add(record);
+            }
+            return records;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ReportQueueQuery releasedNumericResults()", e);
+        }
+    }
+
+    /**
+     * Numeric ids without a scale; a component id is a UUID and comes back as text.
+     */
+    private static String idOrNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+        return value instanceof Number ? String.valueOf(((Number) value).longValue()) : value.toString();
     }
 
     private String sectionScope(ReportQueueCriteria criteria, Map<String, Object> params) {
@@ -409,6 +498,7 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
         row.setFacilityName((String) c[15]);
         row.setWardName((String) c[16]);
         row.setRequesterName((String) c[17]);
+        row.setAwaitingValidation(Boolean.TRUE.equals(c[18]));
         return row;
     }
 

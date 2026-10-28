@@ -5,6 +5,11 @@ on:
     paths:
       - "frontend/src/languages/**"
       - "scripts/ci/check-i18n-plurals.py"
+      - "scripts/ci/check-shipped-display-keys.py"
+      - "volume/configuration/backend/nce-categories/**"
+      - "volume/configuration/backend/nce-types/**"
+      - "volume/configuration/backend/dictionaries/**"
+      - "src/main/resources/configuration/dictionaries/**"
       - ".github/workflows/i18n-check.yml"
 
 jobs:
@@ -34,9 +39,22 @@ jobs:
       - name: Check plural values Transifex can parse
         run: python3 scripts/ci/check-i18n-plurals.py frontend/src/languages/en.json
 
+      # OGC-1507: shipped NCE and dictionary values show through their display
+      # keys, so every key a shipped configuration file names must be in en.json.
+      - name: Check shipped display keys exist in en.json
+        run: python3 scripts/ci/check-shipped-display-keys.py
+
   check-translation-source:
     name: Translation source-of-truth check
-    if: github.head_ref != 'chore/update-transifex'
+    # Transifex syncs edit the other locales by design. So does promoting this
+    # repository's own develop to another branch: develop's locale files came in
+    # through those syncs and every other change passed this check on its way in
+    # (PR #4772 develop -> main failed on 40+ synced files). A fork's branch named
+    # develop is still checked.
+    if: >-
+      github.head_ref != 'chore/update-transifex' &&
+      !(github.head_ref == 'develop' &&
+        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

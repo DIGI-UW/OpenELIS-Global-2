@@ -14,6 +14,7 @@ import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageManagementPage from "./components/storage/StorageManagementPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import ManagementDashboard from "./components/dashboards/management/ManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import MyCyclesPage from "./components/eqa/MyCycles/MyCyclesPage";
 import ProviderSchemeList from "./components/eqa/Provider/ProviderSchemeList";
@@ -111,6 +112,7 @@ import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import BatchWorkplan from "./components/workplan/BatchWorkplan";
+import BatchWorkplanPrint from "./components/workplan/batch/BatchWorkplanPrint";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -945,6 +947,13 @@ export default function App() {
                   render={() => <AlertsDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
+                <SecureRoute
+                  path="/dashboards/management"
+                  exact
+                  render={() => <ManagementDashboard />}
+                  permission="dashboards.view.management"
+                  role={Roles.GLOBAL_ADMIN}
+                />
                 {/* QA v0.5 IA rehome (OGC-691): EQA and QC pages moved under
                     /qa/*. Kept so bookmarks and anything still linking an old
                     path land on the new page. */}
@@ -1619,6 +1628,12 @@ export default function App() {
                   path="/Workplan"
                   exact
                   component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/Workplan/batch/:id/print"
+                  exact
+                  component={() => <BatchWorkplanPrint />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute

@@ -21,19 +21,22 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  * configuration is left exactly as it was found.
  */
 
-/** The configuration page names each switch by its configuration row name. */
+/** A switch's configuration row name, shown when it has no translated name. */
 const stageSwitchName = (stage: string) => `pathology.stage.${stage}.enabled`;
 
-/** The seven stages a deployment may choose not to run. */
+/**
+ * The seven stages a deployment may choose not to run, by the name the page
+ * shows for each switch (OGC-1547: translated, no longer the row name).
+ */
 const OPTIONAL_STAGE_SWITCHES = [
-  "DECALCIFICATION",
-  "PROCESSING",
-  "EMBEDDING",
-  "MICROTOMY",
-  "STAINING",
-  "COVERSLIPPING",
-  "UNDER_REVIEW",
-].map(stageSwitchName);
+  "Pathology stage: Decalcification",
+  "Pathology stage: Processing",
+  "Pathology stage: Embedding",
+  "Pathology stage: Microtomy",
+  "Pathology stage: Staining",
+  "Pathology stage: Coverslipping & QC",
+  "Pathology stage: Under Pathologist Review",
+];
 
 /**
  * The four stages every case passes through. Offering a switch for any of
@@ -98,9 +101,9 @@ test.describe("Pathology stage switches on Result Entry Configuration", () => {
       // The row is found by the cell holding the switch's own name, and the
       // value is then read from a sibling cell of that same row, so a value
       // belonging to some other row can never satisfy the assertion.
-      const switchRow = page
-        .getByRole("row")
-        .filter({ has: page.getByRole("cell", { name: switchName }) });
+      const switchRow = page.getByRole("row").filter({
+        has: page.getByRole("cell", { name: switchName, exact: true }),
+      });
       await expect(switchRow).toHaveCount(1);
 
       // Exact: the description in the next cell also contains the word true.
@@ -109,6 +112,8 @@ test.describe("Pathology stage switches on Result Entry Configuration", () => {
       ).toBeVisible();
     }
 
+    // A mandatory stage has no translated name, so a row offered for one
+    // would show its row name.
     for (const switchName of MANDATORY_STAGE_SWITCHES) {
       await expect(page.getByRole("cell", { name: switchName })).toHaveCount(0);
     }

@@ -93,7 +93,7 @@
                <SSLHostConfig certificateVerification="optional"
                     trustManagerClassName="org.openelisglobal.tomcat.AnyClientCertificateTrustManager">
                     <Certificate certificateKeystoreFile="/etc/openelis-global/keystore"
-                         certificateKeystorePassword="kspass"
+                         certificateKeystorePassword="${oe.ssl.keystorepassword}"
                          certificateKeystoreType="PKCS12"
                          type="RSA" />
                </SSLHostConfig>
@@ -139,7 +139,7 @@
                </Realm>
 
                <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+                    unpackWARs="true" autoDeploy="false" deployOnStartup="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"

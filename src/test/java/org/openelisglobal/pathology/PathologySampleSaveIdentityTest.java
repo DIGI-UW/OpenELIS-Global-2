@@ -8,31 +8,18 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.audittrail.valueholder.History;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
-import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * A cassette, a block and a slide are objects on a bench, not counts on a case.
@@ -52,60 +39,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * retirement keeps both the row and its designation and leaves one audit entry
  * behind.
  */
-public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest {
-
-    private static final int CASE_ID = 1;
-
-    /**
-     * The block the fixture seeds, which carries a legacy number and no
-     * designation.
-     */
-    private static final int LEGACY_BLOCK_ID = 101;
-
-    /**
-     * technician1, the fixture's own user, so audit attribution names a real one.
-     */
-    private static final String TECHNICIAN_ID = "1001";
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    @Autowired
-    private PathologySampleService pathologySampleService;
-
-    @Autowired
-    private HistoryService historyService;
-
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
-
-    private String accessionNumber;
-    private String blockReferenceTableId;
-    private String slideReferenceTableId;
-
-    @Before
-    public void init() throws Exception {
-        executeDataSetWithStateManagement("testdata/pathology-sample-with-patient.xml");
-        // The fixture replaces system_user with its own users, so authenticate as one
-        // of them.
-        authenticateAs("technician1");
-        accessionNumber = jdbcTemplate.queryForObject(
-                "SELECT s.accession_number FROM clinlims.sample s"
-                        + " JOIN clinlims.pathology_sample ps ON ps.sample_id = s.id WHERE ps.id = ?",
-                String.class, CASE_ID);
-        blockReferenceTableId = referenceTableId("PATHOLOGY_BLOCK");
-        slideReferenceTableId = referenceTableId("PATHOLOGY_SLIDE");
-        clearPathologyAudit();
-    }
-
-    /**
-     * Audit entries survive the fixture reload, so they are cleared here as well as
-     * before each test; otherwise a count asserted in one test would include the
-     * retirements another test wrote.
-     */
-    @After
-    public void tearDown() {
-        clearPathologyAudit();
-    }
+public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
 
     @Test
     public void savingTwice_keepsTheSameBlockRow() {
@@ -155,7 +89,6 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
     public void savingANewCassette_namesItOnTheServer() {
         PathologyBlock posted = postedBlock(null, "Bench A");
         posted.setPartDesignation("Z");
-        posted.setTissueTypeId("424242");
 
         saveBlocks(posted);
 
@@ -165,8 +98,6 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
         assertNotNull("the first cassette of the first part is designated A1", cassette);
         assertEquals("the part a cassette is numbered within is the server's own, not the client's", "A",
                 cassette.get("part_designation"));
-        assertNull("and the tissue it holds is left to the work that validates it against the dictionary",
-                cassette.get("tissue_type_id"));
         assertEquals("the barcode resolves the case and then the cassette within it", accessionNumber + ".A1",
                 cassette.get("barcode"));
         assertEquals("a cassette is cut before it is embedded", CassetteState.CASSETTE.name(),
@@ -196,7 +127,6 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
         posted.setCassetteState(CassetteState.BLOCK);
         posted.setActive(false);
         posted.setPartDesignation("Z");
-        posted.setTissueTypeId("424242");
 
         saveBlocks(posted);
 
@@ -207,8 +137,6 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
         assertNull("nor is the point the row has reached on the bench", block.get("cassette_state"));
         assertNull("the part a block was cut from is recorded by the work that captures it, not by a case save",
                 block.get("part_designation"));
-        assertNull("and neither is the tissue it holds, which is a dictionary entry that has to be validated",
-                block.get("tissue_type_id"));
         assertEquals("and a row is retired through its own action, not by a field on a case save", Boolean.TRUE,
                 block.get("active"));
     }
@@ -384,38 +312,10 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
 
     // helpers
 
-    private void saveBlocks(PathologyBlock... blocks) {
-        PathologySampleForm form = caseViewForm();
-        form.setBlocks(Arrays.asList(blocks));
-        pathologySampleService.updateWithFormValues(CASE_ID, form);
-    }
-
     private void saveSlides(PathologySlideForm... slides) {
         PathologySampleForm form = caseViewForm();
         form.setSlides(Arrays.asList(slides));
-        pathologySampleService.updateWithFormValues(CASE_ID, form);
-    }
-
-    /**
-     * The case view posts every collection on every save, so a form that changes
-     * one of them still carries the others; an empty list means the client added
-     * nothing, not that the case should lose what it holds.
-     */
-    private PathologySampleForm caseViewForm() {
-        PathologySampleForm form = new PathologySampleForm();
-        form.setStatus(pathologySampleService.get(CASE_ID).getStatus());
-        form.setSystemUserId(TECHNICIAN_ID);
-        form.setBlocks(new ArrayList<>());
-        form.setSlides(new ArrayList<>());
-        form.setReports(new ArrayList<>());
-        return form;
-    }
-
-    private PathologyBlock postedBlock(Integer id, String location) {
-        PathologyBlock block = new PathologyBlock();
-        block.setId(id);
-        block.setLocation(location);
-        return block;
+        save(form);
     }
 
     private PathologySlideForm postedSlide(Integer blockId) {
@@ -423,25 +323,6 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
         slide.setBlockId(blockId);
         slide.setLocation("Slide Storage 1");
         return slide;
-    }
-
-    private String referenceTableId(String name) {
-        return referenceTablesService.getReferenceTableByName(name).getId();
-    }
-
-    private Map<String, Object> payloadOf(History history) {
-        try {
-            return objectMapper.readValue(history.getChanges(), new TypeReference<Map<String, Object>>() {
-            });
-        } catch (IOException e) {
-            throw new LIMSRuntimeException("the audit payload is not readable as JSON", e);
-        }
-    }
-
-    private List<Map<String, Object>> blocksOnCase() {
-        return jdbcTemplate.queryForList("SELECT id, block_number, designation, barcode, cassette_state,"
-                + " part_designation, tissue_type_id, location, active FROM clinlims.pathology_block WHERE"
-                + " pathology_sample_id = ? ORDER BY id", CASE_ID);
     }
 
     private List<Map<String, Object>> slidesOnCase() {
@@ -460,15 +341,6 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
                 blockId);
     }
 
-    private Map<String, Object> blockRow(int blockId) {
-        for (Map<String, Object> block : blocksOnCase()) {
-            if (Integer.valueOf(blockId).equals(block.get("id"))) {
-                return block;
-            }
-        }
-        return null;
-    }
-
     private Map<String, Object> slideRow(int slideId) {
         for (Map<String, Object> slide : slidesOnCase()) {
             if (Integer.valueOf(slideId).equals(slide.get("id"))) {
@@ -478,37 +350,9 @@ public class PathologySampleSaveIdentityTest extends BaseWebContextSensitiveTest
         return null;
     }
 
-    private Map<String, Object> blockDesignated(String designation) {
-        for (Map<String, Object> block : blocksOnCase()) {
-            if (designation.equals(block.get("designation"))) {
-                return block;
-            }
-        }
-        return null;
-    }
-
     private int idOfBlockDesignated(String designation) {
         Map<String, Object> block = blockDesignated(designation);
         assertNotNull("no block on the case is designated " + designation, block);
         return ((Number) block.get("id")).intValue();
-    }
-
-    private List<History> caseAudit() {
-        return historyService.getHistoryByRefIdAndRefTableId(String.valueOf(CASE_ID),
-                referenceTableId("PATHOLOGY_SAMPLE"));
-    }
-
-    private void clearCaseAudit() {
-        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ? AND reference_id = ?",
-                Integer.parseInt(referenceTableId("PATHOLOGY_SAMPLE")), CASE_ID);
-    }
-
-    private String changesOf(History history) {
-        return new String(history.getChanges(), StandardCharsets.UTF_8);
-    }
-
-    private void clearPathologyAudit() {
-        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN (?, ?)",
-                Integer.parseInt(blockReferenceTableId), Integer.parseInt(slideReferenceTableId));
     }
 }

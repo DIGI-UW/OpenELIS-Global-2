@@ -39,5 +39,8 @@
   <include relativeToChangelogFile="true" file="021-env-workflow-type-observation.xml"/>
   <!-- OGC-1517: every observation type the application writes is seeded by Liquibase, not by an optional CSV -->
   <include relativeToChangelogFile="true" file="022-observation-types-seed.xml"/>
+  <!-- OGC-1507: shipped NCE and dictionary labels read through display keys; stored labels record who wrote them -->
+  <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
+  <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
 
 </databaseChangeLog>

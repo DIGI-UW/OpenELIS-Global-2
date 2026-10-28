@@ -13,6 +13,7 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
+  postToOpenElisServerJsonResponse,
   postToOpenElisServerForPDF,
   hasRole,
 } from "../utils/Utils";
@@ -38,23 +39,31 @@ import {
   stageLabel,
 } from "./pathologyStages";
 import {
+  decalcificationFlagFrozen,
   deriveCaseSections,
   deriveRailItems,
-  isStageEnabled,
+  EMBEDDING_SECTION_ID,
+  embeddingStatement,
   openRequestNames,
   railCurrentIndex,
   sectionBadge,
+  stageApplies,
   stageBadgeKind,
 } from "./pathologySections";
 import {
+  blockIdentifier,
   countedRows,
+  embeddingSummary,
+  isEmbeddedRow,
   needsParentBlock,
+  nextOutstandingCassette,
   objectNaming,
   stripClientKeys,
 } from "./pathologyRows";
 import DeactivateRowDialog from "./DeactivateRowDialog";
 import CaseInformationSection from "./sections/CaseInformationSection";
 import GrossingSection from "./sections/GrossingSection";
+import EmbeddingSection from "./sections/EmbeddingSection";
 import StagePlaceholderSection from "./sections/StagePlaceholderSection";
 import MicrotomySection from "./sections/MicrotomySection";
 import ReviewSection from "./sections/ReviewSection";
@@ -64,9 +73,42 @@ import ReportsSection from "./sections/ReportsSection";
 // The switch that shows a list's deactivated rows, where focus lands once
 // the row it was on has left the list.
 const SHOW_DEACTIVATED_SWITCH = {
-  block: "showDeactivatedCassettes",
-  slide: "showDeactivatedSlides",
+  block: "#showDeactivatedCassettes",
+  slide: "#showDeactivatedSlides",
 };
+
+// The embedding section's own header, where focus lands once no Embed
+// button it could go to is left.
+const EMBEDDING_SECTION_HEADER =
+  "#" + EMBEDDING_SECTION_ID + " button.cds--accordion__heading";
+
+const embedButton = (block) => "#embedCassette-" + block.id;
+
+/**
+ * Focuses the first of the given selectors that names a control which can
+ * take focus, so a target that has gone, or is disabled, falls through to the
+ * next.
+ */
+function focusFirstOf(targets, { unlessHeld = false } = {}) {
+  setTimeout(() => {
+    // The person may be typing in a field while the answer lands; focus then
+    // stays where it is, and moves only once nothing holds it, as after the
+    // clicked button has gone.
+    const held = document.activeElement;
+    if (unlessHeld && held && held !== document.body) {
+      return;
+    }
+    for (const target of [].concat(targets)) {
+      const element = document.querySelector(target);
+      if (element && !element.disabled) {
+        element.focus();
+        return;
+      }
+    }
+  });
+}
+
+const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
 
 /**
  * The anatomic-pathology case, on the shared case-view shell.
@@ -99,6 +141,10 @@ function PathologyCaseView() {
     useContext(ConfigurationContext)?.configurationProperties;
 
   const [caseInfo, setCaseInfo] = useState({});
+  // The stage as last read from the server, which edits never touch: the
+  // server judges a save by the stage the case is stored at, and so must
+  // anything here that predicts what it will accept.
+  const [storedStatus, setStoredStatus] = useState(null);
   const [caseLoaded, setCaseLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   // Bumped on every load so the multiselects, which read their selection once
@@ -115,6 +161,9 @@ function PathologyCaseView() {
   );
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [pathologistUsers, setPathologistUsers] = useState([]);
+  // Null until the list has arrived, so an empty list can only ever mean the
+  // laboratory has configured none.
+  const [tissueTypes, setTissueTypes] = useState(null);
   const [loadingConclusions, setLoadingConclusions] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [nextPage, setNextPage] = useState(null);
@@ -125,7 +174,15 @@ function PathologyCaseView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [pendingDeactivation, setPendingDeactivation] = useState(null);
+  // The id of the cassette whose embedding is in flight, so no second one
+  // starts before the first has been read back.
+  const [embeddingId, setEmbeddingId] = useState(null);
+  // The selectors, in order of preference, for the control that takes focus
+  // once the case is read back.
   const focusAfterLoad = useRef(null);
+  // Mirrors `dirty` for a server answer that arrives after the render that
+  // sent the request, so it can tell whether there is unsaved work to keep.
+  const dirtyRef = useRef(false);
   const [saveRefusedForBlock, setSaveRefusedForBlock] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
@@ -135,12 +192,15 @@ function PathologyCaseView() {
   });
 
   const isPathologist = hasRole(userSessionDetails, "Pathologist");
+  const decalcificationRequired = Boolean(caseInfo.decalcificationRequired);
+  const flagFrozen = decalcificationFlagFrozen(storedStatus);
 
   const updateCase = (patch) => {
     setCaseInfo((prev) => ({
       ...prev,
       ...(typeof patch === "function" ? patch(prev) : patch),
     }));
+    dirtyRef.current = true;
     setDirty(true);
   };
 
@@ -184,19 +244,31 @@ function PathologyCaseView() {
         userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
     setCaseInfo(loaded);
+    setStoredStatus(loaded.status);
+    dirtyRef.current = false;
     setDirty(false);
     // A load drops every unsaved slide, so an earlier refusal marks nothing.
     setSaveRefusedForBlock(false);
-    const focusId = focusAfterLoad.current;
+    const focusTargets = focusAfterLoad.current;
     focusAfterLoad.current = null;
-    if (focusId) {
-      setTimeout(() => document.getElementById(focusId)?.focus());
+    if (focusTargets) {
+      focusFirstOf(focusTargets);
     }
     setCaseLoaded(true);
     setFormVersion((version) => version + 1);
   };
 
-  const reloadCase = () => getFromOpenElisServer(caseUrl, loadCase);
+  // The tissue types are read again with the case because a refused save
+  // can mean one was retired since the page loaded, and reloading is what
+  // the bench is told to do about it. A failed read keeps the list it had.
+  const reloadCase = () => {
+    getFromOpenElisServer(TISSUE_TYPES_URL, (list) => {
+      if (componentMounted.current && Array.isArray(list)) {
+        setTissueTypes(list);
+      }
+    });
+    getFromOpenElisServer(caseUrl, loadCase);
+  };
 
   const loadConclusionData = (res) => {
     if (res && res.displayItems && res.displayItems.length > 0) {
@@ -270,16 +342,20 @@ function PathologyCaseView() {
       reloadCase();
     } else {
       // The server's own sentence is English and names internal ids, so only
-      // a refusal the bench can act on gets words of its own.
+      // a refusal the bench can act on gets words of its own. A 400 is a case
+      // rule the posted rows broke: a cassette, slide or tissue type changed
+      // elsewhere after the case was loaded, so reloading is what the bench
+      // can do.
+      let messageId = "error.save.msg";
+      if (response?.status === 400) {
+        messageId = "pathology.error.reloadCase";
+      } else if (body?.conflict === "designation") {
+        messageId = "pathology.error.designationConflict";
+      }
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id:
-            body?.conflict === "designation"
-              ? "pathology.error.designationConflict"
-              : "error.save.msg",
-        }),
+        message: intl.formatMessage({ id: messageId }),
       });
     }
   }
@@ -297,6 +373,77 @@ function PathologyCaseView() {
       message: intl.formatMessage({ id: naming.toastKey }, naming.values),
     });
     reloadCase();
+  };
+
+  // Embed cannot be pressed while the form is dirty or saving, but the bench
+  // can type while the request is out. The answer re-reads the case only when
+  // nothing is waiting to be saved; otherwise it marks the one row as a block
+  // and keeps the rest of the form as it stands. The save copies fields onto
+  // the stored rows by id and reads no version from the screen, so the row's
+  // older stamp does no harm. The transition is not destructive, so it asks
+  // for no confirmation.
+  const embedCassette = (block) => {
+    if (embeddingId !== null) {
+      return;
+    }
+    setEmbeddingId(block.id);
+    const designation = blockIdentifier(block);
+    const next = nextOutstandingCassette(caseInfo.blocks, block);
+    postToOpenElisServerJsonResponse(
+      "/rest/pathology/block/" + block.id + "/embed",
+      JSON.stringify({}),
+      (response) => {
+        if (!componentMounted.current) {
+          return;
+        }
+        setEmbeddingId(null);
+        setNotificationVisible(true);
+        if (isEmbeddedRow(response)) {
+          const targets = next
+            ? [embedButton(next), EMBEDDING_SECTION_HEADER]
+            : EMBEDDING_SECTION_HEADER;
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "pathology.toast.embedded" },
+              { designation },
+            ),
+          });
+          if (dirtyRef.current) {
+            updateCase((prev) => ({
+              blocks: (prev.blocks ?? []).map((row) =>
+                String(row.id) === String(block.id)
+                  ? { ...row, cassetteState: response.cassetteState }
+                  : row,
+              ),
+            }));
+            focusFirstOf(targets, { unlessHeld: true });
+          } else {
+            focusAfterLoad.current = targets;
+            reloadCase();
+          }
+        } else {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "pathology.toast.embedFailed" },
+              { designation },
+            ),
+          });
+          // A refusal can mean another change landed on the row, so a clean
+          // form is read again to show the row as it is stored.
+          const targets = [embedButton(block), EMBEDDING_SECTION_HEADER];
+          if (dirtyRef.current) {
+            focusFirstOf(targets, { unlessHeld: true });
+          } else {
+            focusAfterLoad.current = targets;
+            reloadCase();
+          }
+        }
+      },
+    );
   };
 
   const reportStatus = async (pdfGenerated, blob, index) => {
@@ -371,6 +518,7 @@ function PathologyCaseView() {
       slides: stripClientKeys(caseInfo.slides),
       reports: caseInfo.reports,
       grossExam: caseInfo.grossExam,
+      decalcificationRequired,
       microscopyExam: caseInfo.microscopyExam,
       conclusionText: caseInfo.conclusionText,
       release: caseInfo.release != undefined ? caseInfo.release : false,
@@ -440,7 +588,7 @@ function PathologyCaseView() {
     );
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
-    getFromOpenElisServer(caseUrl, loadCase);
+    reloadCase();
 
     return () => {
       componentMounted.current = false;
@@ -459,6 +607,7 @@ function PathologyCaseView() {
     status: caseInfo.status,
     isPathologist,
     configurationProperties,
+    decalcificationRequired,
   });
   const openNames = openRequestNames(caseInfo.requests);
 
@@ -473,9 +622,23 @@ function PathologyCaseView() {
             updateCase={updateCase}
             readOnly={readOnly}
             technicianUsers={technicianUsers}
+            tissueTypes={tissueTypes}
+            decalcificationFlagFrozen={flagFrozen}
             dirty={dirty}
             saving={isSubmitting}
             onDeactivate={setPendingDeactivation}
+          />
+        );
+      case "pathology-section-embedding":
+        return (
+          <EmbeddingSection
+            caseInfo={caseInfo}
+            updateCase={updateCase}
+            readOnly={readOnly}
+            dirty={dirty}
+            saving={isSubmitting}
+            embeddingId={embeddingId}
+            onEmbed={embedCassette}
           />
         );
       case "pathology-section-microtomy":
@@ -539,16 +702,18 @@ function PathologyCaseView() {
     }
   };
 
-  // Every stage this laboratory tracks, plus the one the case already stands
-  // at even when the laboratory has since stopped tracking it, because a case
-  // must never be unable to say where it is. The list arrives from the server
-  // in bench order (FR-2.1) carrying an English value; the label is localized
-  // here while the item's id stays the raw enum name the save payload and the
-  // backend expect.
+  // Every stage that applies to this case, plus the one the case already
+  // stands at even when it no longer applies, because a case must never be
+  // unable to say where it is. The list arrives from the server in bench order
+  // (FR-2.1) carrying an English value; the label is localized here while the
+  // item's id stays the raw enum name the save payload and the backend expect.
   const stageItems = statuses.filter(
     (status) =>
-      isStageEnabled(status.id, configurationProperties) ||
-      status.id === caseInfo.status,
+      status.id === caseInfo.status ||
+      stageApplies(status.id, {
+        configurationProperties,
+        decalcificationRequired,
+      }),
   );
 
   // A Carbon Dropdown rather than a Select: the bar sits at the foot of a long
@@ -591,6 +756,12 @@ function PathologyCaseView() {
     </div>
   );
 
+  const embedding = embeddingStatement(intl, {
+    summary: embeddingSummary(caseInfo.blocks),
+    status: caseInfo.status,
+    configurationProperties,
+  });
+
   const summaryRows = [
     {
       id: "stage",
@@ -598,9 +769,20 @@ function PathologyCaseView() {
       value: knownStage ? stageLabel(intl, caseInfo.status) : null,
     },
     {
+      id: "decalcification",
+      labelKey: "pathology.label.decalcificationRequired",
+      value: decalcificationRequired,
+    },
+    {
       id: "blocks",
       labelKey: "pathology.label.cassettes",
       value: countedRows(caseInfo.blocks).length,
+    },
+    {
+      id: "embedding",
+      labelKey: "pathology.stage.embedding",
+      value: embedding.value,
+      title: embedding.title,
     },
     {
       id: "slides",

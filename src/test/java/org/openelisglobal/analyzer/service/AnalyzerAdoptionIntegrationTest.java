@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,7 +45,6 @@ import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
-import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportException;
 import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -273,8 +273,9 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
-    public void aResultStampedWithTheOldRevisionMapsWhenTheNewOneReadsItAlikeAndIsHeldWhenNot() throws Exception {
+    public void oldDeliveredValuesUseLocalMappingsWhileRemovedCodesStayHeld() throws Exception {
         analyzerOnRevisionOne();
+        bindLocalTargetsOnRevisionOne();
         String testId = catalogTests.get(0);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", testId), "1");
@@ -291,17 +292,18 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(Integer.valueOf(1), fixed.getSourceProfileRevision());
         AnalyzerResults dropped = staged("ADOPT-C");
         assertTrue(dropped.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, dropped.getImportIssueReason());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, dropped.getImportIssueReason());
         assertEquals(Integer.valueOf(1), dropped.getSourceProfileRevision());
     }
 
     @Test
-    public void resultsHeldOnTheOldRevisionRecoverOnApplyWhenTheNewOneReadsThemAlike() throws Exception {
+    public void localMappingRecoveryDoesNotReinterpretOldValuesUsingNewProfileUnits() throws Exception {
         analyzerOnRevisionOne();
+        bindLocalTargetsOnRevisionOne();
         importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A", "ADOPT-D"),
                 "1");
         AnalyzerResults heldA = staged("ADOPT-A");
-        assertTrue("ADOPT-A has no test on revision 1", heldA.isReadOnly());
+        assertTrue("the local mapping has not been confirmed", heldA.isReadOnly());
         assertTrue(staged("ADOPT-D").isReadOnly());
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)),
@@ -318,19 +320,46 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(catalogTests.get(0), recovered.getTestId());
         assertEquals(Integer.valueOf(1), recovered.getSourceProfileRevision());
         AnalyzerResults otherUnit = staged("ADOPT-D");
-        assertTrue("revision 2 reports ADOPT-D in another unit", otherUnit.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, otherUnit.getImportIssueReason());
+        assertFalse("a later profile unit cannot change an already normalized result", otherUnit.isReadOnly());
+        assertEquals(catalogTests.get(1), otherUnit.getTestId());
         assertEquals(Integer.valueOf(1), otherUnit.getSourceProfileRevision());
     }
 
     @Test
-    public void aResultFromAnotherProfileIsStillRefused() throws Exception {
+    public void aCanonicalOlderResultUsesTheConfirmedLocalTarget() throws Exception {
+        analyzerOnRevisionOne();
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
+                bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)), "1");
+        confirm(adopted);
+        bridgeOn(1);
+        apply(adopted);
+        importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A"), "1");
+        assertFalse(staged("ADOPT-A").isReadOnly());
+        assertEquals(catalogTests.get(0), staged("ADOPT-A").getTestId());
+        assertEquals(Integer.valueOf(1), staged("ADOPT-A").getSourceProfileRevision());
+    }
+
+    private void bindLocalTargetsOnRevisionOne() {
+        Analyzer analyzer = analyzerDAO.get(analyzerId).orElseThrow();
+        AnalyzerMappingSnapshot first = mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow();
+        AnalyzerMappingDraft draft = bind(bind(AnalyzerMappingDraft.of(first), "ADOPT-A", catalogTests.get(0)),
+                "ADOPT-D", catalogTests.get(1));
+        AnalyzerMappingSnapshot mapped = mappingService.appendRevision(analyzer, draft, "1");
+        new JdbcTemplate(dataSource).update("UPDATE analyzer SET mapping_id = ? WHERE id = ?",
+                Long.valueOf(mapped.mapping().getId()), Long.valueOf(analyzerId));
+    }
+
+    @Test
+    public void aResultFromAnotherProfileIsRetainedForLocalMapping() throws Exception {
         analyzerOnRevisionOne();
 
-        AnalyzerNormalizedResultImportException refusal = assertThrows(AnalyzerNormalizedResultImportException.class,
-                () -> importService.importBundle(delivery("test.other-analyzer", 1, "ADOPT-A"), "1"));
+        importService.importBundle(delivery("test.other-analyzer", 1, "ADOPT-A"), "1");
 
-        assertEquals("analyzer.fhirImport.error.profileMismatch", refusal.getErrorKey());
+        AnalyzerResults held = staged("ADOPT-A");
+        assertTrue(held.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, held.getImportIssueReason());
+        assertNull(held.getTestId());
+        assertEquals("test.other-analyzer", held.getSourceProfileId());
     }
 
     private String overrideAdoptAOnAnotherTest(Analyzer analyzer) {
@@ -502,16 +531,15 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
 
     private void confirm(AnalyzerMappingSnapshot adopted) {
         AnalyzerMappingSnapshot candidate = mappingService.findById(adopted.mapping().getId()).orElseThrow();
+        assertEquals("a detached mapping snapshot includes the analyzer's connection", CONNECTION_ID,
+                candidate.mapping().getAnalyzer().getBridgeConnectionId());
         List<AnalyzerMappingSourceRow> confirmed = candidate.tests().stream()
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
                 .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null,
                         row.getId().getSubIdentity()))
                 .toList();
-        confirmations
-                .confirm(candidate, AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT,
-                        new AnalyzerMappingConfirmationRequest(candidate.mapping().getMappingFingerprint(),
-                                AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT, confirmed, List.of()),
-                        "1");
+        confirmations.confirm(candidate, new AnalyzerMappingConfirmationRequest(
+                candidate.mapping().getMappingFingerprint(), confirmed, List.of()), "1");
     }
 
     private void apply(AnalyzerMappingSnapshot adopted) {

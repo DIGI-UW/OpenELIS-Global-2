@@ -1,0 +1,37 @@
+.mgmt-surveillance {
+  margin-bottom: 1.5rem;
+}
+
+.mgmt-surveillance__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-surveillance__meta {
+  font-size: 0.875rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+.mgmt-surveillance__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.mgmt-surveillance__metric {
+  margin-top: 0.75rem;
+}
+
+.mgmt-surveillance__metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mgmt-surveillance__value {
+  font-weight: 600;
+}

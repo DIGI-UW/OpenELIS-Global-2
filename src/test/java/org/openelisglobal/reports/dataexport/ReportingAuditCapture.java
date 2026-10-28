@@ -16,13 +16,13 @@ import org.openelisglobal.reports.dataexport.service.ReportingAudit;
  * Captures the real logging boundary, restoring its configuration after each
  * test.
  */
-final class ReportingAuditCapture extends AbstractAppender implements AutoCloseable {
+public final class ReportingAuditCapture extends AbstractAppender implements AutoCloseable {
     private final List<JsonNode> events = new CopyOnWriteArrayList<>();
     private final Logger logger = (Logger) LogManager.getLogger(ReportingAudit.class);
     private final Level previousLevel = logger.getLevel();
     private final boolean previousAdditivity = logger.isAdditive();
 
-    ReportingAuditCapture() {
+    public ReportingAuditCapture() {
         super("reporting-audit-capture", null, null, false, Property.EMPTY_ARRAY);
         start();
         logger.addAppender(this);
@@ -42,11 +42,11 @@ final class ReportingAuditCapture extends AbstractAppender implements AutoClosea
         }
     }
 
-    List<JsonNode> events() {
+    public List<JsonNode> events() {
         return List.copyOf(events);
     }
 
-    List<String> actions() {
+    public List<String> actions() {
         return events.stream().map(event -> event.path("action").asText()).toList();
     }
 

@@ -36,6 +36,12 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
     List<InventoryLot> getExpiredActiveLots() throws LIMSRuntimeException;
 
     /**
+     * ACTIVE or IN_USE lots with stock whose effective expiry is past or within
+     * daysAhead.
+     */
+    List<InventoryLot> getStockedLotsExpiringWithin(int daysAhead) throws LIMSRuntimeException;
+
+    /**
      * Get lot by lot number
      */
     InventoryLot getByLotNumber(String lotNumber) throws LIMSRuntimeException;

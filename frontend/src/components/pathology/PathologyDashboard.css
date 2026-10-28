@@ -120,3 +120,11 @@
     font-size: 0.9rem;
   }
 }
+
+/* A macroscopic or microscopic description is paragraphs of findings: it keeps
+   the line breaks the bench typed and wraps, where a tag would cut it to one
+   line and an ellipsis. */
+.pathology-exam-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

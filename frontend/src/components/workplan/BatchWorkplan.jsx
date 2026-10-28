@@ -1,75 +1,66 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
-  Checkbox,
   Column,
   Grid,
   Heading,
   InlineNotification,
-  Pagination,
+  Modal,
   Section,
   Tab,
   TabList,
   TabPanel,
   TabPanels,
   Tabs,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tag,
 } from "@carbon/react";
-import { Add, Archive, Checkmark, Play, Renew } from "@carbon/icons-react";
+import { Renew, TrashCan } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import {
-  convertAlphaNumLabNumForDisplay,
   getFromOpenElisServer,
+  hasPermissionOrGlobalAdmin,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../utils/Utils";
+import BatchTile from "./batch/BatchTile";
+import PendingTestsPanel from "./batch/PendingTestsPanel";
+import {
+  AUTO_EXPAND_QC,
+  BATCH_ENDPOINT,
+  QC_OVERRIDE_PERMISSION,
+  parseJson,
+} from "./batch/batchWorkplanUtils";
 import "./wpStyle.css";
 
-const BATCH_ENDPOINT = "/rest/batch-workplans";
-
-const statusTagType = (status) => {
-  switch (status) {
-    case "ACTIVE":
-      return "blue";
-    case "COMPLETED":
-      return "green";
-    case "ARCHIVED":
-      return "gray";
-    case "DRAFT":
-    default:
-      return "purple";
-  }
-};
-
-const parseJson = async (response) => {
-  if (!response) {
-    return null;
-  }
-  try {
-    return await response.json();
-  } catch (_error) {
-    return null;
-  }
-};
-
+/**
+ * The batch workplan (OGC-427): Pending Tests to group work into batches, and
+ * Batches to set each one up with a reagent lot, check its QC and release it
+ * for printing.
+ */
 export default function BatchWorkplan() {
   const intl = useIntl();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext) || {};
+  const canOverride = hasPermissionOrGlobalAdmin(
+    userSessionDetails,
+    QC_OVERRIDE_PERMISSION,
+  );
+
   const [pendingTests, setPendingTests] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [pendingPage, setPendingPage] = useState(1);
-  const [pendingPageSize, setPendingPageSize] = useState(20);
-  const [batchPage, setBatchPage] = useState(1);
-  const [batchPageSize, setBatchPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [tab, setTab] = useState(0);
+  const [expanded, setExpanded] = useState(() => new Set());
+  const [confirmClear, setConfirmClear] = useState(false);
+  const autoExpanded = useRef(new Set());
 
   const breadcrumbs = useMemo(
     () => [
@@ -77,23 +68,6 @@ export default function BatchWorkplan() {
       { label: "workplan.batch.title", link: "/Workplan" },
     ],
     [],
-  );
-
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-
-  const pagedPendingTests = useMemo(
-    () =>
-      pendingTests.slice(
-        (pendingPage - 1) * pendingPageSize,
-        pendingPage * pendingPageSize,
-      ),
-    [pendingTests, pendingPage, pendingPageSize],
-  );
-
-  const pagedBatches = useMemo(
-    () =>
-      batches.slice((batchPage - 1) * batchPageSize, batchPage * batchPageSize),
-    [batches, batchPage, batchPageSize],
   );
 
   const loadPendingTests = useCallback((onDone) => {
@@ -108,14 +82,27 @@ export default function BatchWorkplan() {
 
   const loadBatches = useCallback((onDone) => {
     getFromOpenElisServer(`${BATCH_ENDPOINT}/batches`, (res) => {
-      setBatches(Array.isArray(res) ? res : []);
+      const list = Array.isArray(res) ? res : [];
+      setBatches(list);
+      // FR-QC-008: a batch whose QC needs attention opens by itself, once, so
+      // a user who collapses it is not overruled by the next refresh.
+      setExpanded((current) => {
+        const next = new Set(current);
+        list.forEach((batch) => {
+          if (
+            AUTO_EXPAND_QC.includes(batch.qc?.status) &&
+            !autoExpanded.current.has(batch.id)
+          ) {
+            autoExpanded.current.add(batch.id);
+            next.add(batch.id);
+          }
+        });
+        return next;
+      });
       if (onDone) onDone();
     });
   }, []);
 
-  // Clear the loading flag only once both fetches have answered. Setting it back
-  // in the same tick left it permanently false, so nothing was ever disabled
-  // while a refresh was in flight.
   const reload = useCallback(() => {
     setLoading(true);
     let outstanding = 2;
@@ -127,171 +114,123 @@ export default function BatchWorkplan() {
     loadBatches(settle);
   }, [loadBatches, loadPendingTests]);
 
-  // A list that shrinks under the current page (creating a batch, archiving one)
-  // would otherwise leave the viewer on a page past the end, showing an empty
-  // table while rows sit on earlier pages.
-  useEffect(() => {
-    const lastPage = Math.max(
-      1,
-      Math.ceil(pendingTests.length / pendingPageSize),
-    );
-    if (pendingPage > lastPage) setPendingPage(lastPage);
-  }, [pendingTests.length, pendingPageSize, pendingPage]);
-
-  useEffect(() => {
-    const lastPage = Math.max(1, Math.ceil(batches.length / batchPageSize));
-    if (batchPage > lastPage) setBatchPage(lastPage);
-  }, [batches.length, batchPageSize, batchPage]);
-
   useEffect(() => {
     reload();
   }, [reload]);
 
-  const showNotification = (kind, messageId) => {
-    setNotification({
-      kind,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({ id: messageId }),
+  const notify = useCallback(
+    (kind, message) =>
+      setNotification({
+        kind,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message,
+      }),
+    [intl],
+  );
+
+  const toggle = (id) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-  };
 
-  const toggleSelected = (analysisId, checked) => {
-    setSelectedIds((current) => {
-      if (checked) {
-        return current.includes(analysisId)
-          ? current
-          : [...current, analysisId];
-      }
-      return current.filter((id) => id !== analysisId);
-    });
-  };
-
-  const toggleVisible = (checked) => {
-    const visibleIds = pagedPendingTests.map((test) => test.analysisId);
-    setSelectedIds((current) => {
-      if (checked) {
-        return Array.from(new Set([...current, ...visibleIds]));
-      }
-      return current.filter((id) => !visibleIds.includes(id));
-    });
-  };
-
-  const visibleSelected =
-    pagedPendingTests.length > 0 &&
-    pagedPendingTests.every((test) => selectedSet.has(test.analysisId));
-
-  const createBatch = () => {
-    if (selectedIds.length === 0) {
-      return;
-    }
+  const createBatch = (name, analysisIds, onCreated) => {
     setLoading(true);
     postToOpenElisServerFullResponse(
       `${BATCH_ENDPOINT}/batches`,
-      JSON.stringify({ analysisIds: selectedIds }),
+      JSON.stringify({ name: name || null, analysisIds }),
       async (response) => {
         setLoading(false);
+        const body = await parseJson(response);
         if (response?.ok) {
-          setSelectedIds([]);
-          showNotification("success", "workplan.batch.create.success");
-          loadPendingTests();
-          loadBatches();
+          onCreated();
+          notify(
+            "success",
+            intl.formatMessage(
+              { id: "workplan.batch.create.success.named" },
+              { name: body?.name || "" },
+            ),
+          );
+          if (body?.id) {
+            setExpanded((current) => new Set(current).add(body.id));
+          }
+          setTab(1);
+          reload();
           return;
         }
-        const body = await parseJson(response);
-        setNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "notification.title" }),
-          message:
-            body?.message ||
+        notify(
+          "error",
+          body?.message ||
             intl.formatMessage({ id: "workplan.batch.create.error" }),
-        });
+        );
       },
     );
   };
 
-  const transitionBatch = (batch, status) => {
+  const addToBatch = (batchId, analysisIds, onAdded) => {
+    const batch = batches.find((candidate) => candidate.id === batchId);
+    if (!batch) return;
     setLoading(true);
     putToOpenElisServerFullResponse(
-      `${BATCH_ENDPOINT}/batches/${batch.id}/status`,
-      JSON.stringify({ status }),
+      `${BATCH_ENDPOINT}/batches/${batchId}`,
+      JSON.stringify({
+        analysisIds: [
+          ...(batch.items || []).map((item) => item.analysisId),
+          ...analysisIds,
+        ],
+      }),
       async (response) => {
         setLoading(false);
         if (response?.ok) {
-          showNotification("success", "workplan.batch.status.success");
-          loadPendingTests();
-          loadBatches();
+          onAdded();
+          notify(
+            "success",
+            intl.formatMessage(
+              { id: "workplan.batch.addTo.success" },
+              { name: batch.name },
+            ),
+          );
+          setExpanded((current) => new Set(current).add(batchId));
+          setTab(1);
+          reload();
           return;
         }
         const body = await parseJson(response);
-        setNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "notification.title" }),
-          message:
-            body?.message ||
-            intl.formatMessage({ id: "workplan.batch.status.error" }),
-        });
+        notify(
+          "error",
+          body?.message ||
+            intl.formatMessage({ id: "workplan.batch.tests.updateFailed" }),
+        );
       },
     );
   };
 
-  const renderBatchActions = (batch) => {
-    if (batch.status === "DRAFT") {
-      return (
-        <>
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Play}
-            onClick={() => transitionBatch(batch, "ACTIVE")}
-          >
-            <FormattedMessage id="workplan.batch.action.activate" />
-          </Button>
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Archive}
-            onClick={() => transitionBatch(batch, "ARCHIVED")}
-          >
-            <FormattedMessage id="workplan.batch.action.archive" />
-          </Button>
-        </>
-      );
-    }
-    if (batch.status === "ACTIVE") {
-      return (
-        <>
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={() => transitionBatch(batch, "COMPLETED")}
-          >
-            <FormattedMessage id="workplan.batch.action.complete" />
-          </Button>
-          <Button
-            kind="ghost"
-            size="sm"
-            renderIcon={Archive}
-            onClick={() => transitionBatch(batch, "ARCHIVED")}
-          >
-            <FormattedMessage id="workplan.batch.action.archive" />
-          </Button>
-        </>
-      );
-    }
-    if (batch.status === "COMPLETED") {
-      return (
-        <Button
-          kind="ghost"
-          size="sm"
-          renderIcon={Archive}
-          onClick={() => transitionBatch(batch, "ARCHIVED")}
-        >
-          <FormattedMessage id="workplan.batch.action.archive" />
-        </Button>
-      );
-    }
-    return null;
+  const clearAll = () => {
+    setConfirmClear(false);
+    setLoading(true);
+    postToOpenElisServerFullResponse(
+      `${BATCH_ENDPOINT}/batches/archive-all`,
+      JSON.stringify({}),
+      async (response) => {
+        setLoading(false);
+        if (response?.ok) {
+          notify(
+            "success",
+            intl.formatMessage({ id: "workplan.batch.cleared" }),
+          );
+          reload();
+          return;
+        }
+        const body = await parseJson(response);
+        notify(
+          "error",
+          body?.message ||
+            intl.formatMessage({ id: "workplan.batch.clear.failed" }),
+        );
+      },
+    );
   };
 
   return (
@@ -315,17 +254,6 @@ export default function BatchWorkplan() {
               >
                 <FormattedMessage id="workplan.batch.refresh" />
               </Button>
-              <Button
-                size="sm"
-                renderIcon={Add}
-                onClick={createBatch}
-                disabled={selectedIds.length === 0 || loading}
-              >
-                <FormattedMessage
-                  id="workplan.batch.create"
-                  values={{ count: selectedIds.length }}
-                />
-              </Button>
             </div>
           </div>
 
@@ -339,7 +267,10 @@ export default function BatchWorkplan() {
             />
           )}
 
-          <Tabs>
+          <Tabs
+            selectedIndex={tab}
+            onChange={({ selectedIndex }) => setTab(selectedIndex)}
+          >
             <TabList
               aria-label={intl.formatMessage({ id: "workplan.batch.tabs" })}
             >
@@ -347,204 +278,74 @@ export default function BatchWorkplan() {
                 <FormattedMessage id="workplan.batch.pendingTests" />
               </Tab>
               <Tab>
-                <FormattedMessage id="workplan.batch.batches" />
+                <FormattedMessage
+                  id="workplan.batch.batches.count"
+                  values={{ count: batches.length }}
+                />
               </Tab>
             </TabList>
             <TabPanels>
               <TabPanel>
-                <Table size="sm" useZebraStyles>
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader className="batch-workplan__select-col">
-                        <Checkbox
-                          id="batch-workplan-select-page"
-                          hideLabel
-                          labelText={intl.formatMessage({
-                            id: "workplan.batch.selectPage",
-                          })}
-                          checked={visibleSelected}
-                          onChange={(_, { checked }) => toggleVisible(checked)}
-                        />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="quick.entry.accession.number" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.test" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.unit" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.method" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.sampleType" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="sample.receivedDate" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.status" />
-                      </TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pagedPendingTests.map((test) => (
-                      <TableRow key={test.analysisId}>
-                        <TableCell>
-                          <Checkbox
-                            id={`batch-workplan-${test.analysisId}`}
-                            hideLabel
-                            labelText={intl.formatMessage(
-                              { id: "workplan.batch.selectTest" },
-                              { accessionNumber: test.accessionNumber },
-                            )}
-                            checked={selectedSet.has(test.analysisId)}
-                            onChange={(_, { checked }) =>
-                              toggleSelected(test.analysisId, checked)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {convertAlphaNumLabNumForDisplay(
-                            test.accessionNumber,
-                          )}
-                        </TableCell>
-                        <TableCell>{test.testName}</TableCell>
-                        <TableCell>{test.testSectionName}</TableCell>
-                        <TableCell>{test.methodName}</TableCell>
-                        <TableCell>{test.sampleType}</TableCell>
-                        <TableCell>{test.receivedDate}</TableCell>
-                        <TableCell>
-                          <Tag
-                            type={test.nonconforming ? "red" : "gray"}
-                            size="sm"
-                          >
-                            {test.statusName}
-                          </Tag>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {pagedPendingTests.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8}>
-                          <FormattedMessage id="workplan.batch.pending.empty" />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-                <Pagination
-                  onChange={({ page, pageSize }) => {
-                    setPendingPage(page);
-                    setPendingPageSize(pageSize);
-                  }}
-                  page={pendingPage}
-                  pageSize={pendingPageSize}
-                  pageSizes={[10, 20, 50, 100]}
-                  totalItems={pendingTests.length}
-                  forwardText={intl.formatMessage({
-                    id: "pagination.forward",
-                  })}
-                  backwardText={intl.formatMessage({
-                    id: "pagination.backward",
-                  })}
-                  itemsPerPageText={intl.formatMessage({
-                    id: "pagination.items-per-page",
-                  })}
-                  pageNumberText={intl.formatMessage({
-                    id: "pagination.page-number",
-                  })}
+                <PendingTestsPanel
+                  tests={pendingTests}
+                  loading={loading}
+                  canCreate
+                  onCreateBatch={createBatch}
+                  draftBatches={batches.filter(
+                    (batch) => batch.status === "DRAFT",
+                  )}
+                  onAddToBatch={addToBatch}
                 />
               </TabPanel>
               <TabPanel>
-                <Table size="sm" useZebraStyles>
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.name" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.status" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.count" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.created" />
-                      </TableHeader>
-                      <TableHeader>
-                        <FormattedMessage id="workplan.batch.column.actions" />
-                      </TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pagedBatches.map((batch) => (
-                      <TableRow key={batch.id}>
-                        <TableCell>{batch.name}</TableCell>
-                        <TableCell>
-                          <Tag type={statusTagType(batch.status)} size="sm">
-                            <FormattedMessage
-                              id={`workplan.batch.status.${batch.status}`}
-                            />
-                          </Tag>
-                        </TableCell>
-                        <TableCell>{batch.itemCount}</TableCell>
-                        <TableCell>
-                          {batch.createdAt
-                            ? intl.formatDate(new Date(batch.createdAt), {
-                                year: "numeric",
-                                month: "short",
-                                day: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : ""}
-                        </TableCell>
-                        <TableCell>
-                          <div className="batch-workplan__row-actions">
-                            {renderBatchActions(batch)}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {pagedBatches.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5}>
-                          <FormattedMessage id="workplan.batch.batches.empty" />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-                <Pagination
-                  onChange={({ page, pageSize }) => {
-                    setBatchPage(page);
-                    setBatchPageSize(pageSize);
-                  }}
-                  page={batchPage}
-                  pageSize={batchPageSize}
-                  pageSizes={[10, 20, 50]}
-                  totalItems={batches.length}
-                  forwardText={intl.formatMessage({
-                    id: "pagination.forward",
-                  })}
-                  backwardText={intl.formatMessage({
-                    id: "pagination.backward",
-                  })}
-                  itemsPerPageText={intl.formatMessage({
-                    id: "pagination.items-per-page",
-                  })}
-                  pageNumberText={intl.formatMessage({
-                    id: "pagination.page-number",
-                  })}
-                />
+                <div className="batch-workplan__batches-toolbar">
+                  <Button
+                    kind="danger--ghost"
+                    size="sm"
+                    renderIcon={TrashCan}
+                    disabled={loading || batches.length === 0}
+                    onClick={() => setConfirmClear(true)}
+                  >
+                    <FormattedMessage id="workplan.batch.clearAll" />
+                  </Button>
+                </div>
+                {batches.length === 0 && (
+                  <p className="batch-workplan__muted">
+                    <FormattedMessage id="workplan.batch.batches.empty" />
+                  </p>
+                )}
+                {batches.map((batch) => (
+                  <BatchTile
+                    key={batch.id}
+                    batch={batch}
+                    expanded={expanded.has(batch.id)}
+                    onToggle={toggle}
+                    onChanged={reload}
+                    notify={notify}
+                    canOverride={canOverride}
+                  />
+                ))}
               </TabPanel>
             </TabPanels>
           </Tabs>
         </Column>
       </Grid>
+      <Modal
+        open={confirmClear}
+        danger
+        size="xs"
+        modalHeading={intl.formatMessage({ id: "workplan.batch.clearAll" })}
+        primaryButtonText={intl.formatMessage({
+          id: "workplan.batch.clearAll.confirm",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestSubmit={clearAll}
+        onRequestClose={() => setConfirmClear(false)}
+      >
+        <p>
+          <FormattedMessage id="workplan.batch.clearAll.body" />
+        </p>
+      </Modal>
     </>
   );
 }

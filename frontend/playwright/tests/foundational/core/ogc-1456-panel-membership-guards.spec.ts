@@ -278,7 +278,7 @@ test.describe("Panel membership guards (OGC-1456)", () => {
       );
       await page
         .locator("#panel-terminology-source")
-        .selectOption("LOINC", { timeout: NAV_TIMEOUT });
+        .fill("LOINC", { timeout: NAV_TIMEOUT });
       await page.locator("#panel-terminology-code").fill("12345678-90");
       await page
         .getByTestId("panel-terminology-section")

@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.terminology.Coding;
 
 /**
  * An analyzer's mapping as the editor shows it, or, with no analyzer, the
@@ -23,8 +24,8 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
      * this instrument runs the assay.
      */
     public record TestRow(String sourceRowKey, String rawCode, List<String> aliases, String testNameHint, String loinc,
-            String unit, String resultType, BridgeAnalyzerProfile.NormalizedCoding normalizedCoding,
-            AnalyzerMappingState mappingState, AnalyzerMappingOrigin origin, String testId, String componentId,
+            String unit, String resultType, List<Coding> codings, AnalyzerMappingState mappingState,
+            AnalyzerMappingOrigin origin, String testId, String componentId,
             AnalyzerMappingCatalogService.TestOption selectedTest,
             AnalyzerMappingCatalogService.TestOption suggestedTest, AnalyzerUnresolvedReason unresolvedReason,
             List<ResultRow> results, String subIdentity, String callComponentId, String componentCode,
@@ -32,6 +33,7 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
 
         public TestRow {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
+            codings = codings == null ? List.of() : List.copyOf(codings);
             results = results == null ? List.of() : List.copyOf(results);
         }
     }
@@ -39,6 +41,6 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
     public record ResultRow(String rawValue, AnalyzerMappingState mappingState, AnalyzerMappingOrigin origin,
             String resultOptionId, AnalyzerMappingCatalogService.ResultOption selectedOption,
             AnalyzerMappingCatalogService.ResultOption suggestedOption, AnalyzerUnresolvedReason unresolvedReason,
-            boolean observed, String translationOf) {
+            boolean observed) {
     }
 }
