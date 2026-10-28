@@ -100,12 +100,6 @@ public abstract class CSVColumnBuilder {
     }
 
     /**
-     * The list of all columns that can be exported for lookup when report is
-     * generated
-     */
-    private final Map<String, CSVColumn> columnsByDbName = new HashMap<>();
-
-    /**
      * The list of columns in order of definition, so that we can generate
      * JasperReports XML in order for display
      */
@@ -121,11 +115,9 @@ public abstract class CSVColumnBuilder {
     protected List<Test> allTests;
 
     /**
-     * This table provide a mapping from test name (CSV column heading also) to the
-     * TestResult record so we can look at the result type (Dictionary vs. constant
-     * etc.)
+     * Result translation is keyed by test identity, independent of CSV headings.
      */
-    protected Map<String, TestResult> testResultsByTestName;
+    protected Map<String, TestResult> testResultsByColumn;
 
     protected String validStatusId;
 
@@ -145,27 +137,17 @@ public abstract class CSVColumnBuilder {
     private TestService testService = SpringContext.getBean(TestService.class);
     private TestResultService testResultService = SpringContext.getBean(TestResultService.class);
 
-    // This is the largest value possible for a postgres column name. The code will
-    // convert the
-    // test description to a column name so we need to truncate
-    // It's actually 63 but UTF_8 makes 59 safer.
-    private static final int MAX_POSTGRES_COL_NAME = 55;
-
-    /**
-     * the test have to be sorted by the name, because they have to match the pivot
-     * table order in the results
-     */
     @SuppressWarnings("unchecked")
     protected void defineAllTestsAndResults() {
         if (allTests == null) {
             allTests = testService.getAllOrderBy("name");
         }
-        if (testResultsByTestName == null) {
-            testResultsByTestName = new HashMap<>();
+        if (testResultsByColumn == null) {
+            testResultsByColumn = new HashMap<>();
             List<TestResult> allTestResults = testResultService.getAllTestResults();
             for (TestResult testResult : allTestResults) {
-                String key = TestServiceImpl.getLocalizedTestNameWithType(testResult.getTest());
-                testResultsByTestName.put(key, testResult);
+                String key = CSVColumnSql.resultColumnName(testResult.getTest());
+                testResultsByColumn.put(key, testResult);
             }
         }
     }
@@ -232,20 +214,6 @@ public abstract class CSVColumnBuilder {
     protected void buildResultSet() throws SQLException {
         makeSQL();
         String sql = query.toString();
-        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
-        // "===1===\n" +
-        // sql.substring(0, 7000)); // the SQL is
-        // chunked out only because Eclipse thinks printing really big strings to the
-        // console must be wrong, so it truncates them
-        // LogEvent.logInfo(this.getClass().getSimpleName(), "method unkown",
-        // "===2===\n" +
-        // sql.substring(7000));
-        // Session session =
-        // HibernateUtil.getSession().getSessionFactory().openSession();
-        // PreparedStatement stmt = session.connection().prepareStatement(sql,
-        // ResultSet.TYPE_SCROLL_SENSITIVE,
-        // ResultSet.CONCUR_READ_ONLY);
-        // resultSet = stmt.executeQuery();
         // The session holds a pooled connection until closeResultSet() runs.
         session = SpringContext.getBean(SessionFactory.class).openSession();
         try {
@@ -308,11 +276,10 @@ public abstract class CSVColumnBuilder {
         String value;
         // look in the data source for a value
         try {
-            value = resultSet.getString(trimToPostgresMaxColumnName(column.dbName));
+            value = resultSet.getString(column.dbName);
         } catch (RuntimeException e) {
             // if you end up where it is because the result set doesn't return a
             // column of the right name
-            // Check MAX_POSTGRES_COL_NAME if this fails on a long name
             LogEvent.logInfo(this.getClass().getSimpleName(), "getValue",
                     "Internal Error: Unable to find db column \"" + column.dbName + "\" in data.");
             return "?" + column.csvName + "?";
@@ -327,36 +294,17 @@ public abstract class CSVColumnBuilder {
         return result;
     }
 
-    protected String prepareColumnName(String columnName) {
-        // trim and escape the column name so it is more safe from sql injection
-        if (!columnName.matches("(?i)[a-zàâçéèêëîïôûùüÿñæœ0-9_ ()%/\\[\\]+\\-]+")) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "prepareColumnName",
-                    "potentially dangerous character detected in '" + columnName + "'");
-        }
-        return "\"" + trimToPostgresMaxColumnName(columnName = columnName.replace("\"", "\\\"")) + "\"";
-    }
-
-    private String trimToPostgresMaxColumnName(String name) {
-        if (name.length() <= MAX_POSTGRES_COL_NAME) {
-            return name;
-        } else {
-            return name.substring(0, MAX_POSTGRES_COL_NAME);
-        }
-    }
-
     public void add(String dbName, String csvTitle) {
         add(dbName, csvTitle, DICT);
     }
 
     public void add(String dbName, String csvTitle, Strategy strat) {
         CSVColumn col = new CSVColumn(dbName, csvTitle, strat);
-        columnsByDbName.put(dbName, col);
         columnsInOrder.add(col);
     }
 
     public void add(String dbName, String csvTitle, ICSVColumnCustomStrategy customStrategy) {
         CSVColumn col = new CSVColumn(dbName, csvTitle, Strategy.CUSTOM, customStrategy);
-        columnsByDbName.put(dbName, col);
         columnsInOrder.add(col);
     }
 
@@ -415,7 +363,7 @@ public abstract class CSVColumnBuilder {
             case DROP_ZERO:
                 return ("0".equals(value) || value == null) ? "" : value;
             case TEST_RESULT:
-                return isBlankOrNull(value) ? "" : translateTestResult(this.csvName, value);
+                return isBlankOrNull(value) ? "" : translateTestResult(this.dbName, value);
             case GEND_CD4:
                 return isBlankOrNull(value) ? "" : translateGendResult(getGendCD4CountAnalyteId(), value);
             case LOG:
@@ -516,11 +464,8 @@ public abstract class CSVColumnBuilder {
          * @return @
          * @throws SQLException
          */
-        public String translateTestResult(String testName, String value) throws SQLException {
-            TestResult testResult = testResultsByTestName.get(testName);
-            if (testName.equalsIgnoreCase("DNA PCR")) { // need fix: testName is different from map key
-                return ResourceTranslator.DictionaryTranslator.getInstance().translateRaw(value);
-            }
+        public String translateTestResult(String columnName, String value) throws SQLException {
+            TestResult testResult = testResultsByColumn.get(columnName);
             // if it is not in the table then its just a value in the result
             // that was NOT selected from a list, thus no translation
             if (testResult == null) {
@@ -573,16 +518,17 @@ public abstract class CSVColumnBuilder {
      * @param highDatePostgres
      */
     protected void appendResultCrosstab(Date lowDate, Date highDate, String byDate) {
-        // A list of analytes which should not show up in the regular results,
-        // because they are not the primary results, but, for example, is a
-        // conclusion.
-        // String excludeAnalytes = getExcludedAnalytesSet();
         SQLConstant listName = SQLConstant.RESULT;
+        if (allTests.isEmpty()) {
+            query.append(", \n (SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo"
+                    + " FROM sample_item AS si) AS result \n");
+            return;
+        }
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
                 + ".* " + " FROM sample_item AS si LEFT JOIN \n ");
 
         // Begin cross tab / pivot table
-        query.append(" crosstab( \n" + " 'SELECT si.id, t.description, r.value \n"
+        query.append(" crosstab( \n" + " 'SELECT si.id, t.id, r.value \n"
                 + " FROM clinlims.result AS r, clinlims.analysis AS a, clinlims.sample_item AS si,"
                 + " clinlims.sample AS s, clinlims.test AS t, clinlims.test_result AS tr \n" + " WHERE \n"
                 + " s.id = si.samp_id AND " + byDate + " >= date(''" + formatDateForDatabaseSql(lowDate) + "'')  AND "
@@ -591,23 +537,14 @@ public abstract class CSVColumnBuilder {
                 // sql injection safe as user cannot overwrite validStatusId in database
                 + ((validStatusId == null) ? "" : " AND a.status_id = " + validStatusId)
                 + "\n AND a.id = r.analysis_id " + "\n AND r.test_result_id = tr.id" + "\n AND tr.test_id = t.id       "
-                // + (( excludeAnalytes == null)?"":
-                // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
-                // + " AND a.test_id = t.id "
-                + "\n ORDER BY 1, 2 " + "\n ', 'SELECT description FROM test where is_active = ''Y'' ORDER BY 1' ) ");
+                + "\n ORDER BY 1, 2 " + "\n ', '"
+                + CSVColumnSql.categorySql(allTests.stream().map(Test::getId).toList()) + "' ) ");
         // end of cross tab
 
-        // Name the test pivot table columns . We'll name them all after the
-        // resource name, because some tests have fancy characters in them and
-        // somewhere
-        // between iReport, Java and postgres a complex name (e.g. one including
-        // a beta, " HCG Quant") get messed up and isn't found.
         query.append("\n as " + listName + " ( " // inner use of the list name
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {
-            String testName = TestServiceImpl.getLocalizedTestNameWithType(col);
-            // sql injection safe as it is escaped for
-            query.append("\n, " + prepareColumnName(testName) + " varchar(200) ");
+            query.append("\n, \"" + CSVColumnSql.resultColumnName(col) + "\" varchar(200) ");
         }
         query.append(" ) \n");
         // left join all sample Items from the right sample range to the results table.
@@ -617,60 +554,24 @@ public abstract class CSVColumnBuilder {
         // results.
     }
 
-    /**
-     * @return
-     */
-    /*
-     * private String getExcludedAnalytesSet() { String[] excludedAnalytes = new
-     * String[] { getGendCD4CountAnalyteId() }; StringBuilder sb = new
-     * StringBuilder(); for (String a : excludedAnalytes) {
-     * sb.append(a).append(","); } sb.setLength(sb.length() - 1); return
-     * sb.toString(); }
-     */
-
     protected void appendObservationHistoryCrosstab(Date lowDate, Date highDate, String byDate) {
         SQLConstant listName = SQLConstant.DEMO;
         appendCrosstabPreamble(listName);
         query.append( // any Observation History items
-                "\n crosstab( " + "\n 'SELECT DISTINCT oh.sample_id as samp_id, oht.type_name, value "
+                "\n crosstab( " + "\n 'SELECT DISTINCT oh.sample_id as samp_id, oht.id, value "
                         + "\n FROM observation_history AS oh, sample AS s, observation_history_type AS oht "
                         + "\n WHERE s.collection_date >= date(''" + formatDateForDatabaseSql(lowDate) + "'') "
                         + "\n AND s.collection_date <= date(''" + formatDateForDatabaseSql(highDate) + "'')"
                         + "\n AND s.id = oh.sample_id AND oh.observation_history_type_id = oht.id order by 1;' "
-                        + "\n , "
-                        + "\n 'SELECT DISTINCT oht.type_name FROM observation_history_type AS oht ORDER BY 1;' " + // must
-                                                                                                                   // be
-                                                                                                                   // the
-                                                                                                                   // same
-                                                                                                                   // list
-                                                                                                                   // as
-                                                                                                                   // the
-                                                                                                                   // column
-                                                                                                                   // definition
-                                                                                                                   // for
-                                                                                                                   // the
-                                                                                                                   // demo
-                                                                                                                   // table
-                                                                                                                   // below.
-                        "\n ) \n ");
+                        + "\n , " + "\n '"
+                        + CSVColumnSql
+                                .categorySql(allObHistoryTypes.stream().map(ObservationHistoryType::getId).toList())
+                        + "' " + "\n ) \n ");
 
-        // in the following list of observation history items, all valid values
-        // are listed in alphabetical order (since that is how crosstab lists
-        // them), so that that the queries constructed don't have to filter the
-        // exceptional ones.
-        // It is the column name list defined in the constructor of this class
-        // which picks the right column to display (and in what order). That
-        // list is also used to generated the JasperReport XML
-        // That list skips the OH types which actually repeat (priorDiseases,
-        // priorARVTreatmentINNs) which are returned as as crosstab set of
-        // columns either specially named columns (disease acronyms for each
-        // diseases) or with with n after their name (priorARVTreatmentINNs1, 2,
-        // ... )
+        // Declare columns in the same order as the numeric category query.
         query.append(" as demo ( " + " \"s_id\"                           numeric(10) ");
         for (ObservationHistoryType oht : allObHistoryTypes) {
-            // this is sql injection safe as users currently have no way of modifying fields
-            // in ObservationHistoryTypes
-            query.append("\n," + oht.getTypeName() + " varchar(100) ");
+            query.append("\n," + CSVColumnSql.observationColumnName(oht.getTypeName()) + " varchar(100) ");
         }
         query.append(" ) \n");
         appendCrosstabPostfix(lowDate, highDate, listName);
@@ -686,21 +587,23 @@ public abstract class CSVColumnBuilder {
                 + formatDateForDatabaseSql(highDate) + "'" + " ORDER BY 1 " + "\n) AS " + listName + "\n ");
     }
 
-    protected Object pad20(Object translate) {
-        // uncomment the following lines to help make everything line up when
-        // debugging output.
-        // String strIn = (String)translate;
-        // int len = strIn.length();
-        // len = ( len > 30 )? 30: len;
-        // translate = translate + " ".substring(len);
-        return translate;
+    protected void addViralLoadLogColumn() {
+        boolean found = false;
+        for (Test test : allTests) {
+            if ("Viral Load".equals(TestServiceImpl.getLocalizedTestNameWithType(test))) {
+                add(CSVColumnSql.resultColumnName(test), "Viral Load log", Strategy.LOG);
+                found = true;
+            }
+        }
+        if (!found) {
+            add("sample_id", "Viral Load log", Strategy.BLANK);
+        }
     }
 
     /** Generate a column to the list of all columns. One for each possible test. */
     protected void addAllResultsColumns() {
         for (Test test : allTests) {
-            String testTag = TestServiceImpl.getLocalizedTestNameWithType(test);
-            add(testTag, TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
+            add(CSVColumnSql.resultColumnName(test), TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
         }
     }
 

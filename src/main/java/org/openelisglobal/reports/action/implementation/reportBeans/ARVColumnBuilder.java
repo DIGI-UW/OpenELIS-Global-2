@@ -19,14 +19,12 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.sql.Date;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
-import org.openelisglobal.reports.form.ReportForm.DateType;
 
 /**
  * @author pahill (pahill@uw.edu)
  * @since May 18, 2011
  */
 public abstract class ARVColumnBuilder extends CIColumnBuilder {
-    private DateType dateType;
 
     /**
      * @param dateRange
@@ -47,20 +45,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
     @Override
     public void makeSQL() {
 
-        // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
-        case ORDER_DATE:
-            dateColumn = "s.entered_date ";
-            break;
-        case RESULT_DATE:
-            dateColumn = "a.released_date ";
-            break;
-        case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
-        default:
-            break;
-        }
 
         query = new StringBuilder();
         Date lowDate = dateRange.getLowDate();

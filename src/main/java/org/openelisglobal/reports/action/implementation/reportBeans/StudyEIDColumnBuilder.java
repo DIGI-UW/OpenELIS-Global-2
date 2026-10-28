@@ -19,8 +19,8 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.ANALYSIS_STATUS;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.DATE_TIME;
+import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.DICT_RAW;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.NONE;
-import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.TEST_RESULT;
 
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
 import org.openelisglobal.reports.form.ReportForm.DateType;
@@ -53,7 +53,7 @@ public class StudyEIDColumnBuilder extends CIStudyColumnBuilder {
     protected void defineAllReportColumns() {
         defineBasicColumns();
 
-        add("DNA PCR", "DNA PCR", TEST_RESULT);
+        add("DNA PCR", "DNA PCR", DICT_RAW);
         add("analysis_status_id", "ANALYSIS_STATUS", ANALYSIS_STATUS);
         add("started_date", "STARTED_DATE", DATE_TIME);
         add("completed_date", "COMPLETED_DATE", DATE_TIME);
@@ -79,52 +79,6 @@ public class StudyEIDColumnBuilder extends CIStudyColumnBuilder {
         add("report_generation_time", "PRINTED_DATE", DATE_TIME);
         add("report_lastupdated", "LAST_REPORT_UPDATE", DATE_TIME);
         // addAllResultsColumns();
-    }
-
-    /**
-     * @return the SQL for (nearly) one big row for each sample in the date range
-     *         for the particular project.
-     */
-    public void makeSQL_original() { // without analysis completed date ......
-        // Switch date column according to selected DateType: PK
-        String dateColumn = "s.entered_date ";
-        switch (dateType) {
-        case ORDER_DATE:
-            dateColumn = "s.entered_date ";
-            break;
-        case RESULT_DATE:
-            dateColumn = "a.released_date ";
-            break;
-        case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
-        default:
-            break;
-        }
-        query = new StringBuilder();
-        query.append(SELECT_SAMPLE_PATIENT_ORGANIZATION);
-        // all crosstab generated tables need to be listed in the SELECT column list and
-        // in the WHERE clause at the bottom
-        query.append(SELECT_ALL_DEMOGRAPHIC_AND_RESULTS);
-        // more cross tabulation of other columns goes where
-
-        // ordinary lab (sample and patient) tables
-        query.append(FROM_SAMPLE_PATIENT_ORGANIZATION);
-
-        // all observation history from expressions
-        appendObservationHistoryCrosstab(dateRange.getLowDate(), dateRange.getHighDate(), dateColumn);
-        appendResultCrosstab(dateRange.getLowDate(), dateRange.getHighDate(), dateColumn);
-
-        // and finally the join that puts these all together. Each cross table should be
-        // listed here otherwise it's not in the result and you'll get a full join
-        query.append(buildWhereSamplePatienOrgSQL(postgresDateFormat.format(dateRange.getLowDate()),
-                postgresDateFormat.format(dateRange.getHighDate()), dateColumn)
-                // insert joining of any other crosstab here.
-                // insert joining of any other crosstab here.
-                + "\n AND s.id = demo.samp_id " + "\n AND s.id = result.samp_id " + "\n ORDER BY s.accession_number ");
-        // no don't insert another crosstab or table here, go up before the main WHERE
-        // clause
-
-        return;
     }
 
     @Override

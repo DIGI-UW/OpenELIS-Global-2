@@ -1,0 +1,299 @@
+package org.openelisglobal.reports.action.implementation.reportBeans;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.opencsv.CSVReader;
+import java.io.StringReader;
+import java.lang.reflect.Field;
+import java.sql.Date;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.form.ReportForm.DateType;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.TestService;
+
+/**
+ * Real PostgreSQL export fixtures; this class owns ids 992200 through 992299.
+ */
+public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
+    private static final int SAMPLE = 992200;
+    private static final Date DAY = Date.valueOf("2002-03-04");
+    private Field dictionaryInstance;
+    private Object previousDictionary;
+
+    @Before
+    public void createFixture() throws Exception {
+        dictionaryInstance = ResourceTranslator.DictionaryTranslator.class.getDeclaredField("instance");
+        dictionaryInstance.setAccessible(true);
+        previousDictionary = dictionaryInstance.get(null);
+        dictionaryInstance.set(null, null);
+        jdbcTemplate.update("INSERT INTO localization (id, description) VALUES (?, 'Study export section')", SAMPLE);
+        jdbcTemplate.update(
+                "INSERT INTO test_section (id, name, description, name_localization_id, is_active) VALUES (?, ?, ?, ?, 'Y')",
+                SAMPLE, "Study export fixture", "Study export fixture", SAMPLE);
+        jdbcTemplate.update("INSERT INTO sample (id, accession_number, entered_date, collection_date, received_date)"
+                + " VALUES (?, 'STUDY-PRIVATE-FIXTURE', ?, ?, ?)", SAMPLE, DAY, DAY, DAY);
+        jdbcTemplate.update("INSERT INTO sample_item (id, samp_id, sort_order, status_id) VALUES (?, ?, 1, 1)", SAMPLE,
+                SAMPLE);
+    }
+
+    @After
+    public void cleanFixture() throws Exception {
+        dictionaryInstance.set(null, previousDictionary);
+        for (String table : new String[] { "observation_history", "observation_history_type", "result", "test_result",
+                "analysis", "panel_item", "panel", "sample_human", "sample_projects", "sample_organization",
+                "sample_item", "sample", "organization", "test", "test_section", "dictionary", "patient", "person",
+                "localization_value", "localization" }) {
+            jdbcTemplate.update("DELETE FROM " + table + " WHERE id BETWEEN 992200 AND 992299");
+        }
+    }
+
+    @Test
+    public void quotedLabelRemainsAHeaderAndCannotChangeTheQuery() throws Exception {
+        String label = "quoted\"; SELECT 987654321; --";
+        insertResult(992201, label, "N", "7.25");
+        Exported row = exportResults(992201);
+        assertEquals(List.of(label), row.headers());
+        assertEquals(List.of("7.25"), row.values());
+        assertEquals(Integer.valueOf(1),
+                jdbcTemplate.queryForObject("SELECT count(*) FROM sample WHERE id = ?", Integer.class, SAMPLE));
+    }
+
+    @Test
+    public void duplicateAndLongUnicodeLabelsKeepTheirOwnValuesInRequestedOrder() throws Exception {
+        String label = "Échantillon 日本語 ".repeat(7);
+        insertResult(992202, label, "N", "13.5");
+        insertResult(992203, label, "N", "42");
+        Exported row = exportResults(992203, 992202);
+        assertEquals(List.of(label, label), row.headers());
+        assertEquals(List.of("42", "13.5"), row.values());
+    }
+
+    @Test
+    public void sharedDisplayNameDoesNotMixNumericAndDictionaryResults() throws Exception {
+        jdbcTemplate
+                .update("INSERT INTO dictionary (id, dict_entry, is_active) VALUES (992290, 'Study positive', 'Y')");
+        insertResult(992204, "Same label", "N", "992290");
+        insertResult(992205, "Same label", "D", "992290");
+        assertEquals(List.of("992290", "Study positive"), exportResults(992204, 992205).values());
+    }
+
+    @Test
+    public void missingResultsStayBlankAndTextIsNotReinterpreted() throws Exception {
+        insertResult(992206, "Text", "A", "<5, pending");
+        insertResult(992207, "Missing", "N", null);
+        assertEquals(List.of("<5, pending", ""), exportResults(992206, 992207).values());
+    }
+
+    @Test
+    public void noTestsStillExportsTheSampleColumn() throws Exception {
+        CSVColumnBuilder builder = resultBuilder();
+        builder.add("sample_id", "Sample", CSVColumnBuilder.Strategy.NONE);
+        assertEquals(new Exported(List.of("Sample"), List.of(String.valueOf(SAMPLE))), read(builder));
+    }
+
+    @Test
+    public void observationIdentifierIsQuotedAndRetainsItsValue() throws Exception {
+        String name = "Name\"; SELECT 42; --";
+        jdbcTemplate.update("INSERT INTO person (id, first_name, last_name) VALUES (?, 'Fixture', 'Patient')", SAMPLE);
+        jdbcTemplate.update("INSERT INTO patient (id, person_id) VALUES (?, ?)", SAMPLE, SAMPLE);
+        jdbcTemplate.update("INSERT INTO observation_history_type (id, type_name) VALUES (?, ?)", SAMPLE, name);
+        jdbcTemplate.update(
+                "INSERT INTO observation_history (id, patient_id, sample_id, observation_history_type_id, value_type, value)"
+                        + " VALUES (?, ?, ?, ?, 'A', 'unchanged')",
+                SAMPLE, SAMPLE, SAMPLE, SAMPLE);
+        CSVColumnBuilder builder = new CSVColumnBuilder(null) {
+            {
+                allObHistoryTypes = SpringContext.getBean(ObservationHistoryTypeService.class).getAllOrdered("typeName",
+                        false);
+                add(name, "Observation", Strategy.NONE);
+            }
+
+            @Override
+            public void makeSQL() {
+                query = new StringBuilder("SELECT demo.* FROM sample s");
+                appendObservationHistoryCrosstab(DAY, DAY, "s.entered_date");
+                query.append(" WHERE s.id = ").append(SAMPLE).append(" AND demo.samp_id = s.id");
+            }
+        };
+        assertEquals(List.of("unchanged"), read(builder).values());
+        CSVRoutineColumnBuilder routine = new CSVRoutineColumnBuilder(null) {
+            {
+                allObHistoryTypes = SpringContext.getBean(ObservationHistoryTypeService.class).getAllOrdered("typeName",
+                        false);
+                add(name, "Observation", Strategy.NONE);
+            }
+
+            @Override
+            public void makeSQL() {
+                query = new StringBuilder("SELECT demo.* FROM sample s");
+                appendObservationHistoryCrosstab(DAY, DAY);
+                query.append(" WHERE s.id = ").append(SAMPLE).append(" AND demo.samp_id = s.id");
+            }
+        };
+        try {
+            routine.buildDataSource();
+            assertTrue(routine.next());
+            assertEquals(List.of("Observation"), parse(routine.getColumnNamesLine()));
+            assertEquals(List.of("unchanged"), parse(routine.nextLine()));
+            assertFalse(routine.next());
+        } finally {
+            routine.closeResultSet();
+        }
+    }
+
+    @Test
+    public void haitiExportKeepsDemographicsAndLocalizedResultHeadings() throws Exception {
+        linkPatientAndOrganization();
+        String label = "Résultat \"quoted\"";
+        insertResult(992208, label, "N", "15.75");
+        Exported row = read(new HaitiColumnBuilder(dateRange()));
+        assertEquals("STUDY-PRIVATE-FIXTURE", row.value("LABNO"));
+        assertEquals("Fixture", row.value("PRENOM"));
+        assertEquals("Export clinic", row.value("SERVICE"));
+        assertEquals("15.75", row.value(label));
+    }
+
+    @Test
+    public void hpvExportUsesItsPanelTestIdentityAndDictionaryValue() throws Exception {
+        linkPatientAndOrganization();
+        jdbcTemplate.update("INSERT INTO dictionary (id, dict_entry, is_active) VALUES (992290, 'Positive', 'Y')");
+        // HPV installations configure this observation alongside the panel.
+        jdbcTemplate
+                .update("INSERT INTO observation_history_type (id, type_name) VALUES (992291, 'hpvsamplingmethod')");
+        insertResult(992209, "HPV \"quoted\"", "D", "992290");
+        jdbcTemplate.update(
+                "INSERT INTO panel (id, name, description, name_localization_id) VALUES (?, 'HPV HR', 'Fixture panel', ?)",
+                SAMPLE, SAMPLE);
+        jdbcTemplate.update("INSERT INTO panel_item (id, panel_id, test_id) VALUES (?, ?, 992209)", SAMPLE, SAMPLE);
+        Exported row = read(new HPVColumnBuilder(dateRange(), "", DateType.ORDER_DATE));
+        assertEquals("STUDY-PRIVATE-FIXTURE", row.value("Lab No"));
+        assertEquals("Positive", row.value("HPV \"quoted\""));
+    }
+
+    @Test
+    public void studyEidExportRetainsDictionaryText() throws Exception {
+        linkPatientAndOrganization();
+        jdbcTemplate.update("INSERT INTO dictionary (id, dict_entry, is_active) VALUES (992290, '1=Positive', 'Y')");
+        insertResult(992210, "DNA PCR", "D", "992290");
+        jdbcTemplate.update("UPDATE test SET name = 'DNA PCR' WHERE id = 992210");
+        String dnaTest = SpringContext.getBean(TestService.class).getActiveTestByName("DNA PCR").get(0).getId();
+        jdbcTemplate.update("UPDATE analysis SET test_id = ? WHERE id = 992210", Long.parseLong(dnaTest));
+        jdbcTemplate.update("UPDATE test_result SET test_id = ? WHERE id = 992210", Long.parseLong(dnaTest));
+        Exported study = read(new StudyEIDColumnBuilder(dateRange(), "", DateType.ORDER_DATE));
+        assertEquals("1=Positive", study.value("DNA PCR"));
+        Exported eid = read(new EIDColumnBuilder(dateRange(), ""));
+        assertEquals("1=Positive", eid.value("DNA PCR"));
+    }
+
+    @Test
+    public void studyLogColumnUsesTheSameResultAsItsNumericColumn() throws Exception {
+        insertResult(992211, "Viral Load", "N", "1000");
+        CSVColumnBuilder builder = resultBuilder(992211);
+        builder.addViralLoadLogColumn();
+        assertEquals(List.of("1000", "3.0"), read(builder).values());
+    }
+
+    private DateRange dateRange() {
+        DateRange range = mock(DateRange.class);
+        when(range.getLowDate()).thenReturn(DAY);
+        when(range.getHighDate()).thenReturn(DAY);
+        return range;
+    }
+
+    private void linkPatientAndOrganization() {
+        jdbcTemplate.update("INSERT INTO person (id, first_name, last_name) VALUES (?, 'Fixture', 'Patient')", SAMPLE);
+        jdbcTemplate.update("INSERT INTO patient (id, person_id, external_id) VALUES (?, ?, 'STUDY-PATIENT')", SAMPLE,
+                SAMPLE);
+        jdbcTemplate.update("INSERT INTO sample_human (id, samp_id, patient_id) VALUES (?, ?, ?)", SAMPLE, SAMPLE,
+                SAMPLE);
+        jdbcTemplate.update("INSERT INTO organization (id, name) VALUES (?, 'Export clinic')", SAMPLE);
+        jdbcTemplate.update("INSERT INTO sample_organization (id, samp_id, org_id) VALUES (?, ?, ?)", SAMPLE, SAMPLE,
+                SAMPLE);
+        jdbcTemplate.update("INSERT INTO sample_projects (id, samp_id, proj_id) SELECT ?, ?, min(id) FROM project",
+                SAMPLE, SAMPLE);
+        jdbcTemplate.update(
+                "INSERT INTO observation_history (id, patient_id, sample_id, observation_history_type_id, value_type, value)"
+                        + " SELECT ?, ?, ?, min(id), 'A', 'fixture' FROM observation_history_type",
+                SAMPLE, SAMPLE, SAMPLE);
+    }
+
+    private Exported exportResults(int... ids) throws Exception {
+        return read(resultBuilder(ids));
+    }
+
+    private CSVColumnBuilder resultBuilder(int... ids) {
+        return new CSVColumnBuilder(null) {
+            {
+                allTests = Arrays.stream(ids)
+                        .mapToObj(id -> SpringContext.getBean(TestService.class).getTestById(String.valueOf(id)))
+                        .collect(Collectors.toList());
+                defineAllTestsAndResults();
+                addAllResultsColumns();
+            }
+
+            @Override
+            public void makeSQL() {
+                query = new StringBuilder("SELECT s.id AS sample_id, result.* FROM sample s");
+                appendResultCrosstab(DAY, DAY, "s.entered_date");
+                query.append(" WHERE s.id = ").append(SAMPLE).append(" AND result.samp_id = s.id");
+            }
+        };
+    }
+
+    private Exported read(CSVColumnBuilder builder) throws Exception {
+        try {
+            builder.buildDataSource();
+            assertTrue("fixture sample must be exported", builder.next());
+            Exported row = new Exported(parse(builder.getColumnNamesLine()), parse(builder.nextLine()));
+            assertFalse("no unrelated samples", builder.next());
+            return row;
+        } finally {
+            builder.closeResultSet();
+        }
+    }
+
+    private List<String> parse(String line) throws Exception {
+        try (CSVReader reader = new CSVReader(new StringReader(line))) {
+            return Arrays.asList(reader.readNext());
+        }
+    }
+
+    private void insertResult(int id, String label, String type, String value) {
+        jdbcTemplate.update("INSERT INTO localization (id, description) VALUES (?, 'Study fixture label')", id);
+        jdbcTemplate.update(
+                "INSERT INTO localization_value (id, localization_id, locale, value) VALUES (?, ?, 'en', ?)", id, id,
+                label);
+        jdbcTemplate.update(
+                "INSERT INTO test (id, name, description, guid, test_section_id, is_active, name_localization_id)"
+                        + " VALUES (?, ?, ?, ?, ?, 'Y', ?)",
+                id, "Study " + id, "Study " + id, "study-" + id, SAMPLE, id);
+        jdbcTemplate.update("INSERT INTO analysis (id, sampitem_id, test_id, analysis_type) VALUES (?, ?, ?, 'MANUAL')",
+                id, SAMPLE, id);
+        jdbcTemplate.update("UPDATE analysis SET status_id = ? WHERE id = ?", Long.parseLong(
+                SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.Finalized)), id);
+        jdbcTemplate.update("INSERT INTO test_result (id, test_id, tst_rslt_type) VALUES (?, ?, ?)", id, id, type);
+        if (value != null) {
+            jdbcTemplate.update("INSERT INTO result (id, analysis_id, test_result_id, value) VALUES (?, ?, ?, ?)", id,
+                    id, id, value);
+        }
+    }
+
+    private record Exported(List<String> headers, List<String> values) {
+        String value(String heading) {
+            assertTrue("missing CSV header: " + heading, headers.contains(heading));
+            return values.get(headers.indexOf(heading));
+        }
+    }
+}
