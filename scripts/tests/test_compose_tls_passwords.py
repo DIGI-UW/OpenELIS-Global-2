@@ -20,7 +20,9 @@ class ComposeTlsPasswordsTest(unittest.TestCase):
         context = launcher.make_context(ROOT)
         for key, trust in [("kspass", "tspass"), ("fixture-key-password", "fixture-trust-password")]:
             environment = launcher.build_environment(context)
-            environment.update(SSL_KEYSTORE_PASSWORD=key, SSL_TRUSTSTORE_PASSWORD=trust)
+            environment.update(SSL_KEYSTORE_PASSWORD=key, SSL_TRUSTSTORE_PASSWORD=trust,
+                               OE_DB_PASSWORD="fixture-app-password", ADMIN_PASSWORD="fixture-db-admin-password",
+                               POSTGRES_PASSWORD="fixture-postgres-password")
             configurations = {
                 "development": launcher.compose_command(context, "config", "--no-env-resolution", "--format", "json"),
                 "published": ["docker", "compose", "-f", "docker-compose.yml", "config", "--no-env-resolution", "--format", "json"],
@@ -44,12 +46,16 @@ class ComposeTlsPasswordsTest(unittest.TestCase):
                     oe = services["oe.openelis.org"]["environment"]
                     self.assertEqual(key, oe["SSL_KEYSTORE_PASSWORD"])
                     self.assertEqual(trust, oe["SSL_TRUSTSTORE_PASSWORD"])
-                    self.assertIn("-Doe.ssl.keystorepassword=" + key, oe["CATALINA_OPTS"])
+                    self.assertNotIn("-Doe.ssl.keystorepassword=", oe["CATALINA_OPTS"])
                     fhir = services["fhir.openelis.org"]["environment"]
-                    self.assertIn("-Dhapi.ssl.keystorepassword=" + key, fhir["CATALINA_OPTS"])
-                    self.assertIn("-Dhapi.ssl.truststorepassword=" + trust, fhir["CATALINA_OPTS"])
-                    self.assertIn("-Djavax.net.ssl.keyStorePassword=" + key, fhir["JAVA_OPTS"])
-                    self.assertIn("-Djavax.net.ssl.trustStorePassword=" + trust, fhir["JAVA_OPTS"])
+                    if stack == "development":
+                        # This source harness still uses the upstream HAPI development image.
+                        self.assertIn("-Dhapi.ssl.keystorepassword=" + key, fhir["CATALINA_OPTS"])
+                    else:
+                        self.assertEqual(key, fhir["SSL_KEYSTORE_PASSWORD"])
+                        self.assertEqual(trust, fhir["SSL_TRUSTSTORE_PASSWORD"])
+                        self.assertNotIn("Password=", fhir.get("JAVA_OPTS", ""))
+                        self.assertNotIn("password=", fhir.get("CATALINA_OPTS", ""))
                     if stack in ("development", "analyzer-ci"):
                         self.assertEqual(key, oe["SERVER_SSL_KEY_STORE_PASSWORD"])
                         self.assertEqual(key, oe["SERVER_SSL_KEY_PASSWORD"])

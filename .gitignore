@@ -32,6 +32,10 @@ yarn-error.log*
 #Developer specific docker-compose
 /docker-compose.yml
 dev/
+# Track only the explicit test login fixture; other local dev files stay ignored.
+!/dev/
+/dev/*
+!/dev/initial-admin-password
 # Additional build files
 src/main/resources/adminPassword.txt
 /OEInstaller/
@@ -161,3 +165,6 @@ volume/nce-attachments/
 # Generated local development certificates and private keys
 /.dev-stack/tls/
 /.dev-stack/images.json
+
+# Local installation credentials
+/secrets/

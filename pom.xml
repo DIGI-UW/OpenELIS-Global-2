@@ -876,6 +876,9 @@
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>adminPassword.txt</exclude>
+                </excludes>
             </resource>
             <!-- The interface's translation catalogue, which server-rendered reports
                 print their labels from (UiMessages), so a report reads in the screens' language

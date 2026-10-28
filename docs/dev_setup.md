@@ -167,9 +167,10 @@ installation does not change application ownership or configuration.
 ## Run published images
 
 Follow
-[the installation instructions](../README.md#for-offline-installation-using-the-openelis-global2-installer)
-and [release guidance](../RELEASES.md) to prepare the deployment configuration.
-The deployment files are `docker-compose.yml` and, when analyzers are needed,
+[the default distribution installation instructions](https://github.com/DIGI-UW/openelis-docker#readme),
+[installation credential setup](upgrades/private-install-credentials.md), and
+[release guidance](../RELEASES.md) to prepare the deployment configuration. The
+deployment files are `docker-compose.yml` and, when analyzers are needed,
 `docker-compose.analyzers.yml`. Use coherent version or digest pins.
 
 ```bash
