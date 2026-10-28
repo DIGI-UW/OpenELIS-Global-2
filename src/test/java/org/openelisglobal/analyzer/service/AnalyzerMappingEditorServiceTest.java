@@ -310,12 +310,13 @@ public class AnalyzerMappingEditorServiceTest {
             received.add(row);
         }
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(received);
-        var row = service.getMapping("42").tests().stream().filter(test -> "CHEM".equals(test.rawCode()))
-                .findFirst().orElseThrow();
+        var row = service.getMapping("42").tests().stream().filter(test -> "CHEM".equals(test.rawCode())).findFirst()
+                .orElseThrow();
         assertEquals(List.of(new AnalyzerMappingView.ReceivedValue("1,4", "1.4", "NUMBER", "mg/dL"),
                 new AnalyzerMappingView.ReceivedValue("1.02", "1.02", "TEXT", null),
                 new AnalyzerMappingView.ReceivedValue("1,4", "1,4", "TEXT", null)), row.receivedValues());
-        assertEquals(List.of("1.02", "1,4"), row.results().stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
+        assertEquals(List.of("1.02", "1,4"),
+                row.results().stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
         verifyZeroInteractions(bridgeProfileCatalogService);
     }
 
