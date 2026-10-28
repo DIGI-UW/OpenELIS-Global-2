@@ -43,7 +43,6 @@ import {
   List,
 } from "@carbon/react/icons";
 import "./NoteBook.css";
-import { labNow } from "../utils/labClock";
 
 import useInAppNavigation from "../common/useInAppNavigation";
 function NoteBookDashBoard() {
@@ -202,31 +201,6 @@ function NoteBookDashBoard() {
 
   const loadCounts = (data) => {
     setCounts(data);
-  };
-
-  function formatDateToDDMMYYYY(date) {
-    var day = date.getDate();
-    var month = date.getMonth() + 1;
-    var year = date.getFullYear();
-
-    var formattedDay = (day < 10 ? "0" : "") + day;
-    var formattedMonth = (month < 10 ? "0" : "") + month;
-
-    var formattedDate = formattedDay + "/" + formattedMonth + "/" + year;
-    return formattedDate;
-  }
-
-  const getPastWeek = () => {
-    var currentDate = labNow();
-
-    var pastWeekDate = new Date(currentDate);
-    pastWeekDate.setDate(currentDate.getDate() - 7);
-
-    return (
-      formatDateToDDMMYYYY(pastWeekDate) +
-      " - " +
-      formatDateToDDMMYYYY(currentDate)
-    );
   };
 
   const tileList = [

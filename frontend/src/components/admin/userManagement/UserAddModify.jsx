@@ -71,7 +71,7 @@ function UserAddModify() {
   const componentMounted = useRef(false);
   const intl = useIntl();
 
-  const [saveButton, setSaveButton] = useState(true);
+  const [, setSaveButton] = useState(true);
   const [validation, setValidation] = useState({
     validatepassword: false,
     password: false,

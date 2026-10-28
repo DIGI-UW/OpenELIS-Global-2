@@ -167,21 +167,15 @@ function PatientStatusReport(props) {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", getSiteList);
+    getFromOpenElisServer(
+      "/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC",
+      getSiteList,
+    );
     window.scrollTo(0, 0);
     return () => {
       componentMounted.current = false;
     };
   }, []);
-
-  const breadcrumbs = [
-    { label: "home.label", link: "/" },
-    { label: "routine.reports", link: "/RoutineReports" },
-    {
-      label: "openreports.patientTestStatus",
-      link: "/RoutineReport?type=patient&report=patientCILNSP_vreduit",
-    },
-  ];
 
   return (
     <>

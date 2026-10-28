@@ -16,7 +16,7 @@ import {
   DatePickerInput,
   InlineNotification,
 } from "@carbon/react";
-import { Add, Save, TrashCan } from "@carbon/icons-react";
+import { Add, Save } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -448,11 +448,9 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     }
     setError(null);
     setSaving(true);
-    const {
-      parameterGroupCount: _pgIgnored,
-      linkedTestCount: _ltIgnored,
-      ...standardBase
-    } = standard || {};
+    const standardBase = { ...standard };
+    delete standardBase.parameterGroupCount;
+    delete standardBase.linkedTestCount;
     const payload = {
       ...standardBase,
       name,
@@ -504,7 +502,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
             try {
               const saved = await response.json();
               onSaved && onSaved(saved);
-            } catch (_e) {
+            } catch {
               onSaved && onSaved(payload);
             }
           } else {
@@ -513,7 +511,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               try {
                 const body = await response.json();
                 serverMsg = body?.error || body?.message;
-              } catch (_e) {
+              } catch {
                 /* ignore */
               }
             }

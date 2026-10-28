@@ -518,16 +518,6 @@ function Reports({ devices = [] }) {
     return () => controller.abort();
   }, [loadAuditTrail]);
 
-  const handleDateChange = (range) => {
-    if (!Array.isArray(range) || range.length < 2) {
-      return;
-    }
-    const normalized = range.map((value) =>
-      value instanceof Date ? value : new Date(value),
-    );
-    setDateRange(normalized);
-  };
-
   const handleDownload = useCallback(
     (reference, formatType) => {
       try {
@@ -544,7 +534,7 @@ function Reports({ devices = [] }) {
           title: "Download started",
           subtitle: "Your report download has started successfully.",
         });
-      } catch (error) {
+      } catch {
         notify({
           kind: NotificationKinds.error,
           title: "Download failed",

@@ -33,7 +33,7 @@ import {
 import { useHistory } from "react-router-dom";
 import "./InstrumentsTab.css";
 
-const InstrumentsTab = ({ instruments = [], loading }) => {
+const InstrumentsTab = ({ instruments = [], loading: _loading }) => {
   const intl = useIntl();
   const history = useHistory();
 
@@ -193,10 +193,6 @@ const InstrumentsTab = ({ instruments = [], loading }) => {
                   </TableRow>
                 ) : (
                   rows.map((row) => {
-                    const instrument = paginatedInstruments.find(
-                      (inst) => String(inst.instrumentId || inst.id) === row.id,
-                    );
-
                     return (
                       <TableRow
                         key={row.id}

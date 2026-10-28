@@ -3,7 +3,7 @@ import { useHistory } from "react-router-dom";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import { Loading } from "@carbon/react";
-import { injectIntl, useIntl } from "react-intl";
+import { injectIntl } from "react-intl";
 import PatientStatusReport from "../common/PatientStatusReport";
 import StatisticsReport from "./StatisticsReport";
 import ReferredOut from "./ReferredOut";
@@ -101,17 +101,14 @@ export const RoutineReports = (props) => {
           id={"header.label.study.ciexport"}
         />
       )}
-
-
     </>
   );
 };
 
 const RoutineIndex = () => {
   const history = useHistory();
-  const intl = useIntl();
-  const { setNotificationVisible, addNotification, notificationVisible } =
-    useContext(NotificationContext);
+
+  const { notificationVisible } = useContext(NotificationContext);
 
   const [type, setType] = useState("");
   const [report, setReport] = useState("");

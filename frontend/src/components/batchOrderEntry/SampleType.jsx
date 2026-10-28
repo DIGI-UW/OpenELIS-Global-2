@@ -23,8 +23,8 @@ const SampleType = ({ updateFormValues }) => {
   );
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedPanels, setSelectedPanels] = useState([]);
-  const [testSearchTerm, setTestSearchTerm] = useState("");
-  const [panelSearchTerm, setPanelSearchTerm] = useState("");
+  const [, setTestSearchTerm] = useState("");
+  const [, setPanelSearchTerm] = useState("");
   const [filteredTests, setFilteredTests] = useState([]);
   const [filteredPanels, setFilteredPanels] = useState([]);
   const [isSampleSelected, setIsSampleSelected] = useState(false);

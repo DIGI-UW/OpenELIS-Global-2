@@ -40,10 +40,10 @@ const STRATEGIES = [
 
 const VectorInlineDeconPanel = ({
   specimens = [],
-  accessionNumber,
+  accessionNumber: _accessionNumber,
   vectorPoolId,
-  parentExternalId,
-  positiveTest,
+  parentExternalId: _parentExternalId,
+  positiveTest: _positiveTest,
   speciesById = {},
   onClose,
   onInitiated,
@@ -62,7 +62,7 @@ const VectorInlineDeconPanel = ({
   const [assignment, setAssignment] = useState({}); // specimenId → poolId (0 = unassigned)
   const [dragOver, setDragOver] = useState(null); // poolId currently hovered as drop target
   const [draggedId, setDraggedId] = useState(null); // specimenId actively being dragged
-  const [notes, setNotes] = useState("");
+  const [notes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const specimensWithSpecies = specimens.filter(
     (sp) => sp.vectorSpeciesId,

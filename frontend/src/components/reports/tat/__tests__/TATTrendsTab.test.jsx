@@ -13,8 +13,6 @@ vi.mock("../../../utils/Utils", () => ({
 
 // Replaced inline utils require
 
-
-
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
@@ -40,9 +38,27 @@ const mockTrendData = {
     {
       label: "All",
       dataPoints: [
-        { period: "2026-03-01", mean: 3.5, median: 3.0, percentile90: 6.0, count: 10 },
-        { period: "2026-03-02", mean: 4.0, median: 3.5, percentile90: 7.0, count: 12 },
-        { period: "2026-03-03", mean: 2.5, median: 2.0, percentile90: 5.0, count: 8 },
+        {
+          period: "2026-03-01",
+          mean: 3.5,
+          median: 3.0,
+          percentile90: 6.0,
+          count: 10,
+        },
+        {
+          period: "2026-03-02",
+          mean: 4.0,
+          median: 3.5,
+          percentile90: 7.0,
+          count: 12,
+        },
+        {
+          period: "2026-03-03",
+          mean: 2.5,
+          median: 2.0,
+          percentile90: 5.0,
+          count: 8,
+        },
       ],
     },
   ],
@@ -63,7 +79,10 @@ describe("TATTrendsTab", () => {
     });
 
     renderWithIntl(
-      <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+      <TATTrendsTab
+        filters={mockFilters}
+        buildQueryString={mockBuildQueryString}
+      />,
     );
 
     expect(screen.getByText(/No results found/i)).toBeInTheDocument();
@@ -75,7 +94,10 @@ describe("TATTrendsTab", () => {
     });
 
     const { container } = renderWithIntl(
-      <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+      <TATTrendsTab
+        filters={mockFilters}
+        buildQueryString={mockBuildQueryString}
+      />,
     );
 
     await waitFor(() => {
@@ -91,7 +113,10 @@ describe("TATTrendsTab", () => {
     });
 
     renderWithIntl(
-      <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+      <TATTrendsTab
+        filters={mockFilters}
+        buildQueryString={mockBuildQueryString}
+      />,
     );
 
     await waitFor(() => {
@@ -105,8 +130,11 @@ describe("TATTrendsTab", () => {
       callback(mockTrendData);
     });
 
-    const { container } = renderWithIntl(
-      <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+    renderWithIntl(
+      <TATTrendsTab
+        filters={mockFilters}
+        buildQueryString={mockBuildQueryString}
+      />,
     );
 
     await waitFor(() => {
@@ -122,7 +150,10 @@ describe("TATTrendsTab", () => {
     });
 
     const { container } = renderWithIntl(
-      <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+      <TATTrendsTab
+        filters={mockFilters}
+        buildQueryString={mockBuildQueryString}
+      />,
     );
 
     await waitFor(() => {
@@ -138,7 +169,10 @@ describe("TATTrendsTab", () => {
     });
 
     renderWithIntl(
-      <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+      <TATTrendsTab
+        filters={mockFilters}
+        buildQueryString={mockBuildQueryString}
+      />,
     );
 
     expect(getFromOpenElisServer).toHaveBeenCalledWith(

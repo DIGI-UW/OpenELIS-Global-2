@@ -154,10 +154,6 @@ function TestActivation() {
             let activeTests = [...sample.activeTests];
             let inactiveTests = [...sample.inactiveTests];
 
-            const originalState = testActivationData.activeTestList.find(
-              (sample) => sample.sampleType.id === sampleTypeId,
-            );
-
             if (activeTests.some((t) => t.id === test.id)) {
               if (isChecked === true) {
                 inactiveTests = inactiveTests.filter(
@@ -415,10 +411,6 @@ function TestActivation() {
           let activeTests = [...sample.activeTests];
           let inactiveTests = [...sample.inactiveTests];
 
-          const originalState = testActivationData.inactiveTestList.find(
-            (sample) => sample.sampleType.id === sampleTypeId,
-          );
-
           if (
             activeTests.some((t) => t.id === test.id) ||
             inactiveTests.some((t) => t.id === test.id)
@@ -535,10 +527,6 @@ function TestActivation() {
         if (sample.sampleType.id === sampleTypeId) {
           let activeTests = [...sample.activeTests];
           let inactiveTests = [...sample.inactiveTests];
-
-          const originalState = testActivationData.inactiveTestList.find(
-            (sample) => sample.sampleType.id === sampleTypeId,
-          );
 
           if (inactiveTests.some((t) => t.id === test.id)) {
             if (isChecked) {
@@ -748,7 +736,7 @@ function TestActivation() {
       setJsonChangeList((prevList) => ({
         ...prevList,
         activateSample: updatedSampleTypesList.map(
-          ({ value, ...rest }) => rest,
+          ({ value: _value, ...rest }) => rest,
         ),
       }));
     } else {
@@ -761,7 +749,9 @@ function TestActivation() {
 
       setJsonChangeList((prevList) => ({
         ...prevList,
-        activateSample: updatedSampleType.map(({ value, ...rest }) => rest),
+        activateSample: updatedSampleType.map(
+          ({ value: _value, ...rest }) => rest,
+        ),
       }));
     }
   };

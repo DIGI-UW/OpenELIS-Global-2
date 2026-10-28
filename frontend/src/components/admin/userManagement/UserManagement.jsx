@@ -59,7 +59,7 @@ function UserManagement() {
   const intl = useIntl();
 
   const queryClient = useQueryClient();
-  const componentMounted = useRef(false);
+
   const [page, setPage] = useState(1);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
@@ -69,8 +69,8 @@ function UserManagement() {
   );
   const [selectedRowCombinedUserIDPost, setSelectedRowCombinedUserIDPost] =
     useState([]);
-  const [selectedRowIdsPost, setSelectedRowIdsPost] = useState();
-  const [loading, setLoading] = useState(true);
+  const [, setSelectedRowIdsPost] = useState();
+  const [, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -291,10 +291,6 @@ function UserManagement() {
           name="selectRowCheckbox"
           ariaLabel="selectRows"
           onSelect={() => {
-            const isActiveCell = row.cells.find((cell) =>
-              cell.id.endsWith(":active"),
-            );
-
             if (selectedRowIds.includes(row.id)) {
               setSelectedRowIds(selectedRowIds.filter((id) => id !== row.id));
             } else {
@@ -539,7 +535,7 @@ function UserManagement() {
                     headers,
                     getHeaderProps,
                     getTableProps,
-                    getSelectionProps,
+                    getSelectionProps: _getSelectionProps,
                   }) => (
                     <TableContainer>
                       <Table {...getTableProps()}>
@@ -562,7 +558,7 @@ function UserManagement() {
                                 key={row.id}
                                 onClick={() => {
                                   const id = row.id;
-                                  const CombinedUserID = row.combinedUserID;
+
                                   const isSelected =
                                     selectedRowIds.includes(id);
                                   if (isSelected) {

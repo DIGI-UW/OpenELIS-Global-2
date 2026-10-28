@@ -19,8 +19,8 @@ import { encodeDate } from "../../utils/Utils";
 
 const ReferredOut = () => {
   const intl = useIntl();
-  const [loading, setLoading] = useState(false);
-  const [notificationVisible, setNotificationVisible] = useState(false);
+  const [, setLoading] = useState(false);
+  const [, setNotificationVisible] = useState(false);
   const [reportFormValues, setReportFormValues] = useState({
     startDate: null,
     endDate: null,
@@ -42,20 +42,14 @@ const ReferredOut = () => {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/REFERRAL_ORGANIZATIONS", fetchLocationCodes);
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      fetchLocationCodes,
+    );
     return () => {
       componentMounted.current = false;
     };
   }, []);
-
-  const breadcrumbs = [
-    { label: "home.label", link: "/" },
-    { label: "routine.reports", link: "/RoutineReports" },
-    {
-      label: "external.referrals.report",
-      link: "/RoutineReport?type=patient&report=referredOut",
-    },
-  ];
 
   const handleDatePickerChangeDate = (datePicker, date) => {
     let updatedDate = encodeDate(date);

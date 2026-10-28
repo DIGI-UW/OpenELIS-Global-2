@@ -1,6 +1,5 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../../languages/en.json";

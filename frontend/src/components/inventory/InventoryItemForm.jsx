@@ -51,7 +51,7 @@ const InventoryItemForm = ({
   initialUpc = null,
 }) => {
   const intl = useIntl();
-  const { notificationVisible, setNotificationVisible, addNotification } =
+  const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
     ({ kind, title, subtitle }) => {

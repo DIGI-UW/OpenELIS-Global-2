@@ -70,7 +70,7 @@ function formatLimitBadge(t) {
   }
 }
 
-function buildThresholdPayload(group, test, lt, vals) {
+function buildThresholdPayload(group, test, lt, _vals) {
   return {
     group: { id: group.id },
     test: test ? { id: test.id } : null,

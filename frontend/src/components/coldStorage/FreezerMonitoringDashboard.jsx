@@ -263,7 +263,7 @@ const normalizeAlert = (alert) => {
   let contextData = {};
   try {
     contextData = alert.contextData ? JSON.parse(alert.contextData) : {};
-  } catch (e) {
+  } catch {
     console.warn("Failed to parse alert contextData:", alert.contextData);
   }
 
@@ -498,11 +498,6 @@ function FreezerMonitoringDashboard({ intl }) {
 
   const handleAcknowledgeAlert = useCallback(
     (alertId) => handleAlertAction(alertId, "acknowledge"),
-    [handleAlertAction],
-  );
-
-  const handleResolveAlert = useCallback(
-    (alertId) => handleAlertAction(alertId, "resolve"),
     [handleAlertAction],
   );
 

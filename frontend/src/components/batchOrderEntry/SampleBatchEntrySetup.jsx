@@ -59,7 +59,7 @@ const SampleBatchEntrySetup = () => {
   const [orderFormValues, setOrderFormValues] = useState(
     BatchOrderEntryFormValues,
   );
-  const [status, setStatus] = useState("");
+  const [, setStatus] = useState("");
   const { configurationProperties } = useContext(ConfigurationContext);
   const { notificationVisible } = useContext(NotificationContext);
   const intl = useIntl();
@@ -69,11 +69,11 @@ const SampleBatchEntrySetup = () => {
   const [departments, setDepartments] = useState([]);
   const [facilityChecked, setFacilityChecked] = useState(false);
   const [patientChecked, setPatientChecked] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState("");
+  const [, setSelectedMethod] = useState("");
   const [selectedForm, setSelectedForm] = useState("");
   const [innitialized, setInnitialized] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showSampleComponent, setShowSampleComponent] = useState(false);
+  const [loading] = useState(false);
+  const [showSampleComponent] = useState(false);
   const [postRequestMade, setPostRequestMade] = useState(false);
 
   let breadcrumbs = [
@@ -116,19 +116,6 @@ const SampleBatchEntrySetup = () => {
         referringSiteDepartmentName: depart.value,
       },
     });
-  }
-
-  function handleSiteName(e) {
-    setOrderFormValues({
-      ...orderFormValues,
-      facilityIDCheck: true,
-      sampleOrderItems: {
-        ...orderFormValues.sampleOrderItems,
-        referringSiteName: e.target.value,
-        referringSiteId: "",
-      },
-    });
-    setFacilityChecked(true);
   }
 
   function handleDatePickerChange(datePicker, date) {
@@ -306,7 +293,7 @@ const SampleBatchEntrySetup = () => {
   async function handleSubmitButton1() {
     try {
       const body = JSON.stringify(orderFormValues);
-      const response = await postToOpenElisServerFullResponse(
+      await postToOpenElisServerFullResponse(
         "/rest/SampleBatchEntry",
         body,
         displayStatus,

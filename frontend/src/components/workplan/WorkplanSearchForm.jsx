@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Column, Form, Grid, Section, Button } from "@carbon/react";
+import { Column, Form, Grid, Section } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import "../Style.css";
 import TestSectionSelectForm from "./TestSectionSelectForm";

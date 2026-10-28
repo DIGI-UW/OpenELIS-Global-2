@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Grid, Column, Row, Section } from "@carbon/react";
 import PatientHeader from "../common/PatientHeader";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -15,7 +15,6 @@ let breadcrumbs = [
 
 const ProgramCaseView = () => {
   const { programSampleId } = useParams();
-  const history = useHistory();
 
   const [programSampleData, setProgramSampleData] = useState(null);
   const [questionnaireResponse, setQuestionnaireResponse] = useState(null);

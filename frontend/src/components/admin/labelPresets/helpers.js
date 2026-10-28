@@ -51,7 +51,7 @@ export function describeSaveFailure(intl, status, rawBody) {
         .map((c) => translateServerMessage(intl, c))
         .join("; ");
     }
-  } catch (e) {
+  } catch {
     // not JSON: show the text as received
   }
   return intl.formatMessage(

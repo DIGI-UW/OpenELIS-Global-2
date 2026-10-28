@@ -73,7 +73,6 @@ const ClinicalOrderEnter = () => {
   // Initialise empty — populated by the sync effect below after the mount
   // reset runs, preventing stale cross-domain lab numbers from bleeding in.
   const [localLabNumber, setLocalLabNumber] = useState("");
-  const [errors, setErrors] = useState({});
   const [phoneValidation, setPhoneValidation] = useState({
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },

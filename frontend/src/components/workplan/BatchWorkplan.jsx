@@ -54,7 +54,7 @@ const parseJson = async (response) => {
   }
   try {
     return await response.json();
-  } catch (_error) {
+  } catch {
     return null;
   }
 };

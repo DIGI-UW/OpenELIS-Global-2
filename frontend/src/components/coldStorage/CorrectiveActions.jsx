@@ -400,7 +400,7 @@ export default function CorrectiveActions() {
       const items = normalizeArray(data);
       const normalizedActions = items.map(normalizeAction);
       setActions(normalizedActions);
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
@@ -437,7 +437,7 @@ export default function CorrectiveActions() {
           };
         });
       setDevices(mappedDevices);
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
@@ -451,7 +451,7 @@ export default function CorrectiveActions() {
       const data = await fetchUsers();
       const items = normalizeArray(data);
       setUsers(items || []);
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
@@ -624,7 +624,7 @@ export default function CorrectiveActions() {
       });
 
       loadCorrectiveActions();
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
@@ -674,7 +674,7 @@ export default function CorrectiveActions() {
       });
 
       loadCorrectiveActions();
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
@@ -749,7 +749,7 @@ export default function CorrectiveActions() {
       });
 
       loadDevices();
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),
@@ -837,7 +837,7 @@ export default function CorrectiveActions() {
       });
 
       loadCorrectiveActions();
-    } catch (err) {
+    } catch {
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "error.title" }),

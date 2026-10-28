@@ -7,7 +7,6 @@ import { renderQa } from "../testUtils";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";

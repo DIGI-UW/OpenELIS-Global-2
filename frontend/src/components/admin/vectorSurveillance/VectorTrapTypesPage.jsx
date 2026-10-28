@@ -62,7 +62,6 @@ function SampleTypeCheckboxes({ groups, selectedIds, onChange }) {
 }
 
 function TrapForm({ initial = emptyForm, groups, onSave, onCancel, isNew }) {
-  const intl = useIntl();
   const [form, setForm] = useState(initial);
   useEffect(() => setForm(initial), [initial]);
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));

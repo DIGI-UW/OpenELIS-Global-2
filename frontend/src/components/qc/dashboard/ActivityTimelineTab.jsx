@@ -41,8 +41,6 @@ const ActivityTimelineTab = ({ instrument, open }) => {
 
   // Merge violations + corrective actions into timeline
   const timelineItems = useMemo(() => {
-    const violationIds = new Set(violations.map((v) => v.id));
-
     const violationItems = violations.map((v) => ({
       type: "violation",
       timestamp: v.violationDateTime,

@@ -200,10 +200,6 @@ export default function GenericSampleOrder({
     }
   };
 
-  const handleNotebookChange = (notebookId) => {
-    setSelectedNotebookId(notebookId);
-  };
-
   const handleLabNoGeneration = () => {
     setLabNoLoading(true);
     getFromOpenElisServer("/rest/SampleEntryGenerateScanProvider", (res) => {

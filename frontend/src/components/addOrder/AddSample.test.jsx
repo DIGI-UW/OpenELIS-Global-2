@@ -310,14 +310,6 @@ describe("AddSample carries what the step shows (OGC-1388)", () => {
 });
 
 describe("AddSample when a request fails or is slow (OGC-1389)", () => {
-  const failing = (pattern) => (url, callback) => {
-    if (pattern.test(url)) {
-      callback(undefined);
-      return;
-    }
-    answerImmediately(url, callback);
-  };
-
   test("a failed test list keeps the step, names the sample type and retries", () => {
     let fail = true;
     utilsMock.getFromOpenElisServer.mockImplementation((url, callback) => {

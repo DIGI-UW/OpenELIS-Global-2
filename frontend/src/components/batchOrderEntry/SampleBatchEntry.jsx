@@ -1,5 +1,4 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import {
   Button,
@@ -83,11 +82,11 @@ const SampleBatchEntry = (props) => {
   const { configurationProperties } = useContext(ConfigurationContext);
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const history = useHistory();
-  const [siteNames, setSiteNames] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showSampleComponent, setShowSampleComponent] = useState(false);
+
+  const [, setSiteNames] = useState([]);
+  const [, setDepartments] = useState([]);
+  const [loading] = useState(false);
+  const [showSampleComponent] = useState(false);
   const [generatedLabNos, setGeneratedLabNos] = useState([]);
   const [saveResponse, setSaveResponse] = useState(null);
   const [errors, setErrors] = useState([]);

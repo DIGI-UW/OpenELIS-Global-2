@@ -43,7 +43,7 @@ function DatabaseCleaning() {
             message: intl.formatMessage({ id: "database.clean.success" }),
           });
         } else {
-          const errorData = await response.json().catch(() => ({}));
+          await response.json().catch(() => ({}));
           setNotification({
             kind: "error",
             title: intl.formatMessage({ id: "alert.error" }),

@@ -103,7 +103,6 @@ export default function GenericSampleOrderEdit({
   const [sampleTypes, setSampleTypes] = useState([]);
   const [uoms, setUoms] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [notification, setNotification] = useState(null);
 
   // Breadcrumbs
   const defaultBreadcrumbs = [

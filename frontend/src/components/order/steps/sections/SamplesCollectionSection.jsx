@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { Tile, Button, Stack, Tag } from "@carbon/react";
-import { Add, Printer } from "@carbon/icons-react";
+import { Add } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
 import ReceivedByLine from "./ReceivedByLine";
 import { sampleObject } from "../../OrderContext";

@@ -387,24 +387,6 @@ const ShipmentDashboard = () => {
     return <Tag type={cfg.type}>{cfg.label}</Tag>;
   };
 
-  // Render days unassigned with visual indicators
-  const renderDaysUnassigned = (days) => {
-    if (days === undefined || days === null) return "-";
-
-    let tagType = "gray"; // Default
-    if (days >= 30) {
-      tagType = "red"; // Critical - 30+ days
-    } else if (days >= 7) {
-      tagType = "yellow"; // Warning - 7-29 days
-    }
-
-    return (
-      <Tag type={tagType}>
-        {days} {intl.formatMessage({ id: "label.days" })}
-      </Tag>
-    );
-  };
-
   // Boxes table headers
   const boxHeaders = [
     {
