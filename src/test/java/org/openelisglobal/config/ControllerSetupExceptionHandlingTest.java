@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.coldstorage.controller.FreezerMonitoringExceptionHandler;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.program.service.InvalidClinicalAttachmentException;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -48,6 +49,11 @@ public class ControllerSetupExceptionHandlingTest {
             throw new AccessDeniedException("Access is denied");
         }
 
+        @GetMapping("/attachment-invalid")
+        public String invalidAttachment() {
+            throw new InvalidClinicalAttachmentException();
+        }
+
         @GetMapping("/broken")
         public String broken() {
             throw new RuntimeException("db down");
@@ -71,6 +77,13 @@ public class ControllerSetupExceptionHandlingTest {
     public void accessDenied_answers403() throws Exception {
         mockMvc.perform(get("/denied")).andExpect(status().isForbidden()).andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.error").value("Forbidden"));
+    }
+
+    @Test
+    public void invalidAttachment_answers400WithATranslatableMessageKey() throws Exception {
+        mockMvc.perform(get("/attachment-invalid")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.messageKey").value("clinicalAttachment.uploadHint"));
     }
 
     @Test
