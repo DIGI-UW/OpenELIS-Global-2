@@ -48,14 +48,23 @@ const PlacementNotice = ({
     : "";
   const candidates = placement.analyses || [];
   const ambiguous = placement.state === "MULTI_TUBE";
+  const needsSpecimen = row.importIssueReason === "awaiting_specimen";
   const reasonId =
-    ambiguous && candidates.length === 0
-      ? "analyzer.placement.reason.MULTI_TUBE_NO_ANALYSIS"
-      : `analyzer.placement.reason.${placement.state}`;
+    needsSpecimen && placement.state === "NEW_SAMPLE"
+      ? "analyzer.placement.reason.NEW_SAMPLE_AWAITING_SPECIMEN"
+      : ambiguous && candidates.length === 0
+        ? "analyzer.placement.reason.MULTI_TUBE_NO_ANALYSIS"
+        : `analyzer.placement.reason.${placement.state}`;
   return (
     <div className="placementNotice" data-testid={`placement-${row.id}`}>
       <Tag type={TAG_TYPE[placement.state] || "gray"} size="sm">
-        <FormattedMessage id={`analyzer.placement.state.${placement.state}`} />
+        <FormattedMessage
+          id={
+            needsSpecimen && placement.state === "NEW_SAMPLE"
+              ? "analyzer.placement.state.AWAITING_SPECIMEN"
+              : `analyzer.placement.state.${placement.state}`
+          }
+        />
       </Tag>
       <p>
         <FormattedMessage

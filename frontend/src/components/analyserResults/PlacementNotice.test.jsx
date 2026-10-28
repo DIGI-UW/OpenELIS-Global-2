@@ -25,6 +25,29 @@ const show = (value, handlers = {}) =>
   );
 
 describe("PlacementNotice", () => {
+  it("requires a specimen decision before promising creation of an unmatched sample", () => {
+    show(
+      row(
+        { state: "NEW_SAMPLE", match: "NONE", tubes: [] },
+        {
+          importIssueReason: "awaiting_specimen",
+          sampleTypeOptions: [
+            { id: "1", value: "Serum" },
+            { id: "2", value: "Plasma" },
+          ],
+        },
+      ),
+    );
+    expect(screen.getByText("Specimen decision required")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Choose a sample type before saving/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "No order or tube carries this ID. Saving creates a new sample for it.",
+      ),
+    ).not.toBeInTheDocument();
+  });
   it("only names the tube when one analysis is waiting for the result", () => {
     show(
       row({
