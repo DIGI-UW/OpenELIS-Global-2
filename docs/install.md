@@ -2,16 +2,16 @@
 
 ## Default distribution
 
-The supported online path is a released
+The supported online and offline paths use the same released
 [openelis-docker distribution](https://github.com/DIGI-UW/openelis-docker/releases).
 Select a release that contains `deployment-manifest.json` and follow its tagged
 README. It supplies the exact published image digests tested together by OE2,
 including certificate initialization and the Analyzer Bridge. No application
 build, host Java installation or manual keystore creation is required.
 
-Prepare a Docker Engine host with Docker Compose, choose the release, and
-configure its private database credentials and initial administrator password
-file. From that distribution directory:
+For online installation, prepare a Docker Engine host with Docker Compose and
+configure the release’s private database credentials and initial administrator
+password file. From that distribution directory:
 
 ```sh
 docker compose pull
@@ -23,6 +23,13 @@ An initializer that finishes with `Exited (0)` is expected. Application services
 must become ready; inspect service logs rather than treating container creation
 as successful installation. Follow the tagged README for first login and public
 HTTPS.
+
+For an offline host, download the same distribution's complete offline package,
+verify its checksums and load `images.tar` with `docker image load`. Configure
+the same private credentials, then run
+`docker compose up -d --pull never --no-build`. The tagged distro README
+specifies Docker prerequisites and download assembly. There is no separate
+offline certificate generator, configuration or upgrade path.
 
 ## Keys and existing installations
 
@@ -49,9 +56,9 @@ is the sole owner of deployment to the shared testing server.
 
 Historical offline packages remain governed by their original release
 instructions. The old Python installer and manual certificate recipes are not
-the default path. Offline delivery for manifest-based distributions is deferred.
-Older releases without a deployment manifest must not be presented as
-implementing this new path.
+the default path. Manifest-based offline packages contain the same configuration
+and images as the online release. Older releases without a deployment manifest
+must not be presented as implementing this new path.
 
 The initial manifest-enabled release must finish publication before operators
 can use these instructions. Until then, this is the candidate delivery contract.

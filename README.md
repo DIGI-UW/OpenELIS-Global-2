@@ -77,8 +77,9 @@ first start. Configure private credentials, then use `docker compose pull`,
 
 See [installation guidance](docs/install.md) and [release policy](RELEASES.md).
 Do not use development tags for production. Historical offline packages retain
-their own tagged instructions; they are not an alternative bootstrap for a new
-distribution.
+their own tagged instructions. Current offline packages bundle the same release
+configuration and images; load them with `docker image load`, then start with
+`docker compose up -d --pull never --no-build`.
 
 ### For running a light OpenELIS Global2 without the FHIR server and the Analyzer Bridge
 

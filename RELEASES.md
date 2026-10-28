@@ -120,6 +120,11 @@ version or rebuild images. Distribution tags are immutable. A missing manifest
 means the release is not yet ready for that distribution workflow; never fall
 back to `develop` or reconstruct an image set from independent version tags.
 
-This preserves the supported maintenance-branch exception above. Offline
-packages from historical releases remain separate; new offline delivery is
-deferred. The OE2 publisher is the only shared testing-server deployment owner.
+The same distro workflow bundles those exact images and configuration for
+offline installation, and verifies the archive in an empty Docker daemon without
+network access. It does not rebuild application images or select a different
+Bridge. Operators load the archive and use Docker Compose with `--pull never`.
+
+This preserves the supported maintenance-branch exception above. Historical
+packages keep their tagged instructions. The OE2 publisher is the only shared
+testing-server deployment owner.
