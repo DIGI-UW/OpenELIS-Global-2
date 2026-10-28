@@ -1,0 +1,285 @@
+{
+  "releaseVersion": "3.4.0",
+  "spaceKey": "OG",
+  "confluenceHost": "example.atlassian.net",
+  "corpora": [
+    {
+      "guide": "user",
+      "locale": "en",
+      "rootPageId": "ROOT_USER_EN",
+      "rootTitle": "User Manual"
+    },
+    {
+      "guide": "user",
+      "locale": "fr",
+      "rootPageId": "ROOT_USER_FR",
+      "rootTitle": "Manuel de l'utilisateur"
+    }
+  ],
+  "attachments": {
+    "att-diagram": {
+      "filename": "diagram.png",
+      "mimeType": "image/png",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEUlEQVR4nGNImXYCK2IYWhIA3E1wgc0lMTEAAAAASUVORK5CYII="
+    }
+  },
+  "pages": {
+    "100": {
+      "corpusKey": "user/en",
+      "title": "Lab Context",
+      "labels": [],
+      "ancestorTitles": ["User Manual"],
+      "version": 3,
+      "webuiPath": "/wiki/spaces/OG/pages/100/Lab+Context",
+      "adf": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "heading",
+            "attrs": { "level": 1 },
+            "content": [{ "type": "text", "text": "Lab Context" }]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Start here to understand how OpenELIS fits into your lab workflow."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              { "type": "text", "text": "See " },
+              {
+                "type": "inlineCard",
+                "attrs": {
+                  "url": "https://example.atlassian.net/wiki/spaces/OG/pages/101/Working+with+Patients"
+                }
+              },
+              { "type": "text", "text": " for the patient flow." }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Provenance: edited by Casey on 2026-10-15."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              { "type": "text", "text": "add a comment to this page" }
+            ]
+          }
+        ]
+      }
+    },
+    "101": {
+      "corpusKey": "user/en",
+      "title": "Working with Patients",
+      "labels": [],
+      "ancestorTitles": ["User Manual"],
+      "version": 7,
+      "webuiPath": "/wiki/spaces/OG/pages/101/Working+with+Patients",
+      "attachments": ["att-diagram"],
+      "adf": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "heading",
+            "attrs": { "level": 1 },
+            "content": [{ "type": "text", "text": "Working with Patients" }]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Register a patient, then order a test. The diagram below shows the full flow."
+              }
+            ]
+          },
+          {
+            "type": "mediaSingle",
+            "content": [
+              {
+                "type": "media",
+                "attrs": {
+                  "id": "att-diagram",
+                  "type": "file",
+                  "collection": "contentId-101",
+                  "alt": "Patient registration flow"
+                }
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "attrs": { "panelType": "info" },
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Patient IDs are generated automatically."
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "bulletList",
+            "content": [
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Enter name and date of birth."
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "listItem",
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      { "type": "text", "text": "Select the test panel." }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "codeBlock",
+            "attrs": { "language": "json" },
+            "content": [
+              {
+                "type": "text",
+                "text": "{ \"patient\": \"12345\", \"status\": \"ready\" }"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "102": {
+      "corpusKey": "user/en",
+      "title": "Entering results (before 3.0.0)",
+      "labels": [],
+      "ancestorTitles": ["User Manual"],
+      "version": 1,
+      "webuiPath": "/wiki/spaces/OG/pages/102/legacy",
+      "adf": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [{ "type": "text", "text": "Legacy entry flow." }]
+          }
+        ]
+      }
+    },
+    "103": {
+      "corpusKey": "user/en",
+      "title": "New Feature Preview",
+      "labels": ["wip"],
+      "ancestorTitles": ["User Manual"],
+      "version": 1,
+      "webuiPath": "/wiki/spaces/OG/pages/103/wip",
+      "adf": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "heading",
+            "attrs": { "level": 1 },
+            "content": [{ "type": "text", "text": "New Feature Preview" }]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              { "type": "text", "text": "This describes an upcoming feature." }
+            ]
+          }
+        ]
+      }
+    },
+    "200": {
+      "corpusKey": "user/fr",
+      "title": "Contexte du laboratoire",
+      "labels": [],
+      "ancestorTitles": ["Manuel de l'utilisateur"],
+      "version": 2,
+      "webuiPath": "/wiki/spaces/OG/pages/200/Contexte+du+laboratoire",
+      "translationProperty": { "sourceId": "100", "sourceVersion": 3 },
+      "adf": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "heading",
+            "attrs": { "level": 1 },
+            "content": [{ "type": "text", "text": "Contexte du laboratoire" }]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Commencez ici pour comprendre le flux de laboratoire."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "201": {
+      "corpusKey": "user/fr",
+      "title": "Travailler avec les patients",
+      "labels": [],
+      "ancestorTitles": ["Manuel de l'utilisateur"],
+      "version": 4,
+      "webuiPath": "/wiki/spaces/OG/pages/201/Travailler+avec+les+patients",
+      "translationProperty": { "sourceId": "101", "sourceVersion": 7 },
+      "adf": {
+        "type": "doc",
+        "version": 1,
+        "content": [
+          {
+            "type": "heading",
+            "attrs": { "level": 1 },
+            "content": [
+              { "type": "text", "text": "Travailler avec les patients" }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Enregistrer un patient, puis commander un test."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

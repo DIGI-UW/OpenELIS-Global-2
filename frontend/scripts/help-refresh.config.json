@@ -1,0 +1,26 @@
+{
+  "releaseVersion": "3.4.0",
+  "spaceKey": "OG",
+  "outputDir": "frontend/public/help-content",
+  "sizeBudgetBytes": 26214400,
+  "corpora": [
+    {
+      "guide": "user",
+      "locale": "en",
+      "rootPageId": "1326972929",
+      "rootTitle": "📖 User Manual"
+    },
+    {
+      "guide": "user",
+      "locale": "fr",
+      "rootPageId": "1641447437",
+      "rootTitle": "📖 Manuel de l'utilisateur"
+    }
+  ],
+  "localeMatcher": {
+    "contentPropertyKey": "openelis-translation",
+    "sourceIdField": "sourceId",
+    "sourceVersionField": "sourceVersion"
+  },
+  "notes": "Admin manual roots are TBD. Lango spike confirmed openelis-translation content property on French pages carries sourceId + sourceVersion."
+}
