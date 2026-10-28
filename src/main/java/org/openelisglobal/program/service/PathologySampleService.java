@@ -16,6 +16,9 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
     /** Audit verb recorded when a cassette is cut. */
     String PATHOLOGY_BLOCK_CREATED = "PATHOLOGY_BLOCK_CREATED";
 
+    /** Audit verb recorded when a cassette is embedded and becomes a block. */
+    String PATHOLOGY_BLOCK_EMBEDDED = "PATHOLOGY_BLOCK_EMBEDDED";
+
     /** Audit verb recorded when a block is retired. */
     String PATHOLOGY_BLOCK_DEACTIVATED = "PATHOLOGY_BLOCK_DEACTIVATED";
 
@@ -60,6 +63,15 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
      * @return the slide, or empty when no slide carries that id
      */
     Optional<PathologySlide> deactivateSlide(Integer slideId, String reason, String sysUserId);
+
+    /**
+     * Embeds a cassette, so the same row becomes the block slides are cut from.
+     *
+     * @return the row, unchanged when it is already a block, or empty when no block
+     *         carries that id
+     * @throws PathologyCaseRuleException when the row has been retired
+     */
+    Optional<PathologyBlock> embedBlock(Integer blockId, String sysUserId);
 
     /** The case a block belongs to, null when no case holds it. */
     PathologySample getCaseOfBlock(Integer blockId);

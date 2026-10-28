@@ -359,6 +359,37 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Transactional
     @Override
+    public Optional<PathologyBlock> embedBlock(Integer blockId, String sysUserId) {
+        Optional<PathologyBlock> found = pathologyBlockDAO.get(blockId);
+        if (found.isEmpty()) {
+            return found;
+        }
+
+        PathologyBlock block = found.get();
+        if (!block.isActive()) {
+            throw new PathologyCaseRuleException("block " + blockId + " has been retired, so it cannot be embedded");
+        }
+        if (block.getCassetteState() == CassetteState.BLOCK) {
+            return found;
+        }
+
+        CassetteState from = block.getCassetteState() == null ? CassetteState.CASSETTE : block.getCassetteState();
+        block.setCassetteState(CassetteState.BLOCK);
+        block.setSysUserId(sysUserId);
+        pathologyBlockDAO.update(block);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_BLOCK_EMBEDDED);
+        putIfPresent(payload, "designation", block.displayIdentifier());
+        payload.put("from", from.name());
+        payload.put("to", CassetteState.BLOCK.name());
+        recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+        return Optional.of(block);
+    }
+
+    @Transactional
+    @Override
     public PathologySample getCaseOfBlock(Integer blockId) {
         return blockId == null ? null : baseObjectDAO.getCaseOfBlock(blockId);
     }
