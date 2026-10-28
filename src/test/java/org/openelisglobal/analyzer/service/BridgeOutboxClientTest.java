@@ -99,7 +99,7 @@ public class BridgeOutboxClientTest {
     @Test
     public void retriesAndDismissesOneEntryById() throws Exception {
         when(httpClient.post(eq(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry"), eq("{}"), eq(TIMEOUT)))
-                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{\"id\":\"ob-1\",\"state\":\"PENDING\"}"));
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{\"id\":\"" + RECEIPT_ID + "\",\"state\":\"PENDING\"}"));
         when(httpClient.post(eq(BASE_URL + "/admin/outbox/ob-2/dismiss"), eq("{}"), eq(TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{\"id\":\"ob-2\"}"));
 
@@ -108,6 +108,14 @@ public class BridgeOutboxClientTest {
 
         verify(httpClient).post(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry", "{}", TIMEOUT);
         verify(httpClient).post(BASE_URL + "/admin/outbox/ob-2/dismiss", "{}", TIMEOUT);
+    }
+
+    @Test
+    public void refusesToAcknowledgeRetryWithoutAValidQueueResponse() throws Exception {
+        when(httpClient.post(eq(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry"), eq("{}"), eq(TIMEOUT)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{}"));
+        assertEquals("analyzer.deliveryIssues.error.bridgeInvalidResponse",
+                assertThrows(BridgeAnalyzerConnectionException.class, () -> client.retry(RECEIPT_ID)).messageKey());
     }
 
     @Test

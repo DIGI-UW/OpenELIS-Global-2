@@ -46,7 +46,7 @@ public class AnalyzerDeliveryIssuesRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> retry(@PathVariable String id, HttpServletRequest request) {
         try {
             deliveryIssueService.retry(id, getSysUserId(request));
-            return ResponseEntity.ok(Map.of("status", "success", "id", id));
+            return ResponseEntity.accepted().body(Map.of("status", "accepted", "id", id, "state", "QUEUED"));
         } catch (BridgeAnalyzerConnectionException exception) {
             return bridgeFailure(exception);
         } catch (IllegalArgumentException exception) {
