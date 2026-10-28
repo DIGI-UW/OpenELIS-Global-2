@@ -296,6 +296,30 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
+    public void receivedInterpretationUsesRetainedPayloadNotRawDigitsOrCurrentProfile() throws Exception {
+        analyzerWithLatest(currentMapping());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        List<AnalyzerResults> received = new ArrayList<>();
+        for (String[] value : List.of(new String[] { "1,4", "{\"valueQuantity\":{\"value\":1.4,\"unit\":\"mg/dL\"}}" },
+                new String[] { "1.02", "{\"valueString\":\"1.02\"}" },
+                new String[] { "1,4", "{\"valueString\":\"1,4\"}" })) {
+            AnalyzerResults row = new AnalyzerResults();
+            row.setRawTestCode("CHEM");
+            row.setRawResultValue(value[0]);
+            row.setSourcePayload(value[1].replaceFirst("\\{", "{\"resourceType\":\"Observation\","));
+            received.add(row);
+        }
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(received);
+        var row = service.getMapping("42").tests().stream().filter(test -> "CHEM".equals(test.rawCode()))
+                .findFirst().orElseThrow();
+        assertEquals(List.of(new AnalyzerMappingView.ReceivedValue("1,4", "1.4", "NUMBER", "mg/dL"),
+                new AnalyzerMappingView.ReceivedValue("1.02", "1.02", "TEXT", null),
+                new AnalyzerMappingView.ReceivedValue("1,4", "1,4", "TEXT", null)), row.receivedValues());
+        assertEquals(List.of("1.02", "1,4"), row.results().stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
+        verifyZeroInteractions(bridgeProfileCatalogService);
+    }
+
+    @Test
     public void observedNumericTestDoesNotCreateMappingsForIndividualReadings() throws Exception {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("NEW-NUMERIC");

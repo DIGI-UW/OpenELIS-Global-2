@@ -13866,5 +13866,18 @@
   "label.mgmt.export.col.program": "Program",
   "label.mgmt.export.col.metric": "Metric",
   "label.mgmt.export.col.positive": "Positive",
-  "label.mgmt.export.col.deltaPoints": "Change vs. prior (points)"
+  "label.mgmt.export.col.deltaPoints": "Change vs. prior (points)",
+  "analyzerType.mappingEditor.received.heading": "Received held results",
+  "analyzerType.mappingEditor.received.label": "Received held results for {code}",
+  "analyzerType.mappingEditor.received.raw": "Instrument value",
+  "analyzerType.mappingEditor.received.kind": "Received as",
+  "analyzerType.mappingEditor.received.value": "Interpreted value",
+  "analyzerType.mappingEditor.received.unit": "Units",
+  "analyzerType.mappingEditor.received.kind.NUMBER": "Number",
+  "analyzerType.mappingEditor.received.kind.TEXT": "Text",
+  "analyzerType.mappingEditor.received.kind.NO_VALUE": "No usable value",
+  "analyzerType.mappingEditor.received.numericMismatch": "Text answers cannot map to a numeric result",
+  "analyzerType.mappingEditor.received.numericCorrection": "This test accepts numbers. Check the result-field locations in the analyzer type and the connection's decimal format. Correct and adopt the profile before receiving new runs. Previously received text stays held; applying mappings or replaying the original message does not turn it into a number.",
+  "analyzerType.mappingEditor.received.reviewType": "Review analyzer type",
+  "analyzerType.mappingEditor.received.reviewConnection": "Review connection number format"
 }

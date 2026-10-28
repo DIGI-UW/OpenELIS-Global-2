@@ -29,13 +29,18 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
             AnalyzerMappingCatalogService.TestOption selectedTest,
             AnalyzerMappingCatalogService.TestOption suggestedTest, AnalyzerUnresolvedReason unresolvedReason,
             List<ResultRow> results, String subIdentity, String callComponentId, String componentCode,
-            String callComponentCode, boolean enabled) {
+            String callComponentCode, boolean enabled, List<ReceivedValue> receivedValues) {
 
         public TestRow {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             codings = codings == null ? List.of() : List.copyOf(codings);
             results = results == null ? List.of() : List.copyOf(results);
+            receivedValues = receivedValues == null ? List.of() : List.copyOf(receivedValues);
         }
+    }
+
+    /** Retained delivery evidence, not a value inferred from current parser settings. */
+    public record ReceivedValue(String rawValue, String value, String kind, String unit) {
     }
 
     public record ResultRow(String rawValue, AnalyzerMappingState mappingState, AnalyzerMappingOrigin origin,
