@@ -590,7 +590,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                                 + String.join(", ", calcAccessions));
             }
             // OGC-763: evaluate per-test alert rules on the newly entered results and
-            // dispatch matches to the header bell + SMS/Email senders.
+            // dispatch matches to the header bell.
             if (testAlertEvaluationService != null) {
                 // An edited value is as alertable as a first one - a result
                 // corrected into the critical range has to raise the alert the

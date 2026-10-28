@@ -127,8 +127,7 @@ public class ResultValidationServiceImpl implements ResultValidationService {
             updater.transactionalUpdate(resultSaveService);
         }
 
-        eventPublisher
-                .publishEvent(new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(analysisUpdateList)));
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(analysisUpdateList));
     }
 
     private boolean isResultAnalysisFinalized(Result result, List<Analysis> analysisUpdateList) {
