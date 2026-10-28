@@ -2407,6 +2407,10 @@ Before creating PR, verify ALL items:
   and checkpoint/status semantics
 - **E2E CI Operator Model:** `specs/plans/e2e-ci-operator-model.md` -
   operational troubleshooting guide for CI maintainers
+- **Module System Architecture:** `specs/plans/module-system-architecture.md` -
+  research and design for the implementation-specific module/plugin system
+  (backend module JARs, frontend remotes, manifests, roadmap); design only, not
+  implemented
 
 ### Testing Documentation
 
