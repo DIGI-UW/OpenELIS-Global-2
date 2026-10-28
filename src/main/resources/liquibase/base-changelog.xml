@@ -171,4 +171,7 @@
   <include file="liquibase/dashboards/002-surveillance-programs.xml" />
   <include file="liquibase/dashboards/003-qi-weights.xml" />
   <include file="liquibase/dashboards/004-surveillance-resistance-metrics.xml" />
+  <!-- OGC-427: batch workplan reagent and QC release. After qc/ and qa/, whose
+       control lot table and QA Officer role it extends -->
+  <include file="liquibase/qa/049-batch-workplan-reagent-qc.xml" />
 </databaseChangeLog>

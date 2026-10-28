@@ -255,6 +255,7 @@
         <!-- Batch Workplan foundation (OGC-427 / OGC-811 M1) -->
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplan</class>
         <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanItem</class>
+        <class>org.openelisglobal.batchworkplan.valueholder.BatchWorkplanQcRelease</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"
