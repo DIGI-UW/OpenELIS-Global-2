@@ -19,13 +19,13 @@ Evidence markers used throughout:
 
 ## 1. Executive summary
 
-OpenELIS Global has no module system today. Every implementation-specific feature (a workflow for one country, a report for one programme, an integration with one vendor system) is built into the core repository: Java code in the WAR, React code in the single-page application bundle, Liquibase changesets in the core changelog, menu rows and permission keys in core seeds. The one plugin mechanism the project ever had, the analyzer JAR loader under `/var/lib/openelis-global/plugins`, was removed on 2026-10-02 by PR #4506 after the analyzer integration moved to the out-of-process Analyzer Bridge. The deployment side already separates "what a site runs" (distro repositories built from `openelis-distro-template`) from "what the core ships", but a distro can only vary configuration, never code.
+OpenELIS Global has no module system today. Every implementation-specific feature (a workflow for one country, a report for one programme, an integration with one vendor system) is built into the core repository: Java code in the WAR, React code in the single-page application bundle, Liquibase changesets in the core changelog, menu rows and permission keys in core seeds. The one plugin mechanism the project ever had, the analyzer JAR loader under `/var/lib/openelis-global/plugins`, was removed by PR #4138 on 2026-09-08 (the leftover plugin API followed in PR #4506 on 2026-10-02) after the analyzer integration moved to the out-of-process Analyzer Bridge. The deployment side already separates "what a site runs" (distro repositories built from `openelis-distro-template`) from "what the core ships", but a distro can only vary configuration, never code.
 
-This document proposes a **manifest-driven module system** with one artifact type: a **module JAR** that carries a backend (Spring beans, REST controllers, JPA entities, a Liquibase changelog, permission and menu declarations) and, optionally, a **prebuilt frontend bundle** (a Vite Module Federation remote plus translation files), all described by one `META-INF/openelis-module.json` manifest. Modules are discovered at application start from a mounted directory (`/var/lib/openelis-global/modules`) or from `WEB-INF/lib`; they join the single Spring root context, their migrations run after the core changelog and before the Hibernate session factory is built, their permissions are registered as `system_module` rows exactly as the core's `qa.*` keys are today, and their navigation entries are merged into the existing menu tree. The React application becomes an **application shell**: it fetches `/rest/modules`, registers each compatible module's routes behind the existing `SecureRoute` permission gate, loads the module's bundle lazily from the same origin, and offers named **extension slots** on core pages for controlled integration.
+This document proposes a **manifest-driven module system** with one artifact type: a **module JAR** that carries a backend (Spring beans, REST controllers, JPA entities, a Liquibase changelog, permission and menu declarations) and, optionally, a **prebuilt frontend bundle** (a Vite Module Federation remote plus translation files), all described by one `META-INF/openelis-module.json` manifest. Modules are discovered at application start from a mounted directory (`/var/lib/openelis-global/modules`) or from `WEB-INF/lib`; they join the single Spring root context, their migrations run after the core changelog and before the Hibernate session factory is built, their permissions are registered as `system_module` rows under a `mod.` prefix exactly as the core's `qa.*` keys are today (one core change adds the prefix to the permission allowlist), and their navigation entries are merged into the existing menu tree. The React application becomes an **application shell**: it fetches `/rest/module-registry`, registers each compatible module's routes behind the existing `SecureRoute` permission gate, loads the module's bundle lazily from the same origin, and offers named **extension slots** on core pages for controlled integration.
 
 The recommendation deliberately does **not** adopt classloader isolation, hot install or unload, a multi-framework orchestrator (single-spa) or a remote bundle registry. Each was evaluated (section 7) and rejected for the initial design because it buys little security or operational value in OpenELIS's single-tenant, operator-installed, Docker-deployed reality, while adding a large amount of complexity and failure modes. Installing or upgrading a module is a file copy plus a container restart, which is how every other configuration change to an OpenELIS site already works.
 
-The work is sized as a six-phase roadmap (section 24). Phases 1 and 2 (contracts, backend discovery) are low risk and reversible; the first meaningful proof of concept is an example module kept inside the core repository and exercised by CI, followed by extracting one existing self-contained integration (the Odoo connector) into a module without changing its behaviour.
+The work is sized as a six-phase roadmap (section 24). Phases 1 and 2 (contracts, backend discovery) are low risk and reversible. Phase 2 ends with a backend-only proof of concept, the Odoo connector moved into a module without changing its behaviour, and Phase 4 with the full proof of concept, an example module kept inside the core repository and exercised by CI.
 
 ## 2. Problem statement and architectural goals
 
@@ -71,7 +71,7 @@ The pressure the brief describes is visible in the history and the tree [confirm
 ### 3.2 Persistence and migrations [confirmed]
 
 - `HibernateConfig.entityManagerFactory()` builds a `LocalContainerEntityManagerFactoryBean` from `classpath:persistence/persistence.xml` and is annotated `@DependsOn("liquibase")`; package scanning is commented out ("activate this once we migrate away from hbm.xmls") [`HibernateConfig.java:19-31`].
-- The datasource is a JNDI lookup of `jdbc/LimsDS` defined in the webapp's `META-INF/context.xml` [`DatabaseConfig.java`, `src/main/webapp/META-INF/context.xml`].
+- The datasource is a JNDI lookup of `jdbc/LimsDS`. The `/api/OpenELIS-Global` `<Context>` that defines it is declared in Tomcat's `oe_server.xml` (copies in `tomcat/`, `volume/tomcat/`, `dev/tomcat/` and `install/installerTemplate/linux/templates/`) since #4740. Because the context is declared in the server configuration, Tomcat ignores the WAR's own `src/main/webapp/META-INF/context.xml`, whose `Resource` and `CookieProcessor` entries are dead configuration [`DatabaseConfig.java`, `tomcat/oe_server.xml:145-151`, `src/main/webapp/META-INF/context.xml`].
 - `LiquibaseConfig` runs `classpath:liquibase/base-changelog.xml` through `SpringLiquibase` with contexts from `spring.liquibase.contexts` [`src/main/java/org/openelisglobal/liquibase/LiquibaseConfig.java`]. The base changelog includes release folders (`2.0.x.x` ... `3.6.x.x`) and feature folders (`qc/`, `qa/`, `dashboards/`, `upgrade/`) [`base-changelog.xml`]. A failing changeset fails the context refresh and therefore the application.
 
 ### 3.3 Security, permissions and menus [confirmed]
@@ -95,13 +95,13 @@ The pressure the brief describes is visible in the history and the tree [confirm
 
 - Backend image: multi-stage `Dockerfile` builds `dataexport` then the WAR with Maven and copies `OpenELIS-Global.war` into `tomcat:10-jre21`; the webapp context path is `/OpenELIS-Global`, reached by the browser as `/api/OpenELIS-Global` through the proxy [`Dockerfile`, `volume/nginx/nginx-prod.conf:31-37`].
 - Frontend image: `npm run build` then `nginx:1.27-alpine` serving `dist/` [`frontend/Dockerfile`].
-- Site-specific material is mounted, never baked: properties, `configuration/`, `programs/`, `menu/menu_config.json`, translations, analyzer maps, branding [`docker-compose.yml:69-77`; `openelis-docker/docker-compose.yml:112-122`]. The Madagascar and PNG distros and `openelis-distro-template` (a Copier template) formalise this: a distro is a compose file plus a `configs/` tree pinned to published images by digest [`openelis-madagascar-distro/README.md`, `openelis-distro-template/README.md`]. Both distro repositories still mount `configs/plugins` to `/var/lib/openelis-global/plugins`, a directory nothing reads any more.
+- Site-specific material is mounted, never baked: properties, `configuration/`, `programs/`, `menu/menu_config.json`, translations, analyzer maps, branding [`docker-compose.yml:69-77`; `openelis-docker/docker-compose.yml:112-122`]. The Madagascar and PNG distros and `openelis-distro-template` (a Copier template) formalise this: a distro is a compose file plus a `configs/` tree; the README describes digest pinning, while the Madagascar compose currently runs the `:develop` tags of the OpenELIS images and a version tag of the Bridge [`openelis-madagascar-distro/README.md`, `openelis-madagascar-distro/docker-compose.yml`, `openelis-distro-template/README.md`]. Both distro repositories still mount `configs/plugins` to `/var/lib/openelis-global/plugins`, a directory nothing reads any more.
 
 ## 4. Existing and former extension mechanisms in OpenELIS
 
 ### 4.1 The removed analyzer plugin loader [confirmed from history]
 
-Recovered from `git show f5632054e8^:src/main/java/org/openelisglobal/plugin/`:
+Recovered from `git show f5632054e8^:src/main/java/org/openelisglobal/plugin/`. The loader, menu, permission and servlet classes were removed by `f5632054e8` (PR #4138, 2026-09-08); the remaining `APlugin` and `AnalyzerImporterPlugin` interfaces by `864a63ad58` (PR #4506, 2026-10-02):
 
 - `PluginLoader` (`@Component`, `@DependsOn({"pluginMenuService","pluginAnalyzerService"})`) walked `/var/lib/openelis-global/plugins/` recursively at `@PostConstruct`, opened every `*.jar`, compared the jar's `Build-Jdk` manifest attribute with the runtime JDK, found the first `*.xml` entry, required `<version>1.0</version>`, and for each of the `analyzerImporter`, `menu` and `permission` elements created a **new `URLClassLoader` per extension** with the webapp loader as parent, instantiated the named class with `newInstance()` and called `APlugin.connect()`.
 - `MenuPlugin.connect()` inserted menu rows through a static `PluginMenuService`; `PermissionPlugin.connect()` inserted permission rows; `PluginConfiguration` (a `@Configuration` bean) registered plugin `Servlet`s under `/plugin<path>` by adding a `SimpleUrlHandlerMapping` singleton to the bean factory at runtime; `PluginsController` listed loaded jar names.
@@ -161,7 +161,7 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 
 ### 5.2 Frontend lessons
 
-1. **Load two kinds of data before any module code: where each module's bundle is, and what each module declares (pages, slots, permissions).** The shell can then register routes, gate them by permission and decide what to download before downloading anything. In OpenELIS both are served by one endpoint, `/rest/modules`, because the backend owns the manifests.
+1. **Load two kinds of data before any module code: where each module's bundle is, and what each module declares (pages, slots, permissions).** The shell can then register routes, gate them by permission and decide what to download before downloading anything. In OpenELIS both are served by one endpoint, `/rest/module-registry`, because the backend owns the manifests.
 2. **Declare pages and extensions in data, not code**: a route (path or regex), a required permission, an optional feature flag, and for extensions a slot name, an order and a display condition. Site configuration can then add, remove and reorder extensions per slot without a rebuild.
 3. **Share the UI libraries as singletons provided by the shell, and pin the framework package to the shell's copy.** In practice, compatibility in the reference system is "same major of the framework and of the design system"; nothing stops an older module from loading under a newer shell. OpenELIS should make the contract version explicit in the manifest and check it before loading.
 4. **Fail soft, but visibly.** A broken module should produce a console error, an administrator-visible status and a placeholder where its page or slot would be, never a blank application. The reference system's "empty component on missing export" hides bugs; OpenELIS should render a visible placeholder instead.
@@ -175,7 +175,7 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 
 | # | Gap | Where it shows today [confirmed] | What the module system must add |
 |---|---|---|---|
-| GAP-1 | No module identity, manifest or registry. | Nothing describes "a feature" as a unit; the nearest is a Liquibase folder plus a scattered set of files. | A manifest schema, a `ModuleRegistry` with per-module status, an admin-visible `/rest/modules` endpoint. |
+| GAP-1 | No module identity, manifest or registry. | Nothing describes "a feature" as a unit; the nearest is a Liquibase folder plus a scattered set of files. | A manifest schema, a `ModuleRegistry` with per-module status, an admin-visible `/rest/module-registry` endpoint. |
 | GAP-2 | Bean discovery is by fixed package roots. | `AppConfig` scans `org.openelisglobal`, `org.itech`, `org.ozeki.sms`. | Scan module base packages declared in the manifest, in a controlled post-processor, with namespace rules. |
 | GAP-3 | Entities are a static list. | `persistence.xml` (174 classes), `hibernate.cfg.xml` (121 mappings), `HibernateConfig` has scanning disabled. | A `PersistenceUnitPostProcessor` that adds module entity classes before the entity manager factory is built. |
 | GAP-4 | One changelog, one owner. | `base-changelog.xml` includes everything; a module cannot add a changeset without editing it. | A per-module changelog executed after the core changelog, before the entity manager factory, with namespaced ids and version tracking. |
@@ -209,7 +209,7 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 |---|---|---|---|---|---|
 | A. Build-time integration | Module frontend code is a package the core build includes (workspace dependency or git submodule); routes registered through a generated index. | Simplest runtime (one bundle, one dependency graph), full type checking and tree shaking across the boundary, no loader. | Every implementation needs its own frontend image build; the core build must know every module; dependency conflicts are resolved at the core's build time; "install a module" means "rebuild and republish the frontend image", which contradicts G1 and G6. | Low | Rejected as the primary mechanism; retained as a supported **distro build variant** (section 18). |
 | B1. Runtime modules via single-spa | The shell becomes a single-spa root config; each module is a single-spa application with its own React tree. | Framework-agnostic; mature routing of top-level applications. | Each module renders its own React root: no shared Router, Intl, Query client or contexts without extra plumbing; integration points inside core pages need a second mechanism (parcels); it solves a multi-framework problem OpenELIS does not have. | Medium to high | Rejected. |
-| B2. Runtime modules via Module Federation (**recommended**) | The shell is a federation host built with `@module-federation/vite`; each module is a remote exposing React components; React, Router, Intl, Carbon and Query are shared singletons; remotes are registered at runtime from `/rest/modules`. | One React tree: module pages are ordinary components under the shell's providers and `SecureRoute`; lazy loading per route; shared dependency negotiation with versions; well-trodden with Vite 5 to 8; remotes are plain ES modules served from the same origin. | A second build mode for the core frontend (host); the plugin's chunking rules must be respected; version skew between host-provided singletons and what a remote was built against must be policed (section 13); runtime registration APIs must be used instead of static `remotes` configuration. | Medium | Best fit; the shell stays the existing app. |
+| B2. Runtime modules via Module Federation (**recommended**) | The shell is a federation host built with `@module-federation/vite`; each module is a remote exposing React components; React, Router, Intl, Carbon and Query are shared singletons; remotes are registered at runtime from `/rest/module-registry`. | One React tree: module pages are ordinary components under the shell's providers and `SecureRoute`; lazy loading per route; shared dependency negotiation with versions; well-trodden with Vite 5 to 8; remotes are plain ES modules served from the same origin. | A second build mode for the core frontend (host); the plugin's chunking rules must be respected; version skew between host-provided singletons and what a remote was built against must be policed (section 13); runtime registration APIs must be used instead of static `remotes` configuration. | Medium | Best fit; the shell stays the existing app. |
 | B3. Runtime modules via plain ES modules and an import map | Module bundles are ES modules that import `react`, `@carbon/react` etc. as bare specifiers resolved by an import map to shell-exported bundles. | Standards only, no federation runtime; smallest moving parts. | The shell must publish stable, separately built bundles for every shared library and keep them in sync with its own chunks (two copies of React otherwise); no version negotiation; Vite's bundling of shared libraries into hashed chunks works against it. | Medium | Fallback if Module Federation proves unreliable on Vite 8; the manifest is designed so the loader can be swapped. |
 | C. Frontend bundled with the backend module (**part of the recommendation**) | The compiled remote lives inside the module JAR under `META-INF/resources/modules/<id>/` and is served by the backend. | One artifact, one version, one install step; backend and frontend never drift; served same-origin through the existing proxy path; no CDN, no extra container. | The backend serves static assets (it already does for `static/`); module frontend size adds to the WAR's classpath scanning (negligible). | Low | Adopted as the packaging of B2. |
 | D. Hybrid | B2 for loading, C for packaging, manifest as the single contract, A as an optional distro build. | Covers runtime install (C), developer ergonomics (B2) and tightly controlled sites (A) with one manifest. | Two loaders to maintain if A is used (static import map vs. runtime registry); must be kept behind the same registry abstraction. | Medium | **Recommended**. |
@@ -243,7 +243,7 @@ flowchart LR
     Mig["ModuleLiquibaseRunner<br/>(after core changelog)"]
     Perm["ModulePermissionRegistrar<br/>(system_module rows)"]
     Menu["ModuleMenuContributor<br/>(in-memory menu entries)"]
-    API["/rest/modules<br/>/modules/{id}/** static assets"]
+    API["/rest/module-registry<br/>/modules/{id}/** static assets"]
     Core["Core services, controllers,<br/>entities, security, interceptors"]
     ModBeans["Module beans:<br/>@RestController @Service @Repository<br/>+ OpenElisModule activator"]
   end
@@ -259,7 +259,7 @@ flowchart LR
   Reg --> Perm
   Reg --> Menu
   ModBeans <--> Core
-  Shell -- "GET /rest/modules" --> API
+  Shell -- "GET /rest/module-registry" --> API
   Shell -- "import(remoteEntry.js)" --> API
   API -. serves from JAR .-> Remote
   Remote -- "/rest/modules/{id}/..." --> ModBeans
@@ -313,7 +313,7 @@ Decision point [open]: whether to also publish the WAR's classes as `OpenELIS-Gl
 
 ### 9.2 Discovery [recommendation]
 
-- Module JARs are made part of the webapp class path in one of two ways: **bundled** (a distro build variant copies them into `WEB-INF/lib`, section 18) or **mounted** (the image declares `/var/lib/openelis-global/modules` as a Tomcat `PostResources` directory mounted at `/WEB-INF/lib` in `src/main/webapp/META-INF/context.xml`). Tomcat populates the webapp's class resources "from the JARs mapped to `/WEB-INF/lib` when the web application starts", so both placements behave identically to the `dataexport` jars today [inference from the Tomcat 10.1 resources documentation; to be proven by the Phase 2 proof of concept, including the behaviour when the directory is empty or absent, which the image must guard by creating it].
+- Module JARs are made part of the webapp class path in one of two ways: **bundled** (a distro build variant copies them into `WEB-INF/lib`, section 18) or **mounted** (the `/api/OpenELIS-Global` `<Context>` in Tomcat's `oe_server.xml` declares `/var/lib/openelis-global/modules` as a `PostResources` directory mounted at `/WEB-INF/lib`; the WAR's `META-INF/context.xml` is not read for a context declared in the server configuration, so all four `oe_server.xml` copies change). Tomcat populates the webapp's class resources "from the JARs mapped to `/WEB-INF/lib` when the web application starts", so both placements behave identically to the `dataexport` jars today [inference from the Tomcat 10.1 resources documentation; to be proven by the Phase 2 proof of concept, including the behaviour when the directory is empty or absent, which the image must guard by creating it].
 - `ModuleDiscovery` resolves `classpath*:META-INF/openelis-module.json` with `PathMatchingResourcePatternResolver` (the same mechanism `ConfigurationInitializationService` and `ProgramAutocreateService` use), records for each hit the JAR URL, size and SHA-256, parses the manifest, validates it against the bundled JSON schema and produces a `ModuleDescriptor`.
 - Two JARs declaring the same module id is a **start-up error**, not a "newest wins" rule: both JARs are already on the class path, so which classes win would depend on JAR order. The error names both files.
 - Validation performed before any bean exists: schema validity; `id` format (`^[a-z][a-z0-9-]{2,40}$`); `requires.coreApi` range against the API artifact version compiled into the WAR; `requires.core` range against the application version (`pom` revision exposed as a build property); `requires.modules` resolution and version ranges; `conflicts`; base-package namespace rules (section 9.3); the activator class and every declared entity class load with `Class.forName` through the webapp loader; the Liquibase changelog resource exists; the frontend entry exists if declared; optional digest allowlist (section 15). A module that fails any check is recorded as `INCOMPATIBLE` or `INVALID` with the reason, its beans are never registered, and the core continues.
@@ -321,7 +321,7 @@ Decision point [open]: whether to also publish the WAR's classes as `OpenELIS-Gl
 ### 9.3 Class loading and namespace rules [recommendation]
 
 - One class loader: the webapp's. Module classes resolve parent-first like every other class in `WEB-INF/lib`. No per-module loaders in Phases 1 to 5 (option B3 remains available behind the same registry).
-- A module's `backend.basePackages` **must not** fall under any core scan root (`org.openelisglobal`, `org.itech`, `org.ozeki`, `spring`); otherwise `AppConfig`'s scan would pick its beans up even when the module is disabled or invalid. Recommended convention: a reverse-domain package owned by the implementer, for example `org.moh-example.openelis.implworkflow`.
+- A module's `backend.basePackages` **must not** fall under any core scan root (`org.openelisglobal`, `org.itech`, `org.ozeki`, `spring`); otherwise `AppConfig`'s scan would pick its beans up even when the module is disabled or invalid. Recommended convention: a reverse-domain package owned by the implementer, for example `org.mohexample.openelis.implworkflow`.
 - A module **must not** package Spring, Spring Security, Hibernate, Jackson, Liquibase, HAPI FHIR, PostgreSQL JDBC or any library the WAR already ships; these are `provided`. Other third-party libraries are allowed and must be listed in the manifest (`backend.libraries`, Maven coordinates) so that operators can see them; their JARs ship inside the module JAR (shaded under the module's package, recommended) or beside it in the modules directory.
 - A **duplicate-class check** runs at discovery: the registry indexes the package prefixes of every module JAR entry and compares them with the WAR's `WEB-INF/lib` and `WEB-INF/classes`; an overlap is a validation failure. This is what makes the single-loader model safe enough.
 
@@ -347,7 +347,7 @@ emf.setPersistenceXmlLocation("classpath:persistence/persistence.xml");
 emf.setPersistenceUnitPostProcessors(moduleEntityRegistrar);   // new
 ```
 
-Entities are listed explicitly in the manifest (`backend.entities`), mirroring the project's `persistence.xml` convention and `test-persistence.xml` behaviour, rather than scanned; a scan option (`backend.entityPackages`) can be added later. Module tables use the `clinlims` schema and a `mod_<id>_` table and sequence prefix so that they are recognisable in backups and removable without touching core tables [recommendation; schema-per-module is an alternative, section 25]. Module entities that need the core audit columns extend a `ModuleAuditedEntity` mapped superclass provided by the API artifact rather than core's `BaseObject` [open: confirm `LIMSStringNumberUserType` and the `sys_user_id` conventions can be reproduced there].
+Entities are listed explicitly in the manifest (`backend.entities`), mirroring the project's `persistence.xml` convention and `test-persistence.xml` behaviour, rather than scanned; a scan option (`backend.entityPackages`) can be added later. Module tables use the `clinlims` schema and a `mod_<id>_` table and sequence prefix, where `<id>` is the module id with hyphens replaced by underscores (`mod_implementation_workflow_`), so that they are recognisable in backups and removable without touching core tables [recommendation; schema-per-module is an alternative, section 25]. Module entities that need the core audit columns extend a `ModuleAuditedEntity` mapped superclass provided by the API artifact rather than core's `BaseObject` [open: confirm `LIMSStringNumberUserType` and the `sys_user_id` conventions can be reproduced there].
 
 ### 9.6 Liquibase [recommendation]
 
@@ -359,18 +359,20 @@ Entities are listed explicitly in the manifest (`backend.entities`), mirroring t
 
 ### 9.7 Permissions [recommendation]
 
-- `permissions[]` in the manifest become `system_module` rows named `<id>.<key>` (`qa.view.overview` precedent), inserted idempotently by `ModulePermissionRegistrar` on `ContextRefreshedEvent` inside the daemon user context (the same way the menu seeder writes). Optional `defaultRoles` grant the key to named roles **on first install only**, so later administrator changes in Role Management are never undone.
-- Rule enforced by the module test kit: every public handler method in a module controller carries `@PreAuthorize` referencing `hasAuthority('<id>.…')` or a role. The URL interceptor's pass-through for `/rest/**` [confirmed] means method security is the real gate for module endpoints, as it is for core REST today.
+- `permissions[]` in the manifest become `system_module` rows named `mod.<id>.<key>` (`qa.view.overview` precedent; the `mod.` prefix is the namespace the message keys use too), inserted idempotently by `ModulePermissionRegistrar` on `ContextRefreshedEvent` inside the daemon user context (the same way the menu seeder writes). Core change required: only granted names under `Constants.PERMISSION_MODULE_PREFIXES` (`qa.` and `dashboards.`) become Spring authorities and reach the `/session` payload today [confirmed, `Constants.java:27`, `RoleModuleServiceImpl.java:131`, `LoginPageController.java:166`], so Phase 2 adds `mod.` to that list (or makes it registry-driven); without that change `hasAuthority(...)` and `usePermission` fail for every module key. Optional `defaultRoles` grant the key to named roles **on first install only**, so later administrator changes in Role Management are never undone.
+- Rule enforced by the module test kit: every public handler method in a module controller carries `@PreAuthorize` referencing `hasAuthority('mod.<id>.…')` or a role. The URL interceptor's pass-through for `/rest/**` [confirmed] means method security is the real gate for module endpoints, as it is for core REST today.
 - Module REST paths live under `/rest/modules/<id>/`. The registry can also seed `system_module_url` rows for those prefixes if the fail-closed interceptor rollout lands first [open: `SystemModuleUrlService.getByRequest` matching semantics].
 
 ### 9.8 Endpoints and static assets [recommendation]
 
 | Endpoint | Purpose | Access |
 |---|---|---|
-| `GET /rest/modules` | Registry view: every discovered module with id, version, status, reason, frontend contract, routes, slots, menu, message file URLs, exposed configuration. | Authenticated user (the shell needs it after login). |
-| `GET /rest/modules/{id}` | One module's detail, including libraries and digests. | `hasRole('GLOBAL_ADMIN')`. |
-| `GET /rest/modules/{id}/config` | Configuration values the manifest marks `exposeToFrontend`. | Authenticated user. |
+| `GET /rest/module-registry` | Registry view: every discovered module with id, version, status, reason, frontend contract, routes, slots, menu, message file URLs, exposed configuration. | Authenticated user (the shell needs it after login). |
+| `GET /rest/module-registry/{id}` | One module's detail, including libraries and digests. | `hasRole('GLOBAL_ADMIN')`. |
+| `GET /rest/module-registry/{id}/config` | Configuration values the manifest marks `exposeToFrontend`. | Authenticated user. |
 | `GET /modules/{id}/**` | Static assets from `classpath:/META-INF/resources/modules/{id}/` via `ResourceHandlerRegistry`; hashed files `Cache-Control: public, max-age=31536000, immutable`; `remoteEntry.js` and message files `no-cache` with ETag. | Authenticated session (default chain); added to the interceptor exclusions like `RESOURCE_PAGES`. |
+
+Registry endpoints live under `/rest/module-registry/` rather than `/rest/modules/` so that no module mapping (which may use any path under `/rest/modules/<id>/`, including `/config`) can shadow them by pattern specificity; the test kit refuses module mappings outside `/rest/modules/<id>/`.
 
 ### 9.9 Lifecycle and states
 
@@ -388,7 +390,7 @@ stateDiagram-v2
   STARTED --> STOPPED: context shutdown (onStop)
 ```
 
-- `INVALID`, `INCOMPATIBLE` and `DISABLED` modules are skipped; the core starts; the status is visible in `/rest/modules` and in the log.
+- `INVALID`, `INCOMPATIBLE` and `DISABLED` modules are skipped; the core starts; the status is visible in `/rest/module-registry` and in the log.
 - `FAILED` after validation aborts start-up by default (`modules.failurePolicy=fail-fast`). Rationale: in a single context a half-started module is worse than a clear failure, and a LIS must not run with an unknown subset of its features. A manifest flag `required: true` is informational in fail-fast mode and becomes meaningful if a future isolation mode is added.
 - `onStart` runs with a timeout (`modules.startTimeoutSeconds`, default 60); exceeding it is a failure.
 - Kill switch: an operator drops `<jar-name>.disabled` next to the JAR or lists ids in `modules.disabled` in a mounted properties file; the module is skipped at the next restart.
@@ -434,13 +436,13 @@ Published from a new workspace package in the core repository (`frontend/package
 | `useSession()` | `UserSessionDetailsContext` | `roles`, `permissions`, `loginLabUnit`, user info. |
 | `usePermission(key)` / `hasPermission` | `Utils.ts` `hasPermission` | |
 | `useConfigurationProperties()` | `ConfigurationContext` | Core properties the shell already fetched. |
-| `useModuleConfig()` | `GET /rest/modules/{id}/config` | Module's exposed properties, cached per session. |
+| `useModuleConfig()` | `GET /rest/module-registry/{id}/config` | Module's exposed properties, cached per session. |
 | `useQueryClient()` re-export | TanStack Query | One cache for the whole app. |
 | `ModuleErrorBoundary`, `ModulePlaceholder` | new | Visible fallbacks. |
 | `ExtensionSlot` | new (section 12) | For modules that host slots of their own. |
 | `defineModule()` types: `ModuleRoute`, `SlotContribution`, slot prop types | new | Compile-time contract for the slot catalogue. |
 | `navigateTo(path)` | React Router 5 history | Avoids a second router. |
-| `FRONTEND_CONTRACT_VERSION` | SDK package version | What the shell publishes in `/rest/modules`. |
+| `FRONTEND_CONTRACT_VERSION` | SDK package version | What the shell publishes in `/rest/module-registry`. |
 
 The SDK version **is** the frontend contract version. Any change to a shared singleton's major (React 17 to 18, Router 5 to 6, Carbon major) or to a slot's props is a contract major; additive slots and hooks are minors.
 
@@ -462,7 +464,7 @@ sequenceDiagram
   participant S as Backend
   B->>S: GET /session
   S-->>B: authenticated, roles, permissions, CSRF
-  B->>S: GET /rest/modules
+  B->>S: GET /rest/module-registry
   S-->>B: [{id, version, status: STARTED, frontend: {entry, contract, routes, slots, messages}}, ...]
   B->>B: check contract range vs FRONTEND_CONTRACT_VERSION, register remotes
   B->>S: GET /modules/{id}/messages/fr.json (per started module)
@@ -474,10 +476,10 @@ sequenceDiagram
   B->>S: GET /rest/modules/implementation-workflow/cases (module API)
 ```
 
-- `ModuleHostProvider` sits in `App.jsx` inside the session and configuration providers. It fetches `/rest/modules` once per authenticated session with TanStack Query, applies the contract check client-side (the server already checked backend compatibility), registers each compatible module's remote with the Module Federation runtime (`registerRemotes`), and exposes `{ modules, routes, slots, status }` through context.
+- `ModuleHostProvider` sits in `App.jsx` inside the session and configuration providers. It fetches `/rest/module-registry` once per authenticated session with TanStack Query, applies the contract check client-side (the server already checked backend compatibility), registers each compatible module's remote with the Module Federation runtime (`registerRemotes`), and exposes `{ modules, routes, slots, status }` through context.
 - `ModuleRoutes` renders inside the existing `Switch`, after the core routes and before the catch-all `RedirectOldUI` route, one `SecureRoute` per declared route with `permission` and `role` from the manifest. A module route that collides with a core route (the shell knows its own route table once routes are expressed as data in Phase 3) is skipped and reported.
 - `LazyRemote` wraps `React.lazy(() => loadRemote(...))` with the `lazyWithRetry` semantics already in core, a 30-second timeout, and `ModuleErrorBoundary`, which renders a Carbon `InlineNotification` naming the module and offering retry. A failed load marks the module `LOAD_FAILED` in client state; slots of that module render nothing and log once.
-- `/rest/modules` is cached per session; module assets are content-hashed and immutable; `remoteEntry.js` is validated by ETag. The existing service worker caches only the shell's `index.html` and needs no change.
+- `/rest/module-registry` is cached per session; module assets are content-hashed and immutable; `remoteEntry.js` is validated by ETag. The existing service worker caches only the shell's `index.html` and needs no change.
 - The admin "Modules" page (Phase 5) reads the same registry and shows status, versions, digests, declared permissions and the disable instructions; it does not install anything.
 
 ## 12. Routing, navigation and extension-point design
@@ -488,14 +490,14 @@ Manifest entry:
 
 ```json
 { "path": "/implementation-workflow", "exact": false, "expose": "./WorkflowPage",
-  "permission": "implementation-workflow.view", "role": null, "featureFlag": null }
+  "permission": "view", "role": null, "featureFlag": null }
 ```
 
-Rules: a path is absolute, unique across all modules, and either starts with `/m/<id>/` (always allowed) or is a top-level path that the shell verifies is free. `permission` maps to `SecureRoute permission=`; `role` maps to `SecureRoute role=`; at least one must be present (no anonymous module pages). Admin pages use the `admin.sidenav.entries` slot and paths under `/admin/m/<id>/`, rendered inside the existing `Admin` shell.
+Rules: a path is absolute, unique across all modules, and either starts with `/m/<id>/` (always allowed) or is a top-level path that the shell verifies is free. `permission` names one of the module's own keys, is expanded to `mod.<id>.<key>`, and maps to `SecureRoute permission=`; `role` maps to `SecureRoute role=`; at least one must be present (no anonymous module pages). Admin pages use the `admin.sidenav.entries` slot and paths under `/admin/m/<id>/`, rendered inside the existing `Admin` shell.
 
 ### 12.2 Navigation [recommendation]
 
-Manifest `menu[]` entries are merged into the server-side menu tree by `ModuleMenuContributor` at `ContextRefreshedEvent`, after the distro file and before `MenuUtil.forceRebuild()`, using the same in-memory materialisation `MenuConfigurationLoader` applies to configured entries that have no database row. Fields: `elementId` (`menu_mod_<id>_…`), `parent` (an existing `elementId`, for example `menu_clinical_workflow`, `menu_reports`, `menu_admin`), `displayKey` (a module message key), `actionURL` (a module route), `presentationOrder`, `icon` (from the shell's icon map), `permission`. `MenuController.getMenuTree` filters module entries whose `permission` the session lacks, so users do not see links to pages they cannot open. Administrators can still hide or reorder module entries through the existing menu administration; those overrides are stored by `elementId` and survive restarts because module entries keep stable ids.
+Manifest `menu[]` entries are merged into the server-side menu tree by `ModuleMenuContributor` at `ContextRefreshedEvent`, after the distro file and before `MenuUtil.forceRebuild()`, using the same in-memory materialisation `MenuConfigurationLoader` applies to configured entries that have no database row. Fields: `elementId` (`menu_mod_<id>_…`), `parent` (an existing `elementId`, for example `menu_clinical_workflow`, `menu_reports`, `menu_administration`), `displayKey` (a module message key), `actionURL` (a module route), `presentationOrder`, `icon` (from the shell's icon map), `permission`. `MenuController.getMenuTree` filters module entries whose `permission` the session lacks, so users do not see links to pages they cannot open. Administrators can still hide or reorder module entries through the existing menu administration; those overrides are stored by `elementId` and survive restarts because module entries keep stable ids.
 
 ### 12.3 Extension slots [recommendation]
 
@@ -505,10 +507,10 @@ Initial catalogue (each with a TypeScript props type in the SDK and a stability 
 
 | Slot | Context props | Where (core file) | Stability |
 |---|---|---|---|
-| `home.dashboard.cards` | `{ user }` | `components/home/LandingPage.jsx` | experimental |
+| `home.dashboard.cards` | `{ user }` | `components/home/LandingPage.tsx` | experimental |
 | `header.actions` | `{}` | `components/layout/Header.jsx` | experimental |
-| `patient.header.actions` | `{ patientId }` | `components/patient/PatientManagement.jsx` | experimental |
-| `patient.summary.sections` | `{ patientId }` | `components/patient/PatientHistory.jsx` | experimental |
+| `patient.header.actions` | `{ patientId }` | `components/patient/PatientManagement.tsx` | experimental |
+| `patient.summary.sections` | `{ patientId }` | `components/patient/PatientHistory.tsx` | experimental |
 | `order.entry.additionalSections` | `{ orderDraft, domain }` | `components/order/steps/*` | experimental (ties to OGC-1144) |
 | `sample.details.tabs` | `{ sampleId, accessionNumber }` | `components/sampleManagement/*` | experimental |
 | `results.entry.toolbar` | `{ analysisIds }` | `components/resultPage/*` | experimental |
@@ -574,7 +576,7 @@ Policy: a slot is added by a core pull request with its props type; renaming or 
 }
 ```
 
-Permission keys, message keys, menu element ids, REST paths and table prefixes are all derived from `id`, which keeps every namespace rule mechanical: `implementation-workflow.view`, `mod.implementation-workflow.*`, `menu_mod_implementation_workflow*`, `/rest/modules/implementation-workflow/**`, `mod_implementation_workflow_*`.
+Permission keys, message keys, menu element ids, REST paths and table prefixes are all derived from `id`, which keeps every namespace rule mechanical: `mod.implementation-workflow.view`, `mod.implementation-workflow.*` (messages), `menu_mod_implementation_workflow*`, `/rest/modules/implementation-workflow/**`, `mod_implementation_workflow_*` (hyphens become underscores in SQL identifiers, menu ids and the federation remote name).
 
 ### 13.2 Versioning and compatibility rules [recommendation]
 
@@ -637,7 +639,7 @@ Section 9.6 defines the mechanism. Conventions a module must follow, checked by 
 
 - Properties are read from the existing Spring `Environment` (classpath defaults, `/run/secrets/*.properties`, `/var/lib/openelis-global/properties/*.properties`) under the namespace `modules.<id>.<key>`, with defaults and types from the manifest. `ModuleContext.configuration()` offers typed getters; invalid values fail validation of the module with a clear message.
 - A module may also read files from `/var/lib/openelis-global/modules-config/<id>/` (mounted like `configuration/`), for CSV or JSON inputs too large for properties.
-- `exposeToFrontend` properties are served by `GET /rest/modules/{id}/config`; nothing else leaves the server.
+- `exposeToFrontend` properties are served by `GET /rest/module-registry/{id}/config`; nothing else leaves the server.
 - The constitution's rule that variation is configuration before code still applies inside modules: a module should carry its own configuration surface rather than forks per site.
 
 ## 17. Packaging, installation, upgrades, rollback and removal
@@ -674,7 +676,7 @@ Everything in the table is a file operation on the distro repository plus a rest
 
 ## 18. Docker and deployment considerations
 
-- **Backend image** (core repo `Dockerfile`): create `/var/lib/openelis-global/modules`, `/var/lib/openelis-global/modules-config` and `/var/lib/openelis-global/modules-data` with the `tomcat_admin` owner; add the `PostResources` entry to `src/main/webapp/META-INF/context.xml`. No other image change.
+- **Backend image** (core repo `Dockerfile`): create `/var/lib/openelis-global/modules`, `/var/lib/openelis-global/modules-config` and `/var/lib/openelis-global/modules-data` with the `tomcat_admin` owner; add the `PostResources` entry to the `/api/OpenELIS-Global` `<Context>` in every `oe_server.xml` copy (`tomcat/`, `volume/tomcat/`, `dev/tomcat/`, `install/installerTemplate/linux/templates/`); the WAR's `META-INF/context.xml` is not read for that context. No other image change.
 - **Compose files** (`docker-compose.yml`, `openelis-docker`, the distro template): mount `./configs/modules:/var/lib/openelis-global/modules:ro`, `./configs/modules-config:/var/lib/openelis-global/modules-config:ro` and a named volume for `modules-data`. Remove the dead `configs/plugins` mount at the same time.
 - **Baked modules** (distro build variant for sites that cannot mount volumes or want immutable images): `FROM itechuw/openelis-global-2:<tag>` plus `COPY modules/*.jar /var/lib/openelis-global/modules/`. Same discovery path, no WAR repacking, no second mechanism.
 - **Frontend image and proxy**: unchanged. Module assets travel through the existing `/api/` proxy location; the proxy must pass the backend's `Cache-Control` and `ETag` headers through, which it does today.
@@ -693,7 +695,7 @@ Everything in the table is a file operation on the distro repository plus a rest
 ### 19.2 Core-level regression gate [recommendation]
 
 - An **example module** lives in the core repository (`modules/example-workflow/`, a Maven module built by the Backend workflow and mounted into the E2E stack). It exercises every contract: entity, changelog, permission, menu, route, slot, messages, configuration. It is the proof of concept of Phase 4 and stays as the permanent fixture.
-- Backend unit and context tests for `ModuleRegistry`, `ModuleBeanRegistrar`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `ModuleMenuContributor` and the `/rest/modules` controller, including the negative paths: invalid manifest, incompatible ranges, missing dependency, cycle, duplicate id, changelog failure, bean failure, start timeout, disabled marker, digest mismatch.
+- Backend unit and context tests for `ModuleRegistry`, `ModuleBeanRegistrar`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `ModuleMenuContributor` and the `/rest/module-registry` controller, including the negative paths: invalid manifest, incompatible ranges, missing dependency, cycle, duplicate id, changelog failure, bean failure, start timeout, disabled marker, digest mismatch.
 - Frontend tests for `ModuleHostProvider`, `ModuleRoutes`, `LazyRemote`, `ExtensionSlot` and the message merge, with a mocked registry and a mocked remote loader; one Playwright spec that logs in, sees the example module's menu entry, opens its page, calls its API, exercises a slot, and verifies that a deliberately broken second module renders a placeholder without affecting the page.
 - **API compatibility**: `japicmp` on `openelis-module-api` in CI fails the build when a binary-incompatible change is not accompanied by a major version bump; the SDK's public surface is type-tested and `shared.json` drift against `package.json` is checked.
 - **Test Quality Invariants** (constitution V.6) apply: no assert-on-mock-return, authorisation ordering tests for module endpoints, inversion tests for the registry's negative paths.
@@ -708,10 +710,10 @@ Each core release publishes the API and SDK versions it ships. Module CI builds 
 |---|---|---|
 | Start-up cost | Discovery is a classpath resource scan plus manifest parsing; validation is a few `Class.forName` calls; Liquibase checks checksums for an up-to-date module in milliseconds. | Added start-up time with 0, 1 and 5 modules; target under 2 s for 5 modules. |
 | Request latency | None beyond normal Spring MVC; module beans are ordinary beans. | p95 of a module endpoint vs an equivalent core endpoint. |
-| First page load | One `/rest/modules` call and one small message file per module per session; remote bundles load on first visit of a route; shared singletons prevent a second React. | Size of `/rest/modules` with 5 modules; time to interactive of a module page cold and warm. |
+| First page load | One `/rest/module-registry` call and one small message file per module per session; remote bundles load on first visit of a route; shared singletons prevent a second React. | Size of `/rest/module-registry` with 5 modules; time to interactive of a module page cold and warm. |
 | Caching | Hashed assets immutable for a year; `remoteEntry.js` and messages validated by ETag; registry cached per session. | Cache hit ratio in the proxy logs. |
 | Reliability | No runtime mutation of Spring or Hibernate state; fail-fast after validation; timeouts on start; one-file disable; error boundaries per route and slot in the browser. | Lifecycle test matrix (section 19.2). |
-| Observability | `LogEvent` lines `[module:<id>] <state> <reason>` at every transition; `/rest/modules` status; `clinlims.module_state`; the admin Modules page; optional counters through the existing metrics servlet [open]. | Operators can tell from logs alone which module stopped a start-up. |
+| Observability | `LogEvent` lines `[module:<id>] <state> <reason>` at every transition; `/rest/module-registry` status; `clinlims.module_state`; the admin Modules page; optional counters through the existing metrics servlet [open]. | Operators can tell from logs alone which module stopped a start-up. |
 
 ## 21. Failure scenarios and recovery strategies
 
@@ -762,7 +764,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A[App boots, /session authenticated] --> B["ModuleHostProvider: GET /rest/modules"]
+  A[App boots, /session authenticated] --> B["ModuleHostProvider: GET /rest/module-registry"]
   B --> C{"for each STARTED module:<br/>frontendContract satisfies<br/>FRONTEND_CONTRACT_VERSION?"}
   C -- no --> D["mark FRONTEND_INCOMPATIBLE<br/>skip routes, slots, messages"]
   C -- yes --> E["registerRemotes name -> /modules/id/remoteEntry.js"]
@@ -786,7 +788,7 @@ sequenceDiagram
   P->>SDK: useOpenElisApi().post("/rest/modules/implementation-workflow/cases", body)
   SDK->>S: POST /api/OpenELIS-Global/rest/modules/implementation-workflow/cases<br/>cookie + X-CSRF-Token
   S->>S: security chain, CSRF, ModuleAuthenticationInterceptor (pass-through for /rest)
-  S->>C: @PreAuthorize("hasAuthority('implementation-workflow.manage')")
+  S->>C: @PreAuthorize("hasAuthority('mod.implementation-workflow.manage')")
   C->>Svc: createCase(dto)
   Svc->>DB: insert (JPA, same EntityManagerFactory as core)
   Svc-->>C: CaseDto
@@ -803,7 +805,7 @@ flowchart LR
   CI --> A["artifact: id-version.jar<br/>+ digest"]
   A --> D["distro repository<br/>configs/modules/*.jar<br/>modules.lock, PR review"]
   D --> O["docker compose up -d<br/>(restart webapp)"]
-  O --> V["verify: logs, /rest/modules,<br/>admin Modules page, smoke test"]
+  O --> V["verify: logs, /rest/module-registry,<br/>admin Modules page, smoke test"]
 ```
 
 ### 22.5 Failure and version incompatibility handling
@@ -872,11 +874,11 @@ public class WorkflowCaseRestController {
     @Autowired private WorkflowCaseService service;
 
     @GetMapping("/cases")
-    @PreAuthorize("hasAuthority('implementation-workflow.view')")
+    @PreAuthorize("hasAuthority('mod.implementation-workflow.view')")
     public Page<CaseDto> list(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) { ... }
 
     @PostMapping("/cases")
-    @PreAuthorize("hasAuthority('implementation-workflow.manage')")
+    @PreAuthorize("hasAuthority('mod.implementation-workflow.manage')")
     public ResponseEntity<CaseDto> create(@RequestBody @Valid CaseDto dto) { ... }
 }
 ```
@@ -892,7 +894,7 @@ import { FormattedMessage } from "react-intl";
 
 export default function WorkflowPage() {
   const api = useOpenElisApi();
-  const canManage = usePermission("implementation-workflow.manage");
+  const canManage = usePermission("mod.implementation-workflow.manage");
   const cases = useQuery(["mod", "implementation-workflow", "cases"], () =>
     api.get("/rest/modules/implementation-workflow/cases?page=0&size=20"));
   return (
@@ -912,7 +914,7 @@ export default function WorkflowPage() {
 3. Implement entity, changelog, service, controller; run `mvn verify`, which runs the test kit (contract tests included) on Testcontainers PostgreSQL.
 4. `mvn package` builds the frontend into the JAR's `META-INF/resources` and validates the manifest; CI publishes `implementation-workflow-1.2.0.jar` and its digest.
 5. In the distro repository: add the JAR to `configs/modules/`, the digest to `modules.lock`, the module's properties to `configs/properties/`; open a pull request; after review `docker compose up -d`.
-6. Verify: webapp log shows `[module:implementation-workflow] STARTED 1.2.0`; `/rest/modules` lists it; the menu shows the entry for users with `implementation-workflow.view`; grant roles in Role Management if `defaultRoles` did not cover them.
+6. Verify: webapp log shows `[module:implementation-workflow] STARTED 1.2.0`; `/rest/module-registry` lists it; the menu shows the entry for users with `mod.implementation-workflow.view`; grant roles in Role Management if `defaultRoles` did not cover them.
 
 ### 23.5 What is automatic and what is explicit
 
@@ -946,11 +948,11 @@ Stakeholders decide the open questions in section 25 that block Phase 1 (publish
 
 ### Phase 2: Backend discovery, registration, migrations, permissions
 
-- **Scope**: `ModuleRegistry`, `ModuleDiscovery`, `ModuleBeanRegistrar`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `module_state` changeset, `/rest/modules` (read-only), Tomcat `PostResources` mount, image directories, compose mounts, `modules.disabled` and marker file, strict mode with `modules.lock`, duplicate-class check, start timeout, logging.
-- **Core components affected**: `AppConfig` (import `ModuleConfig`), `HibernateConfig` (`@DependsOn`, post-processor), `META-INF/context.xml`, `Dockerfile`, `docker-compose.yml`, `SecurityConfig` and interceptor exclusions for `/modules/**`.
+- **Scope**: `ModuleRegistry`, `ModuleDiscovery`, `ModuleBeanRegistrar`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `module_state` changeset, `/rest/module-registry` (read-only), Tomcat `PostResources` mount, image directories, compose mounts, `modules.disabled` and marker file, strict mode with `modules.lock`, duplicate-class check, start timeout, logging.
+- **Core components affected**: `AppConfig` (import `ModuleConfig`), `HibernateConfig` (`@DependsOn`, post-processor), the four `oe_server.xml` copies (`PostResources`), `Constants.PERMISSION_MODULE_PREFIXES` (`mod.` prefix), `Dockerfile`, `docker-compose.yml`, `SecurityConfig` and interceptor exclusions for `/modules/**`.
 - **Key decisions**: fail-fast policy confirmed; table prefix vs schema per module; `unstable()` logging level.
 - **Prerequisites**: Phase 1.
-- **Testing**: backend tests for every negative path (section 19.2); the backend-only proof of concept: the **Odoo connector** (`org.openelisglobal.odoo`, 12 classes, configuration-driven, no frontend) extracted into `modules/odoo-connector` with unchanged behaviour, verified by its existing tests and a live product-mapping run on the dev stack.
+- **Testing**: backend tests for every negative path (section 19.2); the backend-only proof of concept: the **Odoo connector** (`org.openelisglobal.odoo`, 12 classes, configuration-driven, no frontend) extracted into `modules/odoo-connector` with unchanged behaviour, verified by its existing tests and a live product-mapping run on the dev stack. Odoo is not fully self-contained: core's `SamplePatientUpdateDataCreatedEventListener` calls `OdooIntegrationService.createInvoice`, and its changesets live in the core changelog (`3.1.x.x/enable_openelis_to_odoo_connection.xml`, `3.3.x.x/010-remove-odoo-site-information.xml`). The extraction therefore proves two mechanisms the design needs anyway: the module subscribes to the core sample event through its own `@EventListener` (the core listener goes), and its changelog takes ownership of the existing tables behind `tableExists` preconditions (`MARK_RAN`) so already-migrated databases are untouched.
 - **Acceptance criteria**: with no modules present, start-up time and behaviour unchanged; the Odoo module installs from the mounted directory and its endpoints answer with the same payloads as before; a module with a failing changeset aborts start-up with its id in the log; the disabled marker skips it.
 - **Risks / rollback**: the Tomcat resources mount behaves differently than documented (mitigation: the first task of the phase is a spike that proves it; fallback is a `URLClassLoader` per module, option B3); the `PersistenceUnitPostProcessor` interacts badly with `hibernate.cfg.xml` mappings (spike). Rollback: revert; the Odoo code stays in core until the module is proven.
 
@@ -959,7 +961,7 @@ Stakeholders decide the open questions in section 25 that block Phase 1 (publish
 - **Scope**: `ModuleHostProvider`, `ModuleRoutes`, `LazyRemote`, `ExtensionSlot`, message merge, dev override, host build with `@module-federation/vite` and shared singletons, express core routes as data so collisions can be detected, first five slots, `ModuleMenuContributor` and permission filtering in `MenuController`.
 - **Core components affected**: `App.jsx`, `Layout.jsx`, `Header.jsx`, `vite.config.ts`, `index.jsx`, five core pages (slots), `MenuController`, `MenuUtil`.
 - **Key decisions**: Module Federation vs import map (decided by a spike at the start of the phase on Vite 8 with React 17 singletons); top-level route policy.
-- **Prerequisites**: Phase 1 (SDK); Phase 2 for `/rest/modules`.
+- **Prerequisites**: Phase 1 (SDK); Phase 2 for `/rest/module-registry`.
 - **Testing**: Vitest for the host components; Playwright spec with a stub module served from the backend's static directory; bundle-size check of the shell before and after (shared singletons must not duplicate React).
 - **Acceptance criteria**: shell unchanged for users when no module is installed; a stub remote renders under a `SecureRoute` with permission gating, appears in the menu, contributes to a slot, and a broken stub shows a placeholder; messages merge without touching core keys.
 - **Risks / rollback**: federation plugin instability on Vite 8 (fallback: import map loader behind the same registry interface); chunking constraints of the plugin affect the core build (spike). Rollback: feature flag `modules.frontend.enabled` defaulting to off until Phase 4.
@@ -1032,7 +1034,7 @@ Permalink base: `https://github.com/DIGI-UW/OpenELIS-Global-2/blob/5f2808b02d/`
 | Persistence | `src/main/resources/persistence/persistence.xml`, `src/main/resources/hibernate/hibernate.cfg.xml`, `src/main/resources/liquibase/base-changelog.xml`, `src/main/resources/liquibase/qa/004-add-qa-permission-model.xml` |
 | Security and permissions | `src/main/java/org/openelisglobal/security/SecurityConfig.java`, `src/main/java/org/openelisglobal/interceptor/ModuleAuthenticationInterceptor.java`, `src/main/java/org/openelisglobal/login/controller/LoginPageController.java`, `src/main/java/org/openelisglobal/systemmodule/**`, `docs/security/module-auth-interceptor-fail-closed-rollout.md` |
 | Menus and configuration loaders | `src/main/java/org/openelisglobal/menu/**` (`Menu.java`, `MenuController.java`, `MenuUtil.java`, `MenuConfigurationLoader.java`, `MenuConfigurationSeeder.java`, `MenuConfigurationSeedOnStartup.java`), `src/main/java/org/openelisglobal/configuration/service/ConfigurationInitializationService.java`, `DomainConfigurationHandler.java`, `src/main/java/org/openelisglobal/program/service/ProgramAutocreateService.java`, `src/main/java/org/openelisglobal/common/util/ConfigurationProperties.java`, `src/main/java/org/openelisglobal/common/domain/Domain.java` |
-| Legacy plugin loader (history) | `git show f5632054e8^:src/main/java/org/openelisglobal/plugin/{PluginLoader,MenuPlugin,PermissionPlugin,ServletPlugin,PluginConfiguration,PluginMenu,PluginsController}.java`; removal commit `864a63ad58` (#4506, OGC-1412); `git show 864a63ad58^:docs/plugins.rst` |
+| Legacy plugin loader (history) | `git show f5632054e8^:src/main/java/org/openelisglobal/plugin/{PluginLoader,MenuPlugin,PermissionPlugin,ServletPlugin,PluginConfiguration,PluginMenu,PluginsController}.java`; loader removal `f5632054e8` (#4138, 2026-09-08); API removal `864a63ad58` (#4506, OGC-1412, 2026-10-02); `git show 864a63ad58^:docs/plugins.rst` |
 | Analyzer Bridge | `docs/analyzers/bridge-pairing.md`, `SecurityConfig.BRIDGE_INGRESS_PATHS` |
 | Frontend | `frontend/package.json`, `frontend/vite.config.ts`, `frontend/index.html`, `frontend/src/index.jsx`, `frontend/src/App.jsx`, `frontend/src/RedirectOldUI.jsx`, `frontend/src/config.json`, `frontend/src/components/security/SecureRoute.jsx`, `frontend/src/components/utils/Utils.ts`, `frontend/src/components/layout/{Layout,Header,ConfiguredSideNav}.jsx`, `frontend/src/components/layout/contexts.js`, `frontend/src/components/common/lazyWithRetry.js`, `frontend/src/languages/TranslationOverrideProvider.jsx`, `frontend/src/components/admin/Admin.jsx`, `frontend/public/service-worker.js`, `frontend/nginx/nginx.conf`, `frontend/Dockerfile`, `specs/plans/react-18-frontend-modernization.md`, PR #3448 (closed 2026-07-22) |
 | Packaging and deployment | `pom.xml`, `Dockerfile`, `install/tomcat-resources/catalina.properties`, `src/main/webapp/META-INF/context.xml`, `tomcat/oe_server.xml`, `docker-compose.yml`, `volume/nginx/nginx-prod.conf`, `dataexport/` submodule |
