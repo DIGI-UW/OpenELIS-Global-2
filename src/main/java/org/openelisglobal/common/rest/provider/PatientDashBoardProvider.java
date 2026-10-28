@@ -37,6 +37,7 @@ import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderLabUnitScope;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.reportqueue.service.ReportQueueService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -96,6 +97,9 @@ public class PatientDashBoardProvider {
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    ReportQueueService reportQueueService;
 
     @Autowired
     AnalysisAnchorService analysisAnchorService;
@@ -205,51 +209,12 @@ public class PatientDashBoardProvider {
     }
 
     /**
-     * Today's released results whose order the Report Print Queue still lists as
-     * Unprinted. The queue decides per order, so it is asked once per order.
+     * The Unprinted results tile: every order the Report Print Queue lists as
+     * Unprinted for the user, whenever it was released, so the number equals the
+     * list the tile opens (OGC-431, AC-23).
      */
-    private List<Analysis> unprintedResults() {
-        List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
-                iStatusService.getStatusID(AnalysisStatus.Finalized));
-
-        List<Analysis> unprintedAnalyses = new ArrayList<>();
-        if (analyses == null) {
-            return unprintedAnalyses;
-        }
-        Map<String, Boolean> printedByOrder = new HashMap<>();
-        for (Analysis analysis : analyses) {
-            String orderId = orderIdOf(analysis);
-            boolean printed = orderId == null ? analysisService.patientReportHasBeenDone(analysis)
-                    : printedByOrder.computeIfAbsent(orderId, id -> analysisService.patientReportHasBeenDone(analysis));
-            if (!printed) {
-                unprintedAnalyses.add(analysis);
-            }
-        }
-        return unprintedAnalyses;
-    }
-
-    private static String orderIdOf(Analysis analysis) {
-        return analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null ? null
-                : analysis.getSampleItem().getSample().getId();
-    }
-
-    /**
-     * The Unprinted Results tile: orders with a result released today that the
-     * Report Print Queue still lists as Unprinted, within the given sections (null
-     * for the whole lab). The queue counts orders, so the tile does too (FRS
-     * OGC-1031 FR-9.3, AC-23).
-     */
-    int unprintedOrdersToday(List<String> sectionIds) {
-        return distinctOrders(restrictToSections(unprintedResults(), sectionIds));
-    }
-
-    private static int distinctOrders(List<Analysis> analyses) {
-        Set<String> orders = new HashSet<>();
-        for (Analysis analysis : analyses) {
-            String orderId = orderIdOf(analysis);
-            orders.add(orderId == null ? "analysis-" + analysis.getId() : orderId);
-        }
-        return orders.size();
+    int unprintedResultsTile(String sysUserId) {
+        return (int) reportQueueService.unprintedCount(sysUserId);
     }
 
     private List<OrderDisplayBean> convertAnalysesToOrderBean(List<Analysis> analyses) {
@@ -468,7 +433,7 @@ public class PatientDashBoardProvider {
                                 statusIdList));
                 break;
             case UN_PRINTED_RESULTS:
-                metrics.setUnPritendResults(unprintedOrdersToday(restricted ? userSectionIds : null));
+                metrics.setUnPritendResults(unprintedResultsTile(sysUserId));
                 break;
             case INCOMING_ORDERS:
                 metrics.setIncomigOrders(incomingOrders(sysUserId).size());
@@ -669,6 +634,10 @@ public class PatientDashBoardProvider {
      * count, which is scoped by the same sections. Scoping only the rows the client
      * displays left a restricted user paging through pages that held nothing for
      * them.
+     *
+     * <p>
+     * Unprinted results has no list here: its tile opens the Report Print Queue,
+     * the list it counts.
      */
     private List<OrderDisplayBean> retreiveOrders(DashBoardTile.TileType listType, String systemUserId,
             String sysUserId, List<String> sectionIds) {
@@ -707,8 +676,6 @@ public class PatientDashBoardProvider {
             rejectedStatusIds.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             analyses = analysisService.getAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), rejectedStatusIds);
             return convertAnalysesToOrderBean(restrictToSections(analyses, sectionIds));
-        case UN_PRINTED_RESULTS:
-            return convertAnalysesToOrderBean(restrictToSections(unprintedResults(), sectionIds));
         case INCOMING_ORDERS:
             return convertElectronicToOrderBean(incomingOrders(sysUserId));
         case AVERAGE_TURN_AROUND_TIME:

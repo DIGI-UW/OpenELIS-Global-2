@@ -17,6 +17,7 @@ import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
 import org.openelisglobal.shipment.dto.SampleItemDTO;
 import org.openelisglobal.shipment.service.UnassignedSampleItemService;
+import org.openelisglobal.shipment.service.UnassignedSampleService;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,9 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
 
     @Autowired
     private UnassignedSampleItemService unassignedSampleItemService;
+
+    @Autowired
+    private UnassignedSampleService unassignedSampleService;
 
     @Autowired
     private ReferralService referralService;
@@ -85,6 +89,18 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         assertNotNull("Sample item should still be listed when its referral has no organization", item2);
         assertNull("destinationFacilityId must be null when the referral has no linked organization",
                 item2.getDestinationFacilityId());
+    }
+
+    @Test
+    public void cancelReferral_shouldDropTheSampleFromEveryUnassignedList() {
+        unassignedSampleService.cancelReferral("2", "Ordered in error", "1");
+
+        assertEquals(List.of("12345"), unassignedSampleItemService.getAllUnassigned().stream()
+                .map(SampleItemDTO::getAccessionNumber).toList());
+        assertEquals(List.of(), unassignedSampleItemService.searchUnassignedByAccessionNumber("13333"));
+        assertNull(unassignedSampleItemService.getSampleItemById("2"));
+        assertEquals(List.of("1"), unassignedSampleService.getUnassignedSamplesForDashboard().stream()
+                .map(sample -> sample.get("id")).toList());
     }
 
     /**

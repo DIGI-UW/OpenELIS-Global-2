@@ -51,8 +51,8 @@ services:
             certs:
                 condition: service_completed_successfully
         ports:
-            - "8080:8080"
-            - "8443:8443"
+            - "${OE_WEBAPP_HTTP_PORT:-8080}:8080"
+            - "${OE_WEBAPP_HTTPS_PORT:-8443}:8443"
         restart: always
         networks:
           default:
@@ -88,8 +88,8 @@ services:
             certs:
                 condition: service_completed_successfully
         ports:
-            - "8081:8080"
-            - "8444:8443"
+            - "${OE_FHIR_HTTP_PORT:-8081}:8080"
+            - "${OE_FHIR_HTTPS_PORT:-8444}:8443"
         networks:
             - default
         restart: always
@@ -125,12 +125,18 @@ services:
         container_name: openelisglobal-proxy
         platform: linux/amd64
         ports:
-            - 80:80
-            - 443:443
+            - "${OE_HTTP_PORT:-80}:80"
+            - "${OE_HTTPS_PORT:-443}:443"
+        environment:
+            - OE_HTTPS_PORT=${OE_HTTPS_PORT:-443}
+        command:
+            - /bin/sh
+            - -c
+            - "envsubst '$$OE_HTTPS_PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"
         volumes:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
-            - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+            - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf.template:ro
         networks:
             - default
         restart: unless-stopped

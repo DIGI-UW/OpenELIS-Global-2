@@ -25,7 +25,7 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -41,7 +41,18 @@ import ShipmentNavigation from "./ShipmentNavigation";
 const BoxCreation = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const { addNotification } = useContext(NotificationContext);
+
+  // Add to Box links here with the sample and its referral lab
+  const linkQuery = new URLSearchParams(location.search);
+  const linkFacilityId = linkQuery.get("facilityId") || null;
+  const linkSampleItemId = linkQuery.get("sampleItemId") || null;
+  const [prefilling, setPrefilling] = useState(
+    Boolean(linkFacilityId || linkSampleItemId),
+  );
+  const [destinationNotLoaded, setDestinationNotLoaded] = useState(false);
+  const [sampleNotLoaded, setSampleNotLoaded] = useState(false);
 
   // Auto-generated box number
   const [boxNumber, setBoxNumber] = useState("");
@@ -102,7 +113,10 @@ const BoxCreation = () => {
   const [rejectionReasons, setRejectionReasons] = useState([]);
 
   useEffect(() => {
-    fetchFacilities();
+    const facilitiesRequest = fetchFacilities();
+    if (prefilling) {
+      prefillFromLink(facilitiesRequest);
+    }
     fetchRejectionReasons();
     fetchBoxLabelPrefix();
     generateBoxNumber();
@@ -151,15 +165,51 @@ const BoxCreation = () => {
     );
   };
 
-  const fetchFacilities = () => {
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+  const fetchFacilities = () =>
+    getFromOpenElisServerV2("/rest/displayList/REFERRAL_ORGANIZATIONS").then(
       (response) => {
-        if (response) {
-          setFacilities(response);
-        }
+        setFacilities(response);
+        return response;
       },
+      () => null,
     );
+
+  // The sample's own lab wins over the link's facilityId, and only a lab from
+  // the destination list is ever preselected.
+  const prefillFromLink = async (facilitiesRequest) => {
+    const sampleRequest = linkSampleItemId
+      ? getFromOpenElisServerV2("/rest/unassigned-sample/items")
+          .then(
+            (items) =>
+              items.find(
+                (item) => String(item.sampleItemId) === linkSampleItemId,
+              ) || null,
+          )
+          .catch(() => null)
+      : null;
+    const [referralLabs, sample] = await Promise.all([
+      facilitiesRequest,
+      sampleRequest,
+    ]);
+
+    setSampleNotLoaded(Boolean(linkSampleItemId) && !sample);
+    if (sample || linkFacilityId) {
+      const destinationId = sample
+        ? sample.destinationFacilityId
+        : linkFacilityId;
+      const destination = (referralLabs || []).find(
+        (lab) => String(lab.id) === String(destinationId),
+      );
+      if (destination) {
+        setSelectedFacility(destination);
+        if (sample) {
+          setAddedSamples([buildSampleToAdd(sample)]);
+        }
+      } else {
+        setDestinationNotLoaded(true);
+      }
+    }
+    setPrefilling(false);
   };
 
   const fetchRejectionReasons = () => {
@@ -703,8 +753,31 @@ const BoxCreation = () => {
       <Grid fullWidth className="box-creation-content">
         {/* Left Column - Form */}
         <Column lg={10} md={5} sm={4}>
+          {destinationNotLoaded && !selectedFacility && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({ id: "notification.error" })}
+              subtitle={intl.formatMessage({
+                id: "shipment.error.linkDestinationNotLoaded",
+              })}
+              lowContrast
+              hideCloseButton
+            />
+          )}
+          {sampleNotLoaded && addedSamples.length === 0 && (
+            <InlineNotification
+              kind="error"
+              title={intl.formatMessage({ id: "notification.error" })}
+              subtitle={intl.formatMessage({
+                id: "shipment.error.linkSampleNotLoaded",
+              })}
+              lowContrast
+              hideCloseButton
+            />
+          )}
+
           {/* Validation Messages */}
-          {validationMessages.length > 0 && (
+          {!prefilling && validationMessages.length > 0 && (
             <div className="validation-messages">
               {validationMessages.map((message, index) => (
                 <InlineNotification

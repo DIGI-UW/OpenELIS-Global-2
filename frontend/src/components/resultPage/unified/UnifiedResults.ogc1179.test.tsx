@@ -201,16 +201,26 @@ describe("OGC-1179 — unified Results worklist", () => {
     );
   });
 
-  /** #1 (entry half) — a newly typed out-of-precision value cannot be saved. */
-  it("refuses to save a value finer than the test reports to", async () => {
+  /**
+   * #1 (entry half), revised by OGC-1544: a value finer than the test reports to
+   * is saved as typed and reported rounded, so the field warns instead of
+   * refusing the save.
+   */
+  it("saves a value finer than the test reports to, with a warning", async () => {
     await renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Edit/i }));
 
     fireEvent.change(resultField(), { target: { value: "34.55" } });
-    expect(screen.getByTestId("save-button")).toBeDisabled();
+    expect(screen.getByTestId("save-button")).toBeEnabled();
+    expect(
+      screen.getByText(/saved as entered and reported rounded/),
+    ).toBeInTheDocument();
 
     fireEvent.change(resultField(), { target: { value: "34" } });
     expect(screen.getByTestId("save-button")).toBeEnabled();
+    expect(
+      screen.queryByText(/saved as entered and reported rounded/),
+    ).toBeNull();
   });
 
   /** #4 — the Status chip and the counts follow the save, without a reload. */

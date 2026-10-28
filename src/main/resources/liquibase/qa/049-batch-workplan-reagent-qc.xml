@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- OGC-427: batch workplan reagent and QC release.
+         A batch carries the reagent, reagent lot and instrument it will run on;
+         each control lot checked when the batch is released is recorded, with the
+         NCE raised when the release overrode a QC status other than Pass. The QC
+         frequency rule lives on the control lot, which is already scoped per test
+         and instrument. Included after the qc/ and qa/ changelogs because it
+         alters qc_control_lot and grants a qa.* key to the QA Officer role, both
+         of which those changelogs create. -->
+    <changeSet id="OGC-427-batch-workplan-reagent-columns" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="batch_workplan"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="batch_workplan" columnName="reagent_lot_id"/>
+            </not>
+        </preConditions>
+        <comment>Reagent, reagent lot, instrument and release stamp on a batch workplan</comment>
+        <addColumn schemaName="clinlims" tableName="batch_workplan">
+            <column name="reagent_id" type="BIGINT"/>
+            <column name="reagent_lot_id" type="BIGINT"/>
+            <column name="instrument_id" type="numeric(10)"/>
+            <column name="generated_at" type="TIMESTAMP"/>
+            <column name="generated_by_user_id" type="numeric(10)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_reagent"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="reagent_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_item" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_reagent_lot"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="reagent_lot_id"
+            referencedTableSchemaName="clinlims" referencedTableName="inventory_lot" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_instrument"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="instrument_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_generated_by"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="generated_by_user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="batch_workplan" columnName="generated_by_user_id"/>
+            <dropColumn schemaName="clinlims" tableName="batch_workplan" columnName="generated_at"/>
+            <dropColumn schemaName="clinlims" tableName="batch_workplan" columnName="instrument_id"/>
+            <dropColumn schemaName="clinlims" tableName="batch_workplan" columnName="reagent_lot_id"/>
+            <dropColumn schemaName="clinlims" tableName="batch_workplan" columnName="reagent_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-427-qc-control-lot-frequency" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="qc_control_lot"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="qc_control_lot" columnName="qc_frequency_type"/>
+            </not>
+        </preConditions>
+        <comment>How often a control lot must pass QC before patient work is released</comment>
+        <addColumn schemaName="clinlims" tableName="qc_control_lot">
+            <column name="qc_frequency_type" type="VARCHAR(20)" defaultValue="DAILY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_frequency_hours" type="INTEGER"/>
+            <column name="shift_definition_hours" type="INTEGER" defaultValueNumeric="8"/>
+            <column name="qc_required" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.qc_control_lot
+            ADD CONSTRAINT qc_control_lot_frequency_type_chk
+            CHECK (qc_frequency_type IN ('DAILY', 'PER_SHIFT', 'CUSTOM_HOURS', 'PER_RUN'));
+            ALTER TABLE clinlims.qc_control_lot
+            ADD CONSTRAINT qc_control_lot_frequency_hours_chk
+            CHECK ((qc_frequency_hours IS NULL OR qc_frequency_hours &gt; 0)
+                AND (shift_definition_hours IS NULL OR shift_definition_hours &gt; 0));
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.qc_control_lot DROP CONSTRAINT IF EXISTS qc_control_lot_frequency_hours_chk;
+                ALTER TABLE clinlims.qc_control_lot DROP CONSTRAINT IF EXISTS qc_control_lot_frequency_type_chk;
+            </sql>
+            <dropColumn schemaName="clinlims" tableName="qc_control_lot" columnName="qc_required"/>
+            <dropColumn schemaName="clinlims" tableName="qc_control_lot" columnName="shift_definition_hours"/>
+            <dropColumn schemaName="clinlims" tableName="qc_control_lot" columnName="qc_frequency_hours"/>
+            <dropColumn schemaName="clinlims" tableName="qc_control_lot" columnName="qc_frequency_type"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-427-batch-workplan-qc-release" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="batch_workplan_qc_release"/>
+            </not>
+        </preConditions>
+        <comment>Each control lot checked when a batch workplan was released, and the NCE an override raised</comment>
+        <createSequence schemaName="clinlims" sequenceName="batch_workplan_qc_release_seq" startValue="1" incrementBy="1"/>
+        <createTable schemaName="clinlims" tableName="batch_workplan_qc_release">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_batch_workplan_qc_release"/>
+            </column>
+            <column name="batch_workplan_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="control_lot_id" type="VARCHAR(36)"/>
+            <column name="test_id" type="numeric(10)"/>
+            <column name="qc_status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_result_id" type="VARCHAR(36)"/>
+            <column name="qc_rule_violation_id" type="VARCHAR(36)"/>
+            <column name="nce_id" type="INTEGER"/>
+            <column name="overridden" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="released_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="released_by_user_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+        <sql>
+            ALTER TABLE clinlims.batch_workplan_qc_release
+            ADD CONSTRAINT batch_workplan_qc_release_status_chk
+            CHECK (qc_status IN ('PASS', 'OVERDUE', 'FAILED', 'VIOLATION', 'NOT_RUN', 'ESTABLISHMENT'));
+        </sql>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_qc_release_batch"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan_qc_release" baseColumnNames="batch_workplan_id"
+            referencedTableSchemaName="clinlims" referencedTableName="batch_workplan" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_qc_release_control_lot"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan_qc_release" baseColumnNames="control_lot_id"
+            referencedTableSchemaName="clinlims" referencedTableName="qc_control_lot" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_qc_release_nce"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan_qc_release" baseColumnNames="nce_id"
+            referencedTableSchemaName="clinlims" referencedTableName="nc_event" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_qc_release_user"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan_qc_release" baseColumnNames="released_by_user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="batch_workplan_qc_release" indexName="idx_batch_workplan_qc_release_batch">
+            <column name="batch_workplan_id"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="batch_workplan_qc_release" indexName="idx_batch_workplan_qc_release_lot">
+            <column name="control_lot_id"/>
+            <column name="released_at"/>
+        </createIndex>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="batch_workplan_qc_release"/>
+            <dropSequence schemaName="clinlims" sequenceName="batch_workplan_qc_release_seq"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Releasing a batch whose QC is not current is a supervisory decision, so it
+         is its own key rather than the Results role every bench user holds. QA
+         Officer and Global Administrator hold every qa.* key; Validation is the
+         role a laboratory manager signs results with. -->
+    <changeSet id="OGC-427-qc-override-permission" author="openelisglobal">
+        <comment>Register qa.qc.override and grant it to QA Officer, Global Administrator and Validation</comment>
+        <sql>
+            INSERT INTO clinlims.system_module
+                (id, name, description, has_select_flag, has_add_flag, has_update_flag, has_delete_flag)
+            SELECT nextval('clinlims.system_module_seq'), 'qa.qc.override',
+                'Release a batch workplan whose QC is not current, raising a non-conforming event', 'Y', 'N', 'N', 'N'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_module m WHERE m.name = 'qa.qc.override');
+
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r
+            JOIN clinlims.system_module m ON m.name = 'qa.qc.override'
+            WHERE r.name IN ('QA Officer', 'Global Administrator', 'Validation')
+            AND NOT EXISTS (
+                SELECT 1 FROM clinlims.system_role_module x
+                WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_module_id IN (SELECT id FROM clinlims.system_module WHERE name = 'qa.qc.override');
+                DELETE FROM clinlims.system_module WHERE name = 'qa.qc.override';
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

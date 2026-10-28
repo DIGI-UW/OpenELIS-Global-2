@@ -1,0 +1,21 @@
+.mgmt-export {
+  margin-bottom: 1rem;
+}
+
+.mgmt-export h3 {
+  margin-bottom: 0.75rem;
+}
+
+.mgmt-export__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mgmt-export__schedule {
+  display: inline-flex;
+}
+
+.mgmt-export__picker-help {
+  margin-bottom: 1rem;
+}

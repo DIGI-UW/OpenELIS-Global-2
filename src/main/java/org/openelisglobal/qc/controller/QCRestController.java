@@ -58,7 +58,7 @@ public class QCRestController extends BaseRestController {
     private static final String[] ALLOWED_FIELDS = new String[] { "id", "productName", "lotNumber", "manufacturer",
             "controlLevel", "testId", "instrumentId", "calculationMethod", "initialRunsCount", "manufacturerMean",
             "manufacturerStdDev", "activationDate", "expirationDate", "status", "unitOfMeasure", "internalNotes",
-            "externalNotes" };
+            "externalNotes", "qcFrequencyType", "qcFrequencyHours", "shiftDefinitionHours", "qcRequired" };
 
     @Autowired
     private QCControlLotService controlLotService;

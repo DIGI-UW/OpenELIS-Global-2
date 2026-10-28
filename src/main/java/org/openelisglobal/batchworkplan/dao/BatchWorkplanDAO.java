@@ -1,6 +1,8 @@
 package org.openelisglobal.batchworkplan.dao;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplan;
 import org.openelisglobal.batchworkplan.valueholder.BatchWorkplanStatus;
@@ -16,4 +18,10 @@ public interface BatchWorkplanDAO extends BaseDAO<BatchWorkplan, Long> {
     List<BatchWorkplan> getForUserInStatuses(Integer createdByUserId, List<BatchWorkplanStatus> statuses);
 
     Optional<BatchWorkplan> getWithItems(Long id);
+
+    /**
+     * "Last, First" for the patient on each sample, keyed by sample id. One query
+     * for the whole pending list rather than one per row.
+     */
+    Map<String, String> getPatientNamesBySampleIds(Collection<String> sampleIds);
 }
