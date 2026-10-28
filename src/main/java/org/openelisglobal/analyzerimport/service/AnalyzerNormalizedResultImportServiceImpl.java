@@ -188,9 +188,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 processControls(others, analyzer, effectiveActor);
                 recoveredCount += (int) others.stream().filter(row -> !row.isReadOnly()).count();
             }
-            if (!recovered.isReadOnly() && recovered.getIsControl()
-                    && processControl(recovered, analyzer) == QCResultProcessingService.Outcome.NO_TARGET) {
-                hold(recovered, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
+            if (!recovered.isReadOnly() && isPrimaryControl(recovered)) {
+                holdUnrecordedControl(recovered, processControl(recovered, analyzer));
             }
             if (recovered.isReadOnly() && Objects.equals(held.getImportIssueReason(), recovered.getImportIssueReason())
                     && Objects.equals(held.getTestId(), recovered.getTestId())) {
@@ -377,7 +376,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setCompleteDate(
                 result.completeDate() != null ? result.completeDate() : new Timestamp(System.currentTimeMillis()));
         row.setIsControl("CONTROL".equals(result.classification()));
-        row.setLotNumber(result.lotNumber());
         row.setControlLevel(result.controlLevel());
         copySourceContext(row, contract, result);
         return row;
@@ -412,14 +410,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private int processControls(List<AnalyzerResults> staged, Analyzer analyzer, String actor) {
         int recorded = 0;
         for (AnalyzerResults row : staged) {
-            if (!row.getIsControl() || row.isReadOnly() || row.getTestId() == null) {
+            if (row.getId() == null || row.isReadOnly() || !isPrimaryControl(row)) {
                 continue;
             }
             QCResultProcessingService.Outcome outcome = processControl(row, analyzer);
             if (outcome == QCResultProcessingService.Outcome.RECORDED) {
                 recorded++;
-            } else if (outcome == QCResultProcessingService.Outcome.NO_TARGET) {
-                hold(row, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
+            } else {
+                holdUnrecordedControl(row, outcome);
                 row.setSysUserId(actor);
                 analyzerResultsService.update(row);
             }
@@ -427,12 +425,32 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         return recorded;
     }
 
+    private boolean isPrimaryControl(AnalyzerResults row) {
+        if (!row.getIsControl() || row.getTestId() == null) {
+            return false;
+        }
+        // The approved local target determines the measurement. Raw vendor record names
+        // do not.
+        return row.getComponentId() == null || mappingCatalogService.getActiveComponents(row.getTestId()).stream()
+                .anyMatch(component -> component.primary() && component.id().equals(row.getComponentId()));
+    }
+
+    private void holdUnrecordedControl(AnalyzerResults row, QCResultProcessingService.Outcome outcome) {
+        if (outcome == QCResultProcessingService.Outcome.RECORDED) {
+            return;
+        }
+        hold(row,
+                outcome == QCResultProcessingService.Outcome.NO_LOT ? AnalyzerResults.IMPORT_ISSUE_QC_LOT_MISSING
+                        : outcome == QCResultProcessingService.Outcome.NO_TARGET
+                                ? AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING
+                                : AnalyzerResults.IMPORT_ISSUE_QC_VALUE_UNSUPPORTED);
+    }
+
     private QCResultProcessingService.Outcome processControl(AnalyzerResults row, Analyzer analyzer) {
         LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         if ("D".equals(row.getResultType())) {
             return qcResultProcessingService.processQualitativeQCResult(analyzer.getId(), row.getTestId(),
-                    row.getComponentId(), row.getAccessionNumber(), row.getLotNumber(), row.getControlLevel(),
-                    row.getResult(), timestamp);
+                    row.getComponentId(), specimenIdOf(row), row.getControlLevel(), row.getResult(), timestamp);
         }
         BigDecimal value;
         try {
@@ -440,11 +458,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         } catch (NumberFormatException exception) {
             LogEvent.logWarn(CLASS_NAME, "processControl",
                     "Control result is neither numeric nor a mapped answer and remains staged for review");
-            return null;
+            return QCResultProcessingService.Outcome.UNSUPPORTED_VALUE;
         }
-        qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), row.getAccessionNumber(),
-                row.getLotNumber(), row.getControlLevel(), value, row.getUnits(), timestamp);
-        return QCResultProcessingService.Outcome.RECORDED;
+        return qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), specimenIdOf(row),
+                row.getControlLevel(), value, row.getUnits(), timestamp);
     }
 
     private void hold(AnalyzerResults row, String reason) {

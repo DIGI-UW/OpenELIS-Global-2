@@ -215,7 +215,6 @@ public class AnalyzerNormalizedResultContractTest {
         assertEquals("CONTROL", result.classification());
         assertEquals("MATCH", result.recognitionOutcome());
         assertTrue(result.recognitionFingerprint().startsWith("sha256:"));
-        assertNull(result.lotNumber());
         assertEquals("NORMAL", result.controlLevel());
     }
 
