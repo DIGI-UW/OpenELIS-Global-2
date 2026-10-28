@@ -2,6 +2,7 @@ import { createIntl } from "react-intl";
 import messages from "../../languages/en.json";
 import { PATHOLOGY_STAGES } from "./pathologyStages";
 import { SECTION_STATE } from "../caseView/sectionState";
+import { embeddingSummary } from "./pathologyRows";
 import {
   PATHOLOGY_SECTIONS,
   grossingComplete,
@@ -13,6 +14,8 @@ import {
   deriveCaseSections,
   railCurrentIndex,
   deriveRailItems,
+  embeddingOutstandingLabel,
+  embeddingStatement,
   stageApplies,
   decalcificationFlagFrozen,
 } from "./pathologySections";
@@ -281,7 +284,12 @@ describe("a stage a laboratory has switched off", () => {
 });
 
 describe("deriveRailItems", () => {
-  const grossed = { grossExam: "Firm tan nodule, 20mm", blocks: [{ id: "1" }] };
+  // Embedded too, so the embedding step's own rule is met and every step the
+  // case has passed reads complete.
+  const grossed = {
+    grossExam: "Firm tan nodule, 20mm",
+    blocks: [{ id: "1", cassetteState: "BLOCK" }],
+  };
 
   it("marks each section complete once the case has moved past every stage it spans, and leaves the current and later ones not complete", () => {
     const sections = deriveCaseSections({
@@ -547,12 +555,11 @@ describe("sectionBadge", () => {
     expect(sectionBadge(microtomy, { caseInfo: { slides: [] } })).toBeNull();
   });
 
-  // Every stage between grossing and the reading is one OpenELIS records no
-  // work at yet, so none of them has a completion rule to satisfy.
+  // These stages between grossing and the reading are ones OpenELIS records
+  // no work at yet, so none of them has a completion rule to satisfy.
   it.each([
     "pathology-section-decalcification",
     "pathology-section-processing",
-    "pathology-section-embedding",
     "pathology-section-staining",
   ])("badges %s with nothing however far the case has gone", (id) => {
     const section = byId(sectionsAt("READY_PATHOLOGIST"), id);
@@ -949,5 +956,209 @@ describe("decalcificationFlagFrozen", () => {
   it("freezes nothing for a case not yet loaded or at a stage this build does not know", () => {
     expect(decalcificationFlagFrozen(null)).toBe(false);
     expect(decalcificationFlagFrozen("SOME_LATER_STAGE")).toBe(false);
+  });
+});
+
+describe("embedding, read from the cassettes", () => {
+  const sectionsAt = (status) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: true,
+      decalcificationRequired: true,
+    });
+  const embeddingSection = (status) =>
+    byId(sectionsAt(status), "pathology-section-embedding");
+  const railStep = (status, blocks, configurationProperties) =>
+    deriveRailItems(
+      deriveCaseSections({
+        intl,
+        status,
+        isPathologist: true,
+        decalcificationRequired: true,
+        configurationProperties,
+      }),
+      {
+        intl,
+        status,
+        reportCount: 0,
+        openRequestNames: [],
+        caseInfo: { blocks },
+      },
+    ).find((item) => item.id === "pathology-section-embedding");
+
+  const cassette = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    cassetteState: "CASSETTE",
+    active: true,
+    ...overrides,
+  });
+  const block = (id, designation) =>
+    cassette(id, designation, { cassetteState: "BLOCK" });
+
+  const oneOfThree = [block(1, "A1"), cassette(2, "A2"), cassette(3, "A3")];
+  const allThree = [block(1, "A1"), block(2, "A2"), block(3, "A3")];
+
+  it("badges the section with nothing while no cassette has been cut", () => {
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), { caseInfo: { blocks: [] } }),
+    ).toBeNull();
+  });
+
+  it("badges the section with how many cassettes are embedded while any is outstanding", () => {
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), {
+        caseInfo: { blocks: oneOfThree },
+      }),
+    ).toEqual({
+      kind: "partial",
+      textKey: "pathology.badge.embeddedOf",
+      values: { embedded: 1, total: 3 },
+    });
+  });
+
+  it("badges the section Complete once every cassette in use is a block", () => {
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), {
+        caseInfo: {
+          blocks: [...allThree, cassette(4, "A4", { active: false })],
+        },
+      }),
+    ).toEqual({ kind: "complete", textKey: "common.complete" });
+  });
+
+  // The badge reports the record, not the bench position: a case moved on
+  // with a cassette still unembedded keeps saying so, and one embedded early
+  // already reads Complete.
+  it("follows the rows and not the stage the case stands at", () => {
+    expect(
+      sectionBadge(embeddingSection("STAINING"), {
+        caseInfo: { blocks: oneOfThree },
+      }).kind,
+    ).toBe("partial");
+    expect(
+      sectionBadge(embeddingSection("EMBEDDING"), {
+        caseInfo: { blocks: allThree },
+      }).kind,
+    ).toBe("complete");
+  });
+
+  // Before the case reaches embedding nothing waits at that bench, so the
+  // rail names nothing there yet; from the stage on it names every cassette.
+  it("names the outstanding cassettes on the rail once the case has reached embedding, and not before", () => {
+    expect(railStep("GROSSING", oneOfThree).pendingLabel).toBeUndefined();
+
+    const atEmbedding = railStep("EMBEDDING", oneOfThree);
+    const sentence = intl.formatMessage(
+      { id: "pathology.badge.outstanding" },
+      { designations: "A2, A3" },
+    );
+    expect(atEmbedding.pendingLabel).toBe(sentence);
+    expect(atEmbedding.pendingTitle).toBe(sentence);
+
+    expect(railStep("STAINING", oneOfThree).pendingLabel).toBe(sentence);
+  });
+
+  it("names nothing on the rail when the laboratory does not track embedding", () => {
+    const step = railStep("STAINING", oneOfThree, {
+      PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false",
+    });
+
+    expect(step.notApplicable).toBe(true);
+    expect(step.pendingLabel).toBeUndefined();
+  });
+
+  it("completes the rail step only once the case has passed embedding with every cassette a block", () => {
+    expect(railStep("STAINING", allThree).complete).toBe(true);
+    expect(railStep("STAINING", oneOfThree).complete).toBe(false);
+    expect(railStep("EMBEDDING", allThree).complete).toBe(false);
+    expect(railStep("STAINING", []).complete).toBe(false);
+  });
+
+  it("names two outstanding cassettes in one sentence", () => {
+    const sentence = messages["pathology.badge.outstanding"].replace(
+      "{designations}",
+      "A2, A3",
+    );
+    expect(embeddingOutstandingLabel(intl, ["A2", "A3"])).toEqual({
+      visible: sentence,
+      full: sentence,
+    });
+  });
+
+  it("names two of three outstanding cassettes and counts the third, with all three in full", () => {
+    expect(embeddingOutstandingLabel(intl, ["A2", "A3", "A4"])).toEqual({
+      visible: intl.formatMessage(
+        { id: "pathology.badge.outstandingMore" },
+        { designations: "A2, A3", count: 1 },
+      ),
+      full: intl.formatMessage(
+        { id: "pathology.badge.outstanding" },
+        { designations: "A2, A3, A4" },
+      ),
+    });
+  });
+});
+
+// The summary's line follows the rail: not applicable where the stage is not
+// tracked, and the outstanding cassettes named only once the case is there.
+describe("embeddingStatement", () => {
+  const cassette = (id, designation, cassetteState = "CASSETTE") => ({
+    id,
+    designation,
+    cassetteState,
+    active: true,
+  });
+  const oneOfThree = embeddingSummary([
+    cassette(1, "A1", "BLOCK"),
+    cassette(2, "A2"),
+    cassette(3, "A3"),
+  ]);
+
+  it("reads not applicable where the laboratory does not track embedding", () => {
+    expect(
+      embeddingStatement(intl, {
+        summary: oneOfThree,
+        status: "EMBEDDING",
+        configurationProperties: { PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false" },
+      }),
+    ).toEqual({ value: messages["caseView.badge.notApplicable"] });
+  });
+
+  it("reads nothing before a cassette has been saved", () => {
+    expect(
+      embeddingStatement(intl, {
+        summary: embeddingSummary([]),
+        status: "EMBEDDING",
+      }),
+    ).toEqual({ value: null });
+  });
+
+  it("counts the embedded cassettes and names the outstanding ones once the case is at embedding", () => {
+    expect(
+      embeddingStatement(intl, { summary: oneOfThree, status: "EMBEDDING" }),
+    ).toEqual({
+      value: intl.formatMessage(
+        { id: "pathology.badge.embeddedOf" },
+        { embedded: 1, total: 3 },
+      ),
+      title: intl.formatMessage(
+        { id: "pathology.badge.outstanding" },
+        { designations: "A2, A3" },
+      ),
+    });
+  });
+
+  it("counts the embedded cassettes but names none before the case reaches embedding", () => {
+    expect(
+      embeddingStatement(intl, { summary: oneOfThree, status: "GROSSING" }),
+    ).toEqual({
+      value: intl.formatMessage(
+        { id: "pathology.badge.embeddedOf" },
+        { embedded: 1, total: 3 },
+      ),
+      title: undefined,
+    });
   });
 });

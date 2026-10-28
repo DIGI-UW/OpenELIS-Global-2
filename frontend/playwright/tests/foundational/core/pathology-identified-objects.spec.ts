@@ -181,7 +181,7 @@ test.describe
     await expandSection(page, "pathology-section-grossing");
 
     const location = rowNamed(cassetteRows(page), "A1").getByLabel(
-      "Location A1",
+      "Storage Location A1",
       {
         exact: true,
       },
@@ -201,7 +201,7 @@ test.describe
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-grossing");
     await expect(
-      rowNamed(cassetteRows(page), "A1").getByLabel("Location A1", {
+      rowNamed(cassetteRows(page), "A1").getByLabel("Storage Location A1", {
         exact: true,
       }),
     ).toHaveValue("Drawer 5");
@@ -312,7 +312,7 @@ test.describe
         retiredRow.locator(".cds--tag", { hasText: /^Deactivated$/ }),
       ).toBeVisible();
       await expect(
-        retiredRow.getByLabel("Location A2", { exact: true }),
+        retiredRow.getByLabel("Storage Location A2", { exact: true }),
       ).toBeDisabled();
       await expect(
         retiredRow.getByRole("button", {
@@ -460,7 +460,7 @@ test.describe
     await expect(deactivate).toBeEnabled();
 
     const location = rowNamed(cassetteRows(page), "A1").getByLabel(
-      "Location A1",
+      "Storage Location A1",
       {
         exact: true,
       },

@@ -1081,12 +1081,14 @@ describe("PathologyCaseView sections", () => {
     await waitFor(() => expect(statusSelect()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
+    // The embedding list names the same saved cassette's field the same way.
+    const grossing = within(section("pathology-section-grossing"));
     expect(
-      screen.getByLabelText(messages["pathology.label.location"] + " A1"),
+      grossing.getByLabelText(messages["common.storageLocation"] + " A1"),
     ).toBe(document.getElementById("blockLocation0"));
     expect(
-      screen.getByLabelText(
-        messages["pathology.label.location"] + " " + newCassette(1),
+      grossing.getByLabelText(
+        messages["common.storageLocation"] + " " + newCassette(1),
       ),
     ).toBe(document.getElementById("blockLocation1"));
     expect(
@@ -2253,5 +2255,351 @@ describe("PathologyCaseView sections", () => {
         within(a2).queryByText(messages["pathology.empty.noTissueTypes"]),
       ).toBeNull();
     });
+  });
+});
+
+describe("Embedding section", () => {
+  const EMBEDDING = "pathology-section-embedding";
+
+  const embedName = (designation) =>
+    intl.formatMessage(
+      { id: "pathology.action.embedCassette" },
+      { designation },
+    );
+
+  const embedButton = (designation) =>
+    screen.getByRole("button", { name: embedName(designation) });
+
+  const embeddedOf = (embedded, total) =>
+    intl.formatMessage(
+      { id: "pathology.badge.embeddedOf" },
+      { embedded, total },
+    );
+
+  const outstanding = (designations) =>
+    intl.formatMessage({ id: "pathology.badge.outstanding" }, { designations });
+
+  // The badge sits in the section's header; the body repeats the count in
+  // its banner, so the header is where the badge is looked for.
+  const header = () =>
+    within(section(EMBEDDING).querySelector(".cds--accordion__heading"));
+
+  const asBlock = (row) => ({ ...row, cassetteState: "BLOCK" });
+
+  const oneOfThree = () => [
+    asBlock(savedBlock("1", "A1", { tissueTypeId: "21" })),
+    savedBlock("2", "A2"),
+    savedBlock("3", "A3"),
+  ];
+
+  const openAtEmbedding = async (blocks, overrides = {}) => {
+    servedCase = caseAtStage("EMBEDDING", {
+      blocks,
+      tissueTypeNames: { 21: "Skin" },
+      ...overrides,
+    });
+    renderCaseView();
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+  };
+
+  it("lists every saved cassette and block with its tissue type, and not a cassette added since the last save", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(
+      within(rowIn(EMBEDDING, "A1")).getByText("Skin"),
+    ).toBeInTheDocument();
+    expect(
+      within(rowIn(EMBEDDING, "A2")).getByText(
+        messages["caseView.label.notRecorded"],
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(addCassetteButton());
+
+    expect(pendingRows("pathology-section-grossing")).toHaveLength(1);
+    expect(pendingRows(EMBEDDING)).toHaveLength(0);
+    expect(
+      section(EMBEDDING).querySelectorAll(".pathology-case-view__row"),
+    ).toHaveLength(3);
+  });
+
+  // The grossing list already deactivates these rows; a second button of the
+  // same name here would be announced twice. Remove never arises: the list
+  // holds saved rows only.
+  it("offers Embed on a cassette only, and no Deactivate on any row", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(embedButton("A2")).toBeEnabled();
+    expect(embedButton("A2")).toHaveAttribute("id", "embedCassette-2");
+    expect(
+      within(rowIn(EMBEDDING, "A1")).queryByRole("button", {
+        name: embedName("A1"),
+      }),
+    ).toBeNull();
+    expect(
+      within(section(EMBEDDING)).queryByText(messages["common.deactivate"], {
+        selector: "button",
+      }),
+    ).toBeNull();
+  });
+
+  it("posts the cassette's own id, then reads the case back and says it was embedded", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+    const [url, , callback] = postToOpenElisServerJsonResponse.mock.calls[0];
+    expect(url).toBe("/rest/pathology/block/2/embed");
+    // One embedding at a time, so the read-back answers for one cassette.
+    expect(embedButton("A3")).toBeDisabled();
+
+    const fetchesBefore = caseFetchCount();
+    act(() => callback(asBlock(savedBlock("2", "A2"))));
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "success",
+        message: intl.formatMessage(
+          { id: "pathology.toast.embedded" },
+          { designation: "A2" },
+        ),
+      }),
+    );
+  });
+
+  it("posts nothing for a second Embed while the first is unanswered", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+    fireEvent.click(embedButton("A3"));
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+  });
+
+  // A refusal can mean another change landed on the row, so a clean form is
+  // read again to show the row as it is stored.
+  it("says the embedding failed and reads the case back when the server refuses it", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+    const callback = postToOpenElisServerJsonResponse.mock.calls[0][2];
+    const fetchesBefore = caseFetchCount();
+    act(() => callback({ error: "Block 2 is deactivated", status: 400 }));
+
+    expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: intl.formatMessage(
+          { id: "pathology.toast.embedFailed" },
+          { designation: "A2" },
+        ),
+      }),
+    );
+    await waitFor(() => expect(embedButton("A2")).toHaveFocus());
+  });
+
+  // The bench can type while the request is out; reading the case back then
+  // would throw the typing away, so only the embedded row changes.
+  it("keeps what was typed while an embedding was answered, and marks the row a block", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    fireEvent.click(embedButton("A2"));
+    const field = document.getElementById("embeddingLocation2");
+    field.focus();
+    fireEvent.change(field, { target: { value: "Tray 4" } });
+    const fetchesBefore = caseFetchCount();
+    act(() =>
+      postToOpenElisServerJsonResponse.mock.calls[0][2](
+        asBlock(savedBlock("2", "A2")),
+      ),
+    );
+    // The answer's focus move is deferred; let it run before looking.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(caseFetchCount()).toBe(fetchesBefore);
+    expect(field).toHaveValue("Tray 4");
+    expect(field, "typing goes on where it was").toHaveFocus();
+    expect(
+      within(rowIn(EMBEDDING, "A2")).getByText(
+        messages["pathology.label.block"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(rowIn(EMBEDDING, "A2")).queryByRole("button", {
+        name: embedName("A2"),
+      }),
+    ).toBeNull();
+    // Still unsaved, so the next Embed waits for a save.
+    expect(embedButton("A3")).toBeDisabled();
+    expect(embedButton("A3")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeEmbed"],
+    );
+  });
+
+  it("moves focus to the next cassette still waiting, and to the section header once none is", async () => {
+    const [a1, a2, a3] = oneOfThree();
+    await openAtEmbedding([a1, a2, a3]);
+
+    fireEvent.click(embedButton("A2"));
+    servedCase = { ...servedCase, blocks: [a1, asBlock(a2), a3] };
+    act(() => postToOpenElisServerJsonResponse.mock.calls[0][2](asBlock(a2)));
+    await waitFor(() => expect(embedButton("A3")).toHaveFocus());
+
+    fireEvent.click(embedButton("A3"));
+    servedCase = { ...servedCase, blocks: [a1, asBlock(a2), asBlock(a3)] };
+    act(() => postToOpenElisServerJsonResponse.mock.calls[1][2](asBlock(a3)));
+    await waitFor(() =>
+      expect(
+        section(EMBEDDING).querySelector("button.cds--accordion__heading"),
+      ).toHaveFocus(),
+    );
+  });
+
+  // The case is read back after an embedding, so an edit not yet saved
+  // would be thrown away by it without a word.
+  it("holds Embed back while there are unsaved changes, and says why", async () => {
+    await openAtEmbedding(oneOfThree());
+    expect(embedButton("A2")).toBeEnabled();
+
+    fireEvent.change(document.getElementById("embeddingLocation1"), {
+      target: { value: "Rack 3, shelf B" },
+    });
+
+    expect(embedButton("A2")).toBeDisabled();
+    expect(embedButton("A2")).toHaveAttribute(
+      "title",
+      messages["pathology.locked.saveBeforeEmbed"],
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: messages["caseView.action.discard"] }),
+    );
+
+    expect(embedButton("A2")).toBeEnabled();
+    expect(embedButton("A2")).not.toHaveAttribute("title");
+  });
+
+  it("edits the location of the row it is typed into", async () => {
+    await openAtEmbedding([
+      savedBlock("1", "A1", { active: false }),
+      savedBlock("2", "A2"),
+    ]);
+
+    fireEvent.change(document.getElementById("embeddingLocation1"), {
+      target: { value: "Rack 3, shelf B" },
+    });
+
+    const posted = await postedCase();
+    expect(posted.blocks.map((block) => block.location)).toEqual([
+      "",
+      "Rack 3, shelf B",
+    ]);
+  });
+
+  it("labels the storage location and says it is free text for now", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    const field = within(rowIn(EMBEDDING, "A2")).getByLabelText(
+      new RegExp("^" + messages["common.storageLocation"]),
+    );
+    expect(field).toHaveAttribute("id", "embeddingLocation1");
+    expect(
+      within(rowIn(EMBEDDING, "A2")).getByText(
+        messages["pathology.label.storageLocationInterim"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("badges the section with how many are embedded, out of the cassettes in use", async () => {
+    const retired = savedBlock("4", "A4", { active: false });
+    await openAtEmbedding([...oneOfThree(), retired]);
+
+    expect(header().getByText(embeddedOf(1, 3))).toBeInTheDocument();
+  });
+
+  it("badges the section Complete once every cassette is a block", async () => {
+    await openAtEmbedding(oneOfThree().map(asBlock));
+
+    expect(header().getByText(messages["common.complete"])).toBeInTheDocument();
+    expect(within(section(EMBEDDING)).queryByText(embeddedOf(3, 3))).toBeNull();
+  });
+
+  it("badges nothing and says how cassettes arrive when none has been cut", async () => {
+    await openAtEmbedding([]);
+
+    expect(
+      section(EMBEDDING)
+        .querySelector(".cds--accordion__heading")
+        .querySelector(".cds--tag"),
+    ).toBeNull();
+    expect(
+      within(section(EMBEDDING)).getByText(
+        messages["pathology.empty.noCassettes"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("opens on a warning that counts the cassettes and names the outstanding ones", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    const body = within(section(EMBEDDING));
+    expect(
+      body.getByText(embeddedOf(1, 3), {
+        selector: ".cds--inline-notification__title",
+      }),
+    ).toBeInTheDocument();
+    expect(body.getByText(outstanding("A2, A3"))).toBeInTheDocument();
+  });
+
+  it("names the outstanding cassettes on the rail at embedding", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(rail().getByText(outstanding("A2, A3"))).toBeInTheDocument();
+  });
+
+  it("names nothing on the rail for a case still at grossing", async () => {
+    servedCase = caseAtStage("GROSSING", { blocks: oneOfThree() });
+    renderCaseView();
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+    expect(rail().queryByText(outstanding("A2, A3"))).toBeNull();
+  });
+
+  it("sums embedding up in the summary and names the outstanding cassettes on the row", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    const label = messages["pathology.stage.embedding"];
+    expect(summaryValue(label)).toBe(embeddedOf(1, 3));
+    expect(summaryRow(label)).toHaveAttribute("title", outstanding("A2, A3"));
+  });
+
+  it("keeps a deactivated cassette out of the list until the list's switch is on", async () => {
+    await openAtEmbedding([
+      ...oneOfThree(),
+      savedBlock("4", "A4", { active: false }),
+    ]);
+
+    expect(queryRowIn(EMBEDDING, "A4")).toBeNull();
+
+    fireEvent.click(showDeactivatedSwitch(EMBEDDING));
+
+    const deactivated = rowIn(EMBEDDING, "A4");
+    expect(
+      within(deactivated).getByText(messages["caseView.badge.deactivated"]),
+    ).toBeInTheDocument();
+    expect(
+      within(deactivated).queryByRole("button", { name: embedName("A4") }),
+    ).toBeNull();
+  });
+
+  it("offers no count input in the embedding section", async () => {
+    await openAtEmbedding(oneOfThree());
+
+    expect(section(EMBEDDING).querySelector('input[type="number"]')).toBeNull();
+    expect(section(EMBEDDING).querySelector(".cds--number")).toBeNull();
   });
 });

@@ -17,7 +17,11 @@ import {
   stageDisplayKey,
   stageLabel,
 } from "./pathologyStages";
-import { countedRows } from "./pathologyRows";
+import { countedRows, embeddingSummary } from "./pathologyRows";
+
+// The embedding section's id, which the case view also needs to reach the
+// section's header.
+export const EMBEDDING_SECTION_ID = "pathology-section-embedding";
 
 // The single-stage sections are titled by the stage's own key, so the rail,
 // the header and the locked hint can never call one stage two things.
@@ -64,13 +68,13 @@ export const PATHOLOGY_SECTIONS = Object.freeze([
     pathologistOnly: false,
   }),
   Object.freeze({
-    id: "pathology-section-embedding",
+    id: EMBEDDING_SECTION_ID,
     number: 5,
     titleKey: stageDisplayKey("EMBEDDING"),
     stages: Object.freeze(["EMBEDDING"]),
     gate: "EMBEDDING",
     displayOnly: false,
-    placeholder: true,
+    placeholder: false,
     pathologistOnly: false,
   }),
   Object.freeze({
@@ -230,9 +234,10 @@ export function grossingComplete(caseInfo) {
 /**
  * The badge a section header carries, derived from the rows the case holds
  * and never from where the case stands: grossing is Complete under FR-3.4,
- * otherwise the sections that record rows name how many, and an outstanding
- * request outranks all of it. A read-only section leaves the slot to the
- * shell's own marker.
+ * embedding is Complete once every saved cassette is a block and otherwise
+ * says how many are, the other sections that record rows name how many, and
+ * an outstanding request outranks all of it. A read-only section leaves the
+ * slot to the shell's own marker.
  */
 export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
   if (section.state === SECTION_STATE.READ_ONLY) {
@@ -254,11 +259,71 @@ export function sectionBadge(section, { openRequestCount, caseInfo } = {}) {
     return countBadge("pathology.badge.cassetteCount", caseInfo?.blocks);
   }
 
+  if (section.id === EMBEDDING_SECTION_ID) {
+    return embeddingBadge(embeddingSummary(caseInfo?.blocks));
+  }
+
   if (section.id === "pathology-section-microtomy") {
     return countBadge("pathology.badge.slideCount", caseInfo?.slides);
   }
 
   return null;
+}
+
+function embeddingBadge({ embedded, total, complete }) {
+  if (total === 0) {
+    return null;
+  }
+  if (complete) {
+    return { kind: "complete", textKey: "common.complete" };
+  }
+  return {
+    kind: "partial",
+    textKey: "pathology.badge.embeddedOf",
+    values: { embedded, total },
+  };
+}
+
+/**
+ * The sentence that names the cassettes still waiting for embedding, so the
+ * rail, the section and the summary agree: `visible` names the first few and
+ * counts the rest, `full` names them all.
+ */
+export function embeddingOutstandingLabel(intl, outstanding) {
+  return namedListLabel(intl, outstanding, {
+    allKey: "pathology.badge.outstanding",
+    moreKey: "pathology.badge.outstandingMore",
+    placeholder: "designations",
+  });
+}
+
+/**
+ * The summary's line about embedding, under the rail's rule: not applicable
+ * where the laboratory does not track the stage, nothing before a cassette is
+ * saved, otherwise how many are embedded, with the outstanding ones named in
+ * the hover title once the case has reached the stage.
+ */
+export function embeddingStatement(
+  intl,
+  { summary, status, configurationProperties } = {},
+) {
+  if (!isStageEnabled("EMBEDDING", configurationProperties)) {
+    return {
+      value: intl.formatMessage({ id: "caseView.badge.notApplicable" }),
+    };
+  }
+  if (summary.total === 0) {
+    return { value: null };
+  }
+  return {
+    value: intl.formatMessage(
+      { id: "pathology.badge.embeddedOf" },
+      { embedded: summary.embedded, total: summary.total },
+    ),
+    title: embeddingAwaitsBench(summary, status, false)
+      ? embeddingOutstandingLabel(intl, summary.outstanding).full
+      : undefined,
+  };
 }
 
 // i18n-keys: pathology.badge.*
@@ -286,21 +351,26 @@ export function openRequestNames(requests) {
 }
 
 /**
- * How many outstanding requests a rail step names before counting the rest;
- * the two-line clamp in caseView.scss is the actual bound on the step.
+ * How many names a rail step shows before counting the rest; the two-line
+ * clamp in caseView.scss is the actual bound on the step.
  */
-const NAMED_REQUEST_LIMIT = 2;
+const NAMED_LIST_LIMIT = 2;
 
 /**
- * The rail's sentence about the requests still open: `visible` names the
- * first few and counts the rest, `full` names them all, for the hover title.
+ * A sentence naming a list of things: `visible` names the first few and
+ * counts the rest, `full` names them all, for the hover title. `placeholder`
+ * is the argument the two messages name the list by.
  */
-export function openRequestsLabel(intl, names) {
-  const named = names.slice(0, NAMED_REQUEST_LIMIT);
+export function namedListLabel(
+  intl,
+  names,
+  { allKey, moreKey, limit = NAMED_LIST_LIMIT, placeholder = "names" },
+) {
+  const named = names.slice(0, limit);
   const remaining = names.length - named.length;
   const full = intl.formatMessage(
-    { id: "pathology.badge.openRequests" },
-    { names: names.join(", ") },
+    { id: allKey },
+    { [placeholder]: names.join(", ") },
   );
 
   if (remaining <= 0) {
@@ -309,11 +379,21 @@ export function openRequestsLabel(intl, names) {
 
   return {
     visible: intl.formatMessage(
-      { id: "pathology.badge.openRequestsMore" },
-      { names: named.join(", "), count: remaining },
+      { id: moreKey },
+      { [placeholder]: named.join(", "), count: remaining },
     ),
     full,
   };
+}
+
+/**
+ * The rail's sentence about the requests still open.
+ */
+export function openRequestsLabel(intl, names) {
+  return namedListLabel(intl, names, {
+    allKey: "pathology.badge.openRequests",
+    moreKey: "pathology.badge.openRequestsMore",
+  });
 }
 
 /**
@@ -474,19 +554,32 @@ export function railCurrentIndex(sections, status) {
   return sections.findIndex((section) => section.stages.includes(status));
 }
 
+// A cassette is named as outstanding, on the rail and in the summary, only
+// once the case has reached embedding: before that nothing awaits the bench
+// there, and the section itself is still locked.
+function embeddingAwaitsBench(embedding, status, notApplicable) {
+  return (
+    embedding.outstanding.length > 0 &&
+    !notApplicable &&
+    PATHOLOGY_STAGES.indexOf(status) >= PATHOLOGY_STAGES.indexOf("EMBEDDING")
+  );
+}
+
 /**
  * The progress rail's item for each derived section. A step is complete on
  * the record where a rule exists (grossing under FR-3.4, microtomy holding a
  * slide, a report existing) and on the case having passed the stage where
  * none does. A step the laboratory does not track, or one this specimen does
- * not need, is marked not applicable and never complete. Only the review step
- * names outstanding requests.
+ * not need, is marked not applicable and never complete. The review step
+ * names the outstanding requests and the embedding step the outstanding
+ * cassettes.
  */
 export function deriveRailItems(
   sections,
   { intl, status, reportCount, openRequestNames: names, caseInfo } = {},
 ) {
   const caseIndex = PATHOLOGY_STAGES.indexOf(status);
+  const embedding = embeddingSummary(caseInfo?.blocks);
 
   return sections.map((section) => {
     const isReportsSection = section.id === "pathology-section-reports";
@@ -500,14 +593,21 @@ export function deriveRailItems(
       complete = reportCount > 0;
     } else if (section.id === "pathology-section-grossing") {
       complete = passed && grossingComplete(caseInfo);
+    } else if (section.id === EMBEDDING_SECTION_ID) {
+      complete = passed && embedding.complete;
     } else if (section.id === "pathology-section-microtomy") {
       complete = passed && countedRows(caseInfo?.slides).length > 0;
     }
 
-    const pending =
-      section.id === "pathology-section-review" && names && names.length > 0
-        ? openRequestsLabel(intl, names)
-        : undefined;
+    let pending;
+    if (section.id === "pathology-section-review" && names?.length > 0) {
+      pending = openRequestsLabel(intl, names);
+    } else if (
+      section.id === EMBEDDING_SECTION_ID &&
+      embeddingAwaitsBench(embedding, status, notApplicable)
+    ) {
+      pending = embeddingOutstandingLabel(intl, embedding.outstanding);
+    }
 
     return {
       id: section.id,

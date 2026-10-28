@@ -13,6 +13,7 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
+  postToOpenElisServerJsonResponse,
   postToOpenElisServerForPDF,
   hasRole,
 } from "../utils/Utils";
@@ -41,6 +42,8 @@ import {
   decalcificationFlagFrozen,
   deriveCaseSections,
   deriveRailItems,
+  EMBEDDING_SECTION_ID,
+  embeddingStatement,
   openRequestNames,
   railCurrentIndex,
   sectionBadge,
@@ -48,14 +51,19 @@ import {
   stageBadgeKind,
 } from "./pathologySections";
 import {
+  blockIdentifier,
   countedRows,
+  embeddingSummary,
+  isEmbeddedRow,
   needsParentBlock,
+  nextOutstandingCassette,
   objectNaming,
   stripClientKeys,
 } from "./pathologyRows";
 import DeactivateRowDialog from "./DeactivateRowDialog";
 import CaseInformationSection from "./sections/CaseInformationSection";
 import GrossingSection from "./sections/GrossingSection";
+import EmbeddingSection from "./sections/EmbeddingSection";
 import StagePlaceholderSection from "./sections/StagePlaceholderSection";
 import MicrotomySection from "./sections/MicrotomySection";
 import ReviewSection from "./sections/ReviewSection";
@@ -65,9 +73,40 @@ import ReportsSection from "./sections/ReportsSection";
 // The switch that shows a list's deactivated rows, where focus lands once
 // the row it was on has left the list.
 const SHOW_DEACTIVATED_SWITCH = {
-  block: "showDeactivatedCassettes",
-  slide: "showDeactivatedSlides",
+  block: "#showDeactivatedCassettes",
+  slide: "#showDeactivatedSlides",
 };
+
+// The embedding section's own header, where focus lands once no Embed
+// button it could go to is left.
+const EMBEDDING_SECTION_HEADER =
+  "#" + EMBEDDING_SECTION_ID + " button.cds--accordion__heading";
+
+const embedButton = (block) => "#embedCassette-" + block.id;
+
+/**
+ * Focuses the first of the given selectors that names a control which can
+ * take focus, so a target that has gone, or is disabled, falls through to the
+ * next.
+ */
+function focusFirstOf(targets, { unlessHeld = false } = {}) {
+  setTimeout(() => {
+    // The person may be typing in a field while the answer lands; focus then
+    // stays where it is, and moves only once nothing holds it, as after the
+    // clicked button has gone.
+    const held = document.activeElement;
+    if (unlessHeld && held && held !== document.body) {
+      return;
+    }
+    for (const target of [].concat(targets)) {
+      const element = document.querySelector(target);
+      if (element && !element.disabled) {
+        element.focus();
+        return;
+      }
+    }
+  });
+}
 
 const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
 
@@ -135,7 +174,15 @@ function PathologyCaseView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [pendingDeactivation, setPendingDeactivation] = useState(null);
+  // The id of the cassette whose embedding is in flight, so no second one
+  // starts before the first has been read back.
+  const [embeddingId, setEmbeddingId] = useState(null);
+  // The selectors, in order of preference, for the control that takes focus
+  // once the case is read back.
   const focusAfterLoad = useRef(null);
+  // Mirrors `dirty` for a server answer that arrives after the render that
+  // sent the request, so it can tell whether there is unsaved work to keep.
+  const dirtyRef = useRef(false);
   const [saveRefusedForBlock, setSaveRefusedForBlock] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
@@ -153,6 +200,7 @@ function PathologyCaseView() {
       ...prev,
       ...(typeof patch === "function" ? patch(prev) : patch),
     }));
+    dirtyRef.current = true;
     setDirty(true);
   };
 
@@ -197,13 +245,14 @@ function PathologyCaseView() {
     }
     setCaseInfo(loaded);
     setStoredStatus(loaded.status);
+    dirtyRef.current = false;
     setDirty(false);
     // A load drops every unsaved slide, so an earlier refusal marks nothing.
     setSaveRefusedForBlock(false);
-    const focusId = focusAfterLoad.current;
+    const focusTargets = focusAfterLoad.current;
     focusAfterLoad.current = null;
-    if (focusId) {
-      setTimeout(() => document.getElementById(focusId)?.focus());
+    if (focusTargets) {
+      focusFirstOf(focusTargets);
     }
     setCaseLoaded(true);
     setFormVersion((version) => version + 1);
@@ -324,6 +373,77 @@ function PathologyCaseView() {
       message: intl.formatMessage({ id: naming.toastKey }, naming.values),
     });
     reloadCase();
+  };
+
+  // Embed cannot be pressed while the form is dirty or saving, but the bench
+  // can type while the request is out. The answer re-reads the case only when
+  // nothing is waiting to be saved; otherwise it marks the one row as a block
+  // and keeps the rest of the form as it stands. The save copies fields onto
+  // the stored rows by id and reads no version from the screen, so the row's
+  // older stamp does no harm. The transition is not destructive, so it asks
+  // for no confirmation.
+  const embedCassette = (block) => {
+    if (embeddingId !== null) {
+      return;
+    }
+    setEmbeddingId(block.id);
+    const designation = blockIdentifier(block);
+    const next = nextOutstandingCassette(caseInfo.blocks, block);
+    postToOpenElisServerJsonResponse(
+      "/rest/pathology/block/" + block.id + "/embed",
+      JSON.stringify({}),
+      (response) => {
+        if (!componentMounted.current) {
+          return;
+        }
+        setEmbeddingId(null);
+        setNotificationVisible(true);
+        if (isEmbeddedRow(response)) {
+          const targets = next
+            ? [embedButton(next), EMBEDDING_SECTION_HEADER]
+            : EMBEDDING_SECTION_HEADER;
+          addNotification({
+            kind: NotificationKinds.success,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "pathology.toast.embedded" },
+              { designation },
+            ),
+          });
+          if (dirtyRef.current) {
+            updateCase((prev) => ({
+              blocks: (prev.blocks ?? []).map((row) =>
+                String(row.id) === String(block.id)
+                  ? { ...row, cassetteState: response.cassetteState }
+                  : row,
+              ),
+            }));
+            focusFirstOf(targets, { unlessHeld: true });
+          } else {
+            focusAfterLoad.current = targets;
+            reloadCase();
+          }
+        } else {
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage(
+              { id: "pathology.toast.embedFailed" },
+              { designation },
+            ),
+          });
+          // A refusal can mean another change landed on the row, so a clean
+          // form is read again to show the row as it is stored.
+          const targets = [embedButton(block), EMBEDDING_SECTION_HEADER];
+          if (dirtyRef.current) {
+            focusFirstOf(targets, { unlessHeld: true });
+          } else {
+            focusAfterLoad.current = targets;
+            reloadCase();
+          }
+        }
+      },
+    );
   };
 
   const reportStatus = async (pdfGenerated, blob, index) => {
@@ -509,6 +629,18 @@ function PathologyCaseView() {
             onDeactivate={setPendingDeactivation}
           />
         );
+      case "pathology-section-embedding":
+        return (
+          <EmbeddingSection
+            caseInfo={caseInfo}
+            updateCase={updateCase}
+            readOnly={readOnly}
+            dirty={dirty}
+            saving={isSubmitting}
+            embeddingId={embeddingId}
+            onEmbed={embedCassette}
+          />
+        );
       case "pathology-section-microtomy":
         return (
           <MicrotomySection
@@ -624,6 +756,12 @@ function PathologyCaseView() {
     </div>
   );
 
+  const embedding = embeddingStatement(intl, {
+    summary: embeddingSummary(caseInfo.blocks),
+    status: caseInfo.status,
+    configurationProperties,
+  });
+
   const summaryRows = [
     {
       id: "stage",
@@ -639,6 +777,12 @@ function PathologyCaseView() {
       id: "blocks",
       labelKey: "pathology.label.cassettes",
       value: countedRows(caseInfo.blocks).length,
+    },
+    {
+      id: "embedding",
+      labelKey: "pathology.stage.embedding",
+      value: embedding.value,
+      title: embedding.title,
     },
     {
       id: "slides",

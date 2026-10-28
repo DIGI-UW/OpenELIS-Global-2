@@ -127,11 +127,14 @@ const GrossingSection = ({
                       labelText={
                         <>
                           {intl.formatMessage({
-                            id: "pathology.label.location",
+                            id: "common.storageLocation",
                           })}
                           {hiddenName}
                         </>
                       }
+                      helperText={intl.formatMessage({
+                        id: "pathology.label.storageLocationInterim",
+                      })}
                       value={block.location ?? ""}
                       onChange={(e) =>
                         patchRow(index, { location: e.target.value })
