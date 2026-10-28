@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="assert-pathology-grossing" author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="2">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_sample'
+                AND column_name IN ('gross_exam', 'microscopy_exam')
+                AND data_type = 'text'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'pathology_sample'
+                AND column_name = 'decalcification_required'
+                AND is_nullable = 'NO'
+                AND column_default LIKE '%false%'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_sample
+                WHERE id = 990301
+                AND decalcification_required = false
+                AND length(gross_exam) = 255
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.pathology_sample
+                WHERE id = 990302
+                AND decalcification_required = true
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.dictionary_category
+                WHERE name = 'pathology_tissue_types'
+                AND local_abbrev = 'PathTissue'
+                AND description = 'Pathology - Tissue Types'
+            </sqlCheck>
+        </preConditions>
+        <comment>Every assertion lives in the preConditions above.</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

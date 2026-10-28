@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -36,6 +37,8 @@ import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.note.service.NoteService;
@@ -92,6 +95,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     private static final String SLIDE_REFERENCE_TABLE = "PATHOLOGY_SLIDE";
 
+    /** Dictionary category a laboratory fills with the tissue types it cuts. */
+    private static final String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
     private static final ObjectMapper AUDIT_PAYLOAD_MAPPER = new ObjectMapper();
 
     @Autowired
@@ -108,6 +114,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Autowired
     private ReferenceTablesService referenceTablesService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     @Autowired
     protected SystemUserService systemUserService;
@@ -193,6 +202,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));
         pathologySample.setConclusions(new ArrayList<>(oldPathologySample.getConclusions()));
+        pathologySample.setDecalcificationRequired(oldPathologySample.isDecalcificationRequired());
         pathologySample.setGrossExam(oldPathologySample.getGrossExam());
         pathologySample.setId(oldPathologySample.getId());
         pathologySample.setLastupdated(oldPathologySample.getLastupdated());
@@ -272,9 +282,19 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         DesignationScheme scheme = DesignationScheme.fromConfiguration();
         String accessionNumber = pathologySample.getSample() == null ? null
                 : pathologySample.getSample().getAccessionNumber();
-        reconcileBlocks(pathologySample, form.getBlocks(), scheme, accessionNumber);
+        List<String> cassettesCut = reconcileBlocks(pathologySample, form.getBlocks(), scheme, accessionNumber);
         reconcileSlides(pathologySample, form.getSlides(), scheme, accessionNumber);
         pathologySample.setGrossExam(form.getGrossExam());
+        // The flag records what grossing found. Past the stage an untick would make a
+        // decalcified specimen read as one that never needed it, so it is no longer
+        // taken.
+        if (form.getDecalcificationRequired() != null && !pastDecalcification(storedCase)) {
+            pathologySample.setDecalcificationRequired(form.getDecalcificationRequired());
+        }
+        if (movesInto(PathologyStatus.DECALCIFICATION, storedCase, form)) {
+            // A case that went through the stage must never read as not needing it.
+            pathologySample.setDecalcificationRequired(true);
+        }
         pathologySample.setMicroscopyExam(form.getMicroscopyExam());
         pathologySample.getConclusions().removeAll(pathologySample.getConclusions());
         pathologySample.getConclusions().add(createConclusion(form.getConclusionText(), ConclusionType.TEXT));
@@ -304,7 +324,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
         try {
             baseObjectDAO.evict(storedCase);
-            updateAgainst(pathologySample, storedState);
+            PathologySample savedCase = updateAgainst(pathologySample, storedState);
+            recordCassettesCut(savedCase, cassettesCut, pathologySample.getSysUserId());
             persistPathologyBarcodeCountsIfSupplied(pathologySample, form);
             populatePathologyWorkflowPrintModels(pathologySample, form);
         } catch (RuntimeException e) {
@@ -330,7 +351,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         payload.put("verb", PATHOLOGY_BLOCK_DEACTIVATED);
         putIfPresent(payload, "designation", block.displayIdentifier());
         putIfPresent(payload, "reason", reason);
-        recordRetirement(BLOCK_REFERENCE_TABLE, block.getStringId(), payload, sysUserId);
+        recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
         return Optional.of(block);
     }
 
@@ -366,7 +388,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             payload.put("blockId", slide.getBlockId());
         }
         putIfPresent(payload, "reason", reason);
-        recordRetirement(SLIDE_REFERENCE_TABLE, slide.getStringId(), payload, sysUserId);
+        recordRowEvent(SLIDE_REFERENCE_TABLE, slide.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
         return Optional.of(slide);
     }
 
@@ -379,21 +402,27 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      * <p>
      * The identity the server assigns to a new row is readable only by fetching the
      * case again, because the save answers with the form that was posted.
+     *
+     * @return the designations of the cassettes cut in this save
      */
-    private void reconcileBlocks(PathologySample pathologySample, List<PathologyBlock> postedBlocks,
+    private List<String> reconcileBlocks(PathologySample pathologySample, List<PathologyBlock> postedBlocks,
             DesignationScheme scheme, String accessionNumber) {
+        List<String> cassettesCut = new ArrayList<>();
         if (postedBlocks == null) {
-            return;
+            return cassettesCut;
         }
         List<PathologyBlock> blocksOnCase = pathologySample.getBlocks();
         for (PathologyBlock posted : postedBlocks) {
             if (posted.getId() != null) {
                 applyToBlock(blockOnCase(pathologySample, posted.getId()), posted);
             } else {
-                blocksOnCase.add(
-                        cutCassette(posted, blocksOnCase, scheme, accessionNumber, pathologySample.getSysUserId()));
+                PathologyBlock cassette = cutCassette(posted, blocksOnCase, scheme, accessionNumber,
+                        pathologySample.getSysUserId());
+                blocksOnCase.add(cassette);
+                cassettesCut.add(cassette.getDesignation());
             }
         }
+        return cassettesCut;
     }
 
     /**
@@ -417,14 +446,66 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /**
-     * Location is the one field a case save moves, and a retired row is left as it
-     * is.
+     * Location and the tissue held are the fields a case save edits, and a retired
+     * row is left as it is.
      */
     private void applyToBlock(PathologyBlock block, PathologyBlock posted) {
         if (!block.isActive()) {
             return;
         }
+        String tissueTypeId = tissueTypeAfterSave(block.getTissueTypeId(), posted.getTissueTypeId());
         block.setLocation(posted.getLocation());
+        block.setTissueTypeId(tissueTypeId);
+    }
+
+    /**
+     * An unchanged value is never checked again, so an entry retired after a
+     * cassette recorded it cannot block a save of the case.
+     */
+    private String tissueTypeAfterSave(String stored, String posted) {
+        String requested = StringUtils.trimToNull(posted);
+        if (requested == null || Objects.equals(requested, stored)) {
+            return requested;
+        }
+        if (!isActiveTissueType(requested)) {
+            throw new PathologyCaseRuleException(
+                    "tissue type " + requested + " is not an active entry of " + TISSUE_TYPE_CATEGORY);
+        }
+        return requested;
+    }
+
+    /**
+     * A tissue type a cassette may be given: an entry of the laboratory's own
+     * tissue category that is still in use.
+     */
+    private boolean isActiveTissueType(String dictionaryId) {
+        try {
+            Integer.parseInt(dictionaryId);
+        } catch (NumberFormatException e) {
+            // The dictionary key binds as an integer, so anything else names no entry
+            // and is the client's mistake, not a failure of the lookup.
+            return false;
+        }
+        Dictionary entry = dictionaryService.getDataForId(dictionaryId);
+        return entry != null && "Y".equals(entry.getIsActive()) && entry.getDictionaryCategory() != null
+                && TISSUE_TYPE_CATEGORY.equals(entry.getDictionaryCategory().getCategoryName());
+    }
+
+    /**
+     * PathologyStatus is declared in bench order (FR-2.6), so a later ordinal is a
+     * stage the case reaches after decalcification.
+     */
+    private static boolean pastDecalcification(PathologySample storedCase) {
+        return storedCase.getStatus() != null
+                && storedCase.getStatus().ordinal() > PathologyStatus.DECALCIFICATION.ordinal();
+    }
+
+    /**
+     * Whether this save moves the case onto the stage from another one; a save of a
+     * case already standing there does not.
+     */
+    private static boolean movesInto(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
+        return form.getStatus() == stage && storedCase.getStatus() != stage;
     }
 
     /**
@@ -445,8 +526,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /**
-     * Cuts a cassette under the case's first part; the part it came from and the
-     * tissue it holds are not captured on this screen.
+     * Cuts a cassette under the case's first part, holding the tissue type posted
+     * with it; the part it came from is not captured on this screen.
      */
     private PathologyBlock cutCassette(PathologyBlock posted, List<PathologyBlock> blocksOnCase,
             DesignationScheme scheme, String accessionNumber, String sysUserId) {
@@ -461,6 +542,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         block.setCassetteState(CassetteState.CASSETTE);
         block.setActive(true);
         block.setLocation(posted.getLocation());
+        block.setTissueTypeId(tissueTypeAfterSave(null, posted.getTissueTypeId()));
         block.setSysUserId(sysUserId);
         return block;
     }
@@ -538,22 +620,39 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     /**
-     * Writes the one audit entry a retirement leaves behind. history.activity is a
-     * one-character code, so the verb travels in the changes payload, which carries
-     * what was retired and why and never anything about the patient.
+     * One audit entry per cassette cut, written once the merge has given each row
+     * its id; designations are unique within a case, so they find the rows.
      */
-    private void recordRetirement(String referenceTableName, String referenceId, Map<String, Object> payload,
-            String sysUserId) {
+    private void recordCassettesCut(PathologySample savedCase, List<String> cassettesCut, String sysUserId) {
+        for (PathologyBlock block : savedCase.getBlocks()) {
+            if (cassettesCut.contains(block.getDesignation())) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("verb", PATHOLOGY_BLOCK_CREATED);
+                putIfPresent(payload, "designation", block.getDesignation());
+                putIfPresent(payload, "barcode", block.getBarcode());
+                recordRowEvent(BLOCK_REFERENCE_TABLE, block.getStringId(), IActionConstants.AUDIT_TRAIL_INSERT, payload,
+                        sysUserId);
+            }
+        }
+    }
+
+    /**
+     * Writes the audit entry an event on a block or slide leaves behind.
+     * history.activity is a one-character code, so the verb travels in the changes
+     * payload, which never carries anything about the patient.
+     */
+    private void recordRowEvent(String referenceTableName, String referenceId, String activity,
+            Map<String, Object> payload, String sysUserId) {
         ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(referenceTableName);
         if (referenceTable == null) {
             throw new LIMSRuntimeException(
-                    referenceTableName + " is missing from reference_tables, so the retirement cannot be audited");
+                    referenceTableName + " is missing from reference_tables, so the event cannot be audited");
         }
 
         History history = new History();
         history.setReferenceId(referenceId);
         history.setReferenceTable(referenceTable.getId());
-        history.setActivity(IActionConstants.AUDIT_TRAIL_UPDATE);
+        history.setActivity(activity);
         history.setTimestamp(new Timestamp(System.currentTimeMillis()));
         history.setSysUserId(sysUserId);
         history.setChanges(asJson(payload));

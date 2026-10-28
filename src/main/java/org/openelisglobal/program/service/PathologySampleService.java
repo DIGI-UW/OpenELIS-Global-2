@@ -13,6 +13,9 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public interface PathologySampleService extends BaseObjectService<PathologySample, Integer> {
 
+    /** Audit verb recorded when a cassette is cut. */
+    String PATHOLOGY_BLOCK_CREATED = "PATHOLOGY_BLOCK_CREATED";
+
     /** Audit verb recorded when a block is retired. */
     String PATHOLOGY_BLOCK_DEACTIVATED = "PATHOLOGY_BLOCK_DEACTIVATED";
 

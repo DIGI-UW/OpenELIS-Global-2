@@ -9,5 +9,6 @@
   <include relativeToChangelogFile="true" file="003-pathology-block-slide-identity.xml"/>
   <include relativeToChangelogFile="true" file="004-pathology-request-status-index.xml"/>
   <include relativeToChangelogFile="true" file="005-pathology-identifier-config.xml"/>
+  <include relativeToChangelogFile="true" file="006-pathology-grossing.xml"/>
 
 </databaseChangeLog>

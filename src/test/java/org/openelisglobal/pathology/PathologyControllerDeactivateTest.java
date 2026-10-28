@@ -208,6 +208,24 @@ public class PathologyControllerDeactivateTest extends BaseWebContextSensitiveTe
         assertEquals("nothing was stored", 1, slideCountOnCase(1));
     }
 
+    @Test
+    public void aTissueTypeOutsideTheCategory_isA400NamingTheRule() throws Exception {
+        MockHttpServletResponse response = postAsTechnician(CASE_VIEW_ENDPOINT,
+                "{\"status\":\"GROSSING\","
+                        + "\"blocks\":[{\"id\":101,\"location\":\"Lab 1\",\"tissueTypeId\":\"424242\"}],"
+                        + "\"reports\":[],\"slides\":[]}");
+
+        assertEquals("a tissue type the laboratory never configured is the client asking for something the"
+                + " category does not hold", HttpStatus.BAD_REQUEST.value(), response.getStatus());
+        String error = String.valueOf(bodyOf(response).get("error"));
+        assertTrue("and the answer names the id and the category it is not an entry of: " + error,
+                error.contains("424242") && error.contains("pathology_tissue_types"));
+        assertEquals("nothing was stored on the block", 0,
+                jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM clinlims.pathology_block WHERE id = ? AND tissue_type_id IS NOT NULL",
+                        Integer.class, LEGACY_BLOCK_ID).intValue());
+    }
+
     // helpers
 
     private MockHttpServletResponse postAsTechnician(String endpoint, String body) throws Exception {
