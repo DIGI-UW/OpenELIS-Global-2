@@ -27,9 +27,21 @@ const API_PREFIX = "/api/OpenELIS-Global";
 /** The test every pathology case in this seed is ordered against. */
 const PATHOLOGY_TEST_NAME = "Histopathology examination";
 
-/** How long the dashboard is given to surface a case the save just created. */
-const CASE_LOOKUP_TIMEOUT_MS = 10_000;
-const CASE_LOOKUP_INTERVAL_MS = 500;
+/**
+ * How long a read-back is given to show what a save just wrote: the case on
+ * the dashboard, or a dictionary entry in its category's list.
+ */
+const READ_BACK_TIMEOUT_MS = 10_000;
+const READ_BACK_INTERVAL_MS = 500;
+
+/** The dictionary category a cassette's tissue type is chosen from. */
+const TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
+
+/** The entry ensureTissueType adds when a deployment has none of its own. */
+const SEEDED_TISSUE_TYPE = {
+  dictEntry: "E2E skin",
+  localAbbreviation: "E2ESKIN",
+};
 
 interface IdValuePair {
   id: string;
@@ -60,6 +72,17 @@ export interface PathologyOrderTarget {
   providerId: string;
   /** The person behind that provider; empty whenever providerId is. */
   providerPersonId: string;
+}
+
+/** One tissue type a cassette can be given, as the case view offers it. */
+export interface TissueType {
+  id: string;
+  name: string;
+}
+
+interface DictionaryCategoryRow {
+  id: string;
+  categoryName?: string;
 }
 
 /** One seeded case: the accession it was ordered under, and its case id. */
@@ -95,6 +118,43 @@ async function apiGet<T>(page: Page, path: string): Promise<T> {
       `GET ${path} returned non-JSON: ${result.text.substring(0, 400)}`,
     );
   }
+}
+
+/**
+ * POST JSON through the browser session, the counterpart of apiGet, and return
+ * the response body as text. Throws on any non-2xx with the body, so a seed
+ * the server refuses says why; `action` names what was being done.
+ */
+async function apiPost(
+  page: Page,
+  path: string,
+  body: unknown,
+  action = `POST ${path}`,
+): Promise<string> {
+  const result = await page.evaluate(
+    async ({ p, data }) => {
+      const csrf = localStorage.getItem("CSRF") || "";
+      const res = await fetch(p, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrf,
+        },
+        body: JSON.stringify(data),
+      });
+      return { status: res.status, text: await res.text() };
+    },
+    { p: path, data: body },
+  );
+
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(
+      `${action} failed: HTTP ${result.status}: ${result.text.substring(0, 600)}`,
+    );
+  }
+  return result.text;
 }
 
 /**
@@ -391,32 +451,18 @@ export async function createPathologyCase(
     rejectReasonList: null,
   };
 
-  const saved = await page.evaluate(async (formData) => {
-    const csrf = localStorage.getItem("CSRF") || "";
-    const res = await fetch("/api/OpenELIS-Global/rest/SamplePatientEntry", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrf,
-      },
-      body: JSON.stringify(formData),
-    });
-    return { status: res.status, text: await res.text() };
-  }, form);
-
-  if (saved.status < 200 || saved.status >= 300) {
-    throw new Error(
-      `Ordering ${order.testName} on ${order.sampleTypeName} for programme ` +
-        `${order.programName} failed: HTTP ${saved.status}: ${saved.text.substring(0, 600)}`,
-    );
-  }
+  const saved = await apiPost(
+    page,
+    `${API_PREFIX}/rest/SamplePatientEntry`,
+    form,
+    `Ordering ${order.testName} on ${order.sampleTypeName} for programme ${order.programName}`,
+  );
 
   const accessionNumber =
-    (JSON.parse(saved.text)?.sampleOrderItems?.labNo as string) || "";
+    (JSON.parse(saved)?.sampleOrderItems?.labNo as string) || "";
   if (!accessionNumber) {
     throw new Error(
-      `Order saved but answered with no accession number: ${saved.text.substring(0, 400)}`,
+      `Order saved but answered with no accession number: ${saved.substring(0, 400)}`,
     );
   }
 
@@ -461,11 +507,80 @@ async function findCaseId(
           `The pathology dashboard never listed a case at ACCESSIONED for ${accessionNumber}. ` +
           `The order saved, so either the programme it was ordered under is not a pathology ` +
           `programme or the case was created at some other stage.`,
-        intervals: [CASE_LOOKUP_INTERVAL_MS],
-        timeout: CASE_LOOKUP_TIMEOUT_MS,
+        intervals: [READ_BACK_INTERVAL_MS],
+        timeout: READ_BACK_TIMEOUT_MS,
       },
     )
     .not.toBe("");
 
   return caseId;
+}
+
+/**
+ * The first active tissue type on the deployment, adding one when the
+ * category holds none.
+ *
+ * The category ships empty, because each laboratory names its own tissues, so
+ * a fresh stack offers nothing to pick and the picker is disabled. An entry a
+ * deployment already has is used as it is; one is added only to an empty
+ * category, through the endpoint the Dictionary admin screen posts to, and is
+ * never deleted afterwards, since a cassette that holds it keeps pointing at
+ * it. The name returned is the one the case view's picker displays.
+ */
+export async function ensureTissueType(page: Page): Promise<TissueType> {
+  if (!page.url().startsWith("http")) {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+  }
+
+  const listPath = `${API_PREFIX}/rest/dictionary/category/${TISSUE_TYPE_CATEGORY}`;
+  const listed = await apiGet<IdValuePair[]>(page, listPath);
+  if (listed.length > 0) {
+    return { id: String(listed[0].id), name: listed[0].value };
+  }
+
+  const categories = await apiGet<DictionaryCategoryRow[]>(
+    page,
+    `${API_PREFIX}/rest/dictionary-categories`,
+  );
+  const category = categories.find(
+    (entry) => entry.categoryName === TISSUE_TYPE_CATEGORY,
+  );
+  if (!category) {
+    throw new Error(
+      `No dictionary category named ${TISSUE_TYPE_CATEGORY} on this deployment, ` +
+        "so the changeset that creates it has not run here.",
+    );
+  }
+
+  await apiPost(page, `${API_PREFIX}/rest/Dictionary`, {
+    id: "",
+    selectedDictionaryCategoryId: category.id,
+    dictEntry: SEEDED_TISSUE_TYPE.dictEntry,
+    localAbbreviation: SEEDED_TISSUE_TYPE.localAbbreviation,
+    isActive: "Y",
+    dirtyFormFields: "",
+  });
+
+  // Read back through the same list the case view loads, so what is returned
+  // is what the picker will offer rather than what was posted.
+  let added: TissueType | undefined;
+  await expect
+    .poll(
+      async () => {
+        const after = await apiGet<IdValuePair[]>(page, listPath);
+        const entry = after.find(
+          (item) => item.value === SEEDED_TISSUE_TYPE.dictEntry,
+        );
+        added = entry ? { id: String(entry.id), name: entry.value } : undefined;
+        return Boolean(added);
+      },
+      {
+        message: `${SEEDED_TISSUE_TYPE.dictEntry} was saved but ${listPath} does not list it`,
+        intervals: [READ_BACK_INTERVAL_MS],
+        timeout: READ_BACK_TIMEOUT_MS,
+      },
+    )
+    .toBe(true);
+
+  return added!;
 }

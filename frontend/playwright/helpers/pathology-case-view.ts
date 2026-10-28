@@ -1,4 +1,4 @@
-import { expect, Page } from "@playwright/test";
+import { expect, Locator, Page } from "@playwright/test";
 import type { SeededPathologyCase } from "./seed-pathology-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "./timeouts";
 
@@ -70,6 +70,39 @@ export async function expandSection(page: Page, sectionId: string) {
     await header.click();
   }
   await expect(header).toHaveAttribute("aria-expanded", "true");
+}
+
+/** Every cassette row on the grossing list, retired ones included when shown. */
+export function cassetteRows(page: Page) {
+  return page.locator("#pathology-section-grossing .pathology-case-view__row");
+}
+
+/** Every slide row on the microtomy list. */
+export function slideRows(page: Page) {
+  return page.locator("#pathology-section-microtomy .pathology-case-view__row");
+}
+
+/**
+ * The one row on a list carrying a designation, matched whole, so A1 never
+ * also matches A10.
+ */
+export function rowNamed(rows: Locator, designation: string) {
+  return rows.filter({
+    has: rows.page().locator(".pathology-case-view__row-designation", {
+      hasText: new RegExp(`^${designation}$`),
+    }),
+  });
+}
+
+/** One step of the progress rail, addressed by its label. */
+export function railStep(page: Page, label: string) {
+  return page
+    .locator('nav[aria-label="Case progress"] li.cds--progress-step')
+    .filter({
+      has: page.locator(".cds--progress-label", {
+        hasText: new RegExp(`^${label}$`),
+      }),
+    });
 }
 
 /** One row of the case summary, addressed by the label in its first half. */

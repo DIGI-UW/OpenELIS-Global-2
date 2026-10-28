@@ -12,9 +12,11 @@ import {
   openCase,
   openStageMenu,
   overlaps,
+  railStep,
   saveDraft,
   sectionHeader,
   setStage,
+  slideRows,
   stageControl,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
@@ -63,15 +65,18 @@ const UNTRACKED_STAGE = "COVERSLIPPING";
 const UNTRACKED_STAGE_LABEL = "Coverslipping & QC";
 
 /**
- * Everything the stage control offers: the eleven bench stages, in bench
+ * Everything the stage control offers this case: the bench stages, in bench
  * order. Asserting the whole list at once is what makes the switched-off case
  * below meaningful, since it proves the one stage left out and every other
  * stage still there in a single assertion.
+ *
+ * Decalcification is not among them: the walk never flags the specimen for
+ * it at grossing, and the control offers that stage only to a flagged case or
+ * one already standing at it.
  */
 const STATUS_OPTIONS = [
   "Accessioned",
   "Grossing",
-  "Decalcification",
   "Processing",
   "Embedding",
   "Microtomy",
@@ -110,17 +115,6 @@ function caseInformationRow(page: Page, label: string) {
   return page
     .locator("#pathology-section-case-info .cds--structured-list-row")
     .filter({ has: page.getByText(label, { exact: true }) });
-}
-
-/** One step of the progress rail, addressed by its label. */
-function railStep(page: Page, label: string) {
-  return page
-    .locator('nav[aria-label="Case progress"] li.cds--progress-step')
-    .filter({
-      has: page.locator(".cds--progress-label", {
-        hasText: new RegExp(`^${label}$`),
-      }),
-    });
 }
 
 /**
@@ -430,9 +424,8 @@ test.describe.serial("Pathology case view on the shared shell", () => {
     await expandSection(page, "pathology-section-microtomy");
     await page.getByRole("button", { name: "Add slide" }).click();
 
-    const row = page
-      .locator("#pathology-section-microtomy .pathology-case-view__row")
-      .first();
+    // The one slide on the list, still unsaved and so not yet named.
+    const row = slideRows(page);
     await expect(row).toBeVisible();
 
     // The picker's name carries the row's name after its visible title.
