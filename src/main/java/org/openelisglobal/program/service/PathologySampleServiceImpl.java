@@ -291,7 +291,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (form.getDecalcificationRequired() != null && !pastDecalcification(storedCase)) {
             pathologySample.setDecalcificationRequired(form.getDecalcificationRequired());
         }
-        if (movesInto(PathologyStatus.DECALCIFICATION, storedCase, form)) {
+        if (movesInto(PathologyStatus.DECALCIFICATION, storedCase, form)
+                || movesOnFrom(PathologyStatus.DECALCIFICATION, storedCase, form)) {
             // A case that went through the stage must never read as not needing it.
             pathologySample.setDecalcificationRequired(true);
         }
@@ -506,6 +507,15 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
      */
     private static boolean movesInto(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
         return form.getStatus() == stage && storedCase.getStatus() != stage;
+    }
+
+    /**
+     * Whether this save takes a case standing at the stage on to a later one, so
+     * the case has been through it; a move back to an earlier stage has not.
+     */
+    private static boolean movesOnFrom(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
+        return storedCase.getStatus() == stage && form.getStatus() != null
+                && form.getStatus().ordinal() > stage.ordinal();
     }
 
     /**

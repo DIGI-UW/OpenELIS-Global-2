@@ -154,6 +154,35 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
     }
 
     @Test
+    public void movingACaseOnFromDecalcification_keepsItFlagged() {
+        PathologySampleForm movedIn = caseViewForm();
+        movedIn.setStatus(PathologyStatus.DECALCIFICATION);
+        save(movedIn);
+        save(flagged(false));
+
+        PathologySampleForm movedOn = flagged(false);
+        movedOn.setStatus(PathologyStatus.PROCESSING);
+        save(movedOn);
+
+        assertTrue("a case that leaves decalcification for a later stage went through it, so a flag cleared"
+                + " while it stood there does not make it read as not required afterwards", storedFlag());
+    }
+
+    @Test
+    public void movingACaseBackFromDecalcification_keepsAClearedFlag() {
+        PathologySampleForm movedIn = caseViewForm();
+        movedIn.setStatus(PathologyStatus.DECALCIFICATION);
+        save(movedIn);
+
+        PathologySampleForm movedBack = flagged(false);
+        movedBack.setStatus(PathologyStatus.GROSSING);
+        save(movedBack);
+
+        assertFalse("a case sent back to grossing never went through the stage, so the bench can clear a flag"
+                + " set in error", storedFlag());
+    }
+
+    @Test
     public void aFlagPostedAfterTheStage_isIgnored() {
         storeAtProcessing(true);
 
