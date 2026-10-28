@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import org.hibernate.StaleStateException;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.batchworkplan.form.BatchQcStatusResponse;
@@ -105,6 +106,17 @@ public class BatchWorkplanRestControllerSecurityTest extends SecuritySliceMockMv
         mockMvc.perform(post(GENERATE).with(user("tech").roles("RESULTS")).sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
                 .content(OVERRIDE)).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.reason").value("OVERRIDE_NOT_PERMITTED"));
+    }
+
+    @Test
+    public void aReleaseThatLostARaceAnswers409() throws Exception {
+        when(service.generate(any(), anyBoolean(), anyBoolean(), any()))
+                .thenThrow(new StaleStateException("Batch update returned unexpected row count"));
+        mockMvc.perform(post(GENERATE).with(user("tech").roles("RESULTS"))
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser()).contentType(MediaType.APPLICATION_JSON)
+                .content("{}")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "This batch was changed by another request at the same time. Reload to see its current state."));
     }
 
     @Test

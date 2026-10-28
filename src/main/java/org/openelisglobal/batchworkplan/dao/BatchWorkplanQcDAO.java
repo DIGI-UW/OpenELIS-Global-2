@@ -26,9 +26,10 @@ public interface BatchWorkplanQcDAO {
     QCResult getLatestInStatuses(String controlLotId, List<String> resultStatuses);
 
     /**
-     * Unresolved REJECTION-severity violations raised by any of the lot's runs. An
-     * acknowledged violation is still open: someone has seen it, no one has
-     * resolved it.
+     * Unresolved REJECTION-severity violations raised by any of the lot's runs, in
+     * the QC module's own sense ({@code findUnresolved}, the dashboard's Active
+     * list): acknowledging a violation is how a laboratory clears it, so an
+     * acknowledged one no longer holds a batch.
      */
     List<QCRuleViolation> getOpenRejections(String controlLotId);
 

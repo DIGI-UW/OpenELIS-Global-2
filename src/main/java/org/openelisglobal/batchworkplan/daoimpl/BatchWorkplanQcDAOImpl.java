@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BatchWorkplanQcDAOImpl implements BatchWorkplanQcDAO {
 
     private static final String SEVERITY_REJECTION = "REJECTION";
-    private static final String RESOLUTION_RESOLVED = "RESOLVED";
+    private static final String RESOLUTION_UNRESOLVED = "UNRESOLVED";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -73,10 +73,10 @@ public class BatchWorkplanQcDAOImpl implements BatchWorkplanQcDAO {
             return entityManager
                     .createQuery("SELECT v FROM QCRuleViolation v, QCResult r"
                             + " WHERE r.id = v.triggeringResultId AND r.controlLotId = :lotId"
-                            + " AND v.severity = :severity AND v.resolutionStatus <> :resolved"
+                            + " AND v.severity = :severity AND v.resolutionStatus = :unresolved"
                             + " ORDER BY v.violationDateTime DESC", QCRuleViolation.class)
                     .setParameter("lotId", controlLotId).setParameter("severity", SEVERITY_REJECTION)
-                    .setParameter("resolved", RESOLUTION_RESOLVED).getResultList();
+                    .setParameter("unresolved", RESOLUTION_UNRESOLVED).getResultList();
         } catch (RuntimeException e) {
             throw new LIMSRuntimeException("Error reading open QC violations for a batch workplan", e);
         }

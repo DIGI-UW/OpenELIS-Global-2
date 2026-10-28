@@ -220,6 +220,33 @@ describe("BatchTile release", () => {
   });
 });
 
+describe("BatchTile NCE tag", () => {
+  const released = (releases) => ({
+    ...draftBatch(undefined),
+    status: "ACTIVE",
+    releases,
+  });
+
+  it("shows the NCE of the latest release", () => {
+    renderTile(
+      released([
+        { controlLotId: "lot-1", releasedAt: 200, nceNumber: "NCE-0009" },
+      ]),
+    );
+    expect(screen.getByText("NCE: NCE-0009")).toBeInTheDocument();
+  });
+
+  it("drops an earlier override's NCE once the batch is released again on Pass", () => {
+    renderTile(
+      released([
+        { controlLotId: "lot-1", releasedAt: 300, qcStatus: "PASS" },
+        { controlLotId: "lot-1", releasedAt: 200, nceNumber: "NCE-0009" },
+      ]),
+    );
+    expect(screen.queryByText("NCE: NCE-0009")).not.toBeInTheDocument();
+  });
+});
+
 describe("BatchTile setup", () => {
   it("offers the reagent's usable lots with the first-expiry lot suggested and saves the choice", async () => {
     putToOpenElisServerFullResponse.mockImplementation(

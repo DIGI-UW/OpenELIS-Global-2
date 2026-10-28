@@ -1,9 +1,11 @@
 package org.openelisglobal.batchworkplan.controller.rest;
 
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.hibernate.StaleStateException;
 import org.openelisglobal.batchworkplan.form.BatchGenerateRequest;
 import org.openelisglobal.batchworkplan.form.BatchQcStatusResponse;
 import org.openelisglobal.batchworkplan.form.BatchReagentRequest;
@@ -20,6 +22,7 @@ import org.openelisglobal.qa.security.QaPermissions;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -129,6 +132,18 @@ public class BatchWorkplanRestController extends BaseRestController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+    }
+
+    /**
+     * Two requests changed the same batch at once (a double release, an edit racing
+     * a release). The one that lost is told so, rather than seeing a 500, and the
+     * page reloads the batch's current state.
+     */
+    @ExceptionHandler({ ObjectOptimisticLockingFailureException.class, OptimisticLockException.class,
+            StaleStateException.class })
+    public ResponseEntity<Map<String, Object>> concurrentChange(RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message",
+                "This batch was changed by another request at the same time. Reload to see its current state."));
     }
 
     @ExceptionHandler(BatchReleaseRefusedException.class)

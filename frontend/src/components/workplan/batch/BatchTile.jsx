@@ -71,7 +71,10 @@ export default function BatchTile({
   const draft = batch.status === "DRAFT";
   const active = batch.status === "ACTIVE";
   const qc = batch.qc;
-  const latestNce = (batch.releases || []).find((release) => release.nceNumber);
+  const latestReleasedAt = (batch.releases || [])[0]?.releasedAt;
+  const latestNce = (batch.releases || []).find(
+    (release) => release.releasedAt === latestReleasedAt && release.nceNumber,
+  );
 
   const [options, setOptions] = useState(null);
   const [reagentId, setReagentId] = useState(batch.reagentId || "");

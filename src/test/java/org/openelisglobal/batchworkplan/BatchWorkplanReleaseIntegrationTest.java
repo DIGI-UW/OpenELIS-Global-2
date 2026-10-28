@@ -210,7 +210,7 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
     }
 
     @Test
-    public void anOpenRejectionOnTheLotsRunIsAViolationUntilItIsResolved() {
+    public void anOpenRejectionOnTheLotsRunIsAViolationUntilItIsAcknowledged() {
         QCResult run = recordBenchRun(QCQualitativeOutcome.PASS, LocalDateTime.now().minusMinutes(5));
         QCRuleViolation warning = violation(run, "1-2s", "WARNING");
         QCRuleViolation rejection = violation(run, "1-3s", "REJECTION");
@@ -220,12 +220,11 @@ public class BatchWorkplanReleaseIntegrationTest extends BaseWebContextSensitive
         assertEquals(List.of("1-3s"), qc.lots().get(0).ruleCodes());
 
         setResolution(rejection, "ACKNOWLEDGED");
-        assertEquals("an acknowledged violation is still open", BatchQcStatus.VIOLATION,
-                batchWorkplanService.getQcStatus(batchId, ACTOR).status());
+        assertEquals("acknowledging is how the QC dashboard clears a violation, and a warning never holds a batch",
+                BatchQcStatus.PASS, batchWorkplanService.getQcStatus(batchId, ACTOR).status());
 
         setResolution(rejection, "RESOLVED");
-        assertEquals("a warning never holds a batch", BatchQcStatus.PASS,
-                batchWorkplanService.getQcStatus(batchId, ACTOR).status());
+        assertEquals(BatchQcStatus.PASS, batchWorkplanService.getQcStatus(batchId, ACTOR).status());
         assertNotNull(warning.getId());
     }
 
