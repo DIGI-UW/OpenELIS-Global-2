@@ -113,6 +113,26 @@ export function cassetteStateBadge(block) {
 }
 
 /**
+ * The tissue types a cassette's picker offers: the served ones, plus the one
+ * the cassette already holds when it is not among them. The served list holds
+ * active entries only, so without that row a tissue type retired after it was
+ * recorded would leave the cassette looking as if none had been.
+ */
+export function tissueTypeItems(served, block, names) {
+  const items = served ?? [];
+  const held = block?.tissueTypeId;
+  if (
+    held === null ||
+    held === undefined ||
+    held === "" ||
+    items.some((item) => String(item.id) === String(held))
+  ) {
+    return items;
+  }
+  return [...items, { id: held, value: names?.[held] ?? String(held) }];
+}
+
+/**
  * The servlet prints every saved label of the case from its accession
  * number, so the code is the case's, never a row's.
  */

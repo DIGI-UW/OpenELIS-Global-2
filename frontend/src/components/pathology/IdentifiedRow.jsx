@@ -95,7 +95,9 @@ export const RowLifecycleAction = ({
 
 /**
  * One cassette, block or slide on a list. Its fields and actions render from
- * `{ objectName, disabled }`, so every name and lock on the row agrees.
+ * `{ objectName, hiddenName, disabled }`, so every name and lock on the row
+ * agrees. `hiddenName` goes inside a field's label, so the field is announced
+ * with the object it belongs to while the row shows the object only once.
  */
 const IdentifiedRow = ({
   kind,
@@ -118,7 +120,13 @@ const IdentifiedRow = ({
   }
   const objectName = rowObjectName(intl, kind, row, position);
   const naming = objectNaming(kind, row);
-  const slots = { objectName, disabled: readOnly || deactivated };
+  const slots = {
+    objectName,
+    hiddenName: (
+      <span className="cds--visually-hidden">{" " + objectName}</span>
+    ),
+    disabled: readOnly || deactivated,
+  };
 
   return (
     <div

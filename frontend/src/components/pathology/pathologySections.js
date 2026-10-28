@@ -157,6 +157,39 @@ export function isStageEnabled(stageId, configurationProperties) {
 }
 
 /**
+ * Whether a stage applies to this case: the laboratory tracks it, and for
+ * decalcification grossing also flagged the specimen as needing it (FR-4.1).
+ * The stage control and the sections both ask this one question, so what the
+ * bench can move a case to and what the case view calls not applicable
+ * cannot disagree.
+ */
+export function stageApplies(
+  stageId,
+  { configurationProperties, decalcificationRequired } = {},
+) {
+  if (!isStageEnabled(stageId, configurationProperties)) {
+    return false;
+  }
+  return stageId !== "DECALCIFICATION" || Boolean(decalcificationRequired);
+}
+
+/**
+ * Whether the decalcification flag is past changing, judged by the stage the
+ * case is stored at, as the server judges it, never by a stage picked but not
+ * yet saved. Once the case has gone past decalcification the flag records
+ * what was done to the specimen, and unticking it would make the case say the
+ * stage never applied. PATHOLOGY_STAGES is in bench order, the order the
+ * server's own stage list is declared in (FR-2.6); a stage this build does
+ * not know freezes nothing, and the server still has the last word.
+ */
+export function decalcificationFlagFrozen(storedStatus) {
+  return (
+    PATHOLOGY_STAGES.indexOf(storedStatus) >
+    PATHOLOGY_STAGES.indexOf("DECALCIFICATION")
+  );
+}
+
+/**
  * The shared badge vocabulary (see caseView/StatusBadge.jsx) that best
  * describes a case sitting at the given stage.
  */
@@ -312,28 +345,65 @@ function sectionOpensByDefault(section, status) {
 }
 
 /**
+ * The hint that says why a section does not apply to this case, or null when
+ * it does. A stage the laboratory does not track is said first, since it
+ * holds for every case; past that, the only way stageApplies turns a stage
+ * down is FR-3.2's flag on decalcification.
+ * A case standing at the stage is never told it does not apply, so a case
+ * moved there by hand can still say where it is.
+ */
+function notApplicableHintKey(
+  section,
+  { isCurrent, configurationProperties, decalcificationRequired },
+) {
+  if (section.gate === null || isCurrent) {
+    return null;
+  }
+  if (!isStageEnabled(section.gate, configurationProperties)) {
+    return "pathology.locked.stageDisabled";
+  }
+  if (
+    !stageApplies(section.gate, {
+      configurationProperties,
+      decalcificationRequired,
+    })
+  ) {
+    return "pathology.locked.decalcNotRequired";
+  }
+  return null;
+}
+
+/**
  * One case view section, derived fresh from the case's status, the caller's
- * role and the laboratory's stage configuration. Nothing here is stored: the
- * same status and configuration always produce the same eleven results.
+ * role, the laboratory's stage configuration and the grossing bench's
+ * decalcification flag. Nothing here is stored: the same inputs always
+ * produce the same eleven results.
  */
 function deriveOneSection(
   section,
-  { intl, status, isPathologist, configurationProperties },
+  {
+    intl,
+    status,
+    isPathologist,
+    configurationProperties,
+    decalcificationRequired,
+  },
 ) {
   const isCurrent = section.stages.includes(status);
-  const stageDisabled =
-    section.gate !== null &&
-    !isStageEnabled(section.gate, configurationProperties) &&
-    !isCurrent;
+  const hintKey = notApplicableHintKey(section, {
+    isCurrent,
+    configurationProperties,
+    decalcificationRequired,
+  });
 
-  if (stageDisabled) {
+  if (hintKey) {
     return {
       ...section,
       state: SECTION_STATE.DISABLED,
-      lockedHintKey: "pathology.locked.stageDisabled",
+      lockedHintKey: hintKey,
       lockedHintValues: undefined,
       isCurrent,
-      stageDisabled,
+      notApplicable: true,
     };
   }
 
@@ -341,12 +411,7 @@ function deriveOneSection(
     const derived = section.displayOnly
       ? deriveSectionState({ sectionStage: null, readOnly: true })
       : deriveSectionState({ sectionStage: null });
-    return {
-      ...section,
-      ...derived,
-      isCurrent,
-      stageDisabled,
-    };
+    return { ...section, ...derived, isCurrent, notApplicable: false };
   }
 
   const derived = deriveSectionState({
@@ -371,7 +436,7 @@ function deriveOneSection(
     ...derived,
     state,
     isCurrent,
-    stageDisabled,
+    notApplicable: false,
   };
 }
 
@@ -386,6 +451,7 @@ export function deriveCaseSections({
   status,
   isPathologist,
   configurationProperties,
+  decalcificationRequired,
 } = {}) {
   return PATHOLOGY_SECTIONS.map((section) => ({
     ...deriveOneSection(section, {
@@ -393,6 +459,7 @@ export function deriveCaseSections({
       status,
       isPathologist,
       configurationProperties,
+      decalcificationRequired,
     }),
     openByDefault: sectionOpensByDefault(section, status),
   }));
@@ -411,7 +478,9 @@ export function railCurrentIndex(sections, status) {
  * The progress rail's item for each derived section. A step is complete on
  * the record where a rule exists (grossing under FR-3.4, microtomy holding a
  * slide, a report existing) and on the case having passed the stage where
- * none does. Only the review step names outstanding requests.
+ * none does. A step the laboratory does not track, or one this specimen does
+ * not need, is marked not applicable and never complete. Only the review step
+ * names outstanding requests.
  */
 export function deriveRailItems(
   sections,
@@ -423,7 +492,8 @@ export function deriveRailItems(
     const isReportsSection = section.id === "pathology-section-reports";
     const lastStage = section.stages[section.stages.length - 1];
     const lastStageIndex = PATHOLOGY_STAGES.indexOf(lastStage);
-    const passed = !section.stageDisabled && caseIndex > lastStageIndex;
+    const notApplicable = section.notApplicable;
+    const passed = !notApplicable && caseIndex > lastStageIndex;
 
     let complete = passed;
     if (isReportsSection) {
@@ -443,7 +513,7 @@ export function deriveRailItems(
       id: section.id,
       labelKey: section.titleKey,
       complete,
-      notApplicable: section.stageDisabled,
+      notApplicable,
       pendingLabel: pending?.visible,
       pendingTitle: pending?.full,
     };

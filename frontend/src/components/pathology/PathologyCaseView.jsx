@@ -38,12 +38,13 @@ import {
   stageLabel,
 } from "./pathologyStages";
 import {
+  decalcificationFlagFrozen,
   deriveCaseSections,
   deriveRailItems,
-  isStageEnabled,
   openRequestNames,
   railCurrentIndex,
   sectionBadge,
+  stageApplies,
   stageBadgeKind,
 } from "./pathologySections";
 import {
@@ -67,6 +68,8 @@ const SHOW_DEACTIVATED_SWITCH = {
   block: "showDeactivatedCassettes",
   slide: "showDeactivatedSlides",
 };
+
+const TISSUE_TYPES_URL = "/rest/dictionary/category/pathology_tissue_types";
 
 /**
  * The anatomic-pathology case, on the shared case-view shell.
@@ -99,6 +102,10 @@ function PathologyCaseView() {
     useContext(ConfigurationContext)?.configurationProperties;
 
   const [caseInfo, setCaseInfo] = useState({});
+  // The stage as last read from the server, which edits never touch: the
+  // server judges a save by the stage the case is stored at, and so must
+  // anything here that predicts what it will accept.
+  const [storedStatus, setStoredStatus] = useState(null);
   const [caseLoaded, setCaseLoaded] = useState(false);
   const [dirty, setDirty] = useState(false);
   // Bumped on every load so the multiselects, which read their selection once
@@ -115,6 +122,9 @@ function PathologyCaseView() {
   );
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [pathologistUsers, setPathologistUsers] = useState([]);
+  // Null until the list has arrived, so an empty list can only ever mean the
+  // laboratory has configured none.
+  const [tissueTypes, setTissueTypes] = useState(null);
   const [loadingConclusions, setLoadingConclusions] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
   const [nextPage, setNextPage] = useState(null);
@@ -135,6 +145,8 @@ function PathologyCaseView() {
   });
 
   const isPathologist = hasRole(userSessionDetails, "Pathologist");
+  const decalcificationRequired = Boolean(caseInfo.decalcificationRequired);
+  const flagFrozen = decalcificationFlagFrozen(storedStatus);
 
   const updateCase = (patch) => {
     setCaseInfo((prev) => ({
@@ -184,6 +196,7 @@ function PathologyCaseView() {
         userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
     setCaseInfo(loaded);
+    setStoredStatus(loaded.status);
     setDirty(false);
     // A load drops every unsaved slide, so an earlier refusal marks nothing.
     setSaveRefusedForBlock(false);
@@ -196,7 +209,17 @@ function PathologyCaseView() {
     setFormVersion((version) => version + 1);
   };
 
-  const reloadCase = () => getFromOpenElisServer(caseUrl, loadCase);
+  // The tissue types are read again with the case because a refused save
+  // can mean one was retired since the page loaded, and reloading is what
+  // the bench is told to do about it. A failed read keeps the list it had.
+  const reloadCase = () => {
+    getFromOpenElisServer(TISSUE_TYPES_URL, (list) => {
+      if (componentMounted.current && Array.isArray(list)) {
+        setTissueTypes(list);
+      }
+    });
+    getFromOpenElisServer(caseUrl, loadCase);
+  };
 
   const loadConclusionData = (res) => {
     if (res && res.displayItems && res.displayItems.length > 0) {
@@ -270,16 +293,20 @@ function PathologyCaseView() {
       reloadCase();
     } else {
       // The server's own sentence is English and names internal ids, so only
-      // a refusal the bench can act on gets words of its own.
+      // a refusal the bench can act on gets words of its own. A 400 is a case
+      // rule the posted rows broke: a cassette, slide or tissue type changed
+      // elsewhere after the case was loaded, so reloading is what the bench
+      // can do.
+      let messageId = "error.save.msg";
+      if (response?.status === 400) {
+        messageId = "pathology.error.reloadCase";
+      } else if (body?.conflict === "designation") {
+        messageId = "pathology.error.designationConflict";
+      }
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id:
-            body?.conflict === "designation"
-              ? "pathology.error.designationConflict"
-              : "error.save.msg",
-        }),
+        message: intl.formatMessage({ id: messageId }),
       });
     }
   }
@@ -371,6 +398,7 @@ function PathologyCaseView() {
       slides: stripClientKeys(caseInfo.slides),
       reports: caseInfo.reports,
       grossExam: caseInfo.grossExam,
+      decalcificationRequired,
       microscopyExam: caseInfo.microscopyExam,
       conclusionText: caseInfo.conclusionText,
       release: caseInfo.release != undefined ? caseInfo.release : false,
@@ -440,7 +468,7 @@ function PathologyCaseView() {
     );
     getFromOpenElisServer("/rest/users", setTechnicianUsers);
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
-    getFromOpenElisServer(caseUrl, loadCase);
+    reloadCase();
 
     return () => {
       componentMounted.current = false;
@@ -459,6 +487,7 @@ function PathologyCaseView() {
     status: caseInfo.status,
     isPathologist,
     configurationProperties,
+    decalcificationRequired,
   });
   const openNames = openRequestNames(caseInfo.requests);
 
@@ -473,6 +502,8 @@ function PathologyCaseView() {
             updateCase={updateCase}
             readOnly={readOnly}
             technicianUsers={technicianUsers}
+            tissueTypes={tissueTypes}
+            decalcificationFlagFrozen={flagFrozen}
             dirty={dirty}
             saving={isSubmitting}
             onDeactivate={setPendingDeactivation}
@@ -539,16 +570,18 @@ function PathologyCaseView() {
     }
   };
 
-  // Every stage this laboratory tracks, plus the one the case already stands
-  // at even when the laboratory has since stopped tracking it, because a case
-  // must never be unable to say where it is. The list arrives from the server
-  // in bench order (FR-2.1) carrying an English value; the label is localized
-  // here while the item's id stays the raw enum name the save payload and the
-  // backend expect.
+  // Every stage that applies to this case, plus the one the case already
+  // stands at even when it no longer applies, because a case must never be
+  // unable to say where it is. The list arrives from the server in bench order
+  // (FR-2.1) carrying an English value; the label is localized here while the
+  // item's id stays the raw enum name the save payload and the backend expect.
   const stageItems = statuses.filter(
     (status) =>
-      isStageEnabled(status.id, configurationProperties) ||
-      status.id === caseInfo.status,
+      status.id === caseInfo.status ||
+      stageApplies(status.id, {
+        configurationProperties,
+        decalcificationRequired,
+      }),
   );
 
   // A Carbon Dropdown rather than a Select: the bar sits at the foot of a long
@@ -596,6 +629,11 @@ function PathologyCaseView() {
       id: "stage",
       labelKey: "pathology.label.stage",
       value: knownStage ? stageLabel(intl, caseInfo.status) : null,
+    },
+    {
+      id: "decalcification",
+      labelKey: "pathology.label.decalcificationRequired",
+      value: decalcificationRequired,
     },
     {
       id: "blocks",

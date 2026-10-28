@@ -13,6 +13,8 @@ import {
   deriveCaseSections,
   railCurrentIndex,
   deriveRailItems,
+  stageApplies,
+  decalcificationFlagFrozen,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -83,10 +85,13 @@ describe("stageEnablementProperty", () => {
 });
 
 describe("deriveCaseSections at GROSSING for a technician", () => {
+  // Flagged for decalcification, so every section ahead is locked by the
+  // stage order alone.
   const sections = deriveCaseSections({
     intl,
     status: "GROSSING",
     isPathologist: false,
+    decalcificationRequired: true,
   });
 
   it("shows Case Information read-only and opens the grossing and reports sections", () => {
@@ -225,7 +230,6 @@ describe("a stage a laboratory has switched off", () => {
     const coverslipping = byId(sections, "pathology-section-coverslipping");
     expect(coverslipping.state).toBe(SECTION_STATE.DISABLED);
     expect(coverslipping.lockedHintKey).toBe("pathology.locked.stageDisabled");
-    expect(coverslipping.stageDisabled).toBe(true);
 
     const railItems = deriveRailItems(sections, {
       intl,
@@ -258,7 +262,6 @@ describe("a stage a laboratory has switched off", () => {
 
     const coverslipping = byId(sections, "pathology-section-coverslipping");
     expect(coverslipping.state).toBe(SECTION_STATE.OPEN);
-    expect(coverslipping.stageDisabled).toBe(false);
 
     const railItems = deriveRailItems(sections, {
       intl,
@@ -285,6 +288,7 @@ describe("deriveRailItems", () => {
       intl,
       status: "MICROTOMY",
       isPathologist: true,
+      decalcificationRequired: true,
     });
 
     const items = deriveRailItems(sections, {
@@ -698,6 +702,7 @@ describe("a status this build does not recognize", () => {
       intl,
       status,
       isPathologist: true,
+      decalcificationRequired: true,
     });
 
     sections
@@ -786,5 +791,163 @@ describe("counting badges over rows in use", () => {
     expect(microtomy([{ id: "1", active: false }]).complete).toBe(false);
     expect(microtomy([{ blockId: "1", location: "" }]).complete).toBe(false);
     expect(microtomy([{ id: "1", active: true }]).complete).toBe(true);
+  });
+});
+
+describe("decalcification and the grossing flag", () => {
+  const DECALCIFICATION = "pathology-section-decalcification";
+
+  const derive = (status, decalcificationRequired, configurationProperties) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: true,
+      configurationProperties,
+      decalcificationRequired,
+    });
+
+  const railItem = (sections, status) =>
+    deriveRailItems(sections, {
+      intl,
+      status,
+      reportCount: 0,
+      openRequestNames: [],
+    }).find((item) => item.id === DECALCIFICATION);
+
+  it("locks decalcification as not required on a specimen grossing did not flag, and marks its rail step not applicable", () => {
+    const sections = derive("GROSSING", false);
+    const decalcification = byId(sections, DECALCIFICATION);
+
+    expect(decalcification.state).toBe(SECTION_STATE.DISABLED);
+    expect(decalcification.lockedHintKey).toBe(
+      "pathology.locked.decalcNotRequired",
+    );
+    expect(railItem(sections, "GROSSING").notApplicable).toBe(true);
+  });
+
+  it("never ticks the step of a decalcification the specimen did not need, however far the case has gone", () => {
+    const sections = derive("MICROTOMY", false);
+    const item = railItem(sections, "MICROTOMY");
+
+    expect(item.notApplicable).toBe(true);
+    expect(item.complete).toBe(false);
+  });
+
+  it("locks a flagged specimen's decalcification by the stage order instead, and ticks it once the case is past", () => {
+    const atGrossing = derive("GROSSING", true);
+    const decalcification = byId(atGrossing, DECALCIFICATION);
+
+    expect(decalcification.state).toBe(SECTION_STATE.DISABLED);
+    expect(decalcification.lockedHintKey).toBe("caseView.locked.awaitingStage");
+    expect(decalcification.lockedHintValues.stage).toBe(
+      messages["pathology.stage.decalcification"],
+    );
+    expect(railItem(atGrossing, "GROSSING").notApplicable).toBe(false);
+
+    expect(railItem(derive("MICROTOMY", true), "MICROTOMY").complete).toBe(
+      true,
+    );
+  });
+
+  it("opens decalcification for a case standing at it even when grossing did not flag the specimen", () => {
+    const sections = derive("DECALCIFICATION", false);
+    const decalcification = byId(sections, DECALCIFICATION);
+
+    expect(decalcification.state).toBe(SECTION_STATE.OPEN);
+    expect(railItem(sections, "DECALCIFICATION").notApplicable).toBe(false);
+  });
+
+  it("says a stage the laboratory does not track is untracked before saying the specimen does not need it", () => {
+    const sections = derive("GROSSING", false, {
+      PATHOLOGY_STAGE_DECALCIFICATION_ENABLED: "false",
+    });
+
+    expect(byId(sections, DECALCIFICATION).lockedHintKey).toBe(
+      "pathology.locked.stageDisabled",
+    );
+    expect(railItem(sections, "GROSSING").notApplicable).toBe(true);
+  });
+});
+
+describe("stageApplies", () => {
+  it("applies decalcification only to a specimen grossing flagged as needing it", () => {
+    expect(
+      stageApplies("DECALCIFICATION", { decalcificationRequired: false }),
+    ).toBe(false);
+    expect(
+      stageApplies("DECALCIFICATION", { decalcificationRequired: true }),
+    ).toBe(true);
+  });
+
+  it("turns down a stage the laboratory does not track, however the specimen is flagged", () => {
+    const configurationProperties = {
+      PATHOLOGY_STAGE_DECALCIFICATION_ENABLED: "false",
+      PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false",
+    };
+
+    expect(
+      stageApplies("DECALCIFICATION", {
+        configurationProperties,
+        decalcificationRequired: true,
+      }),
+    ).toBe(false);
+    expect(
+      stageApplies("COVERSLIPPING", {
+        configurationProperties,
+        decalcificationRequired: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("lets the flag decide no stage but decalcification", () => {
+    [
+      "ACCESSIONED",
+      "GROSSING",
+      "PROCESSING",
+      "EMBEDDING",
+      "MICROTOMY",
+      "STAINING",
+      "COVERSLIPPING",
+      "READY_PATHOLOGIST",
+      "UNDER_REVIEW",
+      "COMPLETED",
+    ].forEach((stageId) => {
+      expect(stageApplies(stageId, { decalcificationRequired: false })).toBe(
+        true,
+      );
+      expect(stageApplies(stageId, { decalcificationRequired: true })).toBe(
+        true,
+      );
+    });
+  });
+});
+
+describe("decalcificationFlagFrozen", () => {
+  it("leaves the flag editable up to and at decalcification", () => {
+    ["ACCESSIONED", "GROSSING", "DECALCIFICATION"].forEach((stored) => {
+      expect(decalcificationFlagFrozen(stored)).toBe(false);
+    });
+  });
+
+  it("freezes the flag at every stage after decalcification", () => {
+    [
+      "PROCESSING",
+      "EMBEDDING",
+      "MICROTOMY",
+      "STAINING",
+      "COVERSLIPPING",
+      "READY_PATHOLOGIST",
+      "UNDER_REVIEW",
+      "COMPLETED",
+    ].forEach((stored) => {
+      expect(decalcificationFlagFrozen(stored)).toBe(true);
+    });
+  });
+
+  // The server judges by the stored stage too, so a stage it has and this
+  // build lacks is left for the server to decide rather than guessed at.
+  it("freezes nothing for a case not yet loaded or at a stage this build does not know", () => {
+    expect(decalcificationFlagFrozen(null)).toBe(false);
+    expect(decalcificationFlagFrozen("SOME_LATER_STAGE")).toBe(false);
   });
 });

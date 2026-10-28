@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import {
+  Checkbox,
+  ComboBox,
   Heading,
   Section,
   Select,
@@ -17,13 +19,16 @@ import {
   deactivatedCount,
   labelStreamUrl,
   rowListEditors,
+  tissueTypeItems,
   unsavedPosition,
 } from "../pathologyRows";
 import "../pathologyCaseView.scss";
 
 /**
  * FR-3: what the bench did with the specimen at grossing: the macroscopic
- * description, the cassettes cut from it, and who worked it.
+ * description, whether it needs decalcifying, the cassettes cut from it and
+ * the tissue each holds, and who worked it. The decalcification flag stops
+ * being editable once the stored case is past that stage.
  * A saved cassette is named by the server and only ever deactivated (S-10.4).
  */
 const GrossingSection = ({
@@ -31,6 +36,8 @@ const GrossingSection = ({
   updateCase,
   readOnly,
   technicianUsers,
+  tissueTypes,
+  decalcificationFlagFrozen,
   dirty,
   saving,
   onDeactivate,
@@ -39,7 +46,14 @@ const GrossingSection = ({
   const [showDeactivated, setShowDeactivated] = useState(false);
 
   const blocks = caseInfo.blocks ?? [];
+
   const { patchRow, removeRow, addRow } = rowListEditors("blocks", updateCase);
+  // The list comes from a dictionary category each laboratory fills itself,
+  // so an empty one is a configuration gap the bench is told about rather
+  // than a picker that silently offers nothing. Until the list has arrived
+  // there is nothing to pick and nothing yet to say about it.
+  const tissueTypesUnknown = !Array.isArray(tissueTypes);
+  const noTissueTypes = !tissueTypesUnknown && tissueTypes.length === 0;
 
   return (
     <Stack gap={6}>
@@ -47,9 +61,34 @@ const GrossingSection = ({
         id="grossExam"
         disabled={readOnly}
         rows={6}
-        labelText={intl.formatMessage({ id: "pathology.label.grossexam" })}
+        labelText={intl.formatMessage({ id: "pathology.label.grossExam" })}
         value={caseInfo.grossExam ?? ""}
         onChange={(e) => updateCase({ grossExam: e.target.value })}
+      />
+      <Checkbox
+        id="decalcificationRequired"
+        disabled={readOnly || decalcificationFlagFrozen}
+        labelText={intl.formatMessage({
+          id: "pathology.label.decalcificationRequired",
+        })}
+        checked={Boolean(caseInfo.decalcificationRequired)}
+        onChange={(_, { checked }) =>
+          updateCase({ decalcificationRequired: checked })
+        }
+        // Carbon renders the helper text under the box but does not point the
+        // box at it, so the hint carries its own id and the box names it.
+        helperText={
+          decalcificationFlagFrozen ? (
+            <span id="decalcificationRequiredHint">
+              {intl.formatMessage({
+                id: "pathology.locked.decalcificationPassed",
+              })}
+            </span>
+          ) : undefined
+        }
+        aria-describedby={
+          decalcificationFlagFrozen ? "decalcificationRequiredHint" : undefined
+        }
       />
       <div>
         <Section>
@@ -73,26 +112,73 @@ const GrossingSection = ({
             onRemove={() => removeRow(index)}
             onDeactivate={onDeactivate}
           >
-            {({ objectName, disabled }) => (
-              <div className="pathology-case-view__row-field">
-                <TextInput
-                  id={"blockLocation" + index}
-                  disabled={disabled}
-                  labelText={
-                    <>
-                      {intl.formatMessage({ id: "pathology.label.location" })}
-                      <span className="cds--visually-hidden">
-                        {" " + objectName}
-                      </span>
-                    </>
-                  }
-                  value={block.location ?? ""}
-                  onChange={(e) =>
-                    patchRow(index, { location: e.target.value })
-                  }
-                />
-              </div>
-            )}
+            {({ hiddenName, disabled }) => {
+              const tissueItems = tissueTypeItems(
+                tissueTypes,
+                block,
+                caseInfo.tissueTypeNames,
+              );
+              return (
+                <>
+                  <div className="pathology-case-view__row-field">
+                    <TextInput
+                      id={"blockLocation" + index}
+                      disabled={disabled}
+                      labelText={
+                        <>
+                          {intl.formatMessage({
+                            id: "pathology.label.location",
+                          })}
+                          {hiddenName}
+                        </>
+                      }
+                      value={block.location ?? ""}
+                      onChange={(e) =>
+                        patchRow(index, { location: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="pathology-case-view__row-field">
+                    <ComboBox
+                      id={"blockTissueType" + index}
+                      size="md"
+                      titleText={
+                        <>
+                          {intl.formatMessage({
+                            id: "pathology.label.tissueType",
+                          })}
+                          {hiddenName}
+                        </>
+                      }
+                      placeholder={intl.formatMessage({ id: "common.select" })}
+                      items={tissueItems}
+                      itemToString={(item) => item?.value ?? ""}
+                      selectedItem={
+                        tissueItems.find(
+                          (tissue) =>
+                            String(tissue.id) === String(block.tissueTypeId),
+                        ) ?? null
+                      }
+                      onChange={({ selectedItem }) =>
+                        patchRow(index, {
+                          tissueTypeId: selectedItem ? selectedItem.id : null,
+                        })
+                      }
+                      disabled={disabled || tissueTypesUnknown || noTissueTypes}
+                      helperText={
+                        // A row locked for its own reasons says nothing about
+                        // the list, which is not what keeps it locked.
+                        noTissueTypes && !disabled
+                          ? intl.formatMessage({
+                              id: "pathology.empty.noTissueTypes",
+                            })
+                          : undefined
+                      }
+                    />
+                  </div>
+                </>
+              );
+            }}
           </IdentifiedRow>
         ))}
         <ListToolbar

@@ -18,6 +18,7 @@ import {
   slideIdentifier,
   slideOnBlockName,
   stripClientKeys,
+  tissueTypeItems,
   unsavedPosition,
   withClientKey,
 } from "./pathologyRows";
@@ -316,5 +317,41 @@ describe("rowListEditors", () => {
     expect(read().slides[1]).toMatchObject({ blockId: null, location: "" });
     expect(read().slides[1].clientKey).toBeTruthy();
     expect(read().slides[1]).not.toHaveProperty("id");
+  });
+});
+
+// The served tissue types are the active ones only, so a cassette holding a
+// type retired after it was recorded has to bring its own entry.
+describe("tissueTypeItems", () => {
+  const served = [
+    { id: "21", value: "Skin" },
+    { id: "22", value: "Bone" },
+  ];
+
+  it("offers the served list as it is when the cassette holds nothing, or holds one of them", () => {
+    expect(tissueTypeItems(served, { tissueTypeId: null }, {})).toEqual(served);
+    expect(tissueTypeItems(served, { tissueTypeId: "" }, {})).toEqual(served);
+    expect(tissueTypeItems(served, {}, undefined)).toEqual(served);
+    expect(tissueTypeItems(served, { tissueTypeId: 22 }, {})).toEqual(served);
+  });
+
+  it("adds the held type the list no longer serves, under the name the case carries for it", () => {
+    expect(
+      tissueTypeItems(served, { tissueTypeId: "23" }, { 23: "Cartilage" }),
+    ).toEqual([...served, { id: "23", value: "Cartilage" }]);
+  });
+
+  it("falls back to the id when the case carries no name for it, rather than showing nothing", () => {
+    expect(tissueTypeItems(served, { tissueTypeId: "23" }, {})).toEqual([
+      ...served,
+      { id: "23", value: "23" },
+    ]);
+  });
+
+  it("still names the held type while the served list has not arrived", () => {
+    expect(
+      tissueTypeItems(null, { tissueTypeId: "23" }, { 23: "Cartilage" }),
+    ).toEqual([{ id: "23", value: "Cartilage" }]);
+    expect(tissueTypeItems(null, { tissueTypeId: null }, {})).toEqual([]);
   });
 });
