@@ -39,7 +39,10 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
         }
     }
 
-    /** Retained delivery evidence, not a value inferred from current parser settings. */
+    /**
+     * Retained delivery evidence, not a value inferred from current parser
+     * settings.
+     */
     public record ReceivedValue(String rawValue, String value, String kind, String unit) {
     }
 

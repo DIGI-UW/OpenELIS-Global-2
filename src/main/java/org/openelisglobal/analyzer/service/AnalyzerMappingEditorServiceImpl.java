@@ -332,9 +332,11 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                     .deliveredAnswer(observation);
             return new AnalyzerMappingView.ReceivedValue(raw, answer, answer == null ? "NO_VALUE" : "TEXT", null);
         }
-        // Pre-contract rows retain the delivered type and value, separately from raw text.
+        // Pre-contract rows retain the delivered type and value, separately from raw
+        // text.
         return new AnalyzerMappingView.ReceivedValue(raw, row.getResult(),
-                row.getResult() == null ? "NO_VALUE" : "N".equals(row.getResultType()) ? "NUMBER" : "TEXT", row.getUnits());
+                row.getResult() == null ? "NO_VALUE" : "N".equals(row.getResultType()) ? "NUMBER" : "TEXT",
+                row.getUnits());
     }
 
     private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {
