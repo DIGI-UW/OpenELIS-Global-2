@@ -104,3 +104,22 @@ branch review or authorize merging.
 Distributions and deployments pin a release tag by digest, for example
 `itechuw/openelis-global-2:3.2.3.0@sha256:...`. The `:develop` images are
 rebuilt on every merge and are for the testing server only.
+
+## Distribution delivery
+
+After all three checkpoints pass, the existing image publisher promotes the
+tested images and attaches `deployment-manifest.json` to the OE2 release. It
+records the release tag, tested commit and immutable digests for every published
+service, including certificate initialization, Bridge and mock. Repeated
+publication accepts identical assets/images and refuses replacement with
+different contents.
+
+The lightweight `openelis-docker` release workflow consumes that manifest and
+pins its Compose file to the same images. It does not select another Bridge
+version or rebuild images. Distribution tags are immutable. A missing manifest
+means the release is not yet ready for that distribution workflow; never fall
+back to `develop` or reconstruct an image set from independent version tags.
+
+This preserves the supported maintenance-branch exception above. Offline
+packages from historical releases remain separate; new offline delivery is
+deferred. The OE2 publisher is the only shared testing-server deployment owner.

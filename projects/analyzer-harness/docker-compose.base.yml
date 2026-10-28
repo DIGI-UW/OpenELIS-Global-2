@@ -102,6 +102,8 @@ services:
   # Shared by CI and local development; all durable Bridge state survives
   # container replacement and ordinary down/up (only --volumes removes it).
   openelis-analyzer-bridge:
+    # Only the development/CI profile serves the shared test keystore.
+    group_add: ["8443"]
     depends_on:
       certs:
         condition: service_completed_successfully

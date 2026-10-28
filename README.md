@@ -66,32 +66,19 @@ We welcome community contributions to help improve OpenELIS Global!
 
 1. For development , you need to install [Java](https://openjdk.org/install/) 21
 
-### For Offline Installation Using the OpenELIS Global2 Installer
+### Install a published release
 
-Prepackaged offline installers are published with the
-[openelis-docker releases](https://github.com/DIGI-UW/openelis-docker/releases),
-not with the releases of this repository. An openelis-docker release carries the
-version number of the OpenELIS Global release it packages (for example `3.2.3.0`
-or `3.3.0`), and its notes name the Analyzer Bridge version shipped with it.
+Use a
+[released default distribution](https://github.com/DIGI-UW/openelis-docker/releases)
+and follow the README at that release tag. Manifest-enabled distributions select
+the exact images tested together by OE2 and generate installation-owned keys at
+first start. Configure private credentials, then use `docker compose pull`,
+`docker compose up -d --no-build`, and `docker compose ps`.
 
-1. Choose the OpenELIS Global release to install. The supported release lines,
-   branches and the versioning policy are described in
-   [RELEASES.md](RELEASES.md).
-2. Open the openelis-docker release with the same version number and download
-   `OpenELIS-Global_<version>_docker_installer.tar.gz` from its assets.
-3. Follow the
-   [offline installation steps](https://github.com/DIGI-UW/openelis-docker#offline-installation)
-   that come with the package: `run.sh` for a first installation, `upgrade.sh`
-   for an existing one. The
-   [Offline install of OpenELIS Global](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1711636518/Offline+install+of+OpenELIS+Global)
-   wiki page walks a lab server through the same steps.
-
-The packages are built and published by the openelis-docker release workflow, so
-there is nothing to build or package locally.
-
-### For running OpenELIS Global2 in Docker with default Settings out of the Box
-
-see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
+See [installation guidance](docs/install.md) and [release policy](RELEASES.md).
+Do not use development tags for production. Historical offline packages retain
+their own tagged instructions; they are not an alternative bootstrap for a new
+distribution.
 
 ### For running a light OpenELIS Global2 without the FHIR server and the Analyzer Bridge
 

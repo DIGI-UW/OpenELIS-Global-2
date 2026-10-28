@@ -62,6 +62,8 @@ class ComposeTlsPasswordsTest(unittest.TestCase):
                         self.assertEqual(trust, oe["SERVER_SSL_TRUST_STORE_PASSWORD"])
                     bridge = services.get("openelis-analyzer-bridge")
                     if bridge:
+                        if stack in ("development", "analyzer-ci"):
+                            self.assertIn("8443", bridge.get("group_add", []))
                         self.assertEqual(key, bridge["environment"]["SERVER_SSL_KEY_STORE_PASSWORD"])
                         self.assertEqual(trust, bridge["environment"]["BRIDGE_TRUSTSTORE_PASSWORD"])
                     # The mounted connector must actually consume the configured JVM property.
