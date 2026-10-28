@@ -101,6 +101,8 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     /** The run produced no value (ERROR, NO RESULT); never a patient result. */
     public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
     /** A control that reports an answer, for a test and level with no QC target. */
+    public static final String IMPORT_ISSUE_QC_LOT_MISSING = "qc_lot_missing";
+    public static final String IMPORT_ISSUE_QC_VALUE_UNSUPPORTED = "qc_value_unsupported";
     public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
     /**
      * Historical hold reason, retained only so existing rows can recover locally.
@@ -120,8 +122,9 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
             IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
             IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING,
-            IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING, IMPORT_ISSUE_OTHER_REVISION,
-            IMPORT_ISSUE_ASSAY_NOT_ENABLED, IMPORT_ISSUE_READING_CHANGED, IMPORT_ISSUE_TYPE_READING_CHANGED);
+            IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING, IMPORT_ISSUE_QC_LOT_MISSING,
+            IMPORT_ISSUE_QC_VALUE_UNSUPPORTED, IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED,
+            IMPORT_ISSUE_READING_CHANGED, IMPORT_ISSUE_TYPE_READING_CHANGED);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
@@ -208,19 +211,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "arrival_reading", columnDefinition = "TEXT")
     private String arrivalReading;
 
-    // QC metadata propagated from the analyzer-bridge for control samples.
-    // Transient — only carried in-memory from FHIR ingest
-    // (AnalyzerFhirImportController) through to QCResultProcessingService.
-    // Not persisted on analyzer_results because the matched lot is
-    // already recorded on the qc_result row (control_lot_id FK).
-    // - lotNumber: canonical qc_control_lot.lot_number when the bridge
-    // extracted it (ASTM Q-segment field 3 component 2)
-    // - controlLevel: clinical level identifier (LPC/HPC/CNEG/CPOS/etc.)
-    // — ASTM Q-segment field 3 component 3, OR matched FILE qcRule's
-    // SPECIMEN_ID_PREFIX operand
-    @jakarta.persistence.Transient
-    private String lotNumber;
-
+    // Rehydrated from the retained normalized observation during recovery.
     @jakarta.persistence.Transient
     private String controlLevel;
 
@@ -426,14 +417,6 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setArrivalReading(String arrivalReading) {
         this.arrivalReading = arrivalReading;
-    }
-
-    public String getLotNumber() {
-        return lotNumber;
-    }
-
-    public void setLotNumber(String lotNumber) {
-        this.lotNumber = lotNumber;
     }
 
     public String getControlLevel() {

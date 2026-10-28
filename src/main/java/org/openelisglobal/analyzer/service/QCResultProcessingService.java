@@ -14,26 +14,25 @@ public interface QCResultProcessingService {
      *                        connection
      * @param testId          local Test selected by the current site binding
      * @param accessionNumber Specimen accession number (specimen identifier)
-     * @param lotNumber       Canonical {@code qc_control_lot.lot_number} when the
-     *                        Bridge extracted from the analyzer message; may be
-     *                        null
      * @param controlLevel    clinical control level extracted by Bridge; may be
      *                        null
      * @param resultValue     Numeric result value
      * @param unit            Unit of measure
      * @param timestamp       Run date/time from Observation.effectiveDateTime
      */
-    void processQCResult(String analyzerId, String testId, String accessionNumber, String lotNumber,
-            String controlLevel, BigDecimal resultValue, String unit, LocalDateTime timestamp);
+    Outcome processQCResult(String analyzerId, String testId, String accessionNumber, String controlLevel,
+            BigDecimal resultValue, String unit, LocalDateTime timestamp);
 
-    /** What became of a control that reported an answer. */
+    /** What became of a control measurement. */
     enum Outcome {
-        /** Judged against its QC target and recorded PASS or FAIL. */
+        /** Persisted as a numeric measurement or a qualitative PASS/FAIL. */
         RECORDED,
         /** No usable control lot matched; nothing is recorded. */
         NO_LOT,
         /** The test and level have no expected answer to judge against. */
-        NO_TARGET
+        NO_TARGET,
+        /** No exact number or mapped answer is available for QC evaluation. */
+        UNSUPPORTED_VALUE
     }
 
     /**
@@ -48,5 +47,5 @@ public interface QCResultProcessingService {
      *                           the reported value into
      */
     Outcome processQualitativeQCResult(String analyzerId, String testId, String componentId, String accessionNumber,
-            String lotNumber, String controlLevel, String answerDictionaryId, LocalDateTime timestamp);
+            String controlLevel, String answerDictionaryId, LocalDateTime timestamp);
 }
