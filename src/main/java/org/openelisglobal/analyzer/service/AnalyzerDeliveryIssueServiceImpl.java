@@ -19,10 +19,13 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
 
     private final BridgeOutboxClient outboxClient;
     private final AnalyzerService analyzerService;
+    private final AnalyzerDeliveryActionService deliveryActionService;
 
-    public AnalyzerDeliveryIssueServiceImpl(BridgeOutboxClient outboxClient, AnalyzerService analyzerService) {
+    public AnalyzerDeliveryIssueServiceImpl(BridgeOutboxClient outboxClient, AnalyzerService analyzerService,
+            AnalyzerDeliveryActionService deliveryActionService) {
         this.outboxClient = outboxClient;
         this.analyzerService = analyzerService;
+        this.deliveryActionService = deliveryActionService;
     }
 
     @Override
@@ -40,10 +43,12 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
     @Override
     public void retry(String outboxEntryId, String actor) {
         outboxClient.retry(outboxEntryId);
-        // The Bridge records only OpenELIS's service account, so the person who asked
-        // is recorded here.
         LogEvent.logInfo(getClass().getSimpleName(), "retry",
                 "Analyzer delivery " + outboxEntryId + " retried by user " + actor);
+        // The Bridge records only OpenELIS's service account, so the person who asked
+        // is recorded here.
+        deliveryActionService.retain(outboxEntryId, AnalyzerDeliveryActionService.RETRY,
+                resolveAnalyzerId(outboxEntryId), actor);
     }
 
     @Override
@@ -51,6 +56,26 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
         outboxClient.dismiss(outboxEntryId);
         LogEvent.logInfo(getClass().getSimpleName(), "dismiss",
                 "Analyzer delivery " + outboxEntryId + " dismissed by user " + actor);
+        deliveryActionService.retain(outboxEntryId, AnalyzerDeliveryActionService.DISMISS,
+                resolveAnalyzerId(outboxEntryId), actor);
+    }
+
+    /**
+     * The Bridge action endpoints do not echo the entry, so the analyzer is read
+     * from the entry itself once the Bridge has accepted the action. Attribution of
+     * the actor does not depend on this, so a failed lookup leaves the analyzer
+     * unresolved rather than losing the record.
+     */
+    private String resolveAnalyzerId(String outboxEntryId) {
+        try {
+            String connectionId = text(outboxClient.get(outboxEntryId), "connectionId");
+            return connectionId == null ? null
+                    : analyzerService.findByBridgeConnectionId(connectionId).map(Analyzer::getId).orElse(null);
+        } catch (RuntimeException exception) {
+            LogEvent.logWarn(getClass().getSimpleName(), "resolveAnalyzerId",
+                    "Cannot resolve the analyzer for delivery " + outboxEntryId + ": " + exception.getMessage());
+        }
+        return null;
     }
 
     private static AnalyzerDeliveryIssue toIssue(JsonNode row, Map<String, Analyzer> byConnection) {
