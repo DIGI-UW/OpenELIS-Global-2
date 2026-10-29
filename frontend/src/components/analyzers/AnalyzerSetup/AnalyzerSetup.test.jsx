@@ -889,6 +889,59 @@ describe("AnalyzerSetup Instrument step", () => {
     );
   });
 
+  it("keeps routine analyzer restart recovery on the activation controls", async () => {
+    const candidate = connectedCandidate({ status: "ACTIVE" });
+    candidate.connection = {
+      ...candidate.connection,
+      readiness: {
+        ready: false,
+        blockers: [
+          {
+            messageKey: "analyzer.connection.readiness.restoreFailed",
+          },
+        ],
+      },
+    };
+    const onClose = vi.fn();
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: true,
+        blockers: [],
+      }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, _payload, callback) =>
+      callback(candidate),
+    );
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: false,
+        blockers: [],
+      }),
+    );
+    renderSetupWithHistory(`/analyzers?setup=connect&analyzerId=42`, onClose);
+    expect(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Start receiving setup samples" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Continue to Assays" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Finish and activate" }),
+    );
+    expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("opens setup reception before mapping approval and keeps clinical activation separate", async () => {
     const candidate = connectedCandidate();
     getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
