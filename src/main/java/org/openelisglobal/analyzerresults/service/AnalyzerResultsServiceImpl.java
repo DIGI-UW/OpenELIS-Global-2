@@ -25,6 +25,7 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testcalculated.service.EgfrCalculationService;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,8 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     private AnalysisService analysisService;
     @Autowired
     private ResultService resultService;
+    @Autowired
+    private EgfrCalculationService egfrCalculationService;
 
     AnalyzerResultsServiceImpl() {
         super(AnalyzerResults.class);
@@ -204,6 +207,14 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
         TestReflexUtil testReflexUtil = new TestReflexUtil();
         testReflexUtil.addNewTestsToDBForReflexTests(convertGroupListToTestReflexBeans(sampleGroupList), sysUserId);
+
+        List<Result> acceptedResults = new ArrayList<>();
+        for (SampleGrouping grouping : sampleGroupList) {
+            if (grouping.accepted) {
+                acceptedResults.addAll(grouping.resultList);
+            }
+        }
+        egfrCalculationService.updateEgfrForSavedResults(acceptedResults, sysUserId);
 
         return true;
     }

@@ -29,12 +29,14 @@ import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.event.ResultsValidatedEvent;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
+import org.openelisglobal.testcalculated.service.EgfrCalculationService;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
@@ -72,6 +74,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private VectorDeconvolutionService vectorDeconvolutionService;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private EgfrCalculationService egfrCalculationService;
 
     @Override
     @Transactional
@@ -162,6 +166,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         ResultSaveService.removeDeletedResultsInTransaction(actionDataSet.getDeletableResults(), sysUserId);
 
         List<Analysis> reflexAnalysises = setTestReflexes(actionDataSet, sysUserId);
+
+        egfrCalculationService.updateEgfrForSavedResults(savedResults(actionDataSet), sysUserId);
 
         setSampleStatus(actionDataSet, sysUserId);
 
@@ -352,6 +358,17 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             }
         }
         return reflexAnalysises;
+    }
+
+    private static List<Result> savedResults(ResultsUpdateDataSet actionDataSet) {
+        List<Result> results = new ArrayList<>();
+        for (ResultSet resultSet : actionDataSet.getNewResults()) {
+            results.add(resultSet.result);
+        }
+        for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
+            results.add(resultSet.result);
+        }
+        return results;
     }
 
     private List<TestReflexBean> convertToTestReflexBeanList(List<ResultSet> resultSetList) {
