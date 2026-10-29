@@ -7,6 +7,7 @@
 | Core revision studied | `develop` at `5f2808b02d` (pom `revision` 3.4.0-SNAPSHOT) |
 | Audience | OpenELIS core maintainers, implementation teams, DIGI architecture review |
 | Companion Jira | the epic created with this document (see "Roadmap") |
+| Revision | 2026-10-29: reconciled with the companion *OpenELIS Modularization Plan: Comparing Architecture Models* (internal review, 2026-10-28); extension-point providers, per-module Spring contexts, core-dependency access for modules (backend and frontend), internal boundary checks and the decision checks added |
 
 Evidence markers used throughout:
 
@@ -21,11 +22,13 @@ Evidence markers used throughout:
 
 OpenELIS Global has no module system today. Every implementation-specific feature (a workflow for one country, a report for one programme, an integration with one vendor system) is built into the core repository: Java code in the WAR, React code in the single-page application bundle, Liquibase changesets in the core changelog, menu rows and permission keys in core seeds. The one plugin mechanism the project ever had, the analyzer JAR loader under `/var/lib/openelis-global/plugins`, was removed by PR #4138 on 2026-09-08 (the leftover plugin API followed in PR #4506 on 2026-10-02) after the analyzer integration moved to the out-of-process Analyzer Bridge. The deployment side already separates "what a site runs" (distro repositories built from `openelis-distro-template`) from "what the core ships", but a distro can only vary configuration, never code.
 
-This document proposes a **manifest-driven module system** with one artifact type: a **module JAR** that carries a backend (Spring beans, REST controllers, JPA entities, a Liquibase changelog, permission and menu declarations) and, for every module with a user interface, its **prebuilt frontend bundle** (a Vite Module Federation remote plus translation files, built by the module and shipped inside the JAR, never built by the core), all described by one `META-INF/openelis-module.json` manifest. Modules are discovered at application start from the module directory (`/var/lib/openelis-global/modules`, mounted or baked into the image); each module gets its own **parent-first class loader**, so it can ship the libraries it needs while the core's copy of any library wins whenever both have it; module beans join the single Spring root context, their migrations run after the core changelog and before the Hibernate session factory is built, their permissions are registered as `system_module` rows under a `mod.` prefix exactly as the core's `qa.*` keys are today (one core change adds the prefix to the permission allowlist), and their navigation entries are merged into the existing menu tree. The React application becomes an **application shell**: it fetches `/rest/module-registry`, registers each compatible module's routes behind the existing `SecureRoute` permission gate, loads the module's bundle lazily from the same origin, and offers named **extension slots** on core pages for controlled integration.
+This document proposes a **manifest-driven module system** with one artifact type, a **module JAR** described by one `META-INF/openelis-module.json` manifest, and two declared shapes of it. A **provider** implements one or more named **extension points** (service provider interfaces, SPIs, published in a small, independently versioned `openelis-spi` artifact: reports, billing, notification channels, accession numbering, client registry, result export) and nothing else; it is the answer to the small per-site swaps that make up most of the site-specific code in the repository's history. A **full module** additionally carries Spring beans, REST controllers, JPA entities, a Liquibase changelog, permission and menu declarations and, when it has a user interface, its **prebuilt frontend bundle** (a Vite Module Federation remote plus translation files, built by the module and shipped inside the JAR, never built by the core); it is the answer to a whole implementation-specific workflow. Both are discovered at application start from the module directory (`/var/lib/openelis-global/modules`, mounted or baked into the image). Each module gets its own **parent-first class loader**, so it can ship the libraries it needs while the core's copy of any library wins whenever both have it, and its own **child Spring context** whose parent is the core's root context: a module sees and injects every core service, the core never sees a module's beans, and only what the manifest declares (extensions, controllers under the module's path, event subscriptions, entities, changelog) crosses into the core. Module migrations run after the core changelog and before the Hibernate session factory is built, permissions are registered as `system_module` rows under a `mod.` prefix exactly as the core's `qa.*` keys are today (one core change adds the prefix to the permission allowlist), and navigation entries are merged into the existing menu tree. The React application becomes an **application shell**: it fetches `/rest/module-registry`, registers each compatible module's routes behind the existing `SecureRoute` permission gate, loads the module's bundle lazily from the same origin, offers named **extension slots** on core pages, and exposes its own reusable components, API client and hooks to module bundles as a federated `openelis_core` remote, so a module's frontend depends on the core frontend the way its backend depends on the core backend.
 
-Every module declares the minimum OpenELIS version it runs on (`requires.openelis`), and the registry refuses a module whose declared range the running version does not satisfy. The recommendation deliberately does **not** adopt module-first (child-first) class loading, hot install or unload, a multi-framework orchestrator (single-spa) or a remote bundle registry. Each was evaluated (section 7) and rejected for the initial design because it buys little security or operational value in OpenELIS's single-tenant, operator-installed, Docker-deployed reality, while adding a large amount of complexity and failure modes. Installing or upgrading a module is a file copy plus a container restart, which is how every other configuration change to an OpenELIS site already works.
+A module compiles against three published core artifacts, in decreasing order of stability: `openelis-spi` (extension points, versioned on its own), `openelis-module-api` (lifecycle, manifest model, facades) and `openelis-core` (the application's own classes, versioned with the application). Providers use the first; full modules may use all three and inject core services directly. Inside the core, boundaries between feature packages are verified by ArchUnit rules that run as ordinary tests, starting from a frozen baseline of today's violations, so that the extension points stay narrow and the core stays extractable.
 
-The work is sized as a six-phase roadmap (section 24). Phases 1 and 2 (contracts, backend discovery) are low risk and reversible. Phase 2 ends with a backend-only proof of concept, the Odoo connector moved into a module without changing its behaviour, and Phase 4 with the full proof of concept, an example module kept inside the core repository and exercised by CI.
+Every module declares the minimum OpenELIS version it runs on (`requires.openelis`), and the registry refuses a module whose declared range the running version does not satisfy. Five runtime rules hold for every module: load at start-up and restart to change; providers map no entities; no module bean enters the core's context except through a declared extension point; one copy of each framework, the core's; the core owns transactions. The recommendation deliberately does **not** adopt module-first (child-first) class loading, hot install or unload, a multi-framework orchestrator (single-spa), the Java module path (Tomcat cannot load web applications from it) or a remote bundle registry. Each was evaluated (section 7) and rejected for the initial design because it buys little security or operational value in OpenELIS's single-tenant, operator-installed, Docker-deployed reality, while adding a large amount of complexity and failure modes. Installing or upgrading a module is a file copy plus a container restart, which is how every other configuration change to an OpenELIS site already works.
+
+The work is sized as a six-phase roadmap (section 24), gated by a short set of decision checks in Phase 0 (an inventory of how sites differ, coupling measurements, two time-boxed spikes on the reporting area) whose results could still change the recommendation. Phases 1 and 2 (contracts, backend discovery) are low risk and reversible. Phase 2 ends with two provider proofs of concept, a site-specific report moved behind the report SPI and the Odoo connector moved behind the billing SPI, both without changing behaviour; Phase 4 ends with the full proof of concept, an example full module kept inside the core repository and exercised by CI.
 
 ## 2. Problem statement and architectural goals
 
@@ -45,11 +48,12 @@ The pressure the brief describes is visible in the history and the tree [confirm
 | # | Goal | Measure of success |
 |---|---|---|
 | G1 | An implementation can ship a complete workflow (backend + frontend + schema + permissions + navigation) without a core pull request. | The example module in section 23 installs on an unmodified core release. |
-| G2 | A clear, versioned boundary between core and modules. | Modules compile only against a published API artifact and an SDK package; both are semver-versioned and have a compatibility check at start-up. |
+| G2 | A clear, versioned boundary between core and modules. | Modules compile only against published core artifacts (the extension-point SPI, the module API, the core classes, the frontend SDK with the core's exposed UI surface); each carries a stated compatibility promise and a check at start-up. |
 | G3 | The existing frontend, routing, security and deployment model are preserved. | No change to `SecureRoute`, `/session`, the menu REST contract, the Docker topology or the proxy; the shell is an extension of `App.jsx`, not a rewrite. |
 | G4 | Failures are explicit and recoverable. | A module that fails validation is skipped and reported; a module that fails migration or activation stops start-up with a named cause and can be disabled by one file. |
 | G5 | Modules are testable in isolation and the core has a regression gate for the module contract. | A module test kit runs a module against Testcontainers Postgres; the core CI loads the example module in the E2E stack. |
 | G6 | Operations stay boring. | Install, upgrade, rollback and removal are file operations on a mounted volume followed by a restart, documented in the distro template. |
+| G7 | A site difference is handled at the narrowest point that can express it. | Configuration first; a provider for one extension point when configuration cannot express it; a full module only for a whole workflow. The decision checks in section 24 record which kind each known site difference is. |
 
 ### 2.3 Non-goals for the initial design
 
@@ -57,6 +61,25 @@ The pressure the brief describes is visible in the history and the tree [confirm
 - Loading modules from remote URLs or a public module registry.
 - Sandboxing untrusted code. A module is trusted code with the privileges of the application.
 - Replacing configuration-driven variation. Where a property, a CSV or a JSON configuration can do the job, it remains the preferred mechanism; modules are for code.
+
+### 2.4 How sites differ today: inventory [confirmed]
+
+The companion comparison asks for an inventory of site differences before any model is chosen, sorted into three kinds: configuration, a swap at one point, or a whole feature. What the repository shows at the studied revision:
+
+| Site difference | Where it lives | Kind | Module-system answer |
+|---|---|---|---|
+| Site-specific reports (Haiti clinical and LNSP, RetroCI non-conformity, CI LNSP, Mauritius protocol, ARV, EID, VL variants) | `ReportImplementationFactory.getReportCreator` is a static if/else chain over report names that constructs the `IReportCreator` implementation; many names carry a site [`src/main/java/org/openelisglobal/reports/action/implementation/ReportImplementationFactory.java:165`] | Swap at one point | `report` extension point (provider) |
+| Billing (Odoo invoice on sample creation) | `OdooIntegrationService` called from core's `SamplePatientUpdateDataCreatedEventListener`; no entities, no tables; two changesets that only inserted and later removed `site_information` rows [`src/main/java/org/openelisglobal/odoo/`, `liquibase/3.1.x.x/enable_openelis_to_odoo_connection.xml`, `liquibase/3.3.x.x/010-remove-odoo-site-information.xml`] | Swap at one point | `billing` extension point (provider) |
+| Notification channels (email, SMS, SMPP, BMP SMS, WhatsApp) | `ClientNotificationSender<T>` implementations plus two sender classes outside the interface [`src/main/java/org/openelisglobal/notification/service/sender/`] | Swap at one point, several active at once | `notification-channel` extension point (provider) |
+| Accession number formats | `IAccessionNumberGenerator` chosen per `AccessionFormat` by `AccessionNumberUtil` [`src/main/java/org/openelisglobal/sample/util/AccessionNumberUtil.java:72-128`] | Swap at one point | `accession-number` extension point (provider) |
+| Client registry lookup | `FhirConfig` client registry settings and `ENABLE_CLIENT_REGISTRY`; one FHIR implementation [`FhirConfig.java:51-59`, `ConfigurationProperties.java:299`, `PatientSearchRestController.java`] | Swap at one point | `client-registry` extension point (provider) |
+| Analyzer integrations (Madagascar, Mauritius) | Moved out of process to the Analyzer Bridge | Whole feature, already outside the core | None (the Bridge) |
+| Feature toggles (EQA, electronic signature, GPS, Info Highway, SMS results, pathology stages) | `ConfigurationProperties.Property` | Configuration | None (stays configuration) |
+| Languages (Indonesian, Spanish) | Bundled translations plus the runtime overlay file | Configuration | None |
+| Vector surveillance domain | `Domain` enum, order entry, catalog, menu filtering, 74 Java and 118 frontend files | Whole feature woven into core | Not extractable in this programme (section 24, Phase 6) |
+| Programme-specific workflow (OGC-1144 additional information) | Not built yet | Whole feature | Full module with extension slots |
+
+Reading: most code-level site differences in the history are swaps at a handful of points, which is what the provider shape and the extension-point catalogue (section 9.1) address with no user interface, no tables and the narrowest contract. Whole workflows are rarer and need the full module shape. This inventory is the first decision check (section 24, Phase 0) and should be completed with the implementation teams' forks and change requests, which the repository cannot show.
 
 ## 3. Current OpenELIS architecture (as it bears on modularity)
 
@@ -114,7 +137,7 @@ What it got right and what it got wrong, as input to the new design:
 | Discovery from a mounted directory | Yes, recursive, at start-up | Keep: matches the Docker volume model. |
 | Manifest | Any XML file in the jar, version "1.0", three extension kinds | Replace with a single named JSON manifest with a schema and a compatibility section. |
 | Classloading | One `URLClassLoader` per extension, parent-first | Per-extension loaders made the same jar's classes distinct objects; move to one parent-first loader per module (section 9.3). |
-| Spring integration | None: `newInstance()` + static service singletons; servlets bolted onto a handler mapping at runtime | Replace with bean registration in the root context so modules get `@Autowired`, `@Transactional`, `@PreAuthorize` and the interceptors for free. |
+| Spring integration | None: `newInstance()` + static service singletons; servlets bolted onto a handler mapping at runtime | Replace with a child Spring context per module (parent: the core's root context) so modules get `@Autowired` core services, `@Transactional`, `@PreAuthorize` and the interceptors for free while the core never sees module beans. |
 | Database | None (plugins wrote rows through services) | Add a per-module Liquibase changelog. |
 | Frontend | None (JSP era) | Add a frontend bundle contract. |
 | Compatibility | JDK version only | Add core API version, frontend contract version, module dependencies. |
@@ -131,7 +154,7 @@ These are the mechanisms the module system must compose with, not replace:
 
 ### 4.3 Out-of-process extension: the Analyzer Bridge [confirmed]
 
-Analyzer protocols (ASTM, HL7, file drops) moved out of the WAR into the separately versioned `openelis-analyzer-bridge` service, which pairs with OpenELIS by certificate fingerprint and delivers results to `/analyzer/fhir` [`docs/analyzers/bridge-pairing.md`, `SecurityConfig.java:60-75`]. This is the project's current, successful pattern for vendor-specific integration code: a separate process with a narrow, authenticated contract. The module system should be seen as the in-process complement for functionality that must share the user session, the database transaction and the UI shell, not as a replacement for this pattern.
+Analyzer protocols (ASTM, HL7, file drops) moved out of the WAR into the separately versioned `openelis-analyzer-bridge` service, which pairs with OpenELIS by certificate fingerprint and delivers results to `/analyzer/fhir` [`docs/analyzers/bridge-pairing.md`, `SecurityConfig.java:60-75`]. This is the project's current, successful pattern for vendor-specific integration code: a separate process with a narrow, authenticated contract. The module system should be seen as the in-process complement for functionality that must share the user session, the database transaction and the UI shell, not as a replacement for this pattern. Analyzers are therefore deliberately absent from the extension-point catalogue: their variability already sits behind the Bridge's versioned contract, and they are not the place to pilot an in-process extension point.
 
 ### 4.4 Compile-time modules: the `dataexport` submodule [confirmed]
 
@@ -171,12 +194,37 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 8. **Per-module configuration with a schema, defaults and validators, loaded by the shell, is worth having.** OpenELIS can express it through the existing property sources plus a manifest section rather than a new configuration service.
 9. **Inter-module communication needs very little**: shared stores or contexts, named modals and plain DOM events. OpenELIS should expose the existing Query client, session and configuration contexts through the SDK and stop there.
 
+### 5.3 Lessons taken from the companion comparison of modularization models
+
+A companion document (*OpenELIS Modularization Plan: Comparing Architecture Models*, internal review, 2026-10-28) compared five models on nine dimensions: a library-assembled core (a kit of separately built Maven modules, as HAPI FHIR is built), a finished server with service provider interfaces (as Keycloak is extended), verified internal boundaries inside one codebase (Spring Modulith or ArchUnit), in-process feature modules in the style of a comparable health-IT platform (kept as a lesson, not a candidate), and PF4J plugins (a possible loader engine), plus the Java module system as an add-on. Its leaning is "plug-in points at the edge, boundary checks inside". This design adopts, adapts or defers its findings as follows:
+
+| Finding in the companion comparison | Taken as | How it shows up here |
+|---|---|---|
+| Site differences are mostly small swaps; the extension layer should be a small set of named, independently versioned SPIs with single- or multiple-implementation semantics, provider selection by configuration, and a start-up check that rejects providers built for an incompatible SPI version | Adopted | `openelis-spi` artifact, the extension-point catalogue and the provider shape (section 9.1); `requires.spi` in the manifest; `spi.<name>.provider` and `modules.<id>.enabled` properties (section 16.2) |
+| Internal boundaries wear away unless a test fails the build; ArchUnit needs no Spring Boot, Modulith's useful half without Boot is verification only | Adopted (ArchUnit) | Section 9.11: slices free of cycles, no cross-feature DAO access, layered rules per feature, frozen baseline of today's violations, run in CI |
+| Load at start-up, restart to change; never swap plugins in a running JVM | Already the design | Sections 7.3, 9.9 |
+| No entities in providers; a provider that needs its own tables gets them through a core-supplied data interface | Adopted for providers, adapted for full modules | Providers declare no entities and no changelog and may use `ModuleContext.jdbc()`; full modules may declare entities, added to the single persistence unit at bootstrap only (section 9.5) |
+| No beans in the host context; only declared extensions cross into the host, which is the containment that a comparable in-process module system lost | Adopted | A child Spring context per module (section 9.4); the core consults module code only through the extension registry, registered controllers and forwarded events |
+| One copy of each framework; a plugin that bundles its own Spring or Hibernate produces "same name, different class" failures | Already the design | Parent-first loaders, the generated BOM, `provided` scope and the enforcer rules (sections 9.3, 9.10) make the failure impossible rather than merely discouraged |
+| The host owns transactions; SPI calls run inside a host transaction | Adopted | Section 9.12 rule 5; the test kit flags `REQUIRES_NEW` and programmatic transactions in providers |
+| Keep per-module database changesets, declared extension points and module dependencies in a descriptor, and the "modules folder plus restart" workflow; avoid AOP, page overrides and arbitrary bean registration | Already the design, now enforced by construction | Sections 9.4, 9.6, 13, 17 |
+| PF4J could be the loader under the SPIs, but its Spring bridge needs a spike (bean visibility both ways, redeploys, class unloading, no bean registration in the host) | Adapted | The design keeps its own small parent-first loader; the Phase 2 spike compares it with PF4J using PF4J's application-first strategy on the companion document's criteria (section 24) |
+| The Java module system adds nothing at runtime inside Tomcat; its one clear win is a module descriptor on the SPI artifact | Adopted | `openelis-spi` ships `module-info.java`; nothing else uses the module path (section 7.1) |
+| A library-assembled core is strongest on internal structure but asks sites with custom code to build their own distribution | Not pursued | Section 7.1 row B7 and the decision checks that would reopen it (section 24, Phase 0) |
+| Reporting is the right pilot: a report plugin type was planned but never built, and analyzers already live behind the Bridge | Adopted | The report SPI is the first extension point and the first provider proof of concept (section 24, Phase 2) |
+| Add a CI job that loads providers built against the previous SPI minor version | Adopted | Section 19.2 |
+| The native FHIR facade would create a second extension surface unless routed through the same plan | Adopted as a risk | Section 25.1 |
+| Handle a difference with configuration first; add a plug-in point only when configuration cannot express it | Adopted | Goal G7; the inventory in section 2.4 |
+| Record the choice as an architecture decision record after the decision checks; decide who signs off and whether the community reviews it first | Adopted | Section 24, Phase 0 |
+
+One point where this design goes further than the companion comparison's provider model: it also supports full modules that carry entities, controllers, a user interface and direct access to core services, because the brief requires a complete implementation-specific workflow to ship without a core pull request (goal G1). The comparison's containment and framework rules are kept for both shapes; the compatibility promise differs by what a module chooses to depend on (section 9.1).
+
 ## 6. Identified architectural gaps
 
 | # | Gap | Where it shows today [confirmed] | What the module system must add |
 |---|---|---|---|
 | GAP-1 | No module identity, manifest or registry. | Nothing describes "a feature" as a unit; the nearest is a Liquibase folder plus a scattered set of files. | A manifest schema, a `ModuleRegistry` with per-module status, an admin-visible `/rest/module-registry` endpoint. |
-| GAP-2 | Bean discovery is by fixed package roots. | `AppConfig` scans `org.openelisglobal`, `org.itech`, `org.ozeki.sms`. | Scan module base packages declared in the manifest, in a controlled post-processor, with namespace rules. |
+| GAP-2 | Bean discovery is by fixed package roots into one shared context. | `AppConfig` scans `org.openelisglobal`, `org.itech`, `org.ozeki.sms` into the root context. | Scan module base packages declared in the manifest into a child context per module, with namespace rules, so modules see core beans and the core never sees module beans. |
 | GAP-3 | Entities are a static list. | `persistence.xml` (174 classes), `hibernate.cfg.xml` (121 mappings), `HibernateConfig` has scanning disabled. | A `PersistenceUnitPostProcessor` that adds module entity classes before the entity manager factory is built. |
 | GAP-4 | One changelog, one owner. | `base-changelog.xml` includes everything; a module cannot add a changeset without editing it. | A per-module changelog executed after the core changelog, before the entity manager factory, with namespaced ids and version tracking. |
 | GAP-5 | Permissions are seeded by hand per feature. | `qa/004-add-qa-permission-model.xml` inserts `system_module` rows with raw SQL. | Manifest-declared permission keys registered idempotently by the core at start; role grants stay in the Role Management UI. |
@@ -189,6 +237,8 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 | GAP-12 | The URL interceptor is fail-open for REST. | `ModuleAuthenticationInterceptor` allows unmapped `/rest/**` for any authenticated user. | Make `@PreAuthorize` on every module endpoint a contract rule enforced by a test in the module test kit, and align with the fail-closed rollout. |
 | GAP-13 | Translations are bundled per build. | `frontend/src/languages/*.json`; one runtime overlay file. | Module message files merged into the `IntlProvider` under a module key namespace. |
 | GAP-14 | Configuration keys are an enum. | `ConfigurationProperties.Property` is closed; `/rest/configuration-properties` only exposes known keys. | A module configuration namespace (`modules.<id>.*`) readable through the existing property sources and exposed to the module's frontend on request. |
+| GAP-15 | No extension points at the places where sites actually differ. | Report classes are chosen by a static if/else chain; notification senders, accession generators, the client registry and billing are hard-wired (section 2.4). | A small catalogue of named extension points in `openelis-spi`, consulted by the core at those seams, with provider selection by configuration. |
+| GAP-16 | Nothing enforces boundaries between feature packages inside the core. | `org.openelisglobal.*` features call each other's services, DAOs and value holders freely; nothing fails the build on a new cycle or a cross-feature DAO call. | ArchUnit rules with a frozen baseline, run on every pull request, so extension points can stay narrow and features stay extractable. |
 
 ## 7. Candidate architectures and comparative analysis
 
@@ -197,11 +247,13 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 | Option | Description | Advantages | Disadvantages / risks | Complexity | Fit |
 |---|---|---|---|---|---|
 | B1. Convention-only classpath scanning | Put module JARs in `WEB-INF/lib` under a scanned package root; no manifest. | Zero framework code; this is how `dataexport` works today. | No identity, no compatibility check, no migrations, no permissions, no frontend, no way to bring a library the core lacks without editing the WAR; failures surface as generic Spring errors. Fails the brief's "classpath scanning alone is not a module system". | Trivial | Rejected. |
-| B2. Manifest-driven modules, single Spring context, one parent-first class loader per module (**recommended**) | Module JARs discovered from the module directory; each loaded by its own `URLClassLoader` (webapp loader as parent) covering the module JAR and its bundled `lib/*.jar`; a manifest drives validation, bean scanning, entity registration, migrations, permissions and menus; one Spring root context. | A module ships the libraries it needs; any library the core already has resolves to the core's copy (parent-first), so a module dependency can never change core behaviour; module beans get Spring, JPA, transactions, security and interceptors exactly like core code; no Tomcat configuration; restart-to-install matches the Docker operating model. | No failure isolation: a module bean that fails to instantiate fails start-up (mitigated by early validation and a disable switch); a module cannot pin a different version of a library the core ships (by design); library code that relies on the thread context class loader needs a wrapper (section 9.3); Hibernate, Spring and Liquibase must be pointed at the module loaders (spike in Phase 2); no hot reload. | Medium | Best fit for OpenELIS's single-context, single-tenant deployment. |
+| B2. Manifest-driven modules, one parent-first class loader and one child Spring context per module (**recommended**) | Module JARs discovered from the module directory; each loaded by its own `URLClassLoader` (webapp loader as parent) covering the module JAR and its bundled `lib/*.jar`; each gets an `AnnotationConfigApplicationContext` whose parent is the core's root context; a manifest drives validation, bean scanning, extension registration, entity registration, migrations, permissions and menus. | A module ships the libraries it needs; any library the core already has resolves to the core's copy (parent-first), so a module dependency can never change core behaviour; a module injects core services directly (child sees parent) while the core never sees module beans (parent never sees child), so a module cannot replace, advise or post-process core beans; module beans get transactions, method security and the MVC interceptors through a core-supplied child configuration; no Tomcat configuration; restart-to-install matches the Docker operating model. | Controllers in a child context are invisible to the `DispatcherServlet` and must be registered into the root handler mapping by the module runtime (section 9.4, one core change to `AppConfig`); core events must be forwarded into child contexts; a module cannot pin a different version of a library the core ships (by design); library code that relies on the thread context class loader needs a wrapper (section 9.3); Hibernate, Spring and Liquibase must be pointed at the module loaders (spike in Phase 2); no hot reload; fail-fast remains the policy even though the root context survives a module failure. | Medium | Best fit for OpenELIS's single-tenant deployment: the containment the companion comparison asks for, with direct core-service access. |
 | B3. Module-first (child-first) class loaders | As B2, but the module loader searches its own JARs before the parent, so a module can bring its own version of a library the core ships. | A module can pin library versions independently of the core. | Two versions of Hibernate, Jackson or Spring types in one context break proxies, serialisation and injection; a module can silently alter core behaviour through a dependency; the classic source of class-cast failures and loader leaks. | High | Rejected: core-first precedence is a design rule. |
-| B4. Per-module child `ApplicationContext` | Each module gets an `AnnotationConfigApplicationContext` whose parent is the root context. | Bean isolation: a module's bean failure does not fail the core context; modules see core beans, core does not see module beans (good boundary). | The `DispatcherServlet` only finds controllers in its own context, so module REST endpoints need manual `RequestMappingHandlerMapping` registration or one `DispatcherServlet` per module (own interceptors, own exception handlers, own CSRF and security wiring); `@Transactional`, JPA and security configuration must be replicated or exported to each child; `SpringContext.getBean` cannot see module beans. | High | Reconsider in Phase 5 only if runtime isolation becomes a requirement. |
+| B4. Module beans registered in the single root context | As B2 but module beans are scanned into the core's context (the earlier revision of this document). | Controllers, transactions and security work with no extra wiring. | Any module bean joins the core's namespace: a module `@Primary` bean, `BeanPostProcessor`, `BeanFactoryPostProcessor` or aspect can change core behaviour, and `@Autowired List<X>` collections in core silently gain module members. This is the containment loss a comparable module system suffered and the companion comparison warns against. | Low | Rejected in favour of child contexts; the extra wiring they need is bounded (section 9.4). |
 | B5. Out-of-process modules (separate services behind the proxy) | A module is a container with its own REST API; the shell loads its UI; core data accessed over REST or FHIR. | Strongest isolation and independent deployment; the Analyzer Bridge proves the pattern. | No shared session, transaction or Hibernate model; each module re-implements auth; chatty integration for workflow features that write orders, samples and results; heavy for the "one extra page" case. | High | Keep as the pattern for integrations; not for in-app workflows. |
-| B6. General-purpose plugin frameworks (PF4J / OSGi / JPMS layers) | Adopt a third-party plugin manager. | Mature loading, dependency and extension-point machinery. | PF4J's Spring integration is a thin proof of concept; its default parent-last loaders conflict with shared Hibernate and Spring types; OSGi and module layers would require repackaging the core; none solves the frontend half. | High | Rejected: cost without a matching benefit. |
+| B6. General-purpose plugin frameworks (PF4J / OSGi / JPMS layers) | Adopt a third-party plugin manager. | Mature loading, dependency and extension-point machinery; PF4J's `Plugin-Requires` is the same minimum-version idea as `requires.openelis`. | PF4J's Spring integration (`pf4j-spring`) is thin and its users report class-loader clashes; its default strategy is plugin-first, so the core-first rule would need its application-first strategy; OSGi and module layers would require repackaging the core; Tomcat loads web applications from the class path, never the module path, so JPMS adds nothing at runtime; none solves the frontend half. | High | Not adopted as the framework. PF4J (application-first strategy) is the alternative loader engine the Phase 2 spike compares with the design's own loader; JPMS is used only as a `module-info.java` on `openelis-spi`. |
+| B7. Library-assembled core (a kit of separately built Maven modules; a site assembles its own server) | Split the WAR into a mandatory core plus opt-in domain modules; today's server becomes one published assembly. | Strongest internal structure; a module cannot use code it does not declare; a referral-only or consolidated-server assembly becomes possible. | Touches most packages; sites with custom code must maintain a Maven project and build their own image, which labs without Java developers cannot do; entities and `hbm.xml` mappings cross domain areas; the one-command install gets harder. | Very high | Not pursued. The internal benefit is obtained more cheaply by the ArchUnit rules (B8); the decision checks in section 24 name the evidence that would reopen it. |
+| B8. Verified internal boundaries only (ArchUnit, or Spring Modulith verification) | Keep one codebase and fail the build when a feature package reaches into another's internals. | Cheapest route to enforced boundaries; no change to build, image or install; keeps extension points narrow. | Loads no third-party code, so it is not an extension mechanism; without Spring Boot only Modulith's test-time verification applies, so ArchUnit is the better engine here. | Low | Adopted as a companion track inside the core (section 9.11), not as the module system. |
 
 ### 7.2 Frontend options
 
@@ -220,14 +272,30 @@ Two mature open-source health-platform module systems (a Java/Spring backend mod
 |---|---|---|---|
 | Discover and initialise modules at start-up | Yes | **Yes** | Fits the single root context, Liquibase before the entity manager factory, and the Docker restart model. |
 | Enable or disable an installed module without restart | Partially (frontend yes, backend only for beans designed as lazy) | No; a disable marker takes effect at the next restart | Spring bean definitions and the Hibernate metamodel are fixed after refresh. |
-| Install a new module at runtime | Only by refreshing the root context or by child contexts | No | A root context refresh tears down every bean including the session factory and the FHIR server; child contexts are option B4. |
+| Install a new module at runtime | A child context could be created at runtime, but entities, changelogs and controller registration are bound at bootstrap | No | The session factory's entity model is fixed after refresh; a provider without entities could technically be added later, but one install mechanism (restart) keeps operations and failure handling uniform. |
 | Upgrade a module at runtime | Same as install plus data migration | No | Migrations and entity changes need the factory rebuilt. |
 | Unload a module at runtime | Only with isolated loaders and no retained references | No | Known leak source; nothing in OpenELIS needs it. |
 | Hot reload module frontend bundles | Yes (re-register the remote) | Not in Phases 1 to 5 | Pointless without backend hot reload; adds cache-invalidation and version-skew problems. |
 
+### 7.4 The recommendation on the companion comparison's nine dimensions
+
+The companion comparison scores every model on nine dimensions (Strong, Adequate, Weak). Scored the same way, the recommendation (ArchUnit inside; providers and full modules outside, one loader and one child context each):
+
+| # | Dimension | Score | Reasoning |
+|---|---|---|---|
+| 1 | Unit of modularity | Strong | Feature packages inside the core (verified), extension points and modules at the edge. |
+| 2 | Boundary enforcement | Adequate | ArchUnit fails CI on cycles, internal access and undeclared dependencies; the compiler still allows them. At the edge, child contexts enforce the boundary by construction. |
+| 3 | Extension contract | Strong for providers, Adequate for full modules | `openelis-spi` is narrow and independently versioned; a full module that injects core services takes on the application's release cadence, which it declares through `requires.openelis` and which the registry reports. |
+| 4 | Composition time | Strong | Core at build; providers and modules at start-up, by the site. |
+| 5 | Site operations | Strong | Copy a JAR, optionally set a property, restart. |
+| 6 | Upgrade path | Strong for providers, Adequate for full modules | Providers keep loading while the SPI major holds; full modules may need a rebuild per core minor, caught before deployment by the doctor script and at start-up by the registry. |
+| 7 | Data ownership | Adequate | Providers own no tables; full modules own `mod_<id>_` tables through their changelog; the schema stays shared. |
+| 8 | Migration effort | Adequate | Starts with one SPI and one ArchUnit test; the child-context runtime and the frontend host are the larger investments, each independently mergeable. |
+| 9 | Team and community fit | Strong | Provider authors learn a few interfaces; module authors use the same Spring, Maven, React and Carbon they already know; core contributors see one new test. |
+
 ## 8. Recommended architecture and justification
 
-**Recommendation [recommendation]:** option D, composed of B2 (backend) + B2/C (frontend), with a single manifest.
+**Recommendation [recommendation]:** option D, composed of B2 (backend: one parent-first loader and one child Spring context per module, two declared module shapes, providers and full modules, over a catalogue of extension points) + B8 (ArchUnit boundary checks inside the core) + B2/C (frontend), with a single manifest.
 
 ```mermaid
 flowchart LR
@@ -235,43 +303,55 @@ flowchart LR
     direction TB
     Vol["/var/lib/openelis-global/modules/<br/>implementation-workflow-1.2.0.jar<br/>odoo-connector-2.0.1.jar<br/>modules.lock (optional digests)"]
   end
-  subgraph Webapp["OpenELIS WAR (one Spring root context)"]
+  subgraph Webapp["OpenELIS WAR"]
     direction TB
-    Reg["ModuleRegistry<br/>(discover, validate, status)"]
-    Scan["ModuleBeanRegistrar<br/>(scan manifest basePackages)"]
-    Ent["ModuleEntityRegistrar<br/>(PersistenceUnitPostProcessor)"]
-    Mig["ModuleLiquibaseRunner<br/>(after core changelog)"]
-    Perm["ModulePermissionRegistrar<br/>(system_module rows)"]
-    Menu["ModuleMenuContributor<br/>(in-memory menu entries)"]
-    API["/rest/module-registry<br/>/modules/{id}/** static assets"]
-    Core["Core services, controllers,<br/>entities, security, interceptors"]
-    ModBeans["Module beans:<br/>@RestController @Service @Repository<br/>+ OpenElisModule activator"]
+    subgraph Root["Spring root context (core)"]
+      direction TB
+      Reg["ModuleRegistry<br/>(discover, validate, status)"]
+      Ent["ModuleEntityRegistrar<br/>(PersistenceUnitPostProcessor)"]
+      Mig["ModuleLiquibaseRunner<br/>(after core changelog)"]
+      Perm["ModulePermissionRegistrar<br/>(system_module rows)"]
+      Menu["ModuleMenuContributor<br/>(in-memory menu entries)"]
+      Ext["ExtensionRegistry<br/>(report, billing, notification-channel, ...)"]
+      Ctl["Module handler registration<br/>(RequestMappingHandlerMapping, /rest/modules/{id}/**)"]
+      API["/rest/module-registry<br/>/modules/{id}/** static assets"]
+      Core["Core services, controllers,<br/>entities, security, interceptors"]
+    end
+    subgraph Child["Child Spring context per module (parent: root)"]
+      direction TB
+      ModBeans["Module beans:<br/>@RestController @Service @Repository<br/>+ OpenElisModule activator<br/>+ declared extensions"]
+    end
   end
   subgraph Browser["Browser"]
     direction TB
-    Shell["App shell (existing React app)<br/>+ ModuleHost: routes, slots, messages"]
+    Shell["App shell (existing React app)<br/>+ ModuleHost: routes, slots, messages<br/>+ openelis_core remote (components, api, hooks)"]
     Remote["Module remote bundle<br/>(Vite Module Federation, lazy)"]
   end
   Vol --> Reg
-  Reg --> CL["ModuleClassLoader per module<br/>(parent-first: core wins)"] --> Scan --> ModBeans
+  Reg --> CL["ModuleClassLoader per module<br/>(parent-first: core wins)"] --> Child
   Reg --> Ent
   Reg --> Mig
   Reg --> Perm
   Reg --> Menu
-  ModBeans <--> Core
+  ModBeans -- "injects core services" --> Core
+  ModBeans -- "declared extensions only" --> Ext
+  ModBeans -- "declared controllers only" --> Ctl
+  Core -- "consults" --> Ext
   Shell -- "GET /rest/module-registry" --> API
   Shell -- "import(remoteEntry.js)" --> API
   API -. serves from JAR .-> Remote
-  Remote -- "/rest/modules/{id}/..." --> ModBeans
+  Remote -- "imports openelis_core/*" --> Shell
+  Remote -- "/rest/modules/{id}/..." --> Ctl
 ```
 
 Why this and not the alternatives:
 
 1. **It is the smallest design that satisfies G1 to G6.** Every mechanism it relies on already exists in OpenELIS in some form: separately built JARs on the class path (`dataexport`), manifest-like declarative registration (menu configuration file, domain configuration handlers), permission keys as `system_module` rows (`qa.*`), lazy route chunks (`lazyWithRetry`), same-origin static assets served by the backend (`static/**`), restart-to-apply operations (every mounted configuration file). The module system adds a registry, a manifest and a loader around them.
 2. **It preserves the frontend.** The React application stays one tree with one Router, one `IntlProvider`, one Query client and the existing `SecureRoute`. Module pages are components, not applications, so they inherit session handling, idle logout, branding, error boundaries and translations.
-3. **It is honest about failure.** A single Spring context cannot isolate a module whose bean throws during instantiation. Rather than pretend otherwise with partial isolation, the design validates as much as possible before any bean exists (manifest, compatibility, class loadability, digest), fails fast with a named module when a migration or activation fails, and gives operators a one-file kill switch. This is the same behaviour operators already know from a failing core changeset.
+3. **It is honest about failure.** The design validates as much as possible before any bean exists (manifest, compatibility, class loadability, digest), fails fast with a named module when a migration or activation fails, and gives operators a one-file kill switch. Child contexts mean the core's own context survives a module failure, which makes a later "skip the failed module" policy possible, but a LIS must not run with an unknown subset of its features, so fail-fast stays the default. This is the same behaviour operators already know from a failing core changeset.
 4. **It keeps the security story simple.** Modules are trusted code installed by the operator from the same volume as the rest of the site configuration; there is no upload endpoint, no remote fetch and no code-signing infrastructure to build before the first module can ship. Hardening (digest allowlist, strict mode) is additive.
-5. **It leaves the doors open.** Child contexts (B4) can be introduced later behind the same manifest and registry if runtime isolation becomes a real requirement; the frontend loader is an internal interface that can switch from Module Federation to import maps without changing modules' manifests.
+5. **It contains modules without hiding the core from them.** A module injects any core service it needs and reaches the core's REST endpoints and UI components; the core consults module code only through the extension registry, the registered controllers and forwarded events. A module can therefore extend OpenELIS but never silently alter it, which is the property a comparable in-process module system lost and the companion comparison insists on.
+6. **It leaves the doors open.** The loader engine (the design's own loader or PF4J's application-first loader) and the frontend loader (Module Federation or import maps) are internal interfaces behind the same manifest and registry; a failure-isolation policy can be added without changing modules.
 
 What the recommendation explicitly gives up, and why that is acceptable:
 
@@ -281,9 +361,24 @@ What the recommendation explicitly gives up, and why that is acceptable:
 
 ## 9. Proposed backend module framework
 
-### 9.1 Contracts: the `openelis-module-api` artifact [recommendation]
+### 9.1 Contracts: three core artifacts and two module shapes [recommendation]
 
-A new Maven module in the core repository, `openelis-module-api`, published to the project's Maven repository as `org.openelisglobal:openelis-module-api:<apiVersion>`. It contains only interfaces, annotations and DTOs; it has no dependency on the WAR. Modules compile against it plus the Spring, Jakarta and Hibernate APIs in `provided` scope.
+A module compiles against three artifacts published by the core repository, each with its own compatibility promise. A module uses the narrowest set it can; the registry reports which set each installed module actually references (section 9.8).
+
+| Artifact | Contents | Version | Promise | Who uses it |
+|---|---|---|---|---|
+| `org.openelisglobal:openelis-spi` | Extension-point interfaces and the value types they pass (section 9.1.1); ships a `module-info.java`; no dependency on the WAR or on `openelis-module-api` | Its own semver, independent of the application; a core release note states the SPI version it ships | A provider built against SPI `1.x` keeps loading on every core release that ships SPI `1.y`, `y >= x`; the registry refuses one built against another major | Providers, and full modules that implement extension points |
+| `org.openelisglobal:openelis-module-api` | `OpenElisModule` lifecycle, `ModuleContext`, the manifest model, the facade interfaces; no dependency on the WAR | Its own semver (`japicmp` in CI) | Semver on the artifact | Every module |
+| `org.openelisglobal:openelis-core` | The application's own classes (service interfaces and implementations, DAOs, value holders, utilities, events), attached from the WAR build (`maven-war-plugin` `attachClasses`) | The application version | Compiles against what the core really is; breaking changes between releases are listed by `japicmp` on the `service` and `valueholder` packages in the release note; a module declares the core it was built against through `requires.openelis` | Full modules that call core services directly |
+
+All three are consumed in `provided` scope together with the Spring, Jakarta and Hibernate APIs (section 9.10); none is ever bundled in a module JAR.
+
+Two module shapes are declared in the manifest (`kind`):
+
+- A **provider** declares `extensions` (implementations of extension points) and may declare beans, configuration and permissions. It declares no entities, no changelog, no controllers and no frontend. It is the shape for a site-specific report, billing connector, notification channel, accession format or registry lookup; it compiles against `openelis-spi` and `openelis-module-api`, and the companion comparison's rules hold literally for it: no entities, no beans in the host, one copy of each framework, the core owns transactions.
+- A **full module** may declare everything in the manifest: beans, controllers under `/rest/modules/<id>/`, extensions, entities, a changelog, permissions, menu entries and a prebuilt frontend. It may inject any core service from `openelis-core` directly. It is the shape for a whole implementation-specific workflow.
+
+Both are discovered, loaded and contained the same way (sections 9.2 to 9.4); the difference is what the manifest may declare and which compatibility promise applies.
 
 ```java
 package org.openelisglobal.module.api;
@@ -299,23 +394,52 @@ public interface OpenElisModule {
 public interface ModuleContext {
     ModuleDescriptor descriptor();                 // parsed manifest + resolved state
     ModuleConfiguration configuration();           // modules.<id>.* properties
-    <T> T coreService(Class<T> approvedApi);       // stable facades only
-    Unstable unstable();                           // getBean(Class) escape hatch, logged
+    <T> T coreService(Class<T> facadeOrService);   // facade from the API, or any core service bean (full modules)
+    NamedParameterJdbcTemplate jdbc();             // core datasource, bound to the current core transaction
     Path dataDirectory();                          // /var/lib/openelis-global/modules-data/<id>
     void runAsSystem(Runnable startupWrite);       // wraps DaemonContextExecutor
+    <T> T withModuleClassLoader(Callable<T> call); // sets the thread context class loader for TCCL-dependent libraries
     ModuleLog log();
 }
 ```
 
-The **approved core API** is a curated set of facade interfaces under `org.openelisglobal.module.api.core` (for example `PatientLookup`, `SampleLookup`, `TestCatalog`, `UserDirectory`, `ReferenceData`, `Notifications`, `AuditTrail`). Each is implemented by an adapter in core over the existing services. The set starts with what the example module needs and grows by pull request; a facade change follows semver on the API artifact. `unstable().getBean(Class)` exists so that real modules are not blocked, but every use is logged at WARN with the module id, and it carries no compatibility guarantee.
+The **facades** in `openelis-module-api` (`org.openelisglobal.module.api.core`: for example `PatientLookup`, `SampleLookup`, `TestCatalog`, `UserDirectory`, `ReferenceData`, `Notifications`, `AuditTrail`) remain the stable, semver-governed way to reach common core data; each is implemented by an adapter in core. They are no longer the only way: a full module injects core services from `openelis-core` with plain `@Autowired`, because a child context resolves beans from its parent (section 9.4). The earlier `unstable()` escape hatch is dropped; direct injection replaces it, and the registry's core-coupling report replaces its logging. The decision whether to publish the core classes is therefore taken: **publish `openelis-core` from Phase 1**, with the promise stated in the table above. A module that wants the strongest upgrade promise stays a provider.
 
-Decision point [open]: whether to also publish the WAR's classes as `OpenELIS-Global:classes` for compile-time access to internals. The removed analyzer plugins did this against a pinned core version. It makes modules easier to write and impossible to keep compatible; the recommendation is **not** to publish it in Phases 1 to 4 and to revisit after the first real module shows which facades are missing.
+#### 9.1.1 Extension-point catalogue (initial) [recommendation]
+
+An extension point is an interface in `openelis-spi` that extends the marker `ExtensionPoint`. A module implements it in a class listed under `extensions` in its manifest; the class is a bean in the module's child context (so it may inject core services and its own beans) and is registered with the core's `ExtensionRegistry` keyed by the extension-point interface. Core code consults the registry at the seam instead of constructing implementations itself. Each extension point is declared single-implementation (one active provider, chosen by configuration when more than one is installed) or multiple-implementation (all enabled providers run, in `order`).
+
+```java
+package org.openelisglobal.spi;
+
+public interface ExtensionPoint {
+    default void init(ModuleContext ctx) {}
+}
+
+package org.openelisglobal.spi.report;
+
+public interface ReportProvider extends ExtensionPoint {
+    Set<String> reportIds();                                  // names this provider answers for
+    ReportOutput run(ReportRequest request);                  // value types from openelis-spi, not core classes
+}
+```
+
+| Extension point | Kind | Core seam today [confirmed] | What the core change looks like |
+|---|---|---|---|
+| `report` | Multiple (each provider answers for its own report ids) | `ReportImplementationFactory.getReportCreator(String)`: static if/else chain constructing `IReportCreator` implementations, many named for a site [`ReportImplementationFactory.java:165`] | The factory asks `ExtensionRegistry.providers(ReportProvider.class)` for the requested id before its built-in chain; report ids must be unique across providers (start-up error otherwise) |
+| `billing` | Single | `SamplePatientUpdateDataCreatedEventListener` calls `OdooIntegrationService.createInvoice` [`src/main/java/org/openelisglobal/odoo/`] | The listener calls the selected `BillingProvider`, or nothing when none is installed; the Odoo code becomes the first provider (section 24, Phase 2) |
+| `notification-channel` | Multiple | `ClientNotificationSender<T extends RemoteNotification>` with email, SMS and WhatsApp implementations; SMPP and BMP senders outside the interface [`notification/service/sender/`] | The dispatcher resolves senders by channel from the registry after the built-in ones; new channels come from providers |
+| `accession-number` | Single per `AccessionFormat` | `IAccessionNumberGenerator` chosen by `AccessionNumberUtil` through the validator factory [`AccessionNumberUtil.java:72-128`] | The factory consults the registry for the configured format before its built-in generators |
+| `client-registry` | Single | FHIR client registry settings in `FhirConfig` and `ENABLE_CLIENT_REGISTRY`; one implementation used by patient search [`FhirConfig.java:51-59`, `PatientSearchRestController.java`] | Patient search calls the selected `ClientRegistryProvider`; the FHIR implementation becomes the built-in default |
+| `result-export` | Multiple | FHIR exchange with the Consolidated Server and external systems [`dataexchange/fhir/`] | [open] seam to be confirmed in Phase 1; listed because sites ask for it |
+
+Analyzers are deliberately absent (section 4.3). The catalogue grows by core pull request; adding an extension point or a method with a default implementation is an SPI minor, removing or changing a signature is an SPI major. Selection and enablement: `spi.<name>.provider=<module-id>` chooses the active provider of a single-implementation point when more than one is installed (exactly one installed needs no property; none installed means the core's built-in behaviour); `modules.<id>.enabled=false` switches a module off at the next restart like the marker file (section 16.2).
 
 ### 9.2 Discovery [recommendation]
 
 - The module directory `/var/lib/openelis-global/modules` (mounted from the distro's `configs/modules`, or baked into the image at the same path) is the only place modules are loaded from. `ModuleDiscovery` lists `*.jar` there at start-up (non-recursive; a `<jar>.disabled` marker skips the file), opens each JAR, reads `META-INF/openelis-module.json`, computes the SHA-256, validates the manifest against the bundled JSON schema and produces a `ModuleDescriptor`. Nothing is read from `WEB-INF/lib` and no Tomcat configuration changes: module JARs are deliberately kept **off** the webapp class path so that each can have its own class loader (section 9.3).
 - Two JARs declaring the same module id is a **start-up error** that names both files; the registry never guesses which one was meant.
-- Validation performed before any bean exists: schema validity; `id` format (`^[a-z][a-z0-9-]{2,40}$`); `requires.openelis` present with a lower bound and satisfied by the running application version; `requires.coreApi` range against the API artifact version compiled into the WAR; `requires.frontendContract` recorded for the shell; `requires.modules` resolution and version ranges; `conflicts`; base-package namespace rules; the activator class and every declared entity class load **through the module's class loader**; the Liquibase changelog resource exists in the JAR; every `lib/*.jar` entry is a readable JAR; if `frontend` is declared, `remoteEntry.js`, every `expose` and the message files exist in the JAR (a user-interface module without its prebuilt bundle is `INVALID`); optional digest allowlist (section 15). A module that fails any check is recorded as `INCOMPATIBLE` or `INVALID` with the reason, its loader is discarded, its beans are never registered, and the core continues.
+- Validation performed before any bean exists: schema validity; `id` format (`^[a-z][a-z0-9-]{2,40}$`); `requires.openelis` present with a lower bound and satisfied by the running application version; `requires.coreApi` range against the API artifact version compiled into the WAR; `requires.spi` range against the SPI artifact version compiled into the WAR (mandatory when `extensions` is declared); `requires.frontendContract` recorded for the shell; `kind` consistent with the declarations (a provider that declares entities, a changelog, controllers or a frontend is `INVALID`); every `extensions[].class` loads through the module loader and implements the named extension point; `requires.modules` resolution and version ranges; `conflicts`; base-package namespace rules; the activator class and every declared entity class load **through the module's class loader**; the Liquibase changelog resource exists in the JAR; every `lib/*.jar` entry is a readable JAR; if `frontend` is declared, `remoteEntry.js`, every `expose` and the message files exist in the JAR (a user-interface module without its prebuilt bundle is `INVALID`); optional digest allowlist (section 15). A module that fails any check is recorded as `INCOMPATIBLE` or `INVALID` with the reason, its loader is discarded, its beans are never registered, and the core continues.
 
 ### 9.3 Class loading and namespace rules [recommendation]
 
@@ -326,19 +450,32 @@ Decision point [open]: whether to also publish the WAR's classes as `OpenELIS-Gl
 - **Thread context class loader.** Tomcat sets the TCCL to the webapp loader. Library code that discovers implementations through `ServiceLoader`, `Class.forName(name)` with the TCCL, or JAXB and similar contexts will not see module JARs. `ModuleContext.withModuleClassLoader(Callable)` sets and restores the TCCL for such calls; the registry runs the activator's `validate` and `onStart` under it, and so does the module test kit. This is a documented limitation of core-first loading [open: measure how often real modules need the wrapper].
 - **Namespace rule.** `backend.basePackages` must not fall under any core scan root (`org.openelisglobal`, `org.itech`, `org.ozeki`, `spring`). Module JARs are off the webapp class path, so `AppConfig`'s scan cannot see them anyway; the rule keeps module and core packages distinguishable in logs, stack traces and the shadowed-library report. Recommended convention: a reverse-domain package owned by the implementer, for example `org.mohexample.openelis.implworkflow`.
 - **Declared libraries.** `backend.libraries` lists the bundled libraries by Maven coordinates so that operators can audit them; the loader also lists the actual `lib/*.jar` entries and reports any not declared. Section 9.10 describes how the module build decides what goes into `lib/`.
+- **Loader engine.** The loader above is a few hundred lines of plain JDK code. PF4J offers the same shape (one loader per plugin, bundled libraries, a `Plugin-Requires` minimum version) and can be configured application-first (`ClassLoadingStrategy.APD`) so that the core-first rule holds; its default is plugin-first, which this design rejects. The Phase 2 spike builds the three fixture modules on both engines and keeps the design's own loader unless PF4J passes every criterion the companion comparison sets for it (bean visibility in both directions as specified in section 9.4, repeated redeploys without leaked loaders, no way for a plugin to register beans in the root context) with less code to maintain [open].
 
-### 9.4 Spring registration [recommendation]
+### 9.4 Spring registration: one child context per module [recommendation]
 
-`ModuleBeanRegistrar implements BeanDefinitionRegistryPostProcessor, PriorityOrdered`, declared in a new `ModuleConfig` `@Configuration` imported by `AppConfig`:
+Module beans never enter the core's root context. Each module gets an `AnnotationConfigApplicationContext` whose **parent** is the root context and whose class loader is the module's loader. The rule the companion comparison states as "no beans in the host context; only declared extensions cross into the host" then holds by construction: a child context resolves beans from its parent, so a module injects any core service with plain `@Autowired`, while the parent never resolves beans from a child, so no module bean can be injected into core code, replace a core bean (`@Primary` has no effect upward), join a core `@Autowired List<X>`, or post-process and advise core beans (a child's `BeanPostProcessor`, `BeanFactoryPostProcessor` and auto-proxy creator only see the child's beans).
 
-1. Obtain the `ModuleRegistry` (constructed directly, not as a bean, because this runs before bean instantiation) and the ordered list of `VALIDATED` modules (topological order over `requires.modules`).
-2. For each module, run a `ClassPathScanningCandidateComponentProvider` whose `ResourceLoader` is backed by the module's class loader over the module's `basePackages` with the default stereotype filters; for each candidate, load the class **through the module loader** and register a `GenericBeanDefinition` with `setBeanClass(Class)` (never a class name, which the bean factory would resolve through the webapp loader and fail to find) and a bean name prefixed `module:<id>:` so that name clashes are impossible.
-3. Register the activator class, loaded the same way, as a bean named `module:<id>:activator`.
-4. Register a `ModuleEntityRegistrar` (section 9.5) carrying the union of declared entity classes.
+Start-up has two halves, because entities and migrations must be known before the core's entity manager factory is built, while module beans need the fully refreshed core:
 
-Every Spring, Hibernate and Jackson type a module references resolves parent-first to the core's `Class` objects, so injection by type, CGLIB proxies for `@Transactional` and `@PreAuthorize` (the proxy subclass is defined in the module loader, whose parent supplies the Spring classes) and request mapping work unchanged. Because the registrar runs in the root context, module `@RestController`s are discovered by the single `DispatcherServlet` [confirmed: it is constructed on the root context], module `@Service`s participate in `@Transactional` through the existing `JpaTransactionManager`, and `@PreAuthorize` is enforced by the existing method security configuration. Interceptors (`ModuleAuthenticationInterceptor`, locale, page attributes) apply to module endpoints like to any other.
+1. **During the root refresh.** `ModuleDiscoveryPostProcessor implements BeanDefinitionRegistryPostProcessor, PriorityOrdered` (declared in a new `ModuleConfig` imported by `AppConfig`) runs discovery and validation (section 9.2), builds the loaders, and registers in the root only the core-owned beans that need module data early: the `ModuleEntityRegistrar` with the union of declared entity classes (section 9.5) and the `moduleLiquibase` runner (section 9.6). No module class becomes a root bean.
+2. **After the root refresh.** On the root's `ContextRefreshedEvent` (ordered before the menu and permission registrars), `ModuleContextFactory` creates each `MIGRATED` module's child context in dependency order: it registers the core-provided `ModuleChildConfig` (`@EnableTransactionManagement`, `@EnableMethodSecurity`, the module's `ModuleContext` bean, a `ModuleLog`), scans the module's `basePackages` with a `ClassPathBeanDefinitionScanner` whose resource loader is backed by the module loader, registering every candidate by `Class` object loaded through the module loader (never by name, which the bean factory would resolve through the wrong loader), registers the activator and every `extensions[].class` as beans, and refreshes. A refresh failure is caught, recorded as `FAILED` with the bean name, and handled by the failure policy (section 9.9).
 
-Spring Data repositories for modules are **not** supported in Phase 2: `@EnableJpaRepositories` is a static annotation on `AppConfig`, and extending it per module needs programmatic use of the Spring Data configuration extension. Modules use the project's DAO pattern (`EntityManager` through a base DAO) exactly as core does; repository support is a Phase 5 candidate [open].
+What the child configuration gives module beans:
+
+- **Transactions.** `@EnableTransactionManagement` in the child creates the child's transaction advisor; it resolves the `PlatformTransactionManager` by type, which falls through to the root's `JpaTransactionManager`, so a module `@Transactional` joins the core's transaction and a core service called from a module method runs in the same transaction. `PersistenceAnnotationBeanPostProcessor` is registered automatically and finds the root's `EntityManagerFactory` through the parent, so `@PersistenceContext` works in module DAOs [inference from the Spring 6.2 parent-lookup rules; proven in the Phase 2 spike].
+- **Method security.** `@EnableMethodSecurity` in the child enforces `@PreAuthorize` on module beans with the same `SecurityContextHolder` the core uses.
+- **Core services.** Any core bean is injectable by type or name; `ModuleContext.coreService(Class)` is a typed convenience over the same lookup.
+- **Spring Data.** A module may put `@EnableJpaRepositories(basePackages = ..., entityManagerFactoryRef = "entityManagerFactory", transactionManagerRef = "transactionManager")` on its own `@Configuration` class in the child; the references resolve from the parent, and the repository proxies are child beans. This lifts the earlier Phase 2 restriction [inference, spike].
+
+What crosses the boundary into the core, and only this:
+
+- **Extensions.** Each `extensions[]` bean is registered with the root's `ExtensionRegistry` under its extension-point interface after the child refresh; core seams consult the registry (section 9.1.1). Unlisted implementations of an `ExtensionPoint` in a module are ignored and reported.
+- **Controllers.** A `@RestController` in a child context is invisible to the `DispatcherServlet`, whose handler mappings look at their own context and its ancestors, never at descendants. `ModuleControllerRegistrar` therefore registers each module controller bean with the root's `RequestMappingHandlerMapping` through a core subclass (`ModuleAwareRequestMappingHandlerMapping`) that exposes the mapping's protected handler-method detection; the only core change is that `AppConfig` extends `DelegatingWebMvcConfiguration` and overrides `createRequestMappingHandlerMapping()` instead of using `@EnableWebMvc` [confirmed: `AppConfig` is `@EnableWebMvc` + `WebMvcConfigurer` today, `AppConfig.java:55-65`; the subclass approach is the documented way to customise the mapping]. The registered handler is the child's proxied bean, so `@PreAuthorize` and `@Transactional` on it work, and because the mapping, its interceptors (`ModuleAuthenticationInterceptor`, locale, page attributes), argument resolvers, message converters and the `ControllerSetup` advice are the root's, module endpoints behave exactly like core endpoints. Before registering, the registrar checks every mapping against `/rest/modules/<id>/**` and refuses the module (`FAILED`) on the first mapping outside it; the test kit catches the same at build time.
+- **Events.** Spring events do not travel from a parent context to its children. Core publishes the typed events defined in `openelis-spi` (`SampleCreatedEvent`, `ResultValidatedEvent`, `OrderReferredEvent`, grown as needed) and `ModuleEventForwarder` re-publishes each into every `STARTED` module's child context, where ordinary `@EventListener` and `@TransactionalEventListener` methods receive it; the forwarder runs inside the publishing core transaction, so transactional listeners in modules see the same commit boundary. A module's own events bubble from child to root as Spring does by default; a module must not publish core event types (test-kit rule, section 19.1). This is what the billing provider needs to replace the hard-wired Odoo call (section 24, Phase 2), so events move from a Phase 5 idea to a Phase 2 contract.
+- **Entities and changelogs.** Declared, bootstrap-time, sections 9.5 and 9.6.
+
+Every Spring, Hibernate and Jackson type a module references resolves parent-first to the core's `Class` objects, so injection by type, CGLIB proxies (the proxy subclass is defined in the module loader, whose parent supplies the Spring classes) and JSON conversion work unchanged. `SpringContext.getBean` (the core's static accessor) sees the root only, which is correct: the core never needs a module bean by name.
 
 ### 9.5 JPA entities [recommendation]
 
@@ -351,11 +488,11 @@ emf.setPersistenceUnitPostProcessors(moduleEntityRegistrar);          // new: en
 
 Fallback if Hibernate cannot load module entities through `hibernate.classLoaders`: a composite class loader (webapp loader first, then every module loader) installed as the persistence unit's class loader through the same post-processor.
 
-Entities are listed explicitly in the manifest (`backend.entities`), mirroring the project's `persistence.xml` convention and `test-persistence.xml` behaviour, rather than scanned; a scan option (`backend.entityPackages`) can be added later. Module tables use the `clinlims` schema and a `mod_<id>_` table and sequence prefix, where `<id>` is the module id with hyphens replaced by underscores (`mod_implementation_workflow_`), so that they are recognisable in backups and removable without touching core tables [recommendation; schema-per-module is an alternative, section 25]. Module entities that need the core audit columns extend a `ModuleAuditedEntity` mapped superclass provided by the API artifact rather than core's `BaseObject` [open: confirm `LIMSStringNumberUserType` and the `sys_user_id` conventions can be reproduced there].
+Only full modules declare entities; a provider declares none (validation rule) and, when it needs data beyond what core services return, uses `ModuleContext.jdbc()`, a `NamedParameterJdbcTemplate` on the core datasource that takes part in the surrounding core transaction (Spring JDBC is already a WAR dependency [confirmed, `pom.xml:508`]). This is the companion comparison's "core-supplied data interface, not its own mappings" rule. Entities are added to the single persistence unit at bootstrap only, never at runtime, which is the reason runtime install is excluded (section 7.3). Entities are listed explicitly in the manifest (`backend.entities`), mirroring the project's `persistence.xml` convention and `test-persistence.xml` behaviour, rather than scanned; a scan option (`backend.entityPackages`) can be added later. Module tables use the `clinlims` schema and a `mod_<id>_` table and sequence prefix, where `<id>` is the module id with hyphens replaced by underscores (`mod_implementation_workflow_`), so that they are recognisable in backups and removable without touching core tables [recommendation; schema-per-module is an alternative, section 25]. Module entities that need the core audit columns extend a `ModuleAuditedEntity` mapped superclass provided by the API artifact rather than core's `BaseObject` [open: confirm `LIMSStringNumberUserType` and the `sys_user_id` conventions can be reproduced there].
 
 ### 9.6 Liquibase [recommendation]
 
-- Each module ships one changelog at the path named in `backend.liquibase` (for example `liquibase/implementation-workflow/changelog.xml`). Changeset ids **must** start with `<id>-`; `author` is the module id. The runner parses the changelog and refuses to run it if any changeset breaks the rule, so module changesets can never collide with core ids in the shared `databasechangelog` table.
+- A provider ships no changelog: it owns no tables (section 9.1). Each full module ships one changelog at the path named in `backend.liquibase` (for example `liquibase/implementation-workflow/changelog.xml`). Changeset ids **must** start with `<id>-`; `author` is the module id. The runner parses the changelog and refuses to run it if any changeset breaks the rule, so module changesets can never collide with core ids in the shared `databasechangelog` table.
 - `ModuleLiquibaseRunner` is a bean annotated `@DependsOn("liquibase")`; `HibernateConfig.entityManagerFactory()` becomes `@DependsOn({"liquibase", "moduleLiquibase"})`. The runner executes each module's changelog with the Liquibase API directly (`new Liquibase(changelogPath, new ClassLoaderResourceAccessor(moduleLoader), database)`) rather than a second `SpringLiquibase`, because the changelog and its includes live inside the module JAR, which only the module's class loader can see; custom change classes a module ships are loaded the same way. Order of events at start therefore is: core changelog, module changelogs in dependency order, session factory with module entities, singletons, `ContextRefreshedEvent` listeners (menu, permissions, configuration loaders), module `onStart`.
 - A core changeset creates `clinlims.module_state (id, version, status, core_version, installed_at, last_started_at, last_error)`. The runner records the installed version; when it differs from the JAR's version, migrations run and `onUpgrade(from, to)` fires after them. Downgrades (JAR version lower than recorded) are refused unless the operator sets `modules.<id>.allowDowngrade=true`.
 - A failing module changeset fails start-up exactly like a failing core changeset does today, with the module id in the message. The operator fixes or disables the module and restarts (section 21).
@@ -371,8 +508,8 @@ Entities are listed explicitly in the manifest (`backend.entities`), mirroring t
 
 | Endpoint | Purpose | Access |
 |---|---|---|
-| `GET /rest/module-registry` | Registry view: every discovered module with id, version, status, reason, frontend contract, routes, slots, menu, message file URLs, exposed configuration. | Authenticated user (the shell needs it after login). |
-| `GET /rest/module-registry/{id}` | One module's detail, including libraries and digests. | `hasRole('GLOBAL_ADMIN')`. |
+| `GET /rest/module-registry` | Registry view: every discovered module with id, kind, version, status, reason, the extension points it implements and which provider is active for each single-implementation point, frontend contract, routes, slots, menu, message file URLs, exposed configuration. | Authenticated user (the shell needs it after login). |
+| `GET /rest/module-registry/{id}` | One module's detail, including libraries, digests and the **core-coupling report**: which of the three core artifacts the module's classes reference (`openelis-spi` only, plus `openelis-module-api`, plus `openelis-core` packages, listed by package), computed once at discovery by reading the constant pools of the module's classes. | `hasRole('GLOBAL_ADMIN')`. |
 | `GET /rest/module-registry/{id}/config` | Configuration values the manifest marks `exposeToFrontend`. | Authenticated user. |
 | `GET /modules/{id}/**` | Static assets read from the module JAR through its class loader (`ResourceHandlerRegistry` with a `Resource` location created from the module loader for `META-INF/resources/modules/{id}/`); hashed files `Cache-Control: public, max-age=31536000, immutable`; `remoteEntry.js` and message files `no-cache` with ETag. | Authenticated session (default chain); added to the interceptor exclusions like `RESOURCE_PAGES`. |
 
@@ -389,13 +526,13 @@ stateDiagram-v2
   DISCOVERED --> VALIDATED
   VALIDATED --> MIGRATED: module changelog applied (or nothing to apply)
   VALIDATED --> FAILED: changelog error (start-up aborts)
-  MIGRATED --> STARTED: beans instantiated, onStart returned within timeout
-  MIGRATED --> FAILED: bean or onStart failure (start-up aborts)
+  MIGRATED --> STARTED: child context refreshed, extensions and controllers registered, onStart returned within timeout
+  MIGRATED --> FAILED: context refresh, controller path, extension or onStart failure (start-up aborts)
   STARTED --> STOPPED: context shutdown (onStop)
 ```
 
 - `INVALID`, `INCOMPATIBLE` and `DISABLED` modules are skipped; the core starts; the status is visible in `/rest/module-registry` and in the log.
-- `FAILED` after validation aborts start-up by default (`modules.failurePolicy=fail-fast`). Rationale: in a single context a half-started module is worse than a clear failure, and a LIS must not run with an unknown subset of its features. A manifest flag `required: true` is informational in fail-fast mode and becomes meaningful if a future isolation mode is added.
+- `FAILED` after validation aborts start-up by default (`modules.failurePolicy=fail-fast`). Rationale: a half-started module is worse than a clear failure, and a LIS must not run with an unknown subset of its features. Because module beans live in child contexts, the core's context is intact when a module fails, so a `modules.failurePolicy=isolate` mode (skip the failed module, mark it `FAILED`, continue) is technically available; it is not enabled in Phases 1 to 5 and a manifest flag `required: true` would make a module exempt from it [open].
 - `onStart` runs with a timeout (`modules.startTimeoutSeconds`, default 60); exceeding it is a failure.
 - Kill switch: an operator drops `<jar-name>.disabled` next to the JAR or lists ids in `modules.disabled` in a mounted properties file; the module is skipped at the next restart.
 
@@ -408,8 +545,34 @@ The class loader rules only work if the module build puts the right JARs in `lib
 - **Packaging.** The module's `package` phase runs `maven-dependency-plugin:copy-dependencies` with `includeScope=runtime` and `excludeScope=provided` into `target/classes/lib/`, so `lib/` holds exactly the module-only libraries and their transitive closure minus everything the BOM provides. The manifest's `backend.libraries` is generated from the same list by the template's build, not typed by hand.
 - **Enforcement.** `maven-enforcer-plugin` in the template runs `dependencyConvergence` (one version per artifact in the module's own graph) and `bannedDependencies` for every coordinate in the BOM outside `provided` scope, so a module cannot accidentally bundle a second Spring or Jackson. The runtime shadowed-library report (section 9.3) is the backstop for modules built without the template.
 - **Transitive conflicts.** When a module-only library depends on a library the core also ships at a different version, Maven's nearest-wins resolution inside the module is irrelevant at runtime: the core's copy is loaded (parent-first). The module author must test against the core's version; the BOM makes that version visible at build time, and `japicmp` on the API artifact plus the module test kit catch the common breakages.
-- **Versions of the contracts.** `openelis-module-api` and the BOM share the core's release train: a core release publishes `openelis-module-api:<apiVersion>` and `openelis-module-bom:<openelisVersion>`. A module declares `requires.openelis` as the lowest core version whose BOM it was built and tested against, and may raise it when it starts using a newer core library.
+- **Versions of the contracts.** `openelis-core`, `openelis-module-api` and the BOM share the core's release train: a core release publishes `openelis-core:<openelisVersion>`, `openelis-module-api:<apiVersion>` and `openelis-module-bom:<openelisVersion>`, and the BOM pins the `openelis-spi` version that release ships. `openelis-spi` is released on its own cadence and only when an extension point changes. A module declares `requires.openelis` as the lowest core version whose BOM it was built and tested against, and may raise it when it starts using a newer core library or core class; a provider that references only `openelis-spi` and `openelis-module-api` can leave the upper bound open with confidence, a full module that injects core services should test each core minor before raising it.
+- **What a module may reference.** The template adds `openelis-core` in `provided` scope only when the module is a full module; a provider template omits it, so a provider cannot reference core internals by accident. The registry's core-coupling report (section 9.8) shows the actual references of any installed JAR, template or not.
 - **Repositories.** Where the API, BOM, test kit and SDK are published is an open decision (section 25.2); the `dataexport` precedent (`mvn install` of sibling artifacts in the Docker build) shows the fallback when no remote repository is available.
+
+### 9.11 Core internal boundaries: ArchUnit rules [recommendation]
+
+The module system draws a boundary at the edge of the core. The companion comparison's second finding is that the inside of the core needs a boundary too, or the extension points will not stay narrow: every site-specific report class today reaches into whichever services and DAOs it needs, and nothing stops a new feature from doing the same. The cheapest enforcement that fits a plain Spring application (no Spring Boot, so Spring Modulith's integration tests and event registry do not apply, and its verification half would need the 1.4 line matched to Spring Framework 6) is **ArchUnit**: a test library that imports compiled bytecode and checks dependency rules from an ordinary JUnit test [confirmed: neither ArchUnit nor Modulith is in `pom.xml` today].
+
+Rules, in the order they are introduced:
+
+1. **Slices free of cycles**: `slices().matching("org.openelisglobal.(*)..").should().beFreeOfCycles()`, treating each direct sub-package of `org.openelisglobal` as a feature.
+2. **No cross-feature DAO access**: no class outside a feature may depend on that feature's `dao` or `daoimpl` package; other features use its `service` package (and value holders) only.
+3. **Layering inside a feature**: `layeredArchitecture()` with controller, service and DAO layers, so a controller never calls a DAO.
+4. **Seam ownership**: the packages behind the extension-point seams (`reports.action.implementation`, `notification.service.sender`, `odoo`, `common.provider.validation`) may be depended on only by their own feature and the extension registry.
+
+The suite starts with `FreezingArchRule`, which records today's violations in a checked-in store and fails the build only on new ones; the stored violation count per rule is the baseline the decision checks ask for (section 24, Phase 0) and is reduced feature by feature, reporting area first. The test runs in the Backend workflow on every pull request; importing `org.openelisglobal` bytecode takes seconds [inference; measured when the baseline is created]. Spring Modulith verification can replace ArchUnit later if Spring Boot is adopted; both are plain tests, so switching means rewriting rule definitions, not restructuring code.
+
+### 9.12 Runtime rules for module code [recommendation]
+
+The five rules the companion comparison derives from Spring's and Hibernate's global state (one bean registry, proxies applied by the creating context, one session factory with a fixed entity model, reflection caches and JVM registries that pin loaders, one class per name per loader), and how each is enforced here:
+
+| Rule | Provider | Full module | Enforced by |
+|---|---|---|---|
+| 1. Load at start-up, restart to change; nothing is unloaded or swapped in a running JVM | Yes | Yes | No install, upgrade or unload endpoint exists (section 7.3); loaders live for the webapp's lifetime (section 9.3) |
+| 2. No entities in providers; data through core services or the core-supplied `jdbc()` | Yes | Entities allowed, declared, added at bootstrap only, `mod_<id>_` tables (section 9.5) | Manifest validation (`kind: provider` with `entities` is `INVALID`); entity list is closed once the session factory exists |
+| 3. No beans in the core context; only declared extensions, controllers and event subscriptions cross | Yes | Yes | Child contexts (section 9.4); `ExtensionRegistry` registers only `extensions[]`; the controller registrar registers only mappings under the module path |
+| 4. One copy of each framework, the core's; a module never bundles Spring, Hibernate, Jackson or the driver | Yes | Yes | Parent-first loaders (section 9.3), the generated BOM, `provided` scope and the enforcer rules (section 9.10); bundling is reported, not fatal, because the core copy wins anyway |
+| 5. The core owns transactions; extension calls run inside the core's transaction and never open their own | `@Transactional` with `REQUIRED` or `SUPPORTS` only; no `REQUIRES_NEW`, no `TransactionTemplate` | Module services may be `@Transactional` and join the core's `JpaTransactionManager`; `REQUIRES_NEW` discouraged and reported by the test kit | Test-kit rule (section 19.1); the child's transaction advisor resolves the root transaction manager, there is no other |
 
 ## 10. Proposed frontend module framework
 
@@ -422,6 +585,8 @@ A module's frontend is a **Module Federation remote built with Vite** (`@module-
 import { federation } from "@module-federation/vite";
 import { sharedSingletons } from "@openelis/module-sdk/shared";
 
+import { coreRemote } from "@openelis/module-sdk/core";
+
 export default defineConfig({
   plugins: [react(), federation({
     name: "implementation_workflow",          // manifest id with dashes replaced
@@ -430,6 +595,7 @@ export default defineConfig({
       "./WorkflowPage": "./src/pages/WorkflowPage.tsx",
       "./PatientAction": "./src/slots/PatientAction.tsx",
     },
+    remotes: { openelis_core: coreRemote },     // the shell's own exposed surface (components, api, hooks, layout)
     shared: sharedSingletons,                   // react, react-dom, react-router-dom, react-intl,
                                                 // @carbon/react, @carbon/icons-react,
                                                 // @tanstack/react-query, @openelis/module-sdk
@@ -439,6 +605,7 @@ export default defineConfig({
 ```
 
 - Each exposed name is an independent lazy entry; the shell loads a page's expose only when its route is visited and a slot's expose only when the slot renders. There is no mandatory "module entry" bundle; an optional `./module` expose may export `onRegister(sdk)` for module-wide setup.
+- **The core frontend as a dependency.** The shell is not only the federation host; it also exposes its own reusable surface as a remote named `openelis_core` (built from an explicit index under `frontend/src/module-exports/`, served by the frontend image next to `index.html`): `./components` (the common components, for example `PatientHeader`, `CustomLabNumberInput`, `CustomDatePicker`, `AutoComplete`, `PageBreadCrumb`, `ConfirmPopup`, `CustomNotification`, `Spinner` [confirmed, `frontend/src/components/common/`]), `./api` (the `Utils.ts` client functions `getFromOpenElisServer`, `postToOpenElisServer`, `putToOpenElisServer`, `deleteFromOpenElisServer` and their JSON and blob variants, `hasRole`, `hasPermission`), `./hooks` (`useInAppNavigation`, `useUrlFilters`, `useActiveLocales`, `useDomains`), `./layout` (page title, breadcrumbs) and `./contexts` (session, configuration, notification). A module imports them as `@openelis/module-sdk/core/components` and so on; at build time the SDK resolves these to type declarations generated from the core's sources (typed where the core file is TypeScript, `any` where it is still JSX), and at runtime the federation runtime resolves them to the shell's live instances, so a module renders the same component code, at the same version, as the core pages around it, and never bundles a copy. A module may also call any core REST endpoint through the same client with the same session; the promise for core endpoints and for the exposed UI surface is the application version the module declares in `requires.openelis`, the same promise `openelis-core` gives the backend [inference on `@module-federation/vite` host-as-remote; Phase 3 spike].
 - Output is ES modules (`type: "module"` remotes), served same-origin from `/api/OpenELIS-Global/modules/<id>/`.
 - The module's `package.json` declares the shared libraries as `peerDependencies` at the versions the SDK pins; the SDK ships a `shared.json` so the remote's `requiredVersion` ranges are generated, not typed by hand.
 
@@ -459,8 +626,10 @@ Published from a new workspace package in the core repository (`frontend/package
 | `defineModule()` types: `ModuleRoute`, `SlotContribution`, slot prop types | new | Compile-time contract for the slot catalogue. |
 | `navigateTo(path)` | React Router 5 history | Avoids a second router. |
 | `FRONTEND_CONTRACT_VERSION` | SDK package version | What the shell publishes in `/rest/module-registry`. |
+| `@openelis/module-sdk/core/components`, `/core/api`, `/core/hooks`, `/core/layout`, `/core/contexts` | The shell's own code, exposed through the `openelis_core` remote (section 10.1) | Reusable core UI, the API client and hooks, resolved at runtime to the running shell; types generated from the core sources; grows by core pull request, listed in the SDK changelog. |
+| `coreRemote` (`@openelis/module-sdk/core`) | Federation remote descriptor for `openelis_core` | Used in the module's Vite configuration so the remote name and entry are never typed by hand. |
 
-The SDK version **is** the frontend contract version. Any change to a shared singleton's major (React 17 to 18, Router 5 to 6, Carbon major) or to a slot's props is a contract major; additive slots and hooks are minors.
+The SDK version **is** the frontend contract version. Any change to a shared singleton's major (React 17 to 18, Router 5 to 6, Carbon major), to a slot's props, or the removal or signature change of an exposed core component, hook or client function is a contract major; additive slots, hooks and exposed components are minors. The exposed core surface is an explicit index reviewed like the slot catalogue; the rest of `frontend/src` stays private to the shell, so a core refactor that does not touch the index cannot break a module.
 
 ### 10.3 Styling, translations and assets
 
@@ -470,7 +639,7 @@ The SDK version **is** the frontend contract version. Any change to a shared sin
 
 ### 10.4 Development workflow
 
-In development mode only (`import.meta.env.DEV`), the shell honours `localStorage["oe.module-override.<id>"] = "http://localhost:5174/remoteEntry.js"` so a module author runs the core dev stack plus the module's Vite dev server and iterates without rebuilding the JAR. Production ignores overrides.
+In development mode only (`import.meta.env.DEV`), the shell honours `localStorage["oe.module-override.<id>"] = "http://localhost:5174/remoteEntry.js"` so a module author runs the core dev stack plus the module's Vite dev server and iterates without rebuilding the JAR. Production ignores overrides. The `openelis_core` remote is served by the dev stack's shell, so a module under development uses the real core components; in the module's Vitest suite, `@openelis/module-sdk/testing` maps `@openelis/module-sdk/core/*` to lightweight stubs by default and to the core's source tree when the module is developed inside the core workspace [open].
 
 ## 11. Frontend application shell and module discovery
 
@@ -544,6 +713,7 @@ Policy: a slot is added by a core pull request with its props type; renaming or 
 {
   "schemaVersion": 1,
   "id": "implementation-workflow",
+  "kind": "module",
   "name": "Implementation Workflow",
   "version": "1.2.0",
   "vendor": { "name": "Ministry of Health Example", "url": "https://example.org", "contact": "lis@example.org" },
@@ -551,6 +721,7 @@ Policy: a slot is added by a core pull request with its props type; renaming or 
   "requires": {
     "openelis": ">=3.4.0",
     "coreApi": "^1.0",
+    "spi": "^1.0",
     "frontendContract": "^1.0",
     "modules": [ { "id": "shared-reference-data", "version": "^2.1" } ]
   },
@@ -561,6 +732,9 @@ Policy: a slot is added by a core pull request with its props type; renaming or 
     "activator": "org.example.openelis.implworkflow.ImplementationWorkflowModule",
     "entities": [ "org.example.openelis.implworkflow.valueholder.WorkflowCase" ],
     "liquibase": "liquibase/implementation-workflow/changelog.xml",
+    "extensions": [
+      { "spi": "report", "class": "org.example.openelis.implworkflow.report.CaseSummaryReportProvider", "order": 10 }
+    ],
     "libraries": [ "org.apache.commons:commons-csv:1.12.0" ],
     "comment": "libraries lists the JARs bundled under lib/; generated by the module build from the non-provided runtime scope (section 9.10)"
   },
@@ -593,13 +767,39 @@ Policy: a slot is added by a core pull request with its props type; renaming or 
 }
 ```
 
-`requires.openelis` is **mandatory** and must carry a lower bound: the minimum OpenELIS version the module was built and tested against (`>=3.4.0`); an upper bound is optional (`>=3.4.0 <4` pins a major). The registry compares it with the running application's version (the `pom` revision exposed as a build property; `3.4.0-SNAPSHOT` compares as `3.4.0`) and reports both in `/rest/module-registry`. Permission keys, message keys, menu element ids, REST paths and table prefixes are all derived from `id`, which keeps every namespace rule mechanical: `mod.implementation-workflow.view`, `mod.implementation-workflow.*` (messages), `menu_mod_implementation_workflow*`, `/rest/modules/implementation-workflow/**`, `mod_implementation_workflow_*` (hyphens become underscores in SQL identifiers, menu ids and the federation remote name).
+A provider's manifest is the same document with less in it:
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "odoo-billing",
+  "kind": "provider",
+  "name": "Odoo billing",
+  "version": "1.0.0",
+  "requires": { "openelis": ">=3.4.0", "coreApi": "^1.0", "spi": "^1.0" },
+  "backend": {
+    "basePackages": [ "org.openelisglobal.modules.odoo" ],
+    "activator": "org.openelisglobal.modules.odoo.OdooBillingModule",
+    "extensions": [ { "spi": "billing", "class": "org.openelisglobal.modules.odoo.OdooBillingProvider" } ]
+  },
+  "configuration": {
+    "properties": [
+      { "key": "url", "type": "url", "default": null, "description": "Odoo JSON-RPC endpoint", "exposeToFrontend": false },
+      { "key": "database", "type": "string", "default": null, "description": "Odoo database", "exposeToFrontend": false }
+    ]
+  }
+}
+```
+
+`kind` is `module` or `provider`; a provider may not declare `entities`, `liquibase`, `frontend` or `menu`, and its controllers (if any) are refused, which the schema and the registry both check. `requires.spi` is mandatory whenever `extensions` is declared. `requires.openelis` is **mandatory** and must carry a lower bound: the minimum OpenELIS version the module was built and tested against (`>=3.4.0`); an upper bound is optional (`>=3.4.0 <4` pins a major). The registry compares it with the running application's version (the `pom` revision exposed as a build property; `3.4.0-SNAPSHOT` compares as `3.4.0`) and reports both in `/rest/module-registry`. Permission keys, message keys, menu element ids, REST paths and table prefixes are all derived from `id`, which keeps every namespace rule mechanical: `mod.implementation-workflow.view`, `mod.implementation-workflow.*` (messages), `menu_mod_implementation_workflow*`, `/rest/modules/implementation-workflow/**`, `mod_implementation_workflow_*` (hyphens become underscores in SQL identifiers, menu ids and the federation remote name).
 
 ### 13.2 Versioning and compatibility rules [recommendation]
 
 | Contract | Owner | Version source | Checked by | On mismatch |
 |---|---|---|---|---|
+| Extension points (`openelis-spi`, `requires.spi`) | core repo, released on its own cadence | SPI artifact version compiled into the WAR | `ModuleRegistry` at discovery | `INCOMPATIBLE`, module skipped |
 | Core API (`openelis-module-api`) | core repo | Maven artifact version compiled into the WAR | `ModuleRegistry` at discovery | `INCOMPATIBLE`, module skipped |
+| Core classes (`openelis-core`) and core REST endpoints | core repo | The application version; `japicmp` lists breaking changes per release | Covered by `requires.openelis`; the core-coupling report shows which modules are exposed | `INCOMPATIBLE` only when `requires.openelis` says so; otherwise a module-side rebuild and test per core minor |
 | OpenELIS application version (`requires.openelis`, mandatory minimum) | core repo | `pom` revision exposed as a build property and in `/rest/module-registry` | `ModuleRegistry` at discovery | `INCOMPATIBLE`, module skipped |
 | Frontend contract (`@openelis/module-sdk`) | core repo | npm package version baked into the shell | `ModuleRegistry` (declared) and shell (actual) | not loaded in the browser; backend may still run; status `FRONTEND_INCOMPATIBLE` |
 | Module to module | module authors | manifest versions | `ModuleRegistry` | `INCOMPATIBLE` for the dependent |
@@ -616,8 +816,9 @@ Rules: semver with npm-style ranges, parsed on the Java side by a small vetted l
 - **Errors**: `ControllerSetup` handlers apply (403 for `AccessDeniedException`, 500 for runtime exceptions); modules throw `LIMSRuntimeException` or return `ResponseEntity` with explicit statuses.
 - **Paging**: server-side paging with the Carbon page equal to the server page, following the core's `serverPaging` utility and conventions.
 - **Localisation**: server messages for module validation errors are resolved from the module's own message bundles (`backend.messages`, optional) through a module-aware `MessageSource` decorator [open].
-- **Data access to core**: through approved facades; direct JPQL against core tables is possible but unsupported and documented as such.
-- **Events**: modules may publish and listen to Spring `ApplicationEvent`s; the API artifact defines a small set of core events worth subscribing to (`SampleCreated`, `ResultValidated`, `OrderReferred`) as a Phase 5 item [open].
+- **Core services and data**: a full module injects core services from `openelis-core` directly and may use the facades in `openelis-module-api`; a provider uses the facades, the services it injects, and `ModuleContext.jdbc()`. Direct JPQL against core tables from module entities is possible but unsupported and documented as such; `jdbc()` and the services are the supported paths.
+- **Events**: core publishes the typed events defined in `openelis-spi` (`SampleCreatedEvent`, `ResultValidatedEvent`, `OrderReferredEvent`; the set grows by core pull request) and the module runtime forwards them into every started module's context (section 9.4), where `@EventListener` and `@TransactionalEventListener` methods receive them inside the core's transaction boundary. Modules publish their own event types only; a Phase 2 contract because the billing provider depends on it.
+- **Extension points**: a module implements an extension point from `openelis-spi` and declares it in the manifest; the core consults the `ExtensionRegistry` at the documented seam (section 9.1.1). Value types crossing an extension point are SPI types, never core entities.
 
 ## 15. Security and permission model
 
@@ -631,7 +832,8 @@ A module runs inside the OpenELIS JVM with the application's database credential
 | Supply-chain substitution of a module's third-party libraries | Libraries declared in the manifest; the registry reports them; distro CI can diff them against an allowlist. | 2 |
 | Permission bypass | Module endpoints require `@PreAuthorize` (test-kit rule); keys registered in `system_module`; grants via Role Management; URL interceptor unchanged. | 2 |
 | Frontend code injection via module assets | Assets are served same-origin by the backend with content hashes and an authenticated session; `frontend.entry` must be relative (absolute URLs are rejected unless `modules.allowRemoteFrontendOrigins` lists the origin). No CDN. | 3 |
-| Cross-module interference | Namespaced beans, tables, permissions, routes and message keys; one class loader per module with declared visibility only; shadowed-library report; conflicts declared in the manifest. | 2 |
+| Cross-module interference | Namespaced tables, permissions, routes and message keys; one class loader and one Spring context per module with declared visibility only; shadowed-library report; conflicts declared in the manifest. | 2 |
+| A module alters core behaviour through Spring wiring (overriding a core bean, a `BeanPostProcessor` or `BeanFactoryPostProcessor`, an aspect on core beans) | Impossible by construction: module beans live in a child context the core never resolves from; only declared extensions, controllers under the module path and forwarded events cross the boundary (section 9.4). A module that wants to change core behaviour implements an extension point or raises a core pull request. | 2 |
 | Data exfiltration through module configuration | Secrets for modules come from the same mounted properties and `/run/secrets` sources as core; `exposeToFrontend` is opt-in per property. | 2 |
 | Denial of service at start-up | Start timeout; fail-fast with a named module; one-file disable. | 2 |
 | Audit | Module writes go through the same `sys_user_id` and audit trail conventions when entities extend `ModuleAuditedEntity`; startup writes use the daemon user like core seeders. | 2 |
@@ -657,6 +859,7 @@ Section 9.6 defines the mechanism. Conventions a module must follow, checked by 
 - Properties are read from the existing Spring `Environment` (classpath defaults, `/run/secrets/*.properties`, `/var/lib/openelis-global/properties/*.properties`) under the namespace `modules.<id>.<key>`, with defaults and types from the manifest. `ModuleContext.configuration()` offers typed getters; invalid values fail validation of the module with a clear message.
 - A module may also read files from `/var/lib/openelis-global/modules-config/<id>/` (mounted like `configuration/`), for CSV or JSON inputs too large for properties.
 - `exposeToFrontend` properties are served by `GET /rest/module-registry/{id}/config`; nothing else leaves the server.
+- Module and provider selection follow the same property sources: `modules.<id>.enabled=false` disables a module at the next restart (equivalent to the marker file, for sites that manage properties rather than files); `spi.<name>.provider=<module-id>` names the active provider of a single-implementation extension point when more than one is installed, and start-up fails with both ids when it is missing in that case; a multiple-implementation point runs every enabled provider in manifest `order`.
 - The constitution's rule that variation is configuration before code still applies inside modules: a module should carry its own configuration surface rather than forks per site.
 
 ## 17. Packaging, installation, upgrades, rollback and removal
@@ -677,7 +880,7 @@ implementation-workflow-1.2.0.jar
 └── org/example/openelis/implworkflow/**                backend classes
 ```
 
-A module repository is generated from `openelis-module-template` (Copier, like the distro template) and contains the Maven project, the Vite frontend project wired into `process-resources` through `frontend-maven-plugin`, the test kit, a CI workflow, and a `README` with the install steps. Frontend-only modules use the same template with the backend parts removed; the JAR then contains the manifest and assets only. A module with a user interface always ships that interface prebuilt inside this JAR: there is no separate frontend artifact and no build step on the server.
+A module repository is generated from `openelis-module-template` (Copier, like the distro template) and contains the Maven project, the Vite frontend project wired into `process-resources` through `frontend-maven-plugin`, the test kit, a CI workflow, and a `README` with the install steps. Frontend-only modules use the same template with the backend parts removed; the JAR then contains the manifest and assets only. A provider is the same JAR with the manifest, its classes and, when needed, `lib/`: no frontend directory, no changelog. A module with a user interface always ships that interface prebuilt inside this JAR: there is no separate frontend artifact and no build step on the server.
 
 ### 17.2 Operations [recommendation]
 
@@ -706,13 +909,15 @@ Everything in the table is a file operation on the distro repository plus a rest
 ### 19.1 Module-level testing (what a module author gets) [recommendation]
 
 - `openelis-module-test` (Maven artifact): a JUnit 4 base class `ModuleIntegrationTest` that starts a trimmed Spring context on Testcontainers PostgreSQL (the pattern `BaseWebContextSensitiveTest` and `AppTestConfig` already use), runs the core changelog and the module's changelog, registers the module through the real `ModuleRegistry`, and provides `MockMvc` with a logged-in test user holding chosen permissions.
-- Contract tests included by default and run with the module's own suite: manifest validates against the schema; base packages respect the namespace rules; every controller method has `@PreAuthorize`; every mapping is under `/rest/modules/<id>/`; every entity listed in the manifest maps; every changeset id carries the module prefix; message keys carry `mod.<id>.`; the frontend entry and every `expose` named in the manifest exist in the built assets.
+- Contract tests included by default and run with the module's own suite: manifest validates against the schema; `kind` matches the declarations; base packages respect the namespace rules; every controller method has `@PreAuthorize`; every mapping is under `/rest/modules/<id>/`; every entity listed in the manifest maps; every changeset id carries the module prefix; message keys carry `mod.<id>.`; every declared extension implements its extension point and, for a provider, references no `openelis-core` package (an ArchUnit rule shipped by the test kit); no `@Transactional(propagation = REQUIRES_NEW)` or `TransactionTemplate` in a provider; no `publishEvent` of an `org.openelisglobal.spi.event` type; the frontend entry and every `expose` named in the manifest exist in the built assets.
 - Frontend: Vitest with `@openelis/module-sdk/testing` (`ModuleTestProvider` supplying session, configuration, Intl and Query contexts); Playwright specs run against a dev stack with the module mounted, reusing the project's Playwright conventions (`npm run pw:test`, no `force: true`, assertions on visible state).
 
 ### 19.2 Core-level regression gate [recommendation]
 
 - An **example module** lives in the core repository (`modules/example-workflow/`, a Maven module built by the Backend workflow and mounted into the E2E stack). It exercises every contract: entity, changelog, permission, menu, route, slot, messages, configuration. It is the proof of concept of Phase 4 and stays as the permanent fixture.
-- Backend unit and context tests for `ModuleRegistry`, `ModuleBeanRegistrar`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `ModuleMenuContributor` and the `/rest/module-registry` controller, including the negative paths: invalid manifest, missing `requires.openelis`, incompatible ranges, missing dependency, cycle, duplicate id, changelog failure, bean failure, start timeout, disabled marker, digest mismatch, a user-interface module without its bundle; and the class-loader paths: a module bundling a library the core also ships resolves the core's class and is reported as shadowed, a module bundling a library the core lacks loads it from its own loader, two modules bundling different versions of one library both start, a module entity with a core user type maps, and a library that needs the thread context class loader works under `withModuleClassLoader`.
+- **ArchUnit suite for the core** (section 9.11) with its frozen baseline, run on every pull request; a pull request that adds a violation fails, one that removes violations updates the store.
+- **Extension-point compatibility job**: CI builds the example provider against the previous SPI minor and loads it on the current core, which is the companion comparison's "providers built against the previous SPI minor keep loading" check; `japicmp` on `openelis-spi` fails a non-major release with a breaking change.
+- Backend unit and context tests for `ModuleRegistry`, `ModuleContextFactory`, `ModuleControllerRegistrar`, `ModuleEventForwarder`, `ExtensionRegistry`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `ModuleMenuContributor` and the `/rest/module-registry` controller, including the containment paths (inversion tests: a module `@Primary` bean of a core service type does not change what core receives; a core `@Autowired List<ExtensionPoint>` stays empty; a module `BeanPostProcessor` never sees a core bean; a module controller mapped outside its prefix makes the module `FAILED`; a provider with entities is `INVALID`; two providers for one single-implementation point without `spi.<name>.provider` abort start-up naming both; a forwarded core event reaches a module listener inside the publishing transaction) and the negative paths: invalid manifest, missing `requires.openelis`, incompatible ranges, missing dependency, cycle, duplicate id, changelog failure, bean failure, start timeout, disabled marker, digest mismatch, a user-interface module without its bundle; and the class-loader paths: a module bundling a library the core also ships resolves the core's class and is reported as shadowed, a module bundling a library the core lacks loads it from its own loader, two modules bundling different versions of one library both start, a module entity with a core user type maps, and a library that needs the thread context class loader works under `withModuleClassLoader`.
 - Frontend tests for `ModuleHostProvider`, `ModuleRoutes`, `LazyRemote`, `ExtensionSlot` and the message merge, with a mocked registry and a mocked remote loader; one Playwright spec that logs in, sees the example module's menu entry, opens its page, calls its API, exercises a slot, and verifies that a deliberately broken second module renders a placeholder without affecting the page.
 - **API compatibility**: `japicmp` on `openelis-module-api` in CI fails the build when a binary-incompatible change is not accompanied by a major version bump; the SDK's public surface is type-tested and `shared.json` drift against `package.json` is checked.
 - **Test Quality Invariants** (constitution V.6) apply: no assert-on-mock-return, authorisation ordering tests for module endpoints, inversion tests for the registry's negative paths.
@@ -726,7 +931,8 @@ Each core release publishes the API and SDK versions it ships. Module CI builds 
 | Concern | Design response | To measure in the proof of concept |
 |---|---|---|
 | Start-up cost | Discovery is a classpath resource scan plus manifest parsing; validation is a few `Class.forName` calls; Liquibase checks checksums for an up-to-date module in milliseconds. | Added start-up time with 0, 1 and 5 modules; target under 2 s for 5 modules. |
-| Request latency | None beyond normal Spring MVC; module beans are ordinary beans. | p95 of a module endpoint vs an equivalent core endpoint. |
+| Request latency | None beyond normal Spring MVC; module beans are ordinary beans, and a handler registered from a child context is dispatched by the same mapping as a core handler. | p95 of a module endpoint vs an equivalent core endpoint. |
+| Child context creation | One `AnnotationConfigApplicationContext` per module, refreshed after the root; a provider's context holds a handful of beans. | Time to refresh the child contexts of 5 modules; heap per empty child context. |
 | First page load | One `/rest/module-registry` call and one small message file per module per session; remote bundles load on first visit of a route; shared singletons prevent a second React. | Size of `/rest/module-registry` with 5 modules; time to interactive of a module page cold and warm. |
 | Caching | Hashed assets immutable for a year; `remoteEntry.js` and messages validated by ETag; registry cached per session. | Cache hit ratio in the proxy logs. |
 | Reliability | No runtime mutation of Spring or Hibernate state; fail-fast after validation; timeouts on start; one-file disable; error boundaries per route and slot in the browser. | Lifecycle test matrix (section 19.2). |
@@ -757,6 +963,13 @@ Each core release publishes the API and SDK versions it ships. Module CI builds 
 | F16 | Two modules declare the same route or menu element id | Discovery (menu) and shell (routes) | Second declaration skipped and reported | Coordinate ids |
 | F17 | Module removed, data remains | `module_state` `ABSENT` | No functional effect; orphan tables | Optional uninstall changelog |
 | F18 | Database down at start | Existing behaviour (no wait-for-db) | Context fails as today | Existing operational runbook |
+| F19 | Two providers installed for one single-implementation extension point and no `spi.<name>.provider` | `ExtensionRegistry` at registration | Start-up aborts naming both modules | Set the property or remove one provider |
+| F20 | Module controller mapped outside `/rest/modules/<id>/` | `ModuleControllerRegistrar` | Module `FAILED`; start-up aborts | Fix the mapping (the test kit catches it before release) |
+| F21 | Module child context fails to refresh (missing bean, bad configuration class) | `ModuleContextFactory` | `FAILED` with the bean name; start-up aborts; the core context itself is intact | Disable module; restart |
+| F22 | Provider declares entities, a changelog or a frontend | Discovery | `INVALID`; core starts | Change `kind` to `module` or remove the declarations |
+| F23 | Provider opens its own transaction (`REQUIRES_NEW`) and leaves core data half-written on failure | Test kit (build time); not detectable at runtime | Inconsistent writes | Remove the propagation; the core owns the transaction |
+| F24 | Module publishes a core event type | Test kit (build time) | Core listeners run on a module-originated event | Publish module-owned types only |
+| F25 | Core refactor renames a service a full module injects | Module build against the new `openelis-core` (compile error) or `NoSuchMethodError` at start if not rebuilt | Child context refresh fails: F21 | The release note's `japicmp` list and the core-coupling report tell which modules to rebuild before upgrading |
 
 ## 22. Architecture diagrams and module lifecycle flows
 
@@ -765,18 +978,22 @@ Each core release publishes the API and SDK versions it ships. Module CI builds 
 ```mermaid
 flowchart TD
   A["Tomcat starts webapp<br/>module directory mounted (off the webapp class path)"] --> B["Spring root context: AppConfig + ModuleConfig"]
-  B --> C["ModuleBeanRegistrar (BeanDefinitionRegistryPostProcessor)"]
+  B --> C["ModuleDiscoveryPostProcessor (BeanDefinitionRegistryPostProcessor)"]
   C --> D["ModuleDiscovery: list *.jar in the module directory,<br/>read META-INF/openelis-module.json,<br/>one parent-first ModuleClassLoader per module"]
-  D --> E{"validate each manifest<br/>schema, ranges, deps, namespace,<br/>class load, digest"}
-  E -- fail --> F["status INVALID / INCOMPATIBLE / DISABLED<br/>log + registry, beans not registered"]
-  E -- pass --> G["scan basePackages through the module loader,<br/>register beans + activator, collect entities"]
+  D --> E{"validate each manifest<br/>schema, kind, ranges, deps, namespace,<br/>class load, extensions, digest"}
+  E -- fail --> F["status INVALID / INCOMPATIBLE / DISABLED<br/>log + registry, nothing loaded"]
+  E -- pass --> G["collect declared entities and changelogs<br/>(no module bean enters the root)"]
   G --> H["core liquibase bean: base-changelog.xml"]
   H --> I["moduleLiquibase: per-module changelog<br/>in dependency order, ids prefixed"]
-  I -- error --> X["start-up aborts: module id + changeset"]
+  I -- error --> X["start-up aborts: module id + cause"]
   I --> J["entityManagerFactory with module entities<br/>(PersistenceUnitPostProcessor + hibernate.classLoaders)"]
-  J --> K["singletons instantiate<br/>@Transactional, @PreAuthorize active"]
-  K --> L["ContextRefreshedEvent:<br/>permission rows, menu entries,<br/>configuration loaders"]
-  L --> M["activator.onStart with timeout<br/>status STARTED, module_state updated"]
+  J --> K["core singletons instantiate; root ContextRefreshedEvent"]
+  K --> L["per module, in dependency order:<br/>child context (parent = root, module loader),<br/>ModuleChildConfig: transactions + method security,<br/>scan basePackages, activator, extensions"]
+  L -- refresh error --> X
+  L --> N["register extensions with ExtensionRegistry,<br/>module controllers with the root handler mapping (/rest/modules/id/**),<br/>subscribe to forwarded core events"]
+  N -- path or SPI violation --> X
+  N --> O["permission rows, menu entries,<br/>configuration loaders"]
+  O --> M["activator.onStart with timeout<br/>status STARTED, module_state updated"]
   M -- error/timeout --> X
 ```
 
@@ -802,15 +1019,16 @@ sequenceDiagram
   participant P as WorkflowPage (module remote)
   participant SDK as @openelis/module-sdk (shell singleton)
   participant S as Spring MVC (core filters + interceptors)
-  participant C as WorkflowController (module bean)
-  participant Svc as WorkflowService (module bean, @Transactional)
+  participant C as WorkflowController (module bean in the child context, registered with the root mapping)
+  participant Svc as WorkflowService (module bean, @Transactional, injects core PatientService)
   participant DB as PostgreSQL (clinlims.mod_implementation_workflow_case)
   P->>SDK: useOpenElisApi().post("/rest/modules/implementation-workflow/cases", body)
   SDK->>S: POST /api/OpenELIS-Global/rest/modules/implementation-workflow/cases<br/>cookie + X-CSRF-Token
   S->>S: security chain, CSRF, ModuleAuthenticationInterceptor (pass-through for /rest)
   S->>C: @PreAuthorize("hasAuthority('mod.implementation-workflow.manage')")
   C->>Svc: createCase(dto)
-  Svc->>DB: insert (JPA, same EntityManagerFactory as core)
+  Svc->>Svc: patientService.get(dto.patientId) (core bean resolved from the parent context)
+  Svc->>DB: insert (JPA, same EntityManagerFactory and transaction manager as core)
   Svc-->>C: CaseDto
   C-->>SDK: 201 JSON (core Jackson converter)
   SDK-->>P: resolved promise, then queryClient.invalidateQueries(["mod","implementation-workflow","cases"])
@@ -851,7 +1069,7 @@ flowchart TD
 
 ```
 openelis-module-implementation-workflow/
-├── pom.xml                                   depends on org.openelisglobal:openelis-module-api:^1.0 (provided: spring, jakarta, hibernate)
+├── pom.xml                                   imports openelis-module-bom; provided: openelis-spi, openelis-module-api, openelis-core, spring, jakarta, hibernate
 ├── README.md                                 what it does, permissions, properties, install steps
 ├── src/main/resources/
 │   ├── META-INF/openelis-module.json         section 13.1
@@ -862,7 +1080,8 @@ openelis-module-implementation-workflow/
 │   ├── ImplementationWorkflowModule.java     implements OpenElisModule
 │   ├── valueholder/WorkflowCase.java         @Entity @Table(name="mod_implementation_workflow_case", schema="clinlims")
 │   ├── dao/WorkflowCaseDAO.java, daoimpl/WorkflowCaseDAOImpl.java
-│   ├── service/WorkflowCaseService.java, service/WorkflowCaseServiceImpl.java   @Service @Transactional
+│   ├── service/WorkflowCaseService.java, service/WorkflowCaseServiceImpl.java   @Service @Transactional, injects core PatientService and SampleService
+│   ├── report/CaseSummaryReportProvider.java  implements org.openelisglobal.spi.report.ReportProvider (declared in the manifest)
 │   ├── controller/rest/WorkflowCaseRestController.java                           @RestController @RequestMapping("/rest/modules/implementation-workflow")
 │   └── form/CaseDto.java
 ├── src/test/java/...                          ModuleIntegrationTest subclasses, contract tests from the test kit
@@ -888,6 +1107,24 @@ public class ImplementationWorkflowModule implements OpenElisModule {
     }
 }
 
+@Service
+@Transactional
+public class WorkflowCaseServiceImpl implements WorkflowCaseService {
+    @Autowired private PatientService patientService;      // core service from openelis-core, resolved from the parent context
+    @Autowired private WorkflowCaseDAO caseDAO;            // module DAO, child context
+
+    @Override public CaseDto createCase(CaseDto dto) {
+        Patient patient = patientService.get(dto.getPatientId());
+        ...
+    }
+}
+
+public class CaseSummaryReportProvider implements ReportProvider {   // openelis-spi; listed under backend.extensions
+    @Autowired private WorkflowCaseService service;
+    @Override public Set<String> reportIds() { return Set.of("implWorkflowCaseSummary"); }
+    @Override public ReportOutput run(ReportRequest request) { ... }
+}
+
 @RestController
 @RequestMapping("/rest/modules/implementation-workflow")
 public class WorkflowCaseRestController {
@@ -908,17 +1145,23 @@ public class WorkflowCaseRestController {
 ```tsx
 // frontend/src/pages/WorkflowPage.tsx
 import { useOpenElisApi, usePermission } from "@openelis/module-sdk";
+import { PatientHeader, PageBreadCrumb } from "@openelis/module-sdk/core/components";   // the shell's own components, resolved at runtime
+import { getFromOpenElisServer } from "@openelis/module-sdk/core/api";                 // the core client, same session and CSRF handling
 import { useQuery } from "@tanstack/react-query";
 import { DataTable, Button } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 
-export default function WorkflowPage() {
+export default function WorkflowPage({ patientId }) {
   const api = useOpenElisApi();
   const canManage = usePermission("mod.implementation-workflow.manage");
   const cases = useQuery(["mod", "implementation-workflow", "cases"], () =>
     api.get("/rest/modules/implementation-workflow/cases?page=0&size=20"));
+  const patient = useQuery(["patient", patientId], () =>
+    new Promise((resolve) => getFromOpenElisServer(`/rest/patient-details?patientId=${patientId}`, resolve)));  // a core endpoint
   return (
     <>
+      <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
+      <PatientHeader {...patient.data} />
       <h1><FormattedMessage id="mod.implementation-workflow.title" /></h1>
       {canManage && <Button onClick={...}><FormattedMessage id="mod.implementation-workflow.newCase" /></Button>}
       <DataTable rows={cases.data?.content ?? []} ... />
@@ -941,7 +1184,9 @@ export default function WorkflowPage() {
 | Automatic (from the manifest and the JAR) | Explicit (operator or developer action) |
 |---|---|
 | Discovery, validation, compatibility checks | Copying the JAR and digest into the distro |
-| Bean registration, transactions, method security | Writing `@PreAuthorize` on every endpoint |
+| Child context creation, core-service injection, transactions, method security, controller registration | Writing `@PreAuthorize` on every endpoint; keeping mappings under the module path |
+| Extension registration and provider selection | Declaring each extension in the manifest; choosing `spi.<name>.provider` when two providers of a single point are installed |
+| Core event forwarding | Declaring listeners on SPI event types |
 | Entity registration, migrations, `module_state` | Keeping changeset ids prefixed and reversible |
 | Permission rows, first-install default grants | Later role grants and revocations |
 | Menu entries, route registration, slot contributions, message merge | Choosing parents, orders and keys |
@@ -952,39 +1197,54 @@ export default function WorkflowPage() {
 
 Every phase is independently mergeable and leaves the core working without modules installed. The proof of concept that validates the architecture is the end of Phase 4: the example module (backend, frontend, schema, permission, menu, slot) installed on an unmodified core image from a mounted directory.
 
-### Phase 0: Review and decisions (this document)
+### Phase 0: Review, decision checks and the decision record
 
-Stakeholders decide the open questions in section 25 that block Phase 1 (publishing policy for the API artifact, package naming convention, strict mode default). Acceptance: this document merged with decisions recorded; the Jira epic and child issues exist.
+Stakeholders decide the open questions in section 25 that block Phase 1 (publishing policy for the artifacts, package naming convention, strict mode default) and run the **decision checks** the companion comparison defines, adapted to this design. Each is cheap next to the decision it informs; together they confirm or change the recommendation before code is written.
+
+| # | Check | How | What confirms the recommendation | What would change it |
+|---|---|---|---|---|
+| D1 | How sites differ today | Complete the inventory in section 2.4 with the implementation teams' forks, local patches and change requests; sort each into configuration, a swap at one point, or a whole feature | Mostly configuration and swaps at a handful of points, a few whole workflows | Differences are mostly whole features switched on or off per site, which would favour a library-assembled core (B7) |
+| D2 | Who builds extensions | From the same survey: site staff who can only drop in a JAR, or integrators with Java developers | Both, which the two shapes serve | Only integrators who can maintain their own build: B7 becomes viable |
+| D3 | Upgrade breakage history | Tag the last releases' upgrade issues as caused by site customisation or by internal regressions | A mix | Mostly internal regressions: raise the priority of the ArchUnit track over the extension layer |
+| D4 | Demand for other assemblies | Ask national programmes and the Consolidated Server team whether they need a build without some features | No demand | Real demand for a referral-only or consolidated assembly: reopen B7 |
+| D5 | Feature coupling | Run the ArchUnit slice and layer rules over `org.openelisglobal.*` without freezing; count feature-level cycles and cross-feature DAO references | Many violations that can be frozen and closed feature by feature | Few cycles and a clear core would make B7 cheaper than assumed |
+| D6 | Entity and schema entanglement | Count `hbm.xml` associations and changesets that cross feature packages | Many crossings, so the schema stays shared and module tables are prefixed | Few crossings would allow entities to move with features (B7) |
+| D7 | Report SPI width | Draft `ReportProvider` and its value types in `openelis-spi` (with `module-info.java`) and count the core types a site-specific report must see | A handful of value types: a narrow, versionable contract | Dozens of core types: fix internal boundaries (D5, D8) before publishing any SPI |
+| D8 | Closing the reporting feature | Freeze the ArchUnit baseline, then make the reporting package pass the rules unfrozen within a time box; count what had to change | Fixable in the time box | Not fixable: the reporting area is too tangled to be the pilot; pick the billing seam first |
+| D9 | Spring Boot outlook | Decide whether Spring Boot adoption is planned within the next year or two | Not planned: ArchUnit | Planned: Spring Modulith 1.4 verification instead |
+| D10 | Install and CI cost | For each spike, confirm the one-command install still works and record build and CI time | Provider loading adds no install step; ArchUnit stays fast enough for every pull request | Either fails: redesign before Phase 2 |
+
+D1 to D4 need product and implementation input (days); D5 and D6 are static analysis (about a week); D7 and D8 are time-boxed spikes on reporting in throwaway branches. The outcome is recorded as an architecture decision record, `docs/adr/0001-module-system.md` (the repository has no ADR directory yet; this creates it), listing the models considered, the check results, the choice and its consequences. Who signs off (core maintainers plus the DIGI architecture review is the recommendation) and whether the OpenELIS community reviews the record on the forum first are decided with it [open]. Acceptance: this document and the ADR merged with the check results and decisions recorded; the Jira epic and child issues exist.
 
 ### Phase 1: Contracts, manifest and boundaries
 
-- **Scope**: `openelis-module-api` Maven module (interfaces, `ModuleContext`, `ModuleDescriptor`, first facades), the manifest JSON schema, `@openelis/module-sdk` package skeleton with types and `shared.json`, namespace and versioning rules, `docs/` developer page.
-- **Core components affected**: `pom.xml` (new module, `japicmp`), `frontend/package.json` (workspace), documentation.
-- **Key decisions**: semver range library on the Java side; facade list v1; whether `unstable()` exists at all.
-- **Prerequisites**: Phase 0 decisions.
-- **Testing**: schema tests with valid and invalid manifests; `japicmp` baseline; SDK type tests.
-- **Acceptance criteria**: artifacts build and publish from CI with version `1.0.0-SNAPSHOT`; an empty module project compiles against them; no runtime behaviour change in core.
+- **Scope**: `openelis-spi` Maven module (the `ExtensionPoint` marker, the `report` and `billing` extension points with their value types, the core event types, `module-info.java`), `openelis-module-api` Maven module (interfaces, `ModuleContext`, `ModuleDescriptor`, first facades), `openelis-core` attached from the WAR build (`attachClasses`), the generated `openelis-module-bom`, the manifest JSON schema with `kind` and `extensions`, the **ArchUnit suite with its frozen baseline** (section 9.11), `@openelis/module-sdk` package skeleton with types, `shared.json`, the `coreRemote` descriptor and the first generated core type declarations, namespace and versioning rules, `docs/` developer page.
+- **Core components affected**: `pom.xml` (new modules, `attachClasses`, `japicmp`, ArchUnit in test scope), `src/test/java` (the architecture test and its violation store), `frontend/package.json` (workspace), documentation.
+- **Key decisions**: semver range library on the Java side; facade list v1; which packages the first `openelis_core` index exposes; the ArchUnit rule set and time box for closing the reporting feature.
+- **Prerequisites**: Phase 0 decisions and check results.
+- **Testing**: schema tests with valid and invalid manifests (both kinds); `japicmp` baselines for the SPI and the API; ArchUnit baseline committed and green; SDK type tests.
+- **Acceptance criteria**: artifacts build and publish from CI (`openelis-spi` and `openelis-module-api` at `1.0.0-SNAPSHOT`, `openelis-core` and the BOM at the application version); an empty provider compiles against the SPI and API only and an empty full module against all three; the ArchUnit test runs on every pull request and fails on a deliberately introduced new cycle; no runtime behaviour change in core.
 - **Risks / rollback**: none at runtime; revert the pull request.
 
 ### Phase 2: Backend discovery, registration, migrations, permissions
 
-- **Spike first**: one parent-first `ModuleClassLoader` per module against Spring scanning (bean `Class` objects from the module loader), Hibernate (`hibernate.classLoaders`, lazy proxies, a module entity using a core `@Type` user type), Jackson and Liquibase (`ClassLoaderResourceAccessor`), with three fixture modules: one bundling a library the core also ships (the core copy must win and be reported), one bundling a library the core lacks, and one whose library needs the thread context class loader. Fallback if Hibernate cannot load module entities through `hibernate.classLoaders`: a composite loader installed as the persistence unit's class loader.
-- **Scope**: `ModuleRegistry`, `ModuleDiscovery`, `ModuleClassLoader` and the `lib/` cache, `ModuleBeanRegistrar`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `module_state` changeset, `GET /rest/module-registry` (read-only, with the running OpenELIS version, each module's `requires.openelis` and the shadowed-library report), `/modules/{id}/**` static handler, image directories, compose mounts, `modules.disabled` and marker file, strict mode with `modules.lock`, start timeout, `withModuleClassLoader`, logging; `openelis-module-bom` generation and the template's enforcer rules (section 9.10).
-- **Core components affected**: `AppConfig` (import `ModuleConfig`), `HibernateConfig` (`@DependsOn`, post-processor, `hibernate.classLoaders`), `Constants.PERMISSION_MODULE_PREFIXES` (`mod.` prefix), `Dockerfile`, `docker-compose.yml`, `SecurityConfig` and interceptor exclusions for `/modules/**`, the core CI (BOM generation).
-- **Key decisions**: fail-fast policy confirmed; table prefix vs schema per module; `unstable()` logging level; whether `lib/` extraction uses a container-local cache (recommended) or a volume.
+- **Spike first**: one parent-first `ModuleClassLoader` and one child context per module against Spring scanning (bean `Class` objects from the module loader), parent lookup of the transaction manager and entity manager factory from a child, method security in a child, controller registration into the root `RequestMappingHandlerMapping` with interceptors and `ControllerSetup` applied, event forwarding inside a core transaction, Hibernate (`hibernate.classLoaders`, lazy proxies, a module entity using a core `@Type` user type), Jackson and Liquibase (`ClassLoaderResourceAccessor`), with three fixture modules: one bundling a library the core also ships (the core copy must win and be reported), one bundling a library the core lacks, and one whose library needs the thread context class loader. The same fixtures run on PF4J with its application-first strategy to decide the loader engine (section 9.3). Fallback if Hibernate cannot load module entities through `hibernate.classLoaders`: a composite loader installed as the persistence unit's class loader.
+- **Scope**: `ModuleRegistry`, `ModuleDiscovery`, `ModuleClassLoader` and the `lib/` cache, `ModuleDiscoveryPostProcessor`, `ModuleContextFactory` and `ModuleChildConfig`, `ExtensionRegistry`, `ModuleControllerRegistrar` and `ModuleAwareRequestMappingHandlerMapping`, `ModuleEventForwarder`, `ModuleEntityRegistrar`, `ModuleLiquibaseRunner`, `ModulePermissionRegistrar`, `module_state` changeset, `GET /rest/module-registry` (read-only, with the running OpenELIS version, each module's kind, `requires.*`, active providers, the shadowed-library and core-coupling reports), `/modules/{id}/**` static handler, image directories, compose mounts, `modules.disabled`, `modules.<id>.enabled`, `spi.<name>.provider`, the marker file, strict mode with `modules.lock`, start timeout, `withModuleClassLoader`, `jdbc()`, logging; the two core seams for the first extension points (`ReportImplementationFactory` consults the registry; `SamplePatientUpdateDataCreatedEventListener` calls the selected billing provider); `openelis-module-bom` generation and the template's enforcer rules (section 9.10).
+- **Core components affected**: `AppConfig` (import `ModuleConfig`; extend `DelegatingWebMvcConfiguration` and override `createRequestMappingHandlerMapping` in place of `@EnableWebMvc`), `HibernateConfig` (`@DependsOn`, post-processor, `hibernate.classLoaders`), `Constants.PERMISSION_MODULE_PREFIXES` (`mod.` prefix), `ReportImplementationFactory`, `SamplePatientUpdateDataCreatedEventListener`, `Dockerfile`, `docker-compose.yml`, `SecurityConfig` and interceptor exclusions for `/modules/**`, the core CI (BOM generation).
+- **Key decisions**: fail-fast policy confirmed; loader engine (own loader or PF4J); table prefix vs schema per module; whether `lib/` extraction uses a container-local cache (recommended) or a volume.
 - **Prerequisites**: Phase 1.
-- **Testing**: backend tests for every negative and class-loader path (section 19.2); the backend-only proof of concept: the **Odoo connector** (`org.openelisglobal.odoo`, 12 classes, configuration-driven, no frontend) extracted into `modules/odoo-connector` with unchanged behaviour, verified by its existing tests and a live product-mapping run on the dev stack. Odoo is not fully self-contained: core's `SamplePatientUpdateDataCreatedEventListener` calls `OdooIntegrationService.createInvoice`, and its changesets live in the core changelog (`3.1.x.x/enable_openelis_to_odoo_connection.xml`, `3.3.x.x/010-remove-odoo-site-information.xml`). The extraction therefore proves two mechanisms the design needs anyway: the module subscribes to the core sample event through its own `@EventListener` (the core listener goes), and its changelog takes ownership of the existing tables behind `tableExists` preconditions (`MARK_RAN`) so already-migrated databases are untouched.
-- **Acceptance criteria**: with no modules present, start-up time and behaviour unchanged; the Odoo module installs from the module directory and its endpoints answer with the same payloads as before; a module declaring `requires.openelis: ">=9.0.0"` is reported `INCOMPATIBLE` and skipped; the three class-loader fixture modules behave as specified; a module with a failing changeset aborts start-up with its id in the log; the disabled marker skips it.
-- **Risks / rollback**: Hibernate or Spring do not cooperate with module loaders (mitigation: the spike is the first task; fallback is the composite loader; last resort is placing module JARs on the webapp class path, which loses per-module libraries). Rollback: revert; the Odoo code stays in core until the module is proven.
+- **Testing**: backend tests for every negative, containment and class-loader path (section 19.2); two **provider proofs of concept**, both backend-only and both without changing behaviour: (a) one site-specific report (the Mauritius protocol report or a RetroCI report, chosen with the implementation team) moved out of `ReportImplementationFactory`'s chain into a provider JAR implementing `ReportProvider`, verified by generating the report before and after and comparing the output; (b) the **Odoo connector** (`org.openelisglobal.odoo`, 12 classes, configuration-driven, no entities, no tables, no frontend) extracted into an `odoo-billing` provider implementing `BillingProvider`, verified by its existing tests and a live product-mapping run on the dev stack. The Odoo code is not self-contained today: core's `SamplePatientUpdateDataCreatedEventListener` calls `OdooIntegrationService.createInvoice` directly, so the extraction proves the event forwarding and the single-implementation selection; its two core changesets only inserted and later removed `site_information` rows, so the provider needs no changelog and reads its settings from `modules.odoo-billing.*` properties.
+- **Acceptance criteria**: with no modules present, start-up time and behaviour unchanged; the report provider produces the same bytes as the built-in class it replaces, and the built-in class is deleted from core; the Odoo provider installs from the module directory and creates the same invoice on sample creation as before; a module declaring `requires.openelis: ">=9.0.0"` or `requires.spi: "^2"` is reported `INCOMPATIBLE` and skipped; the three class-loader fixture modules behave as specified; a core `List<ExtensionPoint>` autowire and `SpringContext.getBean` never see a module bean; a module controller outside its prefix makes the module `FAILED`; a module with a failing changeset aborts start-up with its id in the log; the disabled marker and `modules.<id>.enabled=false` skip it.
+- **Risks / rollback**: Hibernate or Spring do not cooperate with module loaders or child contexts (mitigation: the spike is the first task; fallback for entities is the composite loader; fallback for controllers is a second `HandlerMapping` bean ordered after the core's). Rollback: revert; the report and Odoo code stay in core until the providers are proven.
 
 ### Phase 3: Frontend shell, routing, navigation, slots
 
-- **Scope**: `ModuleHostProvider`, `ModuleRoutes`, `LazyRemote`, `ExtensionSlot`, message merge, dev override, host build with `@module-federation/vite` and shared singletons, express core routes as data so collisions can be detected, first five slots, `ModuleMenuContributor` and permission filtering in `MenuController`.
-- **Core components affected**: `App.jsx`, `Layout.jsx`, `Header.jsx`, `vite.config.ts`, `index.jsx`, five core pages (slots), `MenuController`, `MenuUtil`.
-- **Key decisions**: Module Federation vs import map (decided by a spike at the start of the phase on Vite 8 with React 17 singletons); top-level route policy.
+- **Scope**: `ModuleHostProvider`, `ModuleRoutes`, `LazyRemote`, `ExtensionSlot`, message merge, dev override, host build with `@module-federation/vite` and shared singletons, the shell's `openelis_core` remote with the first exposed index (`frontend/src/module-exports/`: components, api, hooks, layout, contexts) and the SDK's generated type declarations for it, express core routes as data so collisions can be detected, first five slots, `ModuleMenuContributor` and permission filtering in `MenuController`.
+- **Core components affected**: `App.jsx`, `Layout.jsx`, `Header.jsx`, `vite.config.ts`, `index.jsx`, `frontend/src/module-exports/`, `frontend/nginx/nginx.conf` (serve the core remote entry), five core pages (slots), `MenuController`, `MenuUtil`.
+- **Key decisions**: Module Federation vs import map (decided by a spike at the start of the phase on Vite 8 with React 17 singletons, including a remote that imports from the host's exposed surface); top-level route policy; the exposed index v1.
 - **Prerequisites**: Phase 1 (SDK); Phase 2 for `/rest/module-registry`.
 - **Testing**: Vitest for the host components; Playwright spec with a stub module served from the backend's static directory; bundle-size check of the shell before and after (shared singletons must not duplicate React).
-- **Acceptance criteria**: shell unchanged for users when no module is installed; a stub remote renders under a `SecureRoute` with permission gating, appears in the menu, contributes to a slot, and a broken stub shows a placeholder; messages merge without touching core keys.
+- **Acceptance criteria**: shell unchanged for users when no module is installed; a stub remote renders under a `SecureRoute` with permission gating, appears in the menu, contributes to a slot, renders a core component imported from `openelis_core` without bundling a second copy of it, calls a core endpoint through the exposed client, and a broken stub shows a placeholder; messages merge without touching core keys.
 - **Risks / rollback**: federation plugin instability on Vite 8 (fallback: import map loader behind the same registry interface); chunking constraints of the plugin affect the core build (spike). Rollback: feature flag `modules.frontend.enabled` defaulting to off until Phase 4.
 
 ### Phase 4: Full-stack example module and packaging
@@ -999,7 +1259,7 @@ Stakeholders decide the open questions in section 25 that block Phase 1 (publish
 
 ### Phase 5: Lifecycle, compatibility and operations tooling
 
-- **Scope**: admin Modules page (read-only status, versions, digests, declared permissions, disable instructions), `onUpgrade` and downgrade refusal, uninstall changelog support, doctor-script check in the distro template, `/health` summary, optional metrics, Spring Data repository support for modules, slot configuration overrides, core events in the API, evaluation of child-context isolation (option B4) against the evidence gathered so far.
+- **Scope**: admin Modules page (read-only status, versions, digests, declared permissions, active providers, core-coupling report, disable instructions), `onUpgrade` and downgrade refusal, uninstall changelog support, doctor-script check in the distro template, `/health` summary, optional metrics, the remaining extension points as sites ask for them (`notification-channel`, `accession-number`, `client-registry`, `result-export`, each by moving the core seam onto the registry), the extension-point compatibility CI job (previous SPI minor), slot configuration overrides, evaluation of the `modules.failurePolicy=isolate` mode against the evidence gathered so far, closing the next ArchUnit-verified feature after reporting.
 - **Core components affected**: admin frontend, `scripts/`, distro template, `openelis-docker`.
 - **Prerequisites**: Phase 4 in use by at least one real module.
 - **Testing**: lifecycle tests extended; Playwright for the admin page.
@@ -1020,12 +1280,17 @@ Stakeholders decide the open questions in section 25 that block Phase 1 (publish
 
 | Risk / trade-off | Consequence | Mitigation |
 |---|---|---|
-| Single Spring context: a module bean failure stops the core | A bad module can block a site's start-up | Early validation catches most cases; one-file disable; fail-fast is explicit and logged; option B4 evaluated in Phase 5 with real evidence |
+| Fail-fast policy: a module failure stops the core by design | A bad module can block a site's start-up | Early validation catches most cases; one-file disable; fail-fast is explicit and logged; the child-context design keeps an isolation policy available and Phase 5 evaluates it with real evidence |
+| Child contexts need wiring that a single context would not (controller registration, event forwarding, child transaction and security configuration) | More runtime code to maintain; subtle differences between module and core endpoints | Bounded and listed (section 9.4); the spike proves each; the containment tests in section 19.2 pin the behaviour; the fallback for controllers is a second ordered `HandlerMapping` |
+| `openelis-core` widens the contract for full modules | A core refactor breaks a module that injects the renamed service; the strong promise of the SPI does not apply | Three artifacts with stated promises; providers never reference core classes (template and test-kit rule); the registry's core-coupling report and the release note's `japicmp` list show what to rebuild; `requires.openelis` carries the tested lower bound |
+| Open ArchUnit violations never get closed | The frozen baseline becomes permanent and the extension points widen | Track the violation count per release; close the reporting feature first (decision check D8); a pull request may not add violations |
+| Plug-in points multiply for differences configuration could express | A catalogue of extension points nobody maintains | Goal G7: configuration first; an extension point needs a confirmed site difference from the inventory (section 2.4) and a core pull request |
+| The native FHIR facade becomes a second extension surface | Two incompatible ways to extend OpenELIS | Route facade extension through the same extension-point catalogue and module runtime from the start |
 | Core-first class loading | A module cannot pin a different version of a library the core ships | By design; the BOM makes the core's versions visible at build time; shadowed-library report at start; modules bring only libraries the core lacks |
 | Thread context class loader | Libraries inside a module that use `ServiceLoader` or TCCL lookups may not find their providers | `withModuleClassLoader` wrapper, applied to `validate`/`onStart` automatically; documented; measured in the proof of concept |
 | Shared frontend singletons | Every module rebuilds on a contract major (React 18 will be one) | Contract version in the manifest; SDK changelog; template upgrade path; the React 18 migration becomes "SDK 2.0" |
 | Module Federation on Vite 8 is younger than on webpack | Build or runtime surprises | Spike first; import map loader as fallback behind the same registry |
-| Facade API too thin at first | Modules reach for `unstable()` and break on core changes | Grow facades from real modules; log and report `unstable()` use; treat each as a backlog item |
+| Facade API too thin at first | Full modules inject core services directly instead and take on the application's release cadence | Grow facades from real modules; the core-coupling report shows which modules depend on core internals; treat each missing facade as a backlog item |
 | Interceptor fail-open for `/rest/**` | A module endpoint without `@PreAuthorize` is reachable by any user | Test-kit rule; align with the fail-closed rollout |
 | Restart required for every change | Slower iteration for operators | Same as today for configuration; dev override and dev stack for developers |
 | Hibernate and Spring with per-module loaders unproven | Module entities or beans fail to load | First task of Phase 2 is the spike; fallback is a composite persistence-unit loader; last resort is the webapp class path without per-module libraries |
@@ -1037,13 +1302,17 @@ Stakeholders decide the open questions in section 25 that block Phase 1 (publish
 1. **Publishing**: where the `openelis-module-api` Maven artifact and the `@openelis/module-sdk` npm package are published (GitHub Packages, Maven Central, npm), and who owns releases.
 2. **Package naming**: require reverse-domain packages outside `org.openelisglobal`, or reserve `org.openelisglobal.modules.<id>` and exclude it from the core scan (simpler for authors, but a core change to `AppConfig`'s scan filters).
 3. **Strict mode default**: digest allowlist mandatory in production distros from Phase 2, or opt-in.
-4. **Unstable access**: keep `unstable().getBean()` as an escape hatch, or forbid it and accept slower module authoring until facades mature.
+4. **Core access policy**: should the registry refuse a `kind: provider` module whose classes reference `openelis-core` packages (strict), or only report it (recommended, with the template preventing it by construction)?
 5. **Schema layout**: `mod_<id>_` prefix in `clinlims` (recommended) or one schema per module.
 6. **Uninstall data policy**: retain tables by default (recommended) or offer automatic drop through an uninstall changelog.
 7. **Route policy**: allow top-level paths for modules (recommended with collision detection) or force `/m/<id>/`.
 8. **Phase 6 candidate**: OGC-1144 as the first module-native workflow (recommended), or extraction of an existing feature.
 9. **Governance**: who approves new facades and new extension slots, and how slot stability is promoted from experimental to stable.
-10. **Fail policy**: confirm fail-fast after validation (recommended) versus investing in child-context isolation before the first module ships.
+10. **Fail policy**: confirm fail-fast after validation (recommended) versus enabling `modules.failurePolicy=isolate` for non-required modules from the first release.
+11. **Extension-point ownership**: who owns the `openelis-spi` versioning policy, how often it may break, and who approves a new extension point; the companion comparison leaves this open too.
+12. **First report to move**: which site-specific report is the Phase 2 pilot (Mauritius protocol or a RetroCI report), decided with the implementation team that still uses it.
+13. **Decision record sign-off**: who signs the architecture decision record after the Phase 0 checks, and whether the community reviews it on the forum before Phase 1.
+14. **Loader engine**: keep the design's own parent-first loader (recommended) or adopt PF4J with its application-first strategy if the Phase 2 spike shows a clear maintenance advantage.
 
 ## 26. References
 
@@ -1078,3 +1347,12 @@ Permalink base: `https://github.com/DIGI-UW/OpenELIS-Global-2/blob/5f2808b02d/`
 - WHATWG HTML import maps (fallback loader option). https://html.spec.whatwg.org/multipage/webappapis.html#import-maps
 - semver4j (npm-style ranges on the JVM). https://github.com/semver4j/semver4j
 - japicmp (binary compatibility checks for the API artifact). https://siom79.github.io/japicmp/
+- Spring Framework 6.2: parent and child application contexts (`ConfigurableApplicationContext.setParent`, bean lookup falling through to the parent), `AbstractHandlerMethodMapping` (handler detection in its own context and ancestors only, `registerMapping`), `DelegatingWebMvcConfiguration.createRequestMappingHandlerMapping`, `@EnableTransactionManagement` and `PersistenceAnnotationBeanPostProcessor` in a child context, application event propagation from child to parent. https://docs.spring.io/spring-framework/reference/
+- Spring Security 6.5: `@EnableMethodSecurity` per context. https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html
+- ArchUnit: slices, layered architecture, `FreezingArchRule`. https://www.archunit.org/userguide/html/000_Index.html
+- Spring Modulith 1.4 (considered, not adopted): verification from a package name without Spring Boot; the 1.4 line matches Spring Framework 6. https://docs.spring.io/spring-modulith/reference/verification.html
+- PF4J: `PluginClassLoader`, `ClassLoadingStrategy` (application-first `APD`), `Plugin-Requires`; `pf4j-spring`. https://pf4j.org/doc/plugins.html, https://github.com/pf4j/pf4j-spring
+- Tomcat and the Java module path: web applications are loaded from the class path, never the module path (users list, September 2025). https://go.mail-archive.com/users@tomcat.apache.org/msg145458.html
+- Spring Framework issue 18079: full JPMS module descriptors for Spring JARs remain open; Spring ships automatic module names. https://github.com/spring-projects/spring-framework/issues/18079
+- Hibernate ORM: bootstrap metadata is fixed when the `SessionFactory` is built; extra class loaders are accepted at bootstrap only. https://docs.jboss.org/hibernate/orm/5.6/userguide/html_single/Hibernate_User_Guide.html#bootstrap
+- Companion document: *OpenELIS Modularization Plan: Comparing Architecture Models* (internal review, 2026-10-28; the five-model comparison, the nine-dimension framework, the Spring and Hibernate global-state rules and the decision checks reconciled in sections 5.3, 7.4, 9.11, 9.12 and 24).
