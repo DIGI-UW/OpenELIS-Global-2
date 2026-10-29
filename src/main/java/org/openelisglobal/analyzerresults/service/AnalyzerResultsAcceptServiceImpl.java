@@ -281,6 +281,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setIsControl(staged.getIsControl());
         item.setAnalyzerId(staged.getAnalyzerId());
         item.setCompleteDate(staged.getCompleteDateForDisplay());
+        item.setCompletedAt(staged.getCompleteDate());
         item.setTestResultType(staged.getResultType());
         item.setTestName(staged.getTestName());
         item.setSignificantDigits(significantDigitsFor(staged));
@@ -1176,7 +1177,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             analysis.setStatusId(statusId);
             analysis.setAnalysisType(resultItem.getManual() ? IActionConstants.ANALYSIS_TYPE_MANUAL
                     : IActionConstants.ANALYSIS_TYPE_AUTO);
-            analysis.setCompletedDateForDisplay(resultItem.getCompleteDate());
+            analysis.setCompletedDate(resultItem.getCompletedAt());
             analysis.setTest(test);
             analysis.setTestSection(test.getTestSection());
             analysis.setIsReportable(test.getIsReportable());
