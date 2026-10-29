@@ -18,6 +18,17 @@ public class MicroCaseAnalysisDAOImpl extends BaseDAOImpl<MicroCaseAnalysis, Str
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<org.openelisglobal.analysis.valueholder.Analysis> getIssuedAnalysesForSample(String sampleId) {
+        return entityManager.createQuery("select a from Analysis a join fetch a.test join fetch a.sampleItem si "
+                + "join fetch si.sample s left join fetch si.typeOfSample left join fetch a.testSection "
+                + "where s.id=:sampleId and a.id in (select m.analysisId from MicroCaseAnalysis m "
+                + "where m.cancelledAt is null and exists (select v.id from MicroReportVersion v where v.caseId=m.caseId and v.structuredContent is not null)) order by a.id",
+                org.openelisglobal.analysis.valueholder.Analysis.class).setParameter("sampleId", sampleId)
+                .getResultList();
+    }
+
+    @Override
     public List<org.openelisglobal.analysis.valueholder.Analysis> getAnalyses(String caseId) {
         return entityManager.unwrap(Session.class).createQuery(
                 "select a from Analysis a join fetch a.test join fetch a.sampleItem si join fetch si.sample left join fetch si.typeOfSample left join fetch a.testSection where a.id in (select m.analysisId from MicroCaseAnalysis m where m.caseId = :id and m.cancelledAt is null) order by a.id",

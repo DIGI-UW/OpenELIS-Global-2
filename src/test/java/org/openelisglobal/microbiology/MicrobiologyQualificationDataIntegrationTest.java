@@ -50,7 +50,7 @@ public class MicrobiologyQualificationDataIntegrationTest extends BaseWebContext
         fixtures.ensureRequiredWorkflowStatuses();
         MicrobiologyQualificationDataService qualificationService = new MicrobiologyQualificationDataService(
                 scenarioService, referenceService, breakpointService, configurationService, isolateService, astService,
-                caseService, true);
+                caseService, fixtures, true);
 
         MicrobiologyQualificationDataService.DenseCaseDataset dataset = qualificationService
                 .buildDenseCase(UUID.randomUUID().toString(), fixtures.defaultUserId());

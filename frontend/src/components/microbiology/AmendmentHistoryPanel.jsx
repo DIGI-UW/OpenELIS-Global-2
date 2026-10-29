@@ -13,6 +13,7 @@ import {
 import { useIntl } from "react-intl";
 import { formatMicrobiologyEnum } from "./MicrobiologyLabels";
 import MicrobiologyService from "./MicrobiologyService";
+import { MicrobiologyReportBlock } from "./CaseReportWorkspace";
 
 const isErrorResponse = (response) =>
   response?.status === 0 || response?.status >= 400;
@@ -315,7 +316,11 @@ const AmendmentHistoryPanel = ({
                       {formatMicrobiologyEnum(version.releaseType, intl)}
                     </Tag>
                   </div>
-                  <p>{version.content}</p>
+                  {version.report ? (
+                    <MicrobiologyReportBlock report={version.report} />
+                  ) : (
+                    <p>{version.content}</p>
+                  )}
                   {version.correctsVersionId && (
                     <div className="microbiology-list__meta">
                       {intl.formatMessage(

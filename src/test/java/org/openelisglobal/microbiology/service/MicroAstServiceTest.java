@@ -119,6 +119,8 @@ public class MicroAstServiceTest {
     private SystemUserService systemUserService;
 
     private MicroAstService service;
+    @Mock
+    private MicroAstReportChoiceService reportChoices;
 
     @Before
     public void setUp() {
@@ -126,6 +128,15 @@ public class MicroAstServiceTest {
                 interpretationService, amendmentDAO, reagentLotService, organismDAO, sampleItemService, panelDAO,
                 overrideEventDAO, systemUserService, panelAntibioticDAO, runAntibioticDAO, antibioticDAO, "CLSI",
                 "2026");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "selfValidation",
+                org.mockito.Mockito.mock(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "authorization",
+                org.mockito.Mockito.mock(MicroCaseAuthorizationService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "reportChoices", reportChoices);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
+                org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
+        org.mockito.Mockito.lenient().when(caseDAO.getForUpdate(any(String.class)))
+                .thenAnswer(invocation -> caseDAO.get((String) invocation.getArgument(0)).orElse(null));
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
@@ -962,6 +973,10 @@ public class MicroAstServiceTest {
         when(runDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
         when(runDAO.update(any(MicroAstRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        var selectedReading=reading("chosen", "run-1", MicroAstInterpretation.SUSCEPTIBLE);
+        selectedReading.setAntibioticId("abx-1");
+        when(reportChoices.latest("run-1")).thenReturn(List.of(selectedReading));
+        when(reportChoices.getSelectedReadings("iso-1")).thenReturn(List.of(selectedReading));
         MicroAstRun selected = service.selectReportableRun("run-1", "7");
 
         assertFalse(repeat.isReportable());
@@ -1054,6 +1069,7 @@ public class MicroAstServiceTest {
 
     private MicroAstPanel panel(String id, String name, int version) {
         MicroAstPanel panel = new MicroAstPanel();
+        panel.setPublishedAt(new Timestamp(1000));
         panel.setId(id);
         panel.setName(name);
         panel.setVersionNumber(version);

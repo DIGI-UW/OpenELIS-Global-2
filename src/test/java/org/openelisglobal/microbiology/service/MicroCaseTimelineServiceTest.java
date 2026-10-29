@@ -86,7 +86,7 @@ public class MicroCaseTimelineServiceTest {
         user.setLastName("Mendez");
         when(activityDAO.getByCaseId("case-1")).thenReturn(List.of(activity));
         when(noteService.getNotesChronologicallyByRefIdAndRefTableAndType("sample-item-1", "sample-item-table",
-                List.of(Note.INTERNAL))).thenReturn(List.of(currentCase, siblingCase));
+                List.of(Note.INTERNAL, Note.EXTERNAL))).thenReturn(List.of(currentCase, siblingCase));
         when(systemUserService.getUserById("42")).thenReturn(user);
 
         List<MicroCaseActivityForm> timeline = service.getTimeline("case-1");

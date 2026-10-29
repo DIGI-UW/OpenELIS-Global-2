@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.form;
 
 public class MicroAntibioticAdminForm {
+    public String resistanceRole = "NONE";
     public String id;
     public String displayName;
     public String whonetCode;

@@ -5,6 +5,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 
 public interface MicroCaseAnalysisDAO extends BaseDAO<MicroCaseAnalysis, String> {
+    java.util.List<org.openelisglobal.analysis.valueholder.Analysis> getIssuedAnalysesForSample(String sampleId);
 
     List<org.openelisglobal.analysis.valueholder.Analysis> getAnalyses(String caseId);
 

@@ -41,6 +41,7 @@ import useModalFocusReturn from "./useModalFocusReturn";
 
 const emptyPanel = {
   name: "",
+  susceptibilityProtocol: "GENERAL",
   organismGroup: "",
   specimenTypeId: "",
   active: true,
@@ -416,6 +417,26 @@ const AstPanelPage = ({ query, setQuery }) => {
           )}
           {draft && (
             <div className="microbiology-admin__form">
+              <Select
+                id="panel-protocol"
+                labelText={intl.formatMessage({
+                  id: "microbiology.m6.protocol",
+                })}
+                value={draft.susceptibilityProtocol || "GENERAL"}
+                onChange={(e) =>
+                  updateDraft({ susceptibilityProtocol: e.target.value })
+                }
+              >
+                {["GENERAL", "TB", "NTM"].map((value) => (
+                  <SelectItem
+                    key={value}
+                    value={value}
+                    text={intl.formatMessage({
+                      id: `microbiology.m6.protocol.${value}`,
+                    })}
+                  />
+                ))}
+              </Select>
               <TextInput
                 id="microbiology-panel-name"
                 labelText={intl.formatMessage({

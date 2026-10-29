@@ -2,17 +2,12 @@ package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.openelisglobal.microbiology.form.MicroCaseAmendmentForm;
 import org.openelisglobal.microbiology.form.MicroCaseAmendmentRequestForm;
 import org.openelisglobal.microbiology.form.MicroReportVersionForm;
-import org.openelisglobal.microbiology.form.MicroReportVersionSourceForm;
 import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
-import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
-import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,10 +38,7 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
 
     @GetMapping("/report-versions")
     public ResponseEntity<List<MicroReportVersionForm>> getReportVersions(@PathVariable String caseId) {
-        Map<String, List<MicroReportVersionSource>> sources = reportVersionService.getSourcesForCase(caseId).stream()
-                .collect(Collectors.groupingBy(MicroReportVersionSource::getReportVersionId));
-        return ResponseEntity.ok(reportVersionService.getVersions(caseId).stream()
-                .map(version -> toForm(version, sources.getOrDefault(version.getId(), List.of()))).toList());
+        return ResponseEntity.ok(reportVersionService.getVersionForms(caseId));
     }
 
     @PostMapping
@@ -80,23 +72,4 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
         return form;
     }
 
-    private MicroReportVersionForm toForm(MicroReportVersion version, List<MicroReportVersionSource> sources) {
-        MicroReportVersionForm form = new MicroReportVersionForm();
-        form.id = version.getId();
-        form.caseId = version.getCaseId();
-        form.amendmentId = version.getAmendmentId();
-        form.versionNumber = version.getVersionNumber();
-        form.releaseType = version.getReleaseType();
-        form.content = version.getContent();
-        form.releasedAt = version.getReleasedAt();
-        form.releasedBy = version.getReleasedBy();
-        form.correctsVersionId = version.getCorrectsVersionId();
-        form.sources.addAll(sources.stream().map(source -> {
-            MicroReportVersionSourceForm sourceForm = new MicroReportVersionSourceForm();
-            sourceForm.analysisId = source.getAnalysisId();
-            sourceForm.resultId = source.getResultId();
-            return sourceForm;
-        }).toList());
-        return form;
-    }
 }

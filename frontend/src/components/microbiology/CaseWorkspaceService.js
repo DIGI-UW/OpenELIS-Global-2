@@ -53,7 +53,8 @@ export const validateResult = (id, analysisId, version) =>
     version,
   });
 export const getTimeline = (id) => read(`${caseUrl(id)}/timeline`);
-export const addNote = (id, text) => mutate(`${caseUrl(id)}/notes`, { text });
+export const addNote = (id, text, sendWithResult = false) =>
+  mutate(`${caseUrl(id)}/notes`, { text, sendWithResult });
 export const getCultures = (id) => read(`${caseUrl(id)}/cultures`);
 export const getCultureOptions = (id) =>
   read(`${caseUrl(id)}/cultures/options`);
@@ -76,7 +77,30 @@ export const isolateAction = (id, isolateId, action, body) =>
     `${caseUrl(id)}/isolates/${encodeURIComponent(isolateId)}/${encodeURIComponent(action)}`,
     body,
   );
+export const getAstWorkspace = (id) => read(`${caseUrl(id)}/ast`);
+export const astAction = (id, body, validation = false) =>
+  mutate(`${caseUrl(id)}/ast/${validation ? "validation" : "entry"}`, body);
+export const resolveDst = (id, body) =>
+  mutate(`${caseUrl(id)}/dst/resolve`, body);
+export const getReport = (id) => read(`${caseUrl(id)}/report`);
+export const getReportVersions = (id) => read(`${caseUrl(id)}/report/versions`);
+export const getReadiness = (id) => read(`${caseUrl(id)}/readiness`);
+export const selectReportResult = (id, analysisId, selected) =>
+  mutate(
+    `${caseUrl(id)}/analyses/${encodeURIComponent(analysisId)}/report-selection`,
+    { selected },
+  );
+export const releaseReport = (id, type) =>
+  mutate(`${caseUrl(id)}/release/${encodeURIComponent(type)}`, {});
 export default {
+  getAstWorkspace,
+  astAction,
+  resolveDst,
+  getReport,
+  getReportVersions,
+  getReadiness,
+  selectReportResult,
+  releaseReport,
   getIsolates,
   getIsolateOptions,
   pickIsolate,

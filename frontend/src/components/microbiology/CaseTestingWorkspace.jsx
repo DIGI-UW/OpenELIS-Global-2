@@ -1,3 +1,5 @@
+import CaseAstWorkspace from "./CaseAstWorkspace";
+import CaseReportWorkspace from "./CaseReportWorkspace";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -339,6 +341,7 @@ export default function CaseTestingWorkspace({
   const [selection, setSelection] = useState([]);
   const [adding, setAdding] = useState(false);
   const [note, setNote] = useState("");
+  const [sendWithResult, setSendWithResult] = useState(false);
   const [noting, setNoting] = useState(false);
   useEffect(() => {
     let live = true;
@@ -413,7 +416,7 @@ export default function CaseTestingWorkspace({
     setNoting(true);
     setError(false);
     try {
-      const saved = await service.addNote(detail.id, note);
+      const saved = await service.addNote(detail.id, note, sendWithResult);
       if (!mounted.current) return;
       setTimeline((previous) => [...previous, saved]);
       setNote("");
@@ -585,11 +588,27 @@ export default function CaseTestingWorkspace({
         <SelectItem value="INITIAL" text={t("microbiology.testing.initial")} />
         <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
         <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
+        <SelectItem value="AST" text={t("microbiology.m6.ast")} />
+        <SelectItem value="REPORT" text={t("microbiology.m6.report")} />
         <SelectItem
           value="ADDITIONAL"
           text={t("microbiology.testing.additional")}
         />
       </Select>
+      {placement === "AST" && (
+        <CaseAstWorkspace
+          detail={detail}
+          service={service}
+          onChanged={onCaseChanged}
+        />
+      )}
+      {placement === "REPORT" && (
+        <CaseReportWorkspace
+          detail={detail}
+          service={service}
+          onChanged={onCaseChanged}
+        />
+      )}
       {placement === "CULTURE" && (
         <CaseCultureWorkspace
           detail={detail}
@@ -652,13 +671,13 @@ export default function CaseTestingWorkspace({
         />
       )}
       {["INITIAL", "ADDITIONAL"].includes(placement) && renderTests(null)}
-      {placement !== "ISOLATES" &&
+      {["INITIAL", "ADDITIONAL", "CULTURE"].includes(placement) &&
         !loading &&
         !tests.some((test) => test.placement === placement) && (
           <p>{t("microbiology.testing.noTests")}</p>
         )}
       {detail.canWrite &&
-        placement !== "ISOLATES" &&
+        ["INITIAL", "ADDITIONAL", "CULTURE"].includes(placement) &&
         selection.length > 0 &&
         (placement !== "CULTURE" || cultureId) && (
           <>
@@ -741,7 +760,14 @@ export default function CaseTestingWorkspace({
                         {intl.formatTime(new Date(item.occurredAt))}
                       </TableCell>
                       <TableCell>{item.performedByDisplay}</TableCell>
-                      <TableCell>{item.note}</TableCell>
+                      <TableCell>
+                        {item.note}
+                        {item.structuredData === "SEND_RESULT" && (
+                          <Tag type="blue">
+                            {t("microbiology.m6.sendWithResult")}
+                          </Tag>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
               </TableBody>
@@ -756,6 +782,12 @@ export default function CaseTestingWorkspace({
                 maxLength={4000}
                 disabled={noting}
                 onChange={(e) => setNote(e.target.value)}
+              />
+              <Checkbox
+                id="case-note-send"
+                labelText={t("microbiology.m6.sendWithResult")}
+                checked={sendWithResult}
+                onChange={(_, { checked }) => setSendWithResult(checked)}
               />
               <Button disabled={noting || !note.trim()} onClick={addNote}>
                 {t("microbiology.testing.saveNote")}

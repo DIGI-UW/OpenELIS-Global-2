@@ -922,7 +922,7 @@ describe("InventoryItemsBoard", () => {
         lot({
           id: 104,
           lotNumber: "MTB-3001",
-          effectiveExpirationDate: expiry("2027-02-01T00:00:00Z"),
+          effectiveExpirationDate: Date.parse("2027-02-01T00:00:00Z"),
           currentQuantity: 4,
           qcStatus: "PENDING",
           availableForUse: false,
@@ -932,7 +932,7 @@ describe("InventoryItemsBoard", () => {
         lot({
           id: 105,
           lotNumber: "MTB-3002",
-          effectiveExpirationDate: expiry("2027-03-01T00:00:00Z"),
+          effectiveExpirationDate: Date.parse("2027-03-01T00:00:00Z"),
           currentQuantity: 2,
           inventoryItem: { id: 1, name: CARTRIDGE.name },
         }),

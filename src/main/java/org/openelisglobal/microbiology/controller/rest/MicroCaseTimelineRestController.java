@@ -33,6 +33,7 @@ public class MicroCaseTimelineRestController extends MicrobiologyRestControllerS
     @PostMapping("/notes")
     public ResponseEntity<MicroCaseActivityForm> addNote(@PathVariable String caseId,
             @RequestBody MicroCaseNoteRequestForm request, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(timelineService.addNote(caseId, request.text, authenticatedUserId(httpRequest)));
+        return ResponseEntity.ok(timelineService.addNote(caseId, request.text, request.sendWithResult,
+                authenticatedUserId(httpRequest)));
     }
 }

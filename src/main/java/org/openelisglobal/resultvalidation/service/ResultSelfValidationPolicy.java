@@ -37,6 +37,11 @@ public class ResultSelfValidationPolicy {
         this.access = access;
     }
 
+    public boolean blockedForEntryUsers(java.util.Collection<String> entryUsers, String actor) {
+        return ConfigurationProperties.getInstance().isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true")
+                && actor != null && entryUsers.contains(actor);
+    }
+
     public boolean blocked(Analysis analysis, String actor) {
         if (!ConfigurationProperties.getInstance().isPropertyValueEqual(Property.BLOCK_SELF_VALIDATION, "true"))
             return false;

@@ -114,4 +114,15 @@ public class MicroAntibiotic extends BaseObject<String> {
     public void setIsActive(String isActive) {
         this.isActive = isActive;
     }
+
+    @Column(name = "resistance_role", nullable = false, length = 32)
+    private String resistanceRole = "NONE";
+
+    public String getResistanceRole() {
+        return resistanceRole;
+    }
+
+    public void setResistanceRole(String value) {
+        resistanceRole = value;
+    }
 }

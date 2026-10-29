@@ -37,12 +37,43 @@ public class MicroReportVersionServiceTest {
     @Mock
     private MicroReportVersionSourceDAO reportVersionSourceDAO;
 
+    @Mock
+    private MicroPatientReportService patientReports;
+
     private MicroReportVersionService service;
 
     @Before
     public void setUp() {
         service = new MicroReportVersionServiceImpl(reportVersionDAO, caseAnalysisDAO, projectionService,
-                reportVersionSourceDAO);
+                reportVersionSourceDAO, patientReports);
+    }
+
+    @Test
+    public void historyCompilesStructuredSnapshotsAndPreservesHistoricalText() {
+        var structured = new MicroReportVersion();
+        structured.setId("version-2");
+        structured.setStructuredContent("snapshot-json");
+        structured.setContent("internal serialized value");
+        var historical = new MicroReportVersion();
+        historical.setId("version-1");
+        historical.setContent("Historical negative report");
+        var report = new org.openelisglobal.microbiology.form.MicroPatientReportForm();
+        report.labUnitName = "Culture unit";
+        when(reportVersionDAO.getByCaseId("case-1")).thenReturn(List.of(historical, structured));
+        when(patientReports.decode("snapshot-json")).thenReturn(report);
+        var source = new MicroReportVersionSource();
+        source.setReportVersionId("version-2");
+        source.setAnalysisId("42");
+        source.setResultId("201");
+        when(reportVersionSourceDAO.getByCaseId("case-1")).thenReturn(List.of(source));
+
+        var versions = service.getVersionForms("case-1");
+        assertEquals("Historical negative report", versions.get(0).content);
+        assertNull(versions.get(0).report);
+        assertNull(versions.get(1).content);
+        assertEquals("Culture unit", versions.get(1).report.labUnitName);
+        assertEquals("42", versions.get(1).sources.get(0).analysisId);
+        assertEquals("201", versions.get(1).sources.get(0).resultId);
     }
 
     @Test

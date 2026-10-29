@@ -22,6 +22,20 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
 
     @org.springframework.beans.factory.annotation.Autowired
     private MicroIsolateWorkspaceServiceImpl isolateWorkspace;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroDstService dst;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseFinalRequirementsService requirements;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO cultures;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO links;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstReportChoiceService choices;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.referral.dao.ReferralDAO referrals;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.common.services.IStatusService statuses;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstRunDAO astRunDAO;
@@ -43,8 +57,39 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         MicroCaseReadinessForm readiness = new MicroCaseReadinessForm();
         readiness.caseId = microCase.getId();
         readiness.finalReleaseReady = true;
-        List<MicroIsolate> isolates = isolateDAO.getWorkspace(caseId);
-        boolean noGrowthReady = "NO_GROWTH_READY".equals(microCase.getStage());
+        List<MicroIsolate> isolates = isolateDAO.getWorkspace(caseId).stream().filter(i -> i.getCancelledAt() == null)
+                .toList();
+        var cultureRows = cultures.getRows(caseId);
+        if (cultureRows.isEmpty()
+                || cultureRows.stream().anyMatch(row -> row.getOutcome() == null || row.getOutcomeAt() == null))
+            addBlocker(readiness, "CULTURE_OUTCOME_REQUIRED");
+        for (var analysis : links.getAnalyses(caseId)) {
+            var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
+            if (MicroPatientReportService.selected(link) && !analysis.getTest().isInLabOnly()
+                    && !"N".equals(analysis.getIsReportable())
+                    && !"Finalized".equals(statuses.getAnalysisStatusForID(analysis.getStatusId()).name()))
+                addBlocker(readiness, "SELECTED_RESULT_VALIDATION_REQUIRED");
+        }
+        var sources = cultures.getSources(caseId).stream().map(si -> si.getId()).distinct().toList();
+        if (referrals.getWorkspaceReferrals(sources).stream().filter(referral -> {
+            var analysis = referral.getAnalysis();
+            if (analysis == null)
+                return false;
+            var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
+            return link != null && !analysis.getTest().isInLabOnly() && !"N".equals(analysis.getIsReportable())
+                    && (link.getCaseRole() == org.openelisglobal.microbiology.valueholder.MicroCaseRole.CULTURE
+                            || MicroPatientReportService.selected(link));
+        }).anyMatch(referral -> referral.getStatus() == null || !java.util.Set
+                .of(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED,
+                        org.openelisglobal.referral.valueholder.ReferralStatus.CANCELLED)
+                .contains(referral.getStatus())))
+            addBlocker(readiness, "REFERRAL_COMPLETION_REQUIRED");
+        readiness.blockers.addAll(requirements.blockers(caseId));
+        readiness.blockerLabels = requirements.labels(caseId);
+        if (dst.evaluate(caseId).unresolvedDiscordance)
+            addBlocker(readiness, "TB_DISCORDANCE_UNRESOLVED");
+        boolean noGrowthReady = !cultureRows.isEmpty() && cultureRows.stream().allMatch(row -> java.util.Set
+                .of("NO_GROWTH", "CONTAMINATED").contains(row.getOutcome() == null ? "" : row.getOutcome()));
         if (isolates.isEmpty() && !noGrowthReady) {
             readiness.finalReleaseReady = false;
             readiness.blockers.add("ISOLATE_REQUIRED");
@@ -71,29 +116,34 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
                 readiness.finalReleaseReady = false;
                 addBlocker(readiness, "ISOLATE_IDENTIFICATION_REQUIRED");
             }
-            // A repeat or retest still in flight is the current AST work, so an
-            // earlier reviewed run does not make the isolate releasable.
-            boolean unreviewedWork = activeRuns.size() != reviewedRuns.size();
+            boolean unreviewedWork = activeRuns.stream()
+                    .anyMatch(run -> "QC_FAILED".equals(run.getStatus()) || "FAILED".equals(run.getQcState()));
+            if (unreviewedWork)
+                addBlocker(readiness, "AST_REVIEW_REQUIRED");
             if (MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name().equals(isolate.getSignificance())
-                    && (reviewedRuns.isEmpty() || unreviewedWork)) {
+                    && choices.getChoices(isolate.getId()).isEmpty()) {
                 readiness.finalReleaseReady = false;
                 addBlocker(readiness, "AST_REVIEW_REQUIRED");
                 if (identified && activeRuns.isEmpty()) {
                     readiness.significantIsolatesAwaitingAstSetup++;
                 }
             }
-            if (reviewedRuns.size() > 1 && reviewedRuns.stream().filter(MicroAstRun::isReportable).count() != 1) {
-                readiness.finalReleaseReady = false;
-                addBlocker(readiness, "REPORTABLE_AST_RUN_REQUIRED");
+            try {
+                choices.getSelectedReadings(isolate.getId());
+            } catch (MicroAstConflictException invalidSelection) {
+                addBlocker(readiness, "REPORTABLE_AST_READING_REQUIRED");
             }
+
         }
+        readiness.finalReleaseReady = readiness.finalReleaseReady && readiness.blockers.isEmpty();
         return readiness;
     }
 
     private List<MicroAstRun> activeAstRuns(String isolateId) {
         return astRunDAO.getByIsolateId(isolateId).stream()
                 .filter(run -> !MicroAstRunStatus.INVALIDATED.name().equals(run.getStatus())
-                        && !MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus()))
+                        && !MicroAstRunStatus.RERUN_REQUIRED.name().equals(run.getStatus())
+                        && !MicroAstRunStatus.CANCELLED.name().equals(run.getStatus()))
                 .toList();
     }
 
