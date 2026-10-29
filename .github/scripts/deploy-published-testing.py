@@ -314,13 +314,18 @@ def deploy(request, diagnostics, bundle):
         run(compose + ["up", "-d"], site_dir)
         images = {}
         for service, reference in manifest["images"].items():
-            container = run(compose + ["ps", "-q", service], site_dir, True).strip()
+            container = run(compose + ["ps", "--all", "--quiet", service], site_dir, True).strip()
             if not container or "\n" in container:
-                raise ValueError(f"Expected one running container for {service}")
+                raise ValueError(f"Expected one container for {service}")
             actual = json.loads(run(["docker", "inspect", container], site_dir, True))[0]
             expected = json.loads(run(["docker", "image", "inspect", reference], site_dir, True))[0]
-            if not actual["State"]["Running"] or actual["Image"] != expected["Id"]:
-                raise ValueError(f"Running {service} does not match the published image")
+            if actual["Image"] != expected["Id"]:
+                raise ValueError(f"Selected {service} does not match the published image")
+            if service == "certs":
+                if actual["State"].get("Status") != "exited" or actual["State"].get("ExitCode") != 0:
+                    raise ValueError("Certificate initializer did not complete successfully")
+            elif not actual["State"]["Running"]:
+                raise ValueError(f"Expected running service {service}")
             images[service] = {"reference": reference, "imageId": actual["Image"]}
         report = readiness.wait_until_ready(**contract)
         write_json(diagnostics / "readiness.json", report)
