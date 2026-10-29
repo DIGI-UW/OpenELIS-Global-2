@@ -70,7 +70,7 @@ describe("the state after the entry step saves", () => {
 
   it("leads with the domain action, not a generic order parent", () => {
     renderLayout();
-    expect(screen.getByText("Add Clinical Order")).toBeInTheDocument();
+    expect(screen.getByText("Clinical Orders")).toBeInTheDocument();
     expect(screen.queryByText("Add Generic Order")).not.toBeInTheDocument();
   });
 

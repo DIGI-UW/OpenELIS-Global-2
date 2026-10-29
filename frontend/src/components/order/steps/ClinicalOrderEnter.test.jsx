@@ -44,6 +44,9 @@ const { orderContextValue, programSectionProps, configurationValue } =
       isReadOnly: false,
       isEditMode: false,
       resetOrder: vi.fn(),
+      stagedAttachments: [],
+      setStagedAttachments: vi.fn(),
+      attachmentsVersion: 0,
     },
     programSectionProps: vi.fn(),
   }));

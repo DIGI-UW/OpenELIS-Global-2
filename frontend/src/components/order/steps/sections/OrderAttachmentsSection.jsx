@@ -6,6 +6,8 @@ import {
   FileUploaderDropContainer,
   InlineNotification,
   Link,
+  Modal,
+  Tag,
 } from "@carbon/react";
 import { TrashCan } from "@carbon/icons-react";
 import {
@@ -37,11 +39,18 @@ const formatFileSize = (bytes) => {
  */
 const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
   const intl = useIntl();
-  const { orderId } = useOrderContext();
+  const {
+    orderId,
+    stagedAttachments,
+    setStagedAttachments,
+    attachmentsVersion,
+  } = useOrderContext();
   const isSaved = Boolean(orderId);
   const componentMounted = useRef(true);
   const [attachments, setAttachments] = useState([]);
+  const fileCount = isSaved ? attachments.length : stagedAttachments.length;
   const [error, setError] = useState(null);
+  const [attachmentToDelete, setAttachmentToDelete] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -63,14 +72,14 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
         }
       },
     );
-  }, [labNumber, isSaved]);
+  }, [labNumber, isSaved, attachmentsVersion]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const reject = (files) => {
-    if (attachments.length + files.length > MAX_FILES) {
+    if (fileCount + files.length > MAX_FILES) {
       return intl.formatMessage(
         { id: "order.attachment.error.maxFiles" },
         { maxFiles: MAX_FILES },
@@ -98,12 +107,16 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
 
   const handleAdd = (addedFiles) => {
     setError(null);
-    if (!addedFiles || addedFiles.length === 0 || !labNumber || !isSaved) {
+    if (!addedFiles || addedFiles.length === 0 || !labNumber) {
       return;
     }
     const problem = reject(addedFiles);
     if (problem) {
       setError(problem);
+      return;
+    }
+    if (!isSaved) {
+      setStagedAttachments((current) => [...current, ...addedFiles]);
       return;
     }
     const formData = new FormData();
@@ -128,6 +141,23 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
       `${config.serverBaseUrl}/rest/order/attachments/${encodeURIComponent(attachmentId)}/${action}`,
       "_blank",
     );
+
+  const confirmDelete = () => {
+    const { id } = attachmentToDelete;
+    setAttachmentToDelete(null);
+    deleteFromOpenElisServer(
+      `/rest/order/attachments/${encodeURIComponent(id)}`,
+      (status) => {
+        if (status >= 200 && status < 300) {
+          load();
+        } else {
+          setError(
+            intl.formatMessage({ id: "order.attachment.delete.failed" }),
+          );
+        }
+      },
+    );
+  };
 
   if (!labNumber) {
     return null;
@@ -159,20 +189,11 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
         />
       )}
 
-      {!isSaved && (
-        <p className="helper-text" data-testid="order-attachment-save-first">
-          <FormattedMessage
-            id="order.attachment.saveFirst"
-            defaultMessage="Save the order to add attachments."
-          />
-        </p>
-      )}
-
-      {isSaved && !isReadOnly && (
+      {!isReadOnly && (
         <FileUploaderDropContainer
           accept={ALLOWED_EXTENSIONS}
           multiple
-          disabled={attachments.length >= MAX_FILES}
+          disabled={fileCount >= MAX_FILES}
           labelText={intl.formatMessage({ id: "order.attachment.dropzone" })}
           onAddFiles={(_event, { addedFiles }) => handleAdd(addedFiles)}
         />
@@ -188,6 +209,29 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
       )}
 
       <ul className="order-attachment-list">
+        {!isSaved &&
+          stagedAttachments.map((file, index) => (
+            <li key={`${file.name}-${index}`}>
+              <span>{file.name}</span>
+              <span className="order-attachment-size">
+                {formatFileSize(file.size)}
+              </span>
+              <Tag type="gray" size="sm">
+                <FormattedMessage id="order.attachment.staged" />
+              </Tag>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() =>
+                  setStagedAttachments((current) =>
+                    current.filter((_, i) => i !== index),
+                  )
+                }
+              >
+                <FormattedMessage id="label.button.remove" />
+              </Button>
+            </li>
+          ))}
         {attachments.map((attachment) => (
           <li key={attachment.id}>
             <Link
@@ -219,30 +263,33 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
                 hasIconOnly
                 renderIcon={TrashCan}
                 iconDescription={intl.formatMessage({
-                  id: "order.attachment.delete.confirm.title",
+                  id: "order.attachment.action.delete",
                   defaultMessage: "Delete attachment",
                 })}
-                onClick={() =>
-                  deleteFromOpenElisServer(
-                    `/rest/order/attachments/${encodeURIComponent(attachment.id)}`,
-                    (status) => {
-                      if (status >= 200 && status < 300) {
-                        load();
-                      } else {
-                        setError(
-                          intl.formatMessage({
-                            id: "order.attachment.delete.failed",
-                          }),
-                        );
-                      }
-                    },
-                  )
-                }
+                onClick={() => setAttachmentToDelete(attachment)}
               />
             )}
           </li>
         ))}
       </ul>
+      <Modal
+        open={attachmentToDelete !== null}
+        modalHeading={intl.formatMessage({
+          id: "order.attachment.delete.confirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({ id: "label.button.delete" })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setAttachmentToDelete(null)}
+        onRequestSubmit={confirmDelete}
+        danger
+      >
+        <p>
+          <FormattedMessage
+            id="order.attachment.delete.confirm.body"
+            values={{ fileName: attachmentToDelete?.fileName ?? "" }}
+          />
+        </p>
+      </Modal>
     </Tile>
   );
 };
