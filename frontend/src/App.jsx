@@ -179,6 +179,7 @@ const GenericSampleResults = lazyWithRetry(
 
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import HelpViewer from "./components/help/HelpViewer";
 import {
   OrderProvider,
   OrderDashboard,
@@ -487,6 +488,11 @@ export default function App() {
                   render={() => <ChangePassword />}
                 />
                 <Route path="/landing" exact render={() => <LandingPage />} />
+                <SecureRoute
+                  path="/help/:slug?"
+                  render={() => <HelpViewer />}
+                  role=""
+                />
                 <SecureRoute path="/" exact render={() => <Home />} role="" />
                 <SecureRoute
                   path="/Dashboard"
