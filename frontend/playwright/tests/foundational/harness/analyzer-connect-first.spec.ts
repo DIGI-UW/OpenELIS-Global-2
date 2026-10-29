@@ -64,13 +64,22 @@ test(
     );
     const captured = () =>
       worklistFor<SetupRow>(page, analyzer.id, setupOrder.accession);
-    await expect
-      .poll(async () => (await captured()).map((row) => row.importIssueReason))
-      .toEqual(["setup_capture"]);
-    const original = (await captured())[0];
+    // The vendor fixture contains six result records plus instrument sample flags.
+    await expect.poll(async () => (await captured()).length).toBe(6);
+    const originalRows = await captured();
+    for (const row of originalRows) {
+      expect(row).toMatchObject({
+        readOnly: true,
+        importIssueReason: "setup_capture",
+      });
+      expect(row.testId ?? null).toBeNull();
+    }
+    const original = originalRows.find(
+      (row) => row.rawResultValue === "1009.64",
+    )!;
+    expect(original).toBeDefined();
     expect(original).toMatchObject({
       readOnly: true,
-      testId: null,
       rawResultValue: "1009.64",
     });
     await reception
@@ -89,7 +98,9 @@ test(
     await expect(
       reception.getByRole("button", { name: "Start receiving setup samples" }),
     ).toBeVisible();
-    expect((await captured())[0].id).toBe(original.id);
+    expect((await captured()).map((row) => row.id).sort()).toEqual(
+      originalRows.map((row) => row.id).sort(),
+    );
     await reception
       .getByRole("button", { name: "Start receiving setup samples" })
       .click();
@@ -133,14 +144,17 @@ test(
       undefined,
       "20261028160000",
     );
-    expect(await captured()).toEqual([
-      expect.objectContaining({
-        id: original.id,
+    const afterActivation = await captured();
+    expect(afterActivation.map((row) => row.id).sort()).toEqual(
+      originalRows.map((row) => row.id).sort(),
+    );
+    for (const row of afterActivation) {
+      expect(row).toMatchObject({
         readOnly: true,
         importIssueReason: "setup_capture",
-        testId: null,
-      }),
-    ]);
+      });
+      expect(row.testId ?? null).toBeNull();
+    }
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`);
     const held = page.getByTestId(`held-analyzer-result-${original.id}`);
     await expect(held).toContainText("Setup sample");
@@ -162,16 +176,28 @@ test(
     );
     await expect
       .poll(async () =>
-        (await worklistFor(page, analyzer.id, routineOrder.accession)).map(
-          (row) => row.testId,
+        (await worklistFor(page, analyzer.id, routineOrder.accession)).some(
+          (row) =>
+            row.rawResultValue === "1009.64" &&
+            row.testId === testId &&
+            !row.importIssueReason,
         ),
       )
-      .toEqual([testId]);
+      .toBe(true);
     await acceptAll(page, analyzer, [routineOrder.accession]);
-    const saved = await savedValue(page, routineOrder, testId);
-    expect(saved).not.toBe("");
+    await expect
+      .poll(() => savedValue(page, routineOrder, testId, "HIV-1 viral load"))
+      .not.toBe("");
+    const saved = await savedValue(
+      page,
+      routineOrder,
+      testId,
+      "HIV-1 viral load",
+    );
     // This checks the setup/routine boundary. Numeric reporting precision is tracked in OGC-1574.
-    expect((await captured())[0]).toMatchObject({
+    expect(
+      (await captured()).find((row) => row.id === original.id),
+    ).toMatchObject({
       id: original.id,
       readOnly: true,
       importIssueReason: "setup_capture",
