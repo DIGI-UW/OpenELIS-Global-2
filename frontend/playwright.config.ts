@@ -150,7 +150,7 @@ export default defineConfig({
     {
       name: "core-accessibility-mobile",
       testMatch: CORE_ACCESSIBILITY_TESTS,
-      testIgnore: "**/microbiology-keyboard.spec.ts",
+      testIgnore: "**/*-keyboard.spec.ts",
       use: {
         ...devices["Pixel 5"],
         storageState: "playwright/.auth/user.json",
