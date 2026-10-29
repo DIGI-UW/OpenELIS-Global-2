@@ -8,6 +8,8 @@ public interface AnalyzerActivationService {
 
     AnalyzerActivationResult reactivate(String analyzerId, String actor);
 
+    AnalyzerSetupReceptionResult startSetupReception(String analyzerId, String actor);
+
     AnalyzerDeactivationResult deactivate(String analyzerId, String actor);
 
     /**

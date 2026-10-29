@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="OGC-1573-analyzer-setup-reception-intent" author="OGC">
+        <sql>
+            ALTER TABLE clinlims.analyzer_activation_record
+            DROP CONSTRAINT chk_analyzer_activation_record_intent;
+            ALTER TABLE clinlims.analyzer_activation_record
+            ADD CONSTRAINT chk_analyzer_activation_record_intent
+            CHECK (activation_intent IN ('ACTIVE', 'INACTIVE', 'SETUP'));
+        </sql>
+        <rollback>
+            <!-- Keep setup audit history while refusing new setup records on old code. -->
+            <sql>
+                ALTER TABLE clinlims.analyzer_activation_record
+                DROP CONSTRAINT chk_analyzer_activation_record_intent;
+                ALTER TABLE clinlims.analyzer_activation_record
+                ADD CONSTRAINT chk_analyzer_activation_record_intent
+                CHECK (activation_intent IN ('ACTIVE', 'INACTIVE')) NOT VALID;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -45,6 +45,10 @@ specification is not a claim that the new boundary has shipped.
    confirmed and current or behind. In the setup wizard the operator
    enables the assays this instrument runs, as on the instrument's own host test
    code table, resolves every unresolved row among them, confirms, and activates.
+   Before choosing mappings, a new instrument can receive setup samples in
+   Validation mode. These are retained mapping evidence, never patient or QC
+   results, including after routine activation. The explicit setup-reception
+   decision is defined in [setup-reception.md](setup-reception.md).
    Language and number format can be overridden per analyzer on its Bridge
    connection, and a code the profile never declared is mapped like any other
    row. The code an instrument sends for a declared assay is a setting of its

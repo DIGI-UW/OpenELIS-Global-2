@@ -51,6 +51,15 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
     }
 
     @Test
+    public void setupReceptionIsRestrictedToGlobalAdministrators() throws Exception {
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/setup-reception")
+                .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/setup-reception").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+    }
+
+    @Test
     public void analyzerImportRoleCannotActivateProbeOrOpenQc() throws Exception {
         mockMvc.perform(get("/rest/analyzer/analyzers/77/activation-readiness")
                 .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))

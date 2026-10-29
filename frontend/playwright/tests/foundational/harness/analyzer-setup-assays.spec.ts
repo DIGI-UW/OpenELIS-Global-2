@@ -19,8 +19,8 @@ import {
   saveMapping,
 } from "../../../helpers/analyzer-mapping-page";
 
-const continueToConnect = (page: Page) =>
-  page.getByRole("button", { name: "Continue to Connect" });
+const finishSetup = (page: Page) =>
+  page.getByRole("button", { name: "Finish and activate" });
 
 /** Picks a catalog test for one analyzer code in the mapping editor inside Verify. */
 async function mapTo(page: Page, code: string, testName: string) {
@@ -84,6 +84,8 @@ test.describe("Assays step on a populated catalog", () => {
       await setup.selectProfile(displayName);
       await setup.fillName(displayName);
       await setup.selectLabUnit("Molecular Biology");
+      await setup.continueToConnect();
+      await setup.fillSenderId(`assays-${run}`);
       await setup.continueToAssays();
 
       // The catalog binds one, finds two candidates for another and none for the third.
@@ -116,7 +118,7 @@ test.describe("Assays step on a populated catalog", () => {
           { exact: false },
         ),
       ).toBeVisible();
-      await expect(continueToConnect(page)).toBeDisabled();
+      await expect(finishSetup(page)).toBeDisabled();
       await expect(
         page.getByText(
           "Not mapped: several tests in this lab's catalog carry its code. Choose one.",
@@ -126,9 +128,9 @@ test.describe("Assays step on a populated catalog", () => {
         page.getByRole("combobox", { name: "OpenELIS test for E2E-NONE" }),
       ).toHaveCount(0);
       await demo.caption(
-        "Verify asks only about assays that are on. Continue to Connect stays shut: one assay matches two tests.",
+        "Verify asks only about assays that are on. Finish and activate stays shut: one assay matches two tests.",
       );
-      await demo.highlight(continueToConnect(page));
+      await demo.highlight(finishSetup(page));
 
       // Mapping the one that needs it still leaves the gate shut until it is confirmed.
       await demo.caption(
@@ -136,10 +138,10 @@ test.describe("Assays step on a populated catalog", () => {
       );
       await mapTo(page, "E2E-TWIN", twinA.name);
       await saveMapping(page);
-      await expect(continueToConnect(page)).toBeDisabled();
+      await expect(finishSetup(page)).toBeDisabled();
       await confirmMapping(page);
-      await expect(continueToConnect(page)).toBeEnabled();
-      await demo.highlight(continueToConnect(page));
+      await expect(finishSetup(page)).toBeEnabled();
+      await demo.highlight(finishSetup(page));
 
       // Turning the third assay on brings it into Verify and shuts the gate again.
       await demo.caption(
@@ -155,21 +157,19 @@ test.describe("Assays step on a populated catalog", () => {
           "Not mapped: no test in this lab's catalog carries its code.",
         ),
       ).toBeVisible();
-      await expect(continueToConnect(page)).toBeDisabled();
+      await expect(finishSetup(page)).toBeDisabled();
 
       await demo.caption(
-        "The operator maps it to a local test, saves and confirms. Setup continues to Connect.",
+        "The operator maps it to a local test, saves and confirms. Setup can now be activated.",
       );
       await mapTo(page, "E2E-NONE", twinB.name);
       await saveMapping(page);
       await confirmMapping(page);
-      await expect(continueToConnect(page)).toBeEnabled();
-      await continueToConnect(page).click();
-      await expect(page).toHaveURL(
-        (url) => url.searchParams.get("setup") === "connect",
-      );
+      await expect(finishSetup(page)).toBeEnabled();
+      await finishSetup(page).click();
+      await expect(setup.surface).not.toBeVisible();
       await demo.verified(
-        "Setup reached Connect with every assay that is on mapped",
+        "Setup finished with every assay that is on mapped",
         "Continue stayed shut while any assay that is on was unmapped or unconfirmed.",
       );
     },
@@ -269,7 +269,7 @@ test.describe("Results the mapping does not cover", () => {
       await expect(fluBAssay.getByRole("checkbox")).toBeChecked();
       await page.getByRole("button", { name: "Continue to Verify" }).click();
       await confirmMapping(page);
-      await new AnalyzerSetupPage(page).continueToConnect();
+      await finishSetup(page).click();
       await expect
         .poll(
           async () =>

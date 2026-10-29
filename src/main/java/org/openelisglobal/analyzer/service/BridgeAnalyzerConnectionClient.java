@@ -19,7 +19,7 @@ public class BridgeAnalyzerConnectionClient {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final Pattern FINGERPRINT = Pattern.compile("^sha256:[0-9a-f]{64}$");
-    private static final Set<String> RUNTIME_ACTIONS = Set.of("ACTIVATE", "DEACTIVATE");
+    private static final Set<String> RUNTIME_ACTIONS = Set.of("ACTIVATE", "START_SETUP", "DEACTIVATE");
 
     private final BridgeHttpClient httpClient;
     private final String bridgeBaseUrl;

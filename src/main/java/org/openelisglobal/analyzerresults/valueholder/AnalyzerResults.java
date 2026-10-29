@@ -94,6 +94,8 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_AWAITING_PLACEMENT = "awaiting_placement";
     public static final String IMPORT_ISSUE_UNKNOWN_TEST = "unknown_analyzer_test";
     public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
+    /** Setup samples supply mapping evidence and never become clinical results. */
+    public static final String IMPORT_ISSUE_SETUP_CAPTURE = "setup_capture";
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
     public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
     public static final String IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING = "conflicting_answer_mapping";
@@ -118,9 +120,9 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
      * Historical type-reading hold; new deliveries do not produce this reason.
      */
     public static final String IMPORT_ISSUE_TYPE_READING_CHANGED = "type_reading_changed";
-    /** Held results that applying the analyzer's mapping retries. */
+    /** Mapping evidence; setup captures are retained but never recovered. */
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
-            IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+            IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_SETUP_CAPTURE, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
             IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING,
             IMPORT_ISSUE_CONFLICTING_ANSWER_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING, IMPORT_ISSUE_QC_LOT_MISSING,
             IMPORT_ISSUE_QC_VALUE_UNSUPPORTED, IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED,
