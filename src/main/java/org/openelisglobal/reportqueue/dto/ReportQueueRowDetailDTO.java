@@ -13,6 +13,7 @@ public class ReportQueueRowDetailDTO {
         private Long analysisId;
         private String testName;
         private String result;
+        private String clinicalValue;
         private String flag;
         private String status;
         private String releasedAt;
@@ -41,6 +42,14 @@ public class ReportQueueRowDetailDTO {
 
         public void setResult(String result) {
             this.result = result;
+        }
+
+        public String getClinicalValue() {
+            return clinicalValue;
+        }
+
+        public void setClinicalValue(String clinicalValue) {
+            this.clinicalValue = clinicalValue;
         }
 
         public String getFlag() {

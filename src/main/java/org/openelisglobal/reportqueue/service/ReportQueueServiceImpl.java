@@ -150,6 +150,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
         String testName;
         String rawValue;
         String display;
+        String clinicalValue;
         String flag;
         String unitId;
         String unitName;
@@ -464,8 +465,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                                         result.getSampleTypeId())
                                 : resultLimitService.getResultLimitForComponentAndPatient(scope, patient,
                                         result.getSampleTypeId()));
-                String letter = ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(
-                        StringUtil.roundToPlaces(result.getValue(), result.getReportingDecimalPlaces())));
+                String letter = ResultAlertFlags.criticalLetter(limit,
+                        StringUtil.getActualNumericValue(result.getValue()));
                 if (!GenericValidator.isBlankOrNull(letter)) {
                     critical.add(result.getSampleId());
                 }
@@ -539,6 +540,8 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             test.setTestName(item.testName);
             test.setReleased(item.released);
             test.setResult(item.released ? withUnit(item.display, item.unitName) : null);
+            test.setClinicalValue(
+                    item.released && item.clinicalValue != null ? withUnit(item.clinicalValue, item.unitName) : null);
             test.setFlag(item.released ? item.flag : null);
             test.setStatus(statusName(item.statusId));
             test.setReleasedAt(iso(item.releasedAt));
@@ -832,6 +835,9 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 }
                 item.rawValue = String.join("|", raw);
                 item.display = String.join(", ", display);
+                if (results.stream().allMatch(r -> "N".equals(r.getResultType()))) {
+                    item.clinicalValue = String.join(", ", raw);
+                }
                 item.flag = results.isEmpty() ? "" : flag(analysis, results.get(0), patient);
             }
             snapshot.items.add(item);
@@ -860,9 +866,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             }
             return String.join(", ", names);
         }
-        return ResultType.NUMERIC.matches(result.getResultType())
-                ? StringUtil.getActualNumericValue(result.getDisplayValue())
-                : value;
+        return ResultType.NUMERIC.matches(result.getResultType()) ? result.getDisplayValue() : value;
     }
 
     /**

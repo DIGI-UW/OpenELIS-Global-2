@@ -475,6 +475,15 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(test.getResult(), test.getResult().startsWith("5.8"));
         assertFalse(test.getResult(), test.getResult().startsWith("5.84"));
         assertEquals("E", test.getFlag());
+        assertTrue(test.getClinicalValue(), test.getClinicalValue().startsWith("5.84"));
+    }
+
+    @Test
+    public void reportPreviewRetainsAQualifiedBound() {
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '<5.84', reporting_decimal_places = 0 WHERE id = 9301");
+        ReportQueueRowDetailDTO.TestRowDTO test = reportQueueService.detail(SAMPLE, ADMIN).orElseThrow().getTests()
+                .stream().filter(t -> "9301".equals(String.valueOf(t.getAnalysisId()))).findFirst().orElseThrow();
+        assertTrue(test.getResult(), test.getResult().startsWith("<5.84"));
     }
 
     /**
@@ -597,7 +606,11 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
                 + " low_critical, high_critical, always_validate, lastupdated) VALUES (99301, 9301, 4, 0, 'Infinity',"
                 + " 3.5, 5.5, '-Infinity', 'Infinity', '-Infinity', 'Infinity', 2.0, 6.0, false, NOW())");
 
-        assertTrue("6.3 is beyond the critical bound of 6.0", row(list("all")).isCritical());
+        for (Integer places : new Integer[] { null, 0, 1, 2 }) {
+            jdbcTemplate.update(
+                    "UPDATE clinlims.result SET value = '6.004', reporting_decimal_places = ? WHERE id = 9301", places);
+            assertTrue("6.004 stays critical at " + places + " decimal places", row(list("all")).isCritical());
+        }
     }
 
     @After

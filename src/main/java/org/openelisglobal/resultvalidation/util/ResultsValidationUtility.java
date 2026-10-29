@@ -1150,8 +1150,9 @@ public class ResultsValidationUtility {
                 Analysis analysis = testResultItem.getAnalysis();
                 analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
             } else {
-                analysisResultItem.setResult(getFormattedResult(testResultItem));
-                analysisResultItem.setStoredResult(result.getEnteredValue());
+                analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
+                        : getFormattedResult(testResultItem));
+                analysisResultItem.setDisplayResult(getFormattedResult(testResultItem));
             }
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {
@@ -1205,27 +1206,6 @@ public class ResultsValidationUtility {
         analysisResultItem.setExpandedUncertainty(testResultItem.getExpandedUncertainty());
 
         return analysisResultItem;
-    }
-
-    /**
-     * Validation shows a numeric result rounded to its test's places, and a release
-     * posts the row back as shown; saving that replaced what was entered or
-     * received, so 0.9 became "0" (OGC-1544). When the posted value is only the
-     * display of the stored result, the stored value is kept; a value the validator
-     * changed is saved as given.
-     */
-    public static void keepStoredValueWhenUnchanged(AnalysisItem item, Analysis analysis) {
-        if (!TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(item.getResultType())
-                || GenericValidator.isBlankOrNull(item.getResult())
-                || GenericValidator.isBlankOrNull(item.getResultId()) || analysis == null) {
-            return;
-        }
-        ResultService resultService = SpringContext.getBean(ResultService.class);
-        resultService.getResultsByAnalysis(analysis).stream()
-                .filter(stored -> item.getResultId().equals(stored.getId()))
-                .filter(stored -> !GenericValidator.isBlankOrNull(stored.getValue()))
-                .filter(stored -> item.getResult().trim().equals(resultService.formatResultForDisplay(stored, false)))
-                .findFirst().ifPresent(stored -> item.setResult(stored.getEnteredValue()));
     }
 
     protected final String getFormattedResult(ResultValidationItem testResultItem) {

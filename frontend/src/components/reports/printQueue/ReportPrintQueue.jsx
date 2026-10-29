@@ -1529,6 +1529,16 @@ function RowDetail({ detail, onRetry }) {
                 <StructuredListCell noWrap>{test.testName}</StructuredListCell>
                 <StructuredListCell>
                   {test.released ? test.result || "–" : statusLabel(test)}
+                  {test.released &&
+                    test.clinicalValue &&
+                    test.clinicalValue !== test.result && (
+                      <div>
+                        <FormattedMessage
+                          id="label.results.clinicalValue"
+                          values={{ value: test.clinicalValue }}
+                        />
+                      </div>
+                    )}
                 </StructuredListCell>
                 <StructuredListCell>{flagLabel(test.flag)}</StructuredListCell>
                 <StructuredListCell>

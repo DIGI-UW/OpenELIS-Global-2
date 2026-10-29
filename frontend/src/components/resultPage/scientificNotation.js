@@ -123,16 +123,3 @@ export function exceedsDecimalPlaces(value, places) {
   }
   return decimalPlaces(value) > places;
 }
-
-/**
- * Rounds the mantissa to the places the test reports to, leaving the notation
- * exactly as written: 3.567 x 10^3 reported to two places becomes
- * 3.57 x 10^3.
- */
-export function roundMantissa(value, places) {
-  const parts = splitMantissa(value);
-  if (!parts) {
-    return value;
-  }
-  return parts.prefix + Number(parts.mantissa).toFixed(places) + parts.rest;
-}

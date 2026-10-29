@@ -84,28 +84,28 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getResultValue_padsTheMantissaOfScientificNotationToTheConfiguredPlaces() {
+    public void getResultValue_preservesScientificNotationInsteadOfReinterpretingDecimalPlaces() {
         Result result = numericResult("1.5e5", 2);
 
-        assertEquals("1.50e5", resultService.formatResultForDisplay(result, ",", false, false));
-        assertEquals("1.50e5", resultService.getResultValueForDisplay(result, ",", false, false));
-        assertEquals("1.50e5", resultService.formatSimpleResultForDisplay(result));
+        assertEquals("1.5e5", resultService.formatResultForDisplay(result, ",", false, false));
+        assertEquals("1.5e5", resultService.getResultValueForDisplay(result, ",", false, false));
+        assertEquals("1.5e5", resultService.formatSimpleResultForDisplay(result));
     }
 
     @Test
     public void getResultValue_keepsScientificNotationWhenNoPlacesAreConfigured() {
         assertEquals("1.5e5", resultService.formatResultForDisplay(numericResult("1.5e5", 0), ",", false, false));
         assertEquals("<2e-3", resultService.formatResultForDisplay(numericResult("<2e-3", -1), ",", false, false));
-        assertEquals("2.50e-3", resultService.formatResultForDisplay(numericResult("2.5e-3", 2), ",", false, false));
+        assertEquals("2.5e-3", resultService.formatResultForDisplay(numericResult("2.5e-3", 2), ",", false, false));
         assertEquals("1.567e5", resultService.formatResultForDisplay(numericResult("1.567e5", 2), ",", false, false));
     }
 
     @Test
     public void getResultValue_showsTheNotationTheTechnologistWrote() {
-        assertEquals("1.50×10⁵", resultService.formatResultForDisplay(numericResult("1.5×10⁵", 2), ",", false, false));
-        assertEquals("1.50 x 10^5",
+        assertEquals("1.5×10⁵", resultService.formatResultForDisplay(numericResult("1.5×10⁵", 2), ",", false, false));
+        assertEquals("1.5 x 10^5",
                 resultService.formatResultForDisplay(numericResult("1.5 x 10^5", 2), ",", false, false));
-        assertEquals("1.50E+05", resultService.formatResultForDisplay(numericResult("1.5E+05", 2), ",", false, false));
+        assertEquals("1.5E+05", resultService.formatResultForDisplay(numericResult("1.5E+05", 2), ",", false, false));
         assertEquals("10⁻³", resultService.formatResultForDisplay(numericResult("10⁻³", 2), ",", false, false));
     }
 
@@ -158,6 +158,15 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
     public void getResultValue_showsAValueWithNoPlacesConfiguredAsStored() {
         assertReported("12", "12", -1);
         assertReported("12.345", "12.345", -1);
+    }
+
+    @Test
+    public void printedRoundingNamesTheClinicalValueWithoutChangingIt() {
+        Result result = numericResult("1.176", 0);
+        assertEquals("1 (Value used for clinical decisions: 1.176)",
+                resultService.formatResultForDisplay(result, ",", true, false));
+        assertEquals("1.176", result.getValue());
+        assertEquals("12.50", resultService.formatResultForDisplay(numericResult("12.5", 2), ",", true, false));
     }
 
     private void assertReported(String expected, String stored, int places) {

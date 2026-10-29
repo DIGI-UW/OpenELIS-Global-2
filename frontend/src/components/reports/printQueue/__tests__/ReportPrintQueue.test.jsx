@@ -122,6 +122,7 @@ const MOCK_DETAIL = {
       analysisId: 1,
       testName: "Glucose",
       result: "7.1 mmol/L",
+      clinicalValue: "7.14 mmol/L",
       flag: "E",
       status: "FINALIZED",
       releasedAt: "2026-10-02T08:00:00+03:00",
@@ -281,7 +282,9 @@ describe("ReportPrintQueue", () => {
 
   it("announces the status tiles as buttons that show the filter they apply", async () => {
     renderPage();
-    const toPrint = await screen.findByRole("button", { name: /^1\s*To print/ });
+    const toPrint = await screen.findByRole("button", {
+      name: /^1\s*To print/,
+    });
     const amended = screen.getByRole("button", { name: /Amended to print/ });
     expect(toPrint).toHaveAttribute("aria-pressed", "false");
     expect(amended).toHaveAttribute("aria-pressed", "false");
@@ -382,6 +385,9 @@ describe("ReportPrintQueue", () => {
     );
     expect(requests).toContain("/rest/reportQueue/orders/9302");
     expect(screen.getByText("7.1 mmol/L")).toBeInTheDocument();
+    expect(
+      screen.getByText("Value used for clinical decisions: 7.14 mmol/L"),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Sarah Chen")).toHaveLength(2);
     expect(screen.getByText("abcdef012345")).toBeInTheDocument();
     expect(screen.getByTestId("open-pdf-1")).toHaveAttribute(

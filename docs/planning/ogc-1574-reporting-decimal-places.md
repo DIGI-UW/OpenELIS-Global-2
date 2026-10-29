@@ -103,6 +103,30 @@ preserve rows and explicit settings while removing implicit defaults. Historical
 zero review and laboratory approval are required rollout work, not claims that
 can be established by automated tests.
 
+## Delivery ledger — 29 October 2026
+
+| Plan item                               | Code and evidence                                                                                                                                                               | Remaining acceptance                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Canonical setting and nullable defaults | PR #4882 renames Java/JSON/database fields; explicit zero is retained, missing metadata stays unset; upgrade/rollback regression passes                                         | Apply the migration on analyzers and verify the catalog inventory is unchanged                                    |
+| Clinical values and decisions           | Storage, calculations, dilution, FHIR and exports use clinical values; final audit also corrects the report queue critical filter                                               | Run the final committed regression set and deployed threshold checks                                              |
+| Edit/display boundary                   | Numeric validation `result` is the editable clinical value; `displayResult` is presentation only. The formatted-value equality heuristic and legacy input rounding are removed  | Exercise unchanged edits, explicit corrections and release on analyzers                                           |
+| Reporting transparency                  | Validation and report preview expose the clinical value; printable rounding names it. Qualified bounds and scientific notation are retained; reference bounds are not truncated | Inspect generated PDFs and the visible workflow                                                                   |
+| Configuration import                    | Explicit `extras.decimal_places` only; legacy CSV input aliases; omitted column preserves and blank clears                                                                      | Confirm deployed catalog save/reload                                                                              |
+| Historical zero settings                | Read-only analyzers inventory: 358 zero-valued rows across 117 tests (116 component rows, 242 legacy test-result rows). No values changed                                       | Laboratory review must decide which explicit zeros are intended; zero rows can include nonnumeric legacy metadata |
+| Workflow regression                     | Expanded real analyzer traffic test covers unset/0/1/2, receipt retention, acceptance, corrections, editing and release                                                         | Run locally and on the deployed candidate; retain screenshots, receipts and test output                           |
+
+Inventory evidence is retained locally under
+`.deployment-evidence/2026-10-29/1574-acceptance/zero-reporting-settings-before.csv`.
+It contains catalog metadata, not patient results. The inventory is a review
+input, not authorization to clear all zeros. Existing issued PDF versions remain
+archived; a new print may use the new reporting policy, and must not replace an
+archived version.
+
+This ledger records implementation separately from tests and deployment. The
+initial 148 backend and 4,235 frontend passes apply to commit `0cad4bdb5f`; the
+follow-up audit changes need their own final evidence. The inherited Bridge pin
+remains a merge-check dependency, not a reason to claim acceptance passed.
+
 ## Standards context
 
 [FHIR decimal](https://hl7.org/fhir/R4/datatypes.html#decimal) preserves

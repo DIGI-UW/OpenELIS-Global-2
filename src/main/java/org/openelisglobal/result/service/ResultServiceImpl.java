@@ -1,5 +1,6 @@
 package org.openelisglobal.result.service;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.result.dao.ResultDAO;
 import org.openelisglobal.result.daoimpl.ResultDAOImpl;
@@ -37,6 +39,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @DependsOn({ "springContext" })
 public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, String> implements ResultService {
+
+    private String numericDisplay(Result result, boolean printable) {
+        String display = result.getDisplayValue();
+        if (printable) {
+            try {
+                if (new BigDecimal(result.getValue()).compareTo(new BigDecimal(display)) != 0) {
+                    return display + " (" + MessageUtil.getMessage("result.clinicalValue", result.getEnteredValue())
+                            + ")";
+                }
+            } catch (NumberFormatException qualifiedOrScientificRepresentation) {
+                // Qualified bounds and written scientific notation are preserved as supplied.
+            }
+        }
+        return display;
+    }
 
     @Autowired
     private ResultDAO baseObjectDAO;
@@ -236,7 +253,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             }
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            return result.getDisplayValue() + appendUOM(result, includeUOM);
+            return numericDisplay(result, printable) + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -314,7 +331,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             }
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            return result.getDisplayValue() + appendUOM(result, includeUOM);
+            return numericDisplay(result, printable) + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
