@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%-- TODO: Re-enable after new inventory frontend integration --%>
 <%-- import="org.openelisglobal.inventory.form.InventoryKitItem" --%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
@@ -42,7 +43,7 @@
 	<script type="text/javascript">
 		var testSectionNameIdHash = [];		
 		<c:forEach items="${testSectionsByName}" var="testSection">
-			testSectionNameIdHash["${testSection.id}"] = "${testSection.value}";
+            testSectionNameIdHash["${enc:js(testSection.id)}"] = "${enc:js(testSection.value)}";
 		</c:forEach>
 	</script>
 </c:if>
@@ -468,7 +469,7 @@ function createReferralOption(sampleNum, testNum, testId, testName, index) {
 	referralReasonSelect.setAttribute('onchange', 'markUpdated("' + index + '");');
 	<c:forEach items="${form.referralReasons}" var="referralReason" varStatus="iter">
 	option = document.createElement('option');
-	option.value = '${referralReason.id}';
+    option.value = '${enc:js(referralReason.id)}';
 	option.innerHTML = '<c:out value="${referralReason.value}"/>';
 	referralReasonSelect.appendChild(option);
 	</c:forEach>
@@ -487,8 +488,8 @@ function createReferralOption(sampleNum, testNum, testId, testName, index) {
     </c:if>
 	<c:forEach items="${form.referralOrganizations}" var="referralOrganization" varStatus="iter">
 	option = document.createElement('option');
-	option.value = '${referralOrganization.id}';
-	option.innerHTML = "${referralOrganization.value}";
+    option.value = '${enc:js(referralOrganization.id)}';
+    option.innerHTML = "${enc:js(referralOrganization.value)}";
 	referralOrgSelect.appendChild(option);
 	</c:forEach>
 	cell2.innerHTML = "Institute ";
@@ -749,7 +750,7 @@ function /*void*/ handleEnterEvent(  ){
 			<c:set var="total" value="${form.paging.totalPages}" />
 			<c:set var="currentPage" value="${form.paging.currentPage}" />
 			<c:if test="${not empty analysisCount}">
-				1 - ${pageSize} of ${analysisCount}
+                1 - ${enc:html(pageSize)} of ${enc:html(analysisCount)}
 			</c:if>
 			<%-- <c:if test="${not empty analysisCount}"> --%>
 				<button type="button" style="width: 100px;"
@@ -900,7 +901,7 @@ function /*void*/ handleEnterEvent(  ){
 					if (compactHozSpace) {
 				%>
 				<c:if test="${testResult.showSampleDetails}">
-					<tr class='${rowColor}Head ${accessionNumber}'>
+                    <tr class='${enc:attribute(rowColor)}Head ${enc:attribute(accessionNumber)}'>
 						<td colspan="10" class='InterstitialHead'><%=MessageUtil.getContextualMessage("result.sample.id")%>
 							: &nbsp; <b><c:out value="${testResult.accessionNumber}" /> -
 								<c:out value="${testResult.sequenceNumber}" /></b> <%
@@ -933,7 +934,7 @@ function /*void*/ handleEnterEvent(  ){
 				<%
 					}
 				%>
-				<tr class='${rowColor} ${(not empty testResult.defaultResultValue) ? "hasDefaultValue" : ""}' id="row_${iter.index}">
+                <tr class='${enc:attribute(rowColor)} ${enc:attribute((not empty testResult.defaultResultValue) ? "hasDefaultValue" : "")}' id="row_${enc:attribute(iter.index)}">
 					<form:hidden path="testResult[${iter.index}].isModified"
 						id="modified_${iter.index}" />
 					<form:hidden path="testResult[${iter.index}].analysisId"
@@ -970,13 +971,13 @@ function /*void*/ handleEnterEvent(  ){
 							cssClass="reflexJSONResult" />
 					</c:if>
 					<c:if test="${not empty testResult.thisReflexKey}">
-						<input type="hidden" id='${testResult.thisReflexKey}'
-							value='${iter.index}' />
+                        <input type="hidden" id='${enc:attribute(testResult.thisReflexKey)}'
+                            value='${enc:attribute(iter.index)}' />
 					</c:if>
 					<%
 						if (!compactHozSpace) {
 					%>
-					<td class='${accessionNumber}'><c:if
+                    <td class='${enc:attribute(accessionNumber)}'><c:if
 							test="${testResult.showSampleDetails}">
 							<c:out value="${testResult.accessionNumber}" /> -
 				<c:out value="${testResult.sequenceNumber}" />
@@ -1007,15 +1008,15 @@ function /*void*/ handleEnterEvent(  ){
 					<c:if test="${testResult.resultDisplayType == 'HIV'}">
 						<td style="vertical-align: top" class="ruled"><form:hidden
 								path="testResult[${iter.index}].testMethod" /> <input
-							type="hidden" id="testName_${iter.index}"
-							value="${testResult.testName}" /> <c:out
+                            type="hidden" id="testName_${enc:attribute(iter.index)}"
+                            value="${enc:attribute(testResult.testName)}" /> <c:out
 								value="${testResult.testName}" /> &nbsp;&nbsp;&nbsp;&nbsp; <spring:message
 								code="inventory.testKit" /> <form:select
 								path="testResult[${iter.index}].testKitInventoryId"
 								tabindex='-1' onchange='markUpdated(iter.index);'>
 								<form:options items="${hivKits}" />
 								<c:if test="${testResult.testKitInactive}">
-									<option value='${testResult.testKitInventoryId}' selected>${testResult.testKitInventoryId}</option>
+                                    <option value='${enc:attribute(testResult.testKitInventoryId)}' selected>${enc:html(testResult.testKitInventoryId)}</option>
 								</c:if>
 							</form:select></td>
 					</c:if>
@@ -1023,8 +1024,8 @@ function /*void*/ handleEnterEvent(  ){
 						<td style="vertical-align: middle; text-align: center"
 							class="ruled"><form:hidden
 								path="testResult[${iter.index}].testMethod" /> <input
-							type="hidden" id="testName_${iter.index}"
-							value="${testResult.testName}" /> <c:out
+                            type="hidden" id="testName_${enc:attribute(iter.index)}"
+                            value="${enc:attribute(testResult.testName)}" /> <c:out
 								value="${testResult.testName}" /> <c:if
 								test="${testResult.reflexStep > 0}">
 				&nbsp;--&nbsp;
@@ -1036,15 +1037,15 @@ function /*void*/ handleEnterEvent(  ){
 								tabindex='-1' onchange='markUpdated(${iter.index});'>
 								<form:options items="${syphilisKits}" />
 								<c:if test="${testResult.testKitInactive}">
-									<option value='${testResult.testKitInventoryId}' selected>${testResult.testKitInventoryId}</option>
+                                    <option value='${enc:attribute(testResult.testKitInventoryId)}' selected>${enc:html(testResult.testKitInventoryId)}</option>
 								</c:if>
 							</form:select></td>
 					</c:if>
 					<c:if
 						test="${not (testResult.resultDisplayType == 'HIV') and not (testResult.resultDisplayType == 'SYPHILIS')}">
 						<td style="vertical-align: middle" class="ruled"><input
-							type="hidden" id="testName_${iter.index}"
-							value="${testResult.testName}" /> <c:out
+                            type="hidden" id="testName_${enc:attribute(iter.index)}"
+                            value="${enc:attribute(testResult.testName)}" /> <c:out
 								value="${testResult.testName}" /> <c:if
 								test="${not (testResult.resultType == 'D')}">
 								<c:if test="${not empty testResult.normalRange}">
@@ -1075,7 +1076,7 @@ function /*void*/ handleEnterEvent(  ){
 					</td>
 					
 					<%-- result cell --%>
-					<td id="cell_${iter.index}" class="ruled"><c:if
+                    <td id="cell_${enc:attribute(iter.index)}" class="ruled"><c:if
 							test="${testResult.resultType == 'N'}">
 							<form:hidden path="testResult[${iter.index}].lowerNormalRange" />
 							<form:hidden path="testResult[${iter.index}].upperNormalRange" />
@@ -1163,9 +1164,9 @@ function /*void*/ handleEnterEvent(  ){
 						</c:if>
 						<c:if test="${testResult.resultType == 'C'}">
 							<%-- cascading multiple results --%>
-							<div id="cascadingMulti_${iter.index}_0"
-								class="cascadingMulti_${iter.index}">
-								<input type="hidden" id="divCount_${iter.index}" value="0">
+                            <div id="cascadingMulti_${enc:attribute(iter.index)}_0"
+                                class="cascadingMulti_${enc:attribute(iter.index)}">
+                                <input type="hidden" id="divCount_${enc:attribute(iter.index)}" value="0">
 								<form:select
 									path="testResult[${iter.index}].multiSelectResultValues"
 									id="resultId_${iter.index}_0"
@@ -1178,12 +1179,12 @@ function /*void*/ handleEnterEvent(  ){
 									<form:options items="${testResult.dictionaryResults}"
 										itemValue="id" itemLabel="value" />
 								</form:select>
-								<input class='addMultiSelect${iter.index}' type="button"
+                                <input class='addMultiSelect${enc:attribute(iter.index)}' type="button"
 									value="+"
-									onclick="addNewMultiSelect(${iter.index}, this);
-                	 		 ${(noteRequired) ? 'showNewNote(' += iter.index += ');' : ''}
+                                    onclick="addNewMultiSelect(${enc:jsAttribute(iter.index)}, this);
+                             ${enc:jsAttribute((noteRequired) ? 'showNewNote(' += iter.index += ');' : '')}
                 	 		 " />
-								<input class='removeMultiSelect${iter.index}' type="button"
+                                <input class='removeMultiSelect${enc:attribute(iter.index)}' type="button"
 									value="-"
 									onclick='removeMultiSelect("target");
                 	 		 ${(noteRequired) ? '
@@ -1206,12 +1207,12 @@ function /*void*/ handleEnterEvent(  ){
 						<c:out value="${testResult.unitsOfMeasure}" />
 						<c:if test="${testResult.displayResultAsLog}">
 							<br />
-							<input type='text' id="log_${iter.index}" disabled='disabled'
-								style="color: black" value="${testResult.resultValueLog}" size='6' /> log
+                            <input type='text' id="log_${enc:attribute(iter.index)}" disabled='disabled'
+                                style="color: black" value="${enc:attribute(testResult.resultValueLog)}" size='6' /> log
 					</c:if> </td>
 					
 					<%-- current result cell --%>
-					<td id="currentresultcell_${iter.index}" class="ruled"><c:if
+                    <td id="currentresultcell_${enc:attribute(iter.index)}" class="ruled"><c:if
 							test="${testResult.resultType == 'N'}">
 							<form:input path="testResult[${iter.index}].resultValue" size="6"
 								id="curresults_${iter.index}"
@@ -1271,9 +1272,9 @@ function /*void*/ handleEnterEvent(  ){
 						</c:if>
 						<c:if test="${testResult.resultType == 'C'}">
 							<%-- cascading multiple results --%>
-							<div id="cascadingMulti_${iter.index}_0"
-								class="cascadingMulti_${iter.index}">
-								<input type="hidden" id="divCount_${iter.index}" value="0">
+                            <div id="cascadingMulti_${enc:attribute(iter.index)}_0"
+                                class="cascadingMulti_${enc:attribute(iter.index)}">
+                                <input type="hidden" id="divCount_${enc:attribute(iter.index)}" value="0">
 								<form:select
 									path="testResult[${iter.index}].multiSelectResultValues"
 									id="curresultId_${iter.index}_0"
@@ -1297,8 +1298,8 @@ function /*void*/ handleEnterEvent(  ){
 						<c:out value="${testResult.unitsOfMeasure}" />
 						 <c:if test="${testResult.displayResultAsLog}">
 							<br />
-							<input type='text' id="log_${iter.index}" disabled='disabled'
-								style="color: black" value="${testResult.resultValueLog}" size='6' /> log
+                            <input type='text' id="log_${enc:attribute(iter.index)}" disabled='disabled'
+                                style="color: black" value="${enc:attribute(testResult.resultValueLog)}" size='6' /> log
 					</c:if> </td>
 					<%
 						if (useTechnicianName) {
@@ -1317,7 +1318,7 @@ function /*void*/ handleEnterEvent(  ){
 					<td class="ruled" style='text-align: center'><form:hidden
 							path="testResult[${iter.index}].shadowRejected"
 							id="shadowRejected_${iter.index}" /> <input type="hidden"
-						id="isRejected_${iter.index}" value="${testResult.rejected}" /> <spring:message
+                        id="isRejected_${enc:attribute(iter.index)}" value="${enc:attribute(testResult.rejected)}" /> <spring:message
 							code="result.delete.confirm" var="deleteMsg" /> 
 							<form:checkbox
 							path="testResult[${iter.index}].rejected"
@@ -1329,13 +1330,13 @@ function /*void*/ handleEnterEvent(  ){
 					%>
 					<td style="text-align: left" class="ruled"><img
 						src="./images/note-add.gif"
-						onclick='showHideNotes(${iter.index});'
-						id="showHideButton_${iter.index}" /> <input
+                        onclick='showHideNotes(${enc:jsAttribute(iter.index)});'
+                        id="showHideButton_${enc:attribute(iter.index)}" /> <input
 						type="hidden" name="hideShowFlag" value="hidden"
-						id="hideShow_${iter.index}"></td>
+                        id="hideShow_${enc:attribute(iter.index)}"></td>
 				</tr>
-				<tr id="rejectReasonRow_${iter.index}" class='${rowColor}'
-					style="${(testResult.considerRejectReason != 'true') ? 'display: none;' : ''}">
+                <tr id="rejectReasonRow_${enc:attribute(iter.index)}" class='${enc:attribute(rowColor)}'
+                    style="${enc:attribute((testResult.considerRejectReason != 'true') ? 'display: none;' : '')}">
 					<td colspan="4"></td>
 					<td colspan="6" style="text-align: right"><form:select
 							path="testResult[${iter.index}].rejectReasonId"
@@ -1347,14 +1348,14 @@ function /*void*/ handleEnterEvent(  ){
 						</form:select><br /></td>
 				</tr>
 				<c:if test="${not empty testResult.pastNotes}">
-					<tr class='${rowColor}'>
+                    <tr class='${enc:attribute(rowColor)}'>
 						<td colspan="2" style="text-align: right; vertical-align: top"><spring:message
 								code="label.prior.note" />:</td>
 						<td colspan="8" style="text-align: left">
-							${testResult.pastNotes}</td>
+                            ${enc:html(testResult.pastNotes)}</td>
 					</tr>
 				</c:if>
-				<tr id="noteRow_${iter.index}" class='${rowColor}'
+                <tr id="noteRow_${enc:attribute(iter.index)}" class='${enc:attribute(rowColor)}'
 					style="display: none;">
 					<td colspan="4" style="vertical-align: top; text-align: right">
 						<c:choose>
@@ -1396,9 +1397,9 @@ function /*void*/ handleEnterEvent(  ){
 									</form:select></td>		 
 				</tr>
 				<tr>
-					<td colspan="${numCols}">
+                    <td colspan="${enc:attribute(numCols)}">
 						<table>
-							<tr id="referralRow_${iter.index}">
+                            <tr id="referralRow_${enc:attribute(iter.index)}">
 							</tr>
 						</table>
 					</td>
@@ -1412,7 +1413,7 @@ function /*void*/ handleEnterEvent(  ){
 	</Table>
 	<c:if test="${not (form.paging.totalPages == 0)}">
 		<c:if test="${not empty analysisCount}">
-		1 - ${pageSize} of ${analysisCount}
+        1 - ${enc:html(pageSize)} of ${enc:html(analysisCount)}
 	</c:if>
 		<%--  <c:if test="${not empty analysisCount}">--%>
 			<c:set var="total" value="${form.paging.totalPages}" />

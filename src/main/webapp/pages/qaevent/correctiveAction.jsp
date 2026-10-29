@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%--
   Created by IntelliJ IDEA.
   User: kenny
@@ -57,20 +58,20 @@
         var actionTypes= [];
         <c:forEach items="${form.actionTypeList}" var="actionType">
         var at = {};
-        at['value'] = '${actionType.value}';
-        at['id'] = '${actionType.id}';
+        at['value'] = '${enc:js(actionType.value)}';
+        at['id'] = '${enc:js(actionType.id)}';
         actionTypes.push(at);
         </c:forEach>
 
         var actionLogs = [];
         <c:forEach items="${form.actionLog}" var="actionLog">
             var al = {};
-            al['id'] = '${actionLog.id}';
-            al['correctiveAction'] = '${actionLog.correctiveAction}';
-            al['actionType'] = '${actionLog.actionType}';
-            al['personResponsible'] = '${actionLog.personResponsible}';
-            al['dateCompleted'] = '${actionLog.dateCompleted}';
-            al['turnAroundTime'] = '${actionLog.turnAroundTime}';
+            al['id'] = '${enc:js(actionLog.id)}';
+            al['correctiveAction'] = '${enc:js(actionLog.correctiveAction)}';
+            al['actionType'] = '${enc:js(actionLog.actionType)}';
+            al['personResponsible'] = '${enc:js(actionLog.personResponsible)}';
+            al['dateCompleted'] = '${enc:js(actionLog.dateCompleted)}';
+            al['turnAroundTime'] = '${enc:js(actionLog.turnAroundTime)}';
             actionLogs.push(al);
         </c:forEach>
     </script>
@@ -231,11 +232,11 @@
             <th>Turnaround time</th>
         </tr>
         <c:forEach items="${form.actionLog}" var="actionLog" varStatus="loop">
-            <tr><input type="hidden" name="action-log-id-${loop.index}" value="${actionLog.id}" />
-                <td><textarea name="correctiveAction-log-${loop.index}" onchange="checkIfValid()" readonly><c:out value="${actionLog.correctiveAction}"/></textarea></td>
+            <tr><input type="hidden" name="action-log-id-${enc:attribute(loop.index)}" value="${enc:attribute(actionLog.id)}" />
+                <td><textarea name="correctiveAction-log-${enc:attribute(loop.index)}" onchange="checkIfValid()" readonly><c:out value="${actionLog.correctiveAction}"/></textarea></td>
                 <td class="action-type">
                     <c:forEach items="${form.actionTypeList}" var="actionType">
-                        <input  disabled type="checkbox" value="${actionType.id}" name="action-type-${loop.index}" checked="${actionLog.actionType.indexOf(actionType.id) != -1}" onchange="checkIfValid()"/>${actionType.value}<br />
+                        <input  disabled type="checkbox" value="${enc:attribute(actionType.id)}" name="action-type-${enc:attribute(loop.index)}" checked="${enc:attribute(actionLog.actionType.indexOf(actionType.id) != -1)}" onchange="checkIfValid()"/>${enc:html(actionType.value)}<br />
                     </c:forEach>
                 </td>
                 <td><input type="text" name="responsiblePerson-${loop.index}" onchange="checkIfValid()" readonly value="<c:out value="${actionLog.personResponsible}"/>"/></td>
@@ -243,25 +244,25 @@
                     <input type="text" name="dateActionCompleted-${loop.index}" id="dateActionCompleted-${loop.index}" readonly max="<%= today%>" value="<c:out value="${actionLog.dateCompleted}"/>"/>
                 </td>
                 <td>
-                    <input type="hidden" name="turnAroundTime-${loop.index}" id="turnAroundTime-${loop.index}" />
-                    <span id="turnAroundTimeSpan-${loop.index}"><c:out value="${actionLog.turnAroundTime}"/></span>
+                    <input type="hidden" name="turnAroundTime-${enc:attribute(loop.index)}" id="turnAroundTime-${enc:attribute(loop.index)}" />
+                    <span id="turnAroundTimeSpan-${enc:attribute(loop.index)}"><c:out value="${actionLog.turnAroundTime}"/></span>
                 </td>
             </tr>
         </c:forEach>
-            <tr index="${fn:length(form.actionLog)}">
-                <td><textarea name="correctiveAction-log-${fn:length(form.actionLog)}" onchange="checkIfValid()"></textarea></td>
+            <tr index="${enc:attribute(fn:length(form.actionLog))}">
+                <td><textarea name="correctiveAction-log-${enc:attribute(fn:length(form.actionLog))}" onchange="checkIfValid()"></textarea></td>
                 <td class="action-type">
                     <c:forEach items="${form.actionTypeList}" var="actionType">
-                        <input  type="checkbox" value="${actionType.id}" onchange="checkIfValid()" name="action-type-${fn:length(form.actionLog)}"/>${actionType.value}<br />
+                        <input  type="checkbox" value="${enc:attribute(actionType.id)}" onchange="checkIfValid()" name="action-type-${enc:attribute(fn:length(form.actionLog))}"/>${enc:html(actionType.value)}<br />
                     </c:forEach>
                 </td>
-                <td><input type="text" name="responsiblePerson-${fn:length(form.actionLog)}" onchange="checkIfValid()"/></td>
+                <td><input type="text" name="responsiblePerson-${enc:attribute(fn:length(form.actionLog))}" onchange="checkIfValid()"/></td>
                 <td>
                     <input type="text" name="dateActionCompleted-${fn:length(form.actionLog)}"  id="dateActionCompleted-${fn:length(form.actionLog)}" max="<%= today%>" placeholder="dd/MM/yyyy" />
                 </td>
                 <td>
-                    <input type="hidden" name="turnAroundTime-${fn:length(form.actionLog)}" id="turnAroundTime-${fn:length(form.actionLog)}" />
-                    <span id="turnAroundTimeSpan-${fn:length(form.actionLog)}"></span>
+                    <input type="hidden" name="turnAroundTime-${enc:attribute(fn:length(form.actionLog))}" id="turnAroundTime-${enc:attribute(fn:length(form.actionLog))}" />
+                    <span id="turnAroundTimeSpan-${enc:attribute(fn:length(form.actionLog))}"></span>
                 </td>
             </tr>
     </table>
@@ -419,11 +420,11 @@
                 var nceNumberEl = node.getElementsByTagName('ncenumber').item(0);
                 var nceNumber = (nceNumberEl ? nceNumberEl.firstChild.nodeValue : "#")
                 if (nceNumber != '#') {
-                    window.location = 'NCECorrectiveAction?nceNumber=' + nceNumber;
+                    window.location = 'NCECorrectiveAction?nceNumber=' + encodeURIComponent(nceNumber);
                 }
             }
             for (var i = 0; i < resultNodes.length; i++) {
-                document.getElementById("searchResults").insertAdjacentHTML('beforeend', addNCERow(resultNodes[i]));
+                document.getElementById("searchResults").appendChild(addNCERow(resultNodes[i]));
             }
 
         } else {
@@ -437,11 +438,15 @@
         var unit = nce.getElementsByTagName('unit').item(0);
         var colorCode = nce.getElementsByTagName('color').item(0);
         var nceNumber = (nceNumberEl ? nceNumberEl.firstChild.nodeValue : "#")
-        var row = '<tr><td>' + (date ? date.firstChild.nodeValue : "") + '</td>' +
-            '<td><a href="NCECorrectiveAction?nceNumber=' + nceNumber + '">' + nceNumber + '</a></td>' +
-            '<td>' + (unit && unit.firstChild ? unit.firstChild.nodeValue : "") + '</td>' +
-            '<td>' + (colorCode ? colorCode.firstChild.nodeValue : "") + '</td>' +
-            '</tr><tr>';
+        var row = document.createElement("tr");
+        var dateCell = row.insertCell();
+        dateCell.textContent = date ? date.textContent : "";
+        var link = document.createElement("a");
+        link.href = "NCECorrectiveAction?nceNumber=" + encodeURIComponent(nceNumber);
+        link.textContent = nceNumber;
+        row.insertCell().appendChild(link);
+        row.insertCell().textContent = unit ? unit.textContent : "";
+        row.insertCell().textContent = colorCode ? colorCode.textContent : "";
         return row;
     }
 

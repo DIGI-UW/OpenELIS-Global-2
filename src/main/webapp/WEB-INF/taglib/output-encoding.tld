@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taglib xmlns="https://jakarta.ee/xml/ns/jakartaee" version="3.0">
+  <tlib-version>1.0</tlib-version>
+  <short-name>enc</short-name>
+  <function>
+    <name>html</name>
+    <function-class>org.owasp.encoder.Encode</function-class>
+    <function-signature>java.lang.String forHtml(java.lang.String)</function-signature>
+  </function>
+  <function>
+    <name>attribute</name>
+    <function-class>org.owasp.encoder.Encode</function-class>
+    <function-signature>java.lang.String forHtmlAttribute(java.lang.String)</function-signature>
+  </function>
+  <function>
+    <name>js</name>
+    <function-class>org.owasp.encoder.Encode</function-class>
+    <function-signature>java.lang.String forJavaScript(java.lang.String)</function-signature>
+  </function>
+  <function>
+    <name>jsAttribute</name>
+    <function-class>org.owasp.encoder.Encode</function-class>
+    <function-signature>java.lang.String forJavaScriptAttribute(java.lang.String)</function-signature>
+  </function>
+</taglib>

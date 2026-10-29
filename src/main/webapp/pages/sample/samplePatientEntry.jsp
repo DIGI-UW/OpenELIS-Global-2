@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
 <%@ page import="org.openelisglobal.common.action.IActionConstants,
                  org.openelisglobal.common.util.ConfigurationProperties,
@@ -418,8 +419,8 @@ function processLabOrderSuccess(xhr){
         document.getElementsByClassName("samplesAdded")[1].show();
         notifyChangeListeners();
         testAndSetSave();
-        populateCrossPanelsAndTests(CrossPanels, CrossTests, '${entryDate}');
-        displaySampleTypes('${entryDate}');
+        populateCrossPanelsAndTests(CrossPanels, CrossTests, '${enc:js(entryDate)}');
+        displaySampleTypes('${enc:js(entryDate)}');
 
         if (SampleTypes.length > 0)
              sampleClicked(1);
@@ -454,7 +455,7 @@ function clearRequester() {
 	clearProvider();
     
     $("labNo").value = '';
-    $("receivedDateForDisplay").value = '${entryDate}';
+    $("receivedDateForDisplay").value = '${enc:js(entryDate)}';
     $("receivedTime").value = '';
  //   $("externalOrderNumber").value = '';
 
@@ -537,7 +538,7 @@ function parseSampletypes(sampletypes, SampleTypes) {
                 //var sampleTypeValue = sampleTypeId;
                 //var currentTime = getCurrentTime();
                 
-                //addTypeToTable(addTable, sampleDescription, sampleTypeValue, currentTime,  '${entryDate}' );
+                //addTypeToTable(addTable, sampleDescription, sampleTypeValue, currentTime,  '${enc:js(entryDate)}' );
             
             }
             var panelnodes = getNodeNamesByTagName(panels, "panel");
@@ -718,7 +719,7 @@ function addSampleTable(){
 <form:hidden path="providerSMSNotificationTestIds" id="providerSMSNotificationTestIds"/>
 <form:hidden path="customNotificationLogic" id="customNotificationLogic" value="false"/>
 
-<table id = "addSampleTemplate"  style="display:none;">
+<table id="addSampleTemplate"  style="display:none;">
      <tr>
         <td >
             <input type="button" name="showHide" value="-" onclick="showHideSection(this, 'samplesDisplay_');" id="samplesSectionId">
@@ -730,14 +731,14 @@ function addSampleTable(){
                 <form:checkbox path="useReferral" id="useReferral" onclick="toggleReferral(this);referralTestSelected();" value="true"/> <spring:message code="sample.entry.referral.toggle" />
             </div>
 
-            <div id="referTestSection" class ="referTestSection" style="display:none;">
+            <div id="referTestSection" class="referTestSection" style="display:none;">
                 <jsp:include page="${referralInfoFragment}"/>
             </div>        
            <hr >
         </td>
     </tr> 
 </table>
-<div id = "samplesBlock" style="width:100%">
+<div id="samplesBlock" style="width:100%">
 </div>
 
 <br />
