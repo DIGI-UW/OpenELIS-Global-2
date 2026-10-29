@@ -129,13 +129,23 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
     @Transactional
     @Override
     public void updateWithFormValues(Integer cytologySampleId, CytologySampleForm form) {
+        CytologySample cytologySample = get(cytologySampleId);
         if (form.getSlides() != null) {
-            form.getSlides().forEach(ClinicalAttachmentService::validate);
+            form.getSlides().forEach(upload -> {
+                if (!cytologySample.getSlides().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
         }
         if (form.getReports() != null) {
-            form.getReports().forEach(ClinicalAttachmentService::validate);
+            form.getReports().forEach(upload -> {
+                if (!cytologySample.getReports().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
         }
-        CytologySample cytologySample = get(cytologySampleId);
         if (!GenericValidator.isBlankOrNull(form.getAssignedCytoPathologistId())) {
             cytologySample.setCytoPathologist(systemUserService.get(form.getAssignedCytoPathologistId()));
         }

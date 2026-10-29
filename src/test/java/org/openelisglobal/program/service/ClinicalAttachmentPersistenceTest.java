@@ -2,10 +2,11 @@ package org.openelisglobal.program.service;
 
 import static org.junit.Assert.*;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -13,20 +14,19 @@ import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologyReportForm;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport.PathologyReportType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 public class ClinicalAttachmentPersistenceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private PathologySampleService service;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Before
     public void fixture() throws Exception {
         executeDataSetWithStateManagement("testdata/pathology-sample-with-patient.xml");
         authenticateAs("technician1");
-    }
-
-    @After
-    public void cleanupAttachments() {
-        jdbcTemplate.update("DELETE FROM pathology_report WHERE pathology_sample_id = 1");
     }
 
     @Test
@@ -51,6 +51,30 @@ public class ClinicalAttachmentPersistenceTest extends BaseWebContextSensitiveTe
         assertArrayEquals(original, storedBytes());
         assertEquals(before,
                 jdbcTemplate.queryForObject("SELECT gross_exam FROM pathology_sample WHERE id = 1", String.class));
+    }
+
+    @Test
+    @Transactional
+    public void unchangedUnsupportedReportDoesNotBlockAnUnrelatedCaseEdit() throws Exception {
+        byte[] old = "historical document".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        var existingCase = service.get(1);
+        var existing = existingCase.getReports().get(0);
+        existing.setImage(old);
+        existing.setFileType("data:application/msword");
+        service.update(existingCase);
+        PathologySampleForm form = formWithReport("data:application/pdf",
+                ClinicalAttachmentServiceTest.fixture("application/pdf"));
+        PathologyReportForm submitted = form.getReports().get(0);
+        submitted.setId(existing.getId());
+        submitted.setBase64Image(null);
+        submitted.setFileType(existing.getFileType());
+        submitted.setImage(old.clone());
+        form.setGrossExam("An unrelated case edit");
+        service.updateWithFormValues(1, form);
+        entityManager.flush();
+        entityManager.clear();
+        assertArrayEquals(old, storedBytes());
+        assertEquals("An unrelated case edit", service.get(1).getGrossExam());
     }
 
     private byte[] storedBytes() {

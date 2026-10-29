@@ -133,7 +133,12 @@ function CytologyCaseView() {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.msg" }),
+        message: intl.formatMessage({
+          id:
+            body?.messageKey === "clinicalAttachment.uploadHint"
+              ? "clinicalAttachment.uploadHint"
+              : "error.save.msg",
+        }),
       });
     }
   }

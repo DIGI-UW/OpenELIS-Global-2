@@ -1,7 +1,9 @@
 package org.openelisglobal.program.service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -12,6 +14,12 @@ public final class ClinicalAttachmentService {
     private static final Set<String> TYPES = Set.of("data:image/jpeg", "data:image/png", "data:application/pdf");
 
     private ClinicalAttachmentService() {
+    }
+
+    public static boolean isUnchanged(ClinicalAttachmentUpload upload, Integer storedId, byte[] storedImage,
+            String storedType) {
+        return storedId != null && storedId.equals(upload.getId()) && upload.getBase64Image() == null
+                && Objects.equals(storedType, upload.getFileType()) && Arrays.equals(storedImage, upload.getImage());
     }
 
     public static void validate(ClinicalAttachmentUpload attachment) {
@@ -37,12 +45,16 @@ public final class ClinicalAttachmentService {
         if (bytes == null) {
             return;
         }
-        if (type == null || !TYPES.contains(type) || bytes.length == 0 || bytes.length > MAX_BYTES
+        validateContent(type, bytes);
+        attachment.setImage(bytes);
+        attachment.setFileType(type);
+    }
+
+    public static void validateContent(String type, byte[] bytes) {
+        if (type == null || !TYPES.contains(type) || bytes == null || bytes.length == 0 || bytes.length > MAX_BYTES
                 || !matchesType(type, bytes)) {
             throw new InvalidClinicalAttachmentException();
         }
-        attachment.setImage(bytes);
-        attachment.setFileType(type);
     }
 
     private static boolean matchesType(String type, byte[] bytes) {

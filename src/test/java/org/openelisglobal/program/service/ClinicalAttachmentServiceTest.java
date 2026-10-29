@@ -92,6 +92,28 @@ public class ClinicalAttachmentServiceTest {
         assertNull(upload.getImage());
     }
 
+    @Test
+    public void onlyExactOwnedUnchangedAttachmentsBypassNewUploadPolicy() {
+        byte[] old = "historical clinical document".getBytes(StandardCharsets.UTF_8);
+        ClinicalAttachmentUpload upload = mapper
+                .convertValue(Map.of("id", 601, "fileType", "data:application/msword", "image", old), form);
+        assertTrue(ClinicalAttachmentService.isUnchanged(upload, 601, old, "data:application/msword"));
+        assertFalse(ClinicalAttachmentService.isUnchanged(upload, 602, old, "data:application/msword"));
+        assertFalse(ClinicalAttachmentService.isUnchanged(upload, null, old, "data:application/msword"));
+        assertFalse(ClinicalAttachmentService.isUnchanged(upload, 601, new byte[] { 1 }, "data:application/msword"));
+        assertFalse(ClinicalAttachmentService.isUnchanged(upload, 601, old, "data:text/html"));
+        assertThrows(InvalidClinicalAttachmentException.class, () -> ClinicalAttachmentService.validate(upload));
+    }
+
+    @Test
+    public void unchangedOversizedContentIsRetainedButCannotBeSubmittedAsANewFile() {
+        byte[] old = new byte[10 * 1024 * 1024 + 1];
+        ClinicalAttachmentUpload upload = mapper
+                .convertValue(Map.of("id", 601, "fileType", "data:image/png", "image", old), form);
+        assertTrue(ClinicalAttachmentService.isUnchanged(upload, 601, old, "data:image/png"));
+        assertThrows(InvalidClinicalAttachmentException.class, () -> ClinicalAttachmentService.validate(upload));
+    }
+
     private ClinicalAttachmentUpload encoded(String type, byte[] bytes) {
         return mapper.convertValue(Map.of("base64Image", type + ";base64," + Base64.getEncoder().encodeToString(bytes)),
                 form);
