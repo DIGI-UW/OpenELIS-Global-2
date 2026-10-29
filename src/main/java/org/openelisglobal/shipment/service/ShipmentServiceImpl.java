@@ -107,10 +107,11 @@ public class ShipmentServiceImpl implements ShipmentService {
     @Override
     public Shipment updateShipment(Shipment shipment) {
         try {
-            shipment.setLastupdated(new Timestamp(System.currentTimeMillis()));
-            shipmentDAO.update(shipment);
-            logger.info("Updated shipment with ID: {}", shipment.getId());
-            return shipment;
+            // Hibernate @Version handles lastupdated automatically; capture updated
+            // instance
+            Shipment updated = shipmentDAO.update(shipment);
+            logger.info("Updated shipment with ID: {}", updated.getId());
+            return updated;
         } catch (Exception e) {
             logger.error("Error updating shipment", e);
             throw new LIMSRuntimeException("Error updating shipment", e);
@@ -124,7 +125,7 @@ public class ShipmentServiceImpl implements ShipmentService {
                     .orElseThrow(() -> new IllegalArgumentException("Shipment not found with ID: " + id));
 
             shipment.setStatus(newStatus);
-            shipment.setLastupdated(new Timestamp(System.currentTimeMillis()));
+            // Manual setLastupdated removed so Hibernate @Version takes over
 
             // Update date fields based on status
             Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -134,9 +135,9 @@ public class ShipmentServiceImpl implements ShipmentService {
                 shipment.setActualDeliveryDate(now);
             }
 
-            shipmentDAO.update(shipment);
-            logger.info("Updated shipment {} status to {}", id, newStatus);
-            return shipment;
+            Shipment updated = shipmentDAO.update(shipment);
+            logger.info("Updated shipment {} status to {}", updated.getId(), newStatus);
+            return updated;
         } catch (Exception e) {
             logger.error("Error updating shipment status", e);
             throw new LIMSRuntimeException("Error updating shipment status", e);
