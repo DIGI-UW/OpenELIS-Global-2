@@ -134,12 +134,7 @@ const LogoUploadSection = forwardRef<
     if (!selectedFile) return;
 
     // Validate file format
-    const allowedFormats = [
-      "image/png",
-      "image/svg+xml",
-      "image/jpeg",
-      "image/jpg",
-    ];
+    const allowedFormats = ["image/png", "image/jpeg", "image/jpg"];
     if (!allowedFormats.includes(selectedFile.type)) {
       setError(intl.formatMessage({ id: "site.branding.file.format.error" }));
       return;
@@ -336,12 +331,7 @@ const LogoUploadSection = forwardRef<
                   id: getUploadButtonKey(),
                 })}
                 filenameStatus={file ? "complete" : undefined}
-                accept={[
-                  "image/png",
-                  "image/svg+xml",
-                  "image/jpeg",
-                  "image/jpg",
-                ]}
+                accept={["image/png", "image/jpeg", "image/jpg"]}
                 multiple={false}
                 onChange={handleFileChange}
                 disabled={isUploading}

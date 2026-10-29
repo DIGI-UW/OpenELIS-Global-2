@@ -1,6 +1,7 @@
 package org.openelisglobal.sitebranding.controller.rest;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -539,4 +540,33 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
         assertFalse("Login logo file should be deleted", Files.exists(Paths.get(loginPath)));
         assertFalse("Favicon file should be deleted", Files.exists(Paths.get(faviconPath)));
     }
+
+    @Test
+    public void storedSvgIsNotServedEvenWhenCached() throws Exception {
+        Path path = Paths.get(brandingDir).resolve("historical.svg");
+        Files.createDirectories(path.getParent());
+        Files.writeString(path, "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>notExecuted()</script></svg>");
+        try {
+            SiteBranding branding = siteBrandingService.getBranding();
+            branding.setHeaderLogoPath(path.toString());
+            branding.setPrimaryColor("#1d4ed8");
+            branding.setSysUserId("1");
+            siteBrandingService.saveBranding(branding);
+            mockMvc.perform(get("/rest/site-branding/logo/header")).andExpect(status().isNotFound());
+            mockMvc.perform(get("/rest/site-branding/logo/header").header(HttpHeaders.IF_NONE_MATCH, "*"))
+                    .andExpect(status().isNotFound());
+        } finally {
+            Files.deleteIfExists(path);
+        }
+    }
+
+    @Test
+    public void svgUploadDoesNotReplaceExistingLogo() throws Exception {
+        String before = siteBrandingService.getBranding().getHeaderLogoPath();
+        MockMultipartFile svg = new MockMultipartFile("file", "logo.svg", "image/svg+xml",
+                "<svg xmlns=\"http://www.w3.org/2000/svg\"/>".getBytes());
+        mockMvc.perform(multipart("/rest/site-branding/logo/header").file(svg)).andExpect(status().isBadRequest());
+        assertEquals(before, siteBrandingService.getBranding().getHeaderLogoPath());
+    }
+
 }

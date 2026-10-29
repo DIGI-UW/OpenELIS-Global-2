@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import HelpMenu from "./HelpMenu";
@@ -20,6 +20,52 @@ const renderWithIntl = (component) =>
   );
 
 describe("HelpMenu", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+  test.each([
+    "javascript:alert(1)",
+    "java\nscript:alert(1)",
+    "data:text/html,test",
+    "file:///tmp/help",
+    "blob:https://example.org/id",
+    {},
+    "https://[",
+  ])("does not open unsafe configured URLs: %s", (value) => {
+    getFromOpenElisServer.mockImplementation((_, callback) =>
+      callback({ "org.openelisglobal.help.manual.url": value }),
+    );
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderWithIntl(<HelpMenu helpOpen handlePanelToggle={() => {}} />);
+    const button = screen.getByRole("button", {
+      name: messages["banner.menu.help.usermanual"],
+    });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(open).not.toHaveBeenCalled();
+  });
+  test.each([
+    "https://example.org/manual",
+    "http://example.org/manual",
+    "/manual",
+  ])("opens a web help URL with an isolated window: %s", (value) => {
+    getFromOpenElisServer.mockImplementation((_, callback) =>
+      callback({ "org.openelisglobal.help.manual.url": value }),
+    );
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderWithIntl(<HelpMenu helpOpen handlePanelToggle={() => {}} />);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["banner.menu.help.usermanual"],
+      }),
+    );
+    expect(open).toHaveBeenCalledWith(
+      new URL(value, window.location.origin).href,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });
