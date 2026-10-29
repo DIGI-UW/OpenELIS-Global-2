@@ -13,51 +13,44 @@
  */
 package org.openelisglobal.typeoftestresult.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "TYPE_OF_TEST_RESULT")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class TypeOfTestResult extends BaseObject<String> {
 
+    @Id
+    @GeneratedValue(generator = "type_of_test_result_seq_gen")
+    @GenericGenerator(name = "type_of_test_result_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "type_of_test_result_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
 
+    @Column(name = "DESCRIPTION", length = 20)
     private String description;
 
+    @Column(name = "TEST_RESULT_TYPE", length = 1)
     private String testResultType;
 
+    @Column(name = "HL7_VALUE", length = 20)
     private String hl7Value;
-
-    public String getHl7Value() {
-        return hl7Value;
-    }
-
-    public void setHl7Value(String hl7Value) {
-        this.hl7Value = hl7Value;
-    }
 
     public TypeOfTestResult() {
         super();
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getTestResultType() {
-        return testResultType;
-    }
-
-    public void setTestResultType(String testResultType) {
-        this.testResultType = testResultType;
     }
 }
