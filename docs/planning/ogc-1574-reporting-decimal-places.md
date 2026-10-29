@@ -105,27 +105,60 @@ can be established by automated tests.
 
 ## Delivery ledger — 29 October 2026
 
-| Plan item                               | Code and evidence                                                                                                                                                               | Remaining acceptance                                                                                              |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Canonical setting and nullable defaults | PR #4882 renames Java/JSON/database fields; explicit zero is retained, missing metadata stays unset; upgrade/rollback regression passes                                         | Apply the migration on analyzers and verify the catalog inventory is unchanged                                    |
-| Clinical values and decisions           | Storage, calculations, dilution, FHIR and exports use clinical values; final audit also corrects the report queue critical filter                                               | Run the final committed regression set and deployed threshold checks                                              |
-| Edit/display boundary                   | Numeric validation `result` is the editable clinical value; `displayResult` is presentation only. The formatted-value equality heuristic and legacy input rounding are removed  | Exercise unchanged edits, explicit corrections and release on analyzers                                           |
-| Reporting transparency                  | Validation and report preview expose the clinical value; printable rounding names it. Qualified bounds and scientific notation are retained; reference bounds are not truncated | Inspect generated PDFs and the visible workflow                                                                   |
-| Configuration import                    | Explicit `extras.decimal_places` only; legacy CSV input aliases; omitted column preserves and blank clears                                                                      | Confirm deployed catalog save/reload                                                                              |
-| Historical zero settings                | Read-only analyzers inventory: 358 zero-valued rows across 117 tests (116 component rows, 242 legacy test-result rows). No values changed                                       | Laboratory review must decide which explicit zeros are intended; zero rows can include nonnumeric legacy metadata |
-| Workflow regression                     | Expanded real analyzer traffic test covers unset/0/1/2, receipt retention, acceptance, corrections, editing and release                                                         | Run locally and on the deployed candidate; retain screenshots, receipts and test output                           |
+PR #4882 implements the plan above and is ready for review, above #4877. The
+application candidate at `8d6a04f678` is deployed on
+<https://analyzers.openelis-global.org>. The published images were built by
+GitHub Shared Build 40921113116 from integrated commit `f9e09afd988d`, which
+also includes newer upstream changes; it is not the same tree as the PR head.
+The acceptance-test and ledger follow-up does not change the deployed
+application.
 
-Inventory evidence is retained locally under
-`.deployment-evidence/2026-10-29/1574-acceptance/zero-reporting-settings-before.csv`.
-It contains catalog metadata, not patient results. The inventory is a review
-input, not authorization to clear all zeros. Existing issued PDF versions remain
-archived; a new print may use the new reporting policy, and must not replace an
-archived version.
+| Plan item                               | Verified evidence                                                                                                                                                                                                                                                                                                                                    | Remaining work                                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Canonical setting and nullable defaults | All three deployed columns are `reporting_decimal_places`, nullable, with no defaults. Upgrade/rollback regressions pass. The pre/post-upgrade zero inventory is identical.                                                                                                                                                                          | Review and merge coordinated backend/frontend changes; rollback migration before using an older image.   |
+| Clinical values and decisions           | 248 focused backend tests pass, covering calculations, dilution, flags, imports, migration and FHIR. On analyzers, `6.004` remains critical above `6` with unset/0/1/2 presentation settings, including entry acknowledgement, validation and report queue.                                                                                          | Complete broad committed-revision CI and laboratory policy review.                                       |
+| Edit/display boundary                   | Four analyzer scenarios pass locally and remotely: synthetic ASTM traffic through mock and Bridge retains receipt `1.176`; unchanged edits retain it; explicit corrections save `1.18` with audit provenance; release preserves the selected clinical value. Manual browser inspection confirms a display of `1` opens an editor containing `1.176`. | Laboratory acceptance.                                                                                   |
+| Reporting transparency                  | Four additional boundary scenarios pass locally and remotely. Real patient PDFs were generated and visually inspected for all settings: `6.004`, `6`, `6.0`, `6.00`; formatted reports retain the critical flag and explain the clinical value `6.004`. The annotation wraps in the result cell without clipping.                                    | Team review of presentation and report wording.                                                          |
+| Configuration import and clear/reload   | Focused import tests cover explicit `extras.decimal_places` and legacy CSV aliases. Each deployed boundary case clears an authored count and separately reloads it as unset before applying its requested setting.                                                                                                                                   | Review local catalog policy.                                                                             |
+| FHIR representation                     | The deployed authenticated OpenELIS FHIR API returns a final Observation with `valueQuantity.value = 1.176` for a zero-decimal result.                                                                                                                                                                                                               | Direct read-back from the downstream FHIR store remains unverified.                                      |
+| Historical zero settings                | All 358 pre-existing zero rows across 117 tests survive upgrade unchanged (116 component rows, 242 legacy rows), before acceptance tests add their own isolated catalog rows.                                                                                                                                                                        | Laboratory review must decide which settings are intended; some rows contain nonnumeric legacy metadata. |
 
-This ledger records implementation separately from tests and deployment. The
-initial 148 backend and 4,235 frontend passes apply to commit `0cad4bdb5f`; the
-follow-up audit changes need their own final evidence. The inherited Bridge pin
-remains a merge-check dependency, not a reason to claim acceptance passed.
+The final combined server run passed **9 tests**: authentication plus four
+analyzer workflows and four threshold/report workflows, with no failures, skips
+or retries. These are synthetic measurements sent through the real transport and
+application; they are not physical-instrument acceptance. The full frontend
+suite passed **4,233 tests**, with five skipped. Playwright lint and diff
+whitespace checks passed for the added acceptance coverage.
+
+Broad local CI is not yet a pass: the committed-revision run encountered a
+PostgreSQL cancellation during `AnalysisServiceTest` fixture cleanup. A separate
+standard Maven rerun passed all 92 tests in that class, but does not erase the
+aggregate failure. The existing core patient-report test could not create an
+order on analyzers because its fixture referring site `9000100` is absent; its
+local prerequisite also assumes a fixed database container name. Those attempts
+did not reach report generation and are not counted as passed. The new isolated
+catalog/order scenarios did generate and inspect the actual deployed reports.
+
+At the last application-head check, GitHub's frontend checkpoint passed; backend
+and end-to-end checks were still running. `Validation / Submodule pins` fails
+because the inherited Bridge commit requires upstream PR #115 to merge. No PR
+has been merged by this task. A ready-for-review PR is not a green CI or
+laboratory acceptance claim.
+
+Deployment used the existing site tooling and published image digests, with a
+verified database/state backup before cutover. Other sites on the host retained
+their container identities. Public health is UP, and the site's baseline ASTM,
+HL7 and file smoke checks passed. The retained server backup is
+`/opt/oe-analyzers-site/backups/pre-1574-f9e09afd`.
+
+Private evidence is retained locally under
+`.deployment-evidence/2026-10-29/1574-acceptance/`: the before/after catalog
+inventories, deployment and backup logs, `server-acceptance.json`, screenshots,
+four rendered PDFs, and the synthetic FHIR API response. Credentials and raw
+evidence are excluded from the PR. The catalog inventory is a review input, not
+authorization to clear all zeros. Existing issued PDF versions remain archived;
+a new print may use the new reporting policy and must not replace an archived
+version. Historical lost digits are not reconstructed.
 
 ## Standards context
 
