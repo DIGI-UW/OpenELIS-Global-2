@@ -1,8 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  expect as baseExpect,
-  test as baseTest,
-} from "../../../helpers/test-base";
+import { expect as baseExpect, test } from "../../../helpers/test-base";
 import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
 import { activeTestId } from "../../../helpers/analyzer-catalog-api";
 import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
@@ -10,61 +7,22 @@ import { worklistFor } from "../../../helpers/analyzer-api";
 import { acceptAll, savedValue } from "../../../helpers/analyzer-review";
 import { csrfToken } from "../../../helpers/api-session";
 import { API } from "../../../helpers/analyzer-profile-api";
-
-type UnregisteredSource = {
-  mock: string;
-  network: { ip: string; subnet: string };
-};
-
-const test = baseTest.extend<{}, { unregisteredSource: UnregisteredSource }>({
-  // Provision before Chromium starts: attaching a Docker network while it runs
-  // invalidates in-flight asset requests with ERR_NETWORK_CHANGED.
-  unregisteredSource: [
-    async ({ playwright }, use) => {
-      const mock =
-        process.env.MOCK_SIMULATOR_URL ||
-        process.env.MOCK_URL ||
-        "http://localhost:8085";
-      const mockName = `retry-${randomUUID().slice(0, 8)}`;
-      const request = await playwright.request.newContext();
-      let created = false;
-      try {
-        const response = await request.post(`${mock}/analyzers`, {
-          data: { name: mockName, template: "genexpert_astm", port: 9600 },
-        });
-        baseExpect(response.ok(), await response.text()).toBeTruthy();
-        created = true;
-        await use({
-          mock: `${mock}/simulate/fixture/${mockName}`,
-          network: await response.json(),
-        });
-      } finally {
-        try {
-          if (created) {
-            const removed = await request.delete(
-              `${mock}/analyzers/${mockName}`,
-            );
-            baseExpect(removed.ok()).toBeTruthy();
-          }
-        } finally {
-          await request.dispose();
-        }
-      }
-    },
-    { scope: "worker", auto: true },
-  ],
-});
+import { geneXpertMockSource } from "../../../helpers/analyzer-native-traffic";
 
 const expect = baseExpect.configure({ timeout: 20000 });
 
 test(
   "retry is queued honestly and a retained delivery recovers once its sender is configured",
   { tag: ["@astm", "@evidence", "@exceptions"] },
-  async ({ page, unregisteredSource }, testInfo) => {
+  async ({ page }, testInfo) => {
     test.setTimeout(180000);
     const run = randomUUID().slice(0, 8);
     const sender = `R1493-${run}`;
-    const { mock, network } = unregisteredSource;
+    const source = await geneXpertMockSource(page.request);
+    const mock =
+      process.env.MOCK_SIMULATOR_URL ||
+      process.env.MOCK_URL ||
+      "http://localhost:8085";
     let issueId = "";
     try {
       const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
@@ -72,14 +30,18 @@ test(
         testIds: [testId],
         specimenName: "Plasma",
       });
-      const sent = await page.request.post(`${mock}/hivvl/quantified`, {
-        data: {
-          destination: `tcp://${network.subnet.replace(/\.0\/24$/, ".2")}:12001`,
-          sample_id: order.accession,
-          sender_id: sender,
-          message_time: "20261028150000",
+      const sent = await page.request.post(
+        `${mock}/simulate/fixture/${source.name}/hivvl/quantified`,
+        {
+          data: {
+            destination: source.destination,
+            source_ip: source.ip,
+            sample_id: order.accession,
+            sender_id: sender,
+            message_time: "20261028150000",
+          },
         },
-      });
+      );
       expect(sent.ok(), await sent.text()).toBeTruthy();
       const issues = async () => {
         const r = await page.request.get(`${API}/analyzer/delivery-issues`);
@@ -95,7 +57,7 @@ test(
       await expect
         .poll(async () => {
           const found = (await issues()).find(
-            (r) => r.sourceId === network.ip && r.sender?.startsWith(sender),
+            (r) => r.sourceId === source.ip && r.sender?.startsWith(sender),
           );
           issueId = found?.id || "";
           return found?.failureReason;
@@ -108,7 +70,7 @@ test(
       const ownRow = () =>
         section
           .getByRole("row")
-          .filter({ hasText: network.ip })
+          .filter({ hasText: source.ip })
           .filter({ hasText: sender });
       await expect(ownRow()).toContainText("Not delivered");
       const retry = async () => {

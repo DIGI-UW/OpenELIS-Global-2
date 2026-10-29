@@ -1,52 +1,9 @@
 import type { Page, TestInfo } from "@playwright/test";
-import { expect, test as baseTest } from "../../../helpers/test-base";
+import { expect, test } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import { geneXpertMockSource } from "../../../helpers/analyzer-native-traffic";
 
 const API = "/api/OpenELIS-Global/rest";
-
-const test = baseTest.extend<{
-  unregisteredSource: {
-    mockUrl: string;
-    mockName: string;
-    network: { subnet: string; ip: string };
-  };
-}>({
-  unregisteredSource: async ({ playwright }, use) => {
-    const mockUrl =
-      process.env.MOCK_SIMULATOR_URL ||
-      process.env.MOCK_URL ||
-      "http://localhost:8085";
-    const mockName = `unregistered-${Date.now()}`;
-    const mockRequest = await playwright.request.newContext();
-    let sourceCreated = false;
-    try {
-      const created = await mockRequest.post(`${mockUrl}/analyzers`, {
-        data: { name: mockName, template: "genexpert_astm", port: 9600 },
-      });
-      expect(
-        created.ok(),
-        `Create mock source: ${created.status()}`,
-      ).toBeTruthy();
-      sourceCreated = true;
-      const network = (await created.json()) as { subnet: string; ip: string };
-      await use({ mockUrl, mockName, network });
-    } finally {
-      try {
-        if (sourceCreated) {
-          const removed = await mockRequest.delete(
-            `${mockUrl}/analyzers/${mockName}`,
-          );
-          expect(
-            removed.ok(),
-            `Remove mock source: ${removed.status()}`,
-          ).toBeTruthy();
-        }
-      } finally {
-        await mockRequest.dispose();
-      }
-    }
-  },
-});
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
   const path = testInfo.outputPath(`${name}.png`);
@@ -58,7 +15,7 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
   test(
     "shows a result the Bridge could not deliver and dismisses it through the visible UI",
     { tag: ["@evidence", "@astm", "@exceptions"] },
-    async ({ page, unregisteredSource }, testInfo) => {
+    async ({ page }, testInfo) => {
       const demo = createDemoPresentation(page, testInfo);
       await demo.intro(
         "A result from an instrument nobody set up is shown, not lost",
@@ -67,16 +24,19 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
       await demo.caption(
         "Off screen: a mock GeneXpert that no analyzer connection names sends an HIV-1 viral load to the Bridge.",
       );
-      const { mockUrl, mockName, network } = unregisteredSource;
+      const source = await geneXpertMockSource(page.request);
+      const mockUrl =
+        process.env.MOCK_SIMULATOR_URL ||
+        process.env.MOCK_URL ||
+        "http://localhost:8085";
       const senderId = `UNREGISTERED-${Date.now()}`;
       const accession = `DEV01${String(Date.now()).padStart(15, "0")}`;
-      expect(network.subnet).toMatch(/^10\.\d+\.\d+\.0\/24$/);
-      const bridgeIp = network.subnet.replace(/\.0\/24$/, ".2");
       const sent = await page.request.post(
-        `${mockUrl}/simulate/fixture/${mockName}/hivvl/quantified`,
+        `${mockUrl}/simulate/fixture/${source.name}/hivvl/quantified`,
         {
           data: {
-            destination: `tcp://${bridgeIp}:12001`,
+            destination: source.destination,
+            source_ip: source.ip,
             sample_id: accession,
             sender_id: senderId,
           },
@@ -100,13 +60,15 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
               rows: Array<{
                 id: string;
                 sourceId: string;
+                sender?: string;
                 failureReason: string;
               }>;
             };
           };
-          // Source attribution fails before Bridge can parse an accession into the outbox summary.
+          // Pending receipts may not have a sender yet. Match only this run once attributed.
           const issue = data.data.rows.find(
-            (row) => row.sourceId === network.ip,
+            (row) =>
+              row.sourceId === source.ip && row.sender?.startsWith(senderId),
           );
           issueId = issue?.id || "";
           failureReason = issue?.failureReason || "";
@@ -137,9 +99,9 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
       await expect(
         section.getByRole("heading", { name: "Undelivered analyzer results" }),
       ).toBeVisible();
-      const unrecognizedRow = section.getByRole("row", {
-        name: new RegExp(network.ip.replace(/\./g, "\\.")),
-      });
+      const unrecognizedRow = section
+        .getByRole("row")
+        .filter({ hasText: senderId });
       await expect(unrecognizedRow).toBeVisible();
       await expect(unrecognizedRow).toContainText("Unrecognized sender");
       await expect(unrecognizedRow).toContainText(
