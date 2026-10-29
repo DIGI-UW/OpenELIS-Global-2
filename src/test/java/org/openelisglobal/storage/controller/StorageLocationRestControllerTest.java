@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.controller;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,12 +25,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.ResultMatcher;
 
 /**
  * Controller integration tests for Storage Location CRUD endpoints.
  */
 @RunWith(SpringRunner.class)
 public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
+
+    // Matches CodeValidationServiceImpl: starts alphanumeric, at most 10 chars.
+    private static final String VALID_CODE = "^[A-Z0-9][A-Z0-9_-]{0,9}$";
+
+    private static ResultMatcher validGeneratedCode() {
+        return result -> {
+            String code = JsonPath.read(result.getResponse().getContentAsString(), "$.code");
+            assertTrue("generated code '" + code + "' must match " + VALID_CODE, code.matches(VALID_CODE));
+        };
+    }
 
     @Autowired
     private StorageLocationService storageLocationService;
@@ -145,6 +158,39 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.ipAddress").value("192.168.1.100"))
                 .andExpect(jsonPath("$.port").value(502))
                 .andExpect(jsonPath("$.communicationProtocol").value("BACnet"));
+    }
+
+    @Test
+    public void testCreateRoom_WithLongNameAndNoCode_GeneratesCodeWithinLimit() throws Exception {
+        String roomJson = "{\"name\":\"Reagent Cold Room North\"}";
+
+        this.mockMvc
+                .perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON).content(roomJson)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isCreated()).andExpect(validGeneratedCode());
+    }
+
+    @Test
+    public void testCreateRoom_WhenGeneratedCodeTaken_AddsSuffixWithinLimit() throws Exception {
+        this.mockMvc
+                .perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Reagent Cold Room North\"}").sessionAttr("userSessionData", usd))
+                .andExpect(status().isCreated());
+
+        this.mockMvc
+                .perform(post("/rest/storage/rooms").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Reagent Cold Room South\"}").sessionAttr("userSessionData", usd))
+                .andExpect(status().isCreated()).andExpect(validGeneratedCode());
+    }
+
+    @Test
+    public void testCreateDevice_WithLongNameAndNoCode_GeneratesCodeWithinLimit() throws Exception {
+        String deviceJson = "{\"name\":\"Reagent Freezer Alpha\",\"type\":\"freezer\",\"parentRoomId\":20005}";
+
+        this.mockMvc
+                .perform(post("/rest/storage/devices").contentType(MediaType.APPLICATION_JSON).content(deviceJson)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isCreated()).andExpect(validGeneratedCode());
     }
 
     @Test
