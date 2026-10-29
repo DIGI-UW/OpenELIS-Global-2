@@ -588,7 +588,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         try {
             loadWorklistFor12345().andExpect(status().isOk())
                     .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"))
-                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.00 or > 400.00"));
+                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.0 or > 400.0"));
         } finally {
             reset(webApplicationContext.getBean(DisplayListService.class));
         }
@@ -614,21 +614,35 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * OGC-1544 — the acknowledgement judges the value as reported: 49.6 on a test
-     * reported to no decimal places reads 50, which is not below the critical bound
-     * of 50, so nothing is owed and the save goes through.
+     * OGC-1574 — whole-number reporting cannot hide a clinical threshold crossing.
+     * 49.6 is below 50 and requires acknowledgement even when displayed as 50.
      */
     @Test
-    public void save_valueCriticalOnlyBeforeRounding_needsNoAcknowledgement() throws Exception {
+    public void save_criticalValueHiddenByReporting_requiresAcknowledgementAndPreservesValue() throws Exception {
         seedNumericResultLimit();
         jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = '0' WHERE test_id = 1");
+        String storedBefore = resultService.get("3").getValue();
 
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
                 .content(saveBody("1", "3", "1", "49.6", currentToken("1"))).session(session))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("ACKNOWLEDGEMENT_REQUIRED"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("49.6"));
 
-        assertEquals("49.6", resultService.get("3").getValue());
+        assertEquals(storedBefore, resultService.get("3").getValue());
         assertEquals(Integer.valueOf(0), acknowledgementCount());
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(acknowledgedSaveBody("49.6")).session(session)).andExpect(status().isOk());
+        assertEquals("49.6", resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(1), acknowledgementCount());
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
     }
 
     /**
