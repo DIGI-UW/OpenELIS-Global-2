@@ -9,22 +9,20 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.regex.Pattern;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.StringUtil;
 
 public class SecurityFilter implements Filter {
 
-    private ArrayList<String> exceptions = new ArrayList<>();
+    private static final int MAX_LOG_VALUE_LENGTH = 50;
+
+    private static final Pattern XSS_PATTERN = Pattern.compile("(?i)" + "(" + "<\\s*script[^>]*>|</\\s*script[^>]*>"
+            + "|" + "\\bon\\w+\\s*=\\s*[\"']?[^\"']*[\"']?" + "|" + "javascript\\s*:" + "|" + "data\\s*:[^,]*;base64"
+            + "|" + "vbscript\\s*:" + "|" + "expression\\s*\\(" + ")");
 
     public SecurityFilter() {
-    }
-
-    @Override
-    public void destroy() {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
@@ -33,56 +31,52 @@ public class SecurityFilter implements Filter {
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
-        boolean suspectedAttack = false;
-        ArrayList<String> attackList = new ArrayList<>();
 
-        // persistent XSS check
-        if (httpRequest.getMethod().equals("POST") || httpRequest.getRequestURI().contains("Update")
-                || httpRequest.getRequestURI().contains("Save")) {
-            Enumeration<String> parameterNames = httpRequest.getParameterNames();
-            while (parameterNames.hasMoreElements()) {
-                String curParam = parameterNames.nextElement();
-                String paramValue = httpRequest.getParameter(curParam);
-                // String paramValue = java.net.URLDecoder.decode(param, "UTF-8");
+        if (isModifyingRequest(httpRequest)) {
+            String detectedXss = detectXssInParameters(httpRequest);
+            if (detectedXss != null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "doFilter",
+                        "Suspected XSS attack blocked - URI: "
+                                + StringUtil.snipToMaxLength(httpRequest.getRequestURI(), MAX_LOG_VALUE_LENGTH)
+                                + ", Method: " + httpRequest.getMethod() + ", Remote: " + httpRequest.getRemoteAddr()
+                                + ", Details: " + detectedXss);
+                httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid request parameters");
+                return;
+            }
+        }
 
-                paramValue = paramValue.replaceAll("\\s", "");
-                if (paramValue.contains("<script>") || paramValue.contains("</script>")) {
-                    suspectedAttack = true;
-                    attackList.add("XSS on " + curParam + ": " + StringUtil.snipToMaxLength(paramValue, 50));
+        chain.doFilter(request, response);
+    }
+
+    private boolean isModifyingRequest(HttpServletRequest request) {
+        String method = request.getMethod();
+        String uri = request.getRequestURI();
+        return "POST".equals(method) || "PUT".equals(method) || "PATCH".equals(method) || uri.contains("Update")
+                || uri.contains("Save");
+    }
+
+    private String detectXssInParameters(HttpServletRequest request) {
+        Enumeration<String> parameterNames = request.getParameterNames();
+        while (parameterNames.hasMoreElements()) {
+            String paramName = parameterNames.nextElement();
+            String[] paramValues = request.getParameterValues(paramName);
+            if (paramValues != null) {
+                for (String value : paramValues) {
+                    if (value != null && XSS_PATTERN.matcher(value).find()) {
+                        return "XSS pattern in parameter '" + paramName + "': "
+                                + StringUtil.snipToMaxLength(value, MAX_LOG_VALUE_LENGTH);
+                    }
                 }
             }
         }
-
-        if (suspectedAttack) {
-            StringBuilder attackMessage = new StringBuilder();
-            String separator = "";
-            attackMessage.append(StringUtil.snipToMaxLength(httpRequest.getRequestURI(), 50));
-            attackMessage.append(" suspected attack(s) of type: ");
-            for (String attack : attackList) {
-                attackMessage.append(separator);
-                separator = ",";
-                attackMessage.append(attack);
-            }
-            // should log suspected attempt
-            LogEvent.logWarn(this.getClass().getSimpleName(), "doFilter()", attackMessage.toString());
-            // send to safe page
-            httpResponse.sendRedirect("Dashboard");
-        } else {
-            chain.doFilter(request, httpResponse);
-        }
-    }
-
-    public void addException(String exception) {
-        exceptions.add(exception);
-    }
-
-    private void addExceptions() {
-        exceptions.add("importAnalyzer");
+        return null;
     }
 
     @Override
-    public void init(FilterConfig arg0) throws ServletException {
-        // TODO Auto-generated method stub
-        addExceptions();
+    public void init(FilterConfig config) throws ServletException {
+    }
+
+    @Override
+    public void destroy() {
     }
 }
