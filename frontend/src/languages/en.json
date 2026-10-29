@@ -13862,6 +13862,6 @@
   "label.mgmt.export.col.metric": "Metric",
   "label.mgmt.export.col.positive": "Positive",
   "label.mgmt.export.col.deltaPoints": "Change vs. prior (points)",
-  "clinicalAttachment.previewUnavailable": "This attachment cannot be previewed. Upload a valid JPEG, PNG, or PDF file.",
+  "clinicalAttachment.previewUnavailable": "This attachment cannot be previewed. Replace it with a supported file.",
   "clinicalAttachment.uploadHint": "JPEG, PNG, or PDF, up to 10 MB."
 }

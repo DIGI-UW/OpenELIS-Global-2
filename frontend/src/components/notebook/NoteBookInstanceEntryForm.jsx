@@ -1,3 +1,4 @@
+import NotebookAttachmentPreview from "./NotebookAttachmentPreview";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -33,7 +34,7 @@ import {
   TableRow,
   Pagination,
 } from "@carbon/react";
-import { Launch, Checkmark } from "@carbon/react/icons";
+import { Checkmark } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -2032,23 +2033,7 @@ const NoteBookInstanceEntryForm = () => {
                         <Column key={index} lg={8} md={8} sm={12}>
                           <Tile style={{ marginBottom: "1rem" }}>
                             <p>{file.fileName}</p>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                var win = window.open();
-                                win.document.write(
-                                  '<iframe src="' +
-                                    "data:" +
-                                    file.fileType +
-                                    ";base64," +
-                                    file.fileData +
-                                    '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                                );
-                              }}
-                            >
-                              <Launch />{" "}
-                              <FormattedMessage id="pathology.label.view" />
-                            </Button>
+                            <NotebookAttachmentPreview size="sm" file={file} />
                           </Tile>
                         </Column>
                       ))}
@@ -2092,23 +2077,7 @@ const NoteBookInstanceEntryForm = () => {
                       <Column key={index} lg={8} md={8} sm={12}>
                         <Tile style={{ marginBottom: "1rem" }}>
                           <p>{file.fileName}</p>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              var win = window.open();
-                              win.document.write(
-                                '<iframe src="' +
-                                  "data:" +
-                                  file.fileType +
-                                  ";base64," +
-                                  file.fileData +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                              );
-                            }}
-                          >
-                            <Launch />{" "}
-                            <FormattedMessage id="pathology.label.view" />
-                          </Button>
+                          <NotebookAttachmentPreview size="sm" file={file} />
                           <Button
                             kind="danger--tertiary"
                             size="sm"
