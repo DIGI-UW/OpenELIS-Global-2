@@ -21,7 +21,11 @@ export default function ClinicalAttachmentPreview({
   const [invalid, setInvalid] = useState(false);
   useEffect(() => {
     url.current = null;
-    const type = MEDIA_TYPES.get(attachment.fileType);
+    const storedType = attachment.fileType
+      ?.split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+    const type = MEDIA_TYPES.get(storedType);
     if (!type) return;
     let objectUrl;
     try {

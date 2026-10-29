@@ -56,6 +56,24 @@ describe("clinical attachment previews", () => {
     },
   );
   it.each([
+    "data:application/pdf;charset=utf-8",
+    "data:APPLICATION/PDF; charset=UTF-8",
+  ])(
+    "previews historical parameterized PDF %s with a fixed media type",
+    (fileType) => {
+      show({ fileType, image: btoa("%PDF-synthetic") });
+      fireEvent.click(screen.getByRole("button"));
+      expect(URL.createObjectURL.mock.calls[0][0].type).toBe("application/pdf");
+      expect(window.open).toHaveBeenCalledWith(
+        "blob:synthetic-attachment",
+        "_blank",
+        "noopener,noreferrer",
+      );
+    },
+  );
+  it.each([
+    "data:text/html;charset=utf-8",
+    "data:image/svg+xml;charset=utf-8",
     "data:text/html",
     "data:image/svg+xml",
     'data:image/png"><script>window.opener.alert(1)</script>',

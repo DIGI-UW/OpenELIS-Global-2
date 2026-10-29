@@ -3,6 +3,7 @@ package org.openelisglobal.program.service;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -24,14 +25,14 @@ public final class ClinicalAttachmentService {
 
     public static void validate(ClinicalAttachmentUpload attachment) {
         byte[] bytes = attachment.getImage();
-        String type = attachment.getFileType();
+        String type = canonicalType(attachment.getFileType());
         String encoded = attachment.getBase64Image();
         if (encoded != null) {
             int separator = encoded.indexOf(";base64,");
-            if (separator < 0 || encoded.length() > 4L * ((MAX_BYTES + 2) / 3) + 40) {
+            if (separator < 0 || encoded.length() > 4L * ((MAX_BYTES + 2) / 3) + 256) {
                 throw new InvalidClinicalAttachmentException();
             }
-            type = encoded.substring(0, separator);
+            type = canonicalType(encoded.substring(0, separator));
             if (!TYPES.contains(type)) {
                 throw new InvalidClinicalAttachmentException();
             }
@@ -55,6 +56,10 @@ public final class ClinicalAttachmentService {
                 || !matchesType(type, bytes)) {
             throw new InvalidClinicalAttachmentException();
         }
+    }
+
+    private static String canonicalType(String type) {
+        return type == null ? null : type.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
     }
 
     private static boolean matchesType(String type, byte[] bytes) {

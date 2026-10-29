@@ -54,8 +54,27 @@ public class ClinicalAttachmentServiceTest {
     }
 
     @Test
+    public void generatedAndHistoricalPdfParametersPreserveBytesAndCanonicalType() throws Exception {
+        byte[] bytes = fixture("application/pdf");
+        for (String type : List.of("data:application/pdf;charset=utf-8", "data:APPLICATION/PDF; charset=UTF-8")) {
+            ClinicalAttachmentUpload generated = encoded(type, bytes);
+            ClinicalAttachmentService.validate(generated);
+            assertArrayEquals(bytes, generated.getImage());
+            assertEquals("data:application/pdf", generated.getFileType());
+            ClinicalAttachmentUpload historical = mapper.convertValue(Map.of("fileType", type, "image", bytes), form);
+            ClinicalAttachmentService.validate(historical);
+            assertArrayEquals(bytes, historical.getImage());
+            assertEquals("data:application/pdf", historical.getFileType());
+            ClinicalAttachmentUpload mislabeled = encoded(type, fixture("image/png"));
+            assertThrows(InvalidClinicalAttachmentException.class,
+                    () -> ClinicalAttachmentService.validate(mislabeled));
+        }
+    }
+
+    @Test
     public void htmlSvgAndMarkupInMetadataAreRejected() throws Exception {
-        for (String type : List.of("data:text/html", "data:image/svg+xml", "data:image/png\" onload=\"alert(1)")) {
+        for (String type : List.of("data:text/html;charset=utf-8", "data:text/html", "data:image/svg+xml;charset=utf-8",
+                "data:image/svg+xml", "data:image/png\" onload=\"alert(1)")) {
             ClinicalAttachmentUpload upload = encoded(type, fixture("image/png"));
             assertThrows(InvalidClinicalAttachmentException.class, () -> ClinicalAttachmentService.validate(upload));
         }
