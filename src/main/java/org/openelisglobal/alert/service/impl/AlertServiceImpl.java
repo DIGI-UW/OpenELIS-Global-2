@@ -135,14 +135,19 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
             throw new IllegalArgumentException("User not found: " + userId);
         }
 
+        AlertStatus previousStatus = alert.getStatus();
+        String notes = acknowledgmentNotes == null || acknowledgmentNotes.isBlank() ? null : acknowledgmentNotes;
+
         alert.setStatus(AlertStatus.ACKNOWLEDGED);
         alert.setAcknowledgedAt(OffsetDateTime.now());
         alert.setAcknowledgedBy(user);
-        alert.setAcknowledgmentNotes(
-                acknowledgmentNotes == null || acknowledgmentNotes.isBlank() ? null : acknowledgmentNotes);
+        alert.setAcknowledgmentNotes(notes);
 
         Alert updatedAlert = alertDAO.update(alert);
-        eventPublisher.publishEvent(new AlertAcknowledgedEvent(this, updatedAlert, userId.longValue()));
+
+        eventPublisher.publishEvent(new AlertAcknowledgedEvent(this, updatedAlert, userId.longValue(), alertId, notes,
+                previousStatus, AlertStatus.ACKNOWLEDGED, updatedAlert.getAcknowledgedAt()));
+
         return updatedAlert;
     }
 
