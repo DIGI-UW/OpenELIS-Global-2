@@ -62,8 +62,9 @@ public class SampleProjectServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getSampleProjectBySampleId_shouldReturnNullForNullInput() {
-        SampleProject result = sampleProjectService.getSampleProjectBySampleId(null);
-        assertNull(result);
+        // After fixing bytea comparison error, null input is handled gracefully
+        SampleProject sampleProject = sampleProjectService.getSampleProjectBySampleId(null);
+        assertNull(sampleProject);
     }
 
     @Test
