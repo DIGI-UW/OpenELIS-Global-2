@@ -205,7 +205,7 @@ test(
     await testInfo.attach("setup-and-routine-evidence", {
       body: JSON.stringify(
         {
-          analyzer,
+          analyzer: await analyzerByName(page, name, GENEXPERT.profileId),
           setupAccession: setupOrder.accession,
           setupRow: original,
           routineAccession: routineOrder.accession,

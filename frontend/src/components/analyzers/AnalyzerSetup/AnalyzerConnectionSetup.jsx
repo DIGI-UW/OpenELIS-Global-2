@@ -539,6 +539,47 @@ const AnalyzerConnectionSetup = ({
           blockers={receptionBlockers}
         />
       )}
+      {(candidate?.connection?.readiness?.blockers || [])
+        .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
+        .map((blocker) => (
+          <InlineNotification
+            key={blocker.key}
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage(
+              { id: blocker.messageKey },
+              {
+                profileId: candidate.connection.profileRef?.profileId,
+                revision: candidate.connection.profileRef?.revision,
+              },
+            )}
+          />
+        ))}
+      {onProfileReset &&
+        (candidate?.connection?.readiness?.blockers || []).some(
+          (blocker) =>
+            blocker.messageKey ===
+            "analyzer.connection.readiness.profileUnavailable",
+        ) && (
+          <Button
+            type="button"
+            kind="tertiary"
+            size="sm"
+            disabled={submitting || resetting}
+            onClick={resetProfile}
+          >
+            {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
+          </Button>
+        )}
+      {resetRefusal && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({ id: resetRefusal })}
+        />
+      )}
       {!onContinue && (
         <section
           className="analyzer-setup__activation-readiness"
@@ -578,49 +619,6 @@ const AnalyzerConnectionSetup = ({
                   ? "analyzer.setup.connect.activation.active"
                   : "analyzer.setup.connect.activation.ready",
               })}
-            />
-          )}
-          {(candidate?.connection?.readiness?.blockers || [])
-            .filter((blocker) =>
-              BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey),
-            )
-            .map((blocker) => (
-              <InlineNotification
-                key={blocker.key}
-                kind="warning"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage(
-                  { id: blocker.messageKey },
-                  {
-                    profileId: candidate.connection.profileRef?.profileId,
-                    revision: candidate.connection.profileRef?.revision,
-                  },
-                )}
-              />
-            ))}
-          {onProfileReset &&
-            (candidate?.connection?.readiness?.blockers || []).some(
-              (blocker) =>
-                blocker.messageKey ===
-                "analyzer.connection.readiness.profileUnavailable",
-            ) && (
-              <Button
-                type="button"
-                kind="tertiary"
-                size="sm"
-                disabled={submitting || resetting}
-                onClick={resetProfile}
-              >
-                {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
-              </Button>
-            )}
-          {resetRefusal && (
-            <InlineNotification
-              kind="error"
-              lowContrast
-              hideCloseButton
-              title={intl.formatMessage({ id: resetRefusal })}
             />
           )}
           {readiness?.blockers
