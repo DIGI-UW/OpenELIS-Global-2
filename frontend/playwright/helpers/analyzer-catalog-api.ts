@@ -40,7 +40,11 @@ export async function seedNumericTests(
   page: Page,
   run: string,
   tests: Array<{ name: string; loinc: string }>,
-  placement: { testSection: string; sampleType: string },
+  placement: {
+    testSection: string;
+    sampleType: string;
+    significantDigits?: number;
+  },
 ): Promise<SeededTest[]> {
   await importCsv(page, `tests-e2e-${run}.csv`, [
     "testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure",
@@ -51,7 +55,10 @@ export async function seedNumericTests(
   ]);
   await importCsv(page, `result-components-e2e-${run}.csv`, [
     "testName,code,label,resultType,significantDigits,isPrimary,showOnReport",
-    ...tests.map(({ name }) => `${name},PRIMARY,${name},N,2,Y,Y`),
+    ...tests.map(
+      ({ name }) =>
+        `${name},PRIMARY,${name},N,${placement.significantDigits ?? 2},Y,Y`,
+    ),
   ]);
   const catalog = (await (
     await page.request.get(`${API}/analyzer-types/mapping-catalog/tests`)

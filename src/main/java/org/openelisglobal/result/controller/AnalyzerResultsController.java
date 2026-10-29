@@ -34,7 +34,6 @@ import org.openelisglobal.common.paging.PagingBean.Paging;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.note.service.NoteService;
@@ -654,7 +653,9 @@ public class AnalyzerResultsController extends BaseController {
 
     private String getResultForItem(AnalyzerResults result) {
         if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())) {
-            return getRoundedToSignificantDigits(result);
+            // The review value is submitted for persistence; reporting precision must
+            // never change the measurement a reviewer accepts or edits.
+            return result.getResult();
         }
 
         if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())
@@ -668,35 +669,6 @@ public class AnalyzerResultsController extends BaseController {
         // otherwise we want the id so the correct selection will be choosen
         if (result.isReadOnly() || result.getTestId() == null || result.getIsControl()) {
             return dictionaryService.get(result.getResult()).getDictEntry();
-        } else {
-            return result.getResult();
-        }
-    }
-
-    private String getRoundedToSignificantDigits(AnalyzerResults result) {
-        if (result.getTestId() != null) {
-
-            Double results;
-            try {
-                results = Double.valueOf(result.getResult());
-            } catch (NumberFormatException e) {
-                return result.getResult();
-            }
-
-            String significantDigitsAsString = acceptService.significantDigitsFor(result);
-            if (GenericValidator.isBlankOrNull(significantDigitsAsString) || "-1".equals(significantDigitsAsString)) {
-                return result.getResult();
-            }
-
-            Integer significantDigits;
-            try {
-                significantDigits = Integer.parseInt(significantDigitsAsString);
-            } catch (NumberFormatException e) {
-                return result.getResult();
-            }
-
-            // not truly significant digits, just decimal places
-            return StringUtil.doubleWithSignificantDigits(results, significantDigits);
         } else {
             return result.getResult();
         }
