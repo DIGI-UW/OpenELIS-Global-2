@@ -262,3 +262,33 @@ it("referral order identifiers remain one URL parameter and close callbacks rema
   document.querySelector("button").click();
   expect(close).toHaveBeenCalledWith("9");
 });
+
+it("referral choices display catalogue names as text", () => {
+  document.body.innerHTML =
+    '<table><tbody><tr id="referralRow_3"></tr></tbody></table><input id="testDate_3" value="29/10/2026">';
+  const source = functionSource(
+    pages + "result/resultListView.jsp",
+    "createReferralOption",
+  )
+    .replace(/<c:(?:forEach|if)\b[^>]*>|<\/c:(?:forEach|if)>/g, "")
+    .replace(
+      /\$\{enc:js\((?:referralReason|referralOrganization)\.id\)\}/g,
+      "9",
+    )
+    .replace(
+      /\$\{enc:js\((?:referralReason|referralOrganization)\.value\)\}/g,
+      () => JSON.stringify(payload).slice(1, -1).replace(/'/g, "\\u0027"),
+    );
+  const create = new Function(
+    "document",
+    "jQuery",
+    source + ";return createReferralOption;",
+  )(document, $);
+  create("1", "2", "17", payload, 3);
+  expect(document.querySelectorAll("img,script")).toHaveLength(0);
+  const selects = document.querySelectorAll("select");
+  expect(selects).toHaveLength(3);
+  for (const select of selects) expect(select.textContent).toContain(payload);
+  expect(selects[2].value).toBe("17");
+  expect(document.getElementById("sendDate_3").value).toBe("29/10/2026");
+});

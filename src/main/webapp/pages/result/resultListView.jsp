@@ -470,7 +470,7 @@ function createReferralOption(sampleNum, testNum, testId, testName, index) {
 	<c:forEach items="${form.referralReasons}" var="referralReason" varStatus="iter">
 	option = document.createElement('option');
     option.value = '${enc:js(referralReason.id)}';
-	option.innerHTML = '<c:out value="${referralReason.value}"/>';
+	option.textContent = '${enc:js(referralReason.value)}';
 	referralReasonSelect.appendChild(option);
 	</c:forEach>
 	cell1.innerHTML = "Referral Reason ";
@@ -489,7 +489,7 @@ function createReferralOption(sampleNum, testNum, testId, testName, index) {
 	<c:forEach items="${form.referralOrganizations}" var="referralOrganization" varStatus="iter">
 	option = document.createElement('option');
     option.value = '${enc:js(referralOrganization.id)}';
-    option.innerHTML = "${enc:js(referralOrganization.value)}";
+    option.textContent = "${enc:js(referralOrganization.value)}";
 	referralOrgSelect.appendChild(option);
 	</c:forEach>
 	cell2.innerHTML = "Institute ";
@@ -509,7 +509,7 @@ function createReferralOption(sampleNum, testNum, testId, testName, index) {
 	referredTestSelect.setAttribute('onchange', 'markUpdated("' + index + '");');
 	option = document.createElement('option');
 	option.value = testId;
-	option.innerHTML = testName;
+	option.textContent = testName;
 	referredTestSelect.appendChild(option);
 	cell3.appendChild(referredTestSelect);
 
@@ -1182,7 +1182,7 @@ function /*void*/ handleEnterEvent(  ){
                                 <input class='addMultiSelect${enc:attribute(iter.index)}' type="button"
 									value="+"
                                     onclick="addNewMultiSelect(${enc:jsAttribute(iter.index)}, this);
-                             ${enc:jsAttribute((noteRequired) ? 'showNewNote(' += iter.index += ');' : '')}
+                             if (${noteRequired ? 'true' : 'false'}) showNewNote(${enc:jsAttribute(iter.index)});
                 	 		 " />
                                 <input class='removeMultiSelect${enc:attribute(iter.index)}' type="button"
 									value="-"

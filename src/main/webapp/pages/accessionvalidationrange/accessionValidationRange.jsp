@@ -578,7 +578,7 @@ function altAccessionHighlightSearch(accessionNumber) {
 						<br/>
                         <div id='log_${enc:attribute(iter.index)}'
 								class='results-readonly'>
-								${resultList.result}
+								${enc:html(resultList.result)}
 								<%-- <% try{
 												Double value = Math.log10(Double.parseDouble(resultList.getResult()));
 												DecimalFormat twoDForm = new DecimalFormat("##.##");
