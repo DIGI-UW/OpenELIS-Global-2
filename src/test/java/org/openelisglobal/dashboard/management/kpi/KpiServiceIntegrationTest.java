@@ -101,6 +101,20 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void tatFiguresLeaveOutTheDaysBetweenThePriorPeriodAndTheScope() {
+        // Released 2025-07-07 at 13:00 and 14:00; sample 1 arrives in the gap.
+        jdbcTemplate.update("UPDATE clinlims.sample SET received_date = '2025-07-06 10:00' WHERE id = 1");
+        jdbcTemplate.update("UPDATE clinlims.sample SET received_date = '2025-07-04 14:00' WHERE id = 2");
+        ScopeRange scope = new ScopeRange(LocalDate.of(2025, 7, 7), LocalDate.of(2025, 7, 8), LocalDate.of(2025, 7, 3),
+                LocalDate.of(2025, 7, 4));
+
+        ManagementKpis kpis = kpiService.getKpis(scope);
+
+        assertNull(kpis.medianTat().value());
+        assertEquals(0, BigDecimal.valueOf(72).compareTo(kpis.medianTat().prior()));
+    }
+
+    @Test
     public void onTimeByLabUnitKeysLikeTheTatBreakdown() {
         Map<String, BigDecimal> byUnit = kpiService.onTimeByLabUnit(JUNE_2024);
 

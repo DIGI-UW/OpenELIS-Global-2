@@ -33,10 +33,21 @@ public class ScopeRangeTest {
     }
 
     @Test
-    public void priorPeriodHasTheSameLength() {
-        ScopeRange ytd = ScopeRange.of("ytd", LocalDate.of(2026, 1, 10));
-        assertEquals(LocalDate.of(2025, 12, 31), ytd.priorTo());
-        assertEquals(LocalDate.of(2025, 12, 22), ytd.priorFrom());
+    public void quarterAndYearToDateCompareWithTheSameSpanOfThePreviousQuarterOrYear() {
+        assertEquals(
+                new ScopeRange(LocalDate.of(2026, 10, 1), TODAY, LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 8)),
+                ScopeRange.of("quarter", TODAY));
+        assertEquals(
+                new ScopeRange(LocalDate.of(2026, 1, 1), TODAY, LocalDate.of(2025, 1, 1), LocalDate.of(2025, 10, 8)),
+                ScopeRange.of("ytd", TODAY));
+    }
+
+    @Test
+    public void aMonthEndComparesWithTheWholeEarlierMonth() {
+        assertEquals(LocalDate.of(2026, 3, 31), ScopeRange.of("quarter", LocalDate.of(2026, 6, 30)).priorTo());
+        assertEquals(LocalDate.of(2026, 1, 31), ScopeRange.of("quarter", LocalDate.of(2026, 4, 30)).priorTo());
+        assertEquals(LocalDate.of(2027, 2, 28), ScopeRange.of("ytd", LocalDate.of(2028, 2, 29)).priorTo());
+        assertEquals(LocalDate.of(2028, 2, 29), ScopeRange.of("ytd", LocalDate.of(2029, 2, 28)).priorTo());
     }
 
     @Test(expected = IllegalArgumentException.class)
