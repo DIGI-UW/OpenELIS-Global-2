@@ -411,4 +411,49 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
 
         assertEquals("10", valueOf(entered));
     }
+
+    @Test
+    public void aStoredScriptCannotRunOrReplaceAnEnteredResult() {
+        calculation(GLUCOSE_TEST, null, "+java.lang.System.setProperty('oe.calc.execution.test','x')+", "2");
+        long entered = enterGlucoseByHand("10");
+        runCalculations();
+        assertEquals("10", valueOf(entered));
+        org.junit.Assert.assertNull(System.getProperty("oe.calc.execution.test"));
+        org.junit.Assert.assertTrue(testCalculatedUtil.getCalculatedResults().isEmpty());
+    }
+
+    @Test
+    public void divisionByZeroDoesNotReplaceAnEnteredResult() {
+        calculation(GLUCOSE_TEST, null, "/", "0");
+        long entered = enterGlucoseByHand("10");
+        runCalculations();
+        assertEquals("10", valueOf(entered));
+        org.junit.Assert.assertTrue(testCalculatedUtil.getCalculatedResults().isEmpty());
+    }
+
+    @Test
+    public void patientAgeStillContributesToTheCalculatedValue() {
+        calculation(GLUCOSE_TEST, null, "+", "0");
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            Calculation calculation = calculationService.get(calculations.get(0));
+            Operation age = calculation.getOperations().get(2);
+            age.setType(Operation.OperationType.PATIENT_ATTRIBUTE);
+            age.setValue("AGE");
+            calculationService.update(calculation);
+        });
+        runCalculations();
+        assertEquals(52.0,
+                Double.parseDouble(jdbc.queryForObject("SELECT value FROM clinlims.result WHERE analysis_id = ?",
+                        String.class, glucoseAnalysis)),
+                0.0);
+    }
+
+    @Test
+    public void configuredDecimalRoundingIsPreserved() {
+        calculation(GLUCOSE_TEST, null, "/", "7");
+        jdbc.update("UPDATE clinlims.test_result SET significant_digits = '2' WHERE test_id = ?", GLUCOSE_TEST);
+        runCalculations();
+        assertEquals("1.71", jdbc.queryForObject("SELECT value FROM clinlims.result WHERE analysis_id = ?",
+                String.class, glucoseAnalysis));
+    }
 }

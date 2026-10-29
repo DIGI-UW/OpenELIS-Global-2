@@ -102,6 +102,11 @@ public class Calculation extends BaseObject<Integer> {
 
     public List<Operation> getOperations() {
         List<Operation> operations = this.operations;
+        if (operations == null)
+            return Collections.emptyList();
+        if (operations.stream().anyMatch(operation -> operation == null || operation.getOrder() == null)) {
+            throw new IllegalArgumentException("Every calculation operation needs an order");
+        }
         Collections.sort(operations);
         return operations;
     }
