@@ -779,7 +779,7 @@ const SampleResultsSection = ({ testId }) => {
         }
         setNotificationVisible(true);
         if (response && response.status === 422) {
-          let body = null;
+          let body;
           try {
             body = await response.json();
           } catch (e) {

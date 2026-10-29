@@ -666,7 +666,7 @@ function SampleTypeManagement({ intl }) {
                 resolve(response.status);
                 return;
               }
-              let body = null;
+              let body;
               try {
                 body = response ? await response.json() : null;
               } catch (e) {

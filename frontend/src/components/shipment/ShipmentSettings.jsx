@@ -213,7 +213,7 @@ const ShipmentSettings = () => {
       "/rest/shipping-box/fhir-mapping-config",
       (response) => {
         if (response && response.containerTypeCode) {
-          let ncCodes = {};
+          let ncCodes;
           try {
             ncCodes =
               typeof response.nonConformityCodes === "string"

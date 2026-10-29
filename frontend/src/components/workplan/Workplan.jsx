@@ -72,8 +72,8 @@ export default function Workplan(props) {
   const arrows = serverPageArrowsProps({ paging, onPageRequest: loadPage });
 
   const type = props.type;
-  let title = "";
-  let sourceTitle = "";
+  let title;
+  let sourceTitle;
   switch (type) {
     case "test": {
       title = <FormattedMessage id="workplan.test.title" />;
