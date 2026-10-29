@@ -34,6 +34,12 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void createFixture() throws Exception {
+        jdbcTemplate.update(
+                "INSERT INTO status_of_sample (id, description, code, status_type, name, is_active, lastupdated)"
+                        + " SELECT ?, 'Study export finalized', '1', 'ANALYSIS', 'Finalized', 'Y', NOW()"
+                        + " WHERE NOT EXISTS (SELECT 1 FROM status_of_sample WHERE status_type = 'ANALYSIS' AND name = 'Finalized')",
+                SAMPLE);
+        SpringContext.getBean(IStatusService.class).refreshCache();
         dictionaryInstance = ResourceTranslator.DictionaryTranslator.class.getDeclaredField("instance");
         dictionaryInstance.setAccessible(true);
         previousDictionary = dictionaryInstance.get(null);
@@ -54,9 +60,10 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
         for (String table : new String[] { "observation_history", "observation_history_type", "result", "test_result",
                 "analysis", "panel_item", "panel", "sample_human", "sample_projects", "sample_organization",
                 "sample_item", "sample", "organization", "test", "test_section", "dictionary", "patient", "person",
-                "localization_value", "localization" }) {
+                "localization_value", "localization", "status_of_sample", "dictionary_category" }) {
             jdbcTemplate.update("DELETE FROM " + table + " WHERE id BETWEEN 992200 AND 992299");
         }
+        SpringContext.getBean(IStatusService.class).refreshCache();
     }
 
     @Test
@@ -184,6 +191,14 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void studyEidExportRetainsDictionaryText() throws Exception {
+        jdbcTemplate.update("INSERT INTO dictionary_category (id, name, description)"
+                + " SELECT 992292, 'EID Type of Clinic', 'EID Type of Clinic' WHERE NOT EXISTS"
+                + " (SELECT 1 FROM dictionary_category WHERE description = 'EID Type of Clinic')");
+        jdbcTemplate.update("INSERT INTO dictionary (id, dictionary_category_id, dict_entry, is_active)"
+                + " SELECT 992293, id, '4 = Other(Specify)', 'Y' FROM dictionary_category c"
+                + " WHERE c.description = 'EID Type of Clinic' AND NOT EXISTS"
+                + " (SELECT 1 FROM dictionary d WHERE d.dictionary_category_id = c.id"
+                + " AND d.dict_entry = '4 = Other(Specify)')");
         linkPatientAndOrganization();
         jdbcTemplate.update("INSERT INTO dictionary (id, dict_entry, is_active) VALUES (992290, '1=Positive', 'Y')");
         insertResult(992210, "DNA PCR", "D", "992290");
