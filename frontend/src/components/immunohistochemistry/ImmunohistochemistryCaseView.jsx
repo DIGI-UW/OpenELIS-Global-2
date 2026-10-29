@@ -956,7 +956,10 @@ function ImmunohistochemistryCaseView() {
       setMolecularSubTypeList,
     );
     //TODO make conclusions list instead of reusing pathrequest
-    getFromOpenElisServer("/rest/users", setTechnicianUsers);
+    getFromOpenElisServer(
+      "/rest/users/Results/labUnit/Immunohistochemistry",
+      setTechnicianUsers,
+    );
     getFromOpenElisServer("/rest/users/Pathologist", setPathologistUsers);
     getFromOpenElisServer(
       "/rest/immunohistochemistry/caseView/" + immunohistochemistrySampleId,

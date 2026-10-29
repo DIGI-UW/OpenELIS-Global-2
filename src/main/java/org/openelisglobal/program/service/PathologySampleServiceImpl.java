@@ -83,6 +83,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl.ResultType;
+import org.openelisglobal.userrole.service.LabUnitStaffService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -100,6 +101,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     private static final ObjectMapper AUDIT_PAYLOAD_MAPPER = new ObjectMapper();
 
+    // the test section whose Results role a technician on these cases needs
+    private static final String LAB_UNIT = "Pathology";
+
+    @Autowired
+    private LabUnitStaffService labUnitStaffService;
     @Autowired
     protected PathologySampleDAO baseObjectDAO;
 
@@ -276,6 +282,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             pathologySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
         }
         if (!GenericValidator.isBlankOrNull(form.getAssignedTechnicianId())) {
+            labUnitStaffService.checkTechnician(form.getAssignedTechnicianId(), pathologySample.getTechnician(),
+                    LAB_UNIT);
             pathologySample.setTechnician(systemUserService.get(form.getAssignedTechnicianId()));
         }
         pathologySample.setStatus(form.getStatus());
