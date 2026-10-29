@@ -1,0 +1,17 @@
+.microbiology-case-workspace {
+  min-width: 0;
+
+  .cds--css-grid-column {
+    min-width: 0;
+  }
+
+  h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .cds--data-table-container {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}

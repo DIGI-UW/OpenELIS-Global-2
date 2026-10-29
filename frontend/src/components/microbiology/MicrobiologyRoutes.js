@@ -117,7 +117,7 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
 
 const toSearch = (state, caseState = {}) => {
   const params = new URLSearchParams();
-  if (state.grain !== DEFAULT_WORKLIST_STATE.grain) {
+  if (state.grain) {
     params.set("grain", state.grain);
   }
   if (state.status) {

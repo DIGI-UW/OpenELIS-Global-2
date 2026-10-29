@@ -7,7 +7,7 @@ test.describe("Microbiology no-growth review and release", () => {
     page,
   }) => {
     const seeded = await seedMicrobiologyCase(page);
-    const worklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+    const worklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
       seeded.accessionNumber,
     )}&sort=newest`;
     await page.goto(worklistUrl, { waitUntil: "domcontentloaded" });
@@ -17,7 +17,7 @@ test.describe("Microbiology no-growth review and release", () => {
     await row.getByRole("link", { name: seeded.accessionNumber }).click();
     await expect(page).toHaveURL(
       new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?q=${seeded.accessionNumber}&sort=newest&section=setup$`,
+        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
       ),
     );
     const caseView = page.getByTestId("microbiology-case-view");
@@ -27,7 +27,7 @@ test.describe("Microbiology no-growth review and release", () => {
         .getByRole("link", { name: "Microbiology worklist" }),
     ).toHaveAttribute(
       "href",
-      `/Microbiology/worklist?q=${seeded.accessionNumber}&sort=newest`,
+      `/Microbiology/worklist?grain=cultures&q=${seeded.accessionNumber}&sort=newest`,
     );
 
     const caseHeader = page.locator("header");
@@ -65,7 +65,7 @@ test.describe("Microbiology no-growth review and release", () => {
     });
     await expect(page).toHaveURL(
       new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?q=${seeded.accessionNumber}&sort=newest&section=setup$`,
+        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
       ),
     );
     await expect(nextStep).toContainText(
