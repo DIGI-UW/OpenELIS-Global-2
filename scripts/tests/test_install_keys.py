@@ -45,11 +45,11 @@ class InstallKeysTest(unittest.TestCase):
                      "-addext", "subjectAltName=DNS:*.openelis.org")
         return cert, key
 
-    def install_old_stores(self, subject):
+    def install_old_stores(self, subject, legacy=False):
         # The certificate/store recipe from frontend/Dockerfile.certs before ade822d97a.
         # Both historical image subjects must be recognized.
         cert, key = self.certificate(subject)
-        self.command("openssl", "pkcs12", "-inkey", key, "-in", cert, "-export",
+        self.command("openssl", "pkcs12", *(["-legacy"] if legacy else []), "-inkey", key, "-in", cert, "-export",
                      "-out", self.stores / "keystore", "-passout", "env:KEYSTORE_PW")
         shutil.copyfile(self.stores / "keystore", self.stores / "client_facing_keystore")
         self.command("keytool", "-importcert", "-alias", "oeCert", "-file", cert,
@@ -85,11 +85,11 @@ class InstallKeysTest(unittest.TestCase):
         self.assertEqual(self.env["OE_ENCRYPTION_PASSWORD"],
                          (self.stores / "install/encryption.key").read_text())
 
-    def assert_stores_match_install(self):
+    def assert_stores_match_install(self, legacy_reads=False):
         cert = self.stores / "install/server.crt"
         expected = self.fingerprint(cert)
         for store in ("keystore", "client_facing_keystore"):
-            pem = self.command("openssl", "pkcs12", "-in", self.stores / store,
+            pem = self.command("openssl", "pkcs12", *(["-legacy"] if legacy_reads else []), "-in", self.stores / store,
                                "-passin", "env:KEYSTORE_PW", "-nokeys", "-clcerts")
             actual = self.command("openssl", "x509", "-noout", "-fingerprint", "-sha256", input=pem)
             self.assertEqual(expected, actual)
@@ -119,6 +119,37 @@ class InstallKeysTest(unittest.TestCase):
         self.upgrade()
         for path, contents in stable.items():
             self.assertEqual(contents, path.read_bytes(), path.name)
+
+    def require_legacy_provider(self):
+        help_text = subprocess.run(["openssl", "pkcs12", "-help"], capture_output=True, text=True).stderr
+        if "-legacy" not in help_text:
+            self.skipTest("OpenSSL 3 legacy provider is required for this fixture")
+
+    def test_openssl_11_shared_store_is_adopted_with_modern_replacement(self):
+        self.require_legacy_provider()
+        self.install_old_stores("/C=US/ST=WA/L=Seattle/O=I-TECH-UW/OU=DIGI/CN=localhost", legacy=True)
+        modern_read = subprocess.run(["openssl", "pkcs12", "-in", str(self.stores / "keystore"),
+                                     "-passin", "env:KEYSTORE_PW", "-noout"],
+                                    env=self.env, capture_output=True, text=True)
+        self.assertNotEqual(0, modern_read.returncode, "Fixture must require the legacy provider")
+        self.assertIn("RC2", modern_read.stderr)
+        self.adopt_legacy()
+        self.assert_stores_match_install()
+        self.upgrade()
+        self.assert_stores_match_install()
+
+    def test_openssl_11_site_store_is_preserved_across_adoption_and_restart(self):
+        self.require_legacy_provider()
+        old, _ = self.install_old_stores("/O=Local Lab/CN=lab.example", legacy=True)
+        original = {name: (self.stores / name).read_bytes()
+                    for name in ("keystore", "client_facing_keystore", "truststore")}
+        self.adopt_legacy()
+        self.assertEqual(self.fingerprint(old), self.fingerprint(self.stores / "install/server.crt"))
+        self.assert_stores_match_install(legacy_reads=True)
+        self.upgrade()
+        for name, contents in original.items():
+            self.assertEqual(contents, (self.stores / name).read_bytes())
+        self.assert_stores_match_install(legacy_reads=True)
 
     def test_fresh_install_with_custom_passwords_and_repeat_start(self):
         self.env.update(KEYSTORE_PW="custom-keystore-123", TRUSTSTORE_PW="custom-truststore-456")

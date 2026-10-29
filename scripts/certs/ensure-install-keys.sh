@@ -39,12 +39,22 @@ is_image_cert() {
   [ "$subject" = "$IMAGE_SUBJECT" ] || [ "$subject" = "$REPOSITORY_IMAGE_SUBJECT" ]
 }
 
+# OpenSSL 3 needs its legacy provider to read stores created by OpenSSL 1.1.
+# Limit this option to reads; newly exported stores keep modern defaults.
+read_pkcs12() {
+  if openssl pkcs12 -help 2>&1 | grep -q -- '-legacy'; then
+    openssl pkcs12 -legacy "$@"
+  else
+    openssl pkcs12 "$@"
+  fi
+}
+
 keystore_opens() {
-  openssl pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -noout >/dev/null 2>&1
+  read_pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -noout >/dev/null 2>&1
 }
 
 keystore_cert() {
-  openssl pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null
+  read_pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null
 }
 
 truststore_opens() {
@@ -93,11 +103,11 @@ if [ -s "$STORES/truststore" ] && ! truststore_opens; then
 fi
 
 if [ -e "$STORES/client_facing_keystore" ]; then
-  openssl pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -noout >/dev/null 2>&1 || fail "KEYSTORE_PW cannot open the existing client_facing_keystore"
+  read_pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -noout >/dev/null 2>&1 || fail "KEYSTORE_PW cannot open the existing client_facing_keystore"
 fi
 if [ "$fresh" = false ] && [ "$mode" = start ]; then
   keystore_cert | is_image_cert && fail "Shared image identity requires explicit --upgrade-existing adoption"
-  openssl pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null | is_image_cert && fail "Shared client-facing identity requires explicit --upgrade-existing adoption"
+  read_pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null | is_image_cert && fail "Shared client-facing identity requires explicit --upgrade-existing adoption"
   install_public=$(openssl x509 -in "$CERT" -pubkey -noout) || fail "Invalid installation certificate"
   key_public=$(openssl pkey -in "$KEY" -pubout 2>/dev/null) || fail "Invalid installation private key"
   [ "$install_public" = "$key_public" ] || fail "Installation key does not match its certificate"
@@ -127,7 +137,7 @@ fi
 if [ -s "$STORES/keystore" ] && ! keystore_cert | is_image_cert; then
   if [ ! -s "$KEY" ] || [ ! -s "$CERT" ] || [ "$(keystore_cert | fingerprint)" != "$(fingerprint <"$CERT")" ]; then
     echo "Keeping the certificate this install's keystore already holds"
-    (umask 077 && openssl pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -nocerts -nodes \
+    (umask 077 && read_pkcs12 -in "$STORES/keystore" -passin env:KEYSTORE_PW -nocerts -nodes \
       -out "$KEY.tmp" 2>/dev/null)
     keystore_cert | openssl x509 -out "$CERT.tmp"
     chmod 600 "$KEY.tmp"
@@ -154,7 +164,7 @@ if [ ! -s "$STORES/keystore" ] || keystore_cert | is_image_cert; then
   cp "$STORES/keystore" "$STORES/client_facing_keystore"
 fi
 
-if [ ! -s "$STORES/client_facing_keystore" ] || openssl pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null | is_image_cert; then
+if [ ! -s "$STORES/client_facing_keystore" ] || read_pkcs12 -in "$STORES/client_facing_keystore" -passin env:KEYSTORE_PW -nokeys -clcerts 2>/dev/null | is_image_cert; then
   cp "$STORES/keystore" "$STORES/client_facing_keystore"
 fi
 
