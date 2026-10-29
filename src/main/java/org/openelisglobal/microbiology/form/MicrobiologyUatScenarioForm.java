@@ -2,6 +2,9 @@ package org.openelisglobal.microbiology.form;
 
 public class MicrobiologyUatScenarioForm {
 
+    public String isolateSampleTypeId;
+    public String referralOrganizationId;
+    public String referralReasonId;
     public Long mediumItemId;
     public String scenario;
     public String scenarioKey;

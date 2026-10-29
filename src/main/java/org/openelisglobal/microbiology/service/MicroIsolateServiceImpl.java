@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroIsolateServiceImpl implements MicroIsolateService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicrobiologyCaseAccessService access;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -87,28 +89,54 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
             MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
             String identificationMethod, BigDecimal identificationConfidence, String reason, String performedBy) {
+        return updateIdentification(isolateId, organismId, preliminaryOrganismText, significance, identificationStatus,
+                identificationMethod, identificationConfidence, reason, MicroCaseServiceImpl.now(), performedBy);
+    }
+
+    @Override
+    @Transactional
+    public MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
+            MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,
+            String identificationMethod, BigDecimal identificationConfidence, String reason,
+            java.sql.Timestamp identifiedAt, String performedBy) {
         MicroCaseServiceImpl.requireText(isolateId, "isolateId");
         MicroCaseServiceImpl.requireText(organismId, "organismId");
         MicroCaseServiceImpl.requireText(identificationMethod, "identificationMethod");
         requireConfidence(identificationConfidence);
-        if (!MicroIsolateIdentificationStatus.CONFIRMED.equals(identificationStatus)) {
-            throw new IllegalArgumentException("identificationStatus must be CONFIRMED");
+        if (identificationStatus != MicroIsolateIdentificationStatus.CONFIRMED
+                && identificationStatus != MicroIsolateIdentificationStatus.PRELIMINARY) {
+            throw new IllegalArgumentException("identificationStatus must be PRELIMINARY or CONFIRMED");
         }
         MicroIsolate isolate = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         if (isolate.getCancelledAt() != null) {
             throw new MicroAmendmentConflictException("ISOLATE_CANCELLED");
         }
-        MicroCase microCase = caseDAO.get(isolate.getCaseId())
-                .orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        MicroCase microCase = caseDAO.getForUpdate(isolate.getCaseId());
+        if (microCase == null)
+            throw new IllegalArgumentException("Case not found");
+        boolean reidentification = isolate.getOrganismId() != null
+                || (isolate.getPreliminaryOrganismText() != null && !isolate.getPreliminaryOrganismText().isBlank());
+        if (reidentification) {
+            MicroCaseServiceImpl.requireText(reason, "REIDENTIFICATION_REASON_REQUIRED");
+            if (!access.hasLabUnitRole(performedBy, microCase.getLabUnitId(),
+                    org.openelisglobal.common.constants.Constants.ROLE_VALIDATION))
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Case lab unit Validation rights required");
+        }
         MicroCaseMutationGuard.requireMutable(microCase);
         MicroIsolate previous = identificationSnapshot(isolate);
+        if (identifiedAt == null || identifiedAt.after(MicroCaseServiceImpl.now()))
+            throw new IllegalArgumentException("MICROBIOLOGY_ISOLATE_IDENTIFICATION_TIME");
+        isolate.setIdentifiedAt(identifiedAt);
+        isolate.setMismatchAcknowledgedBy(null);
+        isolate.setMismatchAcknowledgedAt(null);
         isolate.setOrganismId(optionalId(organismId));
         isolate.setPreliminaryOrganismText(preliminaryOrganismText);
         isolate.setIdentificationMethod(identificationMethod.trim());
         isolate.setIdentificationConfidence(identificationConfidence);
         isolate.setSignificance((significance == null ? MicroIsolateSignificance.UNKNOWN : significance).name());
-        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
+        isolate.setIdentificationStatus(identificationStatus.name());
         MicroIsolateIdentificationEvent event = identificationHistoryService.recordChange(previous, isolate, reason,
                 performedBy);
         MicroIsolate updated = isolateDAO.update(isolate);
@@ -135,6 +163,9 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         snapshot.setColonyMorphology(isolate.getColonyMorphology());
         snapshot.setIdentificationMethod(isolate.getIdentificationMethod());
         snapshot.setIdentificationConfidence(isolate.getIdentificationConfidence());
+        snapshot.setIdentifiedAt(isolate.getIdentifiedAt());
+        snapshot.setMismatchAcknowledgedBy(isolate.getMismatchAcknowledgedBy());
+        snapshot.setMismatchAcknowledgedAt(isolate.getMismatchAcknowledgedAt());
         snapshot.setSignificance(isolate.getSignificance());
         snapshot.setIdentificationStatus(isolate.getIdentificationStatus());
         return snapshot;
@@ -177,8 +208,8 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     }
 
     private void requireConfidence(BigDecimal confidence) {
-        if (confidence == null || confidence.compareTo(BigDecimal.ZERO) < 0
-                || confidence.compareTo(new BigDecimal("100")) > 0) {
+        if (confidence != null
+                && (confidence.compareTo(BigDecimal.ZERO) < 0 || confidence.compareTo(new BigDecimal("100")) > 0)) {
             throw new IllegalArgumentException("identificationConfidence must be between 0 and 100");
         }
     }

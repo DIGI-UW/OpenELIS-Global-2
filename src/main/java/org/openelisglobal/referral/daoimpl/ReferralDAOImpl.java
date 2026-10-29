@@ -42,6 +42,16 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
+    public List<Referral> getWorkspaceReferrals(List<String> sampleItemIds) {
+        if (sampleItemIds.isEmpty())
+            return List.of();
+        return entityManager.createQuery(
+                "select r from Referral r join fetch r.analysis a join fetch a.sampleItem s join fetch a.test left join fetch r.organization left join fetch r.subcontract where s.id in (:ids) order by r.requestDate, r.id",
+                Referral.class).setParameter("ids", sampleItemIds).getResultList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Referral getReferralById(String referralId) throws LIMSRuntimeException {
         try {
             Referral referral = entityManager.unwrap(Session.class).get(Referral.class, referralId);

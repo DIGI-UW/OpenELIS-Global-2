@@ -58,6 +58,60 @@ public class MicroIsolate extends BaseObject<String> {
     @Column(name = "cancelled_at")
     private Timestamp cancelledAt;
 
+    @Column(name = "source_culture_id", length = 36)
+    private String sourceCultureId;
+
+    @Column(name = "source_sample_item_id", precision = 10, scale = 0)
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sourceSampleItemId;
+
+    @Column(name = "sample_item_id", precision = 10, scale = 0)
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleItemId;
+
+    @Column(name = "received_from_organization_id", precision = 10, scale = 0)
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String receivedFromOrganizationId;
+
+    @Column(name = "reported_organism_id", length = 36)
+    private String reportedOrganismId;
+
+    @Column(name = "reported_organism_text", length = 255)
+    private String reportedOrganismText;
+
+    @Column(name = "created_by", length = 20)
+    private String createdBy;
+
+    @Column(name = "identified_at")
+    private Timestamp identifiedAt;
+
+    @Column(name = "mismatch_acknowledged_by", length = 20)
+    private String mismatchAcknowledgedBy;
+
+    @Column(name = "mismatch_acknowledged_at")
+    private Timestamp mismatchAcknowledgedAt;
+
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "source_culture_id", insertable = false, updatable = false)
+    private MicroCaseInoculation sourceCulture;
+
+    @jakarta.persistence.OneToMany
+    @jakarta.persistence.JoinColumn(name = "isolate_id", insertable = false, updatable = false)
+    @jakarta.persistence.OrderBy("eventSequence, changedAt, id")
+    private java.util.List<MicroIsolateIdentificationEvent> identificationHistory = new java.util.ArrayList<>();
+
+    public MicroCaseInoculation getSourceCulture() {
+        return sourceCulture;
+    }
+
+    public void setSourceCulture(MicroCaseInoculation value) {
+        sourceCulture = value;
+    }
+
+    public java.util.List<MicroIsolateIdentificationEvent> getIdentificationHistory() {
+        return identificationHistory;
+    }
+
     @Override
     public String getId() {
         return id;
@@ -170,5 +224,85 @@ public class MicroIsolate extends BaseObject<String> {
 
     public void setCancelledAt(Timestamp cancelledAt) {
         this.cancelledAt = cancelledAt;
+    }
+
+    public String getSourceCultureId() {
+        return sourceCultureId;
+    }
+
+    public void setSourceCultureId(String value) {
+        sourceCultureId = value;
+    }
+
+    public String getSourceSampleItemId() {
+        return sourceSampleItemId;
+    }
+
+    public void setSourceSampleItemId(String value) {
+        sourceSampleItemId = value;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String value) {
+        sampleItemId = value;
+    }
+
+    public String getReceivedFromOrganizationId() {
+        return receivedFromOrganizationId;
+    }
+
+    public void setReceivedFromOrganizationId(String value) {
+        receivedFromOrganizationId = value;
+    }
+
+    public String getReportedOrganismId() {
+        return reportedOrganismId;
+    }
+
+    public void setReportedOrganismId(String value) {
+        reportedOrganismId = value;
+    }
+
+    public String getReportedOrganismText() {
+        return reportedOrganismText;
+    }
+
+    public void setReportedOrganismText(String value) {
+        reportedOrganismText = value;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String value) {
+        createdBy = value;
+    }
+
+    public Timestamp getIdentifiedAt() {
+        return identifiedAt;
+    }
+
+    public void setIdentifiedAt(Timestamp value) {
+        identifiedAt = value;
+    }
+
+    public String getMismatchAcknowledgedBy() {
+        return mismatchAcknowledgedBy;
+    }
+
+    public void setMismatchAcknowledgedBy(String value) {
+        mismatchAcknowledgedBy = value;
+    }
+
+    public Timestamp getMismatchAcknowledgedAt() {
+        return mismatchAcknowledgedAt;
+    }
+
+    public void setMismatchAcknowledgedAt(Timestamp value) {
+        mismatchAcknowledgedAt = value;
     }
 }

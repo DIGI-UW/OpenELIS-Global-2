@@ -46,6 +46,8 @@ public class MicroCaseReadinessServiceTest {
     @Before
     public void setUp() {
         service = new MicroCaseReadinessServiceImpl(caseDAO, isolateDAO, astRunDAO, communicationDAO);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "isolateWorkspace",
+                org.mockito.Mockito.mock(MicroIsolateWorkspaceServiceImpl.class));
     }
 
     @Test
@@ -53,7 +55,7 @@ public class MicroCaseReadinessServiceTest {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of());
 
         MicroCaseReadinessForm readiness = service.getReadiness("case-1");
 
@@ -69,7 +71,7 @@ public class MicroCaseReadinessServiceTest {
         MicroAstRun run = new MicroAstRun();
         run.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(isolate));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
 
@@ -92,7 +94,7 @@ public class MicroCaseReadinessServiceTest {
         repeat.setId("run-2");
         repeat.setStatus(MicroAstRunStatus.IN_PROGRESS.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(isolate));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(reviewed, repeat));
 
@@ -110,7 +112,7 @@ public class MicroCaseReadinessServiceTest {
         MicroAstRun run = new MicroAstRun();
         run.setStatus(MicroAstRunStatus.REVIEWED.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(isolate));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
 
@@ -128,7 +130,7 @@ public class MicroCaseReadinessServiceTest {
         MicroAstRun original = reviewedRun(false);
         MicroAstRun repeat = reviewedRun(false);
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(isolate));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(original, repeat));
 
@@ -148,7 +150,7 @@ public class MicroCaseReadinessServiceTest {
         microCase.setId("case-1");
         microCase.setStage(MicroCaseStage.NO_GROWTH_READY.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of());
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of());
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
 
         MicroCaseReadinessForm readiness = service.getReadiness("case-1");
@@ -168,7 +170,7 @@ public class MicroCaseReadinessServiceTest {
         communication.setFollowUpNeeded(Boolean.TRUE);
         communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.OPEN.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(isolate));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(isolate));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of(communication));
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(run));
 
@@ -192,7 +194,7 @@ public class MicroCaseReadinessServiceTest {
         MicroAstRun invalidated = new MicroAstRun();
         invalidated.setStatus(MicroAstRunStatus.INVALIDATED.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
-        when(isolateDAO.getByCaseId("case-1")).thenReturn(List.of(completed, awaitingSetup, pendingIdentification));
+        when(isolateDAO.getWorkspace("case-1")).thenReturn(List.of(completed, awaitingSetup, pendingIdentification));
         when(communicationDAO.getByCaseId("case-1")).thenReturn(List.of());
         when(astRunDAO.getByIsolateId("iso-1")).thenReturn(List.of(reviewed, invalidated));
         when(astRunDAO.getByIsolateId("iso-2")).thenReturn(List.of());

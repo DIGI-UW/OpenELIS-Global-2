@@ -691,4 +691,5 @@
   <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
   <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
   <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
+    <include file="122-amr-v2-isolates-referral.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

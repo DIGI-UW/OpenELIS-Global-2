@@ -370,24 +370,6 @@ const MicrobiologyCaseView = ({
       .finally(() => setSaving(false));
   };
 
-  const createIsolate = (payload) => {
-    setSaving(true);
-    service.createIsolate(payload).then(() => {
-      service.getCaseDetail(caseId).then((detail) => {
-        setCaseDetail(detail);
-        setSaving(false);
-      });
-    });
-  };
-
-  const updateIdentification = (isolateId, payload) => {
-    setSaving(true);
-    return service.updateIsolateIdentification(isolateId, payload).then(() => {
-      loadCase({ showLoading: false });
-      setSaving(false);
-    });
-  };
-
   const selectSection = (section) => {
     history.push(
       getMicrobiologyCaseUrl(caseId, {
@@ -974,19 +956,16 @@ const MicrobiologyCaseView = ({
                   focused={focusedSection === "isolates"}
                   label={intl.formatMessage({ id: sectionLabelIds.isolates })}
                 >
-                  <IsolatePanel
-                    caseId={caseDetail.id}
-                    isolates={caseDetail.isolates}
-                    onCreateIsolate={createIsolate}
-                    onUpdateIdentification={updateIdentification}
-                    saving={saving}
-                    readOnly={finalReleased}
-                    amendmentOpen={amendmentOpen}
-                    onLogCritical={(isolate) =>
-                      openCriticalCommunication("ISOLATE", isolate.id)
-                    }
-                    service={service}
-                  />
+                  {focusedSection === "isolates" && (
+                    <IsolatePanel
+                      readOnly={finalReleased}
+                      caseId={caseDetail.id}
+                      onChanged={() => loadCase({ showLoading: false })}
+                      onLogCritical={(isolate) =>
+                        openCriticalCommunication("ISOLATE", isolate.id)
+                      }
+                    />
+                  )}
                 </CaseSectionFocusTarget>
               </AccordionItem>
               <AccordionItem

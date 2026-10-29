@@ -1,5 +1,9 @@
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
+import {
+  createMicrobiologyIsolate,
+  identifyMicrobiologyIsolate,
+} from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const selectConfiguredOption = async (
@@ -243,18 +247,8 @@ test.describe("Microbiology case workbench", () => {
     await expect(page.getByText("Colonies visible at 18 hours")).toBeVisible();
     await expect(timeline.getByText("Manual", { exact: true })).toBeVisible();
 
-    await caseView
-      .getByRole("button", { name: "Isolates", exact: true })
-      .click();
+    await createMicrobiologyIsolate(page, seeded);
     await expect(page).toHaveURL(/section=isolates/);
-    await page.getByLabel("Gram stain").fill("Gram negative rods");
-    await page
-      .getByLabel("Colony morphology")
-      .fill("Lactose fermenting colonies");
-    await page.getByRole("button", { name: "Create isolate" }).click();
-    await expect(page.getByText("Identification pending")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
     await expect(
       page
         .getByTestId("microbiology-isolates-card")
@@ -262,7 +256,7 @@ test.describe("Microbiology case workbench", () => {
     ).toBeVisible();
     const isolate = page
       .getByTestId("microbiology-isolates-card")
-      .getByRole("listitem")
+      .locator('[data-testid^="isolate-"]')
       .filter({ has: page.getByText("Gram negative rods", { exact: true }) });
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 844 });
@@ -305,15 +299,7 @@ test.describe("Microbiology case workbench", () => {
       .getByRole("button", { name: "Isolates", exact: true })
       .click();
 
-    await page.getByRole("button", { name: "Identify organism" }).click();
-    await page.getByLabel("Organism").selectOption(seeded.organismId);
-    await page.getByLabel("ID method").selectOption("MALDI_TOF");
-    await page.getByLabel("ID confidence (%)").fill("99.5");
-    await page.getByRole("button", { name: "Save identification" }).click();
-    await expect(page.getByText("Identified", { exact: true })).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-    await expect(page.getByText(/MALDI-TOF.*99\.5%/)).toBeVisible();
+    await identifyMicrobiologyIsolate(page, seeded.organismId!);
     await caseView
       .getByRole("button", { name: "Manual AST", exact: true })
       .click();

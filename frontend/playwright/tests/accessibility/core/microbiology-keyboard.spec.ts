@@ -3,6 +3,7 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import {
   seedFinalizedMicrobiologyCase,
   seedMicrobiologyMvpCase,
+  ensureWorkspaceGrowthCulture,
 } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -44,6 +45,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
   }, testInfo) => {
     test.setTimeout(180_000);
     const workingCase = await seedMicrobiologyMvpCase(page);
+    await ensureWorkspaceGrowthCulture(page, workingCase);
 
     await test.step("Filter the worklist and open the case with the keyboard", async () => {
       await page.goto("/Microbiology/worklist?grain=cultures", {
@@ -89,11 +91,19 @@ test.describe("Microbiology keyboard-only workflow", () => {
         page.getByRole("heading", { name: "Microbiology case" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
-        page.getByTestId("microbiology-case-section-setup"),
+        page.getByTestId("microbiology-case-section-isolates"),
       ).toBeFocused({ timeout: LONG_TIMEOUT });
     });
 
     await test.step("Record culture lineage and a Timeline note with inline focus", async () => {
+      const inoculationPanel = page
+        .getByTestId("microbiology-case-view")
+        .getByRole("button", { name: "Inoculation", exact: true });
+      await tabTo(page, inoculationPanel);
+      await page.keyboard.press("Enter");
+      await expect(
+        page.getByTestId("microbiology-case-section-setup"),
+      ).toBeFocused({ timeout: LONG_TIMEOUT });
       const startInoculation = page
         .getByTestId("microbiology-case-section-setup")
         .getByRole("button", { name: "Start inoculation" });
@@ -176,14 +186,30 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/section=isolates/);
 
-      const gramStain = page.getByLabel("Gram stain");
+      const pick = page.getByRole("button", {
+        name: "Pick isolate",
+        exact: true,
+      });
+      await tabTo(page, pick);
+      await page.keyboard.press("Enter");
+      const dialog = page.getByRole("dialog");
+      const source = dialog.getByLabel("Source culture row", { exact: true });
+      await tabTo(page, source);
+      await page.keyboard.type("AST-FIXTURE-GROWTH");
+      await expect(source.locator("option:checked")).toHaveText(
+        "AST-FIXTURE-GROWTH",
+      );
+      const gramStain = dialog.getByLabel("Gram stain", { exact: true });
       await tabTo(page, gramStain);
       await page.keyboard.type("Gram negative rods");
-      const colonyMorphology = page.getByLabel("Colony morphology");
+      const colonyMorphology = dialog.getByLabel("Colony morphology", {
+        exact: true,
+      });
       await tabTo(page, colonyMorphology);
       await page.keyboard.type("Lactose fermenting colonies");
-      const createIsolate = page.getByRole("button", {
-        name: "Create isolate",
+      const createIsolate = dialog.getByRole("button", {
+        name: "Save",
+        exact: true,
       });
       await tabTo(page, createIsolate);
       await page.keyboard.press("Enter");
@@ -196,28 +222,40 @@ test.describe("Microbiology keyboard-only workflow", () => {
       });
       await tabTo(page, identifyOrganism);
       await page.keyboard.press("Enter");
-      const organism = page.getByLabel("Organism");
-      const organismLabel = "Escherichia coli (UAT)";
-      await expect(
-        organism.locator("option", { hasText: organismLabel }),
-      ).toHaveAttribute("value", workingCase.organismId!);
+      const organism = dialog.getByRole("combobox", {
+        name: "Organism",
+        exact: true,
+      });
       await tabTo(page, organism);
-      await page.keyboard.type(organismLabel);
-      await expect(organism).toHaveValue(workingCase.organismId!);
-      const idMethod = page.getByLabel("ID method");
+      await page.keyboard.type("Escherichia coli (UAT)");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await expect(organism).toHaveValue("Escherichia coli (UAT)");
+      const idMethod = dialog.getByLabel("ID method", { exact: true });
       await tabTo(page, idMethod);
-      await page.keyboard.type("MALDI TOF");
-      await expect(idMethod).toHaveValue("MALDI_TOF");
-      const confidence = page.getByLabel("ID confidence (%)");
+      await page.keyboard.type("UAT micro culture");
+      await expect(idMethod.locator("option:checked")).toHaveText(
+        "UAT micro culture",
+      );
+      const status = dialog.getByLabel("Local identification status", {
+        exact: true,
+      });
+      await tabTo(page, status);
+      await page.keyboard.type("Final");
+      await expect(status).toHaveValue("FINAL");
+      const confidence = dialog.getByLabel("ID confidence (%)", {
+        exact: true,
+      });
       await tabTo(page, confidence);
       await page.keyboard.press("ControlOrMeta+A");
       await page.keyboard.type("99.5");
-      const saveIdentification = page.getByRole("button", {
-        name: "Save identification",
+      const saveIdentification = dialog.getByRole("button", {
+        name: "Save",
+        exact: true,
       });
       await tabTo(page, saveIdentification);
       await page.keyboard.press("Enter");
-      await expect(page.getByText("Identified", { exact: true })).toBeVisible({
+      await expect(page.getByTitle("Final", { exact: true })).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
 
@@ -325,6 +363,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.type("Keyboard qualification correction");
       const openAmendment = page.getByRole("button", {
         name: "Open amendment",
+        exact: true,
       });
       await tabTo(page, openAmendment);
       await page.keyboard.press("Enter");
@@ -334,6 +373,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
 
       const releaseAmendment = page.getByRole("button", {
         name: "Release amended report",
+        exact: true,
       });
       await tabTo(page, releaseAmendment);
       await page.keyboard.press("Enter");

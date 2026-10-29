@@ -24,6 +24,8 @@ import org.openelisglobal.referral.valueholder.ReferralStatus;
 
 public interface ReferralDAO extends BaseDAO<Referral, String> {
 
+    List<Referral> getWorkspaceReferrals(List<String> sampleItemIds);
+
     // public boolean insertData(Referral referral) throws LIMSRuntimeException;
 
     public Referral getReferralById(String referralId) throws LIMSRuntimeException;

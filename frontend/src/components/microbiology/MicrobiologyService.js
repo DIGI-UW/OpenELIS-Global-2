@@ -60,30 +60,6 @@ export const addCaseNote = (caseId, text) =>
     );
   });
 
-export const createIsolate = (payload) =>
-  new Promise((resolve) => {
-    postToOpenElisServerJsonResponse(
-      "/rest/microbiology/isolates",
-      JSON.stringify(payload),
-      resolve,
-    );
-  });
-
-export const updateIsolateIdentification = (isolateId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/isolates/${encodeURIComponent(isolateId)}/identification`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
-    );
-  });
-
 export const getAstPanels = () =>
   new Promise((resolve) => {
     getFromOpenElisServer("/rest/microbiology/reference/ast-panels", resolve);
@@ -439,16 +415,6 @@ export const releaseAmendedReport = (caseId) =>
     );
   });
 
-export const getIdentificationHistory = (isolateId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/isolates/${encodeURIComponent(
-        isolateId,
-      )}/identification-history`,
-      resolve,
-    );
-  });
-
 export const saveOrderDetail = (caseId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -480,8 +446,6 @@ const MicrobiologyService = {
   getCaseTimeline,
   addCaseNote,
   getReagentLotOverview,
-  createIsolate,
-  updateIsolateIdentification,
   getAstPanels,
   getAstSetupForIsolate,
   getAstPanelAntibiotics,
@@ -518,7 +482,6 @@ const MicrobiologyService = {
   openCaseAmendment,
   cancelCaseAmendment,
   releaseAmendedReport,
-  getIdentificationHistory,
   saveOrderDetail,
   getWhonetReadiness,
 };

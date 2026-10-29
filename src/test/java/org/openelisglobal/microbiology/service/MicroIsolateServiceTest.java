@@ -55,7 +55,11 @@ public class MicroIsolateServiceTest {
     public void setUp() {
         service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO, amendmentDAO,
                 identificationHistoryService);
-        when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
+        lenient().when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
+        lenient().when(caseDAO.getForUpdate("case-1")).thenReturn(mutableCase());
+        var access = org.mockito.Mockito.mock(MicrobiologyCaseAccessService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "access", access);
+        lenient().when(access.hasLabUnitRole(any(), any(), any())).thenReturn(true);
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");
         lenient().when(identificationHistoryService.recordChange(any(MicroIsolate.class), any(MicroIsolate.class),
@@ -91,7 +95,8 @@ public class MicroIsolateServiceTest {
         MicroCase amendmentCase = mutableCase();
         amendmentCase.setStage(MicroCaseStage.AMENDED.name());
         amendmentCase.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
-        when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        lenient().when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        lenient().when(caseDAO.getForUpdate("case-1")).thenReturn(amendmentCase);
         MicroCaseAmendment amendment = new MicroCaseAmendment();
         amendment.setId("amendment-1");
         amendment.setCaseId("case-1");
@@ -134,11 +139,16 @@ public class MicroIsolateServiceTest {
     }
 
     @Test
-    public void updateIdentificationRejectsACompletedWorkupWithPreliminaryStatus() {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.updateIdentification("iso-1", "org-1", "E. coli",
-                        MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.PRELIMINARY,
-                        "MALDI_TOF", new BigDecimal("99.5"), "1"));
+    public void updateIdentificationAcceptsPreliminaryIdentification() {
+        var isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        when(isolateDAO.update(isolate)).thenReturn(isolate);
+        var updated = service.updateIdentification("iso-1", "org-1", "E. coli", MicroIsolateSignificance.UNKNOWN,
+                MicroIsolateIdentificationStatus.PRELIMINARY, "MALDI_TOF", null, "1");
+        assertEquals("PRELIMINARY", updated.getIdentificationStatus());
+        assertEquals("org-1", updated.getOrganismId());
     }
 
     @Test
@@ -164,7 +174,8 @@ public class MicroIsolateServiceTest {
         MicroCase amendmentCase = mutableCase();
         amendmentCase.setStage(MicroCaseStage.AMENDED.name());
         amendmentCase.setFinalReleaseState(MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name());
-        when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        lenient().when(caseDAO.get("case-1")).thenReturn(Optional.of(amendmentCase));
+        lenient().when(caseDAO.getForUpdate("case-1")).thenReturn(amendmentCase);
         MicroIsolate isolate = new MicroIsolate();
         isolate.setId("iso-1");
         isolate.setCaseId("case-1");

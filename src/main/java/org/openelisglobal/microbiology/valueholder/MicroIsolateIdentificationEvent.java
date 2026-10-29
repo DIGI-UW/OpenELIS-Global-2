@@ -73,6 +73,29 @@ public class MicroIsolateIdentificationEvent extends BaseObject<String> {
     @Column(name = "changed_by", nullable = false, length = 20)
     private String changedBy;
 
+    @Column(name = "event_sequence", nullable = false)
+    private long eventSequence;
+
+    public long getEventSequence() {
+        return eventSequence;
+    }
+
+    public void setEventSequence(long value) {
+        eventSequence = value;
+    }
+
+    @Column(name = "identified_at")
+    private java.sql.Timestamp identifiedAt;
+
+    @Column(name = "previous_identified_at")
+    private java.sql.Timestamp previousIdentifiedAt;
+
+    @Column(name = "previous_mismatch_acknowledged_by")
+    private String previousMismatchAcknowledgedBy;
+
+    @Column(name = "previous_mismatch_acknowledged_at")
+    private java.sql.Timestamp previousMismatchAcknowledgedAt;
+
     @Override
     public String getId() {
         return id;
@@ -225,5 +248,37 @@ public class MicroIsolateIdentificationEvent extends BaseObject<String> {
 
     public void setChangedBy(String changedBy) {
         this.changedBy = changedBy;
+    }
+
+    public java.sql.Timestamp getIdentifiedAt() {
+        return identifiedAt;
+    }
+
+    public void setIdentifiedAt(java.sql.Timestamp value) {
+        identifiedAt = value;
+    }
+
+    public java.sql.Timestamp getPreviousIdentifiedAt() {
+        return previousIdentifiedAt;
+    }
+
+    public void setPreviousIdentifiedAt(java.sql.Timestamp value) {
+        previousIdentifiedAt = value;
+    }
+
+    public String getPreviousMismatchAcknowledgedBy() {
+        return previousMismatchAcknowledgedBy;
+    }
+
+    public void setPreviousMismatchAcknowledgedBy(String value) {
+        previousMismatchAcknowledgedBy = value;
+    }
+
+    public java.sql.Timestamp getPreviousMismatchAcknowledgedAt() {
+        return previousMismatchAcknowledgedAt;
+    }
+
+    public void setPreviousMismatchAcknowledgedAt(java.sql.Timestamp value) {
+        previousMismatchAcknowledgedAt = value;
     }
 }
