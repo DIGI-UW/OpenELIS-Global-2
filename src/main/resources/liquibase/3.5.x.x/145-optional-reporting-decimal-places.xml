@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <!-- Existing authored settings and patient results are deliberately preserved. -->
+    <changeSet id="145-optional-reporting-decimal-places" author="oe">
+        <dropDefaultValue schemaName="clinlims" tableName="result" columnName="significant_digits" columnDataType="numeric"/>
+        <dropDefaultValue schemaName="clinlims" tableName="test_result" columnName="significant_digits" columnDataType="numeric"/>
+        <renameColumn schemaName="clinlims" tableName="result" oldColumnName="significant_digits" newColumnName="reporting_decimal_places" columnDataType="numeric"/>
+        <renameColumn schemaName="clinlims" tableName="test_result" oldColumnName="significant_digits" newColumnName="reporting_decimal_places" columnDataType="numeric"/>
+        <renameColumn schemaName="clinlims" tableName="test_result_component" oldColumnName="significant_digits" newColumnName="reporting_decimal_places" columnDataType="integer"/>
+        <rollback>
+            <renameColumn schemaName="clinlims" tableName="test_result_component" oldColumnName="reporting_decimal_places" newColumnName="significant_digits" columnDataType="integer"/>
+            <renameColumn schemaName="clinlims" tableName="test_result" oldColumnName="reporting_decimal_places" newColumnName="significant_digits" columnDataType="numeric"/>
+            <renameColumn schemaName="clinlims" tableName="result" oldColumnName="reporting_decimal_places" newColumnName="significant_digits" columnDataType="numeric"/>
+            <addDefaultValue schemaName="clinlims" tableName="result" columnName="significant_digits" columnDataType="numeric" defaultValueNumeric="0"/>
+            <addDefaultValue schemaName="clinlims" tableName="test_result" columnName="significant_digits" columnDataType="numeric" defaultValueNumeric="0"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

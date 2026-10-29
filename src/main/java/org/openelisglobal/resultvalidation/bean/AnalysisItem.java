@@ -223,7 +223,7 @@ public class AnalysisItem implements Serializable {
 
     private boolean hasQualifiedResult = false;
 
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     private String rejectReasonId;
 
@@ -908,12 +908,12 @@ public class AnalysisItem implements Serializable {
         this.qualifiedResultId = qualifiedResultId;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public boolean isValid() {

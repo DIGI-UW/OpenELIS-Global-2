@@ -691,4 +691,5 @@
   <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
   <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
   <include relativeToChangelogFile="true" file="144-analyzer-setup-reception.xml"/>
+  <include relativeToChangelogFile="true" file="145-optional-reporting-decimal-places.xml"/>
 </databaseChangeLog>

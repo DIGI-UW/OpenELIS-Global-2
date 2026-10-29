@@ -622,19 +622,17 @@ public class StringUtil {
         return value.substring(0, value.length() - tail.length()) + tail;
     }
 
-    // not truly significant digits, just decimal places
-    public static String doubleWithSignificantDigits(double value, String significantDigits) {
-        if (GenericValidator.isBlankOrNull(significantDigits) || significantDigits.equals("-1")) {
+    public static String doubleWithReportingDecimalPlaces(double value, String reportingDecimalPlaces) {
+        if (GenericValidator.isBlankOrNull(reportingDecimalPlaces) || reportingDecimalPlaces.equals("-1")) {
             return String.valueOf(value);
         }
 
-        String format = "%1$." + significantDigits + "f";
+        String format = "%1$." + reportingDecimalPlaces + "f";
         return String.format(format, value);
     }
 
-    // not truly significant digits, just decimal places
-    public static String doubleWithSignificantDigits(double value, int significantDigits) {
-        String format = "%1$." + significantDigits + "f";
+    public static String doubleWithReportingDecimalPlaces(double value, int reportingDecimalPlaces) {
+        String format = "%1$." + reportingDecimalPlaces + "f";
         return String.format(format, value);
     }
 
@@ -674,19 +672,19 @@ public class StringUtil {
         return delimitedString;
     }
 
-    public static Double doubleWithInfinity(String significantDigits) {
-        if (GenericValidator.isBlankOrNull(significantDigits)) {
+    public static Double doubleWithInfinity(String reportingDecimalPlaces) {
+        if (GenericValidator.isBlankOrNull(reportingDecimalPlaces)) {
             return null;
         }
-        if ("Infinity".equals(significantDigits)) {
+        if ("Infinity".equals(reportingDecimalPlaces)) {
             return Double.POSITIVE_INFINITY;
         }
-        if ("-Infinity".equals(significantDigits)) {
+        if ("-Infinity".equals(reportingDecimalPlaces)) {
             return Double.NEGATIVE_INFINITY;
         }
 
         try {
-            return new Double(significantDigits);
+            return new Double(reportingDecimalPlaces);
         } catch (NumberFormatException e) {
             LogEvent.logError(e);
             return null;

@@ -106,7 +106,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.shadowResultValue", "testResult*.reflexJSONResult", "testResult*.testDate",
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
-            "testResult*.upperNormalRange", "testResult*.significantDigits", "testResult*.resultValue",
+            "testResult*.upperNormalRange", "testResult*.reportingDecimalPlaces", "testResult*.resultValue",
             "testResult*.qualifiedResultValue", "testResult*.multiSelectResultValues", "testResult*.testMethod",
             "testResult*.multiSelectResultValues", "testResult*.qualifiedResultValue",
             "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",

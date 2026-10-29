@@ -74,7 +74,7 @@ public class TestResultComponentServiceIntegrationTest extends BaseWebContextSen
         c.setDisplayOrder(1);
         c.setResultType("N");
         c.setUomId(uomId);
-        c.setSignificantDigits(2);
+        c.setReportingDecimalPlaces(2);
         c.setDefaultResult("120");
         c.setAllowMultipleReadings(true);
         c.setIsActive("Y");
@@ -90,7 +90,7 @@ public class TestResultComponentServiceIntegrationTest extends BaseWebContextSen
         assertEquals(Integer.valueOf(1), loaded.getDisplayOrder());
         assertEquals("N", loaded.getResultType());
         assertEquals(uomId, loaded.getUomId());
-        assertEquals(Integer.valueOf(2), loaded.getSignificantDigits());
+        assertEquals(Integer.valueOf(2), loaded.getReportingDecimalPlaces());
         assertEquals("120", loaded.getDefaultResult());
         assertTrue(loaded.getAllowMultipleReadings());
         assertEquals("Y", loaded.getIsActive());
@@ -103,12 +103,12 @@ public class TestResultComponentServiceIntegrationTest extends BaseWebContextSen
         c.setCode("PRIMARY");
         c.setLabel("Primary");
         c.setDisplayOrder(0);
-        // resultType, uomId, significantDigits, defaultResult left null
+        // resultType, uomId, reportingDecimalPlaces, defaultResult left null
         c.setSysUserId("1");
 
         TestResultComponent loaded = componentService.get(componentService.insert(c));
         assertNull("uom_id must round-trip as null when unset", loaded.getUomId());
-        assertNull(loaded.getSignificantDigits());
+        assertNull(loaded.getReportingDecimalPlaces());
         assertNull(loaded.getResultType());
         assertNull(loaded.getDefaultResult());
         // BOOLEAN NOT NULL DEFAULT false

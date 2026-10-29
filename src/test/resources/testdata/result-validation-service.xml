@@ -96,13 +96,13 @@
     <result id="1" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="1" test_result_id="1" is_reportable="Y"
         lastupdated="2025-04-04 14:00:00" min_normal="70.0" max_normal="100.0"
-        significant_digits="1" grouping="0" />
+        reporting_decimal_places="1" grouping="0" />
 
     <!-- Result for analysis 2 -->
     <result id="2" analysis_id="2" sort_order="1" result_type="N"
         value="10.0" analyte_id="2" test_result_id="2" is_reportable="Y"
         lastupdated="2025-04-04 14:00:00" min_normal="5.0" max_normal="15.0"
-        significant_digits="1" grouping="0" />
+        reporting_decimal_places="1" grouping="0" />
 
     <!-- Reference Tables -->
     <reference_tables id="1" name="analysis"

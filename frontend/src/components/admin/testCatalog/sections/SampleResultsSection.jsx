@@ -288,7 +288,7 @@ const SampleResultsSection = ({ testId }) => {
     if (nextType !== "N") {
       // Numeric-only fields.
       patch.uomId = "";
-      patch.significantDigits = null;
+      patch.reportingDecimalPlaces = null;
       patch.allowMultipleReadings = false;
     }
     if (!isSelectList) {
@@ -443,7 +443,7 @@ const SampleResultsSection = ({ testId }) => {
           // The type is an explicit choice (FR-56/28) — no silent Numeric
           // default.
           resultType: null,
-          significantDigits: null,
+          reportingDecimalPlaces: null,
           defaultResult: "",
           allowMultipleReadings: false,
           isPrimary: prev.length === 0,
@@ -752,7 +752,7 @@ const SampleResultsSection = ({ testId }) => {
         ...c,
         defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
-        significantDigits: toInt(c.significantDigits),
+        reportingDecimalPlaces: toInt(c.reportingDecimalPlaces),
         lod: toInt(c.lod),
         loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
@@ -1104,25 +1104,25 @@ const SampleResultsSection = ({ testId }) => {
                       </div>
                     )}
                     <NumberInput
-                      id={`comp-sigdig-${ci}`}
+                      id={`comp-reporting-decimals-${ci}`}
                       label={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces",
                       })}
                       helperText={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.significantDigits.helper",
+                        id: "label.testCatalog.sampleResults.reportingDecimalPlaces.helper",
                       })}
                       min={0}
                       max={10}
                       allowEmpty
                       value={
-                        c.significantDigits === null ||
-                        c.significantDigits === undefined
+                        c.reportingDecimalPlaces === null ||
+                        c.reportingDecimalPlaces === undefined
                           ? ""
-                          : c.significantDigits
+                          : c.reportingDecimalPlaces
                       }
                       onChange={(_e, { value }) =>
                         patchComponent(ci, {
-                          significantDigits: value === "" ? null : value,
+                          reportingDecimalPlaces: value === "" ? null : value,
                         })
                       }
                     />

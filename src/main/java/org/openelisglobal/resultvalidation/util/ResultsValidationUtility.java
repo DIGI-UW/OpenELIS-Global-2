@@ -719,9 +719,8 @@ public class ResultsValidationUtility {
             testItem.setResultType(getTestResultType(testResults));
         }
         testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
-                result == null ? null : result.getReportedValue()));
-        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
-                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
+                result == null ? null : result.getValue()));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType()));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
         testItem.setChildReflex(analysis.getTriggeredReflex() && isConclusion(result, analysis));
@@ -741,7 +740,7 @@ public class ResultsValidationUtility {
             testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
-                    resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
+                    resultLimit, testResults.isEmpty() ? null : testResults.get(0).getReportingDecimalPlaces(), " - "));
         }
     }
 
@@ -1156,9 +1155,9 @@ public class ResultsValidationUtility {
             }
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {
-                // analysisResultItem.setSignificantDigits( result.getMinNormal().equals(
-                // result.getMaxNormal())? -1 : result.getSignificantDigits());
-                analysisResultItem.setSignificantDigits(result.getSignificantDigits());
+                // analysisResultItem.setReportingDecimalPlaces( result.getMinNormal().equals(
+                // result.getMaxNormal())? -1 : result.getReportingDecimalPlaces());
+                analysisResultItem.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
             }
         }
         analysisResultItem.setReflexGroup(testResultItem.isReflexGroup());
@@ -1225,7 +1224,7 @@ public class ResultsValidationUtility {
         resultService.getResultsByAnalysis(analysis).stream()
                 .filter(stored -> item.getResultId().equals(stored.getId()))
                 .filter(stored -> !GenericValidator.isBlankOrNull(stored.getValue()))
-                .filter(stored -> item.getResult().trim().equals(resultService.getResultValue(stored, false)))
+                .filter(stored -> item.getResult().trim().equals(resultService.formatResultForDisplay(stored, false)))
                 .findFirst().ifPresent(stored -> item.setResult(stored.getEnteredValue()));
     }
 
@@ -1236,7 +1235,7 @@ public class ResultsValidationUtility {
             return result.split("\\(")[0].trim();
         } else {
             ResultService resultResultService = SpringContext.getBean(ResultService.class);
-            return resultResultService.getResultValue(testResultItem.getResult(), false);
+            return resultResultService.formatResultForDisplay(testResultItem.getResult(), false);
         }
     }
 

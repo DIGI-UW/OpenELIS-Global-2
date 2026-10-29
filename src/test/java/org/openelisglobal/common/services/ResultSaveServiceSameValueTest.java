@@ -14,7 +14,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 public class ResultSaveServiceSameValueTest extends BaseWebContextSensitiveTest {
 
     @Test
-    public void aNumericValuePaddedToItsSignificantDigitsIsTheSameValue() {
+    public void aNumericValuePaddedToItsReportingDecimalPlacesIsTheSameValue() {
         assertTrue(ResultSaveService.isSameValue("1.20", "1.2", "N"));
         assertTrue(ResultSaveService.isSameValue("0.50", "0.5", "N"));
         assertTrue(ResultSaveService.isSameValue("25", "25.0", "N"));

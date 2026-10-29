@@ -57,8 +57,9 @@
             be assigned at all, and through the getters a NULL could not be written back
             (OGC-1170). The getters keep returning int, substituting a safe value for
             callers. -->
-        <property name="significantDigits" type="java.lang.Integer"
-            column="significant_digits" access="field" />
+        <property name="reportingDecimalPlaces"
+            type="java.lang.Integer" column="reporting_decimal_places"
+            access="field" />
         <property name="grouping" type="java.lang.Integer"
             column="grouping" access="field" />
         <property name="fhirUuid" column="fhir_uuid"

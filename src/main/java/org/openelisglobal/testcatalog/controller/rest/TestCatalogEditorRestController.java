@@ -1095,7 +1095,7 @@ public class TestCatalogEditorRestController {
         public Integer displayOrder;
         public String resultType;
         public String uomId;
-        public Integer significantDigits;
+        public Integer reportingDecimalPlaces;
         public String defaultResult;
         public Boolean allowMultipleReadings;
         // Exactly one component per test is primary — the one mirrored to the
@@ -1258,6 +1258,9 @@ public class TestCatalogEditorRestController {
             if (!knownResultType(c.resultType)) {
                 return refusedSampleResults(testId, "resultType.unknown", c.label);
             }
+            if (c.reportingDecimalPlaces != null && (c.reportingDecimalPlaces < 0 || c.reportingDecimalPlaces > 10)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
             if (!codes.add(c.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
@@ -1296,7 +1299,7 @@ public class TestCatalogEditorRestController {
             e.setDisplayOrder(c.displayOrder != null ? c.displayOrder : 0);
             e.setResultType(c.resultType);
             e.setUomId(c.uomId);
-            e.setSignificantDigits(c.significantDigits);
+            e.setReportingDecimalPlaces(c.reportingDecimalPlaces);
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
@@ -1390,7 +1393,7 @@ public class TestCatalogEditorRestController {
             dto.displayOrder = c.getDisplayOrder();
             dto.resultType = c.getResultType();
             dto.uomId = c.getUomId();
-            dto.significantDigits = c.getSignificantDigits();
+            dto.reportingDecimalPlaces = c.getReportingDecimalPlaces();
             dto.defaultResult = c.getDefaultResult();
             if (isBlank(dto.defaultResult) && c.getId().equals(primaryId) && legacyDefault != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(c.getResultType())) {

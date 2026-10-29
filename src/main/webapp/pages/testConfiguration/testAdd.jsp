@@ -835,7 +835,7 @@
         jQuery("#highNormal_0").removeClass("error");
         jQuery("#lowReportingRange").val('-Infinity');
         jQuery("#highReportingRange").val('Infinity');
-        jQuery("#significantDigits").val('');
+        jQuery("#reportingDecimalPlaces").val('');
         jQuery("#lowerAge_0").val('0');
         jQuery("#upperAge_0").text('');
         jQuery("#upperAgeSetter_0").val('Infinity');
@@ -946,7 +946,7 @@
         jsonObj.lowCritical = jQuery("#lowCritical").val();
         jsonObj.highCritical = jQuery("#highCritical").val();
 
-        jsonObj.significantDigits = jQuery("#significantDigits").val();
+        jsonObj.reportingDecimalPlaces = jQuery("#reportingDecimalPlaces").val();
         jsonObj.resultLimits = [];
 
 
@@ -1513,8 +1513,8 @@ td {
             </tr>
             <tr id="endRow"></tr>
         </table>
-        <label for="significantDigits"><spring:message code="label.significant.digits" /></label>
-        <input type="number" min="0" max="10" id="significantDigits">
+        <label for="reportingDecimalPlaces"><spring:message code="label.reporting.decimal.places" /></label>
+        <input type="number" min="0" max="10" id="reportingDecimalPlaces">
     </div>
 
 

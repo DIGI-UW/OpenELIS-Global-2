@@ -12,7 +12,6 @@ import org.json.simple.JSONObject;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -135,7 +134,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
      */
     @Override
     @Transactional(readOnly = true)
-    public String getSimpleResultValue(Result result) {
+    public String formatSimpleResultForDisplay(Result result) {
         if (GenericValidator.isBlankOrNull(result.getValue())) {
             return "";
         }
@@ -143,11 +142,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(getTestType(result))) {
             return getDictEntry(result);
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            int significantPlaces = result.getSignificantDigits();
-            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
-                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces);
-            }
-            return StringUtil.roundToPlaces(result.getValue(), significantPlaces);
+            return result.getDisplayValue();
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -167,13 +162,13 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
      */
     @Override
     @Transactional(readOnly = true)
-    public String getResultValue(Result result, boolean printable) {
-        return getResultValue(result, ",", printable, false);
+    public String formatResultForDisplay(Result result, boolean printable) {
+        return formatResultForDisplay(result, ",", printable, false);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public String getResultValue(Result result, String separator, boolean printable, boolean includeUOM) {
+    public String formatResultForDisplay(Result result, String separator, boolean printable, boolean includeUOM) {
         if (GenericValidator.isBlankOrNull(result.getValue())) {
             return "";
         }
@@ -241,12 +236,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             }
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            int significantPlaces = result.getSignificantDigits();
-            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
-                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
-                        + appendUOM(result, includeUOM);
-            }
-            return StringUtil.roundToPlaces(result.getValue(), significantPlaces) + appendUOM(result, includeUOM);
+            return result.getDisplayValue() + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -324,12 +314,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             }
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
-            int significantPlaces = result.getSignificantDigits();
-            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
-                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
-                        + appendUOM(result, includeUOM);
-            }
-            return StringUtil.roundToPlaces(result.getValue(), significantPlaces) + appendUOM(result, includeUOM);
+            return result.getDisplayValue() + appendUOM(result, includeUOM);
         } else if (TypeOfTestResultServiceImpl.ResultType.ALPHA.matches(result.getResultType())
                 && !GenericValidator.isBlankOrNull(result.getValue())) {
             return result.getValue().split("\\(")[0].trim();
@@ -441,7 +426,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             if (result.getMinNormal() != null && result.getMaxNormal() != null
                     && !result.getMinNormal().equals(result.getMaxNormal())) {
                 range = SpringContext.getBean(ResultLimitService.class).getDisplayNormalRange(result.getMinNormal(),
-                        result.getMaxNormal(), String.valueOf(result.getSignificantDigits()), "-");
+                        result.getMaxNormal(), String.valueOf(result.getReportingDecimalPlaces()), "-");
             }
         } else if (includeSelectList
                 && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())) {

@@ -30,7 +30,7 @@ public class TestResult extends BaseObject<String> {
     private String flags;
     private String testResultType;
     private String value;
-    private String significantDigits;
+    private String reportingDecimalPlaces;
     private String quantLimit;
     private String contLevel;
     private String scriptletName;
@@ -130,12 +130,12 @@ public class TestResult extends BaseObject<String> {
         this.resultGroup = resultGroup;
     }
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getTestResultType() {

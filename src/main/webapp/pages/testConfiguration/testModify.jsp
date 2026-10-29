@@ -1058,14 +1058,14 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
 			jQuery("#nextButton").prop("disabled", false);	
 
         } else if (step == 'step2') {
-        	var significantDigits = null;
+            var reportingDecimalPlaces = null;
 			var dictionaryValues = null;
 			var dictionaryIds = null;
 			var referenceValue = null;
 			var referenceId = null;
 
             jQuery(".resultClass").each(function (i,elem) {
-            	significantDigits = jQuery(elem).attr("fSignificantDigits")
+                reportingDecimalPlaces = jQuery(elem).attr("fReportingDecimalPlaces")
             	dictionaryIds = jQuery(elem).attr("fDictionaryIds")
             	dictionaryValues = jQuery(elem).attr("fDictionaryValues")
             	referenceValue = jQuery(elem).attr("fReferenceValue")
@@ -1095,7 +1095,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
                 createJSON(); 
             } else if (resultTypeId == '<%=TypeOfTestResultServiceImpl.ResultType.NUMERIC.getId()%>') {
             		step = "step3Numeric";
-            		jQuery("#significantDigits").val(significantDigits);
+                    jQuery("#reportingDecimalPlaces").val(reportingDecimalPlaces);
                     jQuery("#normalRangeAskDiv").show();
                     jQuery("#editResultLimitsButton").show();
                     jQuery("#sampleTypeSelectionDiv").hide();
@@ -1480,7 +1480,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         jQuery("#highNormal_0").removeClass("error");
         jQuery("#lowReportingRange").val('-Infinity');
         jQuery("#highReportingRange").val('Infinity');
-        //jQuery("#significantDigits").val('');
+        //jQuery("#reportingDecimalPlaces").val('');
         jQuery("#lowerAge_0").val('0');
         jQuery("#upperAge_0").text('');
         jQuery("#upperAgeSetter_0").val('Infinity');
@@ -1562,14 +1562,14 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         	//dictionary from defaults if empty
         	if(JSON.stringify(jsonObj.dictionary) == "[]") {
         		console.log(JSON.stringify(jsonObj.dictionaryReference));
-        		var significantDigits = null;
+                var reportingDecimalPlaces = null;
 				var dictionaryValues = null;
 				var referenceValue = null;
 				var dictionaryIds = null;
 				var referenceId = null;
 
            	 	jQuery(".resultClass").each(function (i,elem) {
-            		significantDigits = jQuery(elem).attr("fSignificantDigits")
+                    reportingDecimalPlaces = jQuery(elem).attr("fReportingDecimalPlaces")
             		dictionaryValues = jQuery(elem).attr("fDictionaryValues")
             		referenceValue = jQuery(elem).attr("fReferenceValue")
             		dictionaryIds = jQuery(elem).attr("fDictionaryIds")
@@ -1716,7 +1716,7 @@ String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.
         jsonObj.highValid = jQuery("#highValid").val();
         jsonObj.lowReportingRange = jQuery("#lowReportingRange").val();
         jsonObj.highReportingRange = jQuery("#highReportingRange").val();
-        jsonObj.significantDigits = jQuery("#significantDigits").val();
+        jsonObj.reportingDecimalPlaces = jQuery("#reportingDecimalPlaces").val();
         jsonObj.resultLimits = [];
 
         jQuery("#normalRangeDiv .rowKey").each(function () {
@@ -1876,7 +1876,7 @@ td {
 					fResultType='<%=bean.getResultType()%>'
 					fPanel='<%=bean.getPanel()%>' 
 					fSampleType='<%=bean.getSampleType()%>'
-					fSignificantDigits='<%=bean.getSignificantDigits()%>'
+					fReportingDecimalPlaces='<%=bean.getReportingDecimalPlaces()%>'
 					fDictionaryValues='<%=bean.getDictionaryValues()%>'
 					fDictionaryIds='<%=bean.getDictionaryIds()%>'
 					fReferenceValue='<%=bean.getReferenceValue()%>'
@@ -1936,7 +1936,7 @@ td {
 				</tr>
 				<tr>
 					<td><span class="catalog-label"><spring:message code="label.uom" /></span> <b><%=bean.getUom()%></b></td>
-					<td><span class="catalog-label"><spring:message code="label.significant.digits" /></span> <b><%=bean.getSignificantDigits()%></b>
+					<td><span class="catalog-label"><spring:message code="label.reporting.decimal.places" /></span> <b><%=bean.getReportingDecimalPlaces()%></b>
 					</td>
 					<td><span class="catalog-label"><spring:message code="label.loinc" /></span> <b><%=bean.getLoinc()%></b></td>
 				</tr>
@@ -2553,8 +2553,8 @@ td {
 			</tr>        
 			<tr id="endRow"></tr>      
 		</table>
-		<label for="significantDigits"><spring:message code="label.significant.digits" /></label> <input type="number" min="0"
-			max="10" id="significantDigits">
+        <label for="reportingDecimalPlaces"><spring:message code="label.reporting.decimal.places" /></label> <input type="number" min="0"
+            max="10" id="reportingDecimalPlaces">
 	</div>
 
 	<div class="selectShow"

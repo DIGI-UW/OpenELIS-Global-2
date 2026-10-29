@@ -465,7 +465,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                                 : resultLimitService.getResultLimitForComponentAndPatient(scope, patient,
                                         result.getSampleTypeId()));
                 String letter = ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(
-                        StringUtil.roundToPlaces(result.getValue(), result.getSignificantDigits())));
+                        StringUtil.roundToPlaces(result.getValue(), result.getReportingDecimalPlaces())));
                 if (!GenericValidator.isBlankOrNull(letter)) {
                     critical.add(result.getSampleId());
                 }
@@ -861,7 +861,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
             return String.join(", ", names);
         }
         return ResultType.NUMERIC.matches(result.getResultType())
-                ? StringUtil.getActualNumericValue(result.getReportedValue())
+                ? StringUtil.getActualNumericValue(result.getDisplayValue())
                 : value;
     }
 
@@ -876,7 +876,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 String flag = "";
                 if (result.getMinNormal() != null && result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    double value = Double.parseDouble(StringUtil.getActualNumericValue(result.getReportedValue()));
+                    double value = Double.parseDouble(StringUtil.getActualNumericValue(result.getValue()));
                     if (value < result.getMinNormal()) {
                         flag = ResultAlertFlags.BELOW;
                     } else if (value > result.getMaxNormal()) {
@@ -885,7 +885,7 @@ public class ReportQueueServiceImpl implements ReportQueueService {
                 }
                 ResultLimit limit = resultLimitService.getResultLimitForResult(analysis, result, patient);
                 String critical = ResultAlertFlags.criticalLetter(limit,
-                        StringUtil.getActualNumericValue(result.getReportedValue()));
+                        StringUtil.getActualNumericValue(result.getValue()));
                 return GenericValidator.isBlankOrNull(critical) ? flag : critical;
             }
             if (ResultType.isDictionaryVariant(result.getResultType())

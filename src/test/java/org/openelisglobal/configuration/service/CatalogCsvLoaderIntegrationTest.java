@@ -222,7 +222,7 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(Integer.valueOf(1), count("sampletype_test", "test_id = " + serumVariant));
         assertEquals(Integer.valueOf(1), count("sampletype_test", "test_id = " + plasmaVariant));
         assertEquals("the numeric result definition survives the update", Integer.valueOf(1),
-                count("test_result", "test_id = " + serumVariant + " AND significant_digits = 2 AND is_active"));
+                count("test_result", "test_id = " + serumVariant + " AND reporting_decimal_places = 2 AND is_active"));
         Map<String, Object> unlisted = testRow("IT1193VL(" + PREFIX + "Blood)");
         assertEquals("a variant for a specimen the row does not list is a different test and stays untouched",
                 Long.valueOf(bloodVariant), Long.valueOf(((Number) unlisted.get("id")).longValue()));
@@ -389,11 +389,11 @@ public class CatalogCsvLoaderIntegrationTest extends BaseWebContextSensitiveTest
                 testId, PREFIX + "Legacy", description, UUID.randomUUID().toString(), localizationId);
     }
 
-    private void insertNumericResult(long id, long testId, int significantDigits) {
+    private void insertNumericResult(long id, long testId, int reportingDecimalPlaces) {
         jdbc.update(
-                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, significant_digits, sort_order,"
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, reporting_decimal_places, sort_order,"
                         + " is_active, lastupdated) VALUES (?, ?, 'N', ?, 1, true, NOW())",
-                id, testId, significantDigits);
+                id, testId, reportingDecimalPlaces);
     }
 
     private void load(DomainConfigurationHandler handler, String csv, String fileName) throws Exception {

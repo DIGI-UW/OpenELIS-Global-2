@@ -43,7 +43,7 @@ export async function seedNumericTests(
   placement: {
     testSection: string;
     sampleType: string;
-    significantDigits?: number;
+    reportingDecimalPlaces?: number;
   },
 ): Promise<SeededTest[]> {
   await importCsv(page, `tests-e2e-${run}.csv`, [
@@ -54,10 +54,10 @@ export async function seedNumericTests(
     ),
   ]);
   await importCsv(page, `result-components-e2e-${run}.csv`, [
-    "testName,code,label,resultType,significantDigits,isPrimary,showOnReport",
+    "testName,code,label,resultType,reportingDecimalPlaces,isPrimary,showOnReport",
     ...tests.map(
       ({ name }) =>
-        `${name},PRIMARY,${name},N,${placement.significantDigits ?? 2},Y,Y`,
+        `${name},PRIMARY,${name},N,${placement.reportingDecimalPlaces ?? 2},Y,Y`,
     ),
   ]);
   const catalog = (await (

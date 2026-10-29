@@ -43,9 +43,10 @@
         <property name="value" type="java.lang.String">
             <column name="VALUE" length="80" />
         </property>
-        <property name="significantDigits"
+        <property name="reportingDecimalPlaces"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="SIGNIFICANT_DIGITS" precision="22" scale="0" />
+            <column name="reporting_decimal_places" precision="22"
+                scale="0" />
         </property>
         <property name="quantLimit" type="java.lang.String">
             <column name="QUANT_LIMIT" length="30" />

@@ -36,30 +36,29 @@ public class CriticalRangeDisplayTest {
 
     @Test
     public void reportsBothBoundsWhenBothAreAuthored() {
-        assertEquals("< 50.0 or > 400.0", CriticalRangeFormat.display(authoredLimit(50d, 400d), "N", DIGITS));
+        assertEquals("< 50.0 or > 400.0", CriticalRangeFormat.display(authoredLimit(50d, 400d), "N"));
     }
 
     @Test
     public void reportsOneBoundWhenOnlyOneIsAuthored() {
-        assertEquals("< 50.0", CriticalRangeFormat.display(authoredLimit(50d, null), "N", DIGITS));
-        assertEquals("> 400.0", CriticalRangeFormat.display(authoredLimit(null, 400d), "N", DIGITS));
+        assertEquals("< 50.0", CriticalRangeFormat.display(authoredLimit(50d, null), "N"));
+        assertEquals("> 400.0", CriticalRangeFormat.display(authoredLimit(null, 400d), "N"));
     }
 
     /** The reported defect, in both spellings of "unset". */
     @Test
     public void saysNothingWhenABoundIsAnUnsetInfinity() {
-        assertEquals("", CriticalRangeFormat.display(authoredLimit(Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY),
-                "N", DIGITS));
-        assertEquals("", CriticalRangeFormat.display(authoredLimit(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY),
-                "N", DIGITS));
+        assertEquals("",
+                CriticalRangeFormat.display(authoredLimit(Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY), "N"));
+        assertEquals("",
+                CriticalRangeFormat.display(authoredLimit(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY), "N"));
         assertEquals("a NaN bound is not a bound either", "",
-                CriticalRangeFormat.display(authoredLimit(Double.NaN, Double.NaN), "N", DIGITS));
+                CriticalRangeFormat.display(authoredLimit(Double.NaN, Double.NaN), "N"));
     }
 
     @Test
     public void anUnsetLowBoundDoesNotSuppressAnAuthoredHighOne() {
-        assertEquals("> 400.0",
-                CriticalRangeFormat.display(authoredLimit(Double.NEGATIVE_INFINITY, 400d), "N", DIGITS));
+        assertEquals("> 400.0", CriticalRangeFormat.display(authoredLimit(Double.NEGATIVE_INFINITY, 400d), "N"));
     }
 
     /** A coded result has no numeric zone it could be critical in. */
@@ -67,9 +66,9 @@ public class CriticalRangeDisplayTest {
     public void saysNothingForANonNumericResult() {
         ResultLimit limit = authoredLimit(50d, 400d);
 
-        assertEquals("", CriticalRangeFormat.display(limit, "D", DIGITS));
-        assertEquals("", CriticalRangeFormat.display(limit, "A", DIGITS));
-        assertEquals("", CriticalRangeFormat.display(limit, null, DIGITS));
+        assertEquals("", CriticalRangeFormat.display(limit, "D"));
+        assertEquals("", CriticalRangeFormat.display(limit, "A"));
+        assertEquals("", CriticalRangeFormat.display(limit, null));
     }
 
     /**
@@ -83,7 +82,7 @@ public class CriticalRangeDisplayTest {
         synthetic.setLowCritical(50d);
         synthetic.setHighCritical(400d);
 
-        assertEquals("", CriticalRangeFormat.display(synthetic, "N", DIGITS));
-        assertEquals("", CriticalRangeFormat.display(null, "N", DIGITS));
+        assertEquals("", CriticalRangeFormat.display(synthetic, "N"));
+        assertEquals("", CriticalRangeFormat.display(null, "N"));
     }
 }

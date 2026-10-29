@@ -44,11 +44,11 @@ public interface TestResultComponentService extends BaseObjectService<TestResult
      * Reconcile the test's PRIMARY component from its legacy data so edits made on
      * the old Test Add/Modify page surface in the new editor. Creates the PRIMARY
      * component if the test has none (legacy-created tests), then sets its
-     * unit-of-measure ({@code test.uom_id}), result type and significant digits
-     * (from the test's {@code test_result} rows), and repoints the test's options
-     * ({@code test_result}) and ranges ({@code result_limits}) that legacy wrote
-     * with a NULL {@code component_id} onto the PRIMARY component. The inverse of
-     * the new-editor save; mirrors the M1 backfill, scoped to one test.
+     * unit-of-measure ({@code test.uom_id}), result type and reporting decimal
+     * places (from the test's {@code test_result} rows), and repoints the test's
+     * options ({@code test_result}) and ranges ({@code result_limits}) that legacy
+     * wrote with a NULL {@code component_id} onto the PRIMARY component. The
+     * inverse of the new-editor save; mirrors the M1 backfill, scoped to one test.
      */
     void syncPrimaryComponentFromLegacy(String testId, String sysUserId);
 }

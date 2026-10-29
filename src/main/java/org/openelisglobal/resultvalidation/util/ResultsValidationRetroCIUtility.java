@@ -852,10 +852,11 @@ public class ResultsValidationRetroCIUtility {
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {
                 if (result.getMinNormal() == null || result.getMaxNormal() == null) {
-                    analysisResultItem.setSignificantDigits(result.getSignificantDigits());
+                    analysisResultItem.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
                 } else {
-                    analysisResultItem.setSignificantDigits(
-                            result.getMinNormal().equals(result.getMaxNormal()) ? -1 : result.getSignificantDigits());
+                    analysisResultItem
+                            .setReportingDecimalPlaces(result.getMinNormal().equals(result.getMaxNormal()) ? -1
+                                    : result.getReportingDecimalPlaces());
                 }
             }
         }
@@ -881,7 +882,7 @@ public class ResultsValidationRetroCIUtility {
             return result.split("\\(")[0].trim();
         } else {
             ResultService resultResultService = SpringContext.getBean(ResultService.class);
-            return resultResultService.getResultValue(testResultItem.getResult(), false);
+            return resultResultService.formatResultForDisplay(testResultItem.getResult(), false);
         }
     }
 

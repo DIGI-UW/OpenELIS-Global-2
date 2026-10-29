@@ -283,24 +283,24 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setCompleteDate(staged.getCompleteDateForDisplay());
         item.setTestResultType(staged.getResultType());
         item.setTestName(staged.getTestName());
-        item.setSignificantDigits(significantDigitsFor(staged));
+        item.setReportingDecimalPlaces(reportingDecimalPlacesFor(staged));
         item.setManual(false);
     }
 
     @Override
-    public String significantDigitsFor(AnalyzerResults staged) {
+    public String reportingDecimalPlacesFor(AnalyzerResults staged) {
         if (staged.getTestId() == null || GenericValidator.isBlankOrNull(staged.getResult())) {
             return null;
         }
         if (staged.getComponentId() != null) {
             return testResultComponentService.getMatch("id", staged.getComponentId())
-                    .map(TestResultComponent::getSignificantDigits).map(String::valueOf).orElse(null);
+                    .map(TestResultComponent::getReportingDecimalPlaces).map(String::valueOf).orElse(null);
         }
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(staged.getTestId());
         if (testResults == null || testResults.isEmpty()) {
             return null;
         }
-        return filterTestResultsByComponent(testResults, null).get(0).getSignificantDigits();
+        return filterTestResultsByComponent(testResults, null).get(0).getReportingDecimalPlaces();
     }
 
     /**
@@ -1115,7 +1115,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 } else {
                     result.setValue(resultValue);
                 }
-                applySignificantDigits(result, resultItem, "getResult");
+                applyReportingDecimalPlaces(result, resultItem, "getResult");
                 result.setSysUserId(sysUserId);
 
                 setAnalyte(result);
@@ -1145,7 +1145,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             result.setValue(rawValue);
             result.setResultType(resultItem.getTestResultType());
         }
-        applySignificantDigits(result, resultItem, "createNewResult");
+        applyReportingDecimalPlaces(result, resultItem, "createNewResult");
 
         addMinMaxNormal(result, resultItem, patient);
         result.setSysUserId(sysUserId);
@@ -1158,14 +1158,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * result carried, so it is reported as a new result under the same
      * configuration would be.
      */
-    private static void applySignificantDigits(Result result, AnalyzerResultItem resultItem, String caller) {
-        if (GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            result.clearSignificantDigits();
-        } else if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
-            result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+    private static void applyReportingDecimalPlaces(Result result, AnalyzerResultItem resultItem, String caller) {
+        if (GenericValidator.isBlankOrNull(resultItem.getReportingDecimalPlaces())) {
+            result.clearReportingDecimalPlaces();
+        } else if (StringUtil.isInteger(resultItem.getReportingDecimalPlaces())) {
+            result.setReportingDecimalPlaces(Integer.parseInt(resultItem.getReportingDecimalPlaces()));
         } else {
             LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), caller,
-                    "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
+                    "Invalid reportingDecimalPlaces value for testId '" + resultItem.getTestId() + "'");
         }
     }
 
