@@ -112,8 +112,6 @@ public class AnalyzerActivationServiceTest {
         analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
         activationAcknowledgement.put("action", "START_SETUP");
         activationAcknowledgement.put("receptionPurpose", "SETUP");
-        when(confirmationService.assessCurrent(snapshot))
-                .thenThrow(new AssertionError("Setup does not require mapping approval"));
         when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
                 .thenReturn(activationAcknowledgement);
         when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP",
@@ -122,6 +120,7 @@ public class AnalyzerActivationServiceTest {
         AnalyzerSetupReceptionResult result = service.startSetupReception(ANALYZER_ID, ACTOR);
 
         assertTrue(result.receiving());
+        verify(confirmationService, never()).assessCurrent(snapshot);
         assertEquals(Analyzer.AnalyzerStatus.VALIDATION, analyzer.getStatus());
         assertFalse(analyzer.isActive());
         assertNull(analyzer.getLastActivatedDate());
