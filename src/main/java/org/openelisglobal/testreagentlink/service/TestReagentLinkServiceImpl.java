@@ -2,6 +2,7 @@ package org.openelisglobal.testreagentlink.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.microbiology.service.MicroCultureTiming;
 import org.openelisglobal.testreagentlink.dao.TestReagentLinkDAO;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,5 +35,28 @@ public class TestReagentLinkServiceImpl extends AuditableBaseObjectServiceImpl<T
     @Transactional(readOnly = true)
     public TestReagentLink getByTestIdAndReagentId(String testId, Long reagentId) {
         return baseObjectDAO.getByTestIdAndReagentId(testId, reagentId);
+    }
+
+    @Override
+    @Transactional
+    public String insert(TestReagentLink link) {
+        validateCultureDefaults(link);
+        return super.insert(link);
+    }
+
+    @Override
+    @Transactional
+    public TestReagentLink update(TestReagentLink link) {
+        validateCultureDefaults(link);
+        return super.update(link);
+    }
+
+    private void validateCultureDefaults(TestReagentLink link) {
+        if (link.getCultureDuration() != null || link.getCultureDurationUnit() != null)
+            MicroCultureTiming.milliseconds(link.getCultureDuration(), link.getCultureDurationUnit());
+        if (link.getCultureCheckIntervalHours() != null)
+            MicroCultureTiming.milliseconds(link.getCultureCheckIntervalHours(), "HOURS");
+        MicroCultureTiming.validateLoopVolume(link.getCultureLoopVolume());
+        MicroCultureTiming.validateTemperature(link.getCultureTemperature());
     }
 }

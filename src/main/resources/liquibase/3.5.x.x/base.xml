@@ -690,4 +690,5 @@
   <!-- A held analyzer result keeps how its record read on arrival (spec point 13). -->
   <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
   <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
+  <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
 </databaseChangeLog>

@@ -5,6 +5,7 @@ import java.util.List;
 public class MicroCaseAddTestsForm {
     public String sampleItemId;
     public String placement;
+    public String cultureId;
     public List<String> testIds;
     public List<String> panelIds;
 }

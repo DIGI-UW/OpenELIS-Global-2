@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   name: "",
   tags: [],
   category: "",
+  microbiologyMedium: false,
   manufacturer: "",
   catalogNumber: "",
   upc: "",
@@ -102,6 +103,7 @@ const InventoryItemForm = ({
         name: item.name || "",
         tags: item.tags || [],
         category: item.category || "",
+        microbiologyMedium: !!item.microbiologyMedium,
         manufacturer: item.manufacturer || "",
         catalogNumber: item.catalogNumber || "",
         upc: item.upc || "",
@@ -196,6 +198,9 @@ const InventoryItemForm = ({
       const sanitizedData = {
         name: formData.name,
         tags: typedTags,
+        microbiologyMedium: !!formData.microbiologyMedium,
+        usualAtmosphereId: item?.usualAtmosphereId ?? null,
+        usualTemperature: item?.usualTemperature ?? null,
         category: formData.category,
         manufacturer: formData.manufacturer,
         units: formData.units,
@@ -432,6 +437,14 @@ const InventoryItemForm = ({
           min={0}
           max={999}
           allowEmpty
+        />
+        <Checkbox
+          id="inventory-microbiology-medium"
+          labelText={intl.formatMessage({ id: "inventory.microbiologyMedium" })}
+          checked={!!formData.microbiologyMedium}
+          onChange={(_, { checked }) =>
+            handleChange("microbiologyMedium", checked)
+          }
         />
 
         {observedLeadTime != null &&
