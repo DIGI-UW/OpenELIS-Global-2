@@ -637,10 +637,14 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     onVerifyMappings={() => editStep("verify")}
                     onProfileReset={reloadAfterReset}
                     onReadinessChange={setConnectReadiness}
-                    onContinue={(saved) => {
-                      setCandidate(saved);
-                      editStep("assays");
-                    }}
+                    onContinue={
+                      candidate.status === "ACTIVE"
+                        ? undefined
+                        : (saved) => {
+                            setCandidate(saved);
+                            editStep("assays");
+                          }
+                    }
                   />
                 ) : (
                   <Loading
