@@ -142,9 +142,17 @@ describe("LabPerformancePage", () => {
   it("calls out the accredited tests with no EQA cover", async () => {
     renderPage("coverage");
 
-    expect(await screen.findByTestId("coverage-gap-callout")).toHaveTextContent(
-      "TB smear microscopy",
+    const callout = await screen.findByTestId("coverage-gap-callout");
+    expect(callout).toHaveTextContent("TB smear microscopy");
+    expect(callout).toHaveTextContent(
+      "ISO 15189:2022 §7.3.7.3 alternative assessment is required",
     );
+    expect(
+      screen.getByText(/candidates for ISO 15189:2022 §7\.3\.7\.3 alternative/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("ISO 15189:2022 §7.3.7.3 candidates"),
+    ).toBeInTheDocument();
   });
 
   it("shows recent cycles with a pending verdict where nothing is scored", async () => {
