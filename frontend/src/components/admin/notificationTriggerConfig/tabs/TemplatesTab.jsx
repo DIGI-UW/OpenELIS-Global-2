@@ -76,7 +76,6 @@ export default function TemplatesTab() {
     const controller = new AbortController();
     fetchTemplates(controller.signal);
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateTemplate = (type, mutator) => {

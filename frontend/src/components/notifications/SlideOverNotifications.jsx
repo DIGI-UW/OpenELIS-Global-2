@@ -33,7 +33,6 @@ export default function SlideOverNotifications(props) {
 
   useEffect(() => {
     intialSubscriptionState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const intialSubscriptionState = async () => {

@@ -86,7 +86,6 @@ const RangesSection = ({ testId }) => {
         }
       },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   const handleSaveRange = (r) => {

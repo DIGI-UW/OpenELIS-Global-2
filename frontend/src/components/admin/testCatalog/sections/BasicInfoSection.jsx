@@ -183,7 +183,6 @@ const BasicInfoSection = ({ testId }) => {
     // show the checklist before the user tries to activate.
     loadCompleteness(controller.signal);
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, isCreate]);
 
   // Both create and edit need the Lab Unit + Sample type reference lists (they are

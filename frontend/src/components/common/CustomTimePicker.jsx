@@ -25,7 +25,6 @@ const CustomTimePicker = (props) => {
     if (initial.hour !== "" && initial.minute !== "") {
       props.onChange(`${initial.hour}:${initial.minute}`);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

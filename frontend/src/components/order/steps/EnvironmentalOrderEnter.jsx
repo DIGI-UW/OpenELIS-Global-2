@@ -93,7 +93,7 @@ const EnvironmentalOrderEnter = () => {
         },
       }));
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync local lab number when context changes.
   useEffect(() => {

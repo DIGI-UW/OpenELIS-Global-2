@@ -830,7 +830,6 @@ const AddOrder = (props) => {
         }
       },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderLabelSignature, isModifyOrder]);
 
   // Human-facing row label for the sample table, as the Result Reporting

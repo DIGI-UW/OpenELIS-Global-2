@@ -68,7 +68,6 @@ const GpsCoordinatesCapture = ({
       gpsCaptureMethod: captureMethod,
     };
     onChange(gpsData);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latitude, longitude, accuracy, captureMethod]);
 
   useEffect(() => {

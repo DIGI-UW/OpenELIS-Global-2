@@ -499,7 +499,6 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
     return () => {
       componentMounted.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Re-sync when the parent passes a different testId (only meaningful in
@@ -534,7 +533,6 @@ function TestComplianceThresholds({ embeddedTestId, onCountChange } = {}) {
   useEffect(() => {
     reload();
     setAdding(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTestId]);
 
   // v2.1 spec — Compliance tab shows a count badge on its tab label.

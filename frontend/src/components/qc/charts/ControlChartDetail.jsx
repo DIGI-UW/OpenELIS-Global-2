@@ -97,7 +97,7 @@ const ControlChartDetail = () => {
         }
       },
     );
-  }, [analyzerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [analyzerId]);
 
   // Reload chart when selected lot or date range changes
   useEffect(() => {

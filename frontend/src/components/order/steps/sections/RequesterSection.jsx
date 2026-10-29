@@ -135,7 +135,7 @@ const RequesterSection = ({
       rememberSiteAndRequester: true,
       sampleOrderItems: { ...prev.sampleOrderItems, ...remembered },
     }));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keep the stored copy in step with what is on the order right now, so the
   // next order starts from what the user last actually used.

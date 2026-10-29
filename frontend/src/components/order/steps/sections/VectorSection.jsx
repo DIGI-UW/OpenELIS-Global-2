@@ -239,7 +239,6 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
         s.collectionDate ? s : { ...s, collectionDate: collectionDate },
       ),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samples.length]);
 
   const updateEnvField = useCallback(

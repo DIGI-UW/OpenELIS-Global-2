@@ -593,7 +593,7 @@ function PathologyCaseView() {
     return () => {
       componentMounted.current = false;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const breadcrumbs = [
     { label: "home.label", link: "/" },
