@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This suite owns its database because export readers use separate connections.
+    Empty tables reset repeated per-test identities; result names and values
+    are supplied by each test so its injection and ordering assertions remain
+    explicit. -->
+<dataset>
+    <status_of_sample id="1" description="Entered"
+        code="1" status_type="SAMPLE" name="Entered" is_active="Y"
+        lastupdated="2002-03-04 00:00:00" />
+    <status_of_sample id="992200"
+        description="Study export finalized" code="6" status_type="ANALYSIS"
+        name="Finalized" is_active="Y" lastupdated="2002-03-04 00:00:00" />
+    <localization id="992200"
+        description="Study export section" />
+    <test_section id="992200" name="Study export fixture"
+        description="Study export fixture" name_localization_id="992200"
+        is_active="Y" />
+    <sample id="992200" accession_number="STUDY-PRIVATE-FIXTURE"
+        entered_date="2002-03-04" collection_date="2002-03-04"
+        received_date="2002-03-04" />
+    <sample_item id="992200" samp_id="992200" sort_order="1"
+        status_id="1" />
+    <person />
+    <patient />
+    <organization />
+    <dictionary />
+</dataset>

@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.opencsv.CSVReader;
+import jakarta.annotation.PreDestroy;
 import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.sql.Date;
@@ -14,6 +15,8 @@ import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.AppTestConfig;
+import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
@@ -22,11 +25,34 @@ import org.openelisglobal.reports.action.implementation.Report.DateRange;
 import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
- * Real PostgreSQL export fixtures; this class owns ids 992200 through 992299.
+ * Export readers open their own connections, so this suite owns a dedicated
+ * database for committed DBUnit fixtures and per-test result mutations.
  */
+@ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
+        CSVStudyExportColumnsTest.TestConfig.class })
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
+    @Configuration
+    public static class TestConfig extends BaseTestConfig {
+        private final PostgreSQLContainer<?> database = new PostgreSQLContainer<>("postgres:14.4");
+
+        @Override
+        protected PostgreSQLContainer<?> databaseContainer() {
+            return database;
+        }
+
+        @PreDestroy
+        public void stopDatabase() {
+            database.stop();
+        }
+    }
+
     private static final int SAMPLE = 992200;
     private static final Date DAY = Date.valueOf("2002-03-04");
     private Field dictionaryInstance;
@@ -34,34 +60,19 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void createFixture() throws Exception {
-        jdbcTemplate.update(
-                "INSERT INTO status_of_sample (id, description, code, status_type, name, is_active, lastupdated)"
-                        + " SELECT ?, 'Study export finalized', '1', 'ANALYSIS', 'Finalized', 'Y', NOW()"
-                        + " WHERE NOT EXISTS (SELECT 1 FROM status_of_sample WHERE status_type = 'ANALYSIS' AND name = 'Finalized')",
-                SAMPLE);
+        executeDataSetWithStateManagement("testdata/csv-study-export.xml");
         SpringContext.getBean(IStatusService.class).refreshCache();
         dictionaryInstance = ResourceTranslator.DictionaryTranslator.class.getDeclaredField("instance");
         dictionaryInstance.setAccessible(true);
         previousDictionary = dictionaryInstance.get(null);
         dictionaryInstance.set(null, null);
-        jdbcTemplate.update("INSERT INTO localization (id, description) VALUES (?, 'Study export section')", SAMPLE);
-        jdbcTemplate.update(
-                "INSERT INTO test_section (id, name, description, name_localization_id, is_active) VALUES (?, ?, ?, ?, 'Y')",
-                SAMPLE, "Study export fixture", "Study export fixture", SAMPLE);
-        jdbcTemplate.update("INSERT INTO sample (id, accession_number, entered_date, collection_date, received_date)"
-                + " VALUES (?, 'STUDY-PRIVATE-FIXTURE', ?, ?, ?)", SAMPLE, DAY, DAY, DAY);
-        jdbcTemplate.update("INSERT INTO sample_item (id, samp_id, sort_order, status_id) VALUES (?, ?, 1, 1)", SAMPLE,
-                SAMPLE);
+
     }
 
     @After
     public void cleanFixture() throws Exception {
-        dictionaryInstance.set(null, previousDictionary);
-        for (String table : new String[] { "observation_history", "observation_history_type", "result", "test_result",
-                "analysis", "panel_item", "panel", "sample_human", "sample_projects", "sample_organization",
-                "sample_item", "sample", "organization", "test", "test_section", "dictionary", "patient", "person",
-                "localization_value", "localization", "status_of_sample", "dictionary_category" }) {
-            jdbcTemplate.update("DELETE FROM " + table + " WHERE id BETWEEN 992200 AND 992299");
+        if (dictionaryInstance != null) {
+            dictionaryInstance.set(null, previousDictionary);
         }
         SpringContext.getBean(IStatusService.class).refreshCache();
     }
