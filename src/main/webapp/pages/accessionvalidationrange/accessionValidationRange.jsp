@@ -239,14 +239,6 @@ function toggleSampleSelectAll( element,groupingNumber ) {
 }
 
 
-function trim(element, reportingDecimalPlaces){
-    if( isNaN(reportingDecimalPlaces) || isNaN(element.value) ){
-        return;
-    }
-
-    element.value = round(element.value, reportingDecimalPlaces);
-}
-
 function updateReflexChild( group){
  	var reflexGroup = jQuery(".reflexGroup_" + group);
 	var childReflex = jQuery(".childReflex_" + group);
@@ -489,7 +481,7 @@ function altAccessionHighlightSearch(accessionNumber) {
 							   cssClass="${resultList.isHighlighted ? 'invalidHighlight' : ''}
 							   		  ${resultList.reflexGroup ? ' reflexGroup_' += resultList.sampleGroupingNumber : ''}  
 							          ${resultList.childReflex ? ' childReflex_' += resultList.sampleGroupingNumber : ''}"
-							   onchange='markUpdated(); makeDirty(); updateLogValue(this, ${iter.index}); trim(this, "${resultList.reportingDecimalPlaces}"); showHideNotes(${iter.index});
+							   onchange='markUpdated(); makeDirty(); updateLogValue(this, ${iter.index}); showHideNotes(${iter.index});
 								         ${(resultList.reflexGroup && (not resultList.childReflex)) ? "updateReflexChild(" += resulList.sampleGroupingNumber += " ); " : ""}'
 								                />
 						<c:out value="${resultList.units}"/>

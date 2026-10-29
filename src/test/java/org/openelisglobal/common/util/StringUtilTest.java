@@ -135,27 +135,6 @@ public class StringUtilTest {
     }
 
     @Test
-    public void padMantissa_shouldPadWithoutChangingTheNotationWritten() {
-        assertEquals("1.50e5", StringUtil.padMantissa("1.5e5", 2));
-        assertEquals("1.50E+05", StringUtil.padMantissa("1.5E+05", 2));
-        assertEquals("1.50 x 10^5", StringUtil.padMantissa("1.5 x 10^5", 2));
-        assertEquals("1.50×10⁵", StringUtil.padMantissa("1.5×10⁵", 2));
-        assertEquals("<2.50e-3", StringUtil.padMantissa("<2.5e-3", 2));
-        assertEquals("12.50", StringUtil.padMantissa("12.5", 2));
-    }
-
-    @Test
-    public void padMantissa_shouldLeaveAValueThatNeedsNoPaddingAlone() {
-        assertEquals("1.567e5", StringUtil.padMantissa("1.567e5", 2));
-        assertEquals("1.5e5", StringUtil.padMantissa("1.5e5", 0));
-        assertEquals("1.5e5", StringUtil.padMantissa("1.5e5", -1));
-        // A bare power of ten has no mantissa to pad.
-        assertEquals("10⁻³", StringUtil.padMantissa("10⁻³", 2));
-        assertEquals("10^-3", StringUtil.padMantissa("10^-3", 2));
-        assertEquals(null, StringUtil.padMantissa(null, 2));
-    }
-
-    @Test
     public void isScientificNotation_shouldRecogniseEveryWrittenFormAndNothingElse() {
         assertTrue(StringUtil.isScientificNotation("1.5e5"));
         assertTrue(StringUtil.isScientificNotation("1.5E+05"));

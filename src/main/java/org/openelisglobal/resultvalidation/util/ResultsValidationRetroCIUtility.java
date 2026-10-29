@@ -847,7 +847,9 @@ public class ResultsValidationRetroCIUtility {
                 Analysis analysis = testResultItem.getAnalysis();
                 analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
             } else {
-                analysisResultItem.setResult(getFormattedResult(testResultItem));
+                analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
+                        : getFormattedResult(testResultItem));
+                analysisResultItem.setDisplayResult(getFormattedResult(testResultItem));
             }
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {

@@ -481,7 +481,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     /**
      * The test's decimal places, widened to what the limits themselves need, so a
      * range of 0.7 to 1.1 on a test set to whole numbers reads 0.7 - 1.1 rather
-     * than 1 - 1. At most four places are added for a limit stored inexactly.
+     * than 1 - 1. Never discard digits from the stored reference bound.
      */
     static String rangeDigits(String reportingDecimalPlaces, double... limits) {
         if (GenericValidator.isBlankOrNull(reportingDecimalPlaces) || reportingDecimalPlaces.equals("-1")) {
@@ -498,7 +498,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
                 continue;
             }
             int needed = Math.max(0, new java.math.BigDecimal(Double.toString(limit)).stripTrailingZeros().scale());
-            digits = Math.max(digits, Math.min(needed, 4));
+            digits = Math.max(digits, needed);
         }
         return String.valueOf(digits);
     }

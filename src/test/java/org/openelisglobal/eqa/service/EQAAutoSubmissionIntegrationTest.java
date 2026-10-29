@@ -376,17 +376,15 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
 
         cycleSubmissionService.advanceCycle(cycle.getId());
 
-        assertEquals("each sample keeps its own value",
-                List.of(VL_ANALYTE + "|APC-26-6-A|505.00|VALIDATED_PARTIAL|null",
-                        VL_ANALYTE + "|APC-26-6-B|1190.00|VALIDATED_PARTIAL|null"),
-                rowsBySample(cycle.getId()));
+        assertEquals("each sample keeps its own value", List.of(VL_ANALYTE + "|APC-26-6-A|505|VALIDATED_PARTIAL|null",
+                VL_ANALYTE + "|APC-26-6-B|1190|VALIDATED_PARTIAL|null"), rowsBySample(cycle.getId()));
         String[] lines = cycleSubmissionService.exportBundleCsv(cycle.getId(), ENROLLMENT).split("\n");
         assertEquals("cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
                 + "submission_status,entered_at,sample_code", lines[0]);
         List<String> valueAndSample = java.util.Arrays.stream(lines).skip(1)
                 .map(line -> line.split(",", -1)[5] + "@" + line.substring(line.lastIndexOf(',') + 1)).sorted()
                 .toList();
-        assertEquals(List.of("1190.00@APC-26-6-B", "505.00@APC-26-6-A"), valueAndSample);
+        assertEquals(List.of("1190@APC-26-6-B", "505@APC-26-6-A"), valueAndSample);
     }
 
     @Test
@@ -405,14 +403,14 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
                 USER);
 
         assertEquals(1, outcome.get("scored"));
-        assertEquals("the score lands on the sample the provider judged, and only there", List
-                .of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190.00|SCORED|1105"),
+        assertEquals("the score lands on the sample the provider judged, and only there",
+                List.of(VL_ANALYTE + "|APC-26-6-A|505|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190|SCORED|1105"),
                 rowsBySample(cycle.getId()));
         String followup = jdbc.queryForObject(
                 "SELECT participant_result_summary_json FROM" + " clinlims.eqa_participant_followup WHERE cycle_id = ?",
                 String.class, cycle.getId());
         assertTrue("follow-up shows the scored sample's value: " + followup,
-                followup.contains("\"reported\":\"1190.00\""));
+                followup.contains("\"reported\":\"1190\""));
         assertTrue("and the target it was judged against: " + followup, followup.contains("\"target\":\"1105\""));
         assertTrue("and which sample it was: " + followup, followup.contains("\"sampleCode\":\"APC-26-6-B\""));
     }
@@ -431,8 +429,9 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
                 () -> cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
                         List.of(Map.of("analyteId", VL_ANALYTE, "performance", "questionable")), USER));
         assertTrue(refused.getMessage(), refused.getMessage().contains("must name its sample_code"));
-        assertEquals("nothing is scored", List.of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null",
-                VL_ANALYTE + "|APC-26-6-B|1190.00|SUBMITTED|null"), rowsBySample(cycle.getId()));
+        assertEquals("nothing is scored",
+                List.of(VL_ANALYTE + "|APC-26-6-A|505|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190|SUBMITTED|null"),
+                rowsBySample(cycle.getId()));
     }
 
     /**
@@ -457,8 +456,8 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
                 () -> cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
                         List.of(Map.of("analyteId", VL_ANALYTE, "performance", "acceptable")), USER));
         assertTrue(refused.getMessage(), refused.getMessage().contains("HIV viral load has 2 samples"));
-        assertEquals("sample A is still waiting for its own score", List
-                .of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190.00|SCORED|null"),
+        assertEquals("sample A is still waiting for its own score",
+                List.of(VL_ANALYTE + "|APC-26-6-A|505|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190|SCORED|null"),
                 rowsBySample(cycle.getId()));
     }
 
