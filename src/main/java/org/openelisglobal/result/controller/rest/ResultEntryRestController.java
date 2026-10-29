@@ -443,7 +443,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
                     body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
-                    body.put("resultValue", resultService.getResultValue(r, false));
+                    body.put("resultValue", resultService.formatResultForDisplay(r, false));
                 });
         return ResponseEntity.ok(body);
     }

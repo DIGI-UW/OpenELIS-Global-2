@@ -36,7 +36,7 @@ public class ResultSaveBean {
     private String reportable;
     private Double lowerNormalRange;
     private Double upperNormalRange;
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     public boolean isHasQualifiedResult() {
         return hasQualifiedResult;
@@ -155,12 +155,12 @@ public class ResultSaveBean {
         this.upperNormalRange = upperNormalRange;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public java.math.BigDecimal getExpandedUncertainty() {

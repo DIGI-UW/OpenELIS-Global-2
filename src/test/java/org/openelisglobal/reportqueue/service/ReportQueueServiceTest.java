@@ -448,7 +448,7 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void aCorrectionWithinTheReportedPrecisionAmendsAndNamesTheEnteredValues() {
-        jdbcTemplate.update("UPDATE clinlims.result SET significant_digits = 0 WHERE id = 9301");
+        jdbcTemplate.update("UPDATE clinlims.result SET reporting_decimal_places = 0 WHERE id = 9301");
         reportQueueService.print(SAMPLE, ADMIN).orElseThrow();
         jdbcTemplate.update("UPDATE clinlims.result SET value = '6.4', lastupdated = now() WHERE id = 9301");
 
@@ -462,19 +462,19 @@ public class ReportQueueServiceTest extends BaseWebContextSensitiveTest {
 
     /**
      * OGC-1544: the queue shows a result as reported, rounded to its test's places,
-     * and flags it on that value, so the page agrees with the printed report: 5.84
-     * to one place is 5.8, inside 3.9-5.8, so it is not flagged high.
+     * while flags use the clinical value: 5.84 reports as 5.8 but remains above
+     * 5.8.
      */
     @Test
-    public void aResultIsShownAndFlaggedAsReported() {
-        jdbcTemplate.update("UPDATE clinlims.result SET value = '5.84', significant_digits = 1 WHERE id = 9301");
+    public void aFormattedResultKeepsItsClinicalFlag() {
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '5.84', reporting_decimal_places = 1 WHERE id = 9301");
 
         ReportQueueRowDetailDTO.TestRowDTO test = reportQueueService.detail(SAMPLE, ADMIN).orElseThrow().getTests()
                 .stream().filter(t -> "9301".equals(String.valueOf(t.getAnalysisId()))).findFirst().orElseThrow();
 
         assertTrue(test.getResult(), test.getResult().startsWith("5.8"));
         assertFalse(test.getResult(), test.getResult().startsWith("5.84"));
-        assertEquals("", test.getFlag() == null ? "" : test.getFlag());
+        assertEquals("E", test.getFlag());
     }
 
     /**

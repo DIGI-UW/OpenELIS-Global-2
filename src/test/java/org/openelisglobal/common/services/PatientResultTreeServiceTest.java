@@ -116,7 +116,7 @@ public class PatientResultTreeServiceTest {
                 .thenReturn(true);
         lenient().when(testService.getResultType(any())).thenReturn("N");
         lenient().when(testService.getPossibleTestResults(any())).thenReturn(new ArrayList<>());
-        lenient().when(resultService.getSimpleResultValue(any(Result.class)))
+        lenient().when(resultService.formatSimpleResultForDisplay(any(Result.class)))
                 .thenAnswer(invocation -> ((Result) invocation.getArgument(0)).getValue());
     }
 

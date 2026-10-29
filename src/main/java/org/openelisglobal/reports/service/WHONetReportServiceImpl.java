@@ -142,7 +142,9 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                                             DateUtil.convertTimestampToStringDate(sampleItem.getCollectionDate()),
                                             sampleItem.getTypeOfSample().getDescription(),
                                             reflexAnalysis.getTest().getName(),
-                                            resultService.getSimpleResultValue(triggerResult), "",
+                                            ("N".equals(triggerResult.getResultType()) ? triggerResult.getValue()
+                                                    : resultService.formatSimpleResultForDisplay(triggerResult)),
+                                            "",
                                             reflexAnalysis.getMethod() == null ? ""
                                                     : reflexAnalysis.getMethod().getLocalizedValue(),
                                             sample.getGpsLatitude() != null ? sample.getGpsLatitude().toString() : "",
@@ -158,8 +160,10 @@ public class WHONetReportServiceImpl implements WHONetReportService {
                                                 DateUtil.convertTimestampToStringDate(sampleItem.getCollectionDate()),
                                                 sampleItem.getTypeOfSample().getDescription(),
                                                 reflexAnalysis.getTest().getName(),
-                                                resultService.getSimpleResultValue(triggerResult),
-                                                resultService.getSimpleResultValue(reflexResult),
+                                                ("N".equals(triggerResult.getResultType()) ? triggerResult.getValue()
+                                                        : resultService.formatSimpleResultForDisplay(triggerResult)),
+                                                ("N".equals(reflexResult.getResultType()) ? reflexResult.getValue()
+                                                        : resultService.formatSimpleResultForDisplay(reflexResult)),
                                                 reflexAnalysis.getMethod() == null ? ""
                                                         : reflexAnalysis.getMethod().getLocalizedValue(),
                                                 sample.getGpsLatitude() != null ? sample.getGpsLatitude().toString()

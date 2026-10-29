@@ -66,7 +66,7 @@ public class AccessionValidationKeepsEnteredValueTest extends BaseWebContextSens
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/validation-review-panel.xml");
-        jdbcTemplate.update("UPDATE clinlims.result SET value = '0.9', significant_digits = 0 WHERE id = 100");
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '0.9', reporting_decimal_places = 0 WHERE id = 100");
         authenticateAs("testUser");
         userService.saveUserLabUnitRoles(systemUserService.get("1"), Map.of("AllLabUnits", Set.of("9400")), "1");
         entityManager.flush();

@@ -65,7 +65,7 @@ public class TestAddControllerUtills {
         Double highReportingRange = null;
         Double lowCritical = null;
         Double highCritical = null;
-        String significantDigits = testAddParams.significantDigits;
+        String reportingDecimalPlaces = testAddParams.reportingDecimalPlaces;
         boolean numericResults = TypeOfTestResultServiceImpl.ResultType.isNumericById(testAddParams.resultTypeId);
         boolean dictionaryResults = TypeOfTestResultServiceImpl.ResultType
                 .isDictionaryVarientById(testAddParams.resultTypeId);
@@ -130,7 +130,7 @@ public class TestAddControllerUtills {
             testSet.sampleTypeTest = typeOfSampleTest;
 
             createPanelItems(testSet.panelItems, testAddParams);
-            createTestResults(testSet.testResults, significantDigits, testAddParams);
+            createTestResults(testSet.testResults, reportingDecimalPlaces, testAddParams);
             if (numericResults) {
                 testSet.resultLimits = createResultLimits(lowValid, highValid, lowReportingRange, highReportingRange,
                         testAddParams, highCritical, lowCritical);
@@ -189,7 +189,7 @@ public class TestAddControllerUtills {
         }
     }
 
-    private void createTestResults(ArrayList<TestResult> testResults, String significantDigits,
+    private void createTestResults(ArrayList<TestResult> testResults, String reportingDecimalPlaces,
             TestAddParams testAddParams) {
         TypeOfTestResultServiceImpl.ResultType type = SpringContext.getBean(TypeOfTestResultService.class)
                 .getResultTypeById(testAddParams.resultTypeId);
@@ -200,7 +200,7 @@ public class TestAddControllerUtills {
             testResult.setTestResultType(type.getCharacterValue());
             testResult.setSortOrder("1");
             testResult.setIsActive(true);
-            testResult.setSignificantDigits(significantDigits);
+            testResult.setReportingDecimalPlaces(reportingDecimalPlaces);
             testResults.add(testResult);
         } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(type.getCharacterValue())) {
             int sortOrder = 10;
@@ -245,7 +245,7 @@ public class TestAddControllerUtills {
                 testAddParams.highReportingRange = obj.get("highReportingRange").toString();
                 testAddParams.lowCritical = obj.get("lowCritical").toString();
                 testAddParams.highCritical = obj.get("highCritical").toString();
-                testAddParams.significantDigits = obj.get("significantDigits").toString();
+                testAddParams.reportingDecimalPlaces = obj.get("reportingDecimalPlaces").toString();
                 extractLimits(obj, parser, testAddParams);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(testAddParams.resultTypeId)) {
                 JSONArray dictionaryArray = (JSONArray) obj.get("dictionary");
@@ -357,7 +357,7 @@ public class TestAddControllerUtills {
         String highReportingRange;
         String lowCritical;
         String highCritical;
-        String significantDigits;
+        String reportingDecimalPlaces;
         String dictionaryReferenceId;
         ArrayList<ResultLimitParams> limits = new ArrayList<>();
         ArrayList<DictionaryParams> dictionaryParamList = new ArrayList<>();

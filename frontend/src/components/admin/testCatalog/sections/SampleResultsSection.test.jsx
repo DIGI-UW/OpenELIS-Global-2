@@ -49,7 +49,7 @@ const SAMPLE_RESULTS = {
       // Select-list type so the options + interpretations editors render (they are
       // progressively disclosed by type — options show for D/M/C, FR-30).
       resultType: "D",
-      significantDigits: 0,
+      reportingDecimalPlaces: 0,
       defaultResult: "",
       allowMultipleReadings: false,
       options: [{ id: "O1", value: "Male", sortOrder: 1, normal: true }],

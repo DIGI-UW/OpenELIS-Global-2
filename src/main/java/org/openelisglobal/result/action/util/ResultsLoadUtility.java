@@ -978,7 +978,8 @@ public class ResultsLoadUtility {
         String testMethodName = testService.getTestMethodName(test);
         List<TestResult> testResults = testService.getPossibleTestResults(test);
         // Multi-component rows see only their component's test_result rows so the
-        // widget type, dictionary options and significant digits are per component
+        // widget type, dictionary options and reporting decimal places are per
+        // component
         // (NULL component_id rows are legacy rows owned by the primary).
         if (component != null) {
             List<TestResult> componentRows = new ArrayList<>();
@@ -1157,9 +1158,14 @@ public class ResultsLoadUtility {
         // OGC-1022 (R3, FR-L1): computed here, after the value and result type are
         // both on the item — setResultLimitDependencies runs before the value is
         // set, so its valid/normal booleans can't see the saved value
-        testItem.setResultFlag(computeResultFlag(testItem.getResultValue(), testItem.getResultType(), resultLimit));
-        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
-                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
+        testItem.setValid(getIsValid(testItem.getRawResultValue(), resultLimit));
+        testItem.setNormal(getIsNormal(testItem.getRawResultValue(), resultLimit));
+        if (analysis != null && NUMERIC_RESULT_TYPE.equals(testItem.getResultType())) {
+            testItem.setComplianceStatuses(SpringContext.getBean(ResultLimitService.class)
+                    .getComplianceResultsForAnalysis(analysis, testItem.getRawResultValue()));
+        }
+        testItem.setResultFlag(computeResultFlag(testItem.getRawResultValue(), testItem.getResultType(), resultLimit));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType()));
 
         testItem.setTechnician(techSignature);
         testItem.setTechnicianSignatureId(techSignatureId);
@@ -1231,8 +1237,8 @@ public class ResultsLoadUtility {
         }
 
         if (!testResults.isEmpty() && NUMERIC_RESULT_TYPE.equals(testResults.get(0).getTestResultType())
-                && !GenericValidator.isBlankOrNull(testResults.get(0).getSignificantDigits())) {
-            testItem.setSignificantDigits(Integer.parseInt(testResults.get(0).getSignificantDigits()));
+                && !GenericValidator.isBlankOrNull(testResults.get(0).getReportingDecimalPlaces())) {
+            testItem.setReportingDecimalPlaces(Integer.parseInt(testResults.get(0).getReportingDecimalPlaces()));
         }
 
         if (test.getDefaultTestResult() != null) {
@@ -1268,18 +1274,12 @@ public class ResultsLoadUtility {
             testItem.setLowerCritical(ValidationSignals.authoredBound(resultLimit.getLowCritical()));
             testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
-            testItem.setValid(getIsValid(testItem.getResultValue(), resultLimit));
-            testItem.setNormal(getIsNormal(testItem.getResultValue(), resultLimit));
+            testItem.setValid(getIsValid(testItem.getRawResultValue(), resultLimit));
+            testItem.setNormal(getIsNormal(testItem.getRawResultValue(), resultLimit));
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
-                    resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
+                    resultLimit, testResults.isEmpty() ? null : testResults.get(0).getReportingDecimalPlaces(), " - "));
         }
 
-        if (analysis != null && !testResults.isEmpty()
-                && NUMERIC_RESULT_TYPE.equals(testResults.get(0).getTestResultType())) {
-            ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-            testItem.setComplianceStatuses(
-                    resultLimitService.getComplianceResultsForAnalysis(analysis, testItem.getResultValue()));
-        }
     }
 
     private void setDictionaryResults(TestResultItem testItem, boolean isConclusion, Result result,
@@ -1360,7 +1360,7 @@ public class ResultsLoadUtility {
 
     private String getFormattedResultValue(Result result) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
-        return result != null ? resultResultService.getResultValue(result, false) : "";
+        return result != null ? resultResultService.formatResultForDisplay(result, false) : "";
     }
 
     private boolean hasLogValue(Test test) { // Analysis analysis, String resultValue) {

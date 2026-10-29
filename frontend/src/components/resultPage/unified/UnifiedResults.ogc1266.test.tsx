@@ -79,7 +79,7 @@ const row = (analysisId: string, testName: string, resultValue = "") => ({
   resultType: "N",
   resultValue,
   rawResultValue: resultValue,
-  significantDigits: 1,
+  reportingDecimalPlaces: 1,
   analysisStatusId: "4",
   analysisLastupdated: "1700000000000",
   normalRange: "",

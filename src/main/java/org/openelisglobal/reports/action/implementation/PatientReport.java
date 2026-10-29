@@ -742,7 +742,7 @@ public abstract class PatientReport extends Report {
                     && !GenericValidator.isBlankOrNull(result.getValue())) {
                 if (result.getMinNormal() != null & result.getMaxNormal() != null
                         && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
-                    double reported = Double.valueOf(StringUtil.getActualNumericValue(result.getReportedValue()));
+                    double reported = Double.valueOf(StringUtil.getActualNumericValue(result.getValue()));
                     if (reported < result.getMinNormal()) {
                         flag = "B";
                     } else if (reported > result.getMaxNormal()) {
@@ -827,7 +827,7 @@ public abstract class PatientReport extends Report {
         try {
             ResultLimit limit = SpringContext.getBean(ResultLimitService.class).getResultLimitForResult(currentAnalysis,
                     result, currentPatient);
-            return ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(result.getReportedValue()));
+            return ResultAlertFlags.criticalLetter(limit, StringUtil.getActualNumericValue(result.getValue()));
         } catch (RuntimeException e) {
             LogEvent.logError("No critical alert flag for analysis " + currentAnalysis.getId() + ", result "
                     + result.getId() + ": the report prints the value without it", e);
@@ -876,7 +876,7 @@ public abstract class PatientReport extends Report {
                     }
                 } else {
                     ResultService resultResultService = SpringContext.getBean(ResultService.class);
-                    reportResult = resultResultService.getResultValue(result, true);
+                    reportResult = resultResultService.formatResultForDisplay(result, true);
                     // TODO - how is this used. Selection types can also have
                     // UOM and reference ranges
                     data.setHasRangeAndUOM(
@@ -1049,7 +1049,7 @@ public abstract class PatientReport extends Report {
             ResultLimit limit = resultLimitService.getResultLimitForResult(currentAnalysis, first, currentPatient,
                     component.getId());
             String letter = ResultAlertFlags.componentLetter(limit, first.getResultType(),
-                    StringUtil.getActualNumericValue(first.getReportedValue()));
+                    StringUtil.getActualNumericValue(first.getValue()));
             alerts.add(letter);
             results.append(component.getLabel()).append(": ").append(componentValue);
             if (!letter.isEmpty()) {
@@ -1060,11 +1060,10 @@ public abstract class PatientReport extends Report {
             String uom = componentUomName(component, unitOfMeasureService);
             uoms.append(uom).append("\n");
 
-            String significantDigits = first.getTestResult() == null ? "0"
-                    : first.getTestResult().getSignificantDigits();
+            String reportingDecimalPlaces = first.getTestResult() == null ? null
+                    : first.getTestResult().getReportingDecimalPlaces();
             String range = limit == null ? ""
-                    : resultLimitService.getDisplayReferenceRange(limit,
-                            GenericValidator.isBlankOrNull(significantDigits) ? "0" : significantDigits, " - ");
+                    : resultLimitService.getDisplayReferenceRange(limit, reportingDecimalPlaces, " - ");
             ranges.append(range).append("\n");
             lines.add(new ReportComponentLine(component.getLabel(), componentValue, letter, range, uom));
         }
@@ -1187,7 +1186,7 @@ public abstract class PatientReport extends Report {
             dictionaryService.getData(dictionary);
             return dictionary.getId() != null ? dictionary.getLocalizedName() : "";
         }
-        return resultResultService.getResultValue(result, true);
+        return resultResultService.formatResultForDisplay(result, true);
     }
 
     protected void setCollectionTime(Set<SampleItem> sampleSet, List<ClinicalPatientData> currentSampleReportItems,

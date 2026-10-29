@@ -26,7 +26,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -223,6 +222,9 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         else if (observation.hasValueQuantity()) {
 
             String value = observation.getValueQuantity().getValueElement().getValueAsString();
+            if (observation.getValueQuantity().hasComparator()) {
+                value = observation.getValueQuantity().getComparator().toCode() + value;
+            }
 
             bean.setResultValue(value);
             bean.setShadowResultValue(value);
@@ -342,14 +344,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         }
 
         if (!GenericValidator.isBlankOrNull(result.getValue())) {
-            // in case of Viral load test
-            if (result.getAnalysis().getTest().getName().equalsIgnoreCase("Viral Load")) {
-                Quantity quantity = new Quantity();
-                long finalResult = result.getVLValueAsNumber();
-                quantity.setValue(finalResult);
-                quantity.setUnit(resultService.getUOM(result));
-                observation.setValue(quantity);
-            } else if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
+            if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
                 observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
@@ -359,7 +354,15 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
                 observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
                 Quantity quantity = new Quantity();
-                quantity.setValue(new BigDecimal(StringUtil.getActualNumericValue(result.getReportedValue())));
+                String clinicalValue = result.getValue().trim();
+                for (String comparator : new String[] { "<=", ">=", "<", ">" }) {
+                    if (clinicalValue.startsWith(comparator)) {
+                        quantity.setComparator(Quantity.QuantityComparator.fromCode(comparator));
+                        clinicalValue = clinicalValue.substring(comparator.length()).trim();
+                        break;
+                    }
+                }
+                quantity.setValue(new BigDecimal(clinicalValue));
                 quantity.setUnit(resultService.getUOM(result));
                 observation.setValue(quantity);
             } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {

@@ -55,11 +55,11 @@
         lastupdated="2025-01-01 12:00:00" />
 
     <test_result id="1" test_id="1" result_group="1"
-        component_id="vcu-load" tst_rslt_type="N" significant_digits="0"
+        component_id="vcu-load" tst_rslt_type="N" reporting_decimal_places="0"
         lastupdated="2025-01-01 12:00:00" sort_order="1"
         is_quantifiable="false" is_active="true" is_normal="true" />
     <test_result id="2" test_id="1" result_group="2"
-        component_id="vcu-ct" tst_rslt_type="N" significant_digits="1"
+        component_id="vcu-ct" tst_rslt_type="N" reporting_decimal_places="1"
         lastupdated="2025-01-01 12:00:00" sort_order="2"
         is_quantifiable="false" is_active="true" is_normal="true" />
 

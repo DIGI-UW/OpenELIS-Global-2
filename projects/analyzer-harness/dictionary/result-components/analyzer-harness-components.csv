@@ -1,4 +1,4 @@
-testName,code,label,resultType,significantDigits,isPrimary,showOnReport
+testName,code,label,resultType,reportingDecimalPlaces,isPrimary,showOnReport
 SARS-CoV-2 PCR,PRIMARY,SARS-CoV-2,D,,Y,Y
 SARS-CoV-2 PCR,SARS-CoV-2,SARS-CoV-2,D,,N,Y
 SARS-CoV-2 PCR,SARS-CoV-2 Ct,SARS-CoV-2 Ct,N,1,N,N

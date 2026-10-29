@@ -621,7 +621,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void save_valueCriticalOnlyBeforeRounding_needsNoAcknowledgement() throws Exception {
         seedNumericResultLimit();
-        jdbc.update("UPDATE clinlims.test_result SET significant_digits = '0' WHERE test_id = 1");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = '0' WHERE test_id = 1");
 
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
                 .content(saveBody("1", "3", "1", "49.6", currentToken("1"))).session(session))

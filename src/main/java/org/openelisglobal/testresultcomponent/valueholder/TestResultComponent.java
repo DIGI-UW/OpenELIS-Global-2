@@ -53,8 +53,8 @@ public class TestResultComponent extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String uomId;
 
-    @Column(name = "significant_digits", precision = 10, scale = 0)
-    private Integer significantDigits;
+    @Column(name = "reporting_decimal_places", precision = 10, scale = 0)
+    private Integer reportingDecimalPlaces;
 
     @Column(name = "default_result", length = 80)
     private String defaultResult;
@@ -163,12 +163,12 @@ public class TestResultComponent extends BaseObject<String> {
         this.uomId = uomId;
     }
 
-    public Integer getSignificantDigits() {
-        return significantDigits;
+    public Integer getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(Integer significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(Integer reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getDefaultResult() {

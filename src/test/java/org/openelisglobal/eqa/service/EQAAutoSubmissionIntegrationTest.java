@@ -286,7 +286,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
                         + " VALUES (?, ?, 9901, ?, 1, 'ROUTINE', now(), ?::numeric, now(), gen_random_uuid())",
                 analysisId, sampleItemId, testId, statusService.getStatusID(status));
         if (value != null) {
-            // Result type and significant_digits are set the way a configured test
+            // Result type and reporting_decimal_places are set the way a configured test
             // sets them. On a numeric result left at 0 digits,
             // ResultService.getResultValue truncates to the integer part (4.75 ->
             // "4") — real shipped reporting behaviour, not an EQA rule. The bridge
@@ -295,7 +295,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
             boolean numeric = value.matches("-?\\d+(\\.\\d+)?");
             jdbc.update(
                     "INSERT INTO clinlims.result (id, analysis_id, analyte_id, result_type, value, sort_order,"
-                            + " significant_digits, is_reportable, lastupdated, fhir_uuid)"
+                            + " reporting_decimal_places, is_reportable, lastupdated, fhir_uuid)"
                             + " VALUES (?, ?, ?, ?, ?, 1, ?, 'Y', now(), gen_random_uuid())",
                     analysisId + 500, analysisId, withAnalyte ? analyteId : null, numeric ? "N" : "A", value,
                     numeric ? 2 : -1);

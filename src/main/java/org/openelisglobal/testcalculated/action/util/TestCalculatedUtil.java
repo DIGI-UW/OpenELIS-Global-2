@@ -415,8 +415,8 @@ public class TestCalculatedUtil {
                 result = new Result();
             }
             result.setTestResult(testResult);
-            if (testResult.getSignificantDigits() != null) {
-                result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
+            if (testResult.getReportingDecimalPlaces() != null) {
+                result.setReportingDecimalPlaces(Integer.valueOf(testResult.getReportingDecimalPlaces()));
             }
             result.setResultType(resultType);
             result.setSysUserId(systemUserId);
@@ -437,10 +437,6 @@ public class TestCalculatedUtil {
                         result.setValue("");
                     }
                 } else if ("N".equals(resultType)) {
-                    if (testResult.getSignificantDigits() != null) {
-                        double factor = Math.pow(10, Double.valueOf(testResult.getSignificantDigits()));
-                        value = String.valueOf(Math.round(Double.valueOf(value) * factor) / factor);
-                    }
                     result.setValue(value);
                     resultCalculated = true;
                 }
@@ -463,7 +459,7 @@ public class TestCalculatedUtil {
                 }
                 if (recorded != null) {
                     recorded.setTestResult(result.getTestResult());
-                    recorded.setSignificantDigits(result.getSignificantDigits());
+                    recorded.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
                     recorded.setResultType(result.getResultType());
                     recorded.setSysUserId(systemUserId);
                     recorded.setValue(result.getValue());

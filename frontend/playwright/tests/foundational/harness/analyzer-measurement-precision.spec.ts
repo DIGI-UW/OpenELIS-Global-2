@@ -32,7 +32,7 @@ test(
       {
         testSection: "Molecular Biology",
         sampleType: "Plasma",
-        significantDigits: 0,
+        reportingDecimalPlaces: 0,
       },
     );
     // A synthetic single-value ASTM layout, not a vendor certification fixture.
@@ -67,7 +67,7 @@ test(
       testId: string;
       testName: string;
       analysisId: string;
-      significantDigits: number;
+      reportingDecimalPlaces: number;
       resultValue: string;
       rawResultValue: string;
       result?: { id?: string; value?: string };
@@ -130,7 +130,7 @@ test(
         return saved!;
       };
       const saved = await read();
-      expect(saved.significantDigits).toBe(0);
+      expect(saved.reportingDecimalPlaces).toBe(0);
       expect(saved.rawResultValue).toBe(correction ?? "1.17");
       expect(saved.result?.value).toBe(correction ?? "1.17");
       expect(saved.resultValue).toBe("1");

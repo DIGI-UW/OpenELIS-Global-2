@@ -100,6 +100,12 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional
     public List<TestResultComponent> saveComponentsForTest(String testId, List<TestResultComponent> desired,
             String sysUserId) {
+        for (TestResultComponent component : desired) {
+            if (component.getReportingDecimalPlaces() != null) {
+                org.openelisglobal.result.util.ReportingDecimalPlaces
+                        .parse(component.getReportingDecimalPlaces().toString());
+            }
+        }
         List<TestResultComponent> existing = baseObjectDAO.getActiveComponentsByTestId(testId);
         Map<String, TestResultComponent> existingById = new HashMap<>();
         for (TestResultComponent e : existing) {
@@ -137,7 +143,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setDisplayOrder(d.getDisplayOrder());
                 match.setResultType(d.getResultType());
                 match.setUomId(d.getUomId());
-                match.setSignificantDigits(d.getSignificantDigits());
+                match.setReportingDecimalPlaces(d.getReportingDecimalPlaces());
                 match.setDefaultResult(d.getDefaultResult());
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
@@ -158,7 +164,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setDisplayOrder(d.getDisplayOrder());
                     slot.setResultType(d.getResultType());
                     slot.setUomId(d.getUomId());
-                    slot.setSignificantDigits(d.getSignificantDigits());
+                    slot.setReportingDecimalPlaces(d.getReportingDecimalPlaces());
                     slot.setDefaultResult(d.getDefaultResult());
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
@@ -461,10 +467,10 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     /**
-     * Mirror the PRIMARY component's unit-of-measure and significant digits back
-     * onto the legacy columns the old Test Modify page still reads from
-     * ({@code test.uom_id} and {@code test_result.significant_digits}). The M1
-     * backfill seeded the PRIMARY component <em>from</em> those columns; this is
+     * Mirror the PRIMARY component's unit-of-measure and reporting decimal places
+     * back onto the legacy columns the old Test Modify page still reads from
+     * ({@code test.uom_id} and {@code test_result.reporting_decimal_places}). The
+     * M1 backfill seeded the PRIMARY component <em>from</em> those columns; this is
      * the inverse, keeping both editors consistent during the OGC-949 transition.
      * Falls back to the lowest-display-order component when no PRIMARY code exists.
      */
@@ -500,8 +506,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
             String resultType = component.getResultType();
-            String significantDigits = component.getSignificantDigits() == null ? null
-                    : String.valueOf(component.getSignificantDigits());
+            String reportingDecimalPlaces = component.getReportingDecimalPlaces() == null ? null
+                    : String.valueOf(component.getReportingDecimalPlaces());
             boolean dictionary = resultType != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType);
 
@@ -528,14 +534,14 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     tr.setSortOrder(
                             String.valueOf(component.getDisplayOrder() == null ? 1 : component.getDisplayOrder() + 1));
                     tr.setIsActive(true);
-                    tr.setSignificantDigits(significantDigits);
+                    tr.setReportingDecimalPlaces(reportingDecimalPlaces);
                     tr.setComponentId(component.getId());
                     tr.setSysUserId(sysUserId);
                     testResultService.insert(tr);
                 }
             } else {
                 for (TestResult tr : componentRows) {
-                    tr.setSignificantDigits(significantDigits);
+                    tr.setReportingDecimalPlaces(reportingDecimalPlaces);
                     if (resultType != null) {
                         tr.setTestResultType(resultType);
                     }
@@ -565,7 +571,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         testResults.sort((a, b) -> Long.compare(parseId(b.getId()), parseId(a.getId())));
         String uomId = test.getUnitOfMeasure() == null ? null : test.getUnitOfMeasure().getId();
         String resultType = latestResultType(testResults);
-        Integer significantDigits = latestSignificantDigits(testResults);
+        Integer reportingDecimalPlaces = latestReportingDecimalPlaces(testResults);
 
         if (primary == null) {
             // Legacy created this test outside the new editor (or before the M1
@@ -577,7 +583,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             primary.setDisplayOrder(0);
             primary.setResultType(resultType);
             primary.setUomId(uomId);
-            primary.setSignificantDigits(significantDigits);
+            primary.setReportingDecimalPlaces(reportingDecimalPlaces);
             primary.setIsActive("Y");
             primary.setIsPrimary(true);
             primary.setSysUserId(sysUserId);
@@ -588,7 +594,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             // another component), the primary keeps the type and digits it was given.
             if (!testResults.isEmpty()) {
                 primary.setResultType(resultType);
-                primary.setSignificantDigits(significantDigits);
+                primary.setReportingDecimalPlaces(reportingDecimalPlaces);
             }
             primary.setSysUserId(sysUserId);
             update(primary);
@@ -687,14 +693,11 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         return null;
     }
 
-    private static Integer latestSignificantDigits(List<TestResult> newestFirst) {
-        for (TestResult tr : newestFirst) {
-            Integer parsed = parseSignificantDigits(tr.getSignificantDigits());
-            if (parsed != null) {
-                return parsed;
-            }
-        }
-        return null;
+    private static Integer latestReportingDecimalPlaces(List<TestResult> newestFirst) {
+        // Preserve legacy metadata, including on a nonnumeric row, without using
+        // it to format nonnumeric results. A cleared newest setting stays cleared.
+        return newestFirst.isEmpty() ? null
+                : parseReportingDecimalPlaces(newestFirst.get(0).getReportingDecimalPlaces());
     }
 
     private static long parseId(String id) {
@@ -713,7 +716,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         return name == null || name.trim().isEmpty() ? PRIMARY_CODE : name;
     }
 
-    private static Integer parseSignificantDigits(String value) {
+    private static Integer parseReportingDecimalPlaces(String value) {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
@@ -745,7 +748,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setDisplayOrder(src.getDisplayOrder());
             copy.setResultType(src.getResultType());
             copy.setUomId(src.getUomId());
-            copy.setSignificantDigits(src.getSignificantDigits());
+            copy.setReportingDecimalPlaces(src.getReportingDecimalPlaces());
             copy.setDefaultResult(src.getDefaultResult());
             copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
             copy.setLod(src.getLod());
@@ -795,8 +798,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 placeholder
                         .setSortOrder(String.valueOf(copy.getDisplayOrder() == null ? 1 : copy.getDisplayOrder() + 1));
                 placeholder.setIsActive(true);
-                placeholder.setSignificantDigits(
-                        copy.getSignificantDigits() == null ? null : String.valueOf(copy.getSignificantDigits()));
+                placeholder.setReportingDecimalPlaces(copy.getReportingDecimalPlaces() == null ? null
+                        : String.valueOf(copy.getReportingDecimalPlaces()));
                 placeholder.setComponentId(copy.getId());
                 placeholder.setSysUserId(sysUserId);
                 testResultService.insert(placeholder);

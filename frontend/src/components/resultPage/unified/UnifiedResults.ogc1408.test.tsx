@@ -75,7 +75,7 @@ const worklistRow = () => ({
   resultType: "N",
   resultValue: "",
   rawResultValue: "",
-  significantDigits: 0,
+  reportingDecimalPlaces: 0,
   analysisStatusId: "4",
   analysisLastupdated: "1700000000000",
   normalRange: "",
