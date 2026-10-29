@@ -9,18 +9,21 @@ import React, {
 } from "react";
 import { newClientKey, withClientKeys } from "./saveKeys";
 import { useLocation } from "react-router-dom";
+import { FormattedMessage } from "react-intl";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerFormData,
   postToOpenElisServerFullResponse,
   putToOpenElisServer,
 } from "../utils/Utils";
+import { NotificationKinds } from "../common/CustomNotification";
 import {
   toRequestedSampleTypes,
   getRequestsBySample,
   mergeCollectedAndPendingSamples,
 } from "./api/sampleTypeRequestApi";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { ConfigurationContext } from "../layout/Layout";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getEnforcement } from "./api/sampleAcceptanceApi";
 import {
@@ -267,12 +270,47 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext) || {};
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext) || {};
   const signedIn = userSessionDetails
     ? userSessionDetails.authenticated === true
     : true;
 
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
+  const [stagedAttachments, setStagedAttachments] = useState([]);
+  const [attachmentsVersion, setAttachmentsVersion] = useState(0);
+
+  // Attachments are keyed by lab number, so files chosen on a new order wait
+  // here, outside the step, until a save gives the order an id.
+  useEffect(() => {
+    if (!orderId || !labNumber || stagedAttachments.length === 0) {
+      return;
+    }
+    const formData = new FormData();
+    stagedAttachments.forEach((file) =>
+      formData.append("files", file, file.name),
+    );
+    setStagedAttachments([]);
+    postToOpenElisServerFormData(
+      `/rest/order/${encodeURIComponent(labNumber)}/attachments`,
+      formData,
+      (status) => {
+        setAttachmentsVersion((version) => version + 1);
+        if (status >= 200 && status < 300) {
+          return;
+        }
+        addNotification?.({
+          kind: NotificationKinds.warning,
+          title: <FormattedMessage id="notification.title" />,
+          message: (
+            <FormattedMessage id="order.attachment.staged.uploadFailed" />
+          ),
+        });
+        setNotificationVisible?.(true);
+      },
+    );
+  }, [orderId, labNumber, stagedAttachments]);
   const [orderData, setOrderDataState] = useState(() =>
     getInitialOrderData(workflowType),
   );
@@ -450,6 +488,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     async (searchLabNumber, readOnly = true) => {
       setIsLoading(true);
       setError(null);
+      setStagedAttachments([]);
 
       return new Promise((resolve, reject) => {
         getFromOpenElisServer(
@@ -1458,6 +1497,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const resetOrder = useCallback(() => {
     setOrderId(null);
     setLabNumber(null);
+    setStagedAttachments([]);
     setOrderDataState(getInitialOrderData(workflowType));
     setSamplesState([sampleObject]);
     setIsReadOnly(false);
@@ -1649,9 +1689,12 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     sampleCheckEnabled,
     testSampleAssignments,
     rangeNotApplied,
+    stagedAttachments,
+    attachmentsVersion,
 
     // Actions
     loadOrder,
+    setStagedAttachments,
     saveOrder,
     saveOrderEntry, // Step 1: saves order + creates sample_type_requests (no sample_items)
     setCurrentStep,

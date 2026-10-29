@@ -1035,8 +1035,7 @@ const RequesterSection = ({
         />
       </p>
 
-      {/* Required By — order-level date, not tied to Organization/Site
-          selection; kept outside that subsection so it always renders. */}
+      {/* Required By and Priority are order-level, not tied to the site. */}
       <Grid>
         <Column lg={5} md={4} sm={4}>
           <div className="cds--form-item">
@@ -1064,6 +1063,31 @@ const RequesterSection = ({
               disabled={isReadOnly}
             />
           </div>
+        </Column>
+        <Column lg={5} md={4} sm={4}>
+          <Select
+            id="priority"
+            labelText={intl.formatMessage({
+              id: "order.priority",
+              defaultMessage: "Priority",
+            })}
+            value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
+            onChange={handlePriorityChange}
+            helperText={intl.formatMessage({
+              id: "order.priority.helper",
+              defaultMessage:
+                "ROUTINE: standard turnaround. STAT: process immediately.",
+            })}
+            disabled={isReadOnly}
+          >
+            {priorityOptions.map((opt) => (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                text={intl.formatMessage({ id: opt.labelId })}
+              />
+            ))}
+          </Select>
         </Column>
       </Grid>
 
@@ -1107,31 +1131,6 @@ const RequesterSection = ({
               onChange={(e) => setSiteSearchTerm(e.target.value)}
               disabled={isReadOnly || Boolean(effectiveSelectedSite)}
             />
-          </Column>
-          <Column lg={5} md={4} sm={4}>
-            <Select
-              id="priority"
-              labelText={intl.formatMessage({
-                id: "order.priority",
-                defaultMessage: "Priority",
-              })}
-              value={orderData?.sampleOrderItems?.priority || "ROUTINE"}
-              onChange={handlePriorityChange}
-              helperText={intl.formatMessage({
-                id: "order.priority.helper",
-                defaultMessage:
-                  "ROUTINE: standard turnaround. STAT: process immediately.",
-              })}
-              disabled={isReadOnly}
-            >
-              {priorityOptions.map((opt) => (
-                <SelectItem
-                  key={opt.value}
-                  value={opt.value}
-                  text={intl.formatMessage({ id: opt.labelId })}
-                />
-              ))}
-            </Select>
           </Column>
 
           {/* Search Buttons */}

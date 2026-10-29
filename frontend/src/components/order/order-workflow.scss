@@ -781,6 +781,16 @@
   overflow-x: clip;
   overflow-y: visible;
   padding: 1.5rem;
+  // The workflow container is already --cds-layer; a default Tile matches it.
+  background-color: var(--cds-layer-02);
+
+  .cds--css-grid {
+    row-gap: 1rem;
+  }
+
+  .cds--css-grid + .cds--css-grid {
+    margin-top: 1rem;
+  }
 
   .section-title {
     margin: 0 0 1rem 0;
@@ -917,11 +927,30 @@
   color: var(--cds-text-secondary);
 }
 
+.order-attachment-list {
+  margin-top: 1rem;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--cds-border-subtle);
+  }
+
+  .order-attachment-size {
+    font-size: 0.875rem;
+    color: var(--cds-text-secondary);
+  }
+}
+
 /* Selected Entity Card */
 .selected-entity-card {
   margin-top: 1rem;
   padding: 1rem;
   background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
   border-left: 4px solid var(--cds-support-success);
   border-radius: 4px;
 
@@ -967,6 +996,7 @@
   margin-bottom: 1.5rem;
   padding: 1rem;
   background-color: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
   border-radius: 4px;
 
   .sample-card-header {

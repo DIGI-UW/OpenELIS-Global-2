@@ -43,7 +43,7 @@ beforeEach(() => {
 // OGC-1266 FR-A12: three clinical steps, the last only while the sample
 // acceptance setting is not Off (FR-F1).
 describe("stepsForPath", () => {
-  it("names the clinical steps Enter Order, Prepare Samples, Sample check", () => {
+  it("names the clinical steps Enter Order, Prepare Samples, Sample Check", () => {
     expect(stepsForPath("/order/clinical/enter").map((s) => s.key)).toEqual([
       "enter",
       "prepare",
@@ -51,7 +51,7 @@ describe("stepsForPath", () => {
     ]);
     expect(
       stepsForPath("/order/clinical/enter").map((s) => messages[s.label]),
-    ).toEqual(["Enter Order", "Prepare Samples", "Sample check"]);
+    ).toEqual(["Enter Order", "Prepare Samples", "Sample Check"]);
   });
 
   it("drops the clinical Sample check when it is off", () => {
@@ -129,6 +129,6 @@ describe("the stepper's step notes", () => {
     renderStepper({ currentStep: 1 });
 
     expect(screen.getByText("Prepare Samples")).toBeInTheDocument();
-    expect(screen.queryByText("Sample check")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sample Check")).not.toBeInTheDocument();
   });
 });
