@@ -493,7 +493,9 @@ public class SampleEditServiceImpl implements SampleEditService {
 
         String maxAccessionNumber = form.getMaxAccessionNumber();
         if (!GenericValidator.isBlankOrNull(maxAccessionNumber)) {
-            sampleAddService.setInitialSampleItemOrderValue(Integer.parseInt(maxAccessionNumber.split("-")[1]));
+            // <accession>-<sample item number>; the accession may contain a dash itself
+            sampleAddService.setInitialSampleItemOrderValue(
+                    Integer.parseInt(maxAccessionNumber.substring(maxAccessionNumber.lastIndexOf('-') + 1)));
         }
 
         return sampleAddService.createSampleTestCollection();

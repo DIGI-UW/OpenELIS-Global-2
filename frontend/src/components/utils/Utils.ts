@@ -862,10 +862,13 @@ export const patchToOpenElisServerJsonResponse = <
     });
 };
 
-// Drops only a numeric analysis suffix (BASE-N), so IH-2-01 stays whole.
+// Drops only a short numeric sample item suffix (BASE-N), so IH-2-01 stays
+// whole. A dashed accession such as 26-0000001 (YEARNUM_DASH_SEVEN) keeps its
+// dash, and 26-0000001-2 becomes 26-0000001.
 export const labNumberForSearch = (
   accessionNumber: string | null | undefined,
-): string => (accessionNumber ?? "").trim().replace(/^([^-]*)-\d+$/, "$1");
+): string =>
+  (accessionNumber ?? "").trim().replace(/^([^-]*|.*-\d{4,})-\d{1,3}$/, "$1");
 
 export const convertAlphaNumLabNumForDisplay = (
   labNumber: string | null | undefined,

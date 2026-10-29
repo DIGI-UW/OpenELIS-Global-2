@@ -4,6 +4,7 @@ import { Button, Column, Grid, Form } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import useInAppNavigation from "../common/useInAppNavigation";
+import { labNumberForSearch } from "../utils/Utils";
 
 function SearchOrder() {
   const navigate = useInAppNavigation();
@@ -33,7 +34,7 @@ function SearchOrder() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    var labNumber = accessionNumber ? accessionNumber.split("-")[0] : "";
+    var labNumber = labNumberForSearch(accessionNumber);
     navigate("/ModifyOrder?accessionNumber=" + labNumber)();
   };
 

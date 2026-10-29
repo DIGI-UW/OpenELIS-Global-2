@@ -169,6 +169,12 @@ describe("labNumberForSearch", () => {
     );
     expect(labNumberForSearch(undefined)).toBe("");
   });
+
+  it("keeps the dash of a dashed accession format such as YEARNUM_DASH_SEVEN", () => {
+    expect(labNumberForSearch("26-0000001")).toBe("26-0000001");
+    expect(labNumberForSearch("26-0000001-2")).toBe("26-0000001");
+    expect(labNumberForSearch("26-0000001-12")).toBe("26-0000001");
+  });
 });
 
 // Review of #4474: flatpickr's parser read a typed 10/20/2026 as 1 January of

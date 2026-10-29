@@ -296,7 +296,8 @@ public class PatientClinicalReport extends PatientReport implements IReportCreat
                 reportItem.setAccessionNumber(AlphanumAccessionValidator
                         .convertAlphaNumLabNumForDisplay(reportItem.getAccessionNumber().split("-")[0]));
             } else {
-                reportItem.setAccessionNumber(reportItem.getAccessionNumber().split("-")[0]);
+                reportItem.setAccessionNumber(AccessionNumberUtil
+                        .getAccessionNumberFromSampleItemAccessionNumber(reportItem.getAccessionNumber()));
             }
             reportItem.setCompleteFlag(MessageUtil
                     .getMessage(sampleCompleteMap.get(reportItem.getAccessionNumber()) ? "report.status.complete"

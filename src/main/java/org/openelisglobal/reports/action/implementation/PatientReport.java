@@ -232,7 +232,8 @@ public abstract class PatientReport extends Report {
             displayAccesionNumber = AlphanumAccessionValidator
                     .convertAlphaNumLabNumForDisplay(sampleService.getAccessionNumber(currentSample).split("-")[0]);
         } else {
-            displayAccesionNumber = sampleService.getAccessionNumber(currentSample).split("-")[0];
+            // a sample's accession number has no sample item suffix, and may contain a dash
+            displayAccesionNumber = sampleService.getAccessionNumber(currentSample);
         }
         return displayAccesionNumber;
     }
