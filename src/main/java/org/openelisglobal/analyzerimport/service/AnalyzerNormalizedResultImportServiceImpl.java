@@ -133,6 +133,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         int recoveredCount = 0;
         // Retry the stored normalized observation using the current local mapping.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
+            if (AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE.equals(held.getImportIssueReason())) {
+                continue;
+            }
             if (held.getSourceProfileRevision() == null
                     || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())
                     || held.getSourcePayload() == null) {
@@ -216,6 +219,12 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     }
 
     private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer) {
+        if ("SETUP".equals(contract.deliveryPurpose()) || analyzer.getStatus() == Analyzer.AnalyzerStatus.VALIDATION
+                || (analyzer.getStatus() == Analyzer.AnalyzerStatus.SETUP && !analyzer.isActive())) {
+            return contract.results().stream()
+                    .map(result -> held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE))
+                    .toList();
+        }
         if (analyzer.getMapping() == null || analyzer.getMapping().getId() == null) {
             throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingMapping",
                     "Analyzer has no mapping in force");

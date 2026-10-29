@@ -4,6 +4,8 @@ import { useIntl } from "react-intl";
 
 import {
   activateAnalyzer,
+  deactivateAnalyzer,
+  startAnalyzerSetupReception,
   getAnalyzerActivationReadiness,
   getAnalyzerDeliveryIssues,
   resetAnalyzerProfile,
@@ -15,6 +17,7 @@ import AnalyzerConnectionFields, {
   invalidConnectionFields,
   serializeConnectionValues,
 } from "./AnalyzerConnectionFields";
+import AnalyzerSetupReception from "./AnalyzerSetupReception";
 
 const EMPTY_FIELDS = [];
 
@@ -205,6 +208,7 @@ const AnalyzerConnectionSetup = ({
   onVerifyMappings,
   onReadinessChange,
   onProfileReset,
+  onContinue,
 }) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
@@ -225,6 +229,7 @@ const AnalyzerConnectionSetup = ({
   const [resetRefusal, setResetRefusal] = useState(null);
 
   const [senders, setSenders] = useState([]);
+  const [receptionBlockers, setReceptionBlockers] = useState([]);
   const asksForSender = fields.some((field) => field.key === "senderId");
 
   useEffect(() => {
@@ -402,6 +407,57 @@ const AnalyzerConnectionSetup = ({
     });
   };
 
+  const startReception = () => {
+    setReceptionBlockers([]);
+    saveCandidate("reception", (saved) => {
+      startAnalyzerSetupReception(saved.id, (result) => {
+        setAction(null);
+        if (
+          !result?.receiving ||
+          String(result.analyzerId) !== String(saved.id) ||
+          result.status !== "VALIDATION"
+        ) {
+          setReceptionBlockers(
+            result?.blockers?.length
+              ? result.blockers
+              : [{ code: "analyzer.setup.reception.startError" }],
+          );
+          return;
+        }
+        onCandidateChange?.({
+          ...saved,
+          status: "VALIDATION",
+          active: false,
+          connection: {
+            ...saved.connection,
+            actualRuntimeState: "ACTIVE",
+            receptionPurpose: "SETUP",
+          },
+        });
+      });
+    });
+  };
+
+  const stopReception = () => {
+    setAction("stop");
+    deactivateAnalyzer(candidate.id, (result) => {
+      setAction(null);
+      if (
+        !result?.deactivated ||
+        String(result.analyzerId) !== String(candidate.id)
+      ) {
+        setReceptionBlockers([{ code: "analyzer.setup.reception.stopError" }]);
+        return;
+      }
+      onCandidateChange?.({
+        ...candidate,
+        status: "INACTIVE",
+        active: false,
+        connection: { ...candidate.connection, actualRuntimeState: "INACTIVE" },
+      });
+    });
+  };
+
   if (!candidate?.id || !candidate?.connection) {
     return (
       <InlineNotification
@@ -474,128 +530,153 @@ const AnalyzerConnectionSetup = ({
         </section>
       )}
 
-      <section
-        className="analyzer-setup__activation-readiness"
-        aria-labelledby="analyzer-setup-activation-readiness-title"
-      >
-        <h4 id="analyzer-setup-activation-readiness-title">
-          {intl.formatMessage({
-            id: "analyzer.setup.connect.activation.readiness",
-          })}
-        </h4>
-        {readinessLoading && (
-          <Loading
-            small
-            withOverlay={false}
-            description={intl.formatMessage({
-              id: "analyzer.setup.connect.activation.loading",
+      {onContinue && !alreadyActive && (
+        <AnalyzerSetupReception
+          candidate={candidate}
+          busy={submitting}
+          onStart={startReception}
+          onStop={stopReception}
+          blockers={receptionBlockers}
+        />
+      )}
+      {!onContinue && (
+        <section
+          className="analyzer-setup__activation-readiness"
+          aria-labelledby="analyzer-setup-activation-readiness-title"
+        >
+          <h4 id="analyzer-setup-activation-readiness-title">
+            {intl.formatMessage({
+              id: "analyzer.setup.connect.activation.readiness",
             })}
-          />
-        )}
-        {activationError && (
-          <InlineNotification
-            kind="error"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: "analyzer.setup.connect.activation.error",
-            })}
-          />
-        )}
-        {readiness?.ready && (
-          <InlineNotification
-            kind="success"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({
-              id: readiness.activated
-                ? "analyzer.setup.connect.activation.active"
-                : "analyzer.setup.connect.activation.ready",
-            })}
-          />
-        )}
-        {(candidate?.connection?.readiness?.blockers || [])
-          .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
-          .map((blocker) => (
+          </h4>
+          {readinessLoading && (
+            <Loading
+              small
+              withOverlay={false}
+              description={intl.formatMessage({
+                id: "analyzer.setup.connect.activation.loading",
+              })}
+            />
+          )}
+          {activationError && (
             <InlineNotification
-              key={blocker.key}
-              kind="warning"
+              kind="error"
               lowContrast
               hideCloseButton
-              title={intl.formatMessage(
-                { id: blocker.messageKey },
-                {
-                  profileId: candidate.connection.profileRef?.profileId,
-                  revision: candidate.connection.profileRef?.revision,
-                },
-              )}
+              title={intl.formatMessage({
+                id: "analyzer.setup.connect.activation.error",
+              })}
             />
-          ))}
-        {onProfileReset &&
-          (candidate?.connection?.readiness?.blockers || []).some(
-            (blocker) =>
-              blocker.messageKey ===
-              "analyzer.connection.readiness.profileUnavailable",
-          ) && (
+          )}
+          {readiness?.ready && (
+            <InlineNotification
+              kind="success"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: readiness.activated
+                  ? "analyzer.setup.connect.activation.active"
+                  : "analyzer.setup.connect.activation.ready",
+              })}
+            />
+          )}
+          {(candidate?.connection?.readiness?.blockers || [])
+            .filter((blocker) =>
+              BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey),
+            )
+            .map((blocker) => (
+              <InlineNotification
+                key={blocker.key}
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage(
+                  { id: blocker.messageKey },
+                  {
+                    profileId: candidate.connection.profileRef?.profileId,
+                    revision: candidate.connection.profileRef?.revision,
+                  },
+                )}
+              />
+            ))}
+          {onProfileReset &&
+            (candidate?.connection?.readiness?.blockers || []).some(
+              (blocker) =>
+                blocker.messageKey ===
+                "analyzer.connection.readiness.profileUnavailable",
+            ) && (
+              <Button
+                type="button"
+                kind="tertiary"
+                size="sm"
+                disabled={submitting || resetting}
+                onClick={resetProfile}
+              >
+                {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
+              </Button>
+            )}
+          {resetRefusal && (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: resetRefusal })}
+            />
+          )}
+          {readiness?.blockers
+            .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
+            .map((blocker, index) => (
+              <InlineNotification
+                key={`${blocker.code}-${index}`}
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={formatActivationBlocker(intl, blocker)}
+              />
+            ))}
+          {onVerifyMappings && needsMappingVerification(readiness) && (
             <Button
               type="button"
               kind="tertiary"
               size="sm"
-              disabled={submitting || resetting}
-              onClick={resetProfile}
+              disabled={submitting}
+              onClick={onVerifyMappings}
             >
-              {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
+              {intl.formatMessage({
+                id: "analyzer.setup.connect.activation.verifyMappings",
+              })}
             </Button>
           )}
-        {resetRefusal && (
-          <InlineNotification
-            kind="error"
-            lowContrast
-            hideCloseButton
-            title={intl.formatMessage({ id: resetRefusal })}
-          />
-        )}
-        {readiness?.blockers
-          .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
-          .map((blocker, index) => (
-            <InlineNotification
-              key={`${blocker.code}-${index}`}
-              kind="warning"
-              lowContrast
-              hideCloseButton
-              title={formatActivationBlocker(intl, blocker)}
-            />
-          ))}
-        {onVerifyMappings && needsMappingVerification(readiness) && (
-          <Button
-            type="button"
-            kind="tertiary"
-            size="sm"
-            disabled={submitting}
-            onClick={onVerifyMappings}
-          >
-            {intl.formatMessage({
-              id: "analyzer.setup.connect.activation.verifyMappings",
-            })}
-          </Button>
-        )}
-      </section>
+        </section>
+      )}
 
       <div className="analyzer-setup__completion-actions">
         <Button
           type="button"
           disabled={submitting}
-          onClick={alreadyActive ? saveAndFinishLater : finishAndActivate}
+          onClick={
+            onContinue && !alreadyActive
+              ? () =>
+                  saveCandidate("continue", (saved) => {
+                    setAction(null);
+                    onContinue(saved);
+                  })
+              : alreadyActive
+                ? saveAndFinishLater
+                : finishAndActivate
+          }
         >
           {intl.formatMessage({
             id:
-              action === "activate"
-                ? "analyzer.setup.connect.activation.activating"
-                : action === "save"
-                  ? "analyzer.setup.connect.activation.saving"
-                  : alreadyActive
-                    ? "analyzer.setup.connect.activation.saveChanges"
-                    : "analyzer.setup.connect.activation.finish",
+              onContinue && !alreadyActive
+                ? "analyzer.setup.connect.continue"
+                : action === "activate"
+                  ? "analyzer.setup.connect.activation.activating"
+                  : action === "save"
+                    ? "analyzer.setup.connect.activation.saving"
+                    : alreadyActive
+                      ? "analyzer.setup.connect.activation.saveChanges"
+                      : "analyzer.setup.connect.activation.finish",
           })}
         </Button>
         {!alreadyActive && (

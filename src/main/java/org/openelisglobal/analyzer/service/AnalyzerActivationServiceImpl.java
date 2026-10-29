@@ -97,6 +97,55 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         return activateExact(lockAnalyzer(analyzerId), actor);
     }
 
+    @Override
+    @Transactional
+    public AnalyzerSetupReceptionResult startSetupReception(String analyzerId, String actor) {
+        Analyzer analyzer = lockAnalyzer(analyzerId);
+        String exactActor = requireText(actor, "actor");
+        // Routine analyzers keep their clinical lifecycle; this mode is for a new
+        // instrument whose setup samples must never enter clinical acceptance.
+        if (analyzer.getLastActivatedDate() != null || (analyzer.getStatus() != Analyzer.AnalyzerStatus.SETUP
+                && analyzer.getStatus() != Analyzer.AnalyzerStatus.VALIDATION
+                && analyzer.getStatus() != Analyzer.AnalyzerStatus.INACTIVE)) {
+            return new AnalyzerSetupReceptionResult(analyzer.getId(), analyzer.getStatus(), false,
+                    List.of(new AnalyzerActivationBlocker("analyzer.setup.reception.blocker.used")));
+        }
+        ActivationContext context = validateActivation(analyzer, false);
+        if (!context.blockers().isEmpty()) {
+            return new AnalyzerSetupReceptionResult(analyzer.getId(), analyzer.getStatus(), false, context.blockers());
+        }
+        ObjectNode acknowledgement;
+        try {
+            acknowledgement = bridgeClient.applyRuntimeCommand(context.connectionId(), context.configRevision(),
+                    "START_SETUP", requireText(activationCommandIdSupplier.get(), "setup reception command ID"));
+        } catch (BridgeAnalyzerConnectionException exception) {
+            return new AnalyzerSetupReceptionResult(analyzer.getId(), analyzer.getStatus(), false,
+                    List.of(connectionBlocker(exception)));
+        }
+        List<AnalyzerActivationBlocker> blockers = validateAcknowledgement(context, acknowledgement, "START_SETUP",
+                "ACTIVE");
+        if (!blockers.isEmpty()) {
+            return new AnalyzerSetupReceptionResult(analyzer.getId(), analyzer.getStatus(), false, blockers);
+        }
+        PreviousAnalyzerState previousState = PreviousAnalyzerState.capture(analyzer);
+        try {
+            AnalyzerActivationRecord record = activationRecordService.retain(analyzer, context.snapshot().mapping(),
+                    null, acknowledgement, "SETUP", exactActor);
+            analyzer.setLatestActivationRecord(record);
+            analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+            analyzer.setActive(false);
+            analyzer.setSysUserId(exactActor);
+            analyzerService.update(analyzer);
+            return new AnalyzerSetupReceptionResult(analyzer.getId(), analyzer.getStatus(), true, List.of());
+        } catch (RuntimeException exception) {
+            previousState.restore(analyzer);
+            if (previousState.status() != Analyzer.AnalyzerStatus.VALIDATION) {
+                compensateIfApplied(context, acknowledgement, "DEACTIVATE", deactivationCommandIdSupplier, exception);
+            }
+            throw exception;
+        }
+    }
+
     private AnalyzerActivationResult activateExact(Analyzer analyzer, String actor) {
         String exactActor = requireText(actor, "actor");
         ActivationContext context = validateActivation(analyzer);
@@ -180,7 +229,9 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             return AnalyzerDeactivationResult.deactivated(analyzer);
         } catch (RuntimeException exception) {
             previousState.restore(analyzer);
-            compensateIfApplied(context, acknowledgement, "ACTIVATE", activationCommandIdSupplier, exception);
+            compensateIfApplied(context, acknowledgement,
+                    previousState.status() == Analyzer.AnalyzerStatus.VALIDATION ? "START_SETUP" : "ACTIVATE",
+                    activationCommandIdSupplier, exception);
             throw exception;
         }
     }
@@ -209,6 +260,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     }
 
     private ActivationContext validateActivation(Analyzer analyzer) {
+        return validateActivation(analyzer, true);
+    }
+
+    private ActivationContext validateActivation(Analyzer analyzer, boolean requireVerifiedMapping) {
         List<AnalyzerActivationBlocker> blockers = new ArrayList<>();
         // A retired analyzer returns through Restore, never straight to running.
         if (analyzer.getStatus() == Analyzer.AnalyzerStatus.RETIRED) {
@@ -243,7 +298,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         String bindingRevisionId = analyzer.getMapping() == null ? null : analyzer.getMapping().getId();
         if (bindingRevisionId != null) {
             snapshot = mappingService.findById(bindingRevisionId).orElse(null);
-            if (snapshot != null) {
+            if (snapshot != null && requireVerifiedMapping) {
                 AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot);
                 if (!assessment.mappingsCurrent()) {
                     blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
@@ -306,7 +361,9 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
                 || !Objects.equals(connection.configFingerprint(),
                         acknowledgement.path("configFingerprint").asText(null))
                 || !matchesProfile(profile, acknowledgement.path("profileRef"))
-                || !action.equals(acknowledgement.path("action").asText())) {
+                || !action.equals(acknowledgement.path("action").asText())
+                || ("START_SETUP".equals(action) && !"SETUP".equals(acknowledgement.path("receptionPurpose").asText()))
+                || ("ACTIVATE".equals(action) && "SETUP".equals(acknowledgement.path("receptionPurpose").asText()))) {
             return List.of(new AnalyzerActivationBlocker(BRIDGE_ACKNOWLEDGEMENT_BLOCKER));
         }
         String outcome = acknowledgement.path("outcome").asText();
