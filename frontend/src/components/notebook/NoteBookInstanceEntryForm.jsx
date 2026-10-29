@@ -201,6 +201,7 @@ const NoteBookInstanceEntryForm = () => {
       getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
       // Reload audit trail after save
       loadAuditTrail(body.id);
+      window.location.href = "/NoteBookInstanceEditForm/" + body.id;
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -208,7 +209,6 @@ const NoteBookInstanceEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookInstanceEditForm/" + body.id;
   };
 
   // Check if a sample is already added (by sampleItemId)

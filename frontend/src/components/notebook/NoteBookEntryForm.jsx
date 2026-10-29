@@ -219,6 +219,7 @@ const NoteBookEntryForm = () => {
       getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
       // Reload audit trail after save
       loadAuditTrail(body.id);
+      window.location.href = "/NoteBookEntryForm/" + body.id;
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -226,7 +227,6 @@ const NoteBookEntryForm = () => {
         message: intl.formatMessage({ id: "error.save.msg" }),
       });
     }
-    window.location.href = "/NoteBookEntryForm/" + body.id;
   };
 
   const [showPageModal, setShowPageModal] = useState(false);
