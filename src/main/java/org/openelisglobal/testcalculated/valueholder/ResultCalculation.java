@@ -8,6 +8,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OneToOne;
@@ -42,9 +44,8 @@ public class ResultCalculation extends BaseObject<Integer> {
     @JoinColumn(name = "result_id")
     private Result result;
 
-    @ElementCollection
-    @CollectionTable(name = "test_operations", joinColumns = @JoinColumn(name = "result_calculation_id", referencedColumnName = "id"))
-    @Column(name = "test_id")
+    @ManyToMany
+    @JoinTable(name = "test_operations", joinColumns = @JoinColumn(name = "result_calculation_id"), inverseJoinColumns = @JoinColumn(name = "test_id"))
     private Set<Test> test;
 
     /**
