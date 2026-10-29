@@ -128,7 +128,14 @@ const MicrotomySection = ({
             <>
               {/* The server leaves a deactivated slide untouched, so an image
                   attached to one would be dropped without a word. */}
+              <p
+                className="pathology-case-view__upload-hint"
+                aria-hidden="true"
+              >
+                <FormattedMessage id="clinicalAttachment.uploadHint" />
+              </p>
               <FileUploader
+                className="pathology-case-view__slide-upload"
                 labelDescription={intl.formatMessage({
                   id: "clinicalAttachment.uploadHint",
                 })}
