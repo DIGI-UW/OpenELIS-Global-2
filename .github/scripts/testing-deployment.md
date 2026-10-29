@@ -46,7 +46,7 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
   supported catalog configuration. Subsequent deploys preserve uploaded and
   edited files; existing overrides are not removed automatically. The webapp
   entrypoint grants its Tomcat group write access.
-- `.openelis-ci/`: the image override and `target.json`.
+- `.openelis-ci/`: the image override, `target.json` and the deployment lock.
 
 After the application reports ready, the deploy creates missing default
 analyzers (`seed-analyzers.sh --ensure-connections --no-mock-network`) and sets
@@ -98,6 +98,22 @@ Optional readiness variables are:
 | `TESTING_READINESS_JSON_KEY` | `status` (supports dotted nested keys)                           |
 | `TESTING_READINESS_EXPECTED` | `"UP"` (JSON-encoded value)                                      |
 
+Deployment requires an HTTPS readiness URL with a certificate trusted by the VM.
+Readiness, authenticated smoke requests and analyzer seeding all verify
+certificates. The authenticated smoke client refuses redirects and never sends
+credentials to the mock. An HTTP URL or an insecure deployment request is
+rejected before deployment changes begin.
+
+For a private certificate authority, install its certificate in the VM's trust
+store. A manual invocation can instead use the standard `SSL_CERT_FILE`
+environment variable; the script supplies that same trust file to the seed
+process through `CURL_CA_BUNDLE`. Deployment has no insecure override. The local
+development harness keeps its separate, explicit self-signed mode.
+
+The workflow creates a private, randomly named remote working directory with
+`mktemp -d`, retains diagnostics in the job artifact and removes the directory
+even when deployment fails. Runtime files and keys stay in the installation.
+
 Diagnostics include Compose status, logs for the application, Bridge and mock,
 readiness, and the previous image selection. Rollback is manual because older
 images may be incompatible with applied database migrations.
@@ -109,8 +125,9 @@ node --test .github/scripts/publish-checkpoints.test.cjs
 python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 ```
 
-The Python tests require PyYAML and use temporary localhost HTTP servers. Docker
-operations are mocked; the tests do not deploy to the testing VM.
+The Python tests require PyYAML and OpenSSL and use temporary localhost HTTP and
+HTTPS servers with disposable certificates. Docker operations are mocked; the
+tests do not deploy to the testing VM.
 
 ### Reviewing a site that used the former harness catalog
 
