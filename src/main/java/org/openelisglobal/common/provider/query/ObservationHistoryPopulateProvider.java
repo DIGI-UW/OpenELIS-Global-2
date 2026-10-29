@@ -154,7 +154,7 @@ public class ObservationHistoryPopulateProvider extends BaseQueryProvider {
      * specifies a string value.
      */
     private void addDoubleHistories(String doubleOHName, String suffix) {
-        // the code which loaded everything assuming it occured once probably added one
+        // the code which loaded everything assuming it occurred once probably added one
         // of these, so delete that because we don't know which came last.
         historyMap.remove(doubleOHName);
         List<ObservationHistory> histories = getObservationsByType(doubleOHName);
