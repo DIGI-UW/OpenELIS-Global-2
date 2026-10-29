@@ -13912,5 +13912,11 @@
   "analyzer.setup.reception.stopError": "Setup reception could not be stopped. Try again before leaving the instrument connected.",
   "analyzer.setup.reception.blocker.used": "Setup reception is only available before an analyzer has been activated for routine use.",
   "analyzer.setup.reception.sample": "Setup sample",
-  "analyzer.setup.reception.sampleHelp": "Retained for setup verification. This sample cannot be accepted as a patient result or recorded as quality control."
+  "analyzer.setup.reception.sampleHelp": "Retained for setup verification. This sample cannot be accepted as a patient result or recorded as quality control.",
+  "analyzer.connection.live.checking": "Checking connection",
+  "analyzer.connection.live.unavailable": "Connection unavailable",
+  "analyzer.connection.live.missing": "Connection not configured",
+  "analyzer.connection.live.attention": "Connection needs attention",
+  "analyzer.connection.live.stopped": "Reception stopped",
+  "analyzer.connection.live.running": "Bridge reception active"
 }
