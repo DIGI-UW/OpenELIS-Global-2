@@ -136,7 +136,7 @@ const LogoUploadSection = forwardRef<
     // Validate file format
     const allowedFormats = ["image/png", "image/jpeg", "image/jpg"];
     if (!allowedFormats.includes(selectedFile.type)) {
-      setError(intl.formatMessage({ id: "site.branding.file.format.error" }));
+      setError(intl.formatMessage({ id: "site.branding.logo.format.error" }));
       return;
     }
 
@@ -343,7 +343,7 @@ const LogoUploadSection = forwardRef<
                   marginTop: "0.25rem",
                 }}
               >
-                <FormattedMessage id="site.branding.formats" />
+                <FormattedMessage id="site.branding.logo.formats" />
               </p>
             </>
           )}
