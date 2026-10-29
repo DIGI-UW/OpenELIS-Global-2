@@ -65,6 +65,7 @@ test(
     const source = await geneXpertMockSource(page.request);
     type Saved = {
       testId: string;
+      testName: string;
       analysisId: string;
       significantDigits: number;
       resultValue: string;
@@ -172,7 +173,7 @@ test(
         .click();
       await expect(
         page.getByRole("textbox", {
-          name: `Result for ${target.name}`,
+          name: `Result for ${saved.testName}`,
           exact: true,
         }),
       ).toHaveValue(correction ?? "1.17");
