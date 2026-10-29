@@ -54,4 +54,16 @@ public interface FhirPatientLinkService {
      * @return true if patient has a FHIR UUID, false otherwise
      */
     boolean hasFhirResource(String patientId);
+
+    /**
+     * Verifies that FHIR resources exist on the FHIR server for both patients. This
+     * method actually queries the FHIR server to ensure resources exist, not just
+     * that UUIDs exist in the database.
+     *
+     * @param primaryPatientId Internal database ID of the primary patient
+     * @param mergedPatientId  Internal database ID of the merged patient
+     * @return true if both FHIR resources exist on the server, false if either is
+     *         missing
+     */
+    boolean verifyFhirResourcesExist(String primaryPatientId, String mergedPatientId);
 }

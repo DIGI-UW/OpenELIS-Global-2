@@ -271,16 +271,15 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     /**
-     * Test: Patient merge with FHIR resources - verify database and FHIR state.
-     * Business Rule: When both patients have FHIR UUIDs, the FHIR integration
-     * should be invoked (though actual FHIR updates require FHIR server).
+     * Test: Patient merge with FHIR resources when FHIR store is unavailable.
+     * Business Rule: When both patients have FHIR UUIDs but FHIR store is
+     * unavailable, the merge should fail (NEW behavior per issue fix).
      *
-     * This test verifies: 1. Database merge completes successfully 2. Patients with
-     * FHIR UUIDs trigger FHIR integration path 3. Merge succeeds even if FHIR store
-     * is not available (graceful degradation)
+     * This test verifies: 1. Merge fails when FHIR resources cannot be verified 2.
+     * Clear error message is returned to user 3. No partial merge in database
      */
     @Test
-    public void testMergeExecution_WithFhirUuids_ShouldCompleteSuccessfully() {
+    public void testMergeExecution_WithFhirUuids_FhirStoreUnavailable_ShouldFail() {
         // Arrange - Add FHIR UUIDs to both patients (simulating FHIR-enabled patients)
         UUID patient1FhirUuid = UUID.randomUUID();
         UUID patient2FhirUuid = UUID.randomUUID();
@@ -305,35 +304,17 @@ public class PatientMergeServiceIntegrationTest extends BaseWebContextSensitiveT
         request.setReason("Testing FHIR-enabled patient merge");
         request.setConfirmed(true);
 
-        // Act - Execute merge (FHIR integration will be attempted)
-        // Note: Actual FHIR store updates require external FHIR server
-        // This test verifies graceful degradation when FHIR store unavailable
+        // Act - Execute merge (FHIR verification will fail because FHIR store
+        // unavailable)
         PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(request, "1");
 
-        // Assert - Database merge should succeed
-        assertTrue("Merge should succeed even without FHIR store", result.isSuccess());
-        assertNotNull("Should have merge audit ID", result.getMergeAuditId());
-        assertEquals("Should return correct primary patient ID", patient1.getId(), result.getPrimaryPatientId());
-        assertEquals("Should return correct merged patient ID", patient2.getId(), result.getMergedPatientId());
+        // Assert - Merge should fail because FHIR store is unavailable
+        assertFalse("Merge should fail when FHIR store unavailable", result.isSuccess());
+        assertTrue("Error message should mention FHIR", result.getMessage().toLowerCase().contains("fhir"));
 
-        // Verify database state
+        // Verify NO merge happened in database (rollback worked)
         Patient mergedPatient = patientDAO.getData(patient2.getId());
-        assertTrue("Merged patient should be marked as merged in database",
-                Boolean.TRUE.equals(mergedPatient.getIsMerged()));
-        assertEquals("Merged patient should reference primary patient", patient1.getId(),
-                mergedPatient.getMergedIntoPatientId());
-        assertNotNull("Merged patient should have merge date", mergedPatient.getMergeDate());
-
-        // Verify primary patient unchanged
-        Patient primaryPatient = patientDAO.getData(patient1.getId());
-        assertFalse("Primary patient should NOT be marked as merged",
-                Boolean.TRUE.equals(primaryPatient.getIsMerged()));
-
-        // Verify FHIR UUIDs preserved in database
-        assertNotNull("Primary patient should still have FHIR UUID", primaryPatient.getFhirUuid());
-        assertNotNull("Merged patient should still have FHIR UUID", mergedPatient.getFhirUuid());
-        assertEquals("Primary patient FHIR UUID should be unchanged", patient1FhirUuid, primaryPatient.getFhirUuid());
-        assertEquals("Merged patient FHIR UUID should be unchanged", patient2FhirUuid, mergedPatient.getFhirUuid());
+        assertFalse("Merged patient should NOT be marked as merged", Boolean.TRUE.equals(mergedPatient.getIsMerged()));
     }
 
     /**
