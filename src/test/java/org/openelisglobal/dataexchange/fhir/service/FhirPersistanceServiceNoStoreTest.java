@@ -32,8 +32,8 @@ import org.springframework.test.util.ReflectionTestUtils;
  * and runs no FHIR server. Patient, order, result and validation saves still
  * hand their resources to this service from an asynchronous transform, which
  * used to end in a NullPointerException on every save (OGC-1546). Without a
- * store the service answers as an empty store: writes are no-ops and reads
- * find nothing, so the lab workflows run from the OpenELIS database alone.
+ * store the service answers as an empty store: writes are no-ops and reads find
+ * nothing, so the lab workflows run from the OpenELIS database alone.
  */
 @RunWith(MockitoJUnitRunner.class)
 public class FhirPersistanceServiceNoStoreTest {

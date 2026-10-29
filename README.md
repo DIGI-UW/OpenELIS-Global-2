@@ -93,6 +93,26 @@ there is nothing to build or package locally.
 
 see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
+### For running a light OpenELIS Global2 without the FHIR server and the Analyzer Bridge
+
+The FHIR server and the Analyzer Bridge are only needed for exchanges with other
+systems: analyzers, electronic orders from an EMR or a consolidated server,
+referrals to and results from other laboratories, EQA exchange, sample shipments
+and the client registry. Every lab workflow (patients, orders, sample
+preparation and labels, results, validation, reports, non-conformities, storage,
+administration) runs from the OpenELIS database alone, and questionnaires are
+kept in the database when there is no FHIR store.
+
+To run without them, leave `org.openelisglobal.fhirstore.uri` empty in
+`common.properties` (or set the `ORG_OPENELISGLOBAL_FHIRSTORE_URI` environment
+variable of the webapp to an empty value, which overrides the file), leave
+`ANALYZER_BRIDGE_URL` empty, and do not start the two services. In
+openelis-docker that is one command:
+`docker compose -f docker-compose.yml -f docker-compose.light.yml up -d`; see
+its
+[light installation](https://github.com/DIGI-UW/openelis-docker#light-installation)
+section.
+
 ### For Running OpenELIS Global2 from Source Code
 
 Use the same launcher from any clone or worktree:
