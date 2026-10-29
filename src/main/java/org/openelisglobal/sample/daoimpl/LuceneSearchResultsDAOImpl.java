@@ -73,7 +73,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
             query.setParameter(NATIONAL_ID_PARAM, nationalID);
         }
         if (!GenericValidator.isBlankOrNull(externalID)) {
-            query.setParameter(EXTERNAL_ID_PARAM, nationalID);
+            query.setParameter(EXTERNAL_ID_PARAM, externalID);
         }
         if (!GenericValidator.isBlankOrNull(STNumber)) {
             query.setParameter(ST_NUMBER_PARAM, STNumber);
@@ -159,7 +159,7 @@ public class LuceneSearchResultsDAOImpl implements SearchResultsDAO {
             query.setParameter(NATIONAL_ID_PARAM, nationalID);
         }
         if (!GenericValidator.isBlankOrNull(externalID)) {
-            query.setParameter(EXTERNAL_ID_PARAM, nationalID);
+            query.setParameter(EXTERNAL_ID_PARAM, externalID);
         }
         if (!GenericValidator.isBlankOrNull(STNumber)) {
             query.setParameter(ST_NUMBER_PARAM, STNumber);
