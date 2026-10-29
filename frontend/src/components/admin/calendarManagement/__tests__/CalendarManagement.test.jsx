@@ -131,7 +131,9 @@ describe("CalendarManagement", () => {
 
   test("renders year dropdown", async () => {
     renderWithIntl(<CalendarManagement />);
-    expect(screen.getByTestId("year-dropdown")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /^Year/ })).toHaveTextContent(
+      /^\d{4}/,
+    );
   });
 
   test("renders import and export buttons", async () => {
