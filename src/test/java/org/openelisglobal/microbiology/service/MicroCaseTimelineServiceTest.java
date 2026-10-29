@@ -39,16 +39,23 @@ public class MicroCaseTimelineServiceTest {
     @Mock
     private SystemUserService systemUserService;
 
+    @Mock
+    private MicrobiologyCaseAccessService access;
     private MicroCaseTimelineService service;
 
     @Before
     public void setUp() {
         service = new MicroCaseTimelineServiceImpl(caseDAO, activityDAO, noteService, systemUserService,
                 "sample-item-table");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "access", access);
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setSampleItemId("sample-item-1");
-        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        org.mockito.Mockito.lenient().when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        org.mockito.Mockito.lenient().when(caseDAO.getForUpdate("case-1")).thenReturn(microCase);
+        org.mockito.Mockito.lenient().when(
+                access.hasLabUnitRole(eq("42"), any(), eq(org.openelisglobal.common.constants.Constants.ROLE_RESULTS)))
+                .thenReturn(true);
     }
 
     @Test

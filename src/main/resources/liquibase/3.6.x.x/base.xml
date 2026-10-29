@@ -43,4 +43,5 @@
   <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
   <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
 
+  <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
 </databaseChangeLog>
