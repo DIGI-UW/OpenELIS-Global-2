@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="3.5.x.x-add-last-updated-organization-address" author="ariho_seth">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="organization_address" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add @Version column required by BaseObject for annotated OrganizationAddress</comment>
+        <addColumn tableName="organization_address" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="organization_address" columnName="last_updated"/>
+        </rollback>
+
+        <addColumn tableName="address_part" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="3.5.x.x-add-last-updated-address-part" author="ariho_seth">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="address_part" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add @Version column required by BaseObject for annotated AddressPart</comment>
+        <addColumn tableName="address_part" schemaName="clinlims">
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="address_part" columnName="last_updated"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>
