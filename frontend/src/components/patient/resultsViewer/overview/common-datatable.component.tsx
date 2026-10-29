@@ -9,7 +9,7 @@ import {
   TableCell,
   TableBody,
 } from "@carbon/react";
-import { OBSERVATION_INTERPRETATION, useLayoutType } from "../commons";
+import { OBSERVATION_INTERPRETATION } from "../commons";
 //import styles from './common-datatable.scss';
 import "./common-datatable.scss";
 
@@ -50,8 +50,6 @@ const CommonDataTable: React.FC<CommonDataTableProps> = ({
     LOW: "low",
     NORMAL: "",
   };
-
-  const isTablet = useLayoutType() === "tablet";
 
   return (
     <DataTable rows={data} headers={tableHeaders} size="sm" useZebraStyles>

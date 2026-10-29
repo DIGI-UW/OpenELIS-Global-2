@@ -46,8 +46,8 @@ export function useObstreeData(
 } {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isValidating, setIsValidating] = useState(false);
+  const [error] = useState(null);
+  const [isValidating] = useState(false);
 
   const fetchResults = (results) => {
     setData(results);

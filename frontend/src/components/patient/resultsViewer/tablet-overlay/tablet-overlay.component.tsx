@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Header } from "@carbon/react";
-import { ArrowLeft, Close } from "@carbon/react/icons";
+import { ArrowLeft } from "@carbon/react/icons";
 //import styles from './tablet-overlay.scss';
 import "./tablet-overlay.scss";
 

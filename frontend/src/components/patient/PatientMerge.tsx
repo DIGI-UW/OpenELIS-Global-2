@@ -56,8 +56,7 @@ function PatientMerge() {
   // Merge state
   const [mergeReason, setMergeReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [mergeResult, setMergeResult] =
-    useState<Nullable<PatientMergeResult>>(null);
+  const [, setMergeResult] = useState<Nullable<PatientMergeResult>>(null);
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Nullable<string>>(null);

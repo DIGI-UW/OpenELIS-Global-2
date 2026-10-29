@@ -4,7 +4,7 @@ import React, {
   AnchorHTMLAttributes,
   PropsWithChildren,
 } from "react";
-import { navigate, interpolateUrl, TemplateParams } from "./navigation";
+import { navigate, TemplateParams } from "./navigation";
 
 function handleClick(
   event: MouseEvent,
