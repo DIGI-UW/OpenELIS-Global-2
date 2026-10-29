@@ -77,7 +77,7 @@ public class OdooClient {
         if (xmlRpcClientConfig == null) {
             try {
                 xmlRpcClientConfig = new XmlRpcClientConfigImpl();
-                xmlRpcClientConfig.setEnabledForExtensions(true);
+                xmlRpcClientConfig.setEnabledForExtensions(false);
                 xmlRpcClientConfig.setServerURL(new URL(String.format(SERVER_OBJECT_URL, getUrl())));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(String.format("Error occurred while building odoo server url %s error %s",
@@ -86,12 +86,14 @@ public class OdooClient {
         }
         if (client == null) {
             client = new XmlRpcClient();
+            client.setTypeFactory(new OdooXmlRpcTypeFactory(client));
             client.setConfig(xmlRpcClientConfig);
         }
         // authenticate
         if (uid == null) {
             try {
                 XmlRpcClientConfigImpl xmlRpcClientCommonConfig = new XmlRpcClientConfigImpl();
+                xmlRpcClientCommonConfig.setEnabledForExtensions(false);
                 xmlRpcClientCommonConfig.setServerURL(new URL(String.format(SERVER_COMMON_URL, getUrl())));
                 uid = (Integer) client.execute(xmlRpcClientCommonConfig, "authenticate",
                         asList(getDatabase(), getUsername(), getPassword(), emptyMap()));
