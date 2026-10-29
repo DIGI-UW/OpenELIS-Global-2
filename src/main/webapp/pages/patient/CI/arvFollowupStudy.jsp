@@ -403,15 +403,15 @@ farv = new ArvFollowupProjectChecker();
 				<c:out value="${disease.value}" />
 			</td>
 			<td>
-				<form:select path='observations.${disease.name}'
-					onchange="makeDirty();compareAllObservationHistoryFields(true)"					
-					id='farv.${disease.name}'
+				<form:select path='observations.${disease.key}'
+					onchange="makeDirty();compareAllObservationHistoryFields(true)"
+					id='farv.${disease.key}'
 					>
 					<option value=""></option>
 					<form:options items="${form.dictionaryLists.YES_NO.list}" itemLabel="localizedName"
 						itemValue="id" />
 				</form:select>
-				<div id="farv.${disease.name}.Message" class="blank"></div>
+				<div id="farv.${disease.key}.Message" class="blank"></div>
 			</td>
 		</tr>
 	</c:forEach>
