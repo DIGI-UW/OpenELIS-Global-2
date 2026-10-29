@@ -3,7 +3,7 @@
 // Native ESM — loaded directly by Node under package.json `"type": "module"`.
 // Inline plugin objects (no `eslint-plugin-local-rules` shim).
 //
-// Load order: base globals → JS/JSX → TS/TSX → tests (Jest) → Playwright →
+// Load order: base globals → JS/JSX → TS/TSX → tests (Vitest) → Playwright →
 // demo subset → helper exemptions. Later blocks refine earlier ones via
 // flat-config's `files` matching.
 
@@ -138,12 +138,13 @@ export default [
     },
   },
 
-  // ─── Jest unit tests ────────────────────────────────────────────────
+  // ─── Vitest unit tests ──────────────────────────────────────────────
   {
-    files: ["**/*.test.{js,jsx,ts,tsx}"],
+    files: ["**/*.test.{js,jsx,ts,tsx}", "src/setupTests.js"],
     plugins: { jest: jestPlugin },
     languageOptions: {
-      globals: { ...globals.jest },
+      // Match test.globals in vite.config.ts, including the shared setup file.
+      globals: { ...globals.vitest },
     },
     rules: {
       "jest/expect-expect": "error",
