@@ -256,6 +256,9 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("7.5", row.getRawResultValue());
         assertEquals("PATIENT", row.getResultClassification());
         assertFalse(row.getSourcePayload().isBlank());
+        verify(analyzerResultsService, never()).delete(any(), any());
+        verify(analyzerResultsService, never()).persistAnalyzerResults(anyList(), anyList(), any());
+        verify(placementService, never()).place(any(), any(), any(), any());
     }
 
     @Test

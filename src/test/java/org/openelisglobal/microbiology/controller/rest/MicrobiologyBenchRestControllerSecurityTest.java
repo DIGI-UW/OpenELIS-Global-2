@@ -1,6 +1,5 @@
 package org.openelisglobal.microbiology.controller.rest;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -9,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.openelisglobal.common.action.IActionConstants;
@@ -74,7 +74,7 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
     public void validationRoleReleasesFinalWithSessionActor() throws Exception {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
-        when(releaseService.releaseFinal(eq("case-1"), eq("42"))).thenReturn(microCase);
+        when(releaseService.releaseFinal("case-1", "42", List.of())).thenReturn(microCase);
 
         mockMvc.perform(
                 post("/rest/microbiology/cases/case-1/release/final").with(user("validator").roles("VALIDATION"))
@@ -82,7 +82,28 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
                         .contentType(MediaType.APPLICATION_JSON).content("{\"performedBy\":\"999\"}"))
                 .andExpect(status().isOk());
 
-        verify(releaseService).releaseFinal("case-1", "42");
+        verify(releaseService).releaseFinal("case-1", "42", List.of());
+    }
+
+    @Test
+    public void releaseEndpointsForwardExactIncomingConfirmationsAndSessionActor() throws Exception {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-confirmed");
+        List<String> confirmed = List.of("incoming-1", "incoming-2");
+        when(releaseService.releaseFinal("case-confirmed", "42", confirmed)).thenReturn(microCase);
+        when(releaseService.releaseAmended("case-confirmed", "42", confirmed)).thenReturn(microCase);
+
+        for (String endpoint : List.of("final", "amended")) {
+            mockMvc.perform(post("/rest/microbiology/cases/case-confirmed/release/" + endpoint)
+                    .with(user("validator").roles("VALIDATION"))
+                    .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionFor(42))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"confirmedIncomingIds\":[\"incoming-1\",\"incoming-2\"],\"performedBy\":\"999\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        verify(releaseService).releaseFinal("case-confirmed", "42", confirmed);
+        verify(releaseService).releaseAmended("case-confirmed", "42", confirmed);
     }
 
     private UserSessionData sessionFor(int userId) {

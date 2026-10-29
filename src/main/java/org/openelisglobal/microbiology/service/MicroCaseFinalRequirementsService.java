@@ -26,6 +26,10 @@ public class MicroCaseFinalRequirementsService {
             throw new IllegalArgumentException("Unknown microbiology required-before-final clinical field");
     }
 
+    public List<String> requiredFields() {
+        return requiredFields;
+    }
+
     public List<String> blockers(String caseId) {
         var blockers = new ArrayList<String>();
         var detail = details.getByCaseId(caseId);

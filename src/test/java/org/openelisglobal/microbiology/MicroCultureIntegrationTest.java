@@ -46,6 +46,12 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCaseDAO cases;
     @Autowired
+    private MicroCaseSearchDAO benchSearch;
+    @Autowired
+    private MicroBenchService benchWorkspace;
+    @Autowired
+    private MicroCaseAnalysisDAO caseAnalyses;
+    @Autowired
     private MicroCaseMembershipService membership;
     @Autowired
     private MicroCaseResultService results;
@@ -209,6 +215,159 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         return service.inoculate(microCase.getId(), request(), actor).get(0);
     }
 
+    private SampleItem additionalSource(SampleItem parent, int order) {
+        var source = new SampleItem();
+        source.setSample(specimen.getSample());
+        source.setParentSampleItem(parent);
+        source.setTypeOfSample(specimen.getTypeOfSample());
+        source.setReceivedDate(received);
+        source.setSortOrder(Integer.toString(order));
+        source.setStatusId(specimen.getStatusId());
+        source.setSysUserId(actor);
+        sampleItems.insert(source);
+        return source;
+    }
+
+    private void pendingCulture(SampleItem source) {
+        var test = fixtures.createCatalogTest();
+        var analysis = fixtures.createAnalysis(source, test);
+        var link = new MicroCaseAnalysis();
+        link.setCaseId(microCase.getId());
+        link.setAnalysisId(analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        link.setSysUserId(actor);
+        caseAnalyses.insert(link);
+    }
+
+    @Test
+    public void awaitingInoculationKeepsTheRemainingSpecimenAndSelectsIt() {
+        var second = additionalSource(null, 2);
+        membership.addSample(microCase.getId(), second.getId(), actor);
+        pendingCulture(specimen);
+        pendingCulture(second);
+        var query = new MicroBenchQueryForm();
+        query.cultureFilter = "AWAITING_INOCULATION";
+        query.labUnitIds = List.of(microCase.getLabUnitId());
+        assertEquals(1, benchWorkspace.search(query, actor).total);
+        create();
+        var remaining = benchWorkspace.search(query, actor);
+        assertEquals(1, remaining.total);
+        assertEquals(second.getId(), remaining.rows.getFirst().sampleItemId);
+        var next = request();
+        next.sourceSampleItemId = second.getId();
+        service.inoculate(microCase.getId(), next, actor);
+        assertEquals(0, benchWorkspace.search(query, actor).total);
+    }
+
+    @Test
+    public void completedReferralOnGrandchildSourceIsIncludedBeforeAttentionPagination() {
+        var aliquot = additionalSource(specimen, 2);
+        var descendant = additionalSource(aliquot, 3);
+        var analysis = fixtures.createAnalysis(descendant, fixtures.createCatalogTest());
+        var referralType = new org.openelisglobal.referral.valueholder.ReferralType();
+        referralType.setName("Bench-" + UUID.randomUUID().toString().substring(0, 8));
+        em.persist(referralType);
+        var referral = new org.openelisglobal.referral.valueholder.Referral();
+        referral.setReferralTypeId(referralType.getId());
+        referral.setAnalysis(analysis);
+        referral.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.COMPLETED);
+        referral.setReconciled(false);
+        referral.setRequestDate(new Timestamp(System.currentTimeMillis()));
+        referral.setFhirUuid(UUID.randomUUID());
+        referral.setSysUserId(actor);
+        em.persist(referral);
+        var program = new org.openelisglobal.program.valueholder.Program();
+        program.setCode("BENCH_" + UUID.randomUUID().toString().substring(0, 8));
+        program.setProgramName("Bench referral fixture");
+        program.setManuallyChanged(true);
+        program.setShowOnMicroCase(true);
+        em.persist(program);
+        var association = new org.openelisglobal.program.valueholder.ProgramSample();
+        association.setProgram(program);
+        association.setSample(specimen.getSample());
+        em.persist(association);
+        microCase.setProgramId(program.getId());
+        cases.update(microCase);
+        em.flush();
+        var attention = benchSearch.referralAttentionCases();
+        assertTrue(attention.contains(microCase.getId()));
+        var query = new MicroBenchQueryForm();
+        query.needsAttention = true;
+        var now = new Timestamp(System.currentTimeMillis());
+        var units = Set.of(microCase.getLabUnitId());
+        assertEquals(1, benchSearch.benchCount(query, units, List.of(), attention, now));
+        assertEquals(microCase.getId(), benchSearch.benchPage(query, units, List.of(), attention, now).getFirst()[0]);
+        referral.setReconciled(true);
+        em.flush();
+        assertFalse(benchSearch.referralAttentionCases().contains(microCase.getId()));
+        assertEquals(0, benchSearch.benchCount(query, units, List.of(), benchSearch.referralAttentionCases(), now));
+    }
+
+    @Test
+    public void benchQueryPaginatesDueRowsBeforeLoadingTheirWorkspaces() {
+        var earlyRequest = request();
+        earlyRequest.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(36 * 3600));
+        earlyRequest.duration = new BigDecimal("4");
+        var early = service.inoculate(microCase.getId(), earlyRequest, actor).get(0);
+        var laterRequest = request();
+        laterRequest.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(24 * 3600));
+        laterRequest.duration = new BigDecimal("4");
+        service.inoculate(microCase.getId(), laterRequest, actor);
+        var futureRequest = request();
+        var future = service.inoculate(microCase.getId(), futureRequest, actor).stream()
+                .filter(row -> row.containerIdentifier.equals(futureRequest.containerIdentifier)).findFirst()
+                .orElseThrow();
+        var q = new MicroBenchQueryForm();
+        q.page = 1;
+        q.pageSize = 1;
+        q.cultureFilter = "FINAL_READ_DUE";
+        var units = Set.of(microCase.getLabUnitId());
+        var now = new Timestamp(System.currentTimeMillis());
+        assertEquals(2, benchSearch.benchCount(q, units, List.of("patientOrigin"), List.of(), now));
+        var first = benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now);
+        assertEquals(1, first.size());
+        assertEquals(early.id, first.get(0)[1]);
+        q.page = 2;
+        var second = benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now);
+        assertEquals(1, second.size());
+        assertNotEquals(first.get(0)[1], second.get(0)[1]);
+        assertNotEquals(future.id, second.get(0)[1]);
+        assertEquals(0, benchSearch.benchCount(q, Set.of("-999"), List.of(), List.of(), now));
+        q.cultureFilter = "CHECK_DUE";
+        assertEquals(2, benchSearch.benchCount(q, units, List.of(), List.of(), now));
+        q.cultureFilter = "";
+        q.page = 1;
+        q.needsAttention = true;
+        assertEquals(1,
+                benchSearch.benchCount(q, units, List.of("patientOrigin", "antibioticExposure"), List.of(), now));
+        assertEquals(microCase.getId(),
+                benchSearch.benchPage(q, units, List.of("patientOrigin"), List.of(), now).get(0)[0]);
+        q.cultureFilter = "AWAITING_INOCULATION";
+        assertEquals(0, benchSearch.benchCount(q, units, List.of(), List.of(), now));
+        assertEquals(List.of(), benchSearch.questionnaireCases(q, units));
+    }
+
+    @Test
+    public void benchDueFilterAgreesWithCultureTimingAtTheDeadline() {
+        var input = request();
+        input.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(1800));
+        input.duration = new BigDecimal("0.1");
+        input.checkIntervalHours = new BigDecimal("0.1");
+        var row = service.inoculate(microCase.getId(), input, actor).get(0);
+        assertTrue(row.finalReadDue);
+        assertTrue(row.checkDue);
+        var query = new MicroBenchQueryForm();
+        query.page = 1;
+        query.pageSize = 20;
+        var now = new Timestamp(System.currentTimeMillis());
+        for (String filter : List.of("FINAL_READ_DUE", "CHECK_DUE")) {
+            query.cultureFilter = filter;
+            assertEquals(1, benchSearch.benchCount(query, Set.of(microCase.getLabUnitId()), List.of(), List.of(), now));
+            assertEquals(row.id, benchSearch
+                    .benchPage(query, Set.of(microCase.getLabUnitId()), List.of(), List.of(), now).get(0)[1]);
+        }
+    }
+
     private List<MicroCultureForm> reload() {
         em.flush();
         em.clear();
@@ -222,6 +381,156 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         } catch (IllegalArgumentException e) {
             assertEquals(message, e.getMessage());
         }
+    }
+
+    @Autowired
+    private MicroBenchCaseService benchProxy;
+
+    // Join the test-owned rollback transaction for persistence assertions. The
+    // browser
+    // journey exercises the proxied per-case transaction boundaries.
+    private MicroBenchCaseService bench() throws Exception {
+        return org.springframework.test.util.AopTestUtils.getTargetObject(benchProxy);
+    }
+
+    private MicroBenchRequestForm.Selection selection(String... ids) {
+        var selection = new MicroBenchRequestForm.Selection();
+        selection.caseId = microCase.getId();
+        selection.sampleItemId = specimen.getId();
+        selection.cultureIds = List.of(ids);
+        return selection;
+    }
+
+    @Test
+    public void batchNoGrowthSkipsGrowthAndUndoRestoresOnlyItsChanges() throws Exception {
+        var first = create();
+        var next = request();
+        service.inoculate(microCase.getId(), next, actor);
+        var second = reload().get(1);
+        var growth = new MicroCultureRequestForm();
+        growth.outcome = "GROWTH";
+        service.act(microCase.getId(), second.id, "outcome", growth, actor);
+        var request = new MicroBenchRequestForm();
+        request.action = "NO_GROWTH";
+        var reply = bench().apply(request, selection(first.id, second.id), actor);
+        assertEquals(List.of(first.id), reply.changed);
+        assertEquals("GROWTH", reply.skipped.get(0).reason());
+        assertEquals("NO_GROWTH", reload().get(0).outcome);
+        bench().undo(microCase.getId(), reply.actionId, actor);
+        var restored = reload();
+        assertNull(restored.get(0).outcome);
+        assertEquals("GROWTH", restored.get(1).outcome);
+        var history = em.createQuery("from MicroCaseActivity a where a.caseId=:id and a.activityType like 'BENCH_%'",
+                MicroCaseActivity.class).setParameter("id", microCase.getId()).getResultList();
+        assertEquals(2, history.size());
+        assertEquals(1, history.stream().filter(a -> "BENCH_NO_GROWTH".equals(a.getActivityType())).count());
+    }
+
+    @Test
+    public void batchNoGrowthLeavesInstrumentProposalsForIndividualConfirmation() throws Exception {
+        var row = create();
+        var signal = new MicroCultureRequestForm();
+        signal.signal = "Instrument negative after cycle";
+        service.act(microCase.getId(), row.id, "negative-proposal", signal, actor);
+        var request = new MicroBenchRequestForm();
+        request.action = "NO_GROWTH";
+        var reply = bench().apply(request, selection(row.id), actor);
+        assertTrue(reply.changed.isEmpty());
+        assertEquals("NEGATIVE_CONFIRM", reply.skipped.get(0).reason());
+        var retained = reload().get(0);
+        assertNull(retained.outcome);
+        assertNull(retained.proposals.get(0).confirmedAt());
+        var confirmation = new MicroCultureRequestForm();
+        confirmation.outcome = "NO_GROWTH";
+        confirmation.proposalId = retained.proposals.get(0).id();
+        service.act(microCase.getId(), row.id, "outcome", confirmation, actor);
+        var confirmed = reload().get(0);
+        assertEquals("NO_GROWTH", confirmed.outcome);
+        assertEquals(actor, confirmed.proposals.get(0).confirmedBy());
+        assertNotNull(confirmed.proposals.get(0).confirmedAt());
+    }
+
+    @Test
+    public void undoneInoculationNoLongerMatchesContainerEvents() throws Exception {
+        pendingCulture(specimen);
+        var analysis = caseAnalyses.getAnalyses(microCase.getId()).getFirst();
+        var request = new MicroBenchRequestForm();
+        request.action = "INOCULATE";
+        request.sampleTypeId = specimen.getTypeOfSampleId();
+        request.cultureTestId = analysis.getTest().getId();
+        request.culture = request();
+        var reply = bench().apply(request, selection(), actor);
+        var created = cultures.get(reply.changed.getFirst()).orElseThrow();
+        String container = created.getContainerIdentifier();
+        assertEquals(1, cultures.getByContainerIdentifier(container).size());
+        bench().undo(microCase.getId(), reply.actionId, actor);
+        em.flush();
+        em.clear();
+        assertTrue(cultures.getByContainerIdentifier(container).isEmpty());
+    }
+
+    @Test
+    public void batchExtensionKeepsOriginalClockAndUndoPreservesItsAudit() throws Exception {
+        var row = create();
+        var request = new MicroBenchRequestForm();
+        request.action = "EXTEND";
+        request.culture = new MicroCultureRequestForm();
+        request.culture.reasonId = code("Extend incubation reason", 0);
+        var reply = bench().apply(request, selection(row.id), actor);
+        var extended = reload().get(0);
+        assertEquals(row.incubationEnds.getTime() + 86400000, extended.incubationEnds.getTime());
+        assertEquals(row.inoculatedAt, extended.inoculatedAt);
+        bench().undo(microCase.getId(), reply.actionId, actor);
+        var restored = reload().get(0);
+        assertEquals(row.incubationEnds, restored.incubationEnds);
+        assertEquals(1, restored.extensions.size());
+        assertNotNull(cultures.getRows(microCase.getId()).get(0).getExtensions().get(0).getUndoneAt());
+    }
+
+    @Test
+    public void batchExtensionIncludesGrowthButSkipsCompletedNegativeCultures() throws Exception {
+        var row = create();
+        service.inoculate(microCase.getId(), request(), actor);
+        var negative = reload().get(1);
+        var outcome = new MicroCultureRequestForm();
+        outcome.outcome = "GROWTH";
+        service.act(microCase.getId(), row.id, "outcome", outcome, actor);
+        outcome.outcome = "NO_GROWTH";
+        service.act(microCase.getId(), negative.id, "outcome", outcome, actor);
+        var request = new MicroBenchRequestForm();
+        request.action = "EXTEND";
+        request.culture = new MicroCultureRequestForm();
+        request.culture.reasonId = code("Extend incubation reason", 0);
+        var reply = bench().apply(request, selection(row.id, negative.id), actor);
+        assertEquals(List.of(row.id), reply.changed);
+        assertEquals(1, reply.skipped.size());
+        assertEquals("NO_GROWTH", reply.skipped.get(0).reason());
+        var result = reload();
+        assertEquals("GROWTH", result.get(0).outcome);
+        assertEquals(row.incubationEnds.getTime() + 86400000, result.get(0).incubationEnds.getTime());
+        assertEquals(row.inoculatedAt, result.get(0).inoculatedAt);
+        assertEquals("NO_GROWTH", result.get(1).outcome);
+        assertEquals(0, result.get(1).extensions.size());
+    }
+
+    @Test
+    public void undoRefusesToEraseASubsequentReading() throws Exception {
+        var row = create();
+        var request = new MicroBenchRequestForm();
+        request.action = "EXTEND";
+        request.culture = new MicroCultureRequestForm();
+        request.culture.reasonId = code("Extend incubation reason", 0);
+        var reply = bench().apply(request, selection(row.id), actor);
+        var reading = new MicroCultureRequestForm();
+        reading.readingId = code("Culture reading", 0);
+        service.act(microCase.getId(), row.id, "reading", reading, actor);
+        try {
+            bench().undo(microCase.getId(), reply.actionId, actor);
+            fail("Later readings must survive undo");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("MICROBIOLOGY_BENCH_UNDO_CHANGED", expected.getMessage());
+        }
+        assertEquals(1, reload().get(0).readings.size());
     }
 
     @Test

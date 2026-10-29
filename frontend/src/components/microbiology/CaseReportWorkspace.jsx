@@ -152,6 +152,7 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
       live = false;
     };
   }, [detail.id, detail.canWrite, detail.canValidate]);
+  const [confirmIncoming, setConfirmIncoming] = useState(false);
   const release = async (type) => {
     if (
       !(type === "preliminary"
@@ -162,7 +163,11 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
     setBusy(true);
     setError(false);
     try {
-      await service.releaseReport(detail.id, type);
+      await service.releaseReport(
+        detail.id,
+        type,
+        confirmIncoming ? state.readiness.pendingIncomingIds || [] : [],
+      );
       const next = await load();
       setState(next);
       setVersionId(next.versions[next.versions.length - 1].id);
@@ -258,6 +263,19 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
           <Tile>
             <MicrobiologyReportBlock report={report} />
           </Tile>
+          {(state.readiness.pendingIncomingIds || []).length > 0 && (
+            <Checkbox
+              id="confirm-incoming-release"
+              aria-label={intl.formatMessage({
+                id: "microbiology.incoming.confirmRelease",
+              })}
+              labelText={intl.formatMessage({
+                id: "microbiology.incoming.confirmRelease",
+              })}
+              checked={confirmIncoming}
+              onChange={(_, { checked }) => setConfirmIncoming(checked)}
+            />
+          )}
           <div>
             {detail.canWrite && !detail.amendmentOpen && (
               <Button
@@ -270,7 +288,12 @@ export default function CaseReportWorkspace({ detail, service, onChanged }) {
             )}
             {detail.canValidate && (
               <Button
-                disabled={busy || !state.readiness.finalReleaseReady}
+                disabled={
+                  busy ||
+                  !state.readiness.finalReleaseReady ||
+                  ((state.readiness.pendingIncomingIds || []).length > 0 &&
+                    !confirmIncoming)
+                }
                 onClick={() =>
                   release(detail.amendmentOpen ? "amended" : "final")
                 }

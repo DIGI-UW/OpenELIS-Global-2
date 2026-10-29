@@ -137,6 +137,7 @@ type MicrobiologyScenario =
   | "CULTURE_WORKSPACE"
   | "ISOLATE_WORKSPACE"
   | "RECEIVED_ISOLATE"
+  | "AUTOMATION_BENCH"
   | "INITIAL_TESTING"
   | "M3"
   | "M4"
@@ -1256,3 +1257,6 @@ export const seedMicrobiologyIsolateWorkspace = (
 
 export const seedMicrobiologyAstReporting = (page: Page) =>
   provisionMicrobiologyScenario(page, "AST_REPORTING");
+
+export const seedMicrobiologyAutomation = (page: Page) =>
+  provisionMicrobiologyScenario(page, "AUTOMATION_BENCH");

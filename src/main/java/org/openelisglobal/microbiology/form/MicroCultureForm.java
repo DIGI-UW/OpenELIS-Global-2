@@ -20,7 +20,7 @@ public class MicroCultureForm {
     }
 
     public record Extension(String id, BigDecimal extendBy, String unit, String reasonId, String reasonName,
-            String note, String by, Timestamp at) {
+            String note, String by, Timestamp at, Timestamp undoneAt) {
     }
 
     public record Proposal(String id, String signal, Timestamp receivedAt, String confirmedBy, Timestamp confirmedAt) {

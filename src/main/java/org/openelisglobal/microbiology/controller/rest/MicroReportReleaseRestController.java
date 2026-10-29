@@ -43,15 +43,19 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
     @PostMapping("/final")
     @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroReportReleaseForm> releaseFinal(@PathVariable String caseId,
+            @org.springframework.web.bind.annotation.RequestBody(required = false) org.openelisglobal.microbiology.form.MicroReportReleaseRequestForm body,
             HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(toForm(releaseService.releaseFinal(caseId, authenticatedUserId(httpRequest))));
+        return ResponseEntity.ok(toForm(releaseService.releaseFinal(caseId, authenticatedUserId(httpRequest),
+                body == null ? java.util.List.of() : body.confirmedIncomingIds)));
     }
 
     @PostMapping("/amended")
     @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroReportReleaseForm> releaseAmended(@PathVariable String caseId,
+            @org.springframework.web.bind.annotation.RequestBody(required = false) org.openelisglobal.microbiology.form.MicroReportReleaseRequestForm body,
             HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(toForm(releaseService.releaseAmended(caseId, authenticatedUserId(httpRequest))));
+        return ResponseEntity.ok(toForm(releaseService.releaseAmended(caseId, authenticatedUserId(httpRequest),
+                body == null ? java.util.List.of() : body.confirmedIncomingIds)));
     }
 
     private MicroReportReleaseForm toForm(MicroCase microCase) {

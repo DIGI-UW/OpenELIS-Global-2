@@ -469,6 +469,12 @@ it("preserves received-isolate provenance while allowing a real subculture", asy
   show(service, { onPickIsolate: vi.fn() });
   const tile = await screen.findByTestId("culture-row-r1");
   expect(
+    within(tile).queryByRole("button", {
+      name: "Container labels",
+      exact: true,
+    }),
+  ).not.toBeInTheDocument();
+  expect(
     within(tile).getAllByText("Growth (received isolate)"),
   ).not.toHaveLength(0);
   expect(

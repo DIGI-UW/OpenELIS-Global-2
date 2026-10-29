@@ -11,6 +11,9 @@ const PATTERN = /new Date\(\s*\)/;
 // and times shown against other instants in the browser's zone. Each is pinned
 // to its exact line, so a new use in the same file is still caught.
 const INSTANTS = {
+  "components/microbiology/CultureWorklist.jsx": [
+    "Date.now() - new Date().getTimezoneOffset() * 60000,",
+  ],
   "components/microbiology/CaseCultureWorkspace.jsx": [
     "const date = value ? new Date(value) : new Date();",
   ],

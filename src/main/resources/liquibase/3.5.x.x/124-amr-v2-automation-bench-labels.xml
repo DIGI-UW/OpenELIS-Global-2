@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <changeSet id="amr-v2-m7-automation-bench-labels" author="openelis">
+    <createTable schemaName="clinlims" tableName="micro_incoming_item">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="original_case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="source" type="varchar(20)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="test_id" type="numeric(10)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sample_item_id" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="structured_result" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="raw_result_value" type="text">
+        <constraints/>
+      </column>
+      <column name="run_source_key" type="varchar(500)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="received_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="state" type="varchar(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="placed_by" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="placed_at" type="timestamp">
+        <constraints/>
+      </column>
+      <column name="placement_target" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="failure_reason" type="text">
+        <constraints/>
+      </column>
+      <column name="last_updated" type="timestamp">
+        <constraints/>
+      </column>
+    </createTable>
+    <addUniqueConstraint schemaName="clinlims" tableName="micro_incoming_item" columnNames="original_case_id,test_id,run_source_key" constraintName="uq_micro_incoming_delivery"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_incoming_item" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_incoming_case_id"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_incoming_item" baseColumnNames="original_case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_incoming_original_case_id"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_incoming_item" baseColumnNames="test_id" referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id" constraintName="fk_incoming_test_id"/>
+    <createIndex schemaName="clinlims" tableName="micro_incoming_item" indexName="idx_micro_incoming_case_state">
+      <column name="case_id"/>
+      <column name="state"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="micro_incoming_item" indexName="idx_micro_incoming_test">
+      <column name="test_id"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="micro_incoming_item" indexName="idx_micro_incoming_source_key">
+      <column name="run_source_key"/>
+    </createIndex>
+    <sql>ALTER TABLE clinlims.micro_incoming_item ADD CONSTRAINT micro_incoming_source CHECK(source IN ('ANALYZER','REFERRAL'));
+ALTER TABLE clinlims.micro_incoming_item ADD CONSTRAINT micro_incoming_state CHECK(state IN ('WAITING','PLACED','FAILED','NEEDS_AMENDMENT'));</sql>
+    <createTable schemaName="clinlims" tableName="workplan_print_record">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="layout" type="varchar(50)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lab_unit_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="printed_by" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="printed_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="snapshot" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="last_updated" type="timestamp">
+        <constraints/>
+      </column>
+    </createTable>
+    <createTable schemaName="clinlims" tableName="micro_bench_action">
+      <column name="id" type="varchar(36)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="case_id" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="action" type="varchar(30)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="before_state" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="after_state" type="text">
+        <constraints nullable="false"/>
+      </column>
+      <column name="performed_by" type="varchar(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="performed_at" type="timestamp">
+        <constraints nullable="false"/>
+      </column>
+      <column name="undone_by" type="varchar(36)">
+        <constraints/>
+      </column>
+      <column name="undone_at" type="timestamp">
+        <constraints/>
+      </column>
+      <column name="last_updated" type="timestamp">
+        <constraints/>
+      </column>
+    </createTable>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_bench_action" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_bench_case"/>
+    <createTable schemaName="clinlims" tableName="micro_container_preset_seed">
+      <column name="preset_id" type="integer">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+    </createTable>
+    <addColumn schemaName="clinlims" tableName="label_preset">
+      <column name="prints_per_container" type="boolean" defaultValueBoolean="false">
+        <constraints nullable="false"/>
+      </column>
+      <column name="default_per_container" type="integer" defaultValueNumeric="0">
+        <constraints nullable="false"/>
+      </column>
+      <column name="max_per_container" type="integer" defaultValueNumeric="10">
+        <constraints nullable="false"/>
+      </column>
+    </addColumn>
+    <sql>ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_scope_required;
+ALTER TABLE clinlims.label_preset ADD CONSTRAINT label_preset_scope_required CHECK(prints_per_order OR prints_per_sample OR prints_per_container);
+ALTER TABLE clinlims.label_preset ADD CONSTRAINT label_preset_container_counts CHECK(default_per_container &gt;= 0 AND max_per_container &gt;= default_per_container);</sql>
+    <addColumn schemaName="clinlims" tableName="micro_case_inoculation">
+      <column name="cancelled_at" type="timestamp"/>
+    </addColumn>
+    <addColumn schemaName="clinlims" tableName="micro_culture_extension">
+      <column name="undone_at" type="timestamp"/>
+    </addColumn>
+    <rollback>
+      <sql splitStatements="false">DO $$ BEGIN
+IF EXISTS(SELECT 1 FROM clinlims.micro_incoming_item) OR EXISTS(SELECT 1 FROM clinlims.workplan_print_record) OR EXISTS(SELECT 1 FROM clinlims.micro_bench_action) OR EXISTS(SELECT 1 FROM clinlims.label_preset WHERE prints_per_container) THEN RAISE EXCEPTION 'M7 rollback would discard history or container configuration; retain it before rollback'; END IF;
+END $$;</sql>
+      <sql>ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_scope_required;
+ALTER TABLE clinlims.label_preset DROP CONSTRAINT label_preset_container_counts;
+ALTER TABLE clinlims.label_preset ADD CONSTRAINT label_preset_scope_required CHECK(prints_per_order OR prints_per_sample);</sql>
+      <dropTable schemaName="clinlims" tableName="micro_container_preset_seed"/>
+      <dropColumn schemaName="clinlims" tableName="label_preset" columnName="prints_per_container"/>
+      <dropColumn schemaName="clinlims" tableName="label_preset" columnName="default_per_container"/>
+      <dropColumn schemaName="clinlims" tableName="label_preset" columnName="max_per_container"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="cancelled_at"/>
+      <dropColumn schemaName="clinlims" tableName="micro_culture_extension" columnName="undone_at"/>
+      <dropTable schemaName="clinlims" tableName="micro_bench_action"/>
+      <dropTable schemaName="clinlims" tableName="workplan_print_record"/>
+      <dropTable schemaName="clinlims" tableName="micro_incoming_item"/>
+    </rollback>
+  </changeSet>
+  <changeSet id="amr-v2-m7-container-preset-0" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.label_preset WHERE lower(name)=lower('Culture Plate Label')</sqlCheck>
+    </preConditions>
+    <sql>INSERT INTO clinlims.label_preset (id,name,height_mm,width_mm,barcode_type,prints_per_order,prints_per_sample,prints_per_container,default_per_order,max_per_order,default_per_sample,max_per_sample,default_per_container,max_per_container,is_system,is_active,is_universal) SELECT nextval('clinlims.label_preset_seq'),'Culture Plate Label',25,50,'QR',false,false,true,0,10,0,10,0,10,true,true,false WHERE NOT EXISTS(SELECT 1 FROM clinlims.label_preset WHERE lower(name)=lower('Culture Plate Label'));</sql>
+    <sql>INSERT INTO clinlims.micro_container_preset_seed(preset_id) SELECT id FROM clinlims.label_preset WHERE name='Culture Plate Label';</sql>
+    <rollback>
+      <sql splitStatements="false">DO $$ BEGIN
+IF EXISTS(SELECT 1 FROM clinlims.micro_incoming_item) OR EXISTS(SELECT 1 FROM clinlims.workplan_print_record) OR EXISTS(SELECT 1 FROM clinlims.micro_bench_action) OR EXISTS (SELECT 1 FROM clinlims.label_preset p WHERE p.name='Culture Plate Label' AND p.id IN (SELECT preset_id FROM clinlims.micro_container_preset_seed) AND (NOT p.is_system OR NOT p.is_active OR NOT p.prints_per_container OR p.is_universal OR p.barcode_type&lt;&gt;'QR' OR p.default_per_order&lt;&gt;0 OR p.max_per_order&lt;&gt;10 OR p.default_per_sample&lt;&gt;0 OR p.max_per_sample&lt;&gt;10 OR p.height_mm&lt;&gt;25 OR p.width_mm&lt;&gt;50 OR p.default_per_container&lt;&gt;0 OR p.max_per_container&lt;&gt;10 OR p.prints_per_order OR p.prints_per_sample OR EXISTS(SELECT 1 FROM clinlims.label_preset_field f WHERE f.preset_id=p.id) OR EXISTS(SELECT 1 FROM clinlims.test_label_preset_link l WHERE l.preset_id=p.id))) THEN RAISE EXCEPTION 'M7 history or configured container preset must be retained before rollback'; END IF;
+END $$;</sql>
+      <delete schemaName="clinlims" tableName="label_preset">
+        <where>name='Culture Plate Label' AND is_system=true AND id IN (SELECT preset_id FROM clinlims.micro_container_preset_seed)</where>
+      </delete>
+      <sql>DELETE FROM clinlims.micro_container_preset_seed WHERE preset_id NOT IN (SELECT id FROM clinlims.label_preset);</sql>
+    </rollback>
+  </changeSet>
+  <changeSet id="amr-v2-m7-container-preset-1" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.label_preset WHERE lower(name)=lower('Isolate Label')</sqlCheck>
+    </preConditions>
+    <sql>INSERT INTO clinlims.label_preset (id,name,height_mm,width_mm,barcode_type,prints_per_order,prints_per_sample,prints_per_container,default_per_order,max_per_order,default_per_sample,max_per_sample,default_per_container,max_per_container,is_system,is_active,is_universal) SELECT nextval('clinlims.label_preset_seq'),'Isolate Label',25,50,'QR',false,false,true,0,10,0,10,0,10,true,true,false WHERE NOT EXISTS(SELECT 1 FROM clinlims.label_preset WHERE lower(name)=lower('Isolate Label'));</sql>
+    <sql>INSERT INTO clinlims.micro_container_preset_seed(preset_id) SELECT id FROM clinlims.label_preset WHERE name='Isolate Label';</sql>
+    <rollback>
+      <sql splitStatements="false">DO $$ BEGIN
+IF EXISTS(SELECT 1 FROM clinlims.micro_incoming_item) OR EXISTS(SELECT 1 FROM clinlims.workplan_print_record) OR EXISTS(SELECT 1 FROM clinlims.micro_bench_action) OR EXISTS (SELECT 1 FROM clinlims.label_preset p WHERE p.name='Isolate Label' AND p.id IN (SELECT preset_id FROM clinlims.micro_container_preset_seed) AND (NOT p.is_system OR NOT p.is_active OR NOT p.prints_per_container OR p.is_universal OR p.barcode_type&lt;&gt;'QR' OR p.default_per_order&lt;&gt;0 OR p.max_per_order&lt;&gt;10 OR p.default_per_sample&lt;&gt;0 OR p.max_per_sample&lt;&gt;10 OR p.height_mm&lt;&gt;25 OR p.width_mm&lt;&gt;50 OR p.default_per_container&lt;&gt;0 OR p.max_per_container&lt;&gt;10 OR p.prints_per_order OR p.prints_per_sample OR EXISTS(SELECT 1 FROM clinlims.label_preset_field f WHERE f.preset_id=p.id) OR EXISTS(SELECT 1 FROM clinlims.test_label_preset_link l WHERE l.preset_id=p.id))) THEN RAISE EXCEPTION 'M7 history or configured container preset must be retained before rollback'; END IF;
+END $$;</sql>
+      <delete schemaName="clinlims" tableName="label_preset">
+        <where>name='Isolate Label' AND is_system=true AND id IN (SELECT preset_id FROM clinlims.micro_container_preset_seed)</where>
+      </delete>
+      <sql>DELETE FROM clinlims.micro_container_preset_seed WHERE preset_id NOT IN (SELECT id FROM clinlims.label_preset);</sql>
+    </rollback>
+  </changeSet>
+  <changeSet id="amr-v2-m7-container-preset-2" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.label_preset WHERE lower(name)=lower('AST Panel Label')</sqlCheck>
+    </preConditions>
+    <sql>INSERT INTO clinlims.label_preset (id,name,height_mm,width_mm,barcode_type,prints_per_order,prints_per_sample,prints_per_container,default_per_order,max_per_order,default_per_sample,max_per_sample,default_per_container,max_per_container,is_system,is_active,is_universal) SELECT nextval('clinlims.label_preset_seq'),'AST Panel Label',25,50,'QR',false,false,true,0,10,0,10,0,10,true,true,false WHERE NOT EXISTS(SELECT 1 FROM clinlims.label_preset WHERE lower(name)=lower('AST Panel Label'));</sql>
+    <sql>INSERT INTO clinlims.micro_container_preset_seed(preset_id) SELECT id FROM clinlims.label_preset WHERE name='AST Panel Label';</sql>
+    <rollback>
+      <sql splitStatements="false">DO $$ BEGIN
+IF EXISTS(SELECT 1 FROM clinlims.micro_incoming_item) OR EXISTS(SELECT 1 FROM clinlims.workplan_print_record) OR EXISTS(SELECT 1 FROM clinlims.micro_bench_action) OR EXISTS (SELECT 1 FROM clinlims.label_preset p WHERE p.name='AST Panel Label' AND p.id IN (SELECT preset_id FROM clinlims.micro_container_preset_seed) AND (NOT p.is_system OR NOT p.is_active OR NOT p.prints_per_container OR p.is_universal OR p.barcode_type&lt;&gt;'QR' OR p.default_per_order&lt;&gt;0 OR p.max_per_order&lt;&gt;10 OR p.default_per_sample&lt;&gt;0 OR p.max_per_sample&lt;&gt;10 OR p.height_mm&lt;&gt;25 OR p.width_mm&lt;&gt;50 OR p.default_per_container&lt;&gt;0 OR p.max_per_container&lt;&gt;10 OR p.prints_per_order OR p.prints_per_sample OR EXISTS(SELECT 1 FROM clinlims.label_preset_field f WHERE f.preset_id=p.id) OR EXISTS(SELECT 1 FROM clinlims.test_label_preset_link l WHERE l.preset_id=p.id))) THEN RAISE EXCEPTION 'M7 history or configured container preset must be retained before rollback'; END IF;
+END $$;</sql>
+      <delete schemaName="clinlims" tableName="label_preset">
+        <where>name='AST Panel Label' AND is_system=true AND id IN (SELECT preset_id FROM clinlims.micro_container_preset_seed)</where>
+      </delete>
+      <sql>DELETE FROM clinlims.micro_container_preset_seed WHERE preset_id NOT IN (SELECT id FROM clinlims.label_preset);</sql>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

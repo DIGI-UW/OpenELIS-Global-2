@@ -80,6 +80,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     @Autowired
     private AnalyzerResultPlacementService placementService;
     @Autowired
+    private org.openelisglobal.microbiology.service.MicroIncomingAnalyzerAdapter microbiology;
+    @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private EffectiveTestStatusService effectiveTestStatusService;
@@ -151,6 +153,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (actionableResults.isEmpty()) {
             return;
         }
+
+        // Only the explicit review action transfers staged observations to a case.
+        var routed = microbiology.acceptReviewed(actionableResults, sysUserId);
+        actionableResults.removeIf(item -> routed.contains(item.getId()));
+        if (actionableResults.isEmpty())
+            return;
 
         List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults);
 
