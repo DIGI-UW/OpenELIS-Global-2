@@ -8,12 +8,6 @@ import messages from "../../languages/en.json";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 
-/**
- * getFromOpenElisServer takes (endPoint, callback, abortSignal). Handing it an
- * error callback as the third argument made fetch() throw before the request
- * left, so a notebook with an audit trail showed "No Audit Trail Available".
- * The stand-in below refuses a function there the way the browser does.
- */
 const { utilsMock } = vi.hoisted(() => ({
   utilsMock: {
     getFromOpenElisServer: vi.fn(),
@@ -129,7 +123,7 @@ it.each([
     renderForm(Form);
     fireEvent.click(
       await screen.findByRole("tab", {
-        name: messages["notebook.tab.comments"] || "Comments",
+        name: messages["notebook.tab.comments"],
       }),
     );
     fireEvent.change(
