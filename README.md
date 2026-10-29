@@ -103,15 +103,13 @@ preparation and labels, results, validation, reports, non-conformities, storage,
 administration) runs from the OpenELIS database alone, and questionnaires are
 kept in the database when there is no FHIR store.
 
-To run without them, leave `org.openelisglobal.fhirstore.uri` empty in
-`common.properties` (or set the `ORG_OPENELISGLOBAL_FHIRSTORE_URI` environment
-variable of the webapp to an empty value, which overrides the file), leave
-`ANALYZER_BRIDGE_URL` empty, and do not start the two services. In
-openelis-docker that is one command:
-`docker compose -f docker-compose.yml -f docker-compose.light.yml up -d`; see
-its
+With openelis-docker, remove the `#` in front of the `COMPOSE_FILE` line in its
+`.env` and run `docker compose up -d`; see its
 [light installation](https://github.com/DIGI-UW/openelis-docker#light-installation)
-section.
+section. In any other deployment, leave `org.openelisglobal.fhirstore.uri` empty
+in `common.properties` (or set the webapp's `ORG_OPENELISGLOBAL_FHIRSTORE_URI`
+environment variable to an empty value, which overrides the file), leave
+`ANALYZER_BRIDGE_URL` empty, and do not start the two services.
 
 ### For Running OpenELIS Global2 from Source Code
 
