@@ -630,7 +630,8 @@ function altAccessionHighlightSearch(accessionNumber) {
 			<tr  >
 				<td colspan="2" style="text-align:right;vertical-align:top"><spring:message code="label.prior.note" />: </td>
 				<td colspan="6" style="text-align:left">
-                ${enc:html(resultList.pastNotes)}
+                <%-- NoteService escapes each note before adding trusted line separators. --%>
+                ${resultList.pastNotes}
 				</td>
 			</tr>
 			</c:if>

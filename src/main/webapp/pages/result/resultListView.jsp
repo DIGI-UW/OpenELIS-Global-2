@@ -1352,7 +1352,8 @@ function /*void*/ handleEnterEvent(  ){
 						<td colspan="2" style="text-align: right; vertical-align: top"><spring:message
 								code="label.prior.note" />:</td>
 						<td colspan="8" style="text-align: left">
-                            ${enc:html(testResult.pastNotes)}</td>
+                            <%-- NoteService escapes each note before adding trusted line separators. --%>
+                ${testResult.pastNotes}</td>
 					</tr>
 				</c:if>
                 <tr id="noteRow_${enc:attribute(iter.index)}" class='${enc:attribute(rowColor)}'
