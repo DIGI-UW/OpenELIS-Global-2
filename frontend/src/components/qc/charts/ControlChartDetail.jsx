@@ -333,6 +333,7 @@ const ControlChartDetail = () => {
         <Column lg={3} md={2} sm={4}>
           <Dropdown
             id="control-lot-dropdown"
+            className="control-chart-detail-lot"
             titleText={intl.formatMessage({
               id: "admin.testCatalog.qcTargets.lot.label",
             })}
