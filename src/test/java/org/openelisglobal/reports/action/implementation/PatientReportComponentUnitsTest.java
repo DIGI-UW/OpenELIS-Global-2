@@ -1,6 +1,7 @@
 package org.openelisglobal.reports.action.implementation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
@@ -9,6 +10,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.internationalization.UiMessages;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
@@ -110,6 +112,33 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
 
         assertEquals(List.of("Awaiting validation", "Awaiting validation"),
                 row.getComponents().stream().map(ReportComponentLine::value).toList());
+    }
+
+    @Test
+    public void viralLoadLogUsesTheMeasurementEvenWhenItsDisplayIsRoundedAndAnnotated() {
+        PatientReport report = report();
+        Analysis analysis = analysisService.get("100");
+        ReflectionTestUtils.setField(report, "currentAnalysis", analysis);
+        Result result = resultService.getResultsByAnalysis(analysis).get(0);
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        ClinicalPatientData row = new ClinicalPatientData();
+        row.setResult(resultService.formatResultForDisplay(result, true));
+        assertTrue(row.getResult().startsWith("0.01 ("));
+        assertTrue(row.getResult().contains("0.0064"));
+
+        Object identity = TestIdentityService.getInstance();
+        Object originalId = ReflectionTestUtils.getField(identity, "VIRAL_LOAD_TEST_ID");
+        Object originalNumeric = ReflectionTestUtils.getField(identity, "VIRAL_LOAD_IS_NUMERIC");
+        try {
+            ReflectionTestUtils.setField(identity, "VIRAL_LOAD_TEST_ID", analysisService.getTest(analysis).getId());
+            ReflectionTestUtils.setField(identity, "VIRAL_LOAD_IS_NUMERIC", true);
+            String augmented = ReflectionTestUtils.invokeMethod(report, "getAugmentedResult", row, result);
+            assertTrue(augmented.startsWith(row.getResult() + " (-2.19)log "));
+        } finally {
+            ReflectionTestUtils.setField(identity, "VIRAL_LOAD_TEST_ID", originalId);
+            ReflectionTestUtils.setField(identity, "VIRAL_LOAD_IS_NUMERIC", originalNumeric);
+        }
     }
 
     private ClinicalPatientData reportRowFor(Analysis analysis) {
