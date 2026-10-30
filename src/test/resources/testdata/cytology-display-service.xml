@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <system_user id="1" lastupdated="2024-06-08 14:00:00.0"
+        external_id="EXT001" login_name="technician1" first_name="John"
+        last_name="Doe" initials="JD" is_active="Y" is_employee="Y" />
+    <system_user id="2" lastupdated="2024-06-08 14:05:00.0"
+        external_id="EXT002" login_name="pathologist1" first_name="Sarah"
+        last_name="Smith" initials="SS" is_active="Y" is_employee="Y" />
+    <system_user id="3" lastupdated="2024-06-08 14:05:00.0"
+        external_id="EXT003" login_name="pathologist2" first_name="Mariam"
+        last_name="Smith" initials="MS" is_active="Y" is_employee="Y" />
+    <system_user id="4" lastupdated="2024-06-08 14:00:00.0"
+        external_id="EXT004" login_name="technician2" first_name="Kunta"
+        last_name="Kinte" initials="KK" is_active="Y" is_employee="Y" />
+
+    <questionnaire id="100"
+        questionnaire_name="Cervical Screening Questionnaire"
+        description="Screening questionnaire" has_item="true" code="CYTO-Q"
+        fhir_uuid="11111111-1111-1111-1111-111111111111" status="ACTIVE"
+        purpose="Cytology" sys_user_id="1" last_updated="2026-05-01 10:00:00" />
+
+    <questionnaire_response id="100"
+        fhir_uuid="f1cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        questionnaire_id="100" subject_reference="Patient/1"
+        status="COMPLETED" authored="2026-05-20 09:00:00" sys_user_id="1"
+        last_updated="2026-05-20 09:10:00" />
+
+    <program id="1" lastupdated="2024-06-10 12:00:00.0"
+        code="PROG001" name="Blood Test Program" manually_changed="false"
+        questionnaire_fhir_uuid="11111111-1111-1111-1111-111111111111" />
+    <program id="2" lastupdated="2024-06-10 12:00:00.0"
+        code="PROG002" name="Blood Test2 Program" manually_changed="false" />
+    <program id="3" lastupdated="2024-06-10 12:00:00.0"
+        code="PROG003" name="Blood Test3 Program" manually_changed="false" />
+
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <localization id="100" description="Adequacy Localization" />
+    <localization_value id="100" localization_id="100"
+        locale="en" value="Adequate cellularity" />
+
+    <localization id="101"
+        description="Diagnosis Localization" />
+    <localization_value id="101" localization_id="101"
+        locale="en" value="High-grade squamous intraepithelial lesion" />
+
+    <dictionary_category id="1"
+        description="Cytology Category" local_Abbrev="CYTO" name="Cytology"
+        lastUpdated="2023-11-01 12:00:00" />
+
+    <dictionary id="100" is_active="Y"
+        dict_entry="Adequate cellularity" local_Abbrev="AC"
+        dictionary_category_id="1" sort_order="1" name_localization_id="100"
+        lastUpdated="2023-11-01 12:00:00" />
+    <dictionary id="101" is_active="Y" dict_entry="HSIL"
+        local_Abbrev="HSIL" dictionary_category_id="1" sort_order="2"
+        name_localization_id="101" lastUpdated="2023-11-01 12:00:00" />
+
+    <person id="1" last_name="Doe" first_name="Jane"
+        lastupdated="2024-01-01 00:00:00" />
+    <person id="2" last_name="Major" first_name="Mary"
+        lastupdated="2024-01-01 00:00:00" />
+    <person id="3" last_name="Smith" first_name="Alex"
+        lastupdated="2024-01-01 00:00:00" />
+    <person id="4" last_name="Brown" first_name="Bob"
+        lastupdated="2024-01-01 00:00:00" />
+    <person id="5" last_name="Davis" first_name="Charlie"
+        lastupdated="2024-01-01 00:00:00" />
+    <person id="6" last_name="Evans" first_name="Diana"
+        lastupdated="2024-01-01 00:00:00" />
+    <person id="10" last_name="Johnson" first_name="Alice"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <patient id="1" person_id="1" gender="F"
+        birth_date="1990-03-12 00:00:00" is_merged="0"
+        lastupdated="2024-01-01 00:00:00" />
+    <patient id="2" person_id="2" gender="F"
+        birth_date="1985-06-20 00:00:00" is_merged="0"
+        lastupdated="2024-01-01 00:00:00" />
+    <patient id="3" person_id="3" gender="M" is_merged="0"
+        lastupdated="2024-01-01 00:00:00" />
+    <patient id="4" person_id="4" gender="M"
+        birth_date="1995-01-15 00:00:00" is_merged="0"
+        lastupdated="2024-01-01 00:00:00" />
+    <patient id="5" person_id="5" gender="F"
+        birth_date="2000-08-10 00:00:00" is_merged="0"
+        lastupdated="2024-01-01 00:00:00" />
+    <patient id="6" person_id="6" gender="F"
+        birth_date="1992-11-25 00:00:00" is_merged="0"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <organization_type id="5"
+        short_name="referring clinic"
+        description="Name of org who can order lab tests"
+        lastupdated="2025-03-13 12:00:00.0" />
+    <organization_type id="6" short_name="dept"
+        description="Organisation department"
+        name_display_key="sample.entry.project.siteDepartmentName"
+        lastupdated="2025-03-13 12:00:00.0" />
+
+    <organization id="101" lastupdated="2024-06-03 12:00:00.0"
+        name="Central Clinic" is_active="Y" />
+    <organization id="102" lastupdated="2024-06-03 12:00:00.0"
+        name="Pathology Department" is_active="Y" />
+
+    <organization_organization_type
+        org_id="101" org_type_id="5" />
+    <organization_organization_type
+        org_id="102" org_type_id="6" />
+
+    <sample id="1" accession_number="12345"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="2" accession_number="12346"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="3" accession_number="12347"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="4" accession_number="12348"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="5" accession_number="12349"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+    <sample id="6" accession_number="12350"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_human id="1" patient_id="1" samp_id="1"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_human id="2" patient_id="2" samp_id="2"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_human id="3" patient_id="3" samp_id="3"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_human id="4" patient_id="4" samp_id="4"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_human id="5" patient_id="5" samp_id="5"
+        lastupdated="2024-01-01 00:00:00" />
+    <sample_human id="6" patient_id="6" samp_id="6"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <sample_requester id="101" sample_id="1"
+        requester_id="101" requester_type_id="1" />
+    <sample_requester id="102" sample_id="1"
+        requester_id="102" requester_type_id="1" />
+    <sample_requester id="103" sample_id="1"
+        requester_id="10" requester_type_id="2" />
+    <sample_requester id="104" sample_id="2"
+        requester_id="101" requester_type_id="1" />
+    <sample_requester id="105" sample_id="2"
+        requester_id="10" requester_type_id="2" />
+
+    <cytology_diagnosis id="1"
+        negative_diagnosis="false" last_updated="2025-04-10 12:00:00" />
+    <cytology_diagnosis id="2" negative_diagnosis="true"
+        last_updated="2025-04-09 15:30:00" />
+    <cytology_diagnosis id="3" negative_diagnosis="true"
+        last_updated="2025-04-08 09:00:00" />
+    <cytology_diagnosis id="6" negative_diagnosis="true"
+        last_updated="2025-04-08 09:00:00" />
+
+    <cytology_specimen_adequacy id="1"
+        result_type="DICTIONARY" satisfaction="SATISFACTORY_FOR_EVALUATION"
+        last_updated="2025-04-10 12:00:00" />
+    <cytology_specimen_adequacy id="2"
+        result_type="TEXT" satisfaction="UN_SATISFACTORY_FOR_EVALUATION"
+        last_updated="2025-04-09 15:30:00" />
+    <cytology_specimen_adequacy id="3"
+        result_type="TEXT" satisfaction="SATISFACTORY_FOR_EVALUATION"
+        last_updated="2025-04-08 09:00:00" />
+
+
+
+    <cytology_sample id="1" technician_id="1"
+        cytopathologist_id="2" specimen_adequacy_id="1" program_id="1"
+        sample_id="1" status="READY_FOR_CYTOPATHOLOGIST"
+        questionnaire_response_uuid="f1cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        last_updated="2025-04-10 12:00:00" cytology_diagnosis_id="1" />
+    <cytology_sample id="2" technician_id="4"
+        cytopathologist_id="2" specimen_adequacy_id="2" program_id="2"
+        sample_id="2" status="COMPLETED"
+        questionnaire_response_uuid="f2cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        last_updated="2025-04-09 15:30:00" cytology_diagnosis_id="2" />
+    <cytology_sample id="3" technician_id="1"
+        cytopathologist_id="3" specimen_adequacy_id="3" program_id="3"
+        sample_id="3" status="PREPARING_SLIDES"
+        questionnaire_response_uuid="f8cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        last_updated="2025-04-08 09:00:00" cytology_diagnosis_id="3" />
+    <cytology_sample id="4" program_id="1" sample_id="4"
+        status="PREPARING_SLIDES"
+        questionnaire_response_uuid="f4cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        last_updated="2025-04-08 09:00:00" />
+    <cytology_sample id="5" technician_id="1"
+        cytopathologist_id="2" program_id="1" sample_id="5" status="SCREENING"
+        questionnaire_response_uuid="f5cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        last_updated="2025-04-08 09:00:00" />
+    <cytology_sample id="6" technician_id="1"
+        cytopathologist_id="2" specimen_adequacy_id="1" program_id="1"
+        sample_id="6" status="SCREENING"
+        questionnaire_response_uuid="f6cdeff8-8d5b-4023-bd7c-932b4b98b6d2"
+        last_updated="2025-04-08 09:00:00" cytology_diagnosis_id="6" />
+
+    <cytology_diagnosis_result_map id="1"
+        category="EPITHELIAL_CELL_ABNORMALITY" result_type="DICTIONARY"
+        results="101" cytology_diagnosis_id="1"
+        last_updated="2025-04-10 12:00:00" />
+    <cytology_diagnosis_result_map id="2"
+        category="NON_NEOPLASTIC_CELLULAR_VARIATIONS" result_type="TEXT"
+        results="Atypical cells of undetermined significance"
+        cytology_diagnosis_id="2" last_updated="2025-04-09 15:30:00" />
+    <cytology_diagnosis_result_map id="3"
+        category="ORGANISMS" result_type="TEXT"
+        results="Trichomonas vaginalis" cytology_diagnosis_id="3"
+        last_updated="2025-04-08 09:00:00" />
+
+    <cytology_report id="1" cytology_sample_id="1"
+        report_type="CERVICAL_OR_VAGINAL_CYTOLOGY"
+        image="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
+        file_type="PDF" last_updated="2025-04-10 12:00:00" />
+    <cytology_report id="2" cytology_sample_id="2"
+        report_type="PAP_SMEAR"
+        image="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
+        file_type="DOCX" last_updated="2025-04-09 15:30:00" />
+    <cytology_report id="3" cytology_sample_id="3"
+        report_type="CERVICAL_OR_VAGINAL_CYTOLOGY"
+        image="iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAgMBAQEBBQAAAA=="
+        file_type="PDF" last_updated="2025-04-08 09:00:00" />
+
+    <cytology_slide id="1" cytology_sample_id="1"
+        slide_number="1" file_type="PNG" location="Slide Rack A"
+        last_updated="2025-04-10 12:00:00" />
+    <cytology_slide id="2" cytology_sample_id="2"
+        slide_number="2" file_type="JPEG" location="Slide Rack B"
+        last_updated="2025-04-09 15:30:00" />
+    <cytology_slide id="3" cytology_sample_id="3"
+        slide_number="3" file_type="PNG" location="Slide Rack C"
+        last_updated="2025-04-08 09:00:00" />
+
+</dataset>
