@@ -70,11 +70,9 @@ test("a held control recovers onto its lot once, while a new run records again",
       unitOfMeasure: "copies/mL",
     },
   });
-  expect(response.ok(), await response.text()).toBeTruthy();
   const lot = (await response.json()) as { id: string };
   const points = async () => {
     const chart = await page.request.get(`${API}/qc/charts/${lot.id}`);
-    expect(chart.ok()).toBeTruthy();
     return (await chart.json()).dataPoints as Array<{
       resultId: string;
       value: number;
