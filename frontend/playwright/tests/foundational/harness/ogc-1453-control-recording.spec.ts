@@ -166,8 +166,9 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
   );
   try {
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    let highLotId: string;
     for (const controlLevel of ["NORMAL", "HIGH"]) {
-      await send(page, "post", "/qc/controlLot", {
+      const lot = await send(page, "post", "/qc/controlLot", {
         productName: name,
         lotNumber: specimen,
         controlLevel,
@@ -181,6 +182,7 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
         status: "ACTIVE",
         unitOfMeasure: "copies/mL",
       });
+      if (controlLevel === "HIGH") highLotId = lot.id;
     }
     await sendGeneXpertFixture(
       page,
@@ -192,6 +194,15 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
       undefined,
       "20261030120000",
     );
+    // The transport ACK precedes asynchronous recording; open the chart only
+    // after this run exists, rather than assuming a live chart subscription.
+    await expect
+      .poll(async () => send(page, "get", `/qc/charts/${highLotId}`), {
+        timeout: 30_000,
+      })
+      .toMatchObject({
+        dataPoints: [expect.objectContaining({ value: 1009.64 })],
+      });
     await page.goto(`/analyzers/qc/charts/${analyzer.id}`);
     await page
       .getByRole("combobox", { name: "Control lot", exact: true })
