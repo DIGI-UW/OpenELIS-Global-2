@@ -198,7 +198,11 @@ test(
           response.request().method() === "POST",
       );
       await page.getByRole("button", { name: "Validate & release" }).click();
-      expect((await released).status()).toBe(200);
+      await released;
+      await expect(
+        page.getByText("Result validated and released.", { exact: true }),
+      ).toBeVisible();
+      await expect(validationRow).toHaveCount(0);
       expect((await read()).rawResultValue).toBe(correction ?? "1.17");
       evidence.push({
         accession: order.accession,
