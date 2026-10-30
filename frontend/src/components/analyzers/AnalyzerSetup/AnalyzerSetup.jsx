@@ -305,7 +305,10 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
           return;
         }
         setCandidate(response);
-        if (candidate.status === "ACTIVE") {
+        if (
+          response.status === "ACTIVE" &&
+          response.connection?.actualRuntimeState === "ACTIVE"
+        ) {
           onClose?.();
           return;
         }
