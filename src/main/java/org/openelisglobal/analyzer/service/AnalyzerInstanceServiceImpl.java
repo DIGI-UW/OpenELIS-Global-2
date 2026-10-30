@@ -209,7 +209,8 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
             ObjectNode updated = bridgeClient.updateConnection(state.bridgeConnectionId(),
                     updateConnectionRequest(state, pin(state), connectionValues(request), current));
             requireExactConnection(state, updated);
-            if (state.status() == Analyzer.AnalyzerStatus.VALIDATION) {
+            if (state.status() == Analyzer.AnalyzerStatus.VALIDATION
+                    && "ACTIVE".equals(current.path("actualRuntimeState").asText())) {
                 AnalyzerSetupReceptionResult reception = activationService.startSetupReception(analyzerId, actor);
                 if (!reception.receiving()) {
                     String blocker = reception.blockers().isEmpty()
