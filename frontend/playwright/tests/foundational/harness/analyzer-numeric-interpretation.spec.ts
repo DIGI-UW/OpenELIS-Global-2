@@ -211,13 +211,8 @@ for (const decimal of [
       );
       await dialog.getByRole("button", { name: /Remove$/ }).click();
       await removed;
-      await expect(
-        page.getByText(
-          "The held result is removed from review. The audit trail keeps it.",
-          { exact: true },
-        ),
-      ).toBeVisible();
       await expect(remove).toHaveCount(0);
+      await expect(page.getByTestId("analyzer-results-empty")).toBeVisible();
       await expect.poll(async () => (await rows()).length).toBe(0);
       expect(removals).toBe(1);
       page.off("request", removalRequest);
