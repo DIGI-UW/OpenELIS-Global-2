@@ -104,8 +104,9 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
         if (!exact.isEmpty()) {
             // An explicit specimen identity must not be redirected to another lot when its
             // level conflicts.
-            return exact.size() == 1 && (controlLevel == null || controlLevel.isBlank()
-                    || controlLevel.trim().equalsIgnoreCase(exact.get(0).getControlLevel())) ? exact.get(0) : null;
+            List<QCControlLot> matching = exact.stream().filter(lot -> controlLevel == null || controlLevel.isBlank()
+                    || controlLevel.trim().equalsIgnoreCase(lot.getControlLevel())).toList();
+            return matching.size() == 1 ? matching.get(0) : null;
         }
         if (controlLevel == null || controlLevel.isBlank()) {
             return null;
