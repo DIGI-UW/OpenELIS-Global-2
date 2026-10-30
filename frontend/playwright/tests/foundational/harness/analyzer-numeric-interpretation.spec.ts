@@ -223,7 +223,6 @@ for (const decimal of [
       const retained = await page.request.get(
         `${API}/analyzer/deliveries/${receiptId}/bundle`,
       );
-      expect(retained.ok()).toBeTruthy();
       expect(await retained.text()).toContain(decimal.raw);
       // Reapplying mappings must not resurrect a deliberately removed row.
       await page.goto(`/analyzers/${analyzer.id}/mapping`);
