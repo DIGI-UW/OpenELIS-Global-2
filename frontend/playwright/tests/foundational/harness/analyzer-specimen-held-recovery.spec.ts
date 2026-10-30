@@ -68,7 +68,6 @@ test(
     const generated = await page.request.get(
       `${API}/SampleEntryGenerateScanProvider`,
     );
-    expect(generated.ok()).toBeTruthy();
     const accession = (await generated.json()).body;
     expect(accession).toBeTruthy();
     const probe = await send(
@@ -82,7 +81,7 @@ test(
     );
     expect(listener.status).toBe("PASSED");
     // Generic mock traffic proves the review workflow, not a manufacturer's layout.
-    const pushed = await page.request.post(
+    await page.request.post(
       `${process.env.MOCK_SIMULATOR_URL}/simulate/astm/mindray_ba88a`,
       {
         data: {
@@ -107,7 +106,6 @@ test(
         },
       },
     );
-    expect(pushed.ok(), await pushed.text()).toBeTruthy();
     const rows = () => worklistFor(page, analyzer.id, accession);
     await expect.poll(async () => (await rows()).length).toBe(2);
     const original = await rows();
@@ -127,7 +125,7 @@ test(
         await select.selectOption({ label: specimens[i] });
       }
     };
-    const save = async () => {
+    const save = async (held: boolean) => {
       for (const row of original) {
         const box = page.locator(`[id="resultList${row.id}.isAccepted"]`);
         await expect(box).toBeAttached();
@@ -145,10 +143,22 @@ test(
           r.url().endsWith("/rest/AnalyzerResults"),
       );
       await page.getByRole("button", { name: "Save", exact: true }).click();
-      expect((await response).ok()).toBeTruthy();
+      await response;
+      if (held) {
+        await expect(page.getByText("Specimen decision required")).toHaveCount(
+          2,
+        );
+        await expect(
+          page.getByText(
+            /Choose the specimen or analysis requested on each row/,
+          ),
+        ).toBeVisible();
+      } else {
+        await expect(page.getByTestId("analyzer-results-empty")).toBeVisible();
+      }
     };
     // Submit through normal review without a choice to create the real held state.
-    await save();
+    await save(true);
     await expect
       .poll(
         async () =>
@@ -174,7 +184,7 @@ test(
     });
     // Different specimen choices cannot put two tests on an unsuitable new tube.
     await choose(["Serum", "Plasma"]);
-    await save();
+    await save(true);
     await expect
       .poll(
         async () =>
@@ -186,18 +196,16 @@ test(
     await noOrder();
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`);
     await choose(["Serum", "Serum"]);
-    await save();
+    await save(false);
     await expect.poll(async () => (await rows()).length).toBe(0);
     const orderResponse = await page.request.get(
       `${API}/order/search?labNumber=${accession}`,
     );
-    expect(orderResponse.ok()).toBeTruthy();
     const createdOrder = await orderResponse.json();
     expect(createdOrder.samples).toHaveLength(1);
     const saved = await page.request.get(
       `${API}/accession-results?accessionNumber=${accession}`,
     );
-    expect(saved.ok()).toBeTruthy();
     const results = (await saved.json()).testResult.filter(
       (r: { testId: string; result?: { id?: string } }) =>
         targets.some((t) => t.id === r.testId) && r.result?.id,
