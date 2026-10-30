@@ -213,6 +213,8 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     await expect(chart.getByTestId("lj-chart")).toBeVisible();
     // Carbon's point is evidence of a rendered measurement, not merely an empty chart frame.
     await expect(chart.locator("circle.dot")).toHaveCount(1);
+    await chart.locator("circle.dot").hover();
+    await expect(page.locator(".lj-tooltip")).toContainText("1009.64");
     await page.screenshot({
       path: testInfo.outputPath("shared-lot-high-control.png"),
       fullPage: true,

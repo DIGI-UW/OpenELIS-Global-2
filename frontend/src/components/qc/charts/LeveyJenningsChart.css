@@ -85,6 +85,12 @@
   stroke-dasharray: none !important;
 }
 
+/* The static legend labels the reference lines. Their invisible hover bands
+   must not intercept results that lie on the mean or a sigma boundary. */
+.lj-chart-container .cds--cc--threshold {
+  pointer-events: none;
+}
+
 /* Mean line (0σ): solid black, thicker */
 .lj-chart-container line.threshold-line[style*="stroke: #161616"],
 .lj-chart-container line.threshold-line[style*="stroke: rgb(22, 22, 22)"] {
