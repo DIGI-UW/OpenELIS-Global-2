@@ -727,9 +727,9 @@ public class StringUtil {
 
     /**
      * The numeric part of a result value as a string {@link Double#parseDouble}
-     * accepts: a leading {@code <}, {@code <=}, {@code >} or {@code >=} is dropped and written scientific
-     * notation is rewritten to e-notation. Returns the literal {@code "NaN"} when
-     * the value is not a number.
+     * accepts: a leading {@code <}, {@code <=}, {@code >} or {@code >=} is dropped
+     * and written scientific notation is rewritten to e-notation. Returns the
+     * literal {@code "NaN"} when the value is not a number.
      */
     public static String getActualNumericValue(String resultValue) {
         String actualValue = resultValue.trim().replaceFirst("^(<=|>=|<|>)", "").trim();
