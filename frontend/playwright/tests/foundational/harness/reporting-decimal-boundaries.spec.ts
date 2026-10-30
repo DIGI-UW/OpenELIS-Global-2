@@ -201,25 +201,29 @@ test("an explicitly configured report logarithm follows its component after rena
     path: testInfo.outputPath("explicit-logarithm-setting.png"),
     fullPage: true,
   });
-  const order = await createClinicalOrder(page, {
-    testIds: [target.id],
-    specimenName: "Plasma",
-  });
-  await page.goto(`/Results?accessionNumber=${order.accession}`);
-  const row = page.getByRole("row").filter({ hasText: target.name });
-  await expect(row).toHaveCount(1);
-  await row.getByRole("textbox").fill("0.0064");
-  await row.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(
-    row.getByRole("button", { name: "Edit", exact: true }),
-  ).toBeVisible();
-  await page.goto(`/validation?labNumber=${order.accession}`);
-  const review = page.getByRole("row").filter({ hasText: target.name });
-  await review.getByRole("button", { name: /expand/i }).click();
-  await page
-    .getByRole("button", { name: "Validate & release", exact: true })
-    .click();
-  await expect(review).toHaveCount(0);
+  const recordAndRelease = async () => {
+    const order = await createClinicalOrder(page, {
+      testIds: [target.id],
+      specimenName: "Plasma",
+    });
+    await page.goto(`/Results?accessionNumber=${order.accession}`);
+    const row = page.getByRole("row").filter({ hasText: target.name });
+    await expect(row).toHaveCount(1);
+    await row.getByRole("textbox").fill("0.0064");
+    await row.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(
+      row.getByRole("button", { name: "Edit", exact: true }),
+    ).toBeVisible();
+    await page.goto(`/validation?labNumber=${order.accession}`);
+    const review = page.getByRole("row").filter({ hasText: target.name });
+    await review.getByRole("button", { name: /expand/i }).click();
+    await page
+      .getByRole("button", { name: "Validate & release", exact: true })
+      .click();
+    await expect(review).toHaveCount(0);
+    return order;
+  };
+  const order = await recordAndRelease();
   const pdf = await printedReport(page, order.accession);
   await testInfo.attach("explicit-logarithm.pdf", {
     body: pdf,
@@ -256,8 +260,14 @@ test("an explicitly configured report logarithm follows its component after rena
   await disabled;
   await page.reload();
   await expect(checkbox).not.toBeChecked();
+  // Issued reports are immutable. A catalog change applies to a new report,
+  // never to the archived PDF returned when reprinting an existing version.
+  expect(await printedReport(page, order.accession)).toEqual(pdf);
+  const withoutLog = await recordAndRelease();
+  const disabledPdf = await printedReport(page, withoutLog.accession);
+  expect(disabledPdf.subarray(0, 5).toString()).toBe("%PDF-");
   await testInfo.attach("explicit-logarithm-disabled.pdf", {
-    body: await printedReport(page, order.accession),
+    body: disabledPdf,
     contentType: "application/pdf",
   });
 });
