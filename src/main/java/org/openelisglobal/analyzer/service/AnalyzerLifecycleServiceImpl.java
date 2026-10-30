@@ -35,7 +35,8 @@ public class AnalyzerLifecycleServiceImpl implements AnalyzerLifecycleService {
     @Transactional
     public void retire(String analyzerId, String actor) {
         Analyzer analyzer = find(analyzerId);
-        if (analyzer.getStatus() == Analyzer.AnalyzerStatus.ACTIVE || analyzer.isActive()) {
+        if (analyzer.getStatus() == Analyzer.AnalyzerStatus.ACTIVE
+                || analyzer.getStatus() == Analyzer.AnalyzerStatus.VALIDATION || analyzer.isActive()) {
             throw new AnalyzerRequestException("analyzer.lifecycle.error.running",
                     "Deactivate the analyzer before retiring it");
         }
