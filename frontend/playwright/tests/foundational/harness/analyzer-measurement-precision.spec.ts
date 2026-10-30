@@ -200,7 +200,7 @@ test(
       await page.getByRole("button", { name: "Validate & release" }).click();
       await released;
       await expect(
-        page.getByText("Result validated and released.", { exact: true }),
+        page.getByText("Nothing is waiting for validation.", { exact: true }),
       ).toBeVisible();
       await expect(validationRow).toHaveCount(0);
       expect((await read()).rawResultValue).toBe(correction ?? "1.17");
