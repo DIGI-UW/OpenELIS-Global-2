@@ -300,6 +300,37 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
+    public void logDisplayIsExplicitPersistsThroughRenameAndCanBeDisabled() {
+        ResultComponentDto primary = comp(null, "PRIMARY", "Viral Load", 0);
+        primary.resultType = "N";
+        assertEquals(200, controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest())
+                .getStatusCodeValue());
+        SampleResults saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(Boolean.FALSE, saved.components.get(0).displayLog10);
+        saved.components.get(0).displayLog10 = true;
+        saved.components.get(0).label = "Renamed measurement";
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest()).getStatusCodeValue());
+        saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(Boolean.TRUE, saved.components.get(0).displayLog10);
+        assertEquals("Renamed measurement", saved.components.get(0).label);
+        saved.components.get(0).displayLog10 = false;
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest()).getStatusCodeValue());
+        assertEquals(Boolean.FALSE,
+                controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0).displayLog10);
+    }
+
+    @org.junit.Test
+    public void logDisplayRejectsANonNumericComponent() {
+        ResultComponentDto primary = comp(null, "PRIMARY", "Call", 0);
+        primary.resultType = "D";
+        primary.displayLog10 = true;
+        assertEquals(422, controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest())
+                .getStatusCodeValue());
+    }
+
+    @org.junit.Test
     public void getSampleResults_emptyReturns200WithNoComponents() {
         ResponseEntity<SampleResults> resp = controller.getSampleResults(String.valueOf(TEST_ID));
         assertEquals(200, resp.getStatusCode().value());

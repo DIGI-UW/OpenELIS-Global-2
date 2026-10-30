@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * section defines them.
  * <p>
  * Columns:
- * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,defaultResult,allowMultipleReadings}.
+ * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,displayLog10,defaultResult,allowMultipleReadings}.
  * {@code testName} and {@code code} are required; {@code sampleType} only
  * disambiguates a legacy {@code Name(Specimen)} record. The rows of one test
  * are one unit of work, written through
@@ -164,6 +164,12 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
         }
         if (!row.isBlank("isPrimary")) {
             component.setIsPrimary(row.flag("isPrimary", false));
+        }
+        if (!row.isBlank("displayLog10")) {
+            component.setDisplayLog10(row.flag("displayLog10", false));
+        }
+        if (component.getDisplayLog10() && !"N".equals(component.getResultType())) {
+            throw new IllegalArgumentException("displayLog10 requires a numeric component");
         }
         if (!row.isBlank("showOnReport")) {
             component.setShowOnReport(row.flag("showOnReport", true));

@@ -101,6 +101,9 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     public List<TestResultComponent> saveComponentsForTest(String testId, List<TestResultComponent> desired,
             String sysUserId) {
         for (TestResultComponent component : desired) {
+            if (component.getDisplayLog10() && !"N".equals(component.getResultType())) {
+                throw new IllegalArgumentException("displayLog10 requires a numeric component");
+            }
             if (component.getReportingDecimalPlaces() != null) {
                 org.openelisglobal.result.util.ReportingDecimalPlaces
                         .parse(component.getReportingDecimalPlaces().toString());
@@ -148,6 +151,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
+                match.setDisplayLog10(d.getDisplayLog10());
                 match.setLod(d.getLod());
                 match.setLoq(d.getLoq());
                 match.setSysUserId(sysUserId);
@@ -169,6 +173,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
+                    slot.setDisplayLog10(d.getDisplayLog10());
                     slot.setLod(d.getLod());
                     slot.setLoq(d.getLoq());
                     slot.setIsActive("Y");
@@ -755,6 +760,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setLoq(src.getLoq());
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
+            copy.setDisplayLog10(src.getDisplayLog10());
             copy.setIsActive("Y");
             copy.setSysUserId(sysUserId);
             if (existing != null) {

@@ -67,6 +67,21 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void negativeCalculatedLogarithmAndOriginalMeasurementRemainReadable() throws Exception {
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setResultType("N");
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        var data = rows(ORDER);
+        data.get(0).setResult(
+                org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result, true));
+        String text = PdfText.of(render(data, Map.of(ORDER, order())));
+        assertTrue(text, text.contains("−2.19"));
+        assertTrue(text, text.contains("0.0064"));
+        assertTrue(text, text.contains("0.01"));
+    }
+
+    @Test
     public void printsOnTheSitesPaperSize() throws Exception {
         ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, "Letter");
         byte[] letter = render(rows(ORDER), Map.of(ORDER, order()));

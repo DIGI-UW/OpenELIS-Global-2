@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <changeSet id="146-explicit-log-display" author="oe">
+        <!-- A test name is not authorization to calculate another reported value. -->
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="display_log10" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <rollback><dropColumn schemaName="clinlims" tableName="test_result_component" columnName="display_log10"/></rollback>
+    </changeSet>
+</databaseChangeLog>

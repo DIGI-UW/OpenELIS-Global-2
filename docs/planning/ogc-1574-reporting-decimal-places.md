@@ -181,3 +181,30 @@ demonstrates that reporting depends on test and unit.
 calls for predefined, validated autoverification criteria; it does not prescribe
 a universal rounded-versus-unrounded comparison rule. The separation above is
 the explicit OpenELIS policy adopted for this remediation.
+
+## Acceptance follow-up: explicit report logarithms and readable annotations
+
+The deployed report check found a correctly calculated negative logarithm whose
+minus sign wrapped away from its digits, and a legacy viral-load lookup that
+selected a test by localized name. Catalog names are not calculation
+assignments.
+
+- Each numeric result component now has an explicit `displayLog10` option in
+  Test Catalog > Sample & Results. It is false by default, including on upgrade.
+  No name-based backfill guesses which component should receive a calculation.
+- The `result-components` CSV domain accepts `displayLog10`; a blank update
+  preserves the existing setting. A non-numeric component cannot enable it.
+- Patient reports calculate the optional annotation from the original positive,
+  exact measurement, independently of reporting decimal places. Bounds, zero and
+  negative measurements receive no logarithm. Received logarithmic components
+  remain ordinary independently mapped results; do not enable this option on a
+  component already expressed as a logarithm.
+- The calculated logarithm and the original-value annotation each start on their
+  own line. A numeric minus sign stays with the logarithm's digits.
+- The old name-based special case in legacy result entry, validation and patient
+  reports is removed. Stored values, flags, FHIR and machine-readable exports do
+  not acquire this report-only annotation.
+
+Upgrade acceptance must include explicit laboratory review of any component that
+needs the report logarithm. Existing names, units and decimal-place settings do
+not enable it. Already issued PDF artifacts are not rewritten.
