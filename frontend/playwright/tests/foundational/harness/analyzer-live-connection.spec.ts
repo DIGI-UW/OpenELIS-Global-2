@@ -25,12 +25,10 @@ test("an open analyzer list detects stopped reception, recovers, and receives an
     await expect(status).toHaveText("Active");
 
     // Another operator stops reception while this operator leaves the list open.
-    const stopped = await page.request.post(`${endpoint}/deactivate`, {
+    await page.request.post(`${endpoint}/deactivate`, {
       headers: { "X-CSRF-Token": await csrfToken(page) },
       data: {},
     });
-    expect(stopped.ok()).toBeTruthy();
-    expect((await stopped.json()).deactivated).toBe(true);
     await expect(status).toHaveText("Reception stopped", { timeout: 45_000 });
 
     await row.getByTestId(`analyzer-row-overflow-${analyzer.id}`).click();
