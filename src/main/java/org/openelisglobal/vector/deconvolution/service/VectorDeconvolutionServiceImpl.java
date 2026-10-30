@@ -16,6 +16,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultvalidation.event.ResultsValidatedEvent;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -33,6 +34,7 @@ import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PoolResultS
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.valueholder.VectorPool;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,6 +83,9 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
 
     @Autowired
     private DictionaryService dictionaryService;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -458,6 +463,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         String finalizedStatusId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
         List<SampleItem> members = vectorPoolService.getMembersByPoolId(pool.getId());
+        List<Analysis> copies = new ArrayList<>();
 
         for (SampleItem member : members) {
             for (Analysis poolAnalysis : poolAnalyses) {
@@ -473,6 +479,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
                         poolAnalysis.getAnalysisType() != null ? poolAnalysis.getAnalysisType() : "MANUAL");
                 copy.setSampleTypeName(poolAnalysis.getSampleTypeName());
                 String newAnalysisId = analysisService.insert(copy);
+                copies.add(copy);
 
                 List<Result> poolResults = resultService.getResultsByAnalysis(poolAnalysis);
                 for (Result poolResult : poolResults) {
@@ -493,6 +500,7 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         }
         pool.setSysUserId(sysUserId);
         vectorPoolService.update(pool);
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(copies));
 
         LogEvent.logInfo(this.getClass().getName(), "confirmResultForAllMembers",
                 "Vector pool " + pool.getId() + " (sample " + sample.getId() + ", accession "

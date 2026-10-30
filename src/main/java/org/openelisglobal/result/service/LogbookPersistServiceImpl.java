@@ -174,8 +174,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         }
 
         // Results finalized at entry skip validation, so announce them here too.
-        eventPublisher.publishEvent(
-                new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(actionDataSet.getModifiedAnalysis())));
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(actionDataSet.getModifiedAnalysis()));
         return reflexAnalysises;
     }
 

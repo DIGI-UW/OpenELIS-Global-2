@@ -8,18 +8,24 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.spring.util.SpringContext;
 
-/** Samples whose analyses a save finalized, for after-commit listeners. */
-public record ResultsValidatedEvent(Set<Long> sampleIds) {
+/** Samples and analyses a save finalized, for after-commit listeners. */
+public record ResultsValidatedEvent(Set<Long> sampleIds, Set<Long> analysisIds) {
 
-    public static Set<Long> finalizedSamples(Collection<Analysis> analyses) {
+    public static ResultsValidatedEvent finalized(Collection<Analysis> analyses) {
         String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         Set<Long> sampleIds = new HashSet<>();
+        Set<Long> analysisIds = new HashSet<>();
         for (Analysis analysis : analyses) {
-            if (finalizedId.equals(analysis.getStatusId()) && analysis.getSampleItem() != null
-                    && analysis.getSampleItem().getSample() != null) {
+            if (!finalizedId.equals(analysis.getStatusId())) {
+                continue;
+            }
+            if (analysis.getId() != null) {
+                analysisIds.add(Long.valueOf(analysis.getId()));
+            }
+            if (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null) {
                 sampleIds.add(Long.valueOf(analysis.getSampleItem().getSample().getId()));
             }
         }
-        return sampleIds;
+        return new ResultsValidatedEvent(sampleIds, analysisIds);
     }
 }
