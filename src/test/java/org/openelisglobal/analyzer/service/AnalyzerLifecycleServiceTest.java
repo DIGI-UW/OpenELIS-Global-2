@@ -77,6 +77,19 @@ public class AnalyzerLifecycleServiceTest {
     }
 
     @Test
+    public void setupReceptionMustStopBeforeRetirementEvenThoughTheAnalyzerIsInactive() {
+        Analyzer setup = analyzer(Analyzer.AnalyzerStatus.VALIDATION);
+        setup.setActive(false);
+        given(setup);
+
+        AnalyzerRequestException refused = assertThrows(AnalyzerRequestException.class,
+                () -> service.retire("42", "17"));
+
+        assertEquals("analyzer.lifecycle.error.running", refused.messageKey());
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
     public void aRetiredAnalyzerIsRestoredInactive() {
         given(analyzer(Analyzer.AnalyzerStatus.RETIRED));
 

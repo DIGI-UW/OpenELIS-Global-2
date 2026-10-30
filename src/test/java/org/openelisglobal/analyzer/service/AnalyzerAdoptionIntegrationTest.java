@@ -275,6 +275,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void oldDeliveredValuesUseLocalMappingsWhileRemovedCodesStayHeld() throws Exception {
         analyzerOnRevisionOne();
+        markActive();
         bindLocalTargetsOnRevisionOne();
         String testId = catalogTests.get(0);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
@@ -299,6 +300,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void localMappingRecoveryDoesNotReinterpretOldValuesUsingNewProfileUnits() throws Exception {
         analyzerOnRevisionOne();
+        markActive();
         bindLocalTargetsOnRevisionOne();
         importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A", "ADOPT-D"),
                 "1");
@@ -328,6 +330,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void aCanonicalOlderResultUsesTheConfirmedLocalTarget() throws Exception {
         analyzerOnRevisionOne();
+        markActive();
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)), "1");
         confirm(adopted);
@@ -352,6 +355,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void aResultFromAnotherProfileIsRetainedForLocalMapping() throws Exception {
         analyzerOnRevisionOne();
+        markActive();
 
         importService.importBundle(delivery("test.other-analyzer", 1, "ADOPT-A"), "1");
 
