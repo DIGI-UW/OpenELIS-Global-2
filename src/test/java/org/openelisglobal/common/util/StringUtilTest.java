@@ -109,6 +109,21 @@ public class StringUtilTest {
     }
 
     @Test
+    public void getActualNumericValue_acceptsEachQualifiedQuantityWithoutChangingItsDigits() {
+        for (String comparator : new String[] { "<", "<=", ">", ">=" }) {
+            assertEquals("12.50", StringUtil.getActualNumericValue(" " + comparator + " 12.50 "));
+            assertEquals("1.5e5", StringUtil.getActualNumericValue(comparator + "1.5×10⁵"));
+        }
+    }
+
+    @Test
+    public void getActualNumericValue_doesNotRepairMalformedQualifiers() {
+        for (String malformed : new String[] { "<<12", ">>12", "<>12", "12>", "=12", ">=x" }) {
+            assertEquals(malformed, "NaN", StringUtil.getActualNumericValue(malformed));
+        }
+    }
+
+    @Test
     public void roundToPlaces_roundsHalfUp() {
         assertEquals("1", StringUtil.roundToPlaces("0.9", 0));
         assertEquals("1.0", StringUtil.roundToPlaces("0.95", 1));
