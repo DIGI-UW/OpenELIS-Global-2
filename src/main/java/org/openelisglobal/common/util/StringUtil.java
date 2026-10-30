@@ -727,16 +727,12 @@ public class StringUtil {
 
     /**
      * The numeric part of a result value as a string {@link Double#parseDouble}
-     * accepts: a leading {@code <} or {@code >} is dropped and written scientific
+     * accepts: a leading {@code <}, {@code <=}, {@code >} or {@code >=} is dropped and written scientific
      * notation is rewritten to e-notation. Returns the literal {@code "NaN"} when
      * the value is not a number.
      */
     public static String getActualNumericValue(String resultValue) {
-        // ignore < or > from the analyser on validation
-        String actualValue = resultValue;
-        if (actualValue.startsWith("<") || actualValue.startsWith(">")) {
-            actualValue = actualValue.replaceAll("<|>", "");
-        }
+        String actualValue = resultValue.trim().replaceFirst("^(<=|>=|<|>)", "").trim();
         actualValue = normalizeScientificNotation(actualValue);
         if (isNumeric(actualValue)) {
             return actualValue;

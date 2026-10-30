@@ -26,6 +26,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
@@ -259,11 +260,25 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
             return;
         }
         try {
-            new BigDecimal(bean.getResultValue().trim());
+            numericQuantity(bean.getResultValue());
         } catch (NumberFormatException e) {
             throw new UnprocessableEntityException("Observation value '" + bean.getResultValue()
                     + "' is not a number, and test " + test.getDescription() + " records numeric results");
         }
+    }
+
+    private static Quantity numericQuantity(String value) {
+        Quantity quantity = new Quantity();
+        String numericValue = value.trim();
+        for (String comparator : new String[] { "<=", ">=", "<", ">" }) {
+            if (numericValue.startsWith(comparator)) {
+                quantity.setComparator(Quantity.QuantityComparator.fromCode(comparator));
+                numericValue = numericValue.substring(comparator.length()).trim();
+                break;
+            }
+        }
+        quantity.setValue(new BigDecimal(StringUtil.normalizeScientificNotation(numericValue)));
+        return quantity;
     }
 
     @Override
@@ -353,16 +368,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
                 observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
-                Quantity quantity = new Quantity();
-                String clinicalValue = result.getValue().trim();
-                for (String comparator : new String[] { "<=", ">=", "<", ">" }) {
-                    if (clinicalValue.startsWith(comparator)) {
-                        quantity.setComparator(Quantity.QuantityComparator.fromCode(comparator));
-                        clinicalValue = clinicalValue.substring(comparator.length()).trim();
-                        break;
-                    }
-                }
-                quantity.setValue(new BigDecimal(clinicalValue));
+                Quantity quantity = numericQuantity(result.getValue());
                 quantity.setUnit(resultService.getUOM(result));
                 observation.setValue(quantity);
             } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {
