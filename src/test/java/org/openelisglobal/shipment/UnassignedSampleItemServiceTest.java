@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.UUID;
+import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,6 +46,13 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         // referral 2 -> sample item 2 (accession 13333) -> organization 2
         // neither referral is assigned to a box, so both are unassigned
         executeDataSetWithStateManagement("testdata/referral.xml");
+    }
+
+    @After
+    public void cleanUp() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "box_sample_item", "shipping_box", "referral", "analysis_qaevent",
+                "qa_event", "analysis", "sample_requester", "sample_organization", "sample_item", "sample",
+                "organization", "provider", "result" });
     }
 
     private SampleItemDTO findByAccession(List<SampleItemDTO> dtos, String accessionNumber) {
