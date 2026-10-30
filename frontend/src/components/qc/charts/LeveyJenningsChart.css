@@ -87,7 +87,7 @@
 
 /* The static legend labels the reference lines. Their invisible hover bands
    must not intercept results that lie on the mean or a sigma boundary. */
-.lj-chart-container .cds--cc--threshold {
+.lj-chart-container .threshold-group {
   pointer-events: none;
 }
 
