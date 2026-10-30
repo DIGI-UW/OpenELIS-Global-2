@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="025-fhir-read-permissions" author="openelisglobal">
+        <comment>Explicit resource-type permissions for the read-only FHIR interface</comment>
+        <sql>
+            INSERT INTO clinlims.system_module
+                (id, name, description, has_select_flag, has_add_flag, has_update_flag, has_delete_flag)
+            SELECT nextval('clinlims.system_module_seq'), v.name, v.description, 'Y', 'N', 'N', 'N'
+            FROM (VALUES
+                ('fhir.read.results', 'Read all laboratory results, reports, specimens and orders through FHIR'),
+                ('fhir.read.patients', 'Read all laboratory patient records through FHIR'),
+                ('fhir.read.reference', 'Read practitioners, organizations, locations and devices through FHIR')
+            ) AS v(name, description)
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_module m WHERE m.name = v.name);
+
+            INSERT INTO clinlims.system_role
+                (id, name, description, active, editable, is_grouping_role, grouping_parent)
+            SELECT nextval('clinlims.system_role_seq'), v.name, v.description, true, false, false, p.id
+            FROM (VALUES
+                ('FHIR Results Reader', 'Read all laboratory results, reports, specimens and orders through FHIR'),
+                ('FHIR Patient Reader', 'Read all laboratory patient records through FHIR'),
+                ('FHIR Reference Reader', 'Read practitioners, organizations, locations and devices through FHIR')
+            ) AS v(name, description)
+            JOIN clinlims.system_role p ON p.name = 'Global Roles'
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.system_role r WHERE r.name = v.name);
+
+            INSERT INTO clinlims.system_role_module
+                (id, has_select, has_add, has_update, has_delete, system_role_id, system_module_id)
+            SELECT nextval('clinlims.system_role_module_seq'), 'Y', 'N', 'N', 'N', r.id, m.id
+            FROM clinlims.system_role r CROSS JOIN clinlims.system_module m
+            WHERE (r.name = 'Global Administrator'
+                OR (r.name = 'FHIR Results Reader' AND m.name = 'fhir.read.results')
+                OR (r.name = 'FHIR Patient Reader' AND m.name = 'fhir.read.patients')
+                OR (r.name = 'FHIR Reference Reader' AND m.name = 'fhir.read.reference'))
+                AND m.name IN ('fhir.read.results', 'fhir.read.patients', 'fhir.read.reference')
+                AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_module x
+                    WHERE x.system_role_id = r.id AND x.system_module_id = m.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module WHERE system_module_id IN
+                    (SELECT id FROM clinlims.system_module WHERE name IN
+                        ('fhir.read.results', 'fhir.read.patients', 'fhir.read.reference'));
+                DELETE FROM clinlims.system_user_role WHERE role_id IN
+                    (SELECT id FROM clinlims.system_role WHERE name IN
+                        ('FHIR Results Reader', 'FHIR Patient Reader', 'FHIR Reference Reader'));
+                DELETE FROM clinlims.system_role WHERE name IN
+                    ('FHIR Results Reader', 'FHIR Patient Reader', 'FHIR Reference Reader');
+                DELETE FROM clinlims.system_module WHERE name IN
+                    ('fhir.read.results', 'fhir.read.patients', 'fhir.read.reference');
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
