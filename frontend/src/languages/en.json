@@ -9296,6 +9296,7 @@
   "qc.chart.loading": "Loading control chart…",
   "qc.chart.error.title": "Unable to load control chart",
   "qc.chart.tabs.label": "Control chart levels",
+  "qc.chart.lotOption": "{lot} — {level} — {test}",
   "qc.chart.filter.allLevels": "All levels",
   "qc.chart.filter.selectLot": "Select lot",
   "qc.chart.action.zoomIn": "Zoom in",
