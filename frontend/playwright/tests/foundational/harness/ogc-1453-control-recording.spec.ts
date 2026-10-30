@@ -209,12 +209,25 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
       .click();
     const normal = `${specimen} — Normal — ${name}`;
     const high = `${specimen} — High — ${name}`;
-    await expect(
-      page.getByRole("option", { name: normal, exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("option", { name: high, exact: true }),
-    ).toBeVisible();
+    for (const label of [normal, high]) {
+      const option = page.getByRole("option", { name: label, exact: true });
+      await expect(option).toBeVisible();
+      const labelFits = await option
+        .locator(".cds--list-box__menu-item__option")
+        .evaluate(
+          (element) =>
+            element.scrollWidth <= element.clientWidth &&
+            element.scrollHeight <= element.clientHeight,
+        );
+      expect(
+        labelFits,
+        "The full control label must be readable without clipping",
+      ).toBe(true);
+    }
+    await page.screenshot({
+      path: testInfo.outputPath("shared-lot-options.png"),
+      fullPage: true,
+    });
     await page.getByRole("option", { name: normal, exact: true }).click();
     await page.getByRole("tab", { name: "High", exact: true }).click();
     await expect(
