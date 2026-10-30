@@ -10,7 +10,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   activateAnalyzer,
   startAnalyzerSetupReception,
-  deactivateAnalyzer,
   applyAnalyzerMapping,
   createAnalyzer,
   getAnalyzer,
@@ -939,6 +938,77 @@ describe("AnalyzerSetup Instrument step", () => {
       screen.getByRole("button", { name: "Finish and activate" }),
     );
     expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it.each(["INACTIVE", "ERROR"])(
+    "restores %s routine reception from Verify before closing",
+    async (runtimeState) => {
+      const candidate = connectedCandidate({ status: "ACTIVE" });
+      candidate.connection.actualRuntimeState = runtimeState;
+      candidate.connection.readiness = {
+        ready: false,
+        blockers: [
+          { messageKey: "analyzer.connection.readiness.restoreFailed" },
+        ],
+      };
+      getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+      applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+        callback(candidate),
+      );
+      const onClose = vi.fn();
+      renderSetupWithHistory(`/analyzers?setup=verify&analyzerId=42`, onClose);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Finish and activate" }),
+      );
+      expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps Verify open when routine reception cannot be restored", async () => {
+    const candidate = connectedCandidate({ status: "ACTIVE" });
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(candidate),
+    );
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        activated: false,
+        blockers: [],
+      }),
+    );
+    const onClose = vi.fn();
+    renderSetupWithHistory(`/analyzers?setup=verify&analyzerId=42`, onClose);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+    expect(
+      await screen.findByText(
+        "Could not apply the reviewed mappings. Reload Verify and try again.",
+      ),
+    ).toBeVisible();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("uses the post-apply runtime state without activating a recovered connection twice", async () => {
+    const candidate = connectedCandidate({ status: "ACTIVE" });
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    const recovered = {
+      ...candidate,
+      connection: { ...candidate.connection, actualRuntimeState: "ACTIVE" },
+    };
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(recovered),
+    );
+    const onClose = vi.fn();
+    renderSetupWithHistory(`/analyzers?setup=verify&analyzerId=42`, onClose);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+    expect(activateAnalyzer).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledOnce();
   });
 
