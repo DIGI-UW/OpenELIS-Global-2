@@ -265,6 +265,26 @@ public class QCResultProcessingServiceImplTest {
         verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
     }
 
+    @Test
+    public void reportedLevelDisambiguatesASharedLotNumber() {
+        hpcLot.setLotNumber(lpcLot.getLotNumber());
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot, hpcLot));
+
+        assertEquals(QCResultProcessingService.Outcome.RECORDED,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), " hpc ", RESULT, UNIT, TS));
+        verify(qcResultService).createQCResult(ANALYZER_ID, TEST_ID, "101", "HPC", RESULT, UNIT, TS);
+    }
+
+    @Test
+    public void sharedLotNumberWithoutALevelRemainsAmbiguous() {
+        hpcLot.setLotNumber(lpcLot.getLotNumber());
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID, INSTRUMENT_ID)).thenReturn(List.of(lpcLot, hpcLot));
+
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), null, RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
     private static TestQcTarget target(String expectedDictResultId) {
         TestQcTarget target = new TestQcTarget();
         target.setExpectedDictResultId(expectedDictResultId);
