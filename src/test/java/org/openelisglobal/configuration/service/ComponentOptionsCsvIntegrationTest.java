@@ -87,6 +87,22 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void explicitLogDisplayImportsAndBlankUpdatesPreserveIt() throws Exception {
+        load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,Y\n", "log-display.csv");
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+        load(componentHandler, "testName,code,label\n" + TEST + ",PRIMARY,Renamed measurement\n", "rename.csv");
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+        load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,N\n", "no-log.csv");
+        assertEquals(Boolean.FALSE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+    }
+
+    @Test
     public void eachAnswerLandsOnTheComponentItsRowNames() throws Exception {
         load(testResultHandler, answers(), "test-results.csv");
 

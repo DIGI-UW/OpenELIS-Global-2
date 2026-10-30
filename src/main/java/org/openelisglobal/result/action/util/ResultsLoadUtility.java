@@ -45,7 +45,6 @@ import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -1190,7 +1189,6 @@ public class ResultsLoadUtility {
                 analysisService.getTriggeredReflex(analysis) && analysisService.resultIsConclusion(result, analysis));
         testItem.setPastNotes(notes);
         testItem.setAnalysisNotes(buildAnalysisNotes(analysis));
-        testItem.setDisplayResultAsLog(hasLogValue(test));
         testItem.setResultFile(form);
         testItem.setNonconforming(
                 analysisService.isParentNonConforming(analysis) || SpringContext.getBean(IStatusService.class)
@@ -1361,26 +1359,6 @@ public class ResultsLoadUtility {
     private String getFormattedResultValue(Result result) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         return result != null ? resultResultService.formatResultForDisplay(result, false) : "";
-    }
-
-    private boolean hasLogValue(Test test) { // Analysis analysis, String resultValue) {
-        // TO-DO refactor
-        // if ( ){
-        // if (GenericValidator.isBlankOrNull(resultValue)) {
-        // return true;
-        // }
-        // try {
-        // Double.parseDouble(resultValue);
-        // return true;
-        // } catch (NumberFormatException e) {
-        // return false;
-        // }
-
-        // return true;
-        // }
-
-        // return false;
-        return TestIdentityService.getInstance().isTestNumericViralLoad(test);
     }
 
     private List<IdValuePair> getAnyDictionaryValues(Result result) {

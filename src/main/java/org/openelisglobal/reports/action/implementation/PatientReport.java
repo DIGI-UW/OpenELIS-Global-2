@@ -15,13 +15,11 @@ package org.openelisglobal.reports.action.implementation;
 
 import jakarta.annotation.PostConstruct;
 import java.sql.Date;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IllegalFormatException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +46,6 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -106,9 +103,6 @@ import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 
 public abstract class PatientReport extends Report {
-
-    // not threadSafe, use this classes formatTwoDecimals method when using this
-    private static final DecimalFormat twoDecimalFormat = new DecimalFormat("#.##");
 
     private static String ADDRESS_DEPT_ID;
     private static String ADDRESS_COMMUNE_ID;
@@ -707,25 +701,21 @@ public abstract class PatientReport extends Report {
         data.setUom(uom);
     }
 
-    private String getAugmentedResult(ClinicalPatientData data, Result result) {
-        String resultValue = data.getResult();
-        if (TestIdentityService.getInstance().isTestNumericViralLoad(analysisService.getTest(currentAnalysis))) {
-            try {
-                // Calculate from the clinical measurement, independently of display rounding
-                // and annotations. getValue normalizes written scientific notation.
-                resultValue += " (" + formatTwoDecimals(Math.log10(Double.parseDouble(result.getValue()))) + ")log ";
-            } catch (IllegalFormatException | NumberFormatException e) {
-                LogEvent.logDebug(this.getClass().getSimpleName(), "getAugmentedResult", e.getMessage());
-                // no-op
-            }
+    private String formatPatientReportResult(Result result) {
+        if (!"N".equals(result.getResultType())) {
+            return SpringContext.getBean(ResultService.class).formatResultForDisplay(result, true);
         }
-
-        return resultValue + (augmentResultWithFlag() ? getResultFlag(result, null) : "");
+        TestResultComponent component = result.getTestResult() == null
+                || result.getTestResult().getComponentId() == null ? null
+                        : SpringContext.getBean(TestResultComponentService.class)
+                                .get(result.getTestResult().getComponentId());
+        return org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result,
+                component != null && "N".equals(component.getResultType()) && component.getDisplayLog10());
     }
 
-    // thread safe implementation
-    protected synchronized String formatTwoDecimals(Double value) {
-        return twoDecimalFormat.format(value);
+    private String getAugmentedResult(ClinicalPatientData data, Result result) {
+        String resultValue = data.getResult();
+        return resultValue + (augmentResultWithFlag() ? getResultFlag(result, null) : "");
     }
 
     protected String getResultFlag(Result result, String imbed) {
@@ -873,7 +863,7 @@ public abstract class PatientReport extends Report {
                     }
                 } else {
                     ResultService resultResultService = SpringContext.getBean(ResultService.class);
-                    reportResult = resultResultService.formatResultForDisplay(result, true);
+                    reportResult = formatPatientReportResult(result);
                     // TODO - how is this used. Selection types can also have
                     // UOM and reference ranges
                     data.setHasRangeAndUOM(
@@ -1183,7 +1173,7 @@ public abstract class PatientReport extends Report {
             dictionaryService.getData(dictionary);
             return dictionary.getId() != null ? dictionary.getLocalizedName() : "";
         }
-        return resultResultService.formatResultForDisplay(result, true);
+        return formatPatientReportResult(result);
     }
 
     protected void setCollectionTime(Set<SampleItem> sampleSet, List<ClinicalPatientData> currentSampleReportItems,

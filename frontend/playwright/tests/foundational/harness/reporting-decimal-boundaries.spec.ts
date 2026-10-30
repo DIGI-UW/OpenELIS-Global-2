@@ -153,3 +153,111 @@ for (const places of [null, 0, 1, 2]) {
     });
   });
 }
+
+test("an explicitly configured report logarithm follows its component after renaming", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const run = randomUUID().slice(0, 8);
+  const [target] = await seedNumericTests(
+    page,
+    run,
+    [
+      {
+        name: `Log display ${run}`,
+        loinc: `${randomInt(1_000_000, 9_000_000)}-3`,
+      },
+    ],
+    {
+      testSection: "Molecular Biology",
+      sampleType: "Plasma",
+      reportingDecimalPlaces: 2,
+    },
+  );
+  const editor = `/MasterListsPage/TestCatalogEditor/${target.id}/sample-results`;
+  await page.goto(editor);
+  const checkbox = page.getByRole("checkbox", {
+    name: "Show calculated log10 on patient reports",
+    exact: true,
+  });
+  await expect(checkbox).not.toBeChecked();
+  await page
+    .getByText("Show calculated log10 on patient reports", { exact: true })
+    .click();
+  await page.locator("#comp-label-0").fill(`Renamed measurement ${run}`);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/tests/${target.id}/sample-results`) &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await saved;
+  await page.reload();
+  await expect(checkbox).toBeChecked();
+  await expect(page.locator("#comp-label-0")).toHaveValue(
+    `Renamed measurement ${run}`,
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("explicit-logarithm-setting.png"),
+    fullPage: true,
+  });
+  const order = await createClinicalOrder(page, {
+    testIds: [target.id],
+    specimenName: "Plasma",
+  });
+  await page.goto(`/Results?accessionNumber=${order.accession}`);
+  const row = page.getByRole("row").filter({ hasText: target.name });
+  await expect(row).toHaveCount(1);
+  await row.getByRole("textbox").fill("0.0064");
+  await row.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    row.getByRole("button", { name: "Edit", exact: true }),
+  ).toBeVisible();
+  await page.goto(`/validation?labNumber=${order.accession}`);
+  const review = page.getByRole("row").filter({ hasText: target.name });
+  await review.getByRole("button", { name: /expand/i }).click();
+  await page
+    .getByRole("button", { name: "Validate & release", exact: true })
+    .click();
+  await expect(review).toHaveCount(0);
+  const pdf = await printedReport(page, order.accession);
+  await testInfo.attach("explicit-logarithm.pdf", {
+    body: pdf,
+    contentType: "application/pdf",
+  });
+  const body = await (
+    await page.request.get(
+      `${API}/accession-results?accessionNumber=${order.accession}`,
+    )
+  ).json();
+  const result = body.testResult.find(
+    (item: { testId: string }) => item.testId === target.id,
+  );
+  expect(result.rawResultValue).toBe("0.0064");
+  expect(result.resultValue).toBe("0.01");
+  await testInfo.attach("explicit-logarithm-evidence", {
+    body: JSON.stringify({
+      testId: target.id,
+      accession: order.accession,
+      result,
+    }),
+    contentType: "application/json",
+  });
+  await page.goto(editor);
+  await page
+    .getByText("Show calculated log10 on patient reports", { exact: true })
+    .click();
+  const disabled = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/tests/${target.id}/sample-results`) &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await disabled;
+  await page.reload();
+  await expect(checkbox).not.toBeChecked();
+  await testInfo.attach("explicit-logarithm-disabled.pdf", {
+    body: await printedReport(page, order.accession),
+    contentType: "application/pdf",
+  });
+});

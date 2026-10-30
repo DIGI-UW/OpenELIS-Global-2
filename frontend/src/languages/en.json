@@ -7023,6 +7023,8 @@
   "label.testCatalog.sampleResults.uom.newUcum": "UCUM code",
   "label.testCatalog.sampleResults.uom.newDescription": "Description",
   "label.testCatalog.sampleResults.uom.saveNew": "Create unit",
+  "label.testCatalog.sampleResults.displayLog10": "Show calculated log10 on patient reports",
+  "label.testCatalog.sampleResults.displayLog10.helper": "Patient reports only, for positive exact numeric measurements. Calculated from the stored value, never the rounded display. Does not change results, flags or FHIR exports.",
   "label.testCatalog.sampleResults.reportingDecimalPlaces": "Reporting decimal places",
   "label.testCatalog.sampleResults.reportingDecimalPlaces.helper": "Optional digits after the decimal point for display and reports only. Leave blank to preserve the value. Zero explicitly requests whole-number display. Stored values and clinical decisions are unchanged.",
   "admin.testCatalog.sampleResults.lod.label": "LOD",

@@ -46,7 +46,6 @@ import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
@@ -1142,8 +1141,6 @@ public class ResultsValidationUtility {
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
         analysisResultItem.setDictionaryResults(testResultItem.getDictionaryResults());
-        analysisResultItem.setDisplayResultAsLog(
-                TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId()));
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
@@ -1209,14 +1206,8 @@ public class ResultsValidationUtility {
     }
 
     protected final String getFormattedResult(ResultValidationItem testResultItem) {
-        String result = testResultItem.getResult().getValue();
-        if (TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId())
-                && !GenericValidator.isBlankOrNull(result)) {
-            return result.split("\\(")[0].trim();
-        } else {
-            ResultService resultResultService = SpringContext.getBean(ResultService.class);
-            return resultResultService.formatResultForDisplay(testResultItem.getResult(), false);
-        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        return resultService.formatResultForDisplay(testResultItem.getResult(), false);
     }
 
     public final String getUnitsByTestId(String testId) {

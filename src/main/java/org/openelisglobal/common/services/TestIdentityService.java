@@ -15,14 +15,10 @@ package org.openelisglobal.common.services;
 
 import jakarta.annotation.PostConstruct;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
-import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testresult.service.TestResultService;
-import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,56 +31,14 @@ public class TestIdentityService implements ITestIdentityService {
     private TestService testService;
     @Autowired
     private PanelService panelService;
-    @Autowired
-    private TestResultService testResultService;
-
-    private String VIRAL_LOAD_TEST_ID = null;
-    private Boolean VIRAL_LOAD_IS_NUMERIC = Boolean.TRUE;
 
     @PostConstruct
     private void registerInstance() {
         instance = this;
     }
 
-    @PostConstruct
-    public void initialize() {
-        Test test = testService.getTestByDescription("VIH-1 Charge Virale(Plasma)");
-
-        if (test != null) {
-            VIRAL_LOAD_TEST_ID = test.getId();
-        } else {
-            test = testService.getTestByDescription("Charge Virale(Plasma)");
-            if (test != null) {
-                VIRAL_LOAD_TEST_ID = test.getId();
-            } else {
-                test = testService.getTestByLocalizedName("Viral Load", Locale.ENGLISH);
-                if (test != null) {
-                    VIRAL_LOAD_TEST_ID = test.getId();
-                }
-            }
-        }
-
-        if (!GenericValidator.isBlankOrNull(VIRAL_LOAD_TEST_ID)) {
-            List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(VIRAL_LOAD_TEST_ID);
-            VIRAL_LOAD_IS_NUMERIC = !testResultList.isEmpty() && ("N".equals(testResultList.get(0).getTestResultType())
-                    || "A".equals(testResultList.get(0).getTestResultType()));
-        } else {
-            VIRAL_LOAD_IS_NUMERIC = Boolean.FALSE;
-        }
-    }
-
     public static ITestIdentityService getInstance() {
         return instance;
-    }
-
-    @Override
-    public boolean isTestNumericViralLoad(Test test) {
-        return isTestNumericViralLoad(test.getId());
-    }
-
-    @Override
-    public boolean isTestNumericViralLoad(String testID) {
-        return VIRAL_LOAD_IS_NUMERIC && (VIRAL_LOAD_TEST_ID != null && VIRAL_LOAD_TEST_ID.equals(testID));
     }
 
     /*

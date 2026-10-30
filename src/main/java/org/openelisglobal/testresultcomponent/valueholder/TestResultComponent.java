@@ -56,6 +56,9 @@ public class TestResultComponent extends BaseObject<String> {
     @Column(name = "reporting_decimal_places", precision = 10, scale = 0)
     private Integer reportingDecimalPlaces;
 
+    @Column(name = "display_log10", nullable = false)
+    private boolean displayLog10 = false;
+
     @Column(name = "default_result", length = 80)
     private String defaultResult;
 
@@ -83,6 +86,14 @@ public class TestResultComponent extends BaseObject<String> {
 
     @Column(name = "loq", precision = 15, scale = 5)
     private BigDecimal loq;
+
+    public boolean getDisplayLog10() {
+        return displayLog10;
+    }
+
+    public void setDisplayLog10(boolean displayLog10) {
+        this.displayLog10 = displayLog10;
+    }
 
     public TestResultComponent() {
         super();

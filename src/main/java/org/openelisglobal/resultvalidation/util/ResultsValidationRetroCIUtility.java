@@ -37,7 +37,6 @@ import org.openelisglobal.common.services.QAService.QAObservationType;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.tools.StopWatch;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
@@ -839,8 +838,6 @@ public class ResultsValidationRetroCIUtility {
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
         analysisResultItem.setDictionaryResults(testResultItem.getDictionaryResults());
-        analysisResultItem.setDisplayResultAsLog(
-                TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId()));
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())
                     && !(testResultItem.getAnalysis() == null)) {
@@ -878,14 +875,8 @@ public class ResultsValidationRetroCIUtility {
     }
 
     private String getFormattedResult(ResultValidationItem testResultItem) {
-        String result = testResultItem.getResult().getValue();
-        if (TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId())
-                && !GenericValidator.isBlankOrNull(result)) {
-            return result.split("\\(")[0].trim();
-        } else {
-            ResultService resultResultService = SpringContext.getBean(ResultService.class);
-            return resultResultService.formatResultForDisplay(testResultItem.getResult(), false);
-        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        return resultService.formatResultForDisplay(testResultItem.getResult(), false);
     }
 
     public String getUnitsByTestId(String testId) {

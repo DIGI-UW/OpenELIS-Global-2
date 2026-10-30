@@ -1096,6 +1096,7 @@ public class TestCatalogEditorRestController {
         public String resultType;
         public String uomId;
         public Integer reportingDecimalPlaces;
+        public Boolean displayLog10;
         public String defaultResult;
         public Boolean allowMultipleReadings;
         // Exactly one component per test is primary — the one mirrored to the
@@ -1258,6 +1259,9 @@ public class TestCatalogEditorRestController {
             if (!knownResultType(c.resultType)) {
                 return refusedSampleResults(testId, "resultType.unknown", c.label);
             }
+            if (Boolean.TRUE.equals(c.displayLog10) && !"N".equals(c.resultType)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
             if (c.reportingDecimalPlaces != null && (c.reportingDecimalPlaces < 0 || c.reportingDecimalPlaces > 10)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
@@ -1300,6 +1304,7 @@ public class TestCatalogEditorRestController {
             e.setResultType(c.resultType);
             e.setUomId(c.uomId);
             e.setReportingDecimalPlaces(c.reportingDecimalPlaces);
+            e.setDisplayLog10(Boolean.TRUE.equals(c.displayLog10));
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
@@ -1394,6 +1399,7 @@ public class TestCatalogEditorRestController {
             dto.resultType = c.getResultType();
             dto.uomId = c.getUomId();
             dto.reportingDecimalPlaces = c.getReportingDecimalPlaces();
+            dto.displayLog10 = c.getDisplayLog10();
             dto.defaultResult = c.getDefaultResult();
             if (isBlank(dto.defaultResult) && c.getId().equals(primaryId) && legacyDefault != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(c.getResultType())) {

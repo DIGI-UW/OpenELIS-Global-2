@@ -289,6 +289,7 @@ const SampleResultsSection = ({ testId }) => {
       // Numeric-only fields.
       patch.uomId = "";
       patch.reportingDecimalPlaces = null;
+      patch.displayLog10 = false;
       patch.allowMultipleReadings = false;
     }
     if (!isSelectList) {
@@ -753,6 +754,7 @@ const SampleResultsSection = ({ testId }) => {
         defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
         reportingDecimalPlaces: toInt(c.reportingDecimalPlaces),
+        displayLog10: c.displayLog10 === true,
         lod: toInt(c.lod),
         loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
@@ -1126,6 +1128,21 @@ const SampleResultsSection = ({ testId }) => {
                         })
                       }
                     />
+                    <Checkbox
+                      id={`comp-display-log10-${ci}`}
+                      checked={c.displayLog10 === true}
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10",
+                      })}
+                      onChange={(_event, { checked }) =>
+                        patchComponent(ci, { displayLog10: checked })
+                      }
+                    />
+                    <p>
+                      {intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10.helper",
+                      })}
+                    </p>
                     {/* Detection limits (OGC-1148 FR-C1/C2): optional, LOD <= LOQ. */}
                     <div
                       style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
