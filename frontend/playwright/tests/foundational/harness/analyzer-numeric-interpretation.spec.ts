@@ -210,7 +210,14 @@ for (const decimal of [
           response.url().endsWith(`/results/${original.id}/dismiss`),
       );
       await dialog.getByRole("button", { name: /Remove$/ }).click();
-      expect((await removed).status()).toBe(204);
+      await removed;
+      await expect(
+        page.getByText(
+          "The held result is removed from review. The audit trail keeps it.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(remove).toHaveCount(0);
       await expect.poll(async () => (await rows()).length).toBe(0);
       expect(removals).toBe(1);
       page.off("request", removalRequest);
