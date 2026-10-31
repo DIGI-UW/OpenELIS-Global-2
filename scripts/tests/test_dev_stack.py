@@ -565,8 +565,8 @@ class DevStackContractTest(unittest.TestCase):
         with patch.object(self.dev_stack, "run") as run:
             self.dev_stack.build_images(context, environment)
         command = run.call_args.args[0]
-        self.assertEqual(command[-5:],
-                         ["build", "frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
+        self.assertEqual(command[-6:],
+                         ["build", "certs", "frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
         self.assertEqual(environment["DEV_STACK_BACKEND_IMAGE"], f"{context.project}-backend:dev")
         self.assertEqual(environment["DEV_STACK_BRIDGE_IMAGE"], f"{context.project}-analyzer-bridge:dev")
         compose = (context.project_dir / "docker-compose.dev.yml").read_text()
@@ -746,6 +746,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertEqual(
             commands,
             [
+                ["docker", "pull", "itechuw/openelis-global-2-certs:develop"],
                 ["docker", "pull", "itechuw/openelis-global-2-frontend-dev:develop"],
                 ["docker", "pull", "itechuw/openelis-global-2-dev:develop"],
                 ["docker", "pull", "itechuw/openelis-global-2-analyzer-mock:develop"],

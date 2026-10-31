@@ -30,6 +30,7 @@ LOCAL_DOMAINS = {"localhost", "127.0.0.1", "::1"}
 # Application images: (compose service, image variable in the harness compose
 # files, published repository, image name when built with `up --build`).
 APPLICATION_IMAGES = (
+    ("certs", "DEV_STACK_CERTS_IMAGE", "openelis-global-2-certs", "certs"),
     ("frontend.openelis.org", "DEV_STACK_FRONTEND_IMAGE", "openelis-global-2-frontend-dev", "frontend"),
     ("oe.openelis.org", "DEV_STACK_BACKEND_IMAGE", "openelis-global-2-dev", "backend"),
     ("astm-simulator", "DEV_STACK_MOCK_IMAGE", "openelis-global-2-analyzer-mock", "analyzer-mock"),

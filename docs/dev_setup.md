@@ -181,23 +181,23 @@ This mode does not compile application source or mount a locally built WAR. An
 unavailable image must fail visibly. Mutable `develop` images are for explicit
 development/demo deployments; release verification uses fixed images.
 
-The `certs` service runs `scripts/certs/ensure-install-keys.sh` on every start.
-It replaces only the certificate the public `certgen` image shipped to every
-install: the first start gives the install its own TLS key and certificate in
-`/etc/openelis-global/install` on the `key_trust-store-volume` volume and
-rebuilds the keystore, truststore and proxy certificate that still hold the
-image's. A keystore that already holds a certificate of the site's own is kept,
-and its key becomes the install's; a proxy certificate someone else installed,
-such as a Let's Encrypt one, is kept too. A store that does not open with the
-configured keystore/truststore passwords is left untouched and startup fails
-with an explanation; restore the correct passwords before retrying. Later starts
-keep the install's key. The first start also generates the install's key for
-database secrets (`install/encryption.key`), which the webapp uses unless
-`OE_ENCRYPTION_PASSWORD` is set. Fresh installations use this key from the first
-write. Existing databases require the explicit
-[one-time encryption upgrade](upgrades/installation-encryption.md) before
-switching to it. Normal startup never scans or rewrites database secrets. Back
-up the key volume with the database.
+The versioned `openelis-global-2-certs` image contains the initializer and
+tools, with no installation keys. Docker Compose starts it before dependent
+services. An empty installation gets its own TLS identity and independent
+`install/encryption.key`; the webapp loads that key unless an explicit
+`OE_ENCRYPTION_PASSWORD` is retained. Restart validates and preserves the
+complete security volume. Missing material or incorrect passwords stop
+initialization. Back up the database, configuration and all security volumes
+together.
+
+Existing installations use the separate `certs --upgrade-existing` command with
+their effective encryption password supplied through the environment. It adopts
+site-owned certificates or replaces recognized shared TLS certificates while
+preserving the effective encryption password. It does not scan or convert
+database values. See the
+[installer's adoption procedure](https://github.com/DIGI-UW/openelis-docker#installation-keys-and-existing-installations).
+Moving existing encrypted values to a different encryption key remains the
+separate [one-time encryption upgrade](upgrades/installation-encryption.md).
 
 A paired Analyzer Bridge pinned the certificate OpenELIS served when they
 paired, so it stops delivering results when the key is replaced; undelivered
@@ -225,7 +225,7 @@ as routine setup. Automatic Bridge cache repair is separate follow-up work.
 ### Install-owned TLS stores
 
 The published Compose stack generates a private TLS key on first start and
-reuses it on later starts. The upgrade script replaces both historical shared
+reuses it on later starts. Explicit adoption replaces both historical shared
 certgen certificate subjects (DIGI-UW and I-TECH-UW), including a shared key
 previously exported into the install directory. Genuine site keys, separate
 proxy certificates, and extra truststore entries are preserved.

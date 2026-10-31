@@ -4,13 +4,13 @@ services:
       - ./dictionary:/dictionary:ro
 
   certs:
-    image: itechuw/certgen:main
+    image: ${DEV_STACK_CERTS_IMAGE:-itechuw/openelis-global-2-certs:develop}
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile.certs
     platform: linux/amd64
     restart: "no"
     # Gives the install its own TLS key on first start and keeps the stores built from it.
-    entrypoint: ["/bin/sh", "/ensure-install-keys.sh"]
-    volumes:
-      - ../../scripts/certs/ensure-install-keys.sh:/ensure-install-keys.sh:ro
 
   db.openelis.org:
     networks:
@@ -44,7 +44,11 @@ services:
       CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       JDK_JAVA_OPTIONS: -Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
-      - key_trust-store-volume:/etc/openelis-global
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
       - lucene_index-vol:/var/lib/lucene_index
       - ../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
       - ../../volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
@@ -66,6 +70,8 @@ services:
       default:
         aliases: [fhir]
     image: hapiproject/hapi:v6.6.0-tomcat
+    # The older development HAPI image runs as uid 1001; grant only its TLS group.
+    group_add: ["8443"]
     depends_on:
       db.openelis.org:
         condition: service_started
@@ -87,7 +93,11 @@ services:
         -Djavax.net.ssl.keyStorePassword=${SSL_KEYSTORE_PASSWORD:-kspass}
         -Djavax.net.ssl.keyStoreType=pkcs12"
     volumes:
-      - key_trust-store-volume:/etc/openelis-global
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
       - ../../tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
     secrets:
       - source: hapi_application.yaml
@@ -125,8 +135,16 @@ services:
   proxy:
     image: nginx:1.27-alpine
     volumes:
-      - certs-vol:/etc/nginx/certs/
-      - keys-vol:/etc/nginx/keys/
+      - type: volume
+        source: certs-vol
+        target: /etc/nginx/certs/
+        volume:
+          nocopy: true
+      - type: volume
+        source: keys-vol
+        target: /etc/nginx/keys/
+        volume:
+          nocopy: true
       - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../volume/nginx/certbot:/var/www/certbot
       - ../../volume/letsencrypt:/etc/letsencrypt:ro

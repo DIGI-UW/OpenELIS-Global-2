@@ -31,18 +31,16 @@ SERVICES = {
     "fhir.openelis.org": "openelis-global-2-fhir",
     "frontend.openelis.org": "openelis-global-2-frontend",
     "proxy": "openelis-global-2-proxy",
+    "certs": "openelis-global-2-certs",
     "openelis-analyzer-bridge": "openelis-global-2-analyzer-bridge",
     "astm-simulator": "openelis-global-2-analyzer-mock",
 }
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
-# The compose `certs` service mounts this script and every service waits for it.
-CERTS_SCRIPT = "scripts/certs/ensure-install-keys.sh"
 BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
     SEED_SCRIPT,
-    CERTS_SCRIPT,
 )
 PAIRING_CODE = "ANALYZER_BRIDGE_PAIRING_CODE"
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
@@ -316,13 +314,18 @@ def deploy(request, diagnostics, bundle):
         run(compose + ["up", "-d"], site_dir)
         images = {}
         for service, reference in manifest["images"].items():
-            container = run(compose + ["ps", "-q", service], site_dir, True).strip()
+            container = run(compose + ["ps", "--all", "--quiet", service], site_dir, True).strip()
             if not container or "\n" in container:
-                raise ValueError(f"Expected one running container for {service}")
+                raise ValueError(f"Expected one container for {service}")
             actual = json.loads(run(["docker", "inspect", container], site_dir, True))[0]
             expected = json.loads(run(["docker", "image", "inspect", reference], site_dir, True))[0]
-            if not actual["State"]["Running"] or actual["Image"] != expected["Id"]:
-                raise ValueError(f"Running {service} does not match the published image")
+            if actual["Image"] != expected["Id"]:
+                raise ValueError(f"Selected {service} does not match the published image")
+            if service == "certs":
+                if actual["State"].get("Status") != "exited" or actual["State"].get("ExitCode") != 0:
+                    raise ValueError("Certificate initializer did not complete successfully")
+            elif not actual["State"]["Running"]:
+                raise ValueError(f"Expected running service {service}")
             images[service] = {"reference": reference, "imageId": actual["Image"]}
         report = readiness.wait_until_ready(**contract)
         write_json(diagnostics / "readiness.json", report)

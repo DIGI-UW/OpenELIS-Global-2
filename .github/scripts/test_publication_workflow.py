@@ -26,7 +26,8 @@ class PublicationWorkflowTest(unittest.TestCase):
         images = {service: "test-org/openelis-global-2" + suffix + "@sha256:" + "b" * 64
                   for service, suffix in [("oe.openelis.org", ""), ("db.openelis.org", "-database"),
                                           ("fhir.openelis.org", "-fhir"), ("frontend.openelis.org", "-frontend"),
-                                          ("proxy", "-proxy"), ("openelis-analyzer-bridge", "-analyzer-bridge"),
+                                          ("proxy", "-proxy"), ("certs", "-certs"),
+                                          ("openelis-analyzer-bridge", "-analyzer-bridge"),
                                           ("astm-simulator", "-analyzer-mock")]}
         env = {**os.environ, "DEPLOY_HOST": "testing.example.org", "DEPLOY_USER": "ubuntu", "DEPLOY_PORT": "22",
                "DOCKERHUB_NAMESPACE": "test-org", "SITE_PATH": "/srv/openelis-testing", "GITHUB_RUN_ID": "123",
@@ -60,14 +61,33 @@ class PublicationWorkflowTest(unittest.TestCase):
                                     "External workflow inputs must not prevent publication from loading")
 
     def test_publication_takes_no_runner_for_builds_it_cannot_publish(self):
-        # A pull request build has nothing to publish, and a cancelled build
-        # never gets its E2E checkpoint. Both are decided in job conditions, so
-        # no runner is taken; a regression here would queue two jobs per pull
-        # request build again.
+        # Evaluate the actual job condition: only explicitly allowed publication
+        # events may allocate a runner. The E2E wait still excludes cancellation.
         workflow = yaml.load((ROOT / ".github/workflows/publish-images.yml").read_text(), Loader=yaml.BaseLoader)
         jobs = workflow["jobs"]
-        self.assertIn("github.event.workflow_run.event != 'pull_request'", jobs["setup"]["if"])
-        self.assertIn("github.event_name == 'workflow_dispatch'", jobs["setup"]["if"])
+        harness = """
+const fs = require('node:fs');
+const vm = require('node:vm');
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+console.log(JSON.stringify(Boolean(vm.runInNewContext(input.condition, {github:input.github}, {timeout:1000}))));
+"""
+        for repository, trigger, event, conclusion, allowed in [
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_dispatch", "", "", True),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "push", "success", True),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "release", "success", True),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "pull_request", "success", False),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "pull_request_target", "success", False),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "schedule", "success", False),
+            ("DIGI-UW/OpenELIS-Global-2", "workflow_run", "push", "in_progress", False),
+            ("other/fork", "workflow_dispatch", "", "", False),
+        ]:
+            with self.subTest(repository=repository, trigger=trigger, event=event, conclusion=conclusion):
+                github = {"repository": repository, "event_name": trigger,
+                          "event": {"workflow_run": {"event": event, "conclusion": conclusion}}}
+                result = subprocess.run([os.environ.get("NODE_BINARY", "node"), "-e", harness],
+                                        input=json.dumps({"condition": jobs["setup"]["if"], "github": github}),
+                                        capture_output=True, text=True, check=True, timeout=10)
+                self.assertEqual(allowed, json.loads(result.stdout))
         self.assertIn("github.event.workflow_run.conclusion != 'cancelled'", jobs["wait-for-e2e-checkpoint"]["if"])
         self.assertIn("needs.setup.result != 'skipped'", jobs["deployment-summary"]["if"])
 
