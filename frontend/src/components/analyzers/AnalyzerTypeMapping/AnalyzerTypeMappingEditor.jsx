@@ -20,6 +20,12 @@ import {
   Loading,
   Modal,
   Tag,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
 } from "@carbon/react";
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
 import { parsePath } from "history";
@@ -1078,6 +1084,11 @@ const AnalyzerTypeMappingEditor = ({
               ),
         )
       : undefined;
+    const targetComponent = components.find((component) =>
+      answerComponent ? component.id === answerComponent : component.primary,
+    );
+    const numericAnswerTarget =
+      !missingTarget(test) && targetComponent?.resultType === "N";
     const key = recordKey(test);
     const label = recordLabel(test);
     const planRow = adopting ? adoptionRows.get(key) : null;
@@ -1290,6 +1301,50 @@ const AnalyzerTypeMappingEditor = ({
             />
           </div>
 
+          {(test.receivedValues || []).length > 0 && (
+            <section>
+              <h3>
+                <FormattedMessage id="analyzerType.mappingEditor.received.heading" />
+              </h3>
+              <Table
+                size="sm"
+                aria-label={intl.formatMessage(
+                  { id: "analyzerType.mappingEditor.received.label" },
+                  { code: label },
+                )}
+              >
+                <TableHead>
+                  <TableRow>
+                    {["raw", "kind", "value", "unit"].map((field) => (
+                      <TableHeader key={field}>
+                        <FormattedMessage
+                          id={`analyzerType.mappingEditor.received.${field}`}
+                        />
+                      </TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {test.receivedValues.map((value, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <code>{value.rawValue}</code>
+                      </TableCell>
+                      <TableCell>
+                        <FormattedMessage
+                          id={`analyzerType.mappingEditor.received.kind.${value.kind}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <code>{value.value}</code>
+                      </TableCell>
+                      <TableCell>{value.unit}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </section>
+          )}
           {test.results.length > 0 && test.mappingState !== "EXCLUDED" && (
             <div className="analyzer-type-mapping__results">
               <h3>
@@ -1309,7 +1364,36 @@ const AnalyzerTypeMappingEditor = ({
                     id: "analyzerType.mappingEditor.results.testFirst",
                   })}
                 />
-              ) : resultOptions === undefined ? (
+              ) : numericAnswerTarget ? (
+                <div className="analyzer-type-mapping__catalog-action">
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.received.numericMismatch",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.received.numericCorrection",
+                    })}
+                  />
+                  <CarbonLink
+                    as={Link}
+                    to={`/analyzers/types?q=${encodeURIComponent(mapping?.displayName || "")}`}
+                  >
+                    <FormattedMessage id="analyzerType.mappingEditor.received.reviewType" />
+                  </CarbonLink>
+                  {!readOnly && (
+                    <CarbonLink
+                      as={Link}
+                      to={`/analyzers?setup=connect&analyzerId=${encodeURIComponent(analyzerId)}&profile=${encodeURIComponent(mapping.profileId)}&revision=${mapping.profileRevision}`}
+                    >
+                      <FormattedMessage id="analyzerType.mappingEditor.received.reviewConnection" />
+                    </CarbonLink>
+                  )}
+                </div>
+              ) : resultOptions === undefined ||
+                componentsByTest[test.testId] === undefined ? (
                 <Loading
                   small
                   withOverlay={false}

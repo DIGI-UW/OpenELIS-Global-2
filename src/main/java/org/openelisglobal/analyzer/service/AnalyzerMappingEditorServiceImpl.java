@@ -138,7 +138,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         current.tests().keySet().forEach(key -> records.putIfAbsent(key, ReportedRecord.undeclared(key)));
         List<AnalyzerMappingView.TestRow> rows = records.entrySet().stream()
                 .map(entry -> composeTestRow(entry.getKey(), entry.getValue(), current.tests().get(entry.getKey()),
-                        current.results(), observedHeldValues, activeTests, activeTestsById))
+                        current.results(), observedHeldValues, activeTests, activeTestsById, observed))
                 .toList();
         AnalyzerMappingConfirmationView confirmation = snapshot == null ? AnalyzerMappingConfirmationView.unconfirmed()
                 : confirmationService.getStatus(snapshot);
@@ -249,7 +249,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private AnalyzerMappingView.TestRow composeTestRow(AnalyzerMappingRowKey key, ReportedRecord record,
             CurrentTest current, Map<ResultSourceKey, CurrentResult> currentResults,
             Set<ResultSourceKey> observedHeldValues, List<AnalyzerMappingCatalogService.TestOption> activeTests,
-            Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById) {
+            Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById, List<AnalyzerResults> observed) {
         BridgeAnalyzerProfile.TestDefinition definition = record.test();
         AnalyzerMappingState state = current == null ? AnalyzerMappingState.UNRESOLVED : current.state();
         AnalyzerMappingOrigin origin = current == null ? AnalyzerMappingOrigin.DEFAULT : current.origin();
@@ -312,7 +312,31 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
                 definition.codings(), state, origin, testId, componentId, selected, suggested, testReason, results,
                 key.subIdentity(), callComponentId, record.componentCode(),
-                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled());
+                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled(),
+                observed.stream().filter(row -> key.equals(recordOf(row)))
+                        .map(AnalyzerMappingEditorServiceImpl::receivedValue).distinct().toList());
+    }
+
+    private static AnalyzerMappingView.ReceivedValue receivedValue(AnalyzerResults row) {
+        String raw = row.getRawResultValue();
+        if (row.getSourcePayload() != null && !row.getSourcePayload().isBlank()) {
+            var observation = FHIR.newJsonParser().parseResource(org.hl7.fhir.r4.model.Observation.class,
+                    row.getSourcePayload());
+            if (observation.hasValueQuantity() && observation.getValueQuantity().hasValue()) {
+                var quantity = observation.getValueQuantity();
+                String value = (quantity.hasComparator() ? quantity.getComparator().toCode() : "")
+                        + quantity.getValue().toPlainString();
+                return new AnalyzerMappingView.ReceivedValue(raw, value, "NUMBER", quantity.getUnit());
+            }
+            String answer = org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultContract
+                    .deliveredAnswer(observation);
+            return new AnalyzerMappingView.ReceivedValue(raw, answer, answer == null ? "NO_VALUE" : "TEXT", null);
+        }
+        // Pre-contract rows retain the delivered type and value, separately from raw
+        // text.
+        return new AnalyzerMappingView.ReceivedValue(raw, row.getResult(),
+                row.getResult() == null ? "NO_VALUE" : "N".equals(row.getResultType()) ? "NUMBER" : "TEXT",
+                row.getUnits());
     }
 
     private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {
