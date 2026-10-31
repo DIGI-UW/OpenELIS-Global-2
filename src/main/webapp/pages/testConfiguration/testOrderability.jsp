@@ -129,13 +129,13 @@
             activatedTests= sampleType.parent().find(".inactive.activationChanged");
             if(activatedTests.length > 0) {
                 activateTestList.append("<br />");
-                activateTestList.append(sampleType.text());
+                activateTestList.append(document.createTextNode(sampleType.text()));
                 activateTestList.append("<br />");
                 activatedTests.each(function () {
                     jsonBlob = {};
                     jsonBlob.id = jQuery(this).val();
                     jsonObj.activateTest[jsonObj.activateTest.length] = jsonBlob;
-                    activateTestList.append("&nbsp;&nbsp;&nbsp;&nbsp;" + jQuery(this).siblings("span").text());
+                    activateTestList.append(document.createTextNode("\u00a0\u00a0\u00a0\u00a0" + jQuery(this).siblings("span").text()));
                     activateTestList.append("<br />");
 
                 });
@@ -156,14 +156,14 @@
 
             if (deactivatedTests.length > 0) {
                 deactivateTestList.append("<br />");
-                deactivateTestList.append(sampleType.text());
+                deactivateTestList.append(document.createTextNode(sampleType.text()));
 
                 deactivateTestList.append("<br />");
                 deactivatedTests.each(function () {
                     jsonBlob = {};
                     jsonBlob.id = jQuery(this).val();
                     jsonObj.deactivateTest[jsonObj.deactivateTest.length] = jsonBlob;
-                    deactivateTestList.append("&nbsp;&nbsp;&nbsp;&nbsp;" + jQuery(this).siblings("span").text());
+                    deactivateTestList.append(document.createTextNode("\u00a0\u00a0\u00a0\u00a0" + jQuery(this).siblings("span").text()));
                     deactivateTestList.append("<br />");
                 });
             }

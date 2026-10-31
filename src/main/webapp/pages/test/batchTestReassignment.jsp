@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
          contentType="text/html; charset=UTF-8"
          import="java.util.List,
@@ -364,7 +365,7 @@
     <select onchange="sampleTypeChanged(this); makeDirty();" >
     <option value="0"></option>
     <c:forEach items="${form.sampleList}" var="sampleType">
-    <option value="${sampleType.id}">${sampleType.value}</option>
+    <option value="${enc:attribute(sampleType.id)}">${enc:html(sampleType.value)}</option>
     </c:forEach>
     </select>
 

@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
          contentType="text/html; charset=UTF-8"
          import="java.util.List,
@@ -114,8 +115,8 @@
     }
 
     function handleInput(element, locale) {
-        var englishNames = "${form.existingEnglishNames}".toLowerCase();
-        var frenchNames = "${form.existingFrenchNames}".toLowerCase();
+        var englishNames = "${enc:js(form.existingEnglishNames)}".toLowerCase();
+        var frenchNames = "${enc:js(form.existingFrenchNames)}".toLowerCase();
         var duplicate = false;
         if( locale == 'english'){
             duplicate = englishNames.indexOf( '<%=NAME_SEPARATOR%>' + element.value.toLowerCase() + '<%=NAME_SEPARATOR%>') != -1;

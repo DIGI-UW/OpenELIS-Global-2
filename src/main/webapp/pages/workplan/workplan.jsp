@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
 	contentType="text/html; charset=UTF-8"
 	import="java.util.List,
@@ -28,7 +29,7 @@
 	<script type="text/javascript" >
 	var testSectionNameIdHash = [];
 	<c:forEach items="${testSectionsByName}" var="testSection">
-		testSectionNameIdHash["${testSection.id}"] = "${testSection.value}";
+        testSectionNameIdHash["${enc:js(testSection.id)}"] = "${enc:js(testSection.value)}";
 	</c:forEach>
 	</script>
 </c:if>
@@ -161,7 +162,7 @@ function printWorkplan() {
      			<c:otherwise> class="oddRow"</c:otherwise>
      		</c:choose>
      		>
-     			<td id='cell_${iter.index}'>
+                <td id='cell_${enc:attribute(iter.index)}'>
      			<c:if test="${not workplanTest.servingAsTestGroupIdentifier}">
 					<form:checkbox path="workplanTests[${iter.index}].notIncludedInWorkplan"
 						   id='includedCheck_${iter.index}'
@@ -178,7 +179,7 @@ function printWorkplan() {
 				</c:if>
 	    		<td>
 	      		<c:if test="${showAccessionNumber}">
-	      			<a style="color:blue;" href="${pageContext.request.contextPath}/AccessionResults?accessionNumber=${workplanTest.accessionNumber}"><u>${workplanTest.accessionNumber}</u></a> 
+                    <a style="color:blue;" href="${enc:attribute(pageContext.request.contextPath)}/AccessionResults?accessionNumber=${enc:attribute(workplanTest.accessionNumber)}"><u>${enc:html(workplanTest.accessionNumber)}</u></a>
 				</c:if>
 	    		</td>
 	    		<% if( ConfigurationProperties.getInstance().isPropertyValueEqual(Property.SUBJECT_ON_WORKPLAN, "true")){ %>
@@ -202,7 +203,7 @@ function printWorkplan() {
 						</c:if>
 				</td>
 				<td>
-					${workplanTest.testName} 
+                    ${enc:html(workplanTest.testName)}
 				</td>
 				</c:if>
 	    		<td>

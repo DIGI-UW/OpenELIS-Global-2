@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
 	contentType="text/html; charset=UTF-8"
 	import="org.apache.commons.validator.GenericValidator, 
@@ -50,8 +51,8 @@
 
 <script>
 var dirty = false;
-var pager = new OEPager('${form.formName}', '<spring:escapeBody javaScriptEscape="true">${(analyzerType == "") ? "" : "&type=" +=  analyzerType}</spring:escapeBody>');
-var pager = new OEPager('${form.formName}', '<spring:escapeBody javaScriptEscape="true">${(testSection == "") ? "" : "&type=" += testSection}</spring:escapeBody>' + '&test= <spring:escapeBody javaScriptEscape="true">testName</spring:escapeBody>');
+var pager = new OEPager('${enc:js(form.formName)}', '<spring:escapeBody javaScriptEscape="true">${(analyzerType == "") ? "" : "&type=" +=  analyzerType}</spring:escapeBody>');
+var pager = new OEPager('${enc:js(form.formName)}', '<spring:escapeBody javaScriptEscape="true">${(testSection == "") ? "" : "&type=" += testSection}</spring:escapeBody>' + '&test= <spring:escapeBody javaScriptEscape="true">testName</spring:escapeBody>');
 pager.setCurrentPageNumber('<c:out value="${form.paging.currentPage}"/>');
 
 var pageSearch; //assigned in post load function
@@ -59,7 +60,7 @@ var pageSearch; //assigned in post load function
 var pagingSearch = {};
 
 <c:forEach items="${pagingSearch}" var="paging">
-	pagingSearch['${paging.id}'] = '${paging.value}';
+    pagingSearch['${enc:js(paging.id)}'] = '${enc:js(paging.value)}';
 </c:forEach>
 
 jQuery(document).ready( function() {
@@ -440,8 +441,8 @@ function altAccessionHighlightSearch(accessionNumber) {
 
 			<c:if test="${resultList.multipleResultForSample && showAccessionNumber}">
 				<c:set var="showAccessionNumber" value="${false}"/>
-			<tr  class='${(rowColorIndex % 2 == 0) ? "evenRow" : "oddRow"}' >
-				<td colspan="3" class='${currentAccessionNumber}'>
+            <tr  class='${enc:attribute((rowColorIndex % 2 == 0) ? "evenRow" : "oddRow")}' >
+                <td colspan="3" class='${enc:attribute(currentAccessionNumber)}'>
 	      			<c:out value="${resultList.accessionNumber}"/>
 	    		</td>
 	    		<td style="text-align:center">
@@ -465,9 +466,9 @@ function altAccessionHighlightSearch(accessionNumber) {
 				<td>&nbsp;</td>
 			</tr>
 			</c:if>
-     		<tr id='row_${iter.index}' class='${(rowColorIndex % 2 == 0) ? "evenRow" : "oddRow" }'  >
+            <tr id='row_${enc:attribute(iter.index)}' class='${enc:attribute((rowColorIndex % 2 == 0) ? "evenRow" : "oddRow" )}'  >
 				<c:if test="${showAccessionNumber}">
-	    		<td class='${currentAccessionNumber}' >
+                <td class='${enc:attribute(currentAccessionNumber)}' >
 	      			<c:out value="${resultList.accessionNumber}"/>
 	    		</td>
 	    		</c:if><c:if test="${not showAccessionNumber}">
@@ -532,8 +533,8 @@ function altAccessionHighlightSearch(accessionNumber) {
                     <c:out value="${resultList.units}"/>
                     </c:when><c:when test="${'C' == resultList.resultType}">
                     <%-- cascading multiple results --%>
-                    <div id='cascadingMulti_${iter.index}_0' class='cascadingMulti_${iter.index}' >
-                    <input type="hidden" id='divCount_${iter.index}' value="0" >
+                    <div id='cascadingMulti_${enc:attribute(iter.index)}_0' class='cascadingMulti_${enc:attribute(iter.index)}' >
+                    <input type="hidden" id='divCount_${enc:attribute(iter.index)}' value="0" >
                     <form:select path="resultList[${iter.index}].multiSelectResultValues"
                             id='resultId_${iter.index}_0'
                             multiple="multiple"
@@ -543,8 +544,8 @@ function altAccessionHighlightSearch(accessionNumber) {
 						               ${(resultList.qualifiedDictionaryId != null) ? "showQuanitiy( this, " += iter.index += ", " += resultList.qualifiedDictionaryId += ", \\"M\\" );" :""}' >
                         <form:options items="${resultList.dictionaryResults}" itemValue="id" itemLabel="value"/>
                     </form:select> 
-                        <input class='addMultiSelect${iter.index}' type="button" value="+" onclick='addNewMultiSelect(${iter.index}, this);showNewNote( ${iter.index});'/>
-                        <input class='removeMultiSelect${iter.index}' type="button" value="-" onclick='removeMultiSelect(\"target\");showNewNote( ${iter.index});' style="display: none" />
+                        <input class='addMultiSelect${enc:attribute(iter.index)}' type="button" value="+" onclick='addNewMultiSelect(${enc:jsAttribute(iter.index)}, this);showNewNote( ${enc:jsAttribute(iter.index)});'/>
+                        <input class='removeMultiSelect${enc:attribute(iter.index)}' type="button" value="-" onclick='removeMultiSelect(\"target\");showNewNote( ${enc:jsAttribute(iter.index)});' style="display: none" />
                         <form:hidden path="resultList[${iter.index}].multiSelectResultValues" id='multiresultId_${iter.index}'  cssClass="multiSelectValues" />
                     <form:input path='resultList[${iter.index}].qualifiedResultValue'
                            id='qualifiedDict_${iter.index}'
@@ -575,9 +576,9 @@ function altAccessionHighlightSearch(accessionNumber) {
 					</c:choose>
 					<c:if test="${resultList.displayResultAsLog}">
 						<br/>
-						<div id='log_${iter.index}'
+                        <div id='log_${enc:attribute(iter.index)}'
 								class='results-readonly'>
-								${resultList.result}
+								${enc:html(resultList.result)}
 								<%-- <% try{
 												Double value = Math.log10(Double.parseDouble(resultList.getResult()));
 												DecimalFormat twoDForm = new DecimalFormat("##.##");
@@ -611,17 +612,17 @@ function altAccessionHighlightSearch(accessionNumber) {
 					<c:if test="${!resultList.readOnly}">
 				    	<c:if test="${empty resultList.note}">
 						 	<img src="./images/note-add.gif"
-						 	     onclick='showHideNotes( ${iter.index});'
-						 	     id='showHideButton_${iter.index}'
+                                 onclick='showHideNotes( ${enc:jsAttribute(iter.index)});'
+                                 id='showHideButton_${enc:attribute(iter.index)}'
 						    />
 						 </c:if>
 						 <c:if test="${not empty resultList.note}">
 						 	<img src="./images/note-edit.gif"
-						 	     onclick='showHideNotes( ${iter.index});'
-						 	     id='showHideButton_${iter.index}'
+                                 onclick='showHideNotes( ${enc:jsAttribute(iter.index)});'
+                                 id='showHideButton_${enc:attribute(iter.index)}'
 						    />
 						 </c:if>
-                    <input type="hidden" value="hidden" id='hideShow_${iter.index}' >
+                    <input type="hidden" value="hidden" id='hideShow_${enc:attribute(iter.index)}' >
 					</c:if>
 				</td>
       		</tr>
@@ -629,11 +630,12 @@ function altAccessionHighlightSearch(accessionNumber) {
 			<tr  >
 				<td colspan="2" style="text-align:right;vertical-align:top"><spring:message code="label.prior.note" />: </td>
 				<td colspan="6" style="text-align:left">
-				${resultList.pastNotes}
+                <%-- NoteService escapes each note before adding trusted line separators. --%>
+                ${resultList.pastNotes}
 				</td>
 			</tr>
 			</c:if>
-      		<tr id='noteRow_${iter.index}'
+            <tr id='noteRow_${enc:attribute(iter.index)}'
 				style="display: none;">
 				<td colspan="2" style="text-align:right;vertical-align:top;"><spring:message code="note.note"/>:</td>
 				<td colspan="6" style="text-align:left" >
