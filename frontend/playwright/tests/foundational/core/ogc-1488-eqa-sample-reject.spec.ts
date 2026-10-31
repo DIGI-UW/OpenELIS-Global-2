@@ -94,6 +94,11 @@ test("an EQA sample is rejected with a chosen reason", async ({ page }) => {
     await expect(page.getByText("Choose a rejection reason.")).toBeVisible();
 
     const reason = page.locator("#reject-reason-code");
+    await expect(reason.locator('option:not([value=""])').first()).toBeAttached(
+      {
+        timeout: LONG_TIMEOUT,
+      },
+    );
     const firstReason = await reason
       .locator("option")
       .evaluateAll(

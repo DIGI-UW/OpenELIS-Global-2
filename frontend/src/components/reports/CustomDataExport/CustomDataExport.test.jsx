@@ -348,11 +348,22 @@ test("rerun waits for its catalog without reporting valid fields or filters as u
 });
 
 test("rerun preserves a removed field and requires correction after its catalog loads", async () => {
+  let resolveCatalog;
+  catalogGate = new Promise((resolve) => {
+    resolveCatalog = resolve;
+  });
   job = recoverableJob("EXPIRED");
   job.request.variables.push(field("test:removed", "Removed test", "tests"));
-  open("/reports/custom-data-export?view=queue");
+  const { history } = open("/reports/custom-data-export?view=queue");
   fireEvent.click(
     await screen.findByRole("button", { name: "Re-run", exact: true }),
+  );
+  await screen.findByText(messages["reporting.loading"]);
+  await act(async () => resolveCatalog());
+  await waitFor(() =>
+    expect(new URLSearchParams(history.location.search).get("step")).toBe(
+      "columns",
+    ),
   );
   expect(
     await screen.findByText(messages["reporting.columns.stale"]),

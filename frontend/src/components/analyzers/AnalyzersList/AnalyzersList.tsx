@@ -43,6 +43,10 @@ import BridgePairing from "../BridgePairing/BridgePairing";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
+import {
+  expectsReception,
+  useAnalyzerConnections,
+} from "./useAnalyzerConnections";
 import "./AnalyzersList.css";
 
 interface AnalyzerStats {
@@ -125,12 +129,26 @@ const AnalyzersList = () => {
     testUnit: "",
     analyzerType: "",
   });
-  const [stats, setStats] = useState<AnalyzerStats>({
-    total: 0,
-    active: 0,
-    setup: 0,
-    needsAttention: 0,
-  });
+  const connectionState = useAnalyzerConnections(analyzers);
+  const connectionNeedsAttention = (analyzer: Analyzer) =>
+    expectsReception(analyzer) &&
+    !["running", "checking"].includes(connectionState(analyzer));
+  const stats: AnalyzerStats = {
+    total: analyzers.length,
+    active: analyzers.filter(
+      (analyzer) =>
+        analyzer.status === "ACTIVE" && connectionState(analyzer) === "running",
+    ).length,
+    setup: analyzers.filter(
+      (analyzer) =>
+        analyzer.status === "SETUP" || analyzer.status === "VALIDATION",
+    ).length,
+    needsAttention: analyzers.filter(
+      (analyzer) =>
+        hasHeldResults(analyzer) || connectionNeedsAttention(analyzer),
+    ).length,
+  };
+  const heldAnalyzerCount = analyzers.filter(hasHeldResults).length;
   const queryParams = new URLSearchParams(location.search);
   const setupStep = queryParams.get("setup");
   const visibleSetupStep = isAnalyzerSetupStep(setupStep) ? setupStep : null;
@@ -251,18 +269,6 @@ const AnalyzersList = () => {
           setAnalyzers(list);
           setFilteredAnalyzers(list);
 
-          // Calculate statistics based on unified status
-          const activeCount = list.filter((a) => a.status === "ACTIVE").length;
-          const setupCount = list.filter(
-            (a) => a.status === "SETUP" || a.status === "VALIDATION",
-          ).length;
-          const needsAttentionCount = list.filter(hasHeldResults).length;
-          setStats({
-            total: list.length,
-            active: activeCount,
-            setup: setupCount,
-            needsAttention: needsAttentionCount,
-          });
           setLoading(false);
         },
         signal,
@@ -443,9 +449,7 @@ const AnalyzersList = () => {
 
   const rows: AnalyzerTableRow[] = filteredAnalyzers.map((analyzer) => {
     const connection = intl.formatMessage({
-      id: analyzer.bridgeConnectionId
-        ? "analyzer.connection.reference.configured"
-        : "analyzer.connection.reference.missing",
+      id: `analyzer.connection.live.${connectionState(analyzer)}`,
     });
 
     const unifiedStatus = analyzer.status || "SETUP";
@@ -532,13 +536,13 @@ const AnalyzersList = () => {
           title={intl.formatMessage(
             {
               id:
-                stats.needsAttention === 1
+                heldAnalyzerCount === 1
                   ? "analyzer.attention.title.one"
                   : "analyzer.attention.title.many",
             },
             {
               name: firstAttentionAnalyzer.name,
-              count: stats.needsAttention,
+              count: heldAnalyzerCount,
             },
           )}
           subtitle={intl.formatMessage({
@@ -775,6 +779,13 @@ const AnalyzersList = () => {
                           (a) => a.id === row.id,
                         );
                         const unifiedStatus = analyzer?.status || "SETUP";
+                        const observation = analyzer
+                          ? connectionState(analyzer)
+                          : "checking";
+                        const receptionUnconfirmed =
+                          analyzer &&
+                          expectsReception(analyzer) &&
+                          observation !== "running";
 
                         return (
                           <TableRow
@@ -825,11 +836,15 @@ const AnalyzersList = () => {
                                   OFFLINE: "red",
                                   RETIRED: "gray",
                                 };
-                                const statusColor =
-                                  statusColorMap[unifiedStatus] || "gray";
+                                const statusColor = receptionUnconfirmed
+                                  ? observation === "checking"
+                                    ? "gray"
+                                    : "red"
+                                  : statusColorMap[unifiedStatus] || "gray";
                                 // Convert ERROR_PENDING to error_pending for i18n key
-                                const statusKey =
-                                  unifiedStatus === "ERROR_PENDING"
+                                const statusKey = receptionUnconfirmed
+                                  ? `analyzer.connection.live.${observation}`
+                                  : unifiedStatus === "ERROR_PENDING"
                                     ? "analyzer.status.error_pending"
                                     : `analyzer.status.${unifiedStatus.toLowerCase()}`;
                                 cellContent = (
@@ -901,20 +916,27 @@ const AnalyzersList = () => {
                                       }
                                       data-testid={`analyzer-action-quality-control-${row.id}`}
                                     />
-                                    {lifecycleActionsFor(unifiedStatus).map(
-                                      (action) => (
-                                        <OverflowMenuItem
-                                          key={action}
-                                          itemText={intl.formatMessage({
-                                            id: `analyzer.action.${action}`,
-                                          })}
-                                          onClick={() =>
-                                            openLifecycle(analyzer, action)
-                                          }
-                                          data-testid={`analyzer-action-${action}-${row.id}`}
-                                        />
-                                      ),
-                                    )}
+                                    {(unifiedStatus === "ACTIVE" &&
+                                    ["stopped", "attention"].includes(
+                                      observation,
+                                    )
+                                      ? ([
+                                          "reactivate",
+                                          ...lifecycleActionsFor(unifiedStatus),
+                                        ] as AnalyzerLifecycleAction[])
+                                      : lifecycleActionsFor(unifiedStatus)
+                                    ).map((action) => (
+                                      <OverflowMenuItem
+                                        key={action}
+                                        itemText={intl.formatMessage({
+                                          id: `analyzer.action.${action}`,
+                                        })}
+                                        onClick={() =>
+                                          openLifecycle(analyzer, action)
+                                        }
+                                        data-testid={`analyzer-action-${action}-${row.id}`}
+                                      />
+                                    ))}
                                   </OverflowMenu>
                                 ) : null;
                               }
