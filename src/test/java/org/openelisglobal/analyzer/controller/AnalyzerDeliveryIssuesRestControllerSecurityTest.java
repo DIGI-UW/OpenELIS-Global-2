@@ -98,7 +98,8 @@ public class AnalyzerDeliveryIssuesRestControllerSecurityTest extends SecuritySl
     @Test
     public void retryWithAnalyserImportRole_retriesThatEntry() throws Exception {
         mockMvc.perform(post(BASE + "/ob-1/retry").with(user("operator").roles("ANALYSER_IMPORT"))
-                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(17))).andExpect(status().isOk());
+                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(17))).andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("accepted")).andExpect(jsonPath("$.state").value("QUEUED"));
         verify(deliveryIssueService).retry("ob-1", "17");
     }
 

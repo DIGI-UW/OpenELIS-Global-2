@@ -8,6 +8,48 @@ const mockUrl =
   process.env.MOCK_URL ||
   "http://localhost:8085";
 
+/** A transport prepared by the harness before browser tests start. */
+export async function geneXpertMockSource(
+  request: APIRequestContext,
+  port = 12001,
+): Promise<{ name: string; ip: string; destination: string }> {
+  // A remote launcher can describe a prepared source without exposing Docker
+  // control through the mock. Application tests only consume this transport.
+  if (process.env.ANALYZER_GENEXPERT_SOURCE) {
+    const source = JSON.parse(process.env.ANALYZER_GENEXPERT_SOURCE);
+    expect(source.name).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(source.ip).toEqual(expect.any(String));
+    const destination = new URL(source.destination);
+    expect(destination.protocol).toBe("tcp:");
+    expect(destination.port).toBe(String(port));
+    return source;
+  }
+  const response = await request.get(`${mockUrl}/analyzers`);
+  expect(response.ok(), "Read prepared mock transports").toBeTruthy();
+  const { analyzers } = (await response.json()) as {
+    analyzers: Array<{
+      name: string;
+      ip: string;
+      subnet: string;
+      template: string;
+    }>;
+  };
+  const sources = analyzers.filter((source) => source.name === "genexpert");
+  expect(
+    sources,
+    "The harness must prepare one GeneXpert mock before tests start",
+  ).toHaveLength(1);
+  const source = sources[0];
+  expect(source.template).toBe("genexpert_astm");
+  expect(source.subnet).toMatch(/^10\.\d+\.\d+\.0\/24$/);
+  // The mock network manager attaches Bridge at .2 on this isolated /24.
+  return {
+    name: source.name,
+    ip: source.ip,
+    destination: `tcp://${source.subnet.replace(/\.0\/24$/, ".2")}:${port}`,
+  };
+}
+
 /** A message Cepheid documents for one assay outcome, as the mock replays it. */
 export type GeneXpertFixture = { assay: string; outcome: string };
 
@@ -80,27 +122,14 @@ export async function sendGeneXpertFixture(
 ): Promise<string> {
   const request = page.request;
   const port = await activeListenerPort(page, analyzerId, senderId);
-  const networksResponse = await request.get(`${mockUrl}/analyzers`);
-  expect(networksResponse.ok()).toBeTruthy();
-  const networks = (await networksResponse.json()) as {
-    analyzers: Array<{ name: string; subnet: string; template: string }>;
-  };
-  const mockNetworks = networks.analyzers.filter(
-    (analyzer) => analyzer.name === "genexpert",
-  );
-  expect(mockNetworks, "One provisioned GeneXpert mock network").toHaveLength(
-    1,
-  );
-  expect(mockNetworks[0].template).toBe("genexpert_astm");
-  expect(mockNetworks[0].subnet).toMatch(/^10\.\d+\.\d+\.0\/24$/);
-  // The mock's isolated /24 attaches Bridge at .2 (its network manager contract).
-  const bridgeIp = mockNetworks[0].subnet.replace(/\.0\/24$/, ".2");
-  const destination = `tcp://${bridgeIp}:${port}`;
+  const source = await geneXpertMockSource(request, port);
+  const destination = source.destination;
   const response = await request.post(
-    `${mockUrl}/simulate/fixture/genexpert/${fixture.assay}/${fixture.outcome}`,
+    `${mockUrl}/simulate/fixture/${source.name}/${fixture.assay}/${fixture.outcome}`,
     {
       data: {
         destination,
+        source_ip: source.ip,
         sample_id: accession,
         sender_id: senderId,
         instrument_codes: instrumentCodes,

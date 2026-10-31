@@ -115,7 +115,7 @@ describe("DeliveryIssuesPanel", () => {
       within(configRow).getByRole("button", { name: "Dismiss" }),
     ).toBeVisible();
 
-    const retryingRow = rowFor("Service Unavailable");
+    const retryingRow = rowFor("Previous attempt: Service Unavailable");
     expect(within(retryingRow).getByText("Retrying")).toBeVisible();
     expect(
       within(retryingRow).queryByRole("button", { name: "Retry" }),
@@ -171,7 +171,7 @@ describe("DeliveryIssuesPanel", () => {
     postToOpenElisServerJsonResponse.mockImplementation(
       (_url, _body, callback) => {
         respondWith([]);
-        callback({ status: "success", id: RECEIPT_ID });
+        callback({ status: "accepted", state: "QUEUED", id: RECEIPT_ID });
       },
     );
     renderPanel();
@@ -186,6 +186,46 @@ describe("DeliveryIssuesPanel", () => {
     expect(
       await screen.findByText("The Bridge has no undelivered results."),
     ).toBeVisible();
+  });
+
+  it("shows queued work without presenting the previous error as a current failure", async () => {
+    respondWith([
+      {
+        ...deadLettered,
+        state: "RECEIVED",
+        failureReason: null,
+        actionable: false,
+      },
+    ]);
+    renderPanel();
+    expect(await screen.findByText("Queued")).toBeVisible();
+    expect(
+      screen.getByText("Previous attempt: " + deadLettered.lastError),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Retry", exact: true }),
+    ).not.toBeInTheDocument();
+    respondWith([unrecognized]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Refresh delivery status" }),
+    );
+    expect(await screen.findByText(unrecognized.lastError)).toBeVisible();
+    expect(screen.getByText("Not delivered")).toBeVisible();
+  });
+
+  it("distinguishes retry acceptance from delivery and keeps the unresolved reason", async () => {
+    respondWith([unrecognized]);
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (_url, _body, callback) =>
+        callback({ status: "accepted", state: "QUEUED", id: unrecognized.id }),
+    );
+    renderPanel();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(
+      await screen.findByText(/Retry requested.*delivery is not yet confirmed/),
+    ).toBeVisible();
+    expect(screen.getByText(unrecognized.lastError)).toBeVisible();
+    expect(screen.getByText("Not delivered")).toBeVisible();
   });
 
   it("shows why the Bridge refused an action", async () => {
