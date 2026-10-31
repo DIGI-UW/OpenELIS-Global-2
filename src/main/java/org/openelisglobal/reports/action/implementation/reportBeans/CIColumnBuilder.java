@@ -6,7 +6,6 @@ import static org.openelisglobal.reports.action.implementation.reportBeans.CSVCo
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.DATE;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.DATE_TIME;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.GENDER;
-import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.LOG;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.NONE;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.PROJECT;
 import static org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBuilder.Strategy.SAMPLE_STATUS;
@@ -170,6 +169,6 @@ public abstract class CIColumnBuilder extends CSVColumnBuilder {
     @Override
     protected void addAllResultsColumns() {
         super.addAllResultsColumns();
-        add("Viral Load", "Viral Load log", LOG);
+        addViralLoadLogColumn();
     }
 }

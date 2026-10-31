@@ -7,7 +7,6 @@ import static org.openelisglobal.reports.action.implementation.reportBeans.CSVCo
 
 import java.sql.Date;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
-import org.openelisglobal.reports.form.ReportForm.DateType;
 
 /**
  * If we had a big resultSet with various columns for CSV export, we need a few
@@ -23,7 +22,6 @@ import org.openelisglobal.reports.form.ReportForm.DateType;
 public class HaitiColumnBuilder extends CSVColumnBuilder {
 
     private DateRange dateRange;
-    private DateType dateType;
 
     /** */
     public HaitiColumnBuilder(DateRange dateRange) {
@@ -62,20 +60,8 @@ public class HaitiColumnBuilder extends CSVColumnBuilder {
      */
     @Override
     public void makeSQL() {
-        // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
-        case ORDER_DATE:
-            dateColumn = "s.entered_date ";
-            break;
-        case RESULT_DATE:
-            dateColumn = "a.released_date ";
-            break;
-        case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
-        default:
-            break;
-        }
+
         query = new StringBuilder();
         Date lowDate = dateRange.getLowDate();
         Date highDate = dateRange.getHighDate();

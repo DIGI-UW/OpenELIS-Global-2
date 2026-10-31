@@ -1278,7 +1278,7 @@ function UserAddModify() {
                     <FormattedMessage id="systemuserrole.instruction.2" />
                     <br />
                     <br />
-                    <FormattedMessage id="systemuserrole.instruction.3" />
+                    <FormattedMessage id="systemuserrole.instruction.labUnitRoles" />
                     <br />
                     <br />
                     <FormattedMessage id="systemuserrole.instruction.4" />

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This suite owns its database because export readers use separate connections.
+    Empty tables reset repeated per-test identities; result names and values
+    are supplied by each test so its injection and ordering assertions remain
+    explicit. -->
+<dataset>
+    <status_of_sample id="1" description="Entered"
+        code="1" status_type="SAMPLE" name="Entered" is_active="Y"
+        lastupdated="2002-03-04 00:00:00" />
+    <status_of_sample id="992200"
+        description="Study export finalized" code="6" status_type="ANALYSIS"
+        name="Finalized" is_active="Y" lastupdated="2002-03-04 00:00:00" />
+    <localization id="992200"
+        description="Study export section" />
+    <test_section id="992200" name="Study export fixture"
+        description="Study export fixture" name_localization_id="992200"
+        is_active="Y" />
+    <sample id="992200" accession_number="STUDY-PRIVATE-FIXTURE"
+        entered_date="2002-03-04" collection_date="2002-03-04"
+        received_date="2002-03-04" />
+    <sample_item id="992200" samp_id="992200" sort_order="1"
+        status_id="1" />
+    <project id="992220" name="Export access fixture" is_active="Y"
+        program_code="LDBS" display_key="project.EIDStudy.name" />
+    <person />
+    <patient />
+    <organization />
+    <dictionary />
+    <system_user id="992221" login_name="export-denied"
+        first_name="Export" last_name="Denied" is_employee="Y" is_active="Y" />
+    <system_user id="992222" login_name="export-reporter"
+        first_name="Export" last_name="Reporter" is_employee="Y" is_active="Y" />
+    <system_user id="992223" login_name="export-admin"
+        first_name="Export" last_name="Admin" is_employee="Y" is_active="Y" />
+    <system_user id="992224" login_name="export-inactive"
+        first_name="Export" last_name="Inactive" is_employee="Y" is_active="N" />
+    <system_user id="992225" login_name="export-unit-reporter"
+        first_name="Export" last_name="Unit Reporter" is_employee="Y"
+        is_active="Y" />
+    <system_user id="992226" login_name="export-mixed-reporter"
+        first_name="Export" last_name="Mixed Reporter" is_employee="Y"
+        is_active="Y" />
+    <system_role id="992227" name="Reception"
+        description="Reception fixture" display_key="role.reception" />
+    <system_role id="992222" name="Reports"
+        description="Report fixture" display_key="role.reports" />
+    <system_role id="992223" name="Global Administrator"
+        description="Admin fixture" display_key="role.admin" />
+    <system_user_role system_user_id="992222"
+        role_id="992222" />
+    <system_user_role system_user_id="992223"
+        role_id="992223" />
+    <system_user_role system_user_id="992224"
+        role_id="992222" />
+    <system_user_role system_user_id="992225"
+        role_id="992222" />
+    <system_user_role system_user_id="992226"
+        role_id="992222" />
+    <system_user_role system_user_id="992226"
+        role_id="992227" />
+    <user_lab_unit_roles system_user_id="992222" />
+    <user_lab_unit_roles system_user_id="992225" />
+    <user_lab_unit_roles system_user_id="992226" />
+    <lab_unit_role_map lab_unit_role_map_id="992222"
+        lab_unit="AllLabUnits" />
+    <lab_unit_role_map lab_unit_role_map_id="992225"
+        lab_unit="992200" />
+    <lab_unit_role_map lab_unit_role_map_id="992226"
+        lab_unit="992200" />
+    <lab_unit_role_map lab_unit_role_map_id="992227"
+        lab_unit="AllLabUnits" />
+    <lab_roles />
+    <lab_unit_roles />
+</dataset>
