@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.util.List;
 import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRField;
@@ -20,6 +21,7 @@ import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.reports.dataexport.service.ReportingAccess;
 import org.openelisglobal.reports.dataexport.service.ReportingException;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.springframework.security.access.AccessDeniedException;
 
 /**
@@ -31,7 +33,9 @@ public abstract class CSVExportReport extends Report implements JRDataSource {
     @Override
     protected final void initializeReport() {
         try {
-            SpringContext.getBean(ReportingAccess.class).requireReports(systemUserId);
+            // These formats query across units; they do not apply a lab-unit filter.
+            SpringContext.getBean(ReportingAccess.class).requireScope(systemUserId,
+                    List.of(UnifiedSystemUserController.ALL_LAB_UNITS));
         } catch (ReportingException denied) {
             throw new AccessDeniedException("Report export access denied", denied);
         }

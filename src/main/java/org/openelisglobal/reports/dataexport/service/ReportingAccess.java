@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
@@ -21,12 +22,15 @@ public class ReportingAccess {
     private final UserRoleService roles;
     private final SystemUserService users;
     private final UserService userService;
+    private final RoleService roleService;
 
     @Autowired
-    public ReportingAccess(UserRoleService roles, SystemUserService users, UserService userService) {
+    public ReportingAccess(UserRoleService roles, SystemUserService users, UserService userService,
+            RoleService roleService) {
         this.roles = roles;
         this.users = users;
         this.userService = userService;
+        this.roleService = roleService;
     }
 
     public void requireReports(String owner) {
@@ -45,7 +49,7 @@ public class ReportingAccess {
 
     public List<IdValuePair> requestSections(String owner) {
         requireReports(owner);
-        return userService.getUserTestSections(owner, null);
+        return userService.getUserTestSections(owner, roleService.getRoleByName(Constants.ROLE_REPORTS).getId());
     }
 
     public void requireScope(String owner, List<String> requested) {
@@ -56,10 +60,12 @@ public class ReportingAccess {
         }
         if (roles.userInRole(owner, Constants.ROLE_GLOBAL_ADMIN))
             return;
+        String reportsRoleId = roleService.getRoleByName(Constants.ROLE_REPORTS).getId();
         var mapping = roles.getUserLabUnitRoles(owner);
         Set<String> allowed = mapping == null || mapping.getLabUnitRoleMap() == null ? Set.of()
-                : mapping.getLabUnitRoleMap().stream().filter(
-                        m -> m != null && m.getLabUnit() != null && m.getRoles() != null && !m.getRoles().isEmpty())
+                : mapping.getLabUnitRoleMap().stream()
+                        .filter(m -> m != null && m.getLabUnit() != null && m.getRoles() != null
+                                && m.getRoles().contains(reportsRoleId))
                         .map(m -> m.getLabUnit()).collect(Collectors.toSet());
         if (!allowed.contains(UnifiedSystemUserController.ALL_LAB_UNITS) && !allowed.containsAll(requested)) {
             ReportingAudit.denied(owner, null);

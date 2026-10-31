@@ -78,6 +78,11 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
     @Before
     public void createFixture() throws Exception {
         executeDataSetWithStateManagement("testdata/csv-study-export.xml");
+        // DBUnit REFRESH cannot populate these join tables without primary keys.
+        jdbcTemplate.update("INSERT INTO lab_roles (lab_unit_role_map_id, role) VALUES "
+                + "(992222, '992222'), (992225, '992222'), (992226, '992222'), (992227, '992227')");
+        jdbcTemplate.update("INSERT INTO lab_unit_roles (system_user_id, lab_unit_role_map_id) VALUES "
+                + "(992222, 992222), (992225, 992225), (992226, 992226), (992226, 992227)");
         SpringContext.getBean(IStatusService.class).refreshCache();
         dictionaryInstance = ResourceTranslator.DictionaryTranslator.class.getDeclaredField("instance");
         dictionaryInstance.setAccessible(true);
@@ -266,6 +271,22 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
         for (String report : CSV_REPORTS) {
             csvExport(report, 992224, "992220", 403, false);
             csvExport(report, 992224, "992220", 403, true);
+        }
+    }
+
+    @Test
+    public void csvExportsRejectReportUsersRestrictedToOneLabUnit() throws Exception {
+        for (String report : CSV_REPORTS) {
+            csvExport(report, 992225, "992220", 403, false);
+            csvExport(report, 992225, "992220", 403, true);
+        }
+    }
+
+    @Test
+    public void unrelatedAllUnitRoleDoesNotGrantCsvExportAccess() throws Exception {
+        for (String report : CSV_REPORTS) {
+            csvExport(report, 992226, "992220", 403, false);
+            csvExport(report, 992226, "992220", 403, true);
         }
     }
 
