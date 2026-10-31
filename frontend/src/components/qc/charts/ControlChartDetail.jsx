@@ -49,10 +49,13 @@ const SIGMA_TAG_TYPE = {
   NOT_CALCULABLE: "gray",
 };
 
-const ControlChartDetail = () => {
+export const ControlLotChart = ({
+  analyzerId,
+  showHeader = true,
+  onLotChange,
+}) => {
   const intl = useIntl();
   const history = useHistory();
-  const { analyzerId } = useParams();
 
   // State
   const {
@@ -140,6 +143,12 @@ const ControlChartDetail = () => {
       },
     );
   }, [analyzerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    onLotChange?.(
+      controlLots.find((lot) => lot.id === selectedControlLot) || null,
+    );
+  }, [controlLots, selectedControlLot, onLotChange]);
 
   // Reload chart when selected lot or date range changes
   useEffect(() => {
@@ -240,38 +249,41 @@ const ControlChartDetail = () => {
 
   return (
     <div className="control-chart-detail" data-testid="control-chart-detail">
-      {/* Header */}
-      <div
-        className="control-chart-detail-header"
-        data-testid="control-chart-detail-header"
-      >
-        <PageBreadCrumb
-          breadcrumbs={[
-            { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
-            { label: analyzerInfo?.name || "qc.chart.title", link: "" },
-          ]}
-        />
-        <PageTitle
-          breadcrumbs={[
-            {
-              label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),
-              link: "/analyzers",
-            },
-            {
-              label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/qa/qc/dashboard",
-            },
-            {
-              label:
-                analyzerInfo?.name ||
-                intl.formatMessage({ id: "qc.chart.title" }),
-            },
-          ]}
-          subtitle={intl.formatMessage({ id: "qc.leveyJennings.title" })}
-        />
-      </div>
+      {showHeader && (
+        <div
+          className="control-chart-detail-header"
+          data-testid="control-chart-detail-header"
+        >
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+              { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+              { label: analyzerInfo?.name || "qc.chart.title", link: "" },
+            ]}
+          />
+          <PageTitle
+            breadcrumbs={[
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({ id: "qc.dashboard.title" }),
+                link: "/qa/qc/dashboard",
+              },
+              {
+                label:
+                  analyzerInfo?.name ||
+                  intl.formatMessage({ id: "qc.chart.title" }),
+              },
+            ]}
+            subtitle={intl.formatMessage({ id: "qc.leveyJennings.title" })}
+          />
+        </div>
+      )}
 
       {/* Error notification */}
       {error && (
@@ -553,6 +565,11 @@ const ControlChartDetail = () => {
       )}
     </div>
   );
+};
+
+const ControlChartDetail = () => {
+  const { analyzerId } = useParams();
+  return <ControlLotChart key={analyzerId} analyzerId={analyzerId} />;
 };
 
 export default ControlChartDetail;
