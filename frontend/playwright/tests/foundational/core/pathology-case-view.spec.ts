@@ -467,10 +467,16 @@ test.describe.serial("Pathology case view on the shared shell", () => {
       }
     }
 
-    // Carbon's file uploader renders an empty description paragraph above
-    // its button, with a margin, which set Upload file a line below the
-    // button beside it; the two share a top edge only while that paragraph
-    // is hidden.
+    await expect(
+      row.locator(".pathology-case-view__upload-hint"),
+    ).toBeVisible();
+    await expect(row.locator(".pathology-case-view__upload-hint")).toHaveText(
+      "JPEG, PNG, or PDF, up to 10 MB.",
+    );
+    await expect(controls[2]).toHaveAccessibleDescription(
+      "JPEG, PNG, or PDF, up to 10 MB.",
+    );
+    // Guidance stays above the actions, while Upload file and Remove share a line.
     expect(
       Math.abs(boxes[2].y - boxes[3].y),
       "Upload file and Remove sit on one line",

@@ -25,6 +25,7 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.controller.cytology.CytologySampleForm;
 import org.openelisglobal.program.dao.cytology.CytologySampleDAO;
+import org.openelisglobal.program.service.ClinicalAttachmentService;
 import org.openelisglobal.program.valueholder.cytology.CytologySample;
 import org.openelisglobal.program.valueholder.cytology.CytologySample.CytologyStatus;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -129,6 +130,22 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
     @Override
     public void updateWithFormValues(Integer cytologySampleId, CytologySampleForm form) {
         CytologySample cytologySample = get(cytologySampleId);
+        if (form.getSlides() != null) {
+            form.getSlides().forEach(upload -> {
+                if (!cytologySample.getSlides().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
+        }
+        if (form.getReports() != null) {
+            form.getReports().forEach(upload -> {
+                if (!cytologySample.getReports().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
+        }
         if (!GenericValidator.isBlankOrNull(form.getAssignedCytoPathologistId())) {
             cytologySample.setCytoPathologist(systemUserService.get(form.getAssignedCytoPathologistId()));
         }

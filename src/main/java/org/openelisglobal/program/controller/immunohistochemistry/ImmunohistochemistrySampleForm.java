@@ -1,7 +1,7 @@
 package org.openelisglobal.program.controller.immunohistochemistry;
 
-import java.util.Base64;
 import java.util.List;
+import org.openelisglobal.program.service.ClinicalAttachmentUpload;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample.ImmunohistochemistryStatus;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySampleReport;
 
@@ -63,7 +63,8 @@ public class ImmunohistochemistrySampleForm {
         this.reports = reports;
     }
 
-    public static class ImmunohistochemistryReportForm extends ImmunohistochemistrySampleReport {
+    public static class ImmunohistochemistryReportForm extends ImmunohistochemistrySampleReport
+            implements ClinicalAttachmentUpload {
         private static final long serialVersionUID = 3142138533368581327L;
         private String base64Image;
 
@@ -73,10 +74,6 @@ public class ImmunohistochemistrySampleForm {
 
         public void setBase64Image(String base64Image) {
             this.base64Image = base64Image;
-            String[] imageInfo = base64Image.split(";base64,", 2);
-
-            setFileType(imageInfo[0]);
-            setImage(Base64.getDecoder().decode(imageInfo[1]));
         }
     }
 }

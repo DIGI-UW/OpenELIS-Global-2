@@ -11,6 +11,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.propertyeditor.CaseInsensitiveEnumPropertyEditor;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.AuthType;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
+import org.openelisglobal.program.service.InvalidClinicalAttachmentException;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.beans.propertyeditors.URIEditor;
 import org.springframework.core.Ordered;
@@ -58,6 +59,13 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         LogEvent.logDebug(this.getClass().getName(), "handleAccessDenied", ex.getMessage());
         return new ResponseEntity<>(buildGenericErrorBody(HttpStatus.FORBIDDEN), new HttpHeaders(),
                 HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(InvalidClinicalAttachmentException.class)
+    protected ResponseEntity<Object> handleInvalidClinicalAttachment(InvalidClinicalAttachmentException ex) {
+        Map<String, Object> body = buildGenericErrorBody(HttpStatus.BAD_REQUEST);
+        body.put("messageKey", "clinicalAttachment.uploadHint");
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(value = { RuntimeException.class })

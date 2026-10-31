@@ -1,3 +1,4 @@
+import ClinicalAttachmentPreview from "../common/ClinicalAttachment/ClinicalAttachmentPreview";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import config from "../../config.json";
@@ -112,14 +113,18 @@ function CytologyCaseView() {
   async function displayStatus(response) {
     var body = await response.json();
     console.debug(body);
-    setIsSubmitting(false);
     var status = response.status;
     setNotificationVisible(true);
     if (status == "200") {
-      const save1 = document.getElementById("pathology_save");
-      const save2 = document.getElementById("pathology_save2");
-      save1.disabled = true;
-      save2.disabled = true;
+      getFromOpenElisServer(
+        "/rest/cytology/caseView/" + cytologySampleId,
+        (savedCase) => {
+          if (savedCase) {
+            setInitialPathologySampleInfo(savedCase);
+          }
+          setIsSubmitting(false);
+        },
+      );
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -129,10 +134,16 @@ function CytologyCaseView() {
         body?.postSavePrintDialog || buildFallbackPostSavePrintDialog(),
       );
     } else {
+      setIsSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.msg" }),
+        message: intl.formatMessage({
+          id:
+            body?.messageKey === "clinicalAttachment.uploadHint"
+              ? "clinicalAttachment.uploadHint"
+              : "error.save.msg",
+        }),
       });
     }
   }
@@ -637,6 +648,9 @@ function CytologyCaseView() {
                     </Column>
                     <Column lg={3} md={1} sm={2}>
                       <FileUploader
+                        labelDescription={intl.formatMessage({
+                          id: "clinicalAttachment.uploadHint",
+                        })}
                         style={{ marginTop: "-10px" }}
                         buttonLabel={
                           <FormattedMessage id="label.button.uploadfile" />
@@ -669,21 +683,7 @@ function CytologyCaseView() {
                     <Column lg={2} md={1} sm={2}>
                       {pathologySampleInfo.slides[index].image && (
                         <>
-                          <Button
-                            onClick={() => {
-                              var win = window.open();
-                              win.document.write(
-                                '<iframe src="' +
-                                  slide.fileType +
-                                  ";base64," +
-                                  slide.image +
-                                  '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                              );
-                            }}
-                          >
-                            <Launch />{" "}
-                            <FormattedMessage id="pathology.label.view" />
-                          </Button>
+                          <ClinicalAttachmentPreview attachment={slide} />
                         </>
                       )}
                     </Column>
@@ -825,6 +825,9 @@ function CytologyCaseView() {
 
                     <Column lg={3} md={1} sm={2}>
                       <FileUploader
+                        labelDescription={intl.formatMessage({
+                          id: "clinicalAttachment.uploadHint",
+                        })}
                         style={{ marginTop: "-20px" }}
                         buttonLabel={
                           <FormattedMessage id="label.button.uploadfile" />
@@ -868,21 +871,7 @@ function CytologyCaseView() {
                       <>
                         {!reportParams[index]?.submited && (
                           <Column lg={2} md={1} sm={2}>
-                            <Button
-                              onClick={() => {
-                                var win = window.open();
-                                win.document.write(
-                                  '<iframe src="' +
-                                    report.fileType +
-                                    ";base64," +
-                                    report.image +
-                                    '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-                                );
-                              }}
-                            >
-                              <Launch />{" "}
-                              <FormattedMessage id="pathology.label.view" />
-                            </Button>
+                            <ClinicalAttachmentPreview attachment={report} />
                           </Column>
                         )}
                       </>

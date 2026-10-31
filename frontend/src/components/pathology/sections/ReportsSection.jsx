@@ -1,3 +1,4 @@
+import ClinicalAttachmentPreview from "../../common/ClinicalAttachment/ClinicalAttachmentPreview";
 import React from "react";
 import { Button, FileUploader, InlineLoading, Stack } from "@carbon/react";
 import { Launch, Subtract } from "@carbon/react/icons";
@@ -32,17 +33,6 @@ const ReportsSection = ({
       reports: [...(prev.reports ?? []), { id: "", reportType: "PATHOLOGY" }],
     }));
 
-  const openImage = (report) => {
-    const win = window.open();
-    win.document.write(
-      '<iframe src="' +
-        report.fileType +
-        ";base64," +
-        report.image +
-        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-    );
-  };
-
   return (
     <Stack gap={6}>
       {/* No heading of its own: the accordion header above already names
@@ -61,6 +51,9 @@ const ReportsSection = ({
             </span>
             <div className="pathology-case-view__row-actions">
               <FileUploader
+                labelDescription={intl.formatMessage({
+                  id: "clinicalAttachment.uploadHint",
+                })}
                 buttonLabel={intl.formatMessage({
                   id: "label.button.uploadfile",
                 })}
@@ -84,14 +77,11 @@ const ReportsSection = ({
                 }}
               />
               {report.image && !reportParams[index]?.submited && (
-                <Button
+                <ClinicalAttachmentPreview
                   kind="tertiary"
                   size="md"
-                  renderIcon={Launch}
-                  onClick={() => openImage(report)}
-                >
-                  <FormattedMessage id="pathology.label.view" />
-                </Button>
+                  attachment={report}
+                />
               )}
               {reportParams[index]?.submited && (
                 <Button

@@ -341,13 +341,10 @@ function PathologyCaseView() {
       // read back rather than assumed.
       reloadCase();
     } else {
-      // The server's own sentence is English and names internal ids, so only
-      // a refusal the bench can act on gets words of its own. A 400 is a case
-      // rule the posted rows broke: a cassette, slide or tissue type changed
-      // elsewhere after the case was loaded, so reloading is what the bench
-      // can do.
       let messageId = "error.save.msg";
-      if (response?.status === 400) {
+      if (body?.messageKey === "clinicalAttachment.uploadHint") {
+        messageId = "clinicalAttachment.uploadHint";
+      } else if (response?.status === 400) {
         messageId = "pathology.error.reloadCase";
       } else if (body?.conflict === "designation") {
         messageId = "pathology.error.designationConflict";

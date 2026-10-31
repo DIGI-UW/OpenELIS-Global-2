@@ -1,5 +1,6 @@
 @use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
+@use "@carbon/styles/scss/utilities/visually-hidden";
 
 // One form field's width, for every row field.
 $field-inline-size: 12rem;
@@ -56,6 +57,20 @@ $field-inline-size: 12rem;
 // line of buttons it must take only its own width, like the buttons beside it.
 .pathology-case-view__row-actions .cds--form-item {
   flex: 0 0 auto;
+}
+
+// Keep the shared guidance above the action row. Carbon's own description
+// remains available through its uploader's existing accessible association.
+.pathology-case-view__upload-hint {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-secondary);
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.pathology-case-view__slide-upload .cds--label-description {
+  @include visually-hidden.visually-hidden;
 }
 
 .pathology-case-view__add-row {
