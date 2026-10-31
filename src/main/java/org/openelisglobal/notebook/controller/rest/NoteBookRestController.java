@@ -28,6 +28,7 @@ import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
 import org.openelisglobal.notebook.bean.NoteBookFullDisplayBean;
 import org.openelisglobal.notebook.bean.SampleDisplayBean;
 import org.openelisglobal.notebook.form.NoteBookForm;
+import org.openelisglobal.notebook.service.InvalidNotebookAttachmentException;
 import org.openelisglobal.notebook.service.NoteBookSampleService;
 import org.openelisglobal.notebook.service.NoteBookService;
 import org.openelisglobal.notebook.valueholder.NoteBook;
@@ -36,6 +37,7 @@ import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,6 +50,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(value = "/rest/notebook")
 public class NoteBookRestController extends BaseRestController {
+
+    @ExceptionHandler(InvalidNotebookAttachmentException.class)
+    public ResponseEntity<Map<String, String>> invalidAttachment(InvalidNotebookAttachmentException exception) {
+        return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
+    }
 
     @Autowired
     private NoteBookService noteBookService;

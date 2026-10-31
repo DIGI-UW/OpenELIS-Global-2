@@ -11,10 +11,13 @@ import { IntlProvider } from "react-intl";
 import "@testing-library/jest-dom";
 import messages from "../../../languages/en.json";
 import ClinicalAttachmentPreview from "./ClinicalAttachmentPreview";
-const show = (attachment) =>
+const show = (attachment, allowText = false) =>
   render(
     <IntlProvider locale="en" messages={messages}>
-      <ClinicalAttachmentPreview attachment={attachment} />
+      <ClinicalAttachmentPreview
+        attachment={attachment}
+        allowText={allowText}
+      />
     </IntlProvider>,
   );
 beforeEach(() => {
@@ -89,6 +92,25 @@ describe("clinical attachment previews", () => {
       screen.getByText(messages["clinicalAttachment.previewUnavailable"]),
     ).toBeInTheDocument();
     expect(document.querySelector("script")).toBeNull();
+  });
+  it("opens notebook markup-looking text as inert plain text", () => {
+    show(
+      { fileType: "data:text/plain", image: btoa("<script>alert(1)</script>") },
+      true,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    expect(URL.createObjectURL.mock.calls[0][0].type).toBe("text/plain");
+    expect(window.open).toHaveBeenCalledWith(
+      "blob:synthetic-attachment",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(document.querySelector("script")).toBeNull();
+  });
+  it("does not broaden clinical uploads to text", () => {
+    show({ fileType: "data:text/plain", image: btoa("text") });
+    fireEvent.click(screen.getByRole("button"));
+    expect(window.open).not.toHaveBeenCalled();
   });
   it("shows an error for a malformed stored file", () => {
     show({ fileType: "data:image/png", image: "???" });

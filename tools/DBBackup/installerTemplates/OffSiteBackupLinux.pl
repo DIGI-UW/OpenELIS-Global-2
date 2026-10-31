@@ -71,7 +71,6 @@ sub sendOffsite{
 my $postgres_pwd  = '[% postgres_password %]';
 my $keepFileDays  = 30;
 my $siteId = '[% siteId %]';
-#my $upLoadtargetURL = 'https://openelis-recv.cirg.washington.edu/receive-file/receive-file.pl';
 my $upLoadtargetURL ='ftp://192.168.1.1/EFI/backup';
 my $upLoadUserName = 'backup';
 my $upLoadPassword = 'backupoe';

@@ -14,6 +14,7 @@ const MEDIA_TYPES = new Map(
 /** Stored metadata never becomes HTML or a navigation URL. */
 export default function ClinicalAttachmentPreview({
   attachment,
+  allowText = false,
   ...buttonProps
 }) {
   const intl = useIntl();
@@ -25,7 +26,9 @@ export default function ClinicalAttachmentPreview({
       ?.split(";", 1)[0]
       .trim()
       .toLowerCase();
-    const type = MEDIA_TYPES.get(storedType);
+    const type =
+      MEDIA_TYPES.get(storedType) ||
+      (allowText && storedType === "data:text/plain" ? "text/plain" : null);
     if (!type) return;
     let objectUrl;
     try {
@@ -40,7 +43,7 @@ export default function ClinicalAttachmentPreview({
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [attachment.fileType, attachment.image]);
+  }, [attachment.fileType, attachment.image, allowText]);
 
   return (
     <>
