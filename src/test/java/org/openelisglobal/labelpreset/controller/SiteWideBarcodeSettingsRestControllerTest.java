@@ -47,6 +47,7 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/site-barcode-localization.xml");
         ensureLabelsDomainAndBarcodeRows();
         ConfigurationProperties.loadDBValuesIntoConfiguration();
     }
@@ -63,15 +64,11 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
         ensureSiteInfoRow("prePrintUseAltAccession", "false", labelsDomain);
         // Saving settings reloads all configuration, including these localized values.
         // Own their rows inside the test transaction instead of relying on suite seeds.
-        localizedSetting(Property.BANNER_TEXT, 993410L, "Barcode test laboratory", labelsDomain);
-        localizedSetting(Property.BILLING_REFERENCE_NUMBER_LABEL, 993411L, "Barcode test billing", labelsDomain);
+        localizedSetting(Property.BANNER_TEXT, 993410L, labelsDomain);
+        localizedSetting(Property.BILLING_REFERENCE_NUMBER_LABEL, 993411L, labelsDomain);
     }
 
-    private void localizedSetting(Property property, long id, String label, SiteInformationDomain domain) {
-        jdbcTemplate.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", id,
-                label);
-        jdbcTemplate.update("INSERT INTO clinlims.localization_value"
-                + " (id, localization_id, locale, value) VALUES (?, ?, 'en', ?)", id, id, label);
+    private void localizedSetting(Property property, long id, SiteInformationDomain domain) {
         ensureSiteInfoRow(property.getDBName(), Long.toString(id), domain);
         SiteInformation row = siteInformationService.getSiteInformationByName(property.getDBName());
         row.setValue(Long.toString(id));
