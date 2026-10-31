@@ -1031,6 +1031,46 @@ test("a shared report can be copied and deleted without changing generated jobs"
   expect(requests).toHaveLength(0);
 });
 
+test("an overlapping search cannot restore a deleted shared report", async () => {
+  const saved = savedFixture();
+  savedReports.push(saved);
+  open("/reports/custom-data-export?view=saved");
+  const card = await screen.findByRole("article", { name: saved.name });
+  const originalFetch = global.fetch.getMockImplementation();
+  let releaseSearch;
+  const searchResponse = new Promise((resolve) => { releaseSearch = resolve; });
+  let releaseDelete;
+  const deleteResponse = new Promise((resolve) => { releaseDelete = resolve; });
+  let searchStarted = false;
+  let deleteStarted = false;
+  global.fetch.mockImplementation(async (url, options = {}) => {
+    if (url.includes("/saved-configs/") && options.method === "DELETE") {
+      deleteStarted = true;
+      await deleteResponse;
+      return originalFetch(url, options);
+    }
+    if (url.includes("/saved-configs?") && url.includes("search=Monthly") && !searchStarted) {
+      searchStarted = true;
+      await searchResponse;
+      return json({ reports: [saved], hasMore: false, page: 0 });
+    }
+    return originalFetch(url, options);
+  });
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search shared reports" }), {
+    target: { value: "Monthly" },
+  });
+  fireEvent.click(within(card).getByRole("button", { name: /Delete shared report/ }));
+  fireEvent.click(screen.getByRole("button", { name: /Delete$/ }));
+  await waitFor(() => expect(deleteStarted).toBe(true));
+  await waitFor(() => expect(searchStarted).toBe(true));
+  await act(async () => { releaseDelete(); });
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Delete shared report" })).not.toBeInTheDocument());
+  await act(async () => { releaseSearch(); });
+  expect(await screen.findByText(messages["reporting.saved.empty"])).toBeVisible();
+  await waitFor(() => expect(screen.queryByRole("article", { name: saved.name })).not.toBeInTheDocument());
+  expect(deletedSaved).toEqual([saved.id]);
+});
+
 test("a delayed job response does not attach its download to a new draft", async () => {
   let release;
   submissionGate = new Promise((resolve) => {

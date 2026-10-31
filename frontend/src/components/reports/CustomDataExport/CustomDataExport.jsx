@@ -321,7 +321,9 @@ function ReportingBuilder({ owner }) {
   });
   const removeSaved = useMutation({
     mutationFn: deleteSavedReport,
-    onSuccess: (_result, { id: removedId }) => {
+    onSuccess: async (_result, { id: removedId }) => {
+      // A search started before deletion can still return the removed report.
+      await queryClient.cancelQueries({ queryKey: ["reporting-saved", owner] });
       queryClient.setQueriesData(
         { queryKey: ["reporting-saved", owner] },
         (page) =>
