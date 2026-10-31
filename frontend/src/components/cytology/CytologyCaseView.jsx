@@ -113,14 +113,18 @@ function CytologyCaseView() {
   async function displayStatus(response) {
     var body = await response.json();
     console.debug(body);
-    setIsSubmitting(false);
     var status = response.status;
     setNotificationVisible(true);
     if (status == "200") {
-      const save1 = document.getElementById("pathology_save");
-      const save2 = document.getElementById("pathology_save2");
-      save1.disabled = true;
-      save2.disabled = true;
+      getFromOpenElisServer(
+        "/rest/cytology/caseView/" + cytologySampleId,
+        (savedCase) => {
+          if (savedCase) {
+            setInitialPathologySampleInfo(savedCase);
+          }
+          setIsSubmitting(false);
+        },
+      );
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -130,6 +134,7 @@ function CytologyCaseView() {
         body?.postSavePrintDialog || buildFallbackPostSavePrintDialog(),
       );
     } else {
+      setIsSubmitting(false);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
