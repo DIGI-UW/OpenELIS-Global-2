@@ -23,7 +23,7 @@ import java.util.List;
 import net.sf.jasperreports.engine.JRException;
 import org.openelisglobal.reports.action.implementation.reportBeans.RoutineColumnBuilder;
 
-public abstract class CSVRoutineSampleExportReport extends CSVRoutineExportReport {
+public abstract class CSVRoutineSampleExportReport extends CSVExportReport {
 
     protected String lowDateStr;
     protected String highDateStr;

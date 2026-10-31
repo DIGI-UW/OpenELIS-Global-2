@@ -17,12 +17,26 @@ import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRField;
 import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import org.openelisglobal.reports.dataexport.service.ReportingAccess;
+import org.openelisglobal.reports.dataexport.service.ReportingException;
+import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.security.access.AccessDeniedException;
 
 /**
  * @author pahill (pahill@uw.edu)
  * @since Mar 17, 2011
  */
 public abstract class CSVExportReport extends Report implements JRDataSource {
+
+    @Override
+    protected final void initializeReport() {
+        try {
+            SpringContext.getBean(ReportingAccess.class).requireReports(systemUserId);
+        } catch (ReportingException denied) {
+            throw new AccessDeniedException("Report export access denied", denied);
+        }
+        super.initializeReport();
+    }
 
     /**
      * @see org.openelisglobal.reports.action.implementation.Report#getContentType()

@@ -228,40 +228,52 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
         assertEquals(List.of("1000", "3.0"), read(builder).values());
     }
 
+    private static final List<String> CSV_REPORTS = List.of("CISampleExport", "HaitiExportReport",
+            "HaitiLNSPExportReport", "CIStudyExport", "CISampleRoutineExport", "TBOrderExport", "Trends",
+            "ExportWHONETReportByDate", "ForCIDashboard", "indicatorHaitiLNSPSiteTestCount", "sampleRejectionReport");
+
     @Test
-    public void projectExportRejectsAnActiveUserWithoutReportsBeforeReadingTheProject() throws Exception {
-        projectExport(992221, "999999", 403, false);
-        projectExport(992221, "999999", 403, true);
+    public void csvExportsRejectAnActiveUserWithoutReportsBeforeReadingClinicalData() throws Exception {
+        for (String report : CSV_REPORTS) {
+            csvExport(report, 992221, "999999", 403, false);
+            csvExport(report, 992221, "999999", 403, true);
+        }
     }
 
     @Test
-    public void projectExportRejectsAnInactiveReportUser() throws Exception {
-        projectExport(992224, "992220", 403, false);
-        projectExport(992224, "992220", 403, true);
+    public void csvExportsRejectAnInactiveReportUser() throws Exception {
+        for (String report : CSV_REPORTS) {
+            csvExport(report, 992224, "992220", 403, false);
+            csvExport(report, 992224, "992220", 403, true);
+        }
     }
 
     @Test
-    public void projectExportStillReturnsCsvForReportUsersAndAdministrators() throws Exception {
+    public void restoredExportsStillReturnCsvForReportUsersAndAdministrators() throws Exception {
         prepareEidFixture();
         jdbcTemplate.update("UPDATE sample_projects SET proj_id = 992220 WHERE samp_id = ?", SAMPLE);
-        for (int actor : List.of(992222, 992223)) {
-            for (boolean legacy : List.of(false, true)) {
-                String csv = projectExport(actor, "992220", 200, legacy);
-                assertTrue("authorized export includes its fixture sample", csv.contains("STUDY-PRIVATE-FIXTURE"));
+        for (String report : List.of("CISampleExport", "HaitiExportReport", "CIStudyExport")) {
+            for (int actor : List.of(992222, 992223)) {
+                for (boolean legacy : List.of(false, true)) {
+                    String csv = csvExport(report, actor, "992220", 200, legacy);
+                    assertTrue(report + " includes its fixture sample", csv.contains("STUDY-PRIVATE-FIXTURE"));
+                }
             }
         }
     }
 
-    private String projectExport(int actor, String project, int expectedStatus, boolean legacy) throws Exception {
+    private String csvExport(String report, int actor, String project, int expectedStatus, boolean legacy)
+            throws Exception {
         UserSessionData user = new UserSessionData();
         user.setSytemUserId(actor);
         String day = DateUtil.convertSqlDateToStringDate(DAY);
         var request = legacy
-                ? get("/ReportPrint").param("type", "patient").param("report", "CISampleExport")
-                        .param("projectCode", project).param("lowerDateRange", day).param("upperDateRange", day)
+                ? get("/ReportPrint").param("type", "patient").param("report", report).param("projectCode", project)
+                        .param("lowerDateRange", day).param("upperDateRange", day).param("dateType", "ORDER_DATE")
                 : post("/rest/ReportPrint").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"report\":\"CISampleExport\",\"projectCode\":\"" + project
-                                + "\",\"lowerDateRange\":\"" + day + "\",\"upperDateRange\":\"" + day + "\"}");
+                        .content("{\"report\":\"" + report + "\",\"projectCode\":\"" + project
+                                + "\",\"dateType\":\"ORDER_DATE\",\"lowerDateRange\":\"" + day
+                                + "\",\"upperDateRange\":\"" + day + "\"}");
         return MockMvcBuilders
                 .standaloneSetup(webApplicationContext.getBean(ReportRestController.class),
                         webApplicationContext.getBean(ReportController.class))
