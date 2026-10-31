@@ -520,6 +520,30 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each(["unknown_analyzer_result_value", "awaiting_specimen"])(
+    "cancels removal of %s without sending a request or losing the row",
+    async (reason) => {
+      renderResults([{ ...heldResult, importIssueReason: reason }]);
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Remove from review" }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Remove result from review?",
+      });
+      expect(dialog).toHaveTextContent("QUAL_RESULT");
+      expect(dialog).toHaveTextContent("POSITIVE");
+      expect(dialog).toHaveTextContent("ACC654321");
+      expect(dialog).toHaveTextContent("cannot be undone");
+      expect(postResults).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      expect(dialog.closest(".cds--modal")).not.toHaveClass("is-visible");
+      expect(
+        screen.getByRole("button", { name: "Remove from review" }),
+      ).toBeInTheDocument();
+      expect(postResults).not.toHaveBeenCalled();
+    },
+  );
+
   it("removes a held result from review", async () => {
     postResults.mockImplementation((_endpoint, _body, callback) =>
       callback({ status: 204 }),
@@ -531,6 +555,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     expect(postResults.mock.calls[0][0]).toBe(
       "/rest/analyzer/results/1004/dismiss",
@@ -563,6 +592,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     await vi.waitFor(() =>
       expect(refreshResults).toHaveBeenCalledWith(1, {
@@ -586,6 +620,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     expect(postResults.mock.calls[0][0]).toBe(
       `/rest/analyzer/results/${mappedQualitativeResult.id}/dismiss`,
