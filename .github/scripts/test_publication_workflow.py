@@ -19,6 +19,64 @@ def github_script(job):
 
 
 class PublicationWorkflowTest(unittest.TestCase):
+    def test_remote_workspace_is_validated_and_cleanup_survives_deployment_failure(self):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/publish-images.yml").read_text())
+        steps = {step.get("name"): step for step in workflow["jobs"]["deploy-testing"]["steps"]}
+        deploy = steps["Deploy published images and require readiness"]["run"]
+        collect = steps["Collect deployment diagnostics"]["run"]
+        cleanup = steps["Remove the deployment working directory"]
+        self.assertEqual("always()", cleanup["if"])
+        fake = '''#!/usr/bin/env python3
+import json, os, sys
+from pathlib import Path
+with Path(os.environ['CALL_LOG']).open('a') as log:
+    log.write(json.dumps([Path(sys.argv[0]).name, *sys.argv[1:]]) + '\\n')
+if Path(sys.argv[0]).name == 'ssh':
+    if 'mktemp' in sys.argv[-1]:
+        print(os.environ['ALLOCATED_PATH'])
+    elif sys.argv[-1].startswith('python3 '):
+        sys.exit(int(os.environ['DEPLOY_EXIT']))
+'''
+        for path, exit_code in [("/tmp/openelis-deploy.Abc123Def4", "0"),
+                                ("/tmp/openelis-deploy.Abc123Def4", "1"),
+                                ("/tmp/openelis-deploy.bad;touch /tmp/other", "0")]:
+            with self.subTest(path=path, exit_code=exit_code), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                key = root / "id_deploy"
+                key.touch()
+                for name in ("ssh", "scp"):
+                    executable = root / name
+                    executable.write_text(fake)
+                    executable.chmod(0o755)
+                env_file = root / "github-env"
+                log = root / "calls.jsonl"
+                env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                       "GITHUB_ENV": str(env_file), "CALL_LOG": str(log), "ALLOCATED_PATH": path,
+                       "DEPLOY_EXIT": exit_code, "DEPLOY_PORT": "22", "DEPLOY_USER": "ubuntu",
+                       "DEPLOY_HOST": "test.example.org"}
+                def execute(script):
+                    return subprocess.run(["bash", "-c", script.replace("~/.ssh/id_deploy", str(key))],
+                                          cwd=root, env=env, capture_output=True, text=True)
+                result = execute(deploy)
+                calls = [json.loads(line) for line in log.read_text().splitlines()]
+                if ";" in path:
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual(1, len(calls), "unsafe allocator output must never reach scp or execution")
+                    self.assertFalse(env_file.exists())
+                    env["REMOTE_RUN"] = path
+                    self.assertEqual(0, execute(cleanup["run"]).returncode)
+                    self.assertEqual(calls, [json.loads(line) for line in log.read_text().splitlines()])
+                else:
+                    self.assertEqual(int(exit_code), result.returncode, result.stderr)
+                    self.assertEqual("REMOTE_RUN=" + path + "\n", env_file.read_text())
+                    self.assertIn("umask 077; mktemp -d", calls[0][-1])
+                    env["REMOTE_RUN"] = path
+                    self.assertEqual(0, execute(collect).returncode)
+                    self.assertEqual(0, execute(cleanup["run"]).returncode)
+                    calls = [json.loads(line) for line in log.read_text().splitlines()]
+                    self.assertIn(path + "/diagnostics/.", " ".join(calls[-2]))
+                    self.assertEqual("rm -rf -- '" + path + "'", calls[-1][-1])
+
     def test_release_image_publish_rejects_replacement_and_registry_errors(self):
         workflow = yaml.safe_load((ROOT / ".github/workflows/publish-images.yml").read_text())
         script = next(step["run"] for step in workflow["jobs"]["publish-images"]["steps"]
