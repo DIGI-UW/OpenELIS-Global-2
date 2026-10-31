@@ -45,7 +45,7 @@ const testsCsv = () =>
 
 const componentsCsv = () =>
   file("result-components-e2e.csv", [
-    "testName,code,label,resultType,significantDigits,isPrimary,showOnReport",
+    "testName,code,label,resultType,reportingDecimalPlaces,isPrimary,showOnReport",
     `${TEST_NAME},PRIMARY,${TEST_NAME},N,2,Y,Y`,
   ]);
 

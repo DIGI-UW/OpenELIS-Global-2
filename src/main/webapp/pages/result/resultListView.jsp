@@ -884,8 +884,8 @@ function /*void*/ handleEnterEvent(  ){
 					value="${testResult.lowerCritical}" />	
 				<c:set var="upperCritical"
 					value="${testResult.higherCritical}" />	
-				<c:set var="significantDigits"
-					value="${testResult.significantDigits}" />
+				<c:set var="reportingDecimalPlaces"
+					value="${testResult.reportingDecimalPlaces}" />
 				<c:set var="accessionNumber" value="${testResult.accessionNumber}" />
 				<c:set var="rowEven"
 					value="${testResult.sampleGroupingNumber %2 == 0}" />
@@ -1085,14 +1085,14 @@ function /*void*/ handleEnterEvent(  ){
 								cssClass="resultValue"
 								disabled='${testResult.readOnly}'
 								onchange="validateResults( this, ${iter.index}, ${lowerBound}, ${upperBound}, ${lowerAbnormalBound}, ${upperAbnormalBound}, 
-								 ${significantDigits}, 'XXXX' );
+								 ${reportingDecimalPlaces}, 'XXXX' );
 								 validateCriticalResults(this, ${lowerCritical},${upperCritical});
 					   			 markUpdated(${iter.index});
 					   			 ${(testResult.reflexGroup && not testResult.childReflex) ? 'updateReflexChild(' += testResult.reflexParentGroup += ');' : ''}
 					   			 ${(noteRequired && not empty testResult.resultValue) ? 'showNote(' += iter.index += ');' : ''}
 					   			 ${(testResult.displayResultAsLog) ? 'updateLogValue(this, ' += iter.index += ');' : ''}
 					   			 updateShadowResult(this, ${iter.index});" />
-							<form:hidden path="testResult[${iter.index}].significantDigits" />
+							<form:hidden path="testResult[${iter.index}].reportingDecimalPlaces" />
 						</c:if>
 						<c:if test="${testResult.resultType == 'A'}">
 							<form:input path="testResult[${iter.index}].resultValue"

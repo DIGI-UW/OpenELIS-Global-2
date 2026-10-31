@@ -29,7 +29,7 @@ public class TestCatalogBean {
     private String panel;
     private String resultType;
     private String uom = "n/a";
-    private String significantDigits = "n/a";
+    private String reportingDecimalPlaces = "n/a";
     private String loinc;
     private String active;
     private String orderable;
@@ -146,12 +146,12 @@ public class TestCatalogBean {
         this.loinc = loinc;
     }
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public boolean isHasDictionaryValues() {

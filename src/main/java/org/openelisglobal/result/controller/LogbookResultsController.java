@@ -117,7 +117,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
             "testResult*.upperNormalRange", "testResult*.lowerCritical", "testResult*.higherCritical",
-            "testResult*.significantDigits", "testResult*.resultValue", "testResult*.qualifiedResultValue",
+            "testResult*.reportingDecimalPlaces", "testResult*.resultValue", "testResult*.qualifiedResultValue",
             "testResult*.multiSelectResultValues", "testResult*.testMethod", "testResult*.multiSelectResultValues",
             "testResult*.qualifiedResultValue", "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut",
             "testResult*.referredOut", "testResult*.referralReasonId", "testResult*.technician",

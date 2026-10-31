@@ -49,7 +49,7 @@ const SAMPLE_RESULTS = {
       // Select-list type so the options + interpretations editors render (they are
       // progressively disclosed by type — options show for D/M/C, FR-30).
       resultType: "D",
-      significantDigits: 0,
+      reportingDecimalPlaces: 0,
       defaultResult: "",
       allowMultipleReadings: false,
       options: [{ id: "O1", value: "Male", sortOrder: 1, normal: true }],
@@ -127,6 +127,29 @@ beforeEach(() => {
 });
 
 describe("SampleResultsSection", () => {
+  it("saves the explicit report logarithm setting on the selected component only", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : clone(TWO_COMPONENTS),
+      );
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+    const options = screen.getAllByLabelText(
+      "Show calculated log10 on patient reports",
+    );
+    expect(options[0]).not.toBeChecked();
+    expect(options[1]).not.toBeChecked();
+    fireEvent.click(options[0]);
+    fireEvent.click(saveButton());
+    expect(savedPayload().components.map((c) => c.displayLog10)).toEqual([
+      true,
+      false,
+    ]);
+  });
+
   it("renders loaded components with their options and interpretations", async () => {
     const { container } = renderSection();
     expect(await screen.findByDisplayValue("SYS")).toBeInTheDocument();

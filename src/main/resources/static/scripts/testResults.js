@@ -5,14 +5,14 @@
  * upperNormal -- the high end of the normal range
  * lowerAbnormal -- the low end of the range in which the test is considered valid
  * highAbnormal -- the high end of the range in which the test is considered valid
- * significantDigits -- how many significant digits are allowed
+ * reportingDecimalPlaces -- optional display/report decimal places (not an input constraint)
  *
  *  N.B.  If the upper and lower ranges of the normal and abnormal settings are the same then those ranges will
  *  be ignored.
  */
 var outOfValidRangeMsg = null;
 
-function validateNumberFormat( resultBox, row, significantDigits){
+function validateNumberFormat( resultBox, row, reportingDecimalPlaces){
 	//ignore < or > from the analyser on validation
 	var greaterThanOrLessThan = "";
 	if(resultBox.value.startsWith("<") ||resultBox.value.startsWith(">") ){
@@ -37,14 +37,12 @@ function validateNumberFormat( resultBox, row, significantDigits){
         return false;
     }
 
-    if( !isNaN(significantDigits)){
-        resultBox.value = greaterThanOrLessThan + round( actualValue, significantDigits);
-    }
+    // Presentation settings never alter a clinical entry.
 
     return true;
 }
 
-function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, lowerAbnormal, upperAbnormal, significantDigits, specialCase ){
+function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, lowerAbnormal, upperAbnormal, reportingDecimalPlaces, specialCase ){
     //ignore < or > from the analyser on validation
 	var greaterThanOrLessThan = "";
 	if(resultBox.value.startsWith("<") ||resultBox.value.startsWith(">") ){
@@ -53,7 +51,7 @@ function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, low
 	var actualValue = resultBox.value.replace(/[<>]/g, '')
 
     var isSpecialCase = specialCase == actualValue.toUpperCase();
-    var validFormat = validateNumberFormat( resultBox,row, significantDigits);
+    var validFormat = validateNumberFormat( resultBox,row, reportingDecimalPlaces);
 
     resultBox.style.borderColor = validFormat ? "" : "red";
 
@@ -88,8 +86,8 @@ function /*void*/ validateResults( resultBox, row, lowerNormal, upperNormal, low
 	}
 }
 
-function checkNumberFormat( resultBox, row, significantDigits){
-    var validFormat = validateNumberFormat( resultBox, row, significantDigits);
+function checkNumberFormat( resultBox, row, reportingDecimalPlaces){
+    var validFormat = validateNumberFormat( resultBox, row, reportingDecimalPlaces);
 
     resultBox.style.borderColor = validFormat ? "" : "red";
 }

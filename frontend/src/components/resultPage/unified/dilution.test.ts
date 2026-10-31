@@ -1,4 +1,4 @@
-import { computeReportedValue, dilutionApplies } from "./dilution";
+import { computeDilutedValue, dilutionApplies } from "./dilution";
 
 /** OGC-1021 (R2) — FR-D5: reported result = measured value × dilution factor. */
 describe("dilution (FR-D5)", () => {
@@ -10,32 +10,27 @@ describe("dilution (FR-D5)", () => {
   });
 
   it("multiplies measured value by the factor", () => {
-    expect(computeReportedValue("50", "10")).toBe("500");
+    expect(computeDilutedValue("50", "10")).toBe("500");
   });
 
   it("keeps the measured value's decimal places", () => {
-    expect(computeReportedValue("2.50", "4")).toBe("10.00");
-    expect(computeReportedValue("1.5", "3")).toBe("4.5");
+    expect(computeDilutedValue("2.50", "4")).toBe("10.00");
+    expect(computeDilutedValue("1.5", "3")).toBe("4.5");
   });
 
-  /**
-   * OGC-1408 — a product finer than the test reports to would be refused by
-   * the precision gate, leaving Save disabled on a value the panel itself
-   * produced; it is rounded to the test's precision instead.
-   */
-  it("rounds to the test's precision when the measured value is finer than it reports to", () => {
-    expect(computeReportedValue("3.5", "2", 0)).toBe("7");
-    expect(computeReportedValue("1.25", "3", 1)).toBe("3.8");
-    expect(computeReportedValue("1.5", "3", 2)).toBe("4.5");
-    expect(computeReportedValue("50", "10", 0)).toBe("500");
-    expect(computeReportedValue("2.50", "4", undefined)).toBe("10.00");
+  it("preserves the product independently of report formatting", () => {
+    expect(computeDilutedValue("1.25", "3")).toBe("3.75");
+    expect(computeDilutedValue("2", "1.25")).toBe("2.50");
+    expect(computeDilutedValue("0.1", "0.2")).toBe("0.02");
+    expect(computeDilutedValue("1.25e-2", "3")).toBe("0.0375");
+    expect(computeDilutedValue("-1.25", "3")).toBe("-3.75");
   });
 
   it("returns null for unusable input so the caller leaves the value alone", () => {
-    expect(computeReportedValue("", "10")).toBeNull();
-    expect(computeReportedValue("50", "")).toBeNull();
-    expect(computeReportedValue("abc", "10")).toBeNull();
-    expect(computeReportedValue("50", "0")).toBeNull();
-    expect(computeReportedValue("50", "-2")).toBeNull();
+    expect(computeDilutedValue("", "10")).toBeNull();
+    expect(computeDilutedValue("50", "")).toBeNull();
+    expect(computeDilutedValue("abc", "10")).toBeNull();
+    expect(computeDilutedValue("50", "0")).toBeNull();
+    expect(computeDilutedValue("50", "-2")).toBeNull();
   });
 });

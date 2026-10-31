@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * section defines them.
  * <p>
  * Columns:
- * {@code testName,sampleType,code,label,resultType,unitOfMeasure,significantDigits,displayOrder,isPrimary,showOnReport,defaultResult,allowMultipleReadings}.
+ * {@code testName,sampleType,code,label,resultType,unitOfMeasure,reportingDecimalPlaces,displayOrder,isPrimary,showOnReport,displayLog10,defaultResult,allowMultipleReadings}.
  * {@code testName} and {@code code} are required; {@code sampleType} only
  * disambiguates a legacy {@code Name(Specimen)} record. The rows of one test
  * are one unit of work, written through
@@ -146,14 +146,30 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
             }
             component.setUomId(unit.getId());
         }
-        if (!row.isBlank("significantDigits")) {
-            component.setSignificantDigits(row.integer("significantDigits"));
+        String decimalColumn = null;
+        for (String name : new String[] { "reportingDecimalPlaces", "decimalPlaces", "significantDigits" }) {
+            if (row.has(name)) {
+                if (decimalColumn != null) {
+                    throw new IllegalArgumentException("Use only one reporting decimal places column");
+                }
+                decimalColumn = name;
+            }
+        }
+        if (decimalColumn != null) {
+            component.setReportingDecimalPlaces(
+                    org.openelisglobal.result.util.ReportingDecimalPlaces.parse(row.get(decimalColumn)));
         }
         if (!row.isBlank("displayOrder")) {
             component.setDisplayOrder(row.integer("displayOrder"));
         }
         if (!row.isBlank("isPrimary")) {
             component.setIsPrimary(row.flag("isPrimary", false));
+        }
+        if (!row.isBlank("displayLog10")) {
+            component.setDisplayLog10(row.flag("displayLog10", false));
+        }
+        if (component.getDisplayLog10() && !"N".equals(component.getResultType())) {
+            throw new IllegalArgumentException("displayLog10 requires a numeric component");
         }
         if (!row.isBlank("showOnReport")) {
             component.setShowOnReport(row.flag("showOnReport", true));

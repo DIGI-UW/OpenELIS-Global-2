@@ -42,16 +42,6 @@ public class ReportingResultValues {
             var qualifiers = lookup.qualifiers(result.getId());
             if (!qualifiers.isEmpty())
                 value += " (" + String.join("; ", qualifiers) + ")";
-        } else if ("N".equals(result.getResultType()) && result.getSignificantDigits() >= 0) {
-            int digits = result.getSignificantDigits();
-            // Preserve the stored reporting precision without rounding or HTML.
-            if (digits == 0)
-                return value.split("\\.")[0];
-            int places = value.contains(".") ? value.length() - value.lastIndexOf('.') - 1 : 0;
-            if (!value.contains("."))
-                value += ".";
-            if (places < digits)
-                value += "0".repeat(digits - places);
         }
         return value;
     }

@@ -56,7 +56,7 @@ public class AnalysisItem implements Serializable {
      * reported, rounded to the test's places (OGC-1544). Modify starts from it.
      */
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
-    private String storedResult;
+    private String displayResult;
 
     // OGC-1417: the validator correcting the value has acknowledged it as
     // critical, or confirmed it although it lies outside the valid range
@@ -223,7 +223,7 @@ public class AnalysisItem implements Serializable {
 
     private boolean hasQualifiedResult = false;
 
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     private String rejectReasonId;
 
@@ -372,12 +372,12 @@ public class AnalysisItem implements Serializable {
         return result;
     }
 
-    public String getStoredResult() {
-        return storedResult;
+    public String getDisplayResult() {
+        return displayResult;
     }
 
-    public void setStoredResult(String storedResult) {
-        this.storedResult = storedResult;
+    public void setDisplayResult(String displayResult) {
+        this.displayResult = displayResult;
     }
 
     public String getNormalRange() {
@@ -908,12 +908,12 @@ public class AnalysisItem implements Serializable {
         this.qualifiedResultId = qualifiedResultId;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public boolean isValid() {

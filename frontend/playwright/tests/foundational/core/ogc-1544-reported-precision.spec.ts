@@ -30,7 +30,7 @@ interface WorklistRow {
   testName?: string;
   analysisId?: string;
   resultType?: string;
-  significantDigits?: number;
+  reportingDecimalPlaces?: number;
   resultValue?: string;
   rawResultValue?: string;
 }
@@ -73,7 +73,7 @@ test.describe("OGC-1544 reported precision", () => {
     expect(accession, "the order must save").toBeTruthy();
 
     const row = (await worklist(page, accession, false)).find(
-      (r) => r.resultType === "N" && r.significantDigits === 0,
+      (r) => r.resultType === "N" && r.reportingDecimalPlaces === 0,
     );
     expect(row, "a numeric Serum test reporting no decimals").toBeTruthy();
     const field = page.getByRole("textbox", {
@@ -90,7 +90,7 @@ test.describe("OGC-1544 reported precision", () => {
       await field.fill("0.9");
       await field.press("Tab");
       await expect(
-        page.getByText(/saved as entered and reported rounded/).first(),
+        page.getByText(/full entered value is retained/).first(),
       ).toBeVisible({ timeout: UI_TIMEOUT });
 
       const resultRow = page.getByRole("row").filter({ has: field }).first();

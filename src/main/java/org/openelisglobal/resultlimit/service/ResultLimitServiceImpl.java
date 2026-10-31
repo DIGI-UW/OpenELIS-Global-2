@@ -455,7 +455,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
 
     @Override
     @Transactional(readOnly = true)
-    public String getDisplayNormalRange(double low, double high, String significantDigits, String separator) {
+    public String getDisplayNormalRange(double low, double high, String reportingDecimalPlaces, String separator) {
 
         if (low == Float.NEGATIVE_INFINITY && high == Float.POSITIVE_INFINITY) {
             return MessageUtil.getMessage("result.anyValue");
@@ -466,51 +466,51 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         }
 
         if (high == Float.POSITIVE_INFINITY) {
-            return "> " + StringUtil.doubleWithSignificantDigits(low, rangeDigits(significantDigits, low));
+            return "> " + StringUtil.doubleWithReportingDecimalPlaces(low, rangeDigits(reportingDecimalPlaces, low));
         }
 
         if (low == Float.NEGATIVE_INFINITY) {
-            return "< " + StringUtil.doubleWithSignificantDigits(high, rangeDigits(significantDigits, high));
+            return "< " + StringUtil.doubleWithReportingDecimalPlaces(high, rangeDigits(reportingDecimalPlaces, high));
         }
 
-        String digits = rangeDigits(significantDigits, low, high);
-        return StringUtil.doubleWithSignificantDigits(low, digits) + separator
-                + StringUtil.doubleWithSignificantDigits(high, digits);
+        String digits = rangeDigits(reportingDecimalPlaces, low, high);
+        return StringUtil.doubleWithReportingDecimalPlaces(low, digits) + separator
+                + StringUtil.doubleWithReportingDecimalPlaces(high, digits);
     }
 
     /**
      * The test's decimal places, widened to what the limits themselves need, so a
      * range of 0.7 to 1.1 on a test set to whole numbers reads 0.7 - 1.1 rather
-     * than 1 - 1. At most four places are added for a limit stored inexactly.
+     * than 1 - 1. Never discard digits from the stored reference bound.
      */
-    static String rangeDigits(String significantDigits, double... limits) {
-        if (GenericValidator.isBlankOrNull(significantDigits) || significantDigits.equals("-1")) {
-            return significantDigits;
+    static String rangeDigits(String reportingDecimalPlaces, double... limits) {
+        if (GenericValidator.isBlankOrNull(reportingDecimalPlaces) || reportingDecimalPlaces.equals("-1")) {
+            return reportingDecimalPlaces;
         }
         int digits;
         try {
-            digits = Integer.parseInt(significantDigits.trim());
+            digits = Integer.parseInt(reportingDecimalPlaces.trim());
         } catch (NumberFormatException e) {
-            return significantDigits;
+            return reportingDecimalPlaces;
         }
         for (double limit : limits) {
             if (Double.isInfinite(limit) || Double.isNaN(limit)) {
                 continue;
             }
             int needed = Math.max(0, new java.math.BigDecimal(Double.toString(limit)).stripTrailingZeros().scale());
-            digits = Math.max(digits, Math.min(needed, 4));
+            digits = Math.max(digits, needed);
         }
         return String.valueOf(digits);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public String getDisplayReferenceRange(ResultLimit resultLimit, String significantDigits, String separator) {
+    public String getDisplayReferenceRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator) {
         String range = "";
         if (resultLimit != null && !GenericValidator.isBlankOrNull(resultLimit.getResultTypeId())) {
             if (NUMERIC_RESULT_TYPE_ID.equals(resultLimit.getResultTypeId())) {
                 range = getDisplayNormalRange(resultLimit.getLowNormal(), resultLimit.getHighNormal(),
-                        significantDigits, separator);
+                        reportingDecimalPlaces, separator);
             } else if (SELECT_LIST_RESULT_TYPE_IDS.contains(resultLimit.getResultTypeId())
                     && !GenericValidator.isBlankOrNull(resultLimit.getDictionaryNormalId())) {
                 return dictionaryService.getDataForId(resultLimit.getDictionaryNormalId()).getLocalizedName();
@@ -523,19 +523,21 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
      * Get the valid range for numeric result limits. For other result types an
      * empty string will be returned
      *
-     * @param resultLimit       The limit from which we will get the valid range
-     * @param significantDigits The numbe of significant digit to display
-     * @param separator         -- how to separate the numbers
+     * @param resultLimit            The limit from which we will get the valid
+     *                               range
+     * @param reportingDecimalPlaces The optional number of decimal places to
+     *                               display
+     * @param separator              -- how to separate the numbers
      * @return The range
      */
     @Override
     @Transactional(readOnly = true)
-    public String getDisplayValidRange(ResultLimit resultLimit, String significantDigits, String separator) {
+    public String getDisplayValidRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator) {
         String range = "";
         if (resultLimit != null && !GenericValidator.isBlankOrNull(resultLimit.getResultTypeId())) {
             if (NUMERIC_RESULT_TYPE_ID.equals(resultLimit.getResultTypeId())) {
-                range = getDisplayNormalRange(resultLimit.getLowValid(), resultLimit.getHighValid(), significantDigits,
-                        separator);
+                range = getDisplayNormalRange(resultLimit.getLowValid(), resultLimit.getHighValid(),
+                        reportingDecimalPlaces, separator);
             }
         }
         return range;
@@ -545,20 +547,21 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
      * Get the valid range for numeric result limits. For other result types an
      * empty string will be returned
      *
-     * @param resultLimit       The limit from which we will get the valid reporting
-     *                          range
-     * @param significantDigits The numbe of significant digit to display
-     * @param separator         -- how to separate the numbers
+     * @param resultLimit            The limit from which we will get the valid
+     *                               reporting range
+     * @param reportingDecimalPlaces The optional number of decimal places to
+     *                               display
+     * @param separator              -- how to separate the numbers
      * @return The range
      */
     @Override
     @Transactional(readOnly = true)
-    public String getDisplayReportingRange(ResultLimit resultLimit, String significantDigits, String separator) {
+    public String getDisplayReportingRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator) {
         String range = "";
         if (resultLimit != null && !GenericValidator.isBlankOrNull(resultLimit.getResultTypeId())) {
             if (NUMERIC_RESULT_TYPE_ID.equals(resultLimit.getResultTypeId())) {
                 range = getDisplayNormalRange(resultLimit.getLowReportingRange(), resultLimit.getHighReportingRange(),
-                        significantDigits, separator);
+                        reportingDecimalPlaces, separator);
             }
         }
         return range;
@@ -568,20 +571,21 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
      * Get the valid low critical range for numeric result limits. For other result
      * types an empty string will be returned
      *
-     * @param resultLimit       The limit from which we will get the valid reporting
-     *                          range
-     * @param significantDigits The numbe of significant digit to display
-     * @param separator         -- how to separate the numbers
+     * @param resultLimit            The limit from which we will get the valid
+     *                               reporting range
+     * @param reportingDecimalPlaces The optional number of decimal places to
+     *                               display
+     * @param separator              -- how to separate the numbers
      * @return The range
      */
     @Override
     @Transactional(readOnly = true)
-    public String getDisplayCriticalRange(ResultLimit resultLimit, String significantDigits, String separator) {
+    public String getDisplayCriticalRange(ResultLimit resultLimit, String reportingDecimalPlaces, String separator) {
         String range = "";
         if (resultLimit != null && !GenericValidator.isBlankOrNull(resultLimit.getResultTypeId())) {
             if (NUMERIC_RESULT_TYPE_ID.equals(resultLimit.getResultTypeId())) {
                 range = getDisplayNormalRange(resultLimit.getLowCritical(), resultLimit.getHighCritical(),
-                        significantDigits, separator);
+                        reportingDecimalPlaces, separator);
             }
         }
         return range;

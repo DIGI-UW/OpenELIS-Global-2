@@ -295,7 +295,7 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
               SELECT DISTINCT ON (a.id) si.samp_id, a.id AS analysis_id, a.test_id, si.typeosamp_id,
                      (SELECT sh.patient_id FROM clinlims.sample_human sh WHERE sh.samp_id = si.samp_id
                         ORDER BY sh.id LIMIT 1) AS patient_id,
-                     tr.component_id, r.value, r.result_type, r.significant_digits
+                     tr.component_id, r.value, r.result_type, r.reporting_decimal_places
               FROM clinlims.result r
               JOIN clinlims.analysis a ON a.id = r.analysis_id
               JOIN clinlims.sample_item si ON si.id = a.sampitem_id
@@ -326,7 +326,7 @@ public class ReportQueueQueryDAOImpl implements ReportQueueQueryDAO {
                 record.setPatientId(idOrNull(c[4]));
                 record.setComponentId(idOrNull(c[5]));
                 record.setValue((String) c[6]);
-                record.setSignificantDigits(c[8] == null ? -1 : ((Number) c[8]).intValue());
+                record.setReportingDecimalPlaces(c[8] == null ? -1 : ((Number) c[8]).intValue());
                 records.add(record);
             }
             return records;

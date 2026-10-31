@@ -29,13 +29,13 @@ import org.springframework.transaction.annotation.Transactional;
  * defining test results (possible values/options for tests).
  *
  * Expected CSV format:
- * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode
+ * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,componentCode
  * HIV Rapid Test,D,Positive,1,N,Y,N,, HIV Rapid Test,D,Negative,2,N,Y,Y,, HIV
  * Rapid Test,D,Inconclusive,3,N,Y,N,, Hemoglobin,N,,1,Y,Y,N,2,
  * Glucose,N,,1,Y,Y,N,0,
  *
  * Result Types: - D = Dictionary (coded value from dictionary entry) - N =
- * Numeric (numeric result with optional significant digits) - A = Alpha
+ * Numeric (numeric result with optional reporting decimal places) - A = Alpha
  * (alphanumeric text) - R = Remark (free-form text) - T = Titer (titer ranges
  * like 1:10, 1:20) - M = Multiselect (multiple dictionary values) - C =
  * Cascading multiselect
@@ -45,11 +45,12 @@ import org.springframework.transaction.annotation.Transactional;
  * for others - For Dictionary types, resultValue should match an existing
  * dictionary entry - sortOrder is optional (auto-assigned if not provided) -
  * isQuantifiable defaults to "N" if not specified - isActive defaults to "Y" if
- * not specified - isNormal defaults to "N" if not specified - significantDigits
- * is optional, used for numeric types - flags is optional (e.g., "H" for high,
- * "L" for low) - componentCode is optional and names the result component the
- * option belongs to (blank: the primary result) - Existing test results with
- * matching test, value and component will be updated
+ * not specified - isNormal defaults to "N" if not specified -
+ * reportingDecimalPlaces is optional, used for numeric types - flags is
+ * optional (e.g., "H" for high, "L" for low) - componentCode is optional and
+ * names the result component the option belongs to (blank: the primary result)
+ * - Existing test results with matching test, value and component will be
+ * updated
  */
 @Component
 public class TestResultConfigurationHandler implements DomainConfigurationHandler {
@@ -115,7 +116,16 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int isQuantifiableIndex = findColumnIndex(headers, "isQuantifiable");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int isNormalIndex = findColumnIndex(headers, "isNormal");
-        int significantDigitsIndex = findColumnIndex(headers, "significantDigits");
+        int reportingDecimalPlacesIndex = -1;
+        for (String name : new String[] { "reportingDecimalPlaces", "decimalPlaces", "significantDigits" }) {
+            int index = findColumnIndex(headers, name);
+            if (index >= 0) {
+                if (reportingDecimalPlacesIndex >= 0) {
+                    throw new IllegalArgumentException("Use only one reporting decimal places column");
+                }
+                reportingDecimalPlacesIndex = index;
+            }
+        }
         int flagsIndex = findColumnIndex(headers, "flags");
         int significanceIndex = findColumnIndex(headers, "significance");
         int componentCodeIndex = findColumnIndex(headers, "componentCode");
@@ -141,8 +151,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        significantDigitsIndex, flagsIndex, significanceIndex, componentCodeIndex, lineNumber, fileName,
-                        touchedTestIds);
+                        reportingDecimalPlacesIndex, flagsIndex, significanceIndex, componentCodeIndex, lineNumber,
+                        fileName, touchedTestIds);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -250,7 +260,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
      */
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
-            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int significanceIndex,
+            int isNormalIndex, int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex,
             int componentCodeIndex, int lineNumber, String fileName, Set<String> touchedTestIds) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
@@ -355,12 +365,12 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
             if (existingResult != null) {
                 updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
-                        isNormalIndex, significantDigitsIndex, flagsIndex, significanceIndex);
+                        isNormalIndex, reportingDecimalPlacesIndex, flagsIndex, significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test result for test: " + test.getDescription());
             } else {
                 createTestResult(test, resultType, resultValue, componentId, values, sortOrderIndex,
-                        isQuantifiableIndex, isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex,
+                        isQuantifiableIndex, isActiveIndex, isNormalIndex, reportingDecimalPlacesIndex, flagsIndex,
                         significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
@@ -496,8 +506,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
     }
 
     private TestResult updateTestResult(TestResult testResult, String[] values, int sortOrderIndex,
-            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int significantDigitsIndex, int flagsIndex,
-            int significanceIndex) {
+            int isQuantifiableIndex, int isActiveIndex, int isNormalIndex, int reportingDecimalPlacesIndex,
+            int flagsIndex, int significanceIndex) {
 
         // Update sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);
@@ -524,10 +534,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setIsNormal("Y".equalsIgnoreCase(isNormal) || "true".equalsIgnoreCase(isNormal));
         }
 
-        // Update significant digits
-        String significantDigits = getValueOrEmpty(values, significantDigitsIndex);
-        if (!significantDigits.isEmpty()) {
-            testResult.setSignificantDigits(significantDigits);
+        // Update reporting decimal places
+        String reportingDecimalPlaces = getValueOrEmpty(values, reportingDecimalPlacesIndex);
+        if (reportingDecimalPlacesIndex >= 0) {
+            Integer places = org.openelisglobal.result.util.ReportingDecimalPlaces.parse(reportingDecimalPlaces);
+            testResult.setReportingDecimalPlaces(places == null ? null : places.toString());
         }
 
         // Update flags
@@ -549,7 +560,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     private TestResult createTestResult(Test test, String resultType, String resultValue, String componentId,
             String[] values, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
-            int significantDigitsIndex, int flagsIndex, int significanceIndex) {
+            int reportingDecimalPlacesIndex, int flagsIndex, int significanceIndex) {
 
         TestResult testResult = new TestResult();
         testResult.setTest(test);
@@ -592,10 +603,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setIsNormal(false);
         }
 
-        // Set significant digits
-        String significantDigits = getValueOrEmpty(values, significantDigitsIndex);
-        if (!significantDigits.isEmpty()) {
-            testResult.setSignificantDigits(significantDigits);
+        // Set reporting decimal places
+        String reportingDecimalPlaces = getValueOrEmpty(values, reportingDecimalPlacesIndex);
+        if (reportingDecimalPlacesIndex >= 0) {
+            Integer places = org.openelisglobal.result.util.ReportingDecimalPlaces.parse(reportingDecimalPlaces);
+            testResult.setReportingDecimalPlaces(places == null ? null : places.toString());
         }
 
         // Set flags

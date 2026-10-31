@@ -77,7 +77,7 @@ public class TestResultConfigLoaderBridgeIntegrationTest extends BaseWebContextS
     @Test
     public void loadingTestResults_bridgesToPrimaryComponentAndTerminology() throws Exception {
         String csv = "testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,"
-                + "significantDigits,flags\n" + TEST_NAME + ",N,,1,Y,Y,N,2,\n";
+                + "reportingDecimalPlaces,flags\n" + TEST_NAME + ",N,,1,Y,Y,N,2,\n";
         handler.processConfiguration(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
                 "test-results.csv");
 

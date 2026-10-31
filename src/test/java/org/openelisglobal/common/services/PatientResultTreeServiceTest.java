@@ -116,7 +116,7 @@ public class PatientResultTreeServiceTest {
                 .thenReturn(true);
         lenient().when(testService.getResultType(any())).thenReturn("N");
         lenient().when(testService.getPossibleTestResults(any())).thenReturn(new ArrayList<>());
-        lenient().when(resultService.getSimpleResultValue(any(Result.class)))
+        lenient().when(resultService.formatSimpleResultForDisplay(any(Result.class)))
                 .thenAnswer(invocation -> ((Result) invocation.getArgument(0)).getValue());
     }
 
@@ -135,7 +135,7 @@ public class PatientResultTreeServiceTest {
 
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), eq("c-sys"))).thenReturn(limit(90d, 120d));
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), eq("c-dia"))).thenReturn(limit(60d, 80d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("range");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("range");
 
         List<TestDisplay> tests = onlyPanel(patientResultTreeService.getResultTree(PATIENT_ID, READER)).getSubSets();
 
@@ -162,7 +162,7 @@ public class PatientResultTreeServiceTest {
         when(testResultComponentService.getActiveComponentsByTestId(TEST_ID))
                 .thenReturn(Collections.singletonList(component("c-primary", "Primary", true)));
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(limit(1d, 5d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 5");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("1 - 5");
 
         TypeOfSample serum = sampleType("1", "Serum");
         TypeOfSample urine = sampleType("2", "Urine");
@@ -191,7 +191,7 @@ public class PatientResultTreeServiceTest {
         resultLimit.setLowCritical(2d);
         resultLimit.setHighCritical(12d);
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(resultLimit);
-        when(resultLimitService.getDisplayReferenceRange(eq(resultLimit), anyString(), anyString()))
+        when(resultLimitService.getDisplayReferenceRange(eq(resultLimit), isNull(), anyString()))
                 .thenReturn("4 - 9");
 
         TypeOfSample serum = sampleType("1", "Serum");
@@ -217,7 +217,7 @@ public class PatientResultTreeServiceTest {
         when(testResultComponentService.getActiveComponentsByTestId(TEST_ID)).thenReturn(new ArrayList<>());
         ResultLimit resultLimit = limit(4d, 9d);
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(resultLimit);
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("4 - 9");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("4 - 9");
         givenPatientResults(result(analysis(bloodPressure, sampleType("1", "Serum"),
                 Timestamp.valueOf("2026-08-01 09:00:00")), "10", null));
 
@@ -236,7 +236,7 @@ public class PatientResultTreeServiceTest {
         when(testResultComponentService.getActiveComponentsByTestId(TEST_ID))
                 .thenReturn(Arrays.asList(systolic, diastolic));
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), anyString())).thenReturn(limit(1d, 2d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 2");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("1 - 2");
 
         Analysis analysis = analysis(bloodPressure, sampleType("1", "Serum"), Timestamp.valueOf("2026-08-01 09:00:00"));
         Result systolicResult = result(analysis, "120", systolic.getId());
@@ -254,7 +254,7 @@ public class PatientResultTreeServiceTest {
     public void getResultTree_shouldSkipResultsReportedWithTheirParent() {
         when(testResultComponentService.getActiveComponentsByTestId(TEST_ID)).thenReturn(new ArrayList<>());
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(limit(1d, 5d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 5");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("1 - 5");
 
         Analysis analysis = analysis(bloodPressure, sampleType("1", "Serum"),
                 Timestamp.valueOf("2026-08-01 09:00:00"));
@@ -277,7 +277,7 @@ public class PatientResultTreeServiceTest {
                 .thenReturn(Arrays.asList(systolic, diastolic));
         when(testService.get(TEST_ID)).thenReturn(bloodPressure);
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), anyString())).thenReturn(limit(1d, 2d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 2");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("1 - 2");
 
         Analysis analysis = analysis(bloodPressure, sampleType("1", "Serum"), Timestamp.valueOf("2026-08-01 09:00:00"));
         givenPatientResults(result(analysis, "120", systolic.getId()), result(analysis, "80", diastolic.getId()));
@@ -388,7 +388,7 @@ public class PatientResultTreeServiceTest {
         when(testResultComponentService.getActiveComponentsByTestId(TEST_ID)).thenReturn(new ArrayList<>());
         when(testService.get(TEST_ID)).thenReturn(bloodPressure);
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(limit(1d, 5d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 5");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("1 - 5");
 
         givenPatientResults(
                 result(analysis(bloodPressure, sampleType("1", "Serum"), Timestamp.valueOf("2026-08-01 09:00:00")), "3",
@@ -409,7 +409,7 @@ public class PatientResultTreeServiceTest {
         when(testResultComponentService.getActiveComponentsByTestId(TEST_ID)).thenReturn(new ArrayList<>());
         when(testService.get(TEST_ID)).thenReturn(bloodPressure);
         when(resultLimitService.getResultLimitForResult(any(), any(), any(), isNull())).thenReturn(limit(1d, 5d));
-        when(resultLimitService.getDisplayReferenceRange(any(), anyString(), anyString())).thenReturn("1 - 5");
+        when(resultLimitService.getDisplayReferenceRange(any(), isNull(), anyString())).thenReturn("1 - 5");
 
         TypeOfSample serum = sampleType("1", "Serum");
         // Handed over oldest-first, as the result rows come back.

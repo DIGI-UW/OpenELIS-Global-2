@@ -60,19 +60,19 @@
     <!-- ===== RESULTS ===== -->
     <result id="3001" sort_order="1" result_type="N" value="12.5"
         is_reportable="Y" lastupdated="2024-01-01 00:00:00"
-        significant_digits="1" grouping="0"
+        reporting_decimal_places="1" grouping="0"
         fhir_uuid="aaaaaaaa-0001-0001-0001-aaaaaaaaaaaa" />
     <result id="3002" sort_order="2" result_type="N" value="8.0"
         is_reportable="Y" lastupdated="2024-01-01 00:00:00"
-        significant_digits="1" grouping="0"
+        reporting_decimal_places="1" grouping="0"
         fhir_uuid="aaaaaaaa-0002-0002-0002-aaaaaaaaaaaa" />
     <result id="3003" sort_order="3" result_type="N" value="320.0"
         is_reportable="Y" lastupdated="2024-01-01 00:00:00"
-        significant_digits="0" grouping="0"
+        reporting_decimal_places="0" grouping="0"
         fhir_uuid="aaaaaaaa-0003-0003-0003-aaaaaaaaaaaa" />
     <result id="3004" sort_order="4" result_type="N" value="5.1"
         is_reportable="Y" lastupdated="2024-01-01 00:00:00"
-        significant_digits="1" grouping="0"
+        reporting_decimal_places="1" grouping="0"
         fhir_uuid="aaaaaaaa-0004-0004-0004-aaaaaaaaaaaa" />
 
     <!-- ===== CALCULATIONS ===== -->

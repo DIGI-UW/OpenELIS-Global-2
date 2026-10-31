@@ -27,7 +27,7 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     private static final String TEST = PREFIX + "Viral load";
     private static final String CATEGORY = PREFIX + "answers";
     private static final String RESULTS_HEADER = "testName,resultType,resultValue,dictionaryCategory,sortOrder,"
-            + "isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode\n";
+            + "isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,componentCode\n";
 
     @Autowired
     @Qualifier("testSectionConfigurationHandler")
@@ -74,7 +74,7 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
                         + ",Not detected,,Y,2\n" + CATEGORY + ",PASS,,Y,3\n" + CATEGORY + ",FAIL,,Y,4\n",
                 "dictionaries.csv");
         load(componentHandler,
-                "testName,code,label,resultType,significantDigits,isPrimary,showOnReport\n" + TEST
+                "testName,code,label,resultType,reportingDecimalPlaces,isPrimary,showOnReport\n" + TEST
                         + ",PRIMARY,Viral load,N,0,Y,Y\n" + TEST + ",call,Call,D,,N,Y\n" + TEST
                         + ",IQS-H,IQS-H,D,,N,N\n" + TEST + ",IQS-L,IQS-L,D,,N,N\n",
                 "result-components.csv");
@@ -84,6 +84,22 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     public void tearDown() {
         ImportRunContext.clearPending();
         cleanup();
+    }
+
+    @Test
+    public void explicitLogDisplayImportsAndBlankUpdatesPreserveIt() throws Exception {
+        load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,Y\n", "log-display.csv");
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+        load(componentHandler, "testName,code,label\n" + TEST + ",PRIMARY,Renamed measurement\n", "rename.csv");
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+        load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,N\n", "no-log.csv");
+        assertEquals(Boolean.FALSE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
     }
 
     @Test

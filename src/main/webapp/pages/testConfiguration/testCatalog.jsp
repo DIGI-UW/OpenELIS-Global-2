@@ -184,7 +184,7 @@ which closes it the last time through--%>
         <tr>
             <td><span class="catalog-label"><spring:message code="label.uom" /></span> <b><%=bean.getUom()%></b>
             </td>
-            <td><span class="catalog-label"><spring:message code="label.significant.digits" /></span> <b><%= bean.getSignificantDigits() %></b>
+            <td><span class="catalog-label"><spring:message code="label.reporting.decimal.places" /></span> <b><%= bean.getReportingDecimalPlaces() %></b>
             </td>
             <td><span class="catalog-label"><spring:message code="label.loinc" /></span> <b><%= bean.getLoinc() %></b>
             </td>

@@ -46,7 +46,6 @@ import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
-import org.openelisglobal.common.services.TestIdentityService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
@@ -719,9 +718,8 @@ public class ResultsValidationUtility {
             testItem.setResultType(getTestResultType(testResults));
         }
         testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
-                result == null ? null : result.getReportedValue()));
-        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
-                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
+                result == null ? null : result.getValue()));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType()));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
         testItem.setChildReflex(analysis.getTriggeredReflex() && isConclusion(result, analysis));
@@ -741,7 +739,7 @@ public class ResultsValidationUtility {
             testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
-                    resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
+                    resultLimit, testResults.isEmpty() ? null : testResults.get(0).getReportingDecimalPlaces(), " - "));
         }
     }
 
@@ -1143,22 +1141,21 @@ public class ResultsValidationUtility {
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
         analysisResultItem.setDictionaryResults(testResultItem.getDictionaryResults());
-        analysisResultItem.setDisplayResultAsLog(
-                TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId()));
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
                 Analysis analysis = testResultItem.getAnalysis();
                 analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
             } else {
-                analysisResultItem.setResult(getFormattedResult(testResultItem));
-                analysisResultItem.setStoredResult(result.getEnteredValue());
+                analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
+                        : getFormattedResult(testResultItem));
+                analysisResultItem.setDisplayResult(getFormattedResult(testResultItem));
             }
 
             if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(testResultItem.getResultType())) {
-                // analysisResultItem.setSignificantDigits( result.getMinNormal().equals(
-                // result.getMaxNormal())? -1 : result.getSignificantDigits());
-                analysisResultItem.setSignificantDigits(result.getSignificantDigits());
+                // analysisResultItem.setReportingDecimalPlaces( result.getMinNormal().equals(
+                // result.getMaxNormal())? -1 : result.getReportingDecimalPlaces());
+                analysisResultItem.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
             }
         }
         analysisResultItem.setReflexGroup(testResultItem.isReflexGroup());
@@ -1208,36 +1205,9 @@ public class ResultsValidationUtility {
         return analysisResultItem;
     }
 
-    /**
-     * Validation shows a numeric result rounded to its test's places, and a release
-     * posts the row back as shown; saving that replaced what was entered or
-     * received, so 0.9 became "0" (OGC-1544). When the posted value is only the
-     * display of the stored result, the stored value is kept; a value the validator
-     * changed is saved as given.
-     */
-    public static void keepStoredValueWhenUnchanged(AnalysisItem item, Analysis analysis) {
-        if (!TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(item.getResultType())
-                || GenericValidator.isBlankOrNull(item.getResult())
-                || GenericValidator.isBlankOrNull(item.getResultId()) || analysis == null) {
-            return;
-        }
-        ResultService resultService = SpringContext.getBean(ResultService.class);
-        resultService.getResultsByAnalysis(analysis).stream()
-                .filter(stored -> item.getResultId().equals(stored.getId()))
-                .filter(stored -> !GenericValidator.isBlankOrNull(stored.getValue()))
-                .filter(stored -> item.getResult().trim().equals(resultService.getResultValue(stored, false)))
-                .findFirst().ifPresent(stored -> item.setResult(stored.getEnteredValue()));
-    }
-
     protected final String getFormattedResult(ResultValidationItem testResultItem) {
-        String result = testResultItem.getResult().getValue();
-        if (TestIdentityService.getInstance().isTestNumericViralLoad(testResultItem.getTestId())
-                && !GenericValidator.isBlankOrNull(result)) {
-            return result.split("\\(")[0].trim();
-        } else {
-            ResultService resultResultService = SpringContext.getBean(ResultService.class);
-            return resultResultService.getResultValue(testResultItem.getResult(), false);
-        }
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        return resultService.formatResultForDisplay(testResultItem.getResult(), false);
     }
 
     public final String getUnitsByTestId(String testId) {

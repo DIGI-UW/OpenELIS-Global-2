@@ -68,14 +68,11 @@ public class StringUtil {
      */
     private static final Pattern TIMES_TEN_NOTATION_REG_EX = Pattern.compile("^(?:(" + DECIMAL_MANTISSA
             + ")\\s*[xX×*]\\s*)?([+-]?)10\\s*(?:\\^\\s*([+-]?\\d+)|([⁺⁻]?[" + SUPERSCRIPT_DIGITS + "]+))$");
+
     /**
      * A written value split into its comparator, its mantissa and everything after
      * it.
      */
-    private static final Pattern MANTISSA_SPLIT_REG_EX = Pattern.compile("^([<>]?\\s*)(" + DECIMAL_MANTISSA + ")(.*)$");
-    /** A power of ten carrying no mantissa of its own, such as 10^-3 or 10⁻³. */
-    private static final Pattern BARE_TEN_REG_EX = Pattern
-            .compile("^[+-]?10\\s*(?:\\^\\s*[+-]?\\d+|[⁺⁻]?[" + SUPERSCRIPT_DIGITS + "]+)$");
 
     public enum EncodeContext {
         JAVASCRIPT, HTML
@@ -622,19 +619,17 @@ public class StringUtil {
         return value.substring(0, value.length() - tail.length()) + tail;
     }
 
-    // not truly significant digits, just decimal places
-    public static String doubleWithSignificantDigits(double value, String significantDigits) {
-        if (GenericValidator.isBlankOrNull(significantDigits) || significantDigits.equals("-1")) {
+    public static String doubleWithReportingDecimalPlaces(double value, String reportingDecimalPlaces) {
+        if (GenericValidator.isBlankOrNull(reportingDecimalPlaces) || reportingDecimalPlaces.equals("-1")) {
             return String.valueOf(value);
         }
 
-        String format = "%1$." + significantDigits + "f";
+        String format = "%1$." + reportingDecimalPlaces + "f";
         return String.format(format, value);
     }
 
-    // not truly significant digits, just decimal places
-    public static String doubleWithSignificantDigits(double value, int significantDigits) {
-        String format = "%1$." + significantDigits + "f";
+    public static String doubleWithReportingDecimalPlaces(double value, int reportingDecimalPlaces) {
+        String format = "%1$." + reportingDecimalPlaces + "f";
         return String.format(format, value);
     }
 
@@ -674,19 +669,19 @@ public class StringUtil {
         return delimitedString;
     }
 
-    public static Double doubleWithInfinity(String significantDigits) {
-        if (GenericValidator.isBlankOrNull(significantDigits)) {
+    public static Double doubleWithInfinity(String reportingDecimalPlaces) {
+        if (GenericValidator.isBlankOrNull(reportingDecimalPlaces)) {
             return null;
         }
-        if ("Infinity".equals(significantDigits)) {
+        if ("Infinity".equals(reportingDecimalPlaces)) {
             return Double.POSITIVE_INFINITY;
         }
-        if ("-Infinity".equals(significantDigits)) {
+        if ("-Infinity".equals(reportingDecimalPlaces)) {
             return Double.NEGATIVE_INFINITY;
         }
 
         try {
-            return new Double(significantDigits);
+            return new Double(reportingDecimalPlaces);
         } catch (NumberFormatException e) {
             LogEvent.logError(e);
             return null;
@@ -732,16 +727,12 @@ public class StringUtil {
 
     /**
      * The numeric part of a result value as a string {@link Double#parseDouble}
-     * accepts: a leading {@code <} or {@code >} is dropped and written scientific
-     * notation is rewritten to e-notation. Returns the literal {@code "NaN"} when
-     * the value is not a number.
+     * accepts: a leading {@code <}, {@code <=}, {@code >} or {@code >=} is dropped
+     * and written scientific notation is rewritten to e-notation. Returns the
+     * literal {@code "NaN"} when the value is not a number.
      */
     public static String getActualNumericValue(String resultValue) {
-        // ignore < or > from the analyser on validation
-        String actualValue = resultValue;
-        if (actualValue.startsWith("<") || actualValue.startsWith(">")) {
-            actualValue = actualValue.replaceAll("<|>", "");
-        }
+        String actualValue = resultValue.trim().replaceFirst("^(<=|>=|<|>)", "").trim();
         actualValue = normalizeScientificNotation(actualValue);
         if (isNumeric(actualValue)) {
             return actualValue;
@@ -817,41 +808,12 @@ public class StringUtil {
     }
 
     /**
-     * Pads the mantissa with zeros up to the decimal places the test reports to,
-     * leaving the notation the technologist wrote exactly as they wrote it: at two
-     * places {@code 1.5×10⁵} prints as {@code 1.50×10⁵} and {@code 7.5 x 10^0} as
-     * {@code 7.50 x 10^0}. A mantissa already that precise, a value written as a
-     * bare power of ten such as {@code 10⁻³}, and a test reporting no decimals are
-     * all returned unchanged.
-     */
-    public static String padMantissa(String value, int decimalPlaces) {
-        if (value == null || decimalPlaces <= 0) {
-            return value;
-        }
-        Matcher parts = MANTISSA_SPLIT_REG_EX.matcher(value.trim());
-        if (!parts.matches() || BARE_TEN_REG_EX.matcher(withoutComparator(value)).matches()) {
-            return value;
-        }
-        StringBuilder mantissa = new StringBuilder(parts.group(2));
-        int dot = mantissa.indexOf(".");
-        if (dot < 0) {
-            mantissa.append('.');
-            dot = mantissa.length() - 1;
-        }
-        for (int places = mantissa.length() - dot - 1; places < decimalPlaces; places++) {
-            mantissa.append('0');
-        }
-        return parts.group(1) + mantissa + parts.group(3);
-    }
-
-    /**
      * A plain decimal as reported: rounded half up to the decimal places the test
      * reports to (OGC-1544), so at no places {@code 0.9} reads {@code 1} and at one
      * place {@code 0.95} reads {@code 1.0}. A value behind {@code <} or {@code >}
      * is only padded or loses trailing zeros ({@code <40.00} reads {@code <40}),
-     * because rounding would move the bound. Scientific notation (see
-     * {@link #padMantissa}), a value that is not a number and a negative place
-     * count are returned unchanged.
+     * because rounding would move the bound. Scientific notation, a value that is
+     * not a number and a negative place count are returned unchanged.
      */
     public static String roundToPlaces(String value, int decimalPlaces) {
         if (value == null || decimalPlaces < 0 || isScientificNotation(value)) {

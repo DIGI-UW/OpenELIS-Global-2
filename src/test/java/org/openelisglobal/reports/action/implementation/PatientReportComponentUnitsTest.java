@@ -112,6 +112,56 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
                 row.getComponents().stream().map(ReportComponentLine::value).toList());
     }
 
+    @Test
+    public void logDisplayFollowsTheExplicitComponentSettingAndUsesTheClinicalMeasurement() {
+        PatientReport report = report();
+        Analysis analysis = analysisService.get("100");
+        Result result = resultService.getResultsByAnalysis(analysis).stream()
+                .filter(r -> "vcu-load".equals(r.getTestResult().getComponentId())).findFirst().orElseThrow();
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        var component = testResultComponentService.get("vcu-load");
+        component.setSysUserId("1");
+        component.setDisplayLog10(true);
+        testResultComponentService.update(component);
+        String display = ReflectionTestUtils.invokeMethod(report, "formatPatientReportResult", result);
+        assertEquals("0.01\nlog10: −2.19\n(Value used for clinical decisions: 0.0064)", display);
+        assertEquals("0.0064", result.getValue());
+        assertEquals("0.01", resultService.formatResultForDisplay(result, false));
+        component.setDisplayLog10(false);
+        testResultComponentService.update(component);
+        String withoutLog = ReflectionTestUtils.invokeMethod(report, "formatPatientReportResult", result);
+        assertEquals("0.01\n(Value used for clinical decisions: 0.0064)", withoutLog);
+    }
+
+    @Test
+    public void logarithmsNeverInventExactValuesForBoundsOrNonPositiveMeasurements() {
+        for (String value : List.of("<0.0064", "<=0.0064", ">0.0064", "0", "-0.0064")) {
+            Result result = new Result();
+            result.setResultType("N");
+            result.setValue(value);
+            result.clearReportingDecimalPlaces();
+            assertEquals(value, org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay
+                    .format(result, true));
+            assertEquals(value, result.getEnteredValue());
+        }
+    }
+
+    @Test
+    public void logarithmsSupportScientificNotationWithoutChangingItsRepresentation() {
+        for (String[] example : new String[][] { { "1.5×10⁵", "5.18" }, { "1e-400", "−400.00" },
+                { "1e400", "400.00" } }) {
+            Result result = new Result();
+            result.setResultType("N");
+            result.setValue(example[0]);
+            result.clearReportingDecimalPlaces();
+            assertEquals(example[0] + "\nlog10: " + example[1],
+                    org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result,
+                            true));
+            assertEquals(example[0], result.getEnteredValue());
+        }
+    }
+
     private ClinicalPatientData reportRowFor(Analysis analysis) {
         PatientReport report = report();
         ReflectionTestUtils.setField(report, "currentAnalysis", analysis);

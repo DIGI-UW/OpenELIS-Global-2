@@ -121,7 +121,7 @@ public class AnalyzerResultItem implements Serializable {
     private String selectionTwoText = "";
     private String selectionTwoValue = "";
     private boolean nonconforming = false;
-    private String significantDigits = "";
+    private String reportingDecimalPlaces = "";
     private String importIssueReason;
     private String sourceProfileId;
     private Integer sourceProfileRevision;
@@ -141,12 +141,12 @@ public class AnalyzerResultItem implements Serializable {
     private String assayVersion;
     private String instrumentOperator;
 
-    public String getSignificantDigits() {
-        return significantDigits;
+    public String getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(String significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(String reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     private List<Dictionary> dictionaryResultList;

@@ -498,7 +498,7 @@ public class OclToOpenElisMapper {
         String highCritical = "Infinity";
         String lowNormal = "-Infinity";
         String highNormal = "Infinity";
-        String sigDigits = "0";
+        String sigDigits = "";
 
         if (isNumeric) {
             log.info("Mapping NUMERIC result type for concept: " + getText(concept, "id"));
@@ -546,14 +546,11 @@ public class OclToOpenElisMapper {
                     highNormal = highNormalValue;
                 }
 
-                // Check for allow_decimal which indicates significant digits
-                String allowDecimal = getNumericText(extras, "allow_decimal");
-                if (allowDecimal != null) {
-                    if ("true".equalsIgnoreCase(allowDecimal)) {
-                        sigDigits = "2"; // Default to 2 decimal places if decimals are allowed
-                    } else if ("false".equalsIgnoreCase(allowDecimal)) {
-                        sigDigits = "0"; // No decimal places
-                    }
+                // Allowing fractions does not specify reporting decimal places.
+                // Only an explicit decimal-place count may enable formatting.
+                String places = getNumericText(extras, "decimal_places");
+                if (places != null) {
+                    sigDigits = String.valueOf(org.openelisglobal.result.util.ReportingDecimalPlaces.parse(places));
                 }
             }
 
@@ -566,7 +563,7 @@ public class OclToOpenElisMapper {
         jsonWad.put("highCritical", highCritical);
         jsonWad.put("lowNormal", lowNormal);
         jsonWad.put("highNormal", highNormal);
-        jsonWad.put("significantDigits", sigDigits);
+        jsonWad.put("reportingDecimalPlaces", sigDigits);
     }
 
     private static boolean isNumeric(String str) {

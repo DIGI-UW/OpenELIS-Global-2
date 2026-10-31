@@ -328,7 +328,7 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
                 fixture.analysisId, SAMPLE_ITEM, TEST, statusService.getStatusID(AnalysisStatus.Finalized));
         jdbc.update(
                 "INSERT INTO clinlims.result (id, analysis_id, analyte_id, result_type, value, sort_order,"
-                        + " significant_digits, is_reportable, lastupdated, fhir_uuid)"
+                        + " reporting_decimal_places, is_reportable, lastupdated, fhir_uuid)"
                         + " VALUES (?, ?, ?, 'N', '1200', 1, 0, 'Y', now(), gen_random_uuid())",
                 fixture.analysisId + 500, fixture.analysisId, resultCarriesAnalyte ? ANALYTE : null);
         return fixture;
@@ -344,7 +344,7 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
                 analysisId, SAMPLE_ITEM, TEST, statusService.getStatusID(AnalysisStatus.Finalized));
         jdbc.update(
                 "INSERT INTO clinlims.result (id, analysis_id, analyte_id, result_type, value, sort_order,"
-                        + " significant_digits, is_reportable, lastupdated, fhir_uuid)"
+                        + " reporting_decimal_places, is_reportable, lastupdated, fhir_uuid)"
                         + " VALUES (?, ?, ?, 'N', '1200', 1, 0, 'Y', now(), gen_random_uuid())",
                 analysisId + 500, analysisId, ANALYTE);
         return analysisId;
