@@ -13,7 +13,9 @@ import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.sql.Date;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
@@ -28,6 +30,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
 import org.openelisglobal.reports.controller.ReportController;
 import org.openelisglobal.reports.controller.rest.ReportRestController;
@@ -68,6 +71,9 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
     private static final Date DAY = Date.valueOf("2002-03-04");
     private Field dictionaryInstance;
     private Object previousDictionary;
+    private Field projectServiceField;
+    private Object previousProjectService;
+    private Map<String, String> previousProjectTags;
 
     @Before
     public void createFixture() throws Exception {
@@ -78,10 +84,25 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
         previousDictionary = dictionaryInstance.get(null);
         dictionaryInstance.set(null, null);
 
+        // CSV builders retain their service and tags across Spring test contexts.
+        // Bind both to this fixture database, then restore the previous context's
+        // state.
+        projectServiceField = CSVColumnBuilder.class.getDeclaredField("projectService");
+        projectServiceField.setAccessible(true);
+        previousProjectService = projectServiceField.get(null);
+        previousProjectTags = new HashMap<>(CSVColumnBuilder.projectTagById);
+        projectServiceField.set(null, webApplicationContext.getBean(ProjectService.class));
+        CSVColumnBuilder.projectTagById.clear();
+        CSVColumnBuilder.defineAllProjectTags();
     }
 
     @After
     public void cleanFixture() throws Exception {
+        if (previousProjectTags != null) {
+            CSVColumnBuilder.projectTagById.clear();
+            CSVColumnBuilder.projectTagById.putAll(previousProjectTags);
+            projectServiceField.set(null, previousProjectService);
+        }
         if (dictionaryInstance != null) {
             dictionaryInstance.set(null, previousDictionary);
         }
