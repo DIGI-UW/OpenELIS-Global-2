@@ -233,7 +233,7 @@ public class SiteBrandingRestController extends BaseRestController {
                 logger.warn("File validation failed: name={}, size={}, contentType={}", file.getOriginalFilename(),
                         file.getSize(), file.getContentType());
                 Map<String, Object> error = new HashMap<>();
-                error.put("error", "Invalid file: format must be PNG, SVG, or JPG/JPEG, size must be <= 2MB");
+                error.put("error", "Invalid file: format must be PNG or JPG/JPEG, size must be <= 2MB");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
             logger.debug("File validation passed");
@@ -300,6 +300,14 @@ public class SiteBrandingRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
+            Resource resource = new FileSystemResource(logoPath);
+            MediaType contentType = MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
+            if (!MediaType.IMAGE_PNG.equals(contentType) && !MediaType.IMAGE_JPEG.equals(contentType)
+                    && !(logoType == LogoType.FAVICON && (MediaType.valueOf("image/x-icon").equals(contentType)
+                            || MediaType.valueOf("image/vnd.microsoft.icon").equals(contentType)))) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
             // Calculate ETag and Last-Modified from file modification time
             long lastModified = java.nio.file.Files.getLastModifiedTime(java.nio.file.Paths.get(logoPath)).toMillis();
             String etag = "\"" + lastModified + "\"";
@@ -311,8 +319,6 @@ public class SiteBrandingRestController extends BaseRestController {
             }
 
             // Serve file
-            Resource resource = new FileSystemResource(logoPath);
-            MediaType contentType = MediaTypeFactory.getMediaType(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(contentType);

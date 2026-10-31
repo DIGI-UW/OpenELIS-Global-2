@@ -4,6 +4,16 @@ import { HeaderGlobalAction, HeaderPanel } from "@carbon/react";
 import { Close, Help } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 
+function webUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value, window.location.origin);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
   const intl = useIntl();
   const [helpUrls, setHelpUrls] = useState({
@@ -36,10 +46,11 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
       }
 
       setHelpUrls({
-        manual: properties["org.openelisglobal.help.manual.url"] || "",
-        tutorials: properties["org.openelisglobal.help.tutorials.url"] || "",
-        "release-notes":
-          properties["org.openelisglobal.help.release-notes.url"] || "",
+        manual: webUrl(properties["org.openelisglobal.help.manual.url"]),
+        tutorials: webUrl(properties["org.openelisglobal.help.tutorials.url"]),
+        "release-notes": webUrl(
+          properties["org.openelisglobal.help.release-notes.url"],
+        ),
       });
     });
 
@@ -76,7 +87,7 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
   const openHelp = (type) => {
     const url = helpUrls[type];
     if (url) {
-      window.open(url, "_blank");
+      window.open(url, "_blank", "noopener,noreferrer");
       handlePanelToggle("");
     }
   };
@@ -117,6 +128,7 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
                   gap: "0.75rem",
                   color: "white",
                 }}
+                disabled={!helpUrls[type]}
                 onClick={() => openHelp(type)}
                 onMouseEnter={(e) =>
                   (e.target.style.background = "rgba(255,255,255,0.15)")

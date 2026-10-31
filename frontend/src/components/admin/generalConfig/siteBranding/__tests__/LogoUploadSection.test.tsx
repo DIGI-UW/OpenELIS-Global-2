@@ -30,14 +30,15 @@ import LogoUploadSection from "../LogoUploadSection";
 import type { LogoUploadSectionHandle } from "../LogoUploadSection";
 import { postToOpenElisServerFormData } from "../../../../utils/Utils";
 import { removeLogo } from "../../../../utils/BrandingUtils";
-import messages from "../../../../../languages/en.json";
+import { resolveMessagesForLocale } from "../../../../../languages";
 
 // ========== HELPER FUNCTIONS ==========
 
-const renderWithIntl = (component) => {
+const renderWithIntl = (component, locale = "en") => {
+  const localized = resolveMessagesForLocale(locale);
   return render(
     <BrowserRouter>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale={localized.code} messages={localized.messages}>
         {component}
       </IntlProvider>
     </BrowserRouter>,
@@ -50,6 +51,20 @@ describe("LogoUploadSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  test.each(["en-US", "en-PG"])(
+    "%s guidance does not advertise the removed SVG format",
+    (locale) => {
+      renderWithIntl(
+        <LogoUploadSection type="header" currentLogoUrl={null} />,
+        locale,
+      );
+      const hint = screen.getByText(/^Formats:/i);
+      expect(hint).toHaveTextContent("PNG");
+      expect(hint).toHaveTextContent("JPG");
+      expect(hint).not.toHaveTextContent("SVG");
+    },
+  );
 
   /**
    * Test: Component renders with file uploader
