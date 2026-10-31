@@ -182,6 +182,7 @@ const renderConnection = ({
   onClose = vi.fn(),
   onVerifyMappings,
   onProfileReset,
+  onContinue,
 } = {}) => {
   const history = createMemoryHistory({
     initialEntries: [
@@ -197,6 +198,7 @@ const renderConnection = ({
           onClose={onClose}
           onVerifyMappings={onVerifyMappings}
           onProfileReset={onProfileReset}
+          onContinue={onContinue}
         />
       </IntlProvider>
     </Router>,
@@ -219,6 +221,43 @@ describe("AnalyzerConnectionSetup", () => {
     updateAnalyzer.mockImplementation((_id, _payload, callback) =>
       callback(candidate),
     );
+  });
+
+  it("keeps unavailable-type recovery visible in the connect-first wizard", async () => {
+    const onProfileReset = vi.fn();
+    resetAnalyzerProfile.mockImplementation((_id, callback) =>
+      callback({ ok: true }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+              },
+            ],
+          },
+        },
+      },
+      onContinue: vi.fn(),
+      onProfileReset,
+    });
+    expect(
+      await screen.findByText(/which the Analyzer Bridge no longer has/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset analyzer type" }),
+    );
+    expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+      "42",
+      expect.any(Function),
+    );
+    expect(onProfileReset).toHaveBeenCalledOnce();
   });
 
   it("says why the Bridge set this connection aside", async () => {

@@ -108,6 +108,63 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void setupSamplesStayReadOnlyEvenWithAnApprovedNumericMapping() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+        analyzer.setActive(false);
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        var summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+        AnalyzerResults row = capturedRow();
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(0, summary.controlResultsProcessed());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE, row.getImportIssueReason());
+        assertTrue(row.isReadOnly());
+        assertNull(row.getTestId());
+        assertEquals("7.5", row.getResult());
+        assertTrue(row.getSourcePayload().contains("Observation"));
+    }
+
+    @Test
+    public void delayedSetupDeliveryStaysNonClinicalAfterRoutineActivation() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        var device = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(org.hl7.fhir.r4.model.Device.class::isInstance).map(org.hl7.fhir.r4.model.Device.class::cast)
+                .findFirst().orElseThrow();
+        device.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-delivery-purpose",
+                new org.hl7.fhir.r4.model.CodeType("SETUP"));
+        var summary = service.importBundle(bundle, "7");
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE, capturedRow().getImportIssueReason());
+        assertTrue(capturedRow().isReadOnly());
+        assertNull(capturedRow().getTestId());
+        org.mockito.Mockito.verifyZeroInteractions(testResultService, qcResultProcessingService);
+    }
+
+    @Test
+    public void setupControlDoesNotRecordOperationalQualityControl() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+        Bundle bundle = fixture("normalized-qc.fhir.json");
+        var summary = service.importBundle(bundle, "7");
+        assertEquals(0, summary.controlResultsProcessed());
+        assertTrue(capturedRow().getIsControl());
+        assertTrue(capturedRow().isReadOnly());
+        verify(qcResultProcessingService, never()).processQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void setupEvidenceIsNotPromotedByMappingRecoveryAfterActivation() {
+        AnalyzerResults held = new AnalyzerResults();
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        assertEquals(0, service.recoverHeldMappingResults("42", "7"));
+        verify(analyzerResultsService, never()).update(any());
+        verify(analyzerResultsService, never()).delete(any(String.class), any(String.class));
+    }
+
+    @Test
     public void unitDisplayLabelsDoNotReinterpretAnApprovedBinding() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
         when(mappingCatalogService.getActiveComponents("501")).thenReturn(
@@ -755,6 +812,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         Analyzer second = new Analyzer();
         second.setId("43");
         second.setName("Second analyzer");
+        second.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        second.setActive(true);
         second.setBridgeConnectionId("bridge-connection-second");
         second.setMapping(successor);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-second"))
@@ -955,6 +1014,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         Analyzer value = new Analyzer();
         value.setId("42");
         value.setName("Lab analyzer");
+        value.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        value.setActive(true);
         value.setBridgeConnectionId("bridge-connection-7f3c");
         value.setMapping(revision);
         return value;

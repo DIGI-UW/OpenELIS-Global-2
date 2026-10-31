@@ -486,8 +486,19 @@ const AnalyserResults = (props) => {
     return (
       <div data-testid={`held-analyzer-result-${row.id}`}>
         <Tag type="warm-gray" size="sm">
-          <FormattedMessage id="analyzer.results.held.tag" />
+          <FormattedMessage
+            id={
+              row.importIssueReason === "setup_capture"
+                ? "analyzer.setup.reception.sample"
+                : "analyzer.results.held.tag"
+            }
+          />
         </Tag>
+        {row.importIssueReason === "setup_capture" && (
+          <p>
+            <FormattedMessage id="analyzer.setup.reception.sampleHelp" />
+          </p>
+        )}
         <div>
           <strong>{row.rawResultValue || row.result}</strong>
         </div>

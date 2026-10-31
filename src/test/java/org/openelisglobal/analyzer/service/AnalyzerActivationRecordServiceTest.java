@@ -76,6 +76,21 @@ public class AnalyzerActivationRecordServiceTest {
     }
 
     @Test
+    public void setupIntentRetainsTheTransportAcknowledgementWithoutClinicalApproval() throws Exception {
+        Fixture fixture = fixture();
+        ObjectNode acknowledgement = bridgeFixture("connection-activate-ack.json");
+        acknowledgement.put("action", "START_SETUP");
+        acknowledgement.put("receptionPurpose", "SETUP");
+        AnalyzerActivationRecord saved = service.retain(fixture.analyzer, fixture.revision, null, acknowledgement,
+                "SETUP", "17");
+        assertEquals("SETUP", saved.getActivationIntent());
+        org.junit.Assert.assertNull(saved.getVerificationConfirmation());
+        verify(auditTrailService).saveNewHistory(saved, "17", "analyzer_activation_record");
+        assertThrows(IllegalArgumentException.class,
+                () -> service.retain(fixture.analyzer, fixture.revision, null, acknowledgement, "ACTIVE", "17"));
+    }
+
+    @Test
     public void rejectsAcknowledgementForAnotherConnectionOrProfileRevision() throws Exception {
         Fixture fixture = fixture();
         ObjectNode wrongConnection = bridgeFixture("connection-activate-ack.json");
