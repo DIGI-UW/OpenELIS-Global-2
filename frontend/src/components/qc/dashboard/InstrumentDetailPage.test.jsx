@@ -12,6 +12,13 @@ import InstrumentDetailPage from "./InstrumentDetailPage";
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  toLocalIsoDate: (date) => date.toISOString().slice(0, 10),
+}));
+
+vi.mock("../charts/LeveyJenningsChart", () => ({
+  default: ({ data }) => (
+    <div>{data.map((point) => point.value).join(", ")}</div>
+  ),
 }));
 
 const renderPage = () =>
@@ -133,6 +140,70 @@ describe("InstrumentDetailPage analyzer context", () => {
     expect(params.get("view")).toBe("activity");
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
     expect(activityTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("loads recorded lots through the chart tab even without dashboard analyte summaries", async () => {
+    const instrumentResponse = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/qc/controlLots?instrumentId=42")
+        return callback([
+          {
+            id: "normal",
+            lotNumber: "SHARED",
+            controlLevel: "NORMAL",
+            testId: "test-a",
+            productName: "Control",
+          },
+          {
+            id: "high",
+            lotNumber: "SHARED",
+            controlLevel: "HIGH",
+            testId: "test-a",
+            productName: "Control",
+          },
+        ]);
+      if (url === "/rest/qc/charts/high")
+        return callback({
+          dataPoints: [
+            { resultId: "recorded", value: 1009.64, controlLevel: "HIGH" },
+          ],
+        });
+      if (url === "/rest/qc/charts/normal") return callback({ dataPoints: [] });
+      if (url.endsWith("/statistics"))
+        return callback({
+          mean: 1009.64,
+          resultCount: url.includes("/high/") ? 1 : 0,
+        });
+      if (url.includes("ruleConfig/enabled"))
+        return callback([{ id: "rule", ruleCode: "1_3s", enabled: true }]);
+      instrumentResponse(url, callback);
+    });
+    renderPage();
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Control Chart", exact: true }),
+    );
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "High", exact: true }),
+    );
+    expect(await screen.findByTestId("chart-panel-HIGH")).toHaveTextContent(
+      "1009.64",
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Control lot", exact: true }),
+    ).toHaveTextContent("SHARED — High — Control");
+    expect(await screen.findByText("1_3s")).toBeVisible();
+    expect(
+      screen.queryByTestId("control-chart-detail-header"),
+    ).not.toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get("returnTo")).toBe(
+      "/analyzers?search=gene&status=ACTIVE",
+    );
+    await userEvent.click(
+      screen.getByRole("tab", { name: "Normal", exact: true }),
+    );
+    expect(screen.getByTestId("chart-panel-NORMAL")).not.toHaveTextContent(
+      "1009.64",
+    );
   });
 
   it("shows an unconfigured operational QC state without exposing a bare database id", async () => {

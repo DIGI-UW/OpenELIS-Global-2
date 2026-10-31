@@ -76,6 +76,7 @@ export async function sendGeneXpertFixture(
   senderId: string,
   instrumentCodes: Record<string, string> = {},
   patient?: { id: string; name: string },
+  messageTime?: string,
 ): Promise<string> {
   const request = page.request;
   const port = await activeListenerPort(page, analyzerId, senderId);
@@ -104,6 +105,7 @@ export async function sendGeneXpertFixture(
         sender_id: senderId,
         instrument_codes: instrumentCodes,
         ...(patient ? { patient } : {}),
+        ...(messageTime ? { message_time: messageTime } : {}),
       },
     },
   );

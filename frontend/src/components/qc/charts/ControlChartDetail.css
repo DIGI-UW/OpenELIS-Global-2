@@ -32,6 +32,18 @@
   margin-top: 1.5rem;
 }
 
+/* Keep the level and product readable when different controls share a lot number. */
+.control-chart-detail-lot .cds--list-box__menu-item,
+.control-chart-detail-lot .cds--list-box__menu-item__option {
+  block-size: auto;
+  min-block-size: 2.5rem;
+}
+
+.control-chart-detail-lot .cds--list-box__menu-item__option {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .control-chart-detail-chart {
   margin-bottom: 1.5rem;
   transition: transform 0.2s ease;

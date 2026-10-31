@@ -49,10 +49,13 @@ const SIGMA_TAG_TYPE = {
   NOT_CALCULABLE: "gray",
 };
 
-const ControlChartDetail = () => {
+export const ControlLotChart = ({
+  analyzerId,
+  showHeader = true,
+  onLotChange,
+}) => {
   const intl = useIntl();
   const history = useHistory();
-  const { analyzerId } = useParams();
 
   // State
   const {
@@ -69,12 +72,54 @@ const ControlChartDetail = () => {
   const [dateRange, setDateRange] = useState([null, null]);
   const [selectedControlLevel, setSelectedControlLevel] = useState("ALL");
   const [selectedControlLot, setSelectedControlLot] = useState(null);
+  const [activeLevel, setActiveLevel] = useState("LOW");
 
   // Zoom state
   const [zoomLevel, setZoomLevel] = useState(1);
 
   // Control level options
   const controlLevelOptions = controlLevelItems(intl);
+  const chartLevels = controlLevelOptions.filter((level) => level.id !== "ALL");
+  const lotLevel = (lot) => lot?.controlLevel?.toUpperCase();
+  const lotItems = controlLots
+    .filter(
+      (lot) =>
+        selectedControlLevel === "ALL" ||
+        lotLevel(lot) === selectedControlLevel,
+    )
+    .map((lot) => ({
+      id: lot.id,
+      label: intl.formatMessage(
+        { id: "qc.chart.lotOption" },
+        {
+          lot: lot.lotNumber || lot.id,
+          level:
+            controlLevelOptions.find((level) => level.id === lotLevel(lot))
+              ?.label || lot.controlLevel,
+          test: lot.productName || lot.lotNumber || lot.id,
+        },
+      ),
+    }));
+
+  const selectLot = (lot) => {
+    setSelectedControlLot(lot?.id || null);
+    if (lot) setActiveLevel(lotLevel(lot));
+  };
+
+  const selectLevel = (level) => {
+    setActiveLevel(level);
+    const current = controlLots.find((lot) => lot.id === selectedControlLot);
+    const candidates = controlLots.filter((lot) => lotLevel(lot) === level);
+    selectLot(
+      candidates.find((lot) => lot.id === selectedControlLot) ||
+        candidates.find(
+          (lot) =>
+            lot.lotNumber === current?.lotNumber &&
+            lot.testId === current?.testId,
+        ) ||
+        candidates[0],
+    );
+  };
 
   // Load control lots and analyzer info on mount
   useEffect(() => {
@@ -83,9 +128,9 @@ const ControlChartDetail = () => {
       (response) => {
         const lots = Array.isArray(response) ? response : response?.data || [];
         setControlLots(lots);
-        if (lots.length > 0 && !selectedControlLot) {
-          setSelectedControlLot(lots[0].id);
-        }
+        setSelectedControlLevel("ALL");
+        selectLot(lots[0]);
+        if (!lots.length) loadChartData(null);
       },
     );
 
@@ -99,9 +144,14 @@ const ControlChartDetail = () => {
     );
   }, [analyzerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    onLotChange?.(
+      controlLots.find((lot) => lot.id === selectedControlLot) || null,
+    );
+  }, [controlLots, selectedControlLot, onLotChange]);
+
   // Reload chart when selected lot or date range changes
   useEffect(() => {
-    if (!selectedControlLot) return;
     setError(null);
 
     // Build date range query params (only params the backend accepts)
@@ -125,12 +175,14 @@ const ControlChartDetail = () => {
 
   // Handle control level change
   const handleControlLevelChange = ({ selectedItem }) => {
-    setSelectedControlLevel(selectedItem.id);
+    const level = selectedItem?.id || "ALL";
+    setSelectedControlLevel(level);
+    if (level !== "ALL") selectLevel(level);
   };
 
   // Handle control lot change
   const handleControlLotChange = ({ selectedItem }) => {
-    setSelectedControlLot(selectedItem?.id || null);
+    selectLot(controlLots.find((lot) => lot.id === selectedItem?.id));
   };
 
   // Handle export (FR-059)
@@ -197,38 +249,41 @@ const ControlChartDetail = () => {
 
   return (
     <div className="control-chart-detail" data-testid="control-chart-detail">
-      {/* Header */}
-      <div
-        className="control-chart-detail-header"
-        data-testid="control-chart-detail-header"
-      >
-        <PageBreadCrumb
-          breadcrumbs={[
-            { label: "home.label", link: "/" },
-            { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-            { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
-            { label: analyzerInfo?.name || "qc.chart.title", link: "" },
-          ]}
-        />
-        <PageTitle
-          breadcrumbs={[
-            {
-              label: intl.formatMessage({ id: "analyzer.page.hierarchy.root" }),
-              link: "/analyzers",
-            },
-            {
-              label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/qa/qc/dashboard",
-            },
-            {
-              label:
-                analyzerInfo?.name ||
-                intl.formatMessage({ id: "qc.chart.title" }),
-            },
-          ]}
-          subtitle={intl.formatMessage({ id: "qc.leveyJennings.title" })}
-        />
-      </div>
+      {showHeader && (
+        <div
+          className="control-chart-detail-header"
+          data-testid="control-chart-detail-header"
+        >
+          <PageBreadCrumb
+            breadcrumbs={[
+              { label: "home.label", link: "/" },
+              { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+              { label: "qc.dashboard.title", link: "/analyzers/qc/db" },
+              { label: analyzerInfo?.name || "qc.chart.title", link: "" },
+            ]}
+          />
+          <PageTitle
+            breadcrumbs={[
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({ id: "qc.dashboard.title" }),
+                link: "/qa/qc/dashboard",
+              },
+              {
+                label:
+                  analyzerInfo?.name ||
+                  intl.formatMessage({ id: "qc.chart.title" }),
+              },
+            ]}
+            subtitle={intl.formatMessage({ id: "qc.leveyJennings.title" })}
+          />
+        </div>
+      )}
 
       {/* Error notification */}
       {error && (
@@ -290,29 +345,15 @@ const ControlChartDetail = () => {
         <Column lg={3} md={2} sm={4}>
           <Dropdown
             id="control-lot-dropdown"
+            className="control-chart-detail-lot"
             titleText={intl.formatMessage({
               id: "admin.testCatalog.qcTargets.lot.label",
             })}
             label={intl.formatMessage({ id: "qc.chart.filter.selectLot" })}
-            items={controlLots.map((lot) => ({
-              id: lot.id,
-              label: lot.lotNumber || lot.id,
-            }))}
+            items={lotItems}
             itemToString={(item) => item?.label || ""}
             selectedItem={
-              selectedControlLot
-                ? {
-                    id: selectedControlLot,
-                    label:
-                      controlLots.find((l) => l.id === selectedControlLot)
-                        ?.lotNumber || selectedControlLot,
-                  }
-                : {
-                    id: null,
-                    label: intl.formatMessage({
-                      id: "result.pool.filter.allLots",
-                    }),
-                  }
+              lotItems.find((item) => item.id === selectedControlLot) || null
             }
             onChange={handleControlLotChange}
             data-testid="chart-filter-control-lot"
@@ -365,7 +406,15 @@ const ControlChartDetail = () => {
 
       {/* Chart with control levels as tabs (FR-058) */}
       {selectedControlLevel === "ALL" && controlLots.length > 0 ? (
-        <Tabs>
+        <Tabs
+          selectedIndex={Math.max(
+            0,
+            chartLevels.findIndex((level) => level.id === activeLevel),
+          )}
+          onChange={({ selectedIndex }) =>
+            selectLevel(chartLevels[selectedIndex].id)
+          }
+        >
           <TabList
             aria-label={intl.formatMessage({ id: "qc.chart.tabs.label" })}
           >
@@ -516,6 +565,11 @@ const ControlChartDetail = () => {
       )}
     </div>
   );
+};
+
+const ControlChartDetail = () => {
+  const { analyzerId } = useParams();
+  return <ControlLotChart key={analyzerId} analyzerId={analyzerId} />;
 };
 
 export default ControlChartDetail;

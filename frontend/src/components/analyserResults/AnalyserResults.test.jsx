@@ -354,6 +354,46 @@ describe("AnalyserResults", () => {
     expect(submitted.resultList[0].isAccepted).toBe(true);
   });
 
+  it("explains an unmatched control and offers lot setup and retry", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        isControl: true,
+        importIssueReason: "qc_lot_missing",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+    expect(
+      await screen.findByText(/No matching control lot was found/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Review control lots" }),
+    ).toHaveAttribute("href", "/qa/qc/control-lots");
+    expect(
+      screen.getByRole("link", { name: "Apply mapping to retry control" }),
+    ).toHaveAttribute("href", expect.stringContaining("/mapping"));
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains why an off-scale control cannot be charted as an exact measurement", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        isControl: true,
+        importIssueReason: "qc_value_unsupported",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+    expect(
+      await screen.findByText(
+        /an off-scale value cannot be treated as an exact measurement/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("explains a control held for a missing QC target and links to that test's targets", async () => {
     renderResults([
       {
