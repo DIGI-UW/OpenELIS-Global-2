@@ -3,6 +3,9 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.opencsv.CSVReader;
 import jakarta.annotation.PreDestroy;
@@ -18,16 +21,24 @@ import org.junit.Test;
 import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.config.ControllerSetup;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.controller.ReportController;
+import org.openelisglobal.reports.controller.rest.ReportRestController;
 import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -202,6 +213,64 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void studyEidExportRetainsDictionaryText() throws Exception {
+        prepareEidFixture();
+        Exported study = read(new StudyEIDColumnBuilder(dateRange(), "", DateType.ORDER_DATE));
+        assertEquals("1=Positive", study.value("DNA PCR"));
+        Exported eid = read(new EIDColumnBuilder(dateRange(), ""));
+        assertEquals("1=Positive", eid.value("DNA PCR"));
+    }
+
+    @Test
+    public void studyLogColumnUsesTheSameResultAsItsNumericColumn() throws Exception {
+        insertResult(992211, "Viral Load", "N", "1000");
+        CSVColumnBuilder builder = resultBuilder(992211);
+        builder.addViralLoadLogColumn();
+        assertEquals(List.of("1000", "3.0"), read(builder).values());
+    }
+
+    @Test
+    public void projectExportRejectsAnActiveUserWithoutReportsBeforeReadingTheProject() throws Exception {
+        projectExport(992221, "999999", 403, false);
+        projectExport(992221, "999999", 403, true);
+    }
+
+    @Test
+    public void projectExportRejectsAnInactiveReportUser() throws Exception {
+        projectExport(992224, "992220", 403, false);
+        projectExport(992224, "992220", 403, true);
+    }
+
+    @Test
+    public void projectExportStillReturnsCsvForReportUsersAndAdministrators() throws Exception {
+        prepareEidFixture();
+        jdbcTemplate.update("UPDATE sample_projects SET proj_id = 992220 WHERE samp_id = ?", SAMPLE);
+        for (int actor : List.of(992222, 992223)) {
+            for (boolean legacy : List.of(false, true)) {
+                String csv = projectExport(actor, "992220", 200, legacy);
+                assertTrue("authorized export includes its fixture sample", csv.contains("STUDY-PRIVATE-FIXTURE"));
+            }
+        }
+    }
+
+    private String projectExport(int actor, String project, int expectedStatus, boolean legacy) throws Exception {
+        UserSessionData user = new UserSessionData();
+        user.setSytemUserId(actor);
+        String day = DateUtil.convertSqlDateToStringDate(DAY);
+        var request = legacy
+                ? get("/ReportPrint").param("type", "patient").param("report", "CISampleExport")
+                        .param("projectCode", project).param("lowerDateRange", day).param("upperDateRange", day)
+                : post("/rest/ReportPrint").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"report\":\"CISampleExport\",\"projectCode\":\"" + project
+                                + "\",\"lowerDateRange\":\"" + day + "\",\"upperDateRange\":\"" + day + "\"}");
+        return MockMvcBuilders
+                .standaloneSetup(webApplicationContext.getBean(ReportRestController.class),
+                        webApplicationContext.getBean(ReportController.class))
+                .setControllerAdvice(new ControllerSetup()).build()
+                .perform(request.sessionAttr(IActionConstants.USER_SESSION_DATA, user))
+                .andExpect(status().is(expectedStatus)).andReturn().getResponse().getContentAsString();
+    }
+
+    private void prepareEidFixture() {
         jdbcTemplate.update("INSERT INTO dictionary_category (id, name, description)"
                 + " SELECT 992292, 'EID Type of Clinic', 'EID Type of Clinic' WHERE NOT EXISTS"
                 + " (SELECT 1 FROM dictionary_category WHERE description = 'EID Type of Clinic')");
@@ -217,18 +286,6 @@ public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
         String dnaTest = SpringContext.getBean(TestService.class).getActiveTestByName("DNA PCR").get(0).getId();
         jdbcTemplate.update("UPDATE analysis SET test_id = ? WHERE id = 992210", Long.parseLong(dnaTest));
         jdbcTemplate.update("UPDATE test_result SET test_id = ? WHERE id = 992210", Long.parseLong(dnaTest));
-        Exported study = read(new StudyEIDColumnBuilder(dateRange(), "", DateType.ORDER_DATE));
-        assertEquals("1=Positive", study.value("DNA PCR"));
-        Exported eid = read(new EIDColumnBuilder(dateRange(), ""));
-        assertEquals("1=Positive", eid.value("DNA PCR"));
-    }
-
-    @Test
-    public void studyLogColumnUsesTheSameResultAsItsNumericColumn() throws Exception {
-        insertResult(992211, "Viral Load", "N", "1000");
-        CSVColumnBuilder builder = resultBuilder(992211);
-        builder.addViralLoadLogColumn();
-        assertEquals(List.of("1000", "3.0"), read(builder).values());
     }
 
     private DateRange dateRange() {

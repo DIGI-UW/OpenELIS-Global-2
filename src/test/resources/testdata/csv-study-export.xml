@@ -20,8 +20,28 @@
         received_date="2002-03-04" />
     <sample_item id="992200" samp_id="992200" sort_order="1"
         status_id="1" />
+    <project id="992220" name="Export access fixture" is_active="Y"
+        program_code="LDBS" display_key="project.EIDStudy.name" />
     <person />
     <patient />
     <organization />
     <dictionary />
+    <system_user id="992221" login_name="export-denied"
+        first_name="Export" last_name="Denied" is_employee="Y" is_active="Y" />
+    <system_user id="992222" login_name="export-reporter"
+        first_name="Export" last_name="Reporter" is_employee="Y" is_active="Y" />
+    <system_user id="992223" login_name="export-admin"
+        first_name="Export" last_name="Admin" is_employee="Y" is_active="Y" />
+    <system_user id="992224" login_name="export-inactive"
+        first_name="Export" last_name="Inactive" is_employee="Y" is_active="N" />
+    <system_role id="992222" name="Reports"
+        description="Report fixture" display_key="role.reports" />
+    <system_role id="992223" name="Global Administrator"
+        description="Admin fixture" display_key="role.admin" />
+    <system_user_role system_user_id="992222"
+        role_id="992222" />
+    <system_user_role system_user_id="992223"
+        role_id="992223" />
+    <system_user_role system_user_id="992224"
+        role_id="992222" />
 </dataset>

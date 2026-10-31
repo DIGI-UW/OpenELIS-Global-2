@@ -33,8 +33,11 @@ import org.openelisglobal.reports.action.implementation.reportBeans.CSVColumnBui
 import org.openelisglobal.reports.action.implementation.reportBeans.EIDColumnBuilder;
 import org.openelisglobal.reports.action.implementation.reportBeans.RTNColumnBuilder;
 import org.openelisglobal.reports.action.implementation.reportBeans.VLColumnBuilder;
+import org.openelisglobal.reports.dataexport.service.ReportingAccess;
+import org.openelisglobal.reports.dataexport.service.ReportingException;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.security.access.AccessDeniedException;
 
 /**
  * @author Paul A. Hill (pahill@uw.edu)
@@ -76,6 +79,11 @@ public class ExportProjectByDate extends CSVSampleExportReport implements IRepor
 
     @Override
     public void initializeReport(ReportForm form) {
+        try {
+            SpringContext.getBean(ReportingAccess.class).requireReports(systemUserId);
+        } catch (ReportingException denied) {
+            throw new AccessDeniedException("Report export access denied", denied);
+        }
         super.initializeReport();
         errorFound = false;
 
