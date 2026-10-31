@@ -19,6 +19,40 @@ def github_script(job):
 
 
 class PublicationWorkflowTest(unittest.TestCase):
+    def test_release_image_publish_rejects_replacement_and_registry_errors(self):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/publish-images.yml").read_text())
+        script = next(step["run"] for step in workflow["jobs"]["publish-images"]["steps"]
+                      if step.get("name") == "Retag and publish tested image to DockerHub")
+        script = script.replace("${{ steps.source.outputs.ghcr_source }}", "source")
+        script = script.replace("${{ steps.tags.outputs.tags }}", "target")
+        fake = """#!/usr/bin/env python3
+import os, sys
+from pathlib import Path
+args = sys.argv[1:]
+mode = os.environ['REGISTRY_MODE']
+if args[:2] == ['manifest', 'inspect']:
+    if mode in ('missing','unavailable'):
+        print('manifest unknown' if mode == 'missing' else 'registry connection refused', file=sys.stderr)
+        sys.exit(1)
+elif args[:2] == ['image', 'inspect']:
+    print('changed' if mode == 'changed' and args[-1] == 'target' else 'original')
+elif args[0] == 'push':
+    Path(os.environ['PUSH_RECORD']).write_text('pushed')
+"""
+        for mode, success, pushed in [('missing', True, True), ('identical', True, False),
+                                      ('changed', False, False), ('unavailable', False, False)]:
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / 'docker').write_text(fake)
+                (root / 'docker').chmod(0o755)
+                record = root / 'pushed'
+                env = {**os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'],
+                       'EVENT_NAME': 'release', 'SOURCE_IMAGE': 'source', 'RUNNER_TEMP': directory,
+                       'REGISTRY_MODE': mode, 'PUSH_RECORD': str(record)}
+                result = subprocess.run(['bash', '-ec', script], env=env, text=True, capture_output=True, timeout=15)
+                self.assertEqual(success, result.returncode == 0, result.stderr)
+                self.assertEqual(pushed, record.exists())
+
     def test_request_builder_passes_configured_namespace_and_rejects_invalid_input(self):
         workflow = yaml.load((ROOT / ".github/workflows/publish-images.yml").read_text(), Loader=yaml.BaseLoader)
         step = next(step for step in workflow["jobs"]["deploy-testing"]["steps"]

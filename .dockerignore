@@ -18,3 +18,8 @@ docs/
 specs/
 
 
+
+# Installation credentials must never enter an image layer.
+src/main/resources/adminPassword.txt
+.env
+secrets/

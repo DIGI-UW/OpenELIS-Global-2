@@ -2,7 +2,6 @@ package org.openelisglobal.config;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -10,20 +9,20 @@ import java.sql.Date;
 import java.util.Calendar;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.PasswordValidationFactory;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CreateAdminUserTask {
 
-    private static String PASSWORD_FILEPATH = "adminPassword.txt";
-    private static String PASSWORD_MARKER = LoginUserService.DEFAULT_ADMIN_USER_NAME + ":";
+    @Value("${OE_INITIAL_ADMIN_PASSWORD_FILE:/run/secrets/initial-admin-password}")
+    private String initialPasswordFile;
 
     @Autowired
     private LoginUserService loginService;
@@ -45,7 +44,8 @@ public class CreateAdminUserTask {
                         login = createAdminUser();
                         loginService.insert(login);
                     } catch (LIMSException e) {
-                        LogEvent.logError(e);
+                        throw new IllegalStateException(
+                                "Initial administrator could not be created: " + e.getMessage());
                     }
                 }
             }
@@ -64,39 +64,21 @@ public class CreateAdminUserTask {
 
         String password;
         try {
-            byte[] adminUserInfo = getAdminUserInfo();
-            if (adminUserInfo.length <= 0) {
-                throw new LIMSException("could not create default admin user as password is 0 length");
+            if (initialPasswordFile == null || initialPasswordFile.isBlank()
+                    || Files.size(Paths.get(initialPasswordFile)) > 256) {
+                throw new IOException("Invalid initial password file");
             }
-            password = new String(adminUserInfo, StandardCharsets.UTF_8);
-            password = processPassword(password);
-
-            if (!loginService.isHashedPassword(password)) {
-                if (PasswordValidationFactory.getPasswordValidator().passwordValid(password)) {
-                    loginService.hashPassword(login, password);
-                } else {
-                    throw new LIMSException("could not create default admin user as password was not complex enough");
-                }
-            } else {
-                login.setPassword(password);
-            }
-        } catch (IOException | URISyntaxException e) {
-            throw new LIMSException("could not create default admin user as password could not be read");
+            password = Files.readString(Paths.get(initialPasswordFile), StandardCharsets.UTF_8).replaceAll("[\\r\\n]+$",
+                    "");
+        } catch (IOException | RuntimeException e) {
+            throw new LIMSException("Provide a readable initial administrator password file");
         }
-
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72
+                || !PasswordValidationFactory.getPasswordValidator().passwordValid(password)) {
+            throw new LIMSException("Initial administrator password does not meet the configured password policy");
+        }
+        loginService.hashPassword(login, password);
         return login;
-    }
-
-    String processPassword(String password) {
-        // strip password marker at beginning of line and line-ending characters at end
-        if (password.startsWith(PASSWORD_MARKER)) {
-            password = password.substring(PASSWORD_MARKER.length());
-        }
-        password = password.replaceAll("[\r\n]+$", "");
-        if (password.startsWith("$2y")) {
-            password = password.replace("$2y", "$2a");
-        }
-        return password;
     }
 
     private Date getExpiredDate() {
@@ -105,7 +87,4 @@ public class CreateAdminUserTask {
         return new Date(calendar.getTimeInMillis());
     }
 
-    private byte[] getAdminUserInfo() throws IOException, URISyntaxException {
-        return Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource(PASSWORD_FILEPATH).toURI()));
-    }
 }

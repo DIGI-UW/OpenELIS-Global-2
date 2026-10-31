@@ -14,7 +14,7 @@ case "$1" in
     ;;
   deployment-contract)
     printf 'code\n' > "$OE_CI_PHASE_FILE"
-    "$OE_CI_NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
+    "$OE_CI_NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs .github/scripts/publish-source.test.cjs .github/scripts/publish-release-manifest.test.cjs
     python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
     python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
     ;;

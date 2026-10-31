@@ -166,20 +166,21 @@ installation does not change application ownership or configuration.
 
 ## Run published images
 
-Follow
-[the installation instructions](../README.md#for-offline-installation-using-the-openelis-global2-installer)
-and [release guidance](../RELEASES.md) to prepare the deployment configuration.
-The deployment files are `docker-compose.yml` and, when analyzers are needed,
-`docker-compose.analyzers.yml`. Use coherent version or digest pins.
+For a lab deployment, use
+[the released default distribution](https://github.com/DIGI-UW/openelis-docker/releases)
+and its tagged README. Run the following in that distribution directory after
+configuring credentials:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.analyzers.yml pull
-docker compose -f docker-compose.yml -f docker-compose.analyzers.yml up -d --no-build
+docker compose pull
+docker compose up -d --no-build
+docker compose ps
 ```
 
-This mode does not compile application source or mount a locally built WAR. An
-unavailable image must fail visibly. Mutable `develop` images are for explicit
-development/demo deployments; release verification uses fixed images.
+OE2's root Compose files remain inputs to build/test and testing-server
+deployment. They do not define a second operator installation path. Development
+images require an explicit development/testing choice; a production distribution
+uses the tested release manifest's digests and fails if an image is unavailable.
 
 The versioned `openelis-global-2-certs` image contains the initializer and
 tools, with no installation keys. Docker Compose starts it before dependent

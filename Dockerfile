@@ -12,14 +12,9 @@ RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
         --allow-releaseinfo-change -y update \
     && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
         -y --no-install-recommends install \
-        git apache2-utils
+        git
 
 
-# OE Default Password
-ARG DEFAULT_PW="adminADMIN!"
-COPY ./install/createDefaultPassword.sh /build/install/createDefaultPassword.sh
-WORKDIR /build
-RUN ./install/createDefaultPassword.sh -c -p ${DEFAULT_PW}
 
 ##
 # Build DataExport
@@ -77,7 +72,6 @@ RUN mkdir -p /build/classes \
 #
 FROM tomcat:10-jre21
 
-COPY install/createDefaultPassword.sh ./
 COPY --from=tomcat-lib /build/openelis-client-certificates.jar /usr/local/tomcat/lib/
 
 
@@ -96,6 +90,8 @@ COPY --from=build /build/target/OpenELIS-Global.war /usr/local/tomcat/webapps/Op
 #    org.apache.tomcat.util.buf.UDecoder.ALLOW_ENCODED_SLASH=false
 #    org.apache.coyote.USE_CUSTOM_STATUS_MSG_IN_HEADER=false
 COPY install/tomcat-resources/catalina.properties /usr/local/tomcat/conf/catalina.properties
+COPY tomcat/runtime-credentials.properties /tmp/runtime-credentials.properties
+RUN cat /tmp/runtime-credentials.properties >> /usr/local/tomcat/conf/catalina.properties && rm /tmp/runtime-credentials.properties
 COPY install/tomcat-resources/logging.properties /usr/local/tomcat/conf/logging.properties
 
 #replace ServerInfo.properties with a less informative one

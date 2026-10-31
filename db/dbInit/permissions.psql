@@ -1,0 +1,7 @@
+-- Read credentials as data. PostgreSQL quotes the variables as SQL literals.
+-- Shell expansion occurs inside quotes and does not execute password contents.
+\set app_password `printf '%s' "$DB_PASSWORD"`
+\set admin_password `printf '%s' "$DB_SUPERUSER_PASSWORD"`
+CREATE USER clinlims PASSWORD :'app_password';
+CREATE USER admin SUPERUSER PASSWORD :'admin_password';
+ALTER DATABASE clinlims OWNER TO clinlims;
