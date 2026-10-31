@@ -203,7 +203,23 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
       .toMatchObject({
         dataPoints: [expect.objectContaining({ value: 1009.64 })],
       });
-    await page.goto(`/analyzers/qc/charts/${analyzer.id}`);
+    await page.goto("/analyzers");
+    const search = page.getByRole("searchbox", { name: "Search", exact: true });
+    await search.fill(name);
+    await search.press("Enter");
+    const analyzerRow = page.getByRole("row").filter({
+      has: page.getByRole("cell", { name, exact: true }),
+    });
+    await analyzerRow
+      .getByRole("button", { name: "Actions", exact: true })
+      .click();
+    await page
+      .getByRole("menuitem", { name: "Quality Control", exact: true })
+      .click();
+    await page.getByRole("tab", { name: "Control Chart", exact: true }).click();
+    await expect(page).toHaveURL(
+      new RegExp(`/analyzers/qc/instruments/${analyzer.id}\\?`),
+    );
     await page
       .getByRole("combobox", { name: "Control lot", exact: true })
       .click();
