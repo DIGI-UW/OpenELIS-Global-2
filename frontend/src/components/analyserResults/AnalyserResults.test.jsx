@@ -343,6 +343,13 @@ describe("AnalyserResults", () => {
     };
     renderResults([result]);
 
+    expect(
+      screen.getByText(/Choose the specimen or analysis requested on each row/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Held results cannot be accepted/),
+    ).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByRole("combobox", { name: "Sample type" }), {
       target: { value: "40" },
     });
@@ -352,6 +359,19 @@ describe("AnalyserResults", () => {
     const submitted = JSON.parse(postResults.mock.calls[0][1]);
     expect(submitted.resultList[0].typeOfSampleId).toBe("40");
     expect(submitted.resultList[0].isAccepted).toBe(true);
+  });
+
+  it("explains both kinds of work when specimen and mapping holds share the page", () => {
+    renderResults([
+      heldResult,
+      { ...mappedQualitativeResult, importIssueReason: "awaiting_specimen" },
+    ]);
+    expect(
+      screen.getByText(/Choose the specimen or analysis requested on each row/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Review.*mapping/i }),
+    ).toBeInTheDocument();
   });
 
   it("explains an unmatched control and offers lot setup and retry", async () => {
