@@ -640,6 +640,7 @@ class DevStackContractTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_application"),
             patch.object(self.dev_stack, "build_images"),
             patch.object(self.dev_stack, "pull_images"),
+            patch.object(self.dev_stack, "record_images"),
             patch.object(self.dev_stack, "reload_proxy"),
             patch.object(self.dev_stack, "configure_tls"),
             patch.object(self.dev_stack, "verify_tls"),
