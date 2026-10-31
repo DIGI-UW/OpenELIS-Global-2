@@ -24,7 +24,8 @@ public class Constants {
     // qa.* permission-key namespace (QA release permission model, liquibase/qa/004)
     public static final String QA_PERMISSION_PREFIX = "qa.";
     // Module-name prefixes whose grants become authorities and session permissions
-    public static final List<String> PERMISSION_MODULE_PREFIXES = List.of(QA_PERMISSION_PREFIX, "dashboards.");
+    public static final List<String> PERMISSION_MODULE_PREFIXES = List.of(QA_PERMISSION_PREFIX, "dashboards.",
+            "fhir.read.");
     public static final String ROLE_PATHOLOGIST = "Pathologist";
     public static final String ROLE_EQA_COORDINATOR = "EQA Coordinator";
     // roles groups

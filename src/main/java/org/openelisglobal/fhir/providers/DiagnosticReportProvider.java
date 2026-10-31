@@ -2,7 +2,6 @@ package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.annotation.Count;
-import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.Offset;
@@ -10,7 +9,6 @@ import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.annotation.Sort;
-import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.SortSpec;
 import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.param.DateRangeParam;
@@ -30,8 +28,6 @@ import org.hl7.fhir.r4.model.IdType;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.FhirConstants;
@@ -40,25 +36,7 @@ import org.openelisglobal.search.service.DiagnosticReportSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-/**
- * FHIR provider for DiagnosticReport resources backed by OpenELIS Analysis
- * data.
- *
- * <p>
- * A DiagnosticReport is a projection of an Analysis and its Results, so it has
- * no create or update path of its own: orders arrive as ServiceRequest and
- * results as Observation. DELETE cancels the underlying Analysis rather than
- * removing rows.
- *
- * <p>
- * Supported operations:
- * <ul>
- * <li>READ: GET /fhir/DiagnosticReport/{uuid}</li>
- * <li>SEARCH: GET /fhir/DiagnosticReport?patient={uuid}&amp;... (answered from
- * the OpenELIS database)</li>
- * <li>DELETE: DELETE /fhir/DiagnosticReport/{uuid} (cancels the Analysis)</li>
- * </ul>
- */
+/** Read and search DiagnosticReport resources from OpenELIS. */
 @Component
 public class DiagnosticReportProvider implements IResourceProvider {
 
@@ -67,9 +45,6 @@ public class DiagnosticReportProvider implements IResourceProvider {
 
     @Autowired
     private FhirTransformService fhirTransformService;
-
-    @Autowired
-    private IStatusService statusService;
 
     @Autowired
     private DiagnosticReportSearchService diagnosticReportSearchService;
@@ -118,56 +93,6 @@ public class DiagnosticReportProvider implements IResourceProvider {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while reading DiagnosticReport: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while reading DiagnosticReport", e);
-        }
-    }
-
-    /**
-     * Cancels the Analysis behind the report. The rows stay in place so the audit
-     * trail survives; a subsequent read returns the report with the cancelled
-     * status.
-     */
-    @Delete
-    public MethodOutcome deleteDiagnosticReport(@IdParam IdType theId, HttpServletRequest request) {
-        final String method = "deleteDiagnosticReport";
-
-        try {
-            FhirProviderUtils.validateIdParam(theId, "DiagnosticReport", this.getClass().getSimpleName(), method);
-
-            String analysisUuid = theId.getIdPart();
-            List<Analysis> existingAnalyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
-            if (existingAnalyses.isEmpty()) {
-                throw new ResourceNotFoundException("DiagnosticReport/" + analysisUuid);
-            }
-
-            Analysis analysis = analysisService.get(existingAnalyses.get(0).getId());
-            analysis.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            analysis.setStatusId(statusService.getStatusID(AnalysisStatus.Canceled));
-
-            Analysis updatedAnalysis = analysisService.update(analysis);
-
-            try {
-                fhirTransformService.transformAnalysisByIds(List.of(updatedAnalysis.getId()));
-            } catch (Exception fhirEx) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), method,
-                        "FHIR sync failed during delete (non-blocking): " + FhirProviderUtils.safeMessage(fhirEx));
-            }
-
-            return FhirProviderUtils.buildDeleteOutcome(theId, "DiagnosticReport");
-
-        } catch (InvalidRequestException | ResourceNotFoundException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Client error: " + FhirProviderUtils.safeMessage(e));
-            throw e;
-        } catch (IllegalArgumentException e) {
-            throw new InvalidRequestException("DiagnosticReport ID must be a valid UUID");
-        } catch (Exception e) {
-            if (FhirProviderUtils.isDataError(e)) {
-                throw FhirProviderUtils.unprocessableData("DiagnosticReport", e);
-            }
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unhandled exception: " + FhirProviderUtils.safeMessage(e));
-            throw new InternalErrorException(
-                    "Unexpected server error while deleting DiagnosticReport: " + e.getMessage(), e);
         }
     }
 
