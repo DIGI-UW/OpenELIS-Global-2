@@ -211,6 +211,12 @@ describe("DeliveryIssuesPanel", () => {
     );
     expect(await screen.findByText(unrecognized.lastError)).toBeVisible();
     expect(screen.getByText("Not delivered")).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Refresh delivery status" }),
+    );
+    expect(
+      screen.queryByText(/Retry requested.*delivery is not yet confirmed/),
+    ).not.toBeInTheDocument();
   });
 
   it("distinguishes retry acceptance from delivery and keeps the unresolved reason", async () => {

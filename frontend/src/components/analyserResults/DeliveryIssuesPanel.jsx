@@ -217,6 +217,7 @@ const DeliveryIssuesPanel = () => {
         size="sm"
         disabled={loading || pendingId !== null}
         onClick={() => {
+          setRetryRequested(false);
           setLoading(true);
           load();
         }}
@@ -227,7 +228,7 @@ const DeliveryIssuesPanel = () => {
         <InlineNotification
           kind="info"
           lowContrast
-          hideCloseButton
+          onCloseButtonClick={() => setRetryRequested(false)}
           title={intl.formatMessage({
             id: "analyzer.deliveryIssues.retryRequested",
           })}
