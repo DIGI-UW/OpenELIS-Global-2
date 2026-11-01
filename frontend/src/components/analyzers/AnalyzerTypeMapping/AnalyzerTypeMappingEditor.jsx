@@ -19,6 +19,7 @@ import {
   Link as CarbonLink,
   Loading,
   Modal,
+  Pagination,
   Tag,
   Table,
   TableHead,
@@ -54,6 +55,71 @@ import {
 import { includesComboBoxText } from "../comboBoxSearch";
 import { analyzerErrorText } from "../analyzerErrors";
 import "./AnalyzerTypeMappingEditor.scss";
+
+const ReceivedValuesTable = ({ values, label }) => {
+  const intl = useIntl();
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(values.length / 10)),
+  );
+  return (
+    <section>
+      <h3>
+        <FormattedMessage id="analyzerType.mappingEditor.received.heading" />
+      </h3>
+      <Table
+        size="sm"
+        aria-label={intl.formatMessage(
+          { id: "analyzerType.mappingEditor.received.label" },
+          { code: label },
+        )}
+      >
+        <TableHead>
+          <TableRow>
+            {["raw", "kind", "value", "unit"].map((field) => (
+              <TableHeader key={field}>
+                <FormattedMessage
+                  id={`analyzerType.mappingEditor.received.${field}`}
+                />
+              </TableHeader>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {values
+            .slice((currentPage - 1) * 10, currentPage * 10)
+            .map((value, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  <code>{value.rawValue}</code>
+                </TableCell>
+                <TableCell>
+                  <FormattedMessage
+                    id={`analyzerType.mappingEditor.received.kind.${value.kind}`}
+                  />
+                </TableCell>
+                <TableCell>
+                  <code>{value.value}</code>
+                </TableCell>
+                <TableCell>{value.unit}</TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+      <Pagination
+        page={currentPage}
+        pageSize={10}
+        pageSizes={[10]}
+        totalItems={values.length}
+        onChange={({ page }) => setPage(page)}
+        backwardText={intl.formatMessage({ id: "pagination.previous" })}
+        forwardText={intl.formatMessage({ id: "pagination.next" })}
+        itemsPerPageText={intl.formatMessage({ id: "pagination.itemsPerPage" })}
+      />
+    </section>
+  );
+};
 
 const LOINC_SYSTEM = "http://loinc.org";
 
@@ -1302,48 +1368,7 @@ const AnalyzerTypeMappingEditor = ({
           </div>
 
           {(test.receivedValues || []).length > 0 && (
-            <section>
-              <h3>
-                <FormattedMessage id="analyzerType.mappingEditor.received.heading" />
-              </h3>
-              <Table
-                size="sm"
-                aria-label={intl.formatMessage(
-                  { id: "analyzerType.mappingEditor.received.label" },
-                  { code: label },
-                )}
-              >
-                <TableHead>
-                  <TableRow>
-                    {["raw", "kind", "value", "unit"].map((field) => (
-                      <TableHeader key={field}>
-                        <FormattedMessage
-                          id={`analyzerType.mappingEditor.received.${field}`}
-                        />
-                      </TableHeader>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {test.receivedValues.map((value, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <code>{value.rawValue}</code>
-                      </TableCell>
-                      <TableCell>
-                        <FormattedMessage
-                          id={`analyzerType.mappingEditor.received.kind.${value.kind}`}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <code>{value.value}</code>
-                      </TableCell>
-                      <TableCell>{value.unit}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </section>
+            <ReceivedValuesTable values={test.receivedValues} label={label} />
           )}
           {test.results.length > 0 && test.mappingState !== "EXCLUDED" && (
             <div className="analyzer-type-mapping__results">

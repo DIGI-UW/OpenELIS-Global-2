@@ -297,6 +297,30 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("pages distinct received readings without losing their evidence", async () => {
+    const row = {
+      ...mapping.tests[0],
+      receivedValues: Array.from({ length: 11 }, (_, index) => ({
+        rawValue: `raw-${index}`,
+        value: `value-${index}`,
+        kind: "TEXT",
+        unit: null,
+      })),
+    };
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, tests: [row] }),
+    );
+    renderEditor();
+    const table = await screen.findByRole("table", {
+      name: "Received held results for RAW-A",
+    });
+    expect(table).toHaveTextContent("value-0");
+    expect(table).not.toHaveTextContent("value-10");
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(table).toHaveTextContent("value-10");
+    expect(table).not.toHaveTextContent("value-0");
+  });
+
   it("explains text delivered to a numeric test without asking for categorical options", async () => {
     const row = {
       ...mapping.tests[0],
