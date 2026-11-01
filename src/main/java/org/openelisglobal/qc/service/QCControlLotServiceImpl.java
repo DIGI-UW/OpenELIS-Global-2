@@ -137,9 +137,14 @@ public class QCControlLotServiceImpl extends AuditableBaseObjectServiceImpl<QCCo
     }
 
     private List<QCControlLot> withTestNames(List<QCControlLot> lots) {
+        java.util.Map<String, String> names = new java.util.HashMap<>();
+        for (org.openelisglobal.test.valueholder.Test test : testService
+                .getTestsByIds(lots.stream().map(QCControlLot::getTestId).distinct().toList())) {
+            names.put(test.getId(), test.getLocalizedName());
+        }
         for (QCControlLot lot : lots) {
-            lot.setTestName(testService.getLabelOrDefault(lot.getTestId(),
-                    org.openelisglobal.test.valueholder.Test::getLocalizedName, lot.getTestId()));
+            String name = names.get(lot.getTestId());
+            lot.setTestName(name == null || name.isBlank() ? lot.getTestId() : name);
         }
         return lots;
     }

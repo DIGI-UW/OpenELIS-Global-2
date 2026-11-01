@@ -90,6 +90,25 @@ public class QCResultProcessingServiceImplTest {
     }
 
     @Test
+    public void expiredLotCannotReceiveNewControlResults() {
+        lpcLot.setExpirationDate(java.sql.Timestamp.from(java.time.Instant.EPOCH));
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID)).thenReturn(List.of(lpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), "LPC", RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void retiredExactLotCannotRedirectToAnotherLotAtTheSameLevel() {
+        lpcLot.setStatus("RETIRED");
+        when(controlLotDAO.getByTestAndInstrument(TEST_ID_INT, INSTRUMENT_ID))
+                .thenReturn(List.of(lpcLot, duplicateLpcLot));
+        assertEquals(QCResultProcessingService.Outcome.NO_LOT,
+                service.processQCResult(ANALYZER_ID, TEST_ID, lpcLot.getLotNumber(), "LPC", RESULT, UNIT, TS));
+        verify(qcResultService, never()).createQCResult(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     public void tier2_ambiguousControlLevel_returnsNullAndDoesNotPersist() {
         // Two ACTIVE lots share controlLevel="LPC" — schema allows this; resolver
         // must refuse rather than pick one by DAO order.

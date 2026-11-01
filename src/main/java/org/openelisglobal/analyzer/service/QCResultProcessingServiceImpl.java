@@ -98,26 +98,28 @@ public class QCResultProcessingServiceImpl implements QCResultProcessingService 
         if (testId == null || instrumentId == null || specimenId == null) {
             return null;
         }
-        List<QCControlLot> lots = controlLotDAO.getByTestAndInstrument(testId, instrumentId).stream()
-                .filter(QCResultProcessingServiceImpl::isUsable).toList();
+        List<QCControlLot> lots = controlLotDAO.getByTestAndInstrument(testId, instrumentId);
         List<QCControlLot> exact = lots.stream().filter(lot -> specimenId.equals(lot.getLotNumber())).toList();
         if (!exact.isEmpty()) {
             // An explicit specimen identity must not be redirected to another lot when its
             // level conflicts.
-            List<QCControlLot> matching = exact.stream().filter(lot -> controlLevel == null || controlLevel.isBlank()
-                    || controlLevel.trim().equalsIgnoreCase(lot.getControlLevel())).toList();
+            List<QCControlLot> matching = exact
+                    .stream().filter(QCResultProcessingServiceImpl::isUsable).filter(lot -> controlLevel == null
+                            || controlLevel.isBlank() || controlLevel.trim().equalsIgnoreCase(lot.getControlLevel()))
+                    .toList();
             return matching.size() == 1 ? matching.get(0) : null;
         }
         if (controlLevel == null || controlLevel.isBlank()) {
             return null;
         }
-        List<QCControlLot> matching = lots.stream()
+        List<QCControlLot> matching = lots.stream().filter(QCResultProcessingServiceImpl::isUsable)
                 .filter(lot -> controlLevel.trim().equalsIgnoreCase(lot.getControlLevel())).toList();
         return matching.size() == 1 ? matching.get(0) : null;
     }
 
     private static boolean isUsable(QCControlLot lot) {
         String status = lot.getStatus();
-        return "ACTIVE".equals(status) || "ESTABLISHMENT".equals(status);
+        return ("ACTIVE".equals(status) || "ESTABLISHMENT".equals(status)) && (lot.getExpirationDate() == null
+                || !lot.getExpirationDate().toInstant().isBefore(java.time.Instant.now()));
     }
 }

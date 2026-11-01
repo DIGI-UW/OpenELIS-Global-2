@@ -54,9 +54,16 @@ public class QCControlLotServiceTest {
 
     @Test
     public void instrumentLotsIncludeTheirMappedTestName() {
-        when(controlLotDAO.getActiveByInstrument("1")).thenReturn(List.of(testControlLot));
-        when(testService.getLabelOrDefault(eq("1"), any(), eq("1"))).thenReturn("Hemoglobin");
+        QCControlLot secondLot = QCControlLotBuilder.create().withId("second-lot").withTestId("1").build();
+        when(controlLotDAO.getActiveByInstrument("1")).thenReturn(List.of(testControlLot, secondLot));
+        org.openelisglobal.test.valueholder.Test test = mock(org.openelisglobal.test.valueholder.Test.class);
+        when(test.getId()).thenReturn("1");
+        when(test.getLocalizedName()).thenReturn("Hemoglobin");
+        when(testService.getTestsByIds(List.of("1"))).thenReturn(List.of(test));
         assertEquals("Hemoglobin", controlLotService.getActiveControlLotsByInstrument("1").get(0).getTestName());
+        assertEquals("Hemoglobin", secondLot.getTestName());
+        verify(testService).getTestsByIds(List.of("1"));
+        verifyNoMoreInteractions(testService);
     }
 
     @Before
