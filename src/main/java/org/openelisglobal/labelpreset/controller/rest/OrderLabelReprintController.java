@@ -101,9 +101,9 @@ public class OrderLabelReprintController {
     // ── GET /api/barcode/print/{orderId}/{presetId} ───────────────────────────
 
     @GetMapping("/api/barcode/print/{orderId}/{presetId}")
-    public ResponseEntity<byte[]> printFromSnapshot(@PathVariable("orderId") String orderId,
+    public ResponseEntity<?> printFromSnapshot(@PathVariable("orderId") String orderId,
             @PathVariable("presetId") Integer presetId) {
-        return pdfResponse(orderLabelReprintService.renderFromSnapshot(orderId, presetId));
+        return printOrderLabels(orderId, presetId, null, null, null);
     }
 
     // ── GET /api/orders/{id}/labels/pdf ───────────────────────────────────────

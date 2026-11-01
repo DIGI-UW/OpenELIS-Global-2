@@ -160,6 +160,16 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    public void bothSnapshotRoutes_refuseUnsafeSavedQuantitiesWith422() throws Exception {
+        jdbc.update("UPDATE order_label_request SET qty = 101 WHERE parent_sample_id = ?", Long.valueOf(sampleId));
+        mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+    }
+
     // ── OGC-1422: one PDF endpoint behind Print row / column / all ───────────
 
     @Test

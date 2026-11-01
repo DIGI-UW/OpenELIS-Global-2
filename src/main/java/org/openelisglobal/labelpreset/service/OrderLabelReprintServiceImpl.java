@@ -109,7 +109,7 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
                 }
                 int qty = quantity != null ? quantity : (row.getQty() == null ? 1 : row.getQty());
                 LabelQuantityPolicy.require(qty, 1);
-                if (qty > maximumFor(row)) {
+                if (quantity != null && qty > maximumFor(row)) {
                     throw new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_MAXIMUM,
                             "Label quantity exceeds the preset maximum");
                 }

@@ -113,12 +113,13 @@ public class OrderLabelReprintDecreaseQtyTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void renderFromSnapshot_rejectsSavedQuantityAbovePresetMaximum() {
+    public void renderFromSnapshot_preservesAcceptedQuantityAboveGenericPresetMaximum() throws Exception {
         OrderLabelRequest row = orderLabelRequestDAO.get(requestId).orElseThrow();
         row.setQty(6);
         orderLabelRequestDAO.update(row);
-        assertThrows(LabelQuantityRefusedException.class,
-                () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId()));
+        ByteArrayOutputStream saved = orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId());
+        assertEquals("accepted quantities are not re-decided using the generic preset", 6,
+                PdfText.pageCount(saved.toByteArray()));
     }
 
     @Test
