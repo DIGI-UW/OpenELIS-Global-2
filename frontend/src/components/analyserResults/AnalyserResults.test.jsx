@@ -967,3 +967,17 @@ describe("AnalyserResults", () => {
     expect(resent.resultList[0].criticalAcknowledged).toBe(true);
   });
 });
+
+it("separates retained setup evidence from actionable clinical results", () => {
+  renderResults([{ ...heldResult, importIssueReason: "setup_capture" }]);
+  expect(
+    screen.queryByText(/analyzer results? need attention/),
+  ).not.toBeInTheDocument();
+  const section = screen.getByTestId("analyzer-setup-evidence");
+  fireEvent.click(
+    within(section).getByRole("button", { name: "Retained setup samples (1)" }),
+  );
+  expect(within(section).getByText("POSITIVE")).toBeVisible();
+  expect(within(section).queryByRole("checkbox")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("Save-btn")).not.toBeInTheDocument();
+});

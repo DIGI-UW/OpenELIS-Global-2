@@ -9,7 +9,10 @@ import {
 } from "../../../helpers/analyzer-api";
 import { activeTestId } from "../../../helpers/analyzer-catalog-api";
 import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
-import { sendGeneXpertFixture } from "../../../helpers/analyzer-native-traffic";
+import {
+  sendGeneXpertFixture,
+  sendUnassignedGeneXpertFixture,
+} from "../../../helpers/analyzer-native-traffic";
 import { acceptAll, savedValue } from "../../../helpers/analyzer-review";
 import { GENEXPERT } from "../../../helpers/shipped-profiles";
 
@@ -25,7 +28,7 @@ test(
     test.setTimeout(180000);
     const run = randomUUID().slice(0, 8);
     const name = `Connect first ${run}`;
-    const sender = `S1573-${run}`;
+    const sender = `GX-${run}^GeneXpert^1.0`;
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
@@ -40,27 +43,36 @@ test(
     await setup.fillName(name);
     await setup.selectLabUnit(GENEXPERT.labUnit);
     await setup.continueToConnect();
-    await setup.fillSenderId(sender);
     const analyzer = await analyzerByName(page, name, GENEXPERT.profileId);
     const reception = page.getByTestId("analyzer-setup-reception");
-    await reception
-      .getByRole("button", { name: "Start receiving setup samples" })
-      .click();
-    await expect(
-      reception.getByRole("button", { name: "Stop setup reception" }),
-    ).toBeVisible();
-    expect((await analyzerByName(page, name, GENEXPERT.profileId)).status).toBe(
-      "VALIDATION",
-    );
-    await sendGeneXpertFixture(
+    await sendUnassignedGeneXpertFixture(
       page,
-      analyzer.id,
       setupOrder.accession,
       { assay: "hivvl", outcome: "quantified" },
       sender,
       {},
       undefined,
       "20261028160000",
+    );
+    const sources = page.getByTestId("analyzer-received-sources");
+    await expect(async () => {
+      await sources
+        .getByRole("button", { name: "Check for received senders" })
+        .click();
+      await expect(sources.getByText(sender, { exact: false })).toBeVisible();
+    }).toPass({ timeout: 20000 });
+    const receivedSource = sources
+      .locator('[data-testid^="analyzer-received-source-"]')
+      .filter({ hasText: sender });
+    await receivedSource
+      .getByRole("button", { name: "This is my analyzer" })
+      .click();
+    await expect(page.getByText(/Setup sample queued/)).toBeVisible();
+    await expect(
+      reception.getByRole("button", { name: "Stop setup reception" }),
+    ).toBeVisible();
+    expect((await analyzerByName(page, name, GENEXPERT.profileId)).status).toBe(
+      "VALIDATION",
     );
     const captured = () =>
       worklistFor<SetupRow>(page, analyzer.id, setupOrder.accession);
@@ -155,12 +167,26 @@ test(
       });
       expect(row.testId ?? null).toBeNull();
     }
+    await page.goto("/qa/qc/dashboard");
+    await page.getByTestId("instruments-search").fill(name);
+    const qcInstrument = page.getByTestId(`instrument-row-${analyzer.id}`);
+    await expect(qcInstrument).toContainText(name);
+    await expect(qcInstrument).toContainText("Not configured");
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`);
-    const held = page.getByTestId(`held-analyzer-result-${original.id}`);
+    await expect(
+      page.getByText(/analyzer results? need attention/),
+    ).toHaveCount(0);
+    const setupEvidence = page.getByTestId("analyzer-setup-evidence");
+    await setupEvidence
+      .getByRole("button", { name: "Retained setup samples (6)" })
+      .click();
+    const held = setupEvidence.getByTestId(
+      `held-analyzer-result-${original.id}`,
+    );
     await expect(held).toContainText("Setup sample");
     await expect(held.getByRole("checkbox")).toHaveCount(0);
     await page.screenshot({
-      path: testInfo.outputPath("setup-remains-held-after-activation.png"),
+      path: testInfo.outputPath("retained-setup-evidence-after-activation.png"),
       fullPage: true,
     });
     const routineOrder = await createClinicalOrder(page, {

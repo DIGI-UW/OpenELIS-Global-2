@@ -163,7 +163,13 @@ const AnalyserResults = (props) => {
   };
 
   const allResults = props.results?.resultList ?? [];
-  const patientResults = allResults.filter((r) => !r.isControl);
+  const setupResults = allResults.filter(
+    (row) => row.importIssueReason === "setup_capture",
+  );
+  const routineResults = allResults.filter(
+    (row) => row.importIssueReason !== "setup_capture",
+  );
+  const patientResults = routineResults.filter((r) => !r.isControl);
   // Accept, retest and ignore are decided per test: its first row carries the
   // decision, and the rows on its components show beneath its main result.
   const { decisionHeadIds, partsByHeadId, partIds } =
@@ -197,7 +203,7 @@ const AnalyserResults = (props) => {
             result.placement?.patient?.status ?? "NOT_REPORTED",
           ),
       );
-  const qcResults = allResults.filter((r) => r.isControl);
+  const qcResults = routineResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
       r.result && (/failed/i.test(r.result) || /\binvalid\b/i.test(r.result)),
@@ -891,7 +897,7 @@ const AnalyserResults = (props) => {
 
   return (
     <>
-      {patientResults.length === 0 && qcResults.length === 0 && (
+      {allResults.length === 0 && (
         <div
           className="orderLegendBody"
           data-testid="analyzer-results-empty"
@@ -1072,6 +1078,41 @@ const AnalyserResults = (props) => {
           </Form>
         )}
       </Formik>
+      {setupResults.length > 0 && (
+        <section data-testid="analyzer-setup-evidence">
+          <Accordion>
+            <AccordionItem
+              title={intl.formatMessage(
+                { id: "analyzer.results.setupEvidence.title" },
+                { count: setupResults.length },
+              )}
+            >
+              <p>
+                {intl.formatMessage({
+                  id: "analyzer.results.setupEvidence.help",
+                })}
+              </p>
+              <DataTable
+                data={setupResults}
+                columns={[
+                  {
+                    name: intl.formatMessage({ id: "column.name.sampleInfo" }),
+                    selector: (row) => row.accessionNumber,
+                  },
+                  {
+                    name: intl.formatMessage({ id: "column.name.testName" }),
+                    selector: (row) => row.rawTestCode || row.testName,
+                  },
+                  {
+                    name: intl.formatMessage({ id: "column.name.result" }),
+                    cell: (row) => renderHeldResult(row),
+                  },
+                ]}
+              />
+            </AccordionItem>
+          </Accordion>
+        </section>
+      )}
       {qcResults.length > 0 && (
         <Accordion style={{ marginTop: "24px" }}>
           <AccordionItem

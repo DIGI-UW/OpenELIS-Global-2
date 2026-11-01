@@ -96,7 +96,7 @@ public class AnalyzerDeliveryIssueServiceTest {
     public void keepsRowsFromUnrecognizedSendersWithoutAnAnalyzer() throws Exception {
         when(analyzerService.getAllWithMapping()).thenReturn(List.of(analyzer("12", "GeneXpert bench 1", "conn-7")));
         when(outboxClient.list("DMQ")).thenReturn(List.of(row("""
-                {"id":"ob-9","state":"DMQ","sourceId":"10.9.9.9","sender":"CPHL^GeneXpert^6.2","failureReason":"UNREGISTERED_SOURCE",
+                {"id":"ob-9","state":"DMQ","sourceId":"10.9.9.9","sender":"CPHL^GeneXpert^6.2","failureReason":"UNREGISTERED_SOURCE","listenerPort":12001,"transport":"TCP",
                 "attempts":0,"receivedAt":"2026-09-24T03:00:00Z"}""")));
         when(outboxClient.list("RETRYING")).thenReturn(List.of());
 
@@ -106,6 +106,8 @@ public class AnalyzerDeliveryIssueServiceTest {
         assertNull(issues.get(0).analyzerId());
         assertNull(issues.get(0).analyzerName());
         assertEquals("10.9.9.9", issues.get(0).sourceId());
+        assertEquals(Integer.valueOf(12001), issues.get(0).listenerPort());
+        assertEquals("TCP", issues.get(0).transport());
         assertEquals("the header's sender tells instruments behind one address apart", "CPHL^GeneXpert^6.2",
                 issues.get(0).sender());
         assertEquals("UNREGISTERED_SOURCE", issues.get(0).failureReason());
