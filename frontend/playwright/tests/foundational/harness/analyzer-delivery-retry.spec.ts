@@ -86,12 +86,12 @@ test(
         await ownRow()
           .getByRole("button", { name: "Retry", exact: true })
           .click();
-        await response; // Synchronization only; the notification is the user-visible outcome.
-        await expect(
-          section.getByText(/Retry requested.*delivery is not yet confirmed/),
-        ).toBeVisible();
+        await response; // Synchronization only; each caller checks its visible outcome.
       };
       await retry();
+      await expect(
+        section.getByText(/Retry requested.*delivery is not yet confirmed/),
+      ).toBeVisible();
       await expect
         .poll(async () => (await issues()).find((r) => r.id === issueId)?.state)
         .toBe("DMQ");
@@ -113,6 +113,8 @@ test(
       await page.goto("/AnalyzerResults?view=import-issues", {
         waitUntil: "domcontentloaded",
       });
+      // Recovery can finish before the transient queued notice is painted.
+      // Require the completed worklist and cleared issue below instead.
       await retry();
       await expect
         .poll(
