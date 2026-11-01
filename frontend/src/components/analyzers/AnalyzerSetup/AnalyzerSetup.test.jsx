@@ -24,6 +24,7 @@ import {
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
+import { languageMessages } from "../../../languages";
 import AnalyzerSetup from "./AnalyzerSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
@@ -201,11 +202,15 @@ const renderSetup = () =>
     </BrowserRouter>,
   );
 
-const renderSetupWithHistory = (initialEntry, onClose = vi.fn()) => {
+const renderSetupWithHistory = (
+  initialEntry,
+  onClose = vi.fn(),
+  locale = "en",
+) => {
   const history = createMemoryHistory({ initialEntries: [initialEntry] });
   render(
     <Router history={history}>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale={locale} messages={languageMessages[locale]}>
         <SetupHarness onClose={onClose} />
       </IntlProvider>
     </Router>,
@@ -1127,4 +1132,49 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(testConnection).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+  it.each(["en-US", "en-GB", "en-PG", "en-LK"])(
+    "%s labels the Instrument action for its actual Connect destination",
+    async (locale) => {
+      getAnalyzer.mockImplementation((_id, callback) =>
+        callback(connectedCandidate()),
+      );
+      updateAnalyzer.mockImplementation((_id, _payload, callback) =>
+        callback(connectedCandidate()),
+      );
+      const history = renderSetupWithHistory(
+        `/analyzers?setup=instrument&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+        vi.fn(),
+        locale,
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Continue to Connect" }),
+      );
+      await waitFor(() =>
+        expect(history.location.search).toContain("setup=connect"),
+      );
+      expect(
+        screen.getByRole("button", { name: "Continue to Assays" }),
+      ).toBeVisible();
+    },
+  );
+
+  it.each(["en-US", "en-GB", "en-PG", "en-LK"])(
+    "%s names final activation rather than another navigation step",
+    async (locale) => {
+      getAnalyzer.mockImplementation((_id, callback) =>
+        callback(connectedCandidate()),
+      );
+      const onClose = vi.fn();
+      renderSetupWithHistory(
+        `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+        onClose,
+        locale,
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Finish and activate" }),
+      );
+      expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
 });
