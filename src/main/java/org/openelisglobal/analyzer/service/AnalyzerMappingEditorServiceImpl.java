@@ -307,8 +307,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 definition.codings(), state, origin, testId, componentId, selected, suggested, testReason, results,
                 key.subIdentity(), callComponentId, record.componentCode(),
                 key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled(),
-                observed.stream().filter(row -> key.equals(recordOf(row)))
-                        .flatMap(row -> receivedValues(row).stream()).distinct().toList());
+                observed.stream().filter(row -> key.equals(recordOf(row))).flatMap(row -> receivedValues(row).stream())
+                        .distinct().toList());
     }
 
     private static List<AnalyzerMappingView.ReceivedValue> receivedValues(AnalyzerResults row) {
@@ -326,8 +326,10 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 }
                 String answer = org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultContract
                         .deliveredAnswer(observation);
-                if (answer != null) values.add(new AnalyzerMappingView.ReceivedValue(raw, answer, "TEXT", null));
-                if (values.isEmpty()) values.add(new AnalyzerMappingView.ReceivedValue(raw, null, "NO_VALUE", null));
+                if (answer != null)
+                    values.add(new AnalyzerMappingView.ReceivedValue(raw, answer, "TEXT", null));
+                if (values.isEmpty())
+                    values.add(new AnalyzerMappingView.ReceivedValue(raw, null, "NO_VALUE", null));
                 return values;
             } catch (ca.uhn.fhir.parser.DataFormatException | IllegalArgumentException exception) {
                 // A damaged historical payload must not hide the remaining mapping evidence.

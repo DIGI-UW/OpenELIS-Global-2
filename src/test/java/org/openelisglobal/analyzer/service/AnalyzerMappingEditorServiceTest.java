@@ -80,11 +80,12 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerResults combined = new AnalyzerResults();
         combined.setRawTestCode("RAW-A");
         combined.setRawResultValue("257 Detected");
-        combined.setSourcePayload("""
-                {"resourceType":"Observation","status":"final","code":{"text":"RAW-A"},
-                 "valueQuantity":{"value":257,"unit":"copies/mL"},
-                 "extension":[{"url":"https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer","valueString":"Detected"}]}
-                """);
+        combined.setSourcePayload(
+                """
+                        {"resourceType":"Observation","status":"final","code":{"text":"RAW-A"},
+                         "valueQuantity":{"value":257,"unit":"copies/mL"},
+                         "extension":[{"url":"https://openelis-global.org/fhir/StructureDefinition/analyzer-canonical-answer","valueString":"Detected"}]}
+                        """);
         AnalyzerResults malformed = new AnalyzerResults();
         malformed.setRawTestCode("RAW-A");
         malformed.setRawResultValue("1,17");
@@ -92,10 +93,12 @@ public class AnalyzerMappingEditorServiceTest {
         malformed.setResultType("N");
         malformed.setSourcePayload("{not-json");
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(combined, malformed));
-        var values = service.getMapping("42").tests().stream().filter(row -> "RAW-A".equals(row.rawCode()))
-                .findFirst().orElseThrow().receivedValues();
-        assertEquals(List.of("257", "Detected", "1.17"), values.stream().map(AnalyzerMappingView.ReceivedValue::value).toList());
-        assertEquals(List.of("NUMBER", "TEXT", "NUMBER"), values.stream().map(AnalyzerMappingView.ReceivedValue::kind).toList());
+        var values = service.getMapping("42").tests().stream().filter(row -> "RAW-A".equals(row.rawCode())).findFirst()
+                .orElseThrow().receivedValues();
+        assertEquals(List.of("257", "Detected", "1.17"),
+                values.stream().map(AnalyzerMappingView.ReceivedValue::value).toList());
+        assertEquals(List.of("NUMBER", "TEXT", "NUMBER"),
+                values.stream().map(AnalyzerMappingView.ReceivedValue::kind).toList());
         assertEquals("1,17", values.get(2).rawValue());
     }
 
