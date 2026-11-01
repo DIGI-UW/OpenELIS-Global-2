@@ -27,6 +27,7 @@ const lots = [
     controlLevel: "NORMAL",
     testId: "test-a",
     productName: "Glucose control",
+    testName: "Glucose",
   },
   {
     id: "high",
@@ -34,6 +35,7 @@ const lots = [
     controlLevel: "HIGH",
     testId: "test-a",
     productName: "Glucose control",
+    testName: "Glucose",
   },
 ];
 beforeEach(() => {
@@ -80,26 +82,22 @@ it("switches matching lots and statistics when changing the control-level tab", 
     "102",
   );
   expect(screen.getByTestId("chart-filter-control-lot")).toHaveTextContent(
-    "SHARED — High — Glucose control",
+    "SHARED — High — Glucose",
   );
   expect(screen.getByTestId("control-chart-detail-stats")).toHaveTextContent(
     "100.00",
   );
-  await userEvent.click(screen.getByRole("tab", { name: "Low" }));
-  expect(screen.getByTestId("chart-panel-LOW")).not.toHaveTextContent("102");
-  expect(
-    screen.queryByTestId("control-chart-detail-stats"),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: "Low" })).not.toBeInTheDocument();
 });
 it("distinguishes shared lot numbers and aligns the tab when selecting a lot", async () => {
   renderPage();
   const dropdown = await screen.findByTestId("chart-filter-control-lot");
   await userEvent.click(within(dropdown).getByRole("combobox"));
   expect(
-    screen.getByRole("option", { name: "SHARED — Normal — Glucose control" }),
+    screen.getByRole("option", { name: "SHARED — Normal — Glucose" }),
   ).toBeVisible();
   await userEvent.click(
-    screen.getByRole("option", { name: "SHARED — High — Glucose control" }),
+    screen.getByRole("option", { name: "SHARED — High — Glucose" }),
   );
   expect(screen.getByRole("tab", { name: "High" })).toHaveAttribute(
     "aria-selected",
@@ -109,7 +107,7 @@ it("distinguishes shared lot numbers and aligns the tab when selecting a lot", a
     "102",
   );
 });
-it("filters lots by level and clears the chart when that level has no lot", async () => {
+it("filters lots by configured level and does not offer absent levels", async () => {
   renderPage();
   const dropdown = await screen.findByTestId("chart-filter-control-level");
   await userEvent.click(within(dropdown).getByRole("combobox"));
@@ -127,9 +125,5 @@ it("filters lots by level and clears the chart when that level has no lot", asyn
   ).not.toBeInTheDocument();
   await userEvent.keyboard("{Escape}");
   await userEvent.click(within(dropdown).getByRole("combobox"));
-  await userEvent.click(screen.getByRole("option", { name: "Low" }));
-  expect(screen.getByTestId("chart-panel-single")).not.toHaveTextContent("102");
-  expect(
-    screen.queryByTestId("control-chart-detail-stats"),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: "Low" })).not.toBeInTheDocument();
 });
