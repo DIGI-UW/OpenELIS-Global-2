@@ -211,10 +211,11 @@ const ReturnStateProbe = () => {
 
 const renderEditor = (
   entry = "/analyzers/501/mapping?returnTo=%2FAnalyzerResults%3Fid%3D501",
+  localeMessages = messages,
 ) =>
   render(
     <MemoryRouter initialEntries={[entry]}>
-      <IntlProvider locale="en" messages={messages}>
+      <IntlProvider locale="en" messages={localeMessages}>
         <Route path="/analyzers/:analyzerId/mapping">
           <AnalyzerTypeMappingEditor />
           <LocationProbe />
@@ -310,14 +311,23 @@ describe("AnalyzerTypeMappingEditor", () => {
     getAnalyzerMapping.mockImplementation((_id, callback) =>
       callback({ ...mapping, tests: [row] }),
     );
-    renderEditor();
+    renderEditor(undefined, {
+      ...messages,
+      "pagination.item-range": "Éléments {min}–{max} sur {total}",
+      "pagination.page-range": "sur {total} pages",
+      "pagination.page-number": "Numéro de page",
+    });
     const table = await screen.findByRole("table", {
       name: "Received held results for RAW-A",
     });
     expect(table).toHaveTextContent("value-0");
+    expect(screen.getByText("Éléments 1–10 sur 11")).toBeVisible();
+    expect(screen.getByText("sur 2 pages")).toBeVisible();
+    expect(screen.getByLabelText("Numéro de page")).toHaveValue("1");
     expect(table).not.toHaveTextContent("value-10");
     await userEvent.click(screen.getByRole("button", { name: "Next page" }));
     expect(table).toHaveTextContent("value-10");
+    expect(screen.getByText("Éléments 11–11 sur 11")).toBeVisible();
     expect(table).not.toHaveTextContent("value-0");
   });
 

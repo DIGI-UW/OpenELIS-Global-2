@@ -113,6 +113,24 @@ const ReceivedValuesTable = ({ values, label }) => {
         pageSizes={[10]}
         totalItems={values.length}
         onChange={({ page }) => setPage(page)}
+        itemRangeText={(min, max, total) =>
+          intl.formatMessage(
+            { id: "pagination.item-range" },
+            { min, max, total },
+          )
+        }
+        itemText={(min, max) =>
+          intl.formatMessage({ id: "pagination.item" }, { min, max })
+        }
+        pageRangeText={(_page, total) =>
+          intl.formatMessage({ id: "pagination.page-range" }, { total })
+        }
+        pageText={(page) =>
+          intl.formatMessage({ id: "pagination.page" }, { page })
+        }
+        pageSelectLabelText={() =>
+          intl.formatMessage({ id: "pagination.page-number" })
+        }
         backwardText={intl.formatMessage({ id: "pagination.previous" })}
         forwardText={intl.formatMessage({ id: "pagination.next" })}
         itemsPerPageText={intl.formatMessage({ id: "pagination.itemsPerPage" })}
