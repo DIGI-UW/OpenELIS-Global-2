@@ -186,6 +186,9 @@ describe("DeliveryIssuesPanel", () => {
     expect(
       await screen.findByText("The Bridge has no undelivered results."),
     ).toBeVisible();
+    expect(
+      screen.queryByText(/Retry requested.*delivery is not yet confirmed/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows queued work without presenting the previous error as a current failure", async () => {
@@ -232,6 +235,26 @@ describe("DeliveryIssuesPanel", () => {
     ).toBeVisible();
     expect(screen.getByText(unrecognized.lastError)).toBeVisible();
     expect(screen.getByText("Not delivered")).toBeVisible();
+  });
+
+  it("clears a previous retry notice when a subsequent action fails", async () => {
+    respondWith([unrecognized]);
+    postToOpenElisServerJsonResponse
+      .mockImplementationOnce((_url, _body, callback) =>
+        callback({ status: "accepted", state: "QUEUED", id: unrecognized.id }),
+      )
+      .mockImplementationOnce((_url, _body, callback) =>
+        callback({ status: 409 }),
+      );
+    renderPanel();
+    await userEvent.click(await screen.findByRole("button", { name: "Retry" }));
+    expect(
+      await screen.findByText(/Retry requested.*delivery is not yet confirmed/),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(
+      screen.queryByText(/Retry requested.*delivery is not yet confirmed/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows why the Bridge refused an action", async () => {

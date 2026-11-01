@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueService {
@@ -27,8 +26,8 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<AnalyzerDeliveryIssue> getOpenIssues() {
+        // The analyzer service completes its read transaction before Bridge I/O.
         Map<String, Analyzer> byConnection = analyzerService.getAllWithMapping().stream()
                 .filter(analyzer -> analyzer.getBridgeConnectionId() != null).collect(
                         Collectors.toMap(Analyzer::getBridgeConnectionId, Function.identity(), (first, next) -> first));

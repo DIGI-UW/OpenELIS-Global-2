@@ -56,7 +56,7 @@ const DeliveryIssuesPanel = () => {
   const [bridgeState, setBridgeState] = useState(null);
   const [pendingId, setPendingId] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [retryRequested, setRetryRequested] = useState(false);
+  const [retryReceiptId, setRetryReceiptId] = useState(null);
 
   const load = useCallback(() => {
     getFromOpenElisServer(ENDPOINT, (response) => {
@@ -64,6 +64,11 @@ const DeliveryIssuesPanel = () => {
       const valid =
         Array.isArray(data?.rows) && data.count === data.rows.length;
       setRows(valid ? data.rows : []);
+      if (valid) {
+        setRetryReceiptId((id) =>
+          data.rows.some((row) => row.id === id) ? id : null,
+        );
+      }
       setLoadFailed(!valid);
       setBridgeState(
         !valid
@@ -90,6 +95,7 @@ const DeliveryIssuesPanel = () => {
   const act = (row, action) => {
     setPendingId(row.id);
     setActionError(null);
+    setRetryReceiptId(null);
     postToOpenElisServerJsonResponse(
       `${ENDPOINT}/${encodeURIComponent(row.id)}/${action}`,
       "{}",
@@ -106,7 +112,7 @@ const DeliveryIssuesPanel = () => {
           setActionError(formatActionError(intl, response));
           return;
         }
-        setRetryRequested(queued);
+        setRetryReceiptId(queued ? row.id : null);
         setLoading(true);
         load();
       },
@@ -217,18 +223,18 @@ const DeliveryIssuesPanel = () => {
         size="sm"
         disabled={loading || pendingId !== null}
         onClick={() => {
-          setRetryRequested(false);
+          setRetryReceiptId(null);
           setLoading(true);
           load();
         }}
       >
         {intl.formatMessage({ id: "analyzer.deliveryIssues.refresh" })}
       </Button>
-      {retryRequested && (
+      {retryReceiptId && (
         <InlineNotification
           kind="info"
           lowContrast
-          onCloseButtonClick={() => setRetryRequested(false)}
+          onCloseButtonClick={() => setRetryReceiptId(null)}
           title={intl.formatMessage({
             id: "analyzer.deliveryIssues.retryRequested",
           })}
