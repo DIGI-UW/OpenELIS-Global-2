@@ -2,7 +2,7 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.internationalization.UiMessages;
 import org.openelisglobal.result.valueholder.Result;
 
 /**
@@ -13,6 +13,10 @@ public final class NumericReportDisplay {
     }
 
     public static String format(Result result, boolean displayLog10) {
+        return format(result, displayLog10, UiMessages.current());
+    }
+
+    public static String format(Result result, boolean displayLog10, UiMessages messages) {
         String display = result.getDisplayValue();
         if (result.getValue() == null || result.getValue().isBlank()) {
             return display;
@@ -30,7 +34,8 @@ public final class NumericReportDisplay {
                 display += "\nlog10: " + logarithm.replace('-', '\u2212');
             }
             if (measured.compareTo(new BigDecimal(result.getDisplayValue().trim())) != 0) {
-                display += "\n(" + MessageUtil.getMessage("result.clinicalValue", result.getEnteredValue()) + ")";
+                display += "\n(" + messages.get("label.results.clinicalValue")
+                        .replace("{value}", result.getEnteredValue()) + ")";
             }
         } catch (NumberFormatException qualifiedMeasurement) {
             // Bounds are not exact measurements; do not invent a logarithm for them.
