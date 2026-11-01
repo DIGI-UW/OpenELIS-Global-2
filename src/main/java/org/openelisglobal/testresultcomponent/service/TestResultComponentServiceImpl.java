@@ -775,6 +775,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
             copy.setDisplayLog10(src.getDisplayLog10());
+            copy.setLog10SourceComponentCode(src.getLog10SourceComponentCode());
             copy.setIsActive("Y");
             copy.setSysUserId(sysUserId);
             if (existing != null) {

@@ -15,7 +15,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.internationalization.UiMessages;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.result.dao.ResultDAO;
 import org.openelisglobal.result.daoimpl.ResultDAOImpl;
@@ -45,8 +45,8 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
         if (printable) {
             try {
                 if (new BigDecimal(result.getValue().trim()).compareTo(new BigDecimal(display.trim())) != 0) {
-                    return display + " (" + MessageUtil.getMessage("result.clinicalValue", result.getEnteredValue())
-                            + ")";
+                    return display + " (" + UiMessages.current().get("label.results.clinicalValue").replace("{value}",
+                            result.getEnteredValue()) + ")";
                 }
             } catch (NumberFormatException qualifiedOrScientificRepresentation) {
                 // Qualified bounds and written scientific notation are preserved as supplied.
