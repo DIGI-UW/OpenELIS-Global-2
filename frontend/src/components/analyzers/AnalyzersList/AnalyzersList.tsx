@@ -838,7 +838,9 @@ const AnalyzersList = () => {
                                   RETIRED: "gray",
                                 };
                                 const statusColor = receptionUnconfirmed
-                                  ? observation === "checking"
+                                  ? ["checking", "unknown"].includes(
+                                      observation,
+                                    )
                                     ? "gray"
                                     : "red"
                                   : statusColorMap[unifiedStatus] || "gray";

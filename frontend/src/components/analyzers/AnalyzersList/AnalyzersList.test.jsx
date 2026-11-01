@@ -188,7 +188,7 @@ describe("AnalyzersList", () => {
       getAnalyzer.mockImplementation((_id, callback) => callback(detail));
       renderWithIntl(<AnalyzersList />);
       expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
-        "Connection unavailable",
+        detail ? "Connection unavailable" : "Could not check connection",
       );
       expect(screen.getByTestId("stat-active")).toHaveTextContent("0");
       expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("1");
@@ -198,6 +198,84 @@ describe("AnalyzersList", () => {
       ).toBeVisible();
     },
   );
+
+  test("hidden tabs pause polling and repeated focus events respect the refresh interval", async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [createMockAnalyzer({ status: "ACTIVE" })] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    hidden = true;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(90_000);
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    hidden = false;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(3);
+  });
+
+  test("list refresh preserves observations but a replacement connection must be checked", async () => {
+    let reload;
+    const analyzer = createMockAnalyzer({ status: "ACTIVE" });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      reload = callback;
+      callback({ analyzers: [analyzer] });
+    });
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    getAnalyzer.mockImplementation(() => undefined);
+    await act(async () => reload({ analyzers: [{ ...analyzer }] }));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      reload({
+        analyzers: [{ ...analyzer, bridgeConnectionId: "replacement" }],
+      }),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Checking connection",
+    );
+    expect(getAnalyzer).toHaveBeenCalledTimes(2);
+  });
 
   test("a stopped Bridge runtime offers reactivation even when the saved lifecycle is Active", async () => {
     getAnalyzers.mockImplementation((_filters, callback) =>
@@ -243,7 +321,7 @@ describe("AnalyzersList", () => {
       await vi.advanceTimersByTimeAsync(30_000);
     });
     expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
-      "Connection unavailable",
+      "Could not check connection",
     );
     detail = createMockAnalyzer({
       connection: { readiness: { ready: true }, actualRuntimeState: "ACTIVE" },
@@ -270,7 +348,7 @@ describe("AnalyzersList", () => {
       await vi.advanceTimersByTimeAsync(15_000);
     });
     expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
-      "Connection unavailable",
+      "Could not check connection",
     );
     await act(async () =>
       respond(
@@ -283,7 +361,7 @@ describe("AnalyzersList", () => {
       ),
     );
     expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
-      "Connection unavailable",
+      "Could not check connection",
     );
   });
 

@@ -4,6 +4,7 @@ import type { Analyzer } from "../types";
 
 export type ConnectionState =
   | "checking"
+  | "unknown"
   | "unavailable"
   | "missing"
   | "attention"
@@ -14,7 +15,8 @@ export const expectsReception = (analyzer: Analyzer) =>
   analyzer.status === "ACTIVE" || analyzer.status === "VALIDATION";
 
 const observedState = (analyzer: Analyzer | undefined): ConnectionState => {
-  if (!analyzer?.connected || !analyzer.connection) return "unavailable";
+  if (!analyzer) return "unknown";
+  if (!analyzer.connected || !analyzer.connection) return "unavailable";
   if (!analyzer.connection.readiness.ready) return "attention";
   return analyzer.connection.actualRuntimeState === "ACTIVE"
     ? "running"
@@ -27,23 +29,47 @@ export const useAnalyzerConnections = (analyzers: Analyzer[]) => {
     Record<string, ConnectionState>
   >({});
 
+  const candidatesKey = JSON.stringify(
+    analyzers
+      .filter((analyzer) => analyzer.id && analyzer.bridgeConnectionId)
+      .map((analyzer) => [analyzer.id!, analyzer.bridgeConnectionId!])
+      .sort(([left], [right]) => left.localeCompare(right)),
+  );
+
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     let refreshing = false;
-    setObservations({});
-    const candidates = analyzers.filter(
-      (analyzer) => analyzer.id && analyzer.bridgeConnectionId,
+    let lastStarted = -Infinity;
+    const candidates: Array<[string, string]> = JSON.parse(candidatesKey);
+    const keys = new Set(
+      candidates.map(([id, connectionId]) => `${id}:${connectionId}`),
+    );
+    setObservations((previous) =>
+      Object.fromEntries(
+        Object.entries(previous).filter(([key]) => keys.has(key)),
+      ),
     );
 
     const refresh = async () => {
-      if (refreshing || controller.signal.aborted) return;
+      if (refreshing || controller.signal.aborted || document.hidden) return;
+      const remaining = 30_000 - (Date.now() - lastStarted);
+      if (remaining > 0) {
+        clearTimeout(timer);
+        timer = setTimeout(refresh, remaining);
+        return;
+      }
+      lastStarted = Date.now();
       refreshing = true;
       clearTimeout(timer);
       let next = 0;
       const worker = async () => {
-        while (next < candidates.length && !controller.signal.aborted) {
-          const analyzer = candidates[next++];
+        while (
+          next < candidates.length &&
+          !controller.signal.aborted &&
+          !document.hidden
+        ) {
+          const [id, connectionId] = candidates[next++];
           await new Promise<void>((resolve) => {
             const request = new AbortController();
             let settled = false;
@@ -61,18 +87,18 @@ export const useAnalyzerConnections = (analyzers: Analyzer[]) => {
               if (!controller.signal.aborted) {
                 setObservations((previous) => ({
                   ...previous,
-                  [analyzer.id!]: state,
+                  [`${id}:${connectionId}`]: state,
                 }));
               }
               resolve();
             };
             const deadline = setTimeout(() => {
               request.abort();
-              finish("unavailable");
+              finish("unknown");
             }, 15_000);
             controller.signal.addEventListener("abort", cancel, { once: true });
             getAnalyzer(
-              analyzer.id!,
+              id,
               (detail) => finish(observedState(detail)),
               request.signal,
             );
@@ -82,19 +108,27 @@ export const useAnalyzerConnections = (analyzers: Analyzer[]) => {
       // Limit concurrent Bridge lookups; a slow Bridge must not block the list.
       await Promise.all(Array.from({ length: 4 }, worker));
       refreshing = false;
-      if (!controller.signal.aborted) timer = setTimeout(refresh, 30_000);
+      if (!controller.signal.aborted && !document.hidden)
+        timer = setTimeout(refresh, 30_000);
     };
     void refresh();
+    const visibilityChanged = () => {
+      clearTimeout(timer);
+      if (!document.hidden) void refresh();
+    };
     window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", visibilityChanged);
     return () => {
       controller.abort();
       clearTimeout(timer);
       window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", visibilityChanged);
     };
-  }, [analyzers]);
+  }, [candidatesKey]);
 
   return (analyzer: Analyzer): ConnectionState =>
     !analyzer.bridgeConnectionId
       ? "missing"
-      : observations[analyzer.id!] || "checking";
+      : observations[`${analyzer.id}:${analyzer.bridgeConnectionId}`] ||
+        "checking";
 };
