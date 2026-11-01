@@ -344,7 +344,9 @@ describe("AnalyserResults", () => {
     renderResults([result]);
 
     expect(
-      screen.getByText(/Choose the specimen or analysis requested on each row/),
+      screen.getByText(
+        /choose a specimen or analysis, place the result on the correct order, or explain a patient mismatch/,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/Held results cannot be accepted/),
@@ -367,7 +369,9 @@ describe("AnalyserResults", () => {
       { ...mappedQualitativeResult, importIssueReason: "awaiting_specimen" },
     ]);
     expect(
-      screen.getByText(/Choose the specimen or analysis requested on each row/),
+      screen.getByText(
+        /choose a specimen or analysis, place the result on the correct order, or explain a patient mismatch/,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Review.*mapping/i }),

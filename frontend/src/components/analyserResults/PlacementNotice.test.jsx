@@ -25,6 +25,21 @@ const show = (value, handlers = {}) =>
   );
 
 describe("PlacementNotice", () => {
+  it.each(["UNORDERED_NONE_FIT", "UNORDERED_MANY_FIT"])(
+    "requires a specimen decision on an existing order in %s",
+    (state) => {
+      show(row({ state }, { importIssueReason: "awaiting_specimen" }));
+      expect(
+        screen.getByText("Specimen decision required"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Choose a compatible sample type before saving/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Saving adds a new tube/),
+      ).not.toBeInTheDocument();
+    },
+  );
   it("requires a specimen decision before promising creation of an unmatched sample", () => {
     show(
       row(
