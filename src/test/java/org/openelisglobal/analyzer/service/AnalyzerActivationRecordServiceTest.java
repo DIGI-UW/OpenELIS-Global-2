@@ -115,6 +115,21 @@ public class AnalyzerActivationRecordServiceTest {
         assertEquals(List.of(first, second), service.findByAnalyzerId("42"));
     }
 
+    @Test
+    public void clinicalAuditRequiresAnExplicitRoutinePurpose() throws Exception {
+        Fixture fixture = fixture();
+        ObjectNode acknowledgement = bridgeFixture("connection-activate-ack.json");
+        for (String purpose : new String[] { "", "SETUP", "routine", "UNKNOWN" }) {
+            acknowledgement.put("receptionPurpose", purpose);
+            assertThrows(IllegalArgumentException.class, () -> service.retain(fixture.analyzer, fixture.revision,
+                    fixture.confirmation, acknowledgement, "ACTIVE", "17"));
+        }
+        acknowledgement.remove("receptionPurpose");
+        assertThrows(IllegalArgumentException.class, () -> service.retain(fixture.analyzer, fixture.revision,
+                fixture.confirmation, acknowledgement, "ACTIVE", "17"));
+        verify(recordDAO, never()).insert(any());
+    }
+
     private static Fixture fixture() {
         AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("61");
@@ -134,7 +149,12 @@ public class AnalyzerActivationRecordServiceTest {
     private static ObjectNode bridgeFixture(String name) throws Exception {
         String json = Files.readString(
                 Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1", "fixtures", name));
-        return (ObjectNode) JSON.readTree(json);
+        ObjectNode acknowledgement = (ObjectNode) JSON.readTree(json);
+        if ("connection-activate-ack.json".equals(name)) {
+            // The setup-capable Bridge adds purpose to the older base v1 fixture.
+            acknowledgement.put("receptionPurpose", "ROUTINE");
+        }
+        return acknowledgement;
     }
 
     private record Fixture(Analyzer analyzer, AnalyzerMapping revision, AnalyzerMappingConfirmation confirmation) {

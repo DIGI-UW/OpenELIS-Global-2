@@ -101,7 +101,7 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
         if ("SETUP".equals(intent) && !"SETUP".equals(acknowledgement.path("receptionPurpose").asText())) {
             return false;
         }
-        if ("ACTIVE".equals(intent) && "SETUP".equals(acknowledgement.path("receptionPurpose").asText())) {
+        if ("ACTIVE".equals(intent) && !"ROUTINE".equals(acknowledgement.path("receptionPurpose").asText())) {
             return false;
         }
         return action.equals(acknowledgement.path("action").asText())

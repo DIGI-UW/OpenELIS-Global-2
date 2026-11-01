@@ -143,6 +143,20 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void stoppedSetupStillCapturesRoutineTaggedTrafficBeforeFirstActivation() throws IOException {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setLastActivatedDate(null);
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        var summary = service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+        assertEquals(1, summary.resultsHeld());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE, capturedRow().getImportIssueReason());
+        assertTrue(capturedRow().isReadOnly());
+        assertNull(capturedRow().getTestId());
+        org.mockito.Mockito.verifyZeroInteractions(testResultService, qcResultProcessingService);
+    }
+
+    @Test
     public void setupControlDoesNotRecordOperationalQualityControl() throws IOException {
         analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
         Bundle bundle = fixture("normalized-qc.fhir.json");

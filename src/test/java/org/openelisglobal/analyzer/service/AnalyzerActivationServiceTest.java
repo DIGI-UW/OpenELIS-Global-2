@@ -87,6 +87,8 @@ public class AnalyzerActivationServiceTest {
         connection = fixture("analyzer-connection.json");
         connection.put("clientAnalyzerId", ANALYZER_ID);
         activationAcknowledgement = fixture("connection-activate-ack.json");
+        // The setup-capable Bridge adds purpose to the older base v1 fixture.
+        activationAcknowledgement.put("receptionPurpose", "ROUTINE");
         retained = new AnalyzerActivationRecord();
         retained.setVerificationConfirmation(confirmation);
 
@@ -222,6 +224,19 @@ public class AnalyzerActivationServiceTest {
         order.verify(activationRecordService).retain(analyzer, snapshot.mapping(), confirmation,
                 activationAcknowledgement, "ACTIVE", ACTOR);
         order.verify(analyzerService).update(analyzer);
+    }
+
+    @Test
+    public void clinicalActivationRequiresAnExplicitRoutinePurpose() {
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        for (String purpose : new String[] { "", "SETUP", "routine", "UNKNOWN" }) {
+            activationAcknowledgement.put("receptionPurpose", purpose);
+            assertFalse(service.activate(ANALYZER_ID, ACTOR).activated());
+        }
+        activationAcknowledgement.remove("receptionPurpose");
+        assertFalse(service.activate(ANALYZER_ID, ACTOR).activated());
+        verify(activationRecordService, never()).retain(any(), any(), any(), any(), any(), any());
     }
 
     @Test

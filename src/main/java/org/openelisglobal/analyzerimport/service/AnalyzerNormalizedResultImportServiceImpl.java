@@ -220,7 +220,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
     private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer) {
         if ("SETUP".equals(contract.deliveryPurpose()) || analyzer.getStatus() == Analyzer.AnalyzerStatus.VALIDATION
-                || (analyzer.getStatus() == Analyzer.AnalyzerStatus.SETUP && !analyzer.isActive())) {
+                || (analyzer.getStatus() == Analyzer.AnalyzerStatus.SETUP && !analyzer.isActive())
+                || (analyzer.getStatus() == Analyzer.AnalyzerStatus.INACTIVE
+                        && analyzer.getLastActivatedDate() == null)) {
             return contract.results().stream()
                     .map(result -> held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE))
                     .toList();

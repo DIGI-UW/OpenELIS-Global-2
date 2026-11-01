@@ -740,7 +740,7 @@ export const changeAnalyzerUse = (
 
 const postAnalyzerLifecycle = <T extends object>(
   id: string,
-  action: "activate" | "deactivate" | "reactivate",
+  action: "activate" | "deactivate" | "reactivate" | "setup-reception",
   callback: ApiCallback<T>,
   networkFailure: (error: string) => T,
 ) => {

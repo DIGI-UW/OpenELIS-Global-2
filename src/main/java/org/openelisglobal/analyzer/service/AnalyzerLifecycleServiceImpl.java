@@ -20,15 +20,17 @@ public class AnalyzerLifecycleServiceImpl implements AnalyzerLifecycleService {
     private final AnalyzerResultsService analyzerResultsService;
     private final AnalyzerActivationRecordService activationRecordService;
     private final AuditTrailService auditTrailService;
+    private final BridgeAnalyzerConnectionClient bridgeClient;
 
     public AnalyzerLifecycleServiceImpl(AnalyzerService analyzerService, AnalyzerMappingDAO mappingDAO,
             AnalyzerResultsService analyzerResultsService, AnalyzerActivationRecordService activationRecordService,
-            AuditTrailService auditTrailService) {
+            AuditTrailService auditTrailService, BridgeAnalyzerConnectionClient bridgeClient) {
         this.analyzerService = analyzerService;
         this.mappingDAO = mappingDAO;
         this.analyzerResultsService = analyzerResultsService;
         this.activationRecordService = activationRecordService;
         this.auditTrailService = auditTrailService;
+        this.bridgeClient = bridgeClient;
     }
 
     @Override
@@ -40,6 +42,7 @@ public class AnalyzerLifecycleServiceImpl implements AnalyzerLifecycleService {
             throw new AnalyzerRequestException("analyzer.lifecycle.error.running",
                     "Deactivate the analyzer before retiring it");
         }
+        requireStoppedReception(analyzer);
         save(analyzer, Analyzer.AnalyzerStatus.RETIRED, actor);
     }
 
@@ -64,6 +67,7 @@ public class AnalyzerLifecycleServiceImpl implements AnalyzerLifecycleService {
         }
         // The rows go by SQL, so the deletion is recorded here, as the audited services
         // record theirs.
+        requireStoppedReception(analyzer);
         auditTrailService.saveHistory(null, analyzer, actor, IActionConstants.AUDIT_TRAIL_DELETE, "analyzer");
         try {
             mappingDAO.deleteAnalyzerWithItsMappings(analyzer.getId());
@@ -75,6 +79,19 @@ public class AnalyzerLifecycleServiceImpl implements AnalyzerLifecycleService {
     private static AnalyzerRequestException inUse() {
         return new AnalyzerRequestException("analyzer.lifecycle.error.inUse",
                 "The analyzer has results or history; retire it instead");
+    }
+
+    private void requireStoppedReception(Analyzer analyzer) {
+        if (analyzer.getBridgeConnectionId() == null || analyzer.getBridgeConnectionId().isBlank()) {
+            return;
+        }
+        // A failed local save or compensation can leave Bridge reception running.
+        // Refuse retirement/deletion unless the authoritative runtime confirms a stop.
+        var connection = bridgeClient.getConnection(analyzer.getBridgeConnectionId());
+        if (connection == null || !"INACTIVE".equals(connection.path("actualRuntimeState").asText())) {
+            throw new AnalyzerRequestException("analyzer.lifecycle.error.running",
+                    "Deactivate the analyzer before retiring it");
+        }
     }
 
     private void save(Analyzer persisted, Analyzer.AnalyzerStatus status, String actor) {

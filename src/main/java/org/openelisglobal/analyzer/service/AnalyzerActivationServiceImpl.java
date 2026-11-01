@@ -365,7 +365,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
                 || !matchesProfile(profile, acknowledgement.path("profileRef"))
                 || !action.equals(acknowledgement.path("action").asText())
                 || ("START_SETUP".equals(action) && !"SETUP".equals(acknowledgement.path("receptionPurpose").asText()))
-                || ("ACTIVATE".equals(action) && "SETUP".equals(acknowledgement.path("receptionPurpose").asText()))) {
+                || ("ACTIVATE".equals(action)
+                        && !"ROUTINE".equals(acknowledgement.path("receptionPurpose").asText()))) {
             return List.of(new AnalyzerActivationBlocker(BRIDGE_ACKNOWLEDGEMENT_BLOCKER));
         }
         String outcome = acknowledgement.path("outcome").asText();

@@ -41,13 +41,15 @@ public class AnalyzerLifecycleServiceTest {
     private AnalyzerActivationRecordService activationRecordService;
     @Mock
     private AuditTrailService auditTrailService;
+    @Mock
+    private BridgeAnalyzerConnectionClient bridgeClient;
 
     private AnalyzerLifecycleService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerLifecycleServiceImpl(analyzerService, mappingDAO, analyzerResultsService,
-                activationRecordService, auditTrailService);
+                activationRecordService, auditTrailService, bridgeClient);
     }
 
     @Test
@@ -63,6 +65,30 @@ public class AnalyzerLifecycleServiceTest {
         assertEquals(Analyzer.AnalyzerStatus.RETIRED, saved.getValue().getStatus());
         assertFalse(saved.getValue().isActive());
         assertEquals("17", saved.getValue().getSysUserId());
+    }
+
+    @Test
+    public void setupRuntimeMustBeStoppedBeforeRetiringOrDeletingAnInactiveLocalRecord() {
+        Analyzer setup = analyzer(Analyzer.AnalyzerStatus.SETUP);
+        setup.setBridgeConnectionId("conn-42");
+        given(setup);
+        when(bridgeClient.getConnection("conn-42")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper()
+                .createObjectNode().put("actualRuntimeState", "ACTIVE"));
+        assertThrows(AnalyzerRequestException.class, () -> service.retire("42", "17"));
+        assertThrows(AnalyzerRequestException.class, () -> service.delete("42", "17"));
+        verify(analyzerService, never()).update(any());
+        verify(mappingDAO, never()).deleteAnalyzerWithItsMappings(any());
+    }
+
+    @Test
+    public void stoppedPairedSetupCanBeRetired() {
+        Analyzer setup = analyzer(Analyzer.AnalyzerStatus.SETUP);
+        setup.setBridgeConnectionId("conn-42");
+        given(setup);
+        when(bridgeClient.getConnection("conn-42")).thenReturn(new com.fasterxml.jackson.databind.ObjectMapper()
+                .createObjectNode().put("actualRuntimeState", "INACTIVE"));
+        service.retire("42", "17");
+        verify(analyzerService).update(any());
     }
 
     @Test
