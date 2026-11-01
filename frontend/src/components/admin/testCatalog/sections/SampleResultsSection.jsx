@@ -174,6 +174,10 @@ const ResultEntryPreview = ({ component, uoms, intl }) => {
 
 // OGC-1458 — the rule a refused (422) save names, and what to tell the admin.
 const SAVE_REFUSALS = {
+  "logDisplay.numericRequired":
+    "error.testCatalog.sampleResults.logNumericRequired",
+  "decimalPlaces.invalid":
+    "error.testCatalog.sampleResults.decimalPlacesInvalid",
   "components.activeNeedsComponent":
     "error.testCatalog.sampleResults.activeNeedsComponent",
   "resultType.unknown": "label.testCatalog.sampleResults.resultTypeRequired",

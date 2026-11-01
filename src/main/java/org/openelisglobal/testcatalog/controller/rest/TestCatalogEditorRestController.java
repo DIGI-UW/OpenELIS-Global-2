@@ -1260,10 +1260,10 @@ public class TestCatalogEditorRestController {
                 return refusedSampleResults(testId, "resultType.unknown", c.label);
             }
             if (Boolean.TRUE.equals(c.displayLog10) && !"N".equals(c.resultType)) {
-                return ResponseEntity.unprocessableEntity().build();
+                return refusedSampleResults(testId, "logDisplay.numericRequired", shortName(c.label));
             }
             if (c.reportingDecimalPlaces != null && (c.reportingDecimalPlaces < 0 || c.reportingDecimalPlaces > 10)) {
-                return ResponseEntity.unprocessableEntity().build();
+                return refusedSampleResults(testId, "decimalPlaces.invalid", shortName(c.label));
             }
             if (!codes.add(c.code)) {
                 return ResponseEntity.unprocessableEntity().build();

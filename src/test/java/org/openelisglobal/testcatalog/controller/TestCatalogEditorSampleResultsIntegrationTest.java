@@ -326,8 +326,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         ResultComponentDto primary = comp(null, "PRIMARY", "Call", 0);
         primary.resultType = "D";
         primary.displayLog10 = true;
-        assertEquals(422, controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest())
-                .getStatusCodeValue());
+        var response = controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+        assertEquals(422, response.getStatusCodeValue());
+        assertEquals("logDisplay.numericRequired", response.getBody().refusal);
     }
 
     @org.junit.Test
@@ -361,8 +362,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         for (int places : new int[] { -1, 11 }) {
             ResultComponentDto component = comp(null, "PRIMARY", "Numeric result", 1);
             component.reportingDecimalPlaces = places;
-            assertEquals(422, controller.saveSampleResults(String.valueOf(TEST_ID), body(component), authedRequest())
-                    .getStatusCode().value());
+            var response = controller.saveSampleResults(String.valueOf(TEST_ID), body(component), authedRequest());
+            assertEquals(422, response.getStatusCode().value());
+            assertEquals("decimalPlaces.invalid", response.getBody().refusal);
             assertEquals(0, controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.size());
         }
     }

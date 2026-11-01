@@ -39,6 +39,14 @@ describe("resultFlagFor", () => {
     expect(resultFlagFor(row({ resultValue: "<50" }))).toBe("NORMAL");
   });
 
+  it("preserves critical flags behind inclusive comparators", () => {
+    for (const resultValue of [">200", ">=200", "<1", "<=1", ">= 2e2"]) {
+      expect(resultFlagFor(row({ resultValue, resultFlag: "CRITICAL" }))).toBe(
+        "CRITICAL",
+      );
+    }
+  });
+
   it("carries no flag for a blank or unparseable value", () => {
     expect(resultFlagFor(row({ resultValue: "" }))).toBeUndefined();
     expect(resultFlagFor(row({ resultValue: "   " }))).toBeUndefined();

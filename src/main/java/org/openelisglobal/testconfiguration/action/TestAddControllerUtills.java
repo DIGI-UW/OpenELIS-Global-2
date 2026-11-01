@@ -245,7 +245,7 @@ public class TestAddControllerUtills {
                 testAddParams.highReportingRange = obj.get("highReportingRange").toString();
                 testAddParams.lowCritical = obj.get("lowCritical").toString();
                 testAddParams.highCritical = obj.get("highCritical").toString();
-                testAddParams.reportingDecimalPlaces = obj.get("reportingDecimalPlaces").toString();
+                testAddParams.reportingDecimalPlaces = java.util.Objects.toString(obj.get("reportingDecimalPlaces"), null);
                 extractLimits(obj, parser, testAddParams);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVarientById(testAddParams.resultTypeId)) {
                 JSONArray dictionaryArray = (JSONArray) obj.get("dictionary");

@@ -7064,6 +7064,8 @@
   "admin.testCatalog.sampleResults.loq.helper": "Limit of quantification (optional)",
   "error.testCatalog.sampleResults.valueTooLong": "{component}: a value is longer than its field allows (label 255, code 50, default result and option value 80; interpretation text 255, match 80, severity and color 20 characters).",
   "error.testCatalog.sampleResults.unitUnknown": "{component}: that unit of measure does not exist.",
+  "error.testCatalog.sampleResults.logNumericRequired": "Not saved: {component} requires a numeric result to show log10.",
+  "error.testCatalog.sampleResults.decimalPlacesInvalid": "Not saved: reporting decimal places for {component} must be blank or a whole number from 0 to 10.",
   "error.testCatalog.sampleResults.activeNeedsComponent": "Not saved: an active test needs at least one result component. Keep a component, or deactivate the test in Basic Info first.",
   "error.testCatalog.sampleResults.lodGtLoq": "LOD cannot be greater than LOQ.",
   "error.testCatalog.sampleResults.detectionLimitNegative": "Detection limits must be zero or more.",

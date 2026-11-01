@@ -87,6 +87,16 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void blankDecimalCellsPreserveTheAuthoredSettingOnReimport() throws Exception {
+        String query = "SELECT reporting_decimal_places FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'";
+        load(componentHandler, "testName,code,reportingDecimalPlaces\n" + TEST + ",PRIMARY,2\n", "decimal-policy.csv");
+        load(componentHandler, "testName,code,reportingDecimalPlaces\n" + TEST + ",PRIMARY,\n", "blank-policy.csv");
+        assertEquals(Integer.valueOf(2), jdbc.queryForObject(query, Integer.class, TEST));
+        load(componentHandler, "testName,code,reportingDecimalPlaces\n" + TEST + ",PRIMARY,0\n", "explicit-zero.csv");
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(query, Integer.class, TEST));
+    }
+
+    @Test
     public void explicitLogDisplayImportsAndBlankUpdatesPreserveIt() throws Exception {
         load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,Y\n", "log-display.csv");
         assertEquals(Boolean.TRUE, jdbc.queryForObject(

@@ -155,7 +155,7 @@ public class ResultComponentConfigurationHandler extends AbstractCatalogCsvHandl
                 decimalColumn = name;
             }
         }
-        if (decimalColumn != null) {
+        if (decimalColumn != null && !row.isBlank(decimalColumn)) {
             component.setReportingDecimalPlaces(
                     org.openelisglobal.result.util.ReportingDecimalPlaces.parse(row.get(decimalColumn)));
         }

@@ -42,7 +42,9 @@ export function resultFlagFor(row: FlaggableRow): ResultFlag | undefined {
   if (!typed) {
     return undefined;
   }
-  const plain = normalizeScientificNotation(typed.replace(/[<>]/g, ""));
+  const plain = normalizeScientificNotation(
+    typed.replace(/^(<=|>=|<|>)\s*/, ""),
+  );
   const { flag } = classifyNumericResult(plain, row);
   return isResultFlag(flag) ? flag : undefined;
 }

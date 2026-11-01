@@ -1372,6 +1372,8 @@ describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
   it.each([
     ["value.tooLong", "longer than"],
     ["unit.unknown", "unit of measure"],
+    ["logDisplay.numericRequired", "requires a numeric result"],
+    ["decimalPlaces.invalid", "whole number from 0 to 10"],
   ])(
     "explains the %s refusal on the named component (OGC-1467)",
     async (refusal, wording) => {
