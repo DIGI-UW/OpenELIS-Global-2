@@ -97,6 +97,7 @@ const AnalyserResults = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
+  const formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
 
   const intl = useIntl();
 
@@ -601,7 +602,6 @@ const AnalyserResults = (props) => {
   };
 
   const renderCell = (row, index, column, id) => {
-    let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
@@ -1132,7 +1132,11 @@ const AnalyserResults = (props) => {
                   removalCandidate.rawResultValue ||
                   removalCandidate.result ||
                   "—",
-                accession: removalCandidate.accessionNumber,
+                accession: formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(
+                      removalCandidate.accessionNumber,
+                    )
+                  : removalCandidate.accessionNumber,
               }}
             />
           </p>

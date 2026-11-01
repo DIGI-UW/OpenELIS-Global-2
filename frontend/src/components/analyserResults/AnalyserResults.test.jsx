@@ -11,13 +11,14 @@ import AnalyserResults, {
   buildHeldResultResolutionUrl,
 } from "./AnalyserResults";
 
-const { postResults, getFromServer } = vi.hoisted(() => ({
+const { postResults, getFromServer, formatLabNumber } = vi.hoisted(() => ({
   postResults: vi.fn(),
   getFromServer: vi.fn(),
+  formatLabNumber: vi.fn((value) => value),
 }));
 
 vi.mock("../utils/Utils", () => ({
-  convertAlphaNumLabNumForDisplay: (value) => value,
+  convertAlphaNumLabNumForDisplay: formatLabNumber,
   postToOpenElisServerFullResponse: postResults,
   getFromOpenElisServer: getFromServer,
 }));
@@ -60,6 +61,7 @@ const renderResults = (
   resultList = [heldResult],
   sampleGroup = [resultList[0]],
   extraProps = {},
+  accessionFormat = "",
 ) => {
   const history = createMemoryHistory({
     initialEntries: ["/AnalyzerResults?id=2001"],
@@ -69,7 +71,9 @@ const renderResults = (
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <ConfigurationContext.Provider
-          value={{ configurationProperties: { AccessionFormat: "" } }}
+          value={{
+            configurationProperties: { AccessionFormat: accessionFormat },
+          }}
         >
           <NotificationContext.Provider
             value={{
@@ -111,6 +115,7 @@ describe("AnalyserResults", () => {
   beforeEach(() => {
     postResults.mockReset();
     getFromServer.mockReset();
+    formatLabNumber.mockReset().mockImplementation((value) => value);
   });
 
   it("ticks only the groupings whose every result is matched when saving all", () => {
@@ -577,6 +582,20 @@ describe("AnalyserResults", () => {
         }),
       ),
     );
+  });
+
+  it("uses the displayed lab number in the removal confirmation", async () => {
+    formatLabNumber.mockReturnValue("ACC-654-321");
+    renderResults([heldResult], [heldResult], {}, "ALPHANUM");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    expect(within(dialog).getByText(/ACC-654-321/)).toBeInTheDocument();
+    expect(screen.getByTestId("LabNo")).toHaveTextContent("ACC-654-321");
+    expect(postResults).not.toHaveBeenCalled();
   });
 
   it("preserves other rows' unsaved choices when removing a held result", async () => {
