@@ -104,6 +104,24 @@ public class OrderLabelReprintDecreaseQtyTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void renderFromSnapshot_rejectsUnsafeSavedQuantityWithoutOverride() {
+        OrderLabelRequest row = orderLabelRequestDAO.get(requestId).orElseThrow();
+        row.setQty(101);
+        orderLabelRequestDAO.update(row);
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId()));
+    }
+
+    @Test
+    public void renderFromSnapshot_rejectsSavedQuantityAbovePresetMaximum() {
+        OrderLabelRequest row = orderLabelRequestDAO.get(requestId).orElseThrow();
+        row.setQty(6);
+        orderLabelRequestDAO.update(row);
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId()));
+    }
+
+    @Test
     public void decreaseQty_allowsLowering() {
         OrderLabelRequest updated = orderLabelReprintService.decreaseQty(requestId, 1);
         assertEquals("qty lowered from 3 to 1", Integer.valueOf(1), updated.getQty());

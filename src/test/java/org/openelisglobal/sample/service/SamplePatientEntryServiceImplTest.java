@@ -22,6 +22,9 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.services.TableIdService;
+import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
+import org.openelisglobal.labelpreset.service.OrderLabelRequestService;
 import org.openelisglobal.organization.service.OrganizationContactService;
 import org.openelisglobal.organization.valueholder.OrganizationContact;
 import org.openelisglobal.person.service.PersonService;
@@ -29,6 +32,7 @@ import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.requester.service.SampleRequesterService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -95,6 +99,22 @@ public class SamplePatientEntryServiceImplTest {
      * must be saved as a standalone SampleRequester row and must NOT attempt any
      * OrganizationContact linking, since there is no organization to link it to.
      */
+    @Test
+    public void persistData_rejectsUnsafeLabelQuantityBeforeClinicalWrites() {
+        OrderLabelRequestService labels = mock(OrderLabelRequestService.class);
+        ReflectionTestUtils.setField(service, "orderLabelRequestService", labels);
+        SamplePatientEntryForm form = new SamplePatientEntryForm();
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        payload.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(1, 101));
+        form.setLabelPersistRequest(payload);
+        org.mockito.Mockito.doThrow(new LabelQuantityRefusedException("error.labels.quantity.max", "Too many labels"))
+                .when(labels).validateQuantities(payload);
+        org.junit.Assert.assertThrows(LabelQuantityRefusedException.class,
+                () -> service.persistData(null, null, null, form, null));
+        org.mockito.Mockito.verifyZeroInteractions(personService, sampleRequesterService, organizationContactService,
+                barcodeInfoService);
+    }
+
     @Test
     public void persistRequesterData_requestorOnly_savesRequesterContactWithoutOrgLink() {
         Sample sample = new Sample();
