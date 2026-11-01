@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAnalyzer } from "../../../services/analyzerService";
 import type { Analyzer } from "../types";
 
@@ -28,6 +28,18 @@ export const useAnalyzerConnections = (analyzers: Analyzer[]) => {
   const [observations, setObservations] = useState<
     Record<string, ConnectionState>
   >({});
+
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const refreshConnections = useCallback((analyzerId?: string | null) => {
+    setObservations((previous) =>
+      Object.fromEntries(
+        Object.entries(previous).filter(
+          ([key]) => analyzerId && !key.startsWith(`${analyzerId}:`),
+        ),
+      ),
+    );
+    setRefreshVersion((version) => version + 1);
+  }, []);
 
   const candidatesKey = JSON.stringify(
     analyzers
@@ -124,11 +136,13 @@ export const useAnalyzerConnections = (analyzers: Analyzer[]) => {
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", visibilityChanged);
     };
-  }, [candidatesKey]);
+  }, [candidatesKey, refreshVersion]);
 
-  return (analyzer: Analyzer): ConnectionState =>
+  const connectionState = (analyzer: Analyzer): ConnectionState =>
     !analyzer.bridgeConnectionId
       ? "missing"
       : observations[`${analyzer.id}:${analyzer.bridgeConnectionId}`] ||
         "checking";
+
+  return { connectionState, refreshConnections };
 };

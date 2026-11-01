@@ -129,7 +129,8 @@ const AnalyzersList = () => {
     testUnit: "",
     analyzerType: "",
   });
-  const connectionState = useAnalyzerConnections(analyzers);
+  const { connectionState, refreshConnections } =
+    useAnalyzerConnections(analyzers);
   const connectionNeedsAttention = (analyzer: Analyzer) =>
     expectsReception(analyzer) &&
     !["running", "checking"].includes(connectionState(analyzer));
@@ -282,6 +283,7 @@ const AnalyzersList = () => {
     ["setup", "analyzerId", "profile", "revision"].forEach((key) =>
       params.delete(key),
     );
+    refreshConnections(setupAnalyzerId);
     reloadAnalyzers();
     history.push({ pathname: "/analyzers", search: params.toString() });
   };
@@ -969,7 +971,10 @@ const AnalyzersList = () => {
           analyzer={lifecycleAnalyzer}
           open
           onClose={closeLifecycle}
-          onConfirm={() => reloadAnalyzers()}
+          onConfirm={(analyzerId) => {
+            refreshConnections(analyzerId);
+            reloadAnalyzers();
+          }}
         />
       )}
     </div>

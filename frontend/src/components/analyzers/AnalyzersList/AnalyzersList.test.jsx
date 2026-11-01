@@ -303,6 +303,46 @@ describe("AnalyzersList", () => {
     ).toBeVisible();
   });
 
+  test("reactivation refreshes a stopped observation immediately despite unchanged connection IDs", async () => {
+    const analyzer = createMockAnalyzer({ status: "ACTIVE" });
+    let runtime = "INACTIVE";
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [{ ...analyzer }] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        ...analyzer,
+        connection: { readiness: { ready: true }, actualRuntimeState: runtime },
+      }),
+    );
+    reactivateAnalyzer.mockImplementation((_id, callback) => {
+      runtime = "ACTIVE";
+      callback({ analyzerId: analyzer.id, activated: true });
+    });
+    renderWithIntl(<AnalyzersList />);
+    expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+      "Reception stopped",
+    );
+    await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+    await userEvent.click(
+      await screen.findByTestId("analyzer-action-reactivate-1"),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Reactivate analyzer",
+        exact: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+        /^Active$/,
+      ),
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("0");
+  });
+
   test("periodic checks reveal Bridge loss and recovery without reloading the list", async () => {
     vi.useFakeTimers();
     getAnalyzers.mockImplementation((_filters, callback) =>
