@@ -1,5 +1,6 @@
 package org.openelisglobal.qc.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
@@ -51,6 +52,7 @@ public class QCControlLot extends BaseObject<String> {
     @Transient
     private String testName;
 
+    @JsonProperty("testName")
     public String getTestName() {
         return testName;
     }
