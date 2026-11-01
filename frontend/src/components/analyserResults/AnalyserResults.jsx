@@ -261,7 +261,7 @@ const AnalyserResults = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: needsPlacementDecision ? "14rem" : "5rem",
     },
     {
       id: "notes",
