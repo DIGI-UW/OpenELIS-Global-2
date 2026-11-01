@@ -1045,15 +1045,13 @@ const AnalyserResults = (props) => {
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
             {arrows.show && <ServerPageArrows {...arrows} />}
-            <DataTable
-              data={tableRows}
-              columns={columns}
-              isSortable
-            ></DataTable>
+            {tableRows.length > 0 && (
+              <DataTable data={tableRows} columns={columns} isSortable />
+            )}
             <Pagination
               {...serverPaginationProps({
                 paging: props.results?.paging,
-                rowsOnPage: patientResults.length,
+                rowsOnPage: allResults.length,
                 pageSize: props.serverPageSize,
                 onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
                 intl,

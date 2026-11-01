@@ -980,4 +980,7 @@ it("separates retained setup evidence from actionable clinical results", () => {
   expect(within(section).getByText("POSITIVE")).toBeVisible();
   expect(within(section).queryByRole("checkbox")).not.toBeInTheDocument();
   expect(screen.queryByTestId("Save-btn")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("There are no records to display"),
+  ).not.toBeInTheDocument();
 });

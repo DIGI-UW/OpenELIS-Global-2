@@ -104,6 +104,7 @@ test(
     await page.screenshot({
       path: testInfo.outputPath("connect-setup-reception.png"),
       fullPage: true,
+      animations: "disabled",
     });
     await reception
       .getByRole("button", { name: "Stop setup reception" })
@@ -141,6 +142,7 @@ test(
     await page.screenshot({
       path: testInfo.outputPath("verify-typed-setup-evidence.png"),
       fullPage: true,
+      animations: "disabled",
     });
     await page.getByRole("button", { name: "Finish and activate" }).click();
     await expect(setup.surface).not.toBeVisible();
@@ -184,11 +186,13 @@ test(
     const held = setupEvidence.getByTestId(
       `held-analyzer-result-${original.id}`,
     );
+    await expect(held).toBeVisible();
     await expect(held).toContainText("Setup sample");
     await expect(held.getByRole("checkbox")).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath("retained-setup-evidence-after-activation.png"),
       fullPage: true,
+      animations: "disabled",
     });
     const routineOrder = await createClinicalOrder(page, {
       testIds: [testId],
