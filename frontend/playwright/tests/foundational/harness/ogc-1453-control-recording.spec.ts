@@ -220,6 +220,12 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     await expect(page).toHaveURL(
       new RegExp(`/analyzers/qc/instruments/${analyzer.id}\\?`),
     );
+    // The initial lot request selects a lot and loads its chart. Wait for that
+    // populated view before opening a selector that is still being initialized.
+    await expect(page.getByTestId("chart-panel-NORMAL")).toBeVisible();
+    await expect(
+      page.getByRole("combobox", { name: "Control lot", exact: true }),
+    ).toContainText(specimen);
     await page
       .getByRole("combobox", { name: "Control lot", exact: true })
       .click();
