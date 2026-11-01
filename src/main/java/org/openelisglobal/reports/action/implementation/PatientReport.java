@@ -1021,11 +1021,7 @@ public abstract class PatientReport extends Report {
             }
             List<Result> componentResults = new ArrayList<>();
             for (Result result : resultList) {
-                if (result.getParentResult() != null) {
-                    continue;
-                }
-                String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
-                if (componentId == null ? component.getIsPrimary() : component.getId().equals(componentId)) {
+                if (belongsToComponent(result, component)) {
                     componentResults.add(result);
                 }
             }
@@ -1153,10 +1149,18 @@ public abstract class PatientReport extends Report {
             return false;
         }
         return components.stream().filter(source -> sourceCode.equals(source.getCode()))
-                .anyMatch(source -> results.stream()
-                        .anyMatch(result -> result.getParentResult() == null && result.getTestResult() != null
-                                && source.getId().equals(result.getTestResult().getComponentId())
-                                && !GenericValidator.isBlankOrNull(result.getEnteredValue())));
+                .anyMatch(source -> results.stream().anyMatch(result -> belongsToComponent(result, source)
+                        && !GenericValidator.isBlankOrNull(result.getEnteredValue())));
+    }
+
+    private boolean belongsToComponent(Result result, TestResultComponent component) {
+        if (result.getParentResult() != null) {
+            return false;
+        }
+        // Legacy results without a component association belong to the primary,
+        // both when printed and when deciding whether a received log is present.
+        String componentId = result.getTestResult() == null ? null : result.getTestResult().getComponentId();
+        return componentId == null ? component.getIsPrimary() : component.getId().equals(componentId);
     }
 
     private String formatComponentResults(TestResultComponent component, List<Result> componentResults,

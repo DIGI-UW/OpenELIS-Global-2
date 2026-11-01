@@ -197,6 +197,64 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void legacyPrimaryLogWithoutComponentIdSuppressesCalculatedLog() {
+        assertLegacyPrimaryLogWins(false);
+    }
+
+    @Test
+    public void legacyPrimaryLogWithoutTestResultSuppressesCalculatedLog() {
+        assertLegacyPrimaryLogWins(true);
+    }
+
+    private void assertLegacyPrimaryLogWins(boolean missingTestResult) {
+        PatientReport report = report();
+        Analysis analysis = analysisService.get("100");
+        ReflectionTestUtils.setField(report, "currentAnalysis", analysis);
+        var components = testResultComponentService.getActiveComponentsByTestId("1");
+        var source = components.stream().filter(c -> "vcu-load".equals(c.getId())).findFirst().orElseThrow();
+        source.setIsPrimary(true);
+        var measurementComponent = components.stream().filter(c -> "vcu-ct".equals(c.getId())).findFirst()
+                .orElseThrow();
+        measurementComponent.setDisplayLog10(true);
+        measurementComponent.setLog10SourceComponentCode(source.getCode());
+        var results = resultService.getResultsByAnalysis(analysis);
+        var received = results.stream().filter(r -> source.getId().equals(r.getTestResult().getComponentId()))
+                .findFirst().orElseThrow();
+        var measurement = results.stream()
+                .filter(r -> measurementComponent.getId().equals(r.getTestResult().getComponentId())).findFirst()
+                .orElseThrow();
+        if (missingTestResult) {
+            received.setTestResult(null);
+        } else {
+            received.getTestResult().setComponentId(null);
+        }
+        received.setValue("3.0040");
+        received.clearReportingDecimalPlaces();
+        measurement.setValue("1009.64");
+        measurement.clearReportingDecimalPlaces();
+        ClinicalPatientData data = new ClinicalPatientData();
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
+        assertEquals(List.of("3.0040", "1009.64"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
+
+        // An unvalidated received log still prevents a calculated substitute.
+        measurement.setValidatedDate(new java.sql.Timestamp(System.currentTimeMillis()));
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data, true);
+        assertEquals(List.of("Awaiting validation", "1009.64"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
+        assertEquals("3.0040", received.getEnteredValue());
+        assertEquals("1009.64", measurement.getEnteredValue());
+
+        received.setValue(" ");
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
+        assertEquals(List.of("In Progress", "1009.64\nCalculated log10: 3.00"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", List.of(measurement), components, data);
+        assertEquals(List.of("In Progress", "1009.64\nCalculated log10: 3.00"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
+    }
+
+    @Test
     public void legacyAlphaMeasurementsCanOptIntoLogDisplayWithoutChangingTypeOrText() {
         var component = testResultComponentService.get("vcu-load");
         component.setResultType("A");
