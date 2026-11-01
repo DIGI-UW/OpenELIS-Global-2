@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -153,6 +154,7 @@ public class AnalyzerActivationServiceTest {
     @Test
     public void failedSetupPersistenceStopsTheNewlyStartedTransport() {
         analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+        connection.put("actualRuntimeState", "INACTIVE");
         activationAcknowledgement.put("action", "START_SETUP");
         activationAcknowledgement.put("receptionPurpose", "SETUP");
         when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
@@ -162,6 +164,30 @@ public class AnalyzerActivationServiceTest {
         assertThrows(IllegalStateException.class, () -> service.startSetupReception(ANALYZER_ID, ACTOR));
         assertEquals(Analyzer.AnalyzerStatus.SETUP, analyzer.getStatus());
         verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004");
+    }
+
+    @Test
+    public void validationStateDoesNotHideNewReceptionAfterBridgeRestart() {
+        assertSetupPersistenceFailureRestoresReception("INACTIVE", true);
+    }
+
+    @Test
+    public void failedSetupPersistenceKeepsPreviouslyRunningReception() {
+        assertSetupPersistenceFailureRestoresReception("ACTIVE", false);
+    }
+
+    private void assertSetupPersistenceFailureRestoresReception(String priorRuntimeState, boolean expectStop) {
+        analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
+        connection.put("actualRuntimeState", priorRuntimeState);
+        activationAcknowledgement.put("action", "START_SETUP");
+        activationAcknowledgement.put("receptionPurpose", "SETUP");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
+                .thenReturn(activationAcknowledgement);
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP", ACTOR))
+                .thenThrow(new IllegalStateException("audit unavailable"));
+        assertThrows(IllegalStateException.class, () -> service.startSetupReception(ANALYZER_ID, ACTOR));
+        assertUnchanged();
+        verify(bridgeClient, times(expectStop ? 1 : 0)).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004");
     }
 
     @Test
