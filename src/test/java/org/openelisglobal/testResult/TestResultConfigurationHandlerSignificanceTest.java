@@ -260,7 +260,7 @@ public class TestResultConfigurationHandlerSignificanceTest {
     }
 
     @Test
-    public void update_blankDecimalPlacesClearsButOmittedColumnPreservesExplicitZero() throws Exception {
+    public void update_blankAndOmittedDecimalPlacesPreserveAuthoredPolicyForEveryAlias() throws Exception {
         TestResult existing = new TestResult();
         existing.setId("777");
         existing.setTestResultType("N");
@@ -269,9 +269,14 @@ public class TestResultConfigurationHandlerSignificanceTest {
         when(testResultService.update(any(TestResult.class))).thenReturn(existing);
         handler.processConfiguration(csv("testName,resultType\nPlasmodium CSP-ELISA,N\n"), "omitted.csv");
         assertEquals("0", existing.getReportingDecimalPlaces());
-        handler.processConfiguration(csv("testName,resultType,decimalPlaces\nPlasmodium CSP-ELISA,N,\n"), "clear.csv");
-        assertNull(existing.getReportingDecimalPlaces());
-        handler.processConfiguration(csv("testName,resultType,decimalPlaces\nPlasmodium CSP-ELISA,N,2\n"), "two.csv");
-        assertEquals("2", existing.getReportingDecimalPlaces());
+        for (String column : new String[] { "reportingDecimalPlaces", "decimalPlaces", "significantDigits" }) {
+            existing.setReportingDecimalPlaces("2");
+            handler.processConfiguration(csv("testName,resultType," + column + "\nPlasmodium CSP-ELISA,N, \n"),
+                    "blank.csv");
+            assertEquals(column + " must preserve the authored count", "2", existing.getReportingDecimalPlaces());
+            handler.processConfiguration(csv("testName,resultType," + column + "\nPlasmodium CSP-ELISA,N,0\n"),
+                    "zero.csv");
+            assertEquals(column + " must accept an explicit zero", "0", existing.getReportingDecimalPlaces());
+        }
     }
 }

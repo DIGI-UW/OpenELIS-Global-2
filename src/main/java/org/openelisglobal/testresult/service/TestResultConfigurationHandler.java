@@ -534,9 +534,9 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setIsNormal("Y".equalsIgnoreCase(isNormal) || "true".equalsIgnoreCase(isNormal));
         }
 
-        // Update reporting decimal places
+        // Blank import cells preserve laboratory-authored reporting policy.
         String reportingDecimalPlaces = getValueOrEmpty(values, reportingDecimalPlacesIndex);
-        if (reportingDecimalPlacesIndex >= 0) {
+        if (!reportingDecimalPlaces.isEmpty()) {
             Integer places = org.openelisglobal.result.util.ReportingDecimalPlaces.parse(reportingDecimalPlaces);
             testResult.setReportingDecimalPlaces(places == null ? null : places.toString());
         }
