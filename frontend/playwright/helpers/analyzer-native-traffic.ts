@@ -82,8 +82,11 @@ async function activeListenerPort(
   expect(connection, "OpenELIS reads the Bridge connection").toBeDefined();
   expect(connection?.actualRuntimeState).toBe("ACTIVE");
   expect(
-    connection?.fields.find((field) => field.key === "senderId")?.currentValue,
-    "The UI-configured sender must match the instrument message",
+    String(
+      connection?.fields.find((field) => field.key === "senderId")
+        ?.currentValue || "",
+    ).split("^")[0],
+    "The saved identity must name the mock's instrument instance (component 1)",
   ).toBe(senderId);
   const probeResponse = await request.post(`${analyzerUrl}/test-connection`, {
     headers: { "X-CSRF-Token": await csrfToken(page) },

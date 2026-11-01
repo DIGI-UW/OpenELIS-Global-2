@@ -28,7 +28,7 @@ test(
     test.setTimeout(180000);
     const run = randomUUID().slice(0, 8);
     const name = `Connect first ${run}`;
-    const sender = `GX-${run}^GeneXpert^1.0`;
+    const sender = `GX-${run}`;
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
@@ -64,6 +64,7 @@ test(
     const receivedSource = sources
       .locator('[data-testid^="analyzer-received-source-"]')
       .filter({ hasText: sender });
+    await expect(receivedSource).toContainText(`${sender}^GeneXpert^1.0`);
     await receivedSource
       .getByRole("button", { name: "This is my analyzer" })
       .click();
