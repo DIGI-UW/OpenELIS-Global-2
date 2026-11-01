@@ -126,7 +126,7 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
         assertEquals(1, ((Number) component(testId, "FASTING").get("reporting_decimal_places")).intValue());
 
         // A second load of the same codes keeps two components and takes the new
-        // label; omitting the setting preserves it, while a blank cell clears it.
+        // label; both an omitted setting and a blank cell preserve the authored policy.
         load(componentHandler, "testName,code,label\n" + GLUCOSE + ",FASTING,Fasting\n", "components.csv");
         assertEquals("SUMMARY file=components.csv domain=result-components created=0 updated=1 skipped=0",
                 componentHandler.getLastSummary().toLine());
@@ -136,7 +136,7 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
         assertEquals(1, ((Number) component(testId, "FASTING").get("reporting_decimal_places")).intValue());
         load(componentHandler, "testName,code,label,reportingDecimalPlaces\n" + GLUCOSE + ",FASTING,Fasting,\n",
                 "components.csv");
-        assertEquals(null, component(testId, "FASTING").get("reporting_decimal_places"));
+        assertEquals(1, ((Number) component(testId, "FASTING").get("reporting_decimal_places")).intValue());
     }
 
     @Test

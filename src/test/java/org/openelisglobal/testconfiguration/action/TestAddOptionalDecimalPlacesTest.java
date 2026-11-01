@@ -1,6 +1,7 @@
 package org.openelisglobal.testconfiguration.action;
 
 import static org.junit.Assert.assertEquals;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -16,13 +17,17 @@ public class TestAddOptionalDecimalPlacesTest {
             ReflectionTestUtils.setField(ResultType.NUMERIC, "id", "test-numeric");
             JSONObject body = new JSONObject();
             body.put("resultType", "test-numeric");
-            for (String field : new String[]{"lowValid", "highValid", "lowReportingRange", "highReportingRange", "lowCritical", "highCritical"}) body.put(field, "0");
-            for (String field : new String[]{"panels", "sampleTypes", "resultLimits"}) body.put(field, new JSONArray());
+            for (String field : new String[] { "lowValid", "highValid", "lowReportingRange", "highReportingRange",
+                    "lowCritical", "highCritical" })
+                body.put(field, "0");
+            for (String field : new String[] { "panels", "sampleTypes", "resultLimits" })
+                body.put(field, new JSONArray());
             TestAddControllerUtills util = new TestAddControllerUtills();
             assertEquals(null, util.extractTestAddParms(body, new JSONParser()).reportingDecimalPlaces);
-            for (Object places : new Object[]{null, "", 0, 2}) {
+            for (Object places : new Object[] { null, "", 0, 2 }) {
                 body.put("reportingDecimalPlaces", places);
-                assertEquals(java.util.Objects.toString(places, null), util.extractTestAddParms(body, new JSONParser()).reportingDecimalPlaces);
+                assertEquals(java.util.Objects.toString(places, null),
+                        util.extractTestAddParms(body, new JSONParser()).reportingDecimalPlaces);
             }
         } finally {
             ReflectionTestUtils.setField(ResultType.NUMERIC, "id", previousId);
