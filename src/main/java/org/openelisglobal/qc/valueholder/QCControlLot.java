@@ -48,6 +48,17 @@ public class QCControlLot extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
 
+    @Transient
+    private String testName;
+
+    public String getTestName() {
+        return testName;
+    }
+
+    public void setTestName(String testName) {
+        this.testName = testName;
+    }
+
     // Nullable since OGC-1147: a bench control lot for a manual method has no
     // analyzer to point at. qc-024 dropped the NOT NULL; the Bean Validation
     // @NotNull that used to sit here is enforced by Hibernate on insert, so it had

@@ -33,6 +33,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 public class QCControlLotServiceTest {
 
     @Mock
+    private org.openelisglobal.test.service.TestService testService;
+
+    @Mock
     private QCControlLotDAO controlLotDAO;
 
     @Mock
@@ -48,6 +51,13 @@ public class QCControlLotServiceTest {
     private QCControlLotServiceImpl controlLotService;
 
     private QCControlLot testControlLot;
+
+    @Test
+    public void instrumentLotsIncludeTheirMappedTestName() {
+        when(controlLotDAO.getActiveByInstrument("1")).thenReturn(List.of(testControlLot));
+        when(testService.getLabelOrDefault(eq("1"), any(), eq("1"))).thenReturn("Hemoglobin");
+        assertEquals("Hemoglobin", controlLotService.getActiveControlLotsByInstrument("1").get(0).getTestName());
+    }
 
     @Before
     public void setUp() {

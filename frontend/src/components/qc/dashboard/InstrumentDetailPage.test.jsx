@@ -153,6 +153,7 @@ describe("InstrumentDetailPage analyzer context", () => {
             controlLevel: "NORMAL",
             testId: "test-a",
             productName: "Control",
+            testName: "Viral load",
           },
           {
             id: "high",
@@ -160,6 +161,7 @@ describe("InstrumentDetailPage analyzer context", () => {
             controlLevel: "HIGH",
             testId: "test-a",
             productName: "Control",
+            testName: "Viral load",
           },
         ]);
       if (url === "/rest/qc/charts/high")
@@ -190,7 +192,7 @@ describe("InstrumentDetailPage analyzer context", () => {
     );
     expect(
       screen.getByRole("combobox", { name: "Control lot", exact: true }),
-    ).toHaveTextContent("SHARED — High — Control");
+    ).toHaveTextContent("SHARED — High — Viral load");
     expect(await screen.findByText("1_3s")).toBeVisible();
     expect(
       screen.queryByTestId("control-chart-detail-header"),
@@ -202,6 +204,74 @@ describe("InstrumentDetailPage analyzer context", () => {
       screen.getByRole("tab", { name: "Normal", exact: true }),
     );
     expect(screen.getByTestId("chart-panel-NORMAL")).not.toHaveTextContent(
+      "1009.64",
+    );
+  });
+
+  it("keeps custom levels and same-product analytes distinguishable", async () => {
+    const instrumentResponse = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/controlLots?"))
+        return callback([
+          {
+            id: "hiv",
+            lotNumber: "SHARED",
+            controlLevel: "LPC",
+            testId: "a",
+            testName: "HIV RNA",
+            productName: "Control",
+          },
+          {
+            id: "hcv",
+            lotNumber: "SHARED",
+            controlLevel: "LPC",
+            testId: "b",
+            testName: "HCV RNA",
+            productName: "Control",
+          },
+        ]);
+      if (url === "/rest/qc/charts/hiv")
+        return callback({
+          dataPoints: [
+            { resultId: "one", value: 1009.64, controlLevel: "LPC" },
+          ],
+        });
+      if (url === "/rest/qc/charts/hcv")
+        return callback({
+          dataPoints: [{ resultId: "two", value: 42.5, controlLevel: "LPC" }],
+        });
+      if (url.endsWith("/statistics")) return callback({ mean: 10 });
+      instrumentResponse(url, callback);
+    });
+    renderPage();
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Control Chart", exact: true }),
+    );
+    expect(
+      await screen.findByRole("tab", { name: "LPC", exact: true }),
+    ).toBeVisible();
+    expect(await screen.findByTestId("chart-panel-LPC")).toHaveTextContent(
+      "1009.64",
+    );
+    await userEvent.click(
+      screen.getByRole("combobox", { name: "Control lot", exact: true }),
+    );
+    expect(
+      screen.getByRole("option", {
+        name: "SHARED — LPC — HIV RNA",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("option", {
+        name: "SHARED — LPC — HCV RNA",
+        exact: true,
+      }),
+    );
+    expect(await screen.findByTestId("chart-panel-LPC")).toHaveTextContent(
+      "42.5",
+    );
+    expect(screen.getByTestId("chart-panel-LPC")).not.toHaveTextContent(
       "1009.64",
     );
   });

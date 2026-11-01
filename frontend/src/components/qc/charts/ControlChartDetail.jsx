@@ -78,7 +78,19 @@ export const ControlLotChart = ({
   const [zoomLevel, setZoomLevel] = useState(1);
 
   // Control level options
-  const controlLevelOptions = controlLevelItems(intl);
+  const standardLevels = controlLevelItems(intl);
+  const configuredLevels = [
+    ...new Set(
+      controlLots.map((lot) => lot.controlLevel?.toUpperCase()).filter(Boolean),
+    ),
+  ];
+  const controlLevelOptions = [
+    standardLevels[0],
+    ...configuredLevels.map(
+      (id) =>
+        standardLevels.find((level) => level.id === id) || { id, label: id },
+    ),
+  ];
   const chartLevels = controlLevelOptions.filter((level) => level.id !== "ALL");
   const lotLevel = (lot) => lot?.controlLevel?.toUpperCase();
   const lotItems = controlLots
@@ -96,7 +108,7 @@ export const ControlLotChart = ({
           level:
             controlLevelOptions.find((level) => level.id === lotLevel(lot))
               ?.label || lot.controlLevel,
-          test: lot.productName || lot.lotNumber || lot.id,
+          test: lot.testName || lot.testId,
         },
       ),
     }));

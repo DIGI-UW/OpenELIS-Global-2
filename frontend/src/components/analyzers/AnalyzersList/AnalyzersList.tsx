@@ -734,7 +734,7 @@ const AnalyzersList = () => {
 
       <Grid>
         <Column lg={16} md={8} sm={4}>
-          {loading ? (
+          {loading && analyzers.length === 0 ? (
             <div data-testid="analyzers-loading">
               <DataTableSkeleton
                 columnCount={headers.length}
@@ -746,6 +746,7 @@ const AnalyzersList = () => {
           ) : (
             <TableContainer
               data-testid="analyzers-table-container"
+              aria-busy={loading}
               className="analyzers-list-table-container"
             >
               <DataTable rows={rows} headers={headers} isSortable>

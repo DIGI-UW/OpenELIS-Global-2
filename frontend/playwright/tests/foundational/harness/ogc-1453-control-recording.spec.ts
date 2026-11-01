@@ -223,8 +223,8 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     await page
       .getByRole("combobox", { name: "Control lot", exact: true })
       .click();
-    const normal = `${specimen} — Normal — ${name}`;
-    const high = `${specimen} — High — ${name}`;
+    const normal = `${specimen} — Normal — HIV-1 Viral Load`;
+    const high = `${specimen} — High — HIV-1 Viral Load`;
     for (const label of [normal, high]) {
       const option = page.getByRole("option", { name: label, exact: true });
       await expect(option).toBeVisible();

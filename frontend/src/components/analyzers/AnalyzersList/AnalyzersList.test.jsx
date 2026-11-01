@@ -715,6 +715,35 @@ describe("AnalyzersList", () => {
     expect(params.get("returnTo")).toBe("/analyzers?search=gene&status=ACTIVE");
   });
 
+  test("keeps the QC action available during a delayed search refresh", async () => {
+    getAnalyzers.mockImplementationOnce((_filters, callback) =>
+      callback({ analyzers: [createMockAnalyzer({ id: "42" })] }),
+    );
+    let completeSearch;
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      completeSearch = callback;
+    });
+    renderWithIntl(<AnalyzersList />);
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-42"),
+    );
+    act(() => {
+      window.history.pushState({}, "", "/analyzers?search=Test");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(completeSearch).toBeDefined());
+    expect(
+      screen.getByRole("menuitem", { name: "Quality Control" }),
+    ).toBeVisible();
+    act(() =>
+      completeSearch({ analyzers: [createMockAnalyzer({ id: "42" })] }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Quality Control" }),
+    );
+    expect(window.location.pathname).toBe("/analyzers/qc/instruments/42");
+  });
+
   test("opens the canonical analyzer result review from the analyzer dashboard", async () => {
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
