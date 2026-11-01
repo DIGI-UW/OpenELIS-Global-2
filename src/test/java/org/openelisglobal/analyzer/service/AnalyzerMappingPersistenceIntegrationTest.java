@@ -896,6 +896,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
         acknowledgement.put("runtimeFingerprint", "sha256:" + "d".repeat(64));
         acknowledgement.put("desiredRuntimeState", runtimeState);
         acknowledgement.put("actualRuntimeState", runtimeState);
+        acknowledgement.put("receptionPurpose", "ROUTINE");
         acknowledgement.putArray("blockers");
         acknowledgement.put("acknowledgedAt", "2026-08-24T19:05:05Z");
         return acknowledgement;

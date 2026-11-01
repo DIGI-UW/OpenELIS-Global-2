@@ -607,6 +607,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         acknowledgement.put("runtimeFingerprint", "sha256:" + "d".repeat(64));
         acknowledgement.put("desiredRuntimeState", "ACTIVE");
         acknowledgement.put("actualRuntimeState", "ACTIVE");
+        acknowledgement.put("receptionPurpose", "ROUTINE");
         acknowledgement.putArray("blockers");
         acknowledgement.put("acknowledgedAt", "2026-10-06T12:00:00Z");
         return acknowledgement;
