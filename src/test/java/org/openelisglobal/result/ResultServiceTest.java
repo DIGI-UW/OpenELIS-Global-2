@@ -169,6 +169,14 @@ public class ResultServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("12.50", resultService.formatResultForDisplay(numericResult("12.5", 2), ",", true, false));
     }
 
+    @Test
+    public void printedWhitespaceValueStillExplainsItsClinicalBoundary() {
+        Result result = numericResult(" 6.004 ", 0);
+        assertEquals("6 (Value used for clinical decisions:  6.004 )",
+                resultService.formatResultForDisplay(result, ",", true, false));
+        assertEquals(" 6.004 ", result.getEnteredValue());
+    }
+
     private void assertReported(String expected, String stored, int places) {
         assertEquals(expected, resultService.formatResultForDisplay(numericResult(stored, places), ",", false, false));
         assertEquals(expected,

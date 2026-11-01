@@ -148,6 +148,17 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void whitespaceDoesNotHideTheClinicalValueOrConfiguredLogarithm() {
+        Result result = new Result();
+        result.setResultType("N");
+        result.setValue(" 6.004 ");
+        result.setReportingDecimalPlaces(0);
+        assertEquals("6\nlog10: 0.78\n(Value used for clinical decisions:  6.004 )",
+                org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result, true));
+        assertEquals(" 6.004 ", result.getEnteredValue());
+    }
+
+    @Test
     public void logarithmsSupportScientificNotationWithoutChangingItsRepresentation() {
         for (String[] example : new String[][] { { "1.5×10⁵", "5.18" }, { "1e-400", "−400.00" },
                 { "1e400", "400.00" } }) {

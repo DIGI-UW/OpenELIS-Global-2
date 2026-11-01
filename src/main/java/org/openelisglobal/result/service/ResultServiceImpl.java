@@ -44,7 +44,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
         String display = result.getDisplayValue();
         if (printable) {
             try {
-                if (new BigDecimal(result.getValue()).compareTo(new BigDecimal(display)) != 0) {
+                if (new BigDecimal(result.getValue().trim()).compareTo(new BigDecimal(display.trim())) != 0) {
                     return display + " (" + MessageUtil.getMessage("result.clinicalValue", result.getEnteredValue())
                             + ")";
                 }

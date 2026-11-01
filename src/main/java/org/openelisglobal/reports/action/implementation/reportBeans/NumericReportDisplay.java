@@ -18,7 +18,7 @@ public final class NumericReportDisplay {
             return display;
         }
         try {
-            BigDecimal measured = new BigDecimal(result.getValue());
+            BigDecimal measured = new BigDecimal(result.getValue().trim());
             if (displayLog10 && measured.signum() > 0) {
                 // Scaling avoids double overflow/underflow for valid decimal measurements.
                 long exponent = (long) measured.precision() - measured.scale() - 1;
@@ -29,7 +29,7 @@ public final class NumericReportDisplay {
                 // digits.
                 display += "\nlog10: " + logarithm.replace('-', '\u2212');
             }
-            if (measured.compareTo(new BigDecimal(result.getDisplayValue())) != 0) {
+            if (measured.compareTo(new BigDecimal(result.getDisplayValue().trim())) != 0) {
                 display += "\n(" + MessageUtil.getMessage("result.clinicalValue", result.getEnteredValue()) + ")";
             }
         } catch (NumberFormatException qualifiedMeasurement) {
