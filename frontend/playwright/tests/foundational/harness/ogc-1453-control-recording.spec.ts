@@ -141,10 +141,10 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     "/analyzer-types/cepheid-genexpert-astm/duplicate",
     { sourceRevision: 1, displayName: name },
   );
-  // Synthetic configuration declares HIGH; the vendor fixture carries no level.
+  // Synthetic configuration declares HPC; the vendor fixture carries no level.
   draft.profile.controlResultRecognition.rules[
     "astm-order-action-control"
-  ].controlLevel = "HIGH";
+  ].controlLevel = "HPC";
   await send(page, "put", `/analyzer-types/drafts/${draft.draftId}`, {
     profile: draft.profile,
   });
@@ -166,8 +166,8 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
   );
   try {
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
-    let highLotId: string;
-    for (const controlLevel of ["NORMAL", "HIGH"]) {
+    let customLotId: string;
+    for (const controlLevel of ["NORMAL", "HPC"]) {
       const lot = await send(page, "post", "/qc/controlLot", {
         productName: name,
         lotNumber: specimen,
@@ -182,7 +182,7 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
         status: "ACTIVE",
         unitOfMeasure: "copies/mL",
       });
-      if (controlLevel === "HIGH") highLotId = lot.id;
+      if (controlLevel === "HPC") customLotId = lot.id;
     }
     await sendGeneXpertFixture(
       page,
@@ -197,7 +197,7 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     // The transport ACK precedes asynchronous recording; open the chart only
     // after this run exists, rather than assuming a live chart subscription.
     await expect
-      .poll(async () => send(page, "get", `/qc/charts/${highLotId}`), {
+      .poll(async () => send(page, "get", `/qc/charts/${customLotId}`), {
         timeout: 30_000,
       })
       .toMatchObject({
@@ -224,8 +224,8 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
       .getByRole("combobox", { name: "Control lot", exact: true })
       .click();
     const normal = `${specimen} — Normal — HIV-1 Viral Load`;
-    const high = `${specimen} — High — HIV-1 Viral Load`;
-    for (const label of [normal, high]) {
+    const custom = `${specimen} — HPC — HIV-1 Viral Load`;
+    for (const label of [normal, custom]) {
       const option = page.getByRole("option", { name: label, exact: true });
       await expect(option).toBeVisible();
       const labelFits = await option
@@ -245,11 +245,11 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
       fullPage: true,
     });
     await page.getByRole("option", { name: normal, exact: true }).click();
-    await page.getByRole("tab", { name: "High", exact: true }).click();
+    await page.getByRole("tab", { name: "HPC", exact: true }).click();
     await expect(
       page.getByRole("combobox", { name: "Control lot", exact: true }),
-    ).toContainText(high);
-    const chart = page.getByTestId("chart-panel-HIGH");
+    ).toContainText(custom);
+    const chart = page.getByTestId("chart-panel-HPC");
     await expect(chart.getByTestId("lj-chart")).toBeVisible();
     // Carbon's point is evidence of a rendered measurement, not merely an empty chart frame.
     await expect(chart.locator("circle.dot")).toHaveCount(1);
@@ -257,7 +257,7 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     await expect(page.locator(".lj-tooltip")).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(".lj-tooltip")).toContainText("1009.64");
     await page.screenshot({
-      path: testInfo.outputPath("shared-lot-high-control.png"),
+      path: testInfo.outputPath("shared-lot-custom-control.png"),
       fullPage: true,
     });
     await page.getByRole("tab", { name: "Normal", exact: true }).click();
