@@ -150,7 +150,7 @@ test(
         );
         await expect(
           page.getByText(
-            /Choose the specimen or analysis requested on each row/,
+            /Some results need a placement decision\. Follow each row's guidance/,
           ),
         ).toBeVisible();
       } else {
@@ -169,7 +169,9 @@ test(
       .toBe(2);
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`);
     await expect(
-      page.getByText(/Choose the specimen or analysis requested on each row/),
+      page.getByText(
+        /Some results need a placement decision\. Follow each row's guidance/,
+      ),
     ).toBeVisible();
     await expect(page.getByText("Specimen decision required")).toHaveCount(2);
     await expect(
