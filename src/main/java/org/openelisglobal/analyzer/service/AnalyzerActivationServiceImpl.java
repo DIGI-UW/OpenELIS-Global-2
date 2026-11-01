@@ -114,7 +114,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         if (!context.blockers().isEmpty()) {
             return new AnalyzerSetupReceptionResult(analyzer.getId(), analyzer.getStatus(), false, context.blockers());
         }
-        boolean receptionWasRunning = "ACTIVE".equals(context.connection().document().path("actualRuntimeState").asText());
+        boolean receptionWasRunning = "ACTIVE"
+                .equals(context.connection().document().path("actualRuntimeState").asText());
         ObjectNode acknowledgement;
         try {
             acknowledgement = bridgeClient.applyRuntimeCommand(context.connectionId(), context.configRevision(),

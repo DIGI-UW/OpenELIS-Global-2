@@ -183,11 +183,12 @@ public class AnalyzerActivationServiceTest {
         activationAcknowledgement.put("receptionPurpose", "SETUP");
         when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "START_SETUP", "activate-fixture-004"))
                 .thenReturn(activationAcknowledgement);
-        when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP", ACTOR))
-                .thenThrow(new IllegalStateException("audit unavailable"));
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), null, activationAcknowledgement, "SETUP",
+                ACTOR)).thenThrow(new IllegalStateException("audit unavailable"));
         assertThrows(IllegalStateException.class, () -> service.startSetupReception(ANALYZER_ID, ACTOR));
         assertUnchanged();
-        verify(bridgeClient, times(expectStop ? 1 : 0)).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004");
+        verify(bridgeClient, times(expectStop ? 1 : 0)).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE",
+                "deactivate-fixture-004");
     }
 
     @Test
