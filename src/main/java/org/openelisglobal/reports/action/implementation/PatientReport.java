@@ -702,15 +702,28 @@ public abstract class PatientReport extends Report {
     }
 
     private String formatPatientReportResult(Result result) {
-        if (!"N".equals(result.getResultType())) {
+        return formatPatientReportResult(result, true);
+    }
+
+    private String formatPatientReportResult(Result result, boolean allowCalculatedLog) {
+        if (!"N".equals(result.getResultType()) && !"A".equals(result.getResultType())) {
             return SpringContext.getBean(ResultService.class).formatResultForDisplay(result, true);
         }
         TestResultComponent component = result.getTestResult() == null
                 || result.getTestResult().getComponentId() == null ? null
                         : SpringContext.getBean(TestResultComponentService.class)
                                 .get(result.getTestResult().getComponentId());
+        if (component == null && result.getAnalysis() != null && result.getAnalysis().getTest() != null) {
+            component = SpringContext.getBean(TestResultComponentService.class)
+                    .getActiveComponentsByTestId(result.getAnalysis().getTest().getId()).stream()
+                    .filter(TestResultComponent::getIsPrimary).findFirst().orElse(null);
+        }
+        if ("A".equals(result.getResultType())
+                && (!allowCalculatedLog || component == null || !component.getDisplayLog10())) {
+            return SpringContext.getBean(ResultService.class).formatResultForDisplay(result, true);
+        }
         return org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result,
-                component != null && "N".equals(component.getResultType()) && component.getDisplayLog10());
+                allowCalculatedLog && component != null && component.getDisplayLog10());
     }
 
     private String getAugmentedResult(ClinicalPatientData data, Result result) {
@@ -1017,7 +1030,8 @@ public abstract class PatientReport extends Report {
                 }
             }
             String componentValue = componentResults.isEmpty() ? null
-                    : formatComponentResults(component, componentResults, resultResultService);
+                    : formatComponentResults(component, componentResults, resultResultService,
+                            !hasReceivedLog(component, components, resultList));
             String status = null;
             if (GenericValidator.isBlankOrNull(componentValue)) {
                 status = componentInProgressText();
@@ -1119,7 +1133,8 @@ public abstract class PatientReport extends Report {
             if (componentResults.isEmpty()) {
                 continue;
             }
-            String componentValue = formatComponentResults(component, componentResults, resultResultService);
+            String componentValue = formatComponentResults(component, componentResults, resultResultService,
+                    !hasReceivedLog(component, components, resultList));
             if (GenericValidator.isBlankOrNull(componentValue)) {
                 continue;
             }
@@ -1131,8 +1146,21 @@ public abstract class PatientReport extends Report {
         return reportBuilder.toString();
     }
 
+    private boolean hasReceivedLog(TestResultComponent component, List<TestResultComponent> components,
+            List<Result> results) {
+        String sourceCode = component.getLog10SourceComponentCode();
+        if (sourceCode == null) {
+            return false;
+        }
+        return components.stream().filter(source -> sourceCode.equals(source.getCode()))
+                .anyMatch(source -> results.stream()
+                        .anyMatch(result -> result.getParentResult() == null && result.getTestResult() != null
+                                && source.getId().equals(result.getTestResult().getComponentId())
+                                && !GenericValidator.isBlankOrNull(result.getEnteredValue())));
+    }
+
     private String formatComponentResults(TestResultComponent component, List<Result> componentResults,
-            ResultService resultResultService) {
+            ResultService resultResultService, boolean allowCalculatedLog) {
         if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(component.getResultType())) {
             Collections.sort(componentResults, new Comparator<Result>() {
                 @Override
@@ -1173,7 +1201,7 @@ public abstract class PatientReport extends Report {
             dictionaryService.getData(dictionary);
             return dictionary.getId() != null ? dictionary.getLocalizedName() : "";
         }
-        return formatPatientReportResult(result);
+        return formatPatientReportResult(result, allowCalculatedLog);
     }
 
     protected void setCollectionTime(Set<SampleItem> sampleSet, List<ClinicalPatientData> currentSampleReportItems,

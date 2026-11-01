@@ -127,6 +127,44 @@ beforeEach(() => {
 });
 
 describe("SampleResultsSection", () => {
+  it("keeps the received log association through a code rename and clears it when disabled", async () => {
+    let persisted = clone(TWO_COMPONENTS);
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : clone(persisted),
+      );
+    });
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) => {
+      persisted = JSON.parse(body);
+      cb({ ok: true, status: 200, json: () => Promise.resolve({}) });
+    });
+    renderSection();
+    await screen.findByDisplayValue("Systolic");
+    const enabled = screen.getAllByLabelText("Show log10 on reports")[0];
+    fireEvent.click(enabled);
+    fireEvent.change(screen.getByLabelText("Received log10 result field"), {
+      target: { value: "DIA" },
+    });
+    fireEvent.change(screen.getByDisplayValue("DIA"), {
+      target: { value: "RECEIVED_LOG" },
+    });
+    expect(screen.getByLabelText("Received log10 result field")).toHaveValue(
+      "RECEIVED_LOG",
+    );
+    fireEvent.click(saveButton());
+    expect(savedPayload().components[0].log10SourceComponentCode).toBe(
+      "RECEIVED_LOG",
+    );
+    putToOpenElisServerFullResponse.mockClear();
+    await screen.findByDisplayValue("RECEIVED_LOG");
+    fireEvent.click(screen.getAllByLabelText("Show log10 on reports")[0]);
+    fireEvent.click(saveButton());
+    expect(savedPayload().components[0].log10SourceComponentCode).toBeNull();
+    expect(savedPayload().components[0].displayLog10).toBe(false);
+  });
+
   it("saves the explicit report logarithm setting on the selected component only", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) => {
       cb(
@@ -137,9 +175,7 @@ describe("SampleResultsSection", () => {
     });
     renderSection();
     await screen.findByDisplayValue("Systolic");
-    const options = screen.getAllByLabelText(
-      "Show calculated log10 on patient reports",
-    );
+    const options = screen.getAllByLabelText("Show log10 on reports");
     expect(options[0]).not.toBeChecked();
     expect(options[1]).not.toBeChecked();
     fireEvent.click(options[0]);
@@ -1372,7 +1408,8 @@ describe("SampleResultsSection typed options and refusals (OGC-1458)", () => {
   it.each([
     ["value.tooLong", "longer than"],
     ["unit.unknown", "unit of measure"],
-    ["logDisplay.numericRequired", "requires a numeric result"],
+    ["logDisplay.numericRequired", "requires a numeric or alpha result"],
+    ["logDisplay.sourceInvalid", "requires another visible numeric result"],
     ["decimalPlaces.invalid", "whole number from 0 to 10"],
   ])(
     "explains the %s refusal on the named component (OGC-1467)",

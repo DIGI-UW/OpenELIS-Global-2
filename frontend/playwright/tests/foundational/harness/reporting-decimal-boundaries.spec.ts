@@ -177,13 +177,11 @@ test("an explicitly configured report logarithm follows its component after rena
   const editor = `/MasterListsPage/TestCatalogEditor/${target.id}/sample-results`;
   await page.goto(editor);
   const checkbox = page.getByRole("checkbox", {
-    name: "Show calculated log10 on patient reports",
+    name: "Show log10 on reports",
     exact: true,
   });
   await expect(checkbox).not.toBeChecked();
-  await page
-    .getByText("Show calculated log10 on patient reports", { exact: true })
-    .click();
+  await page.getByText("Show log10 on reports", { exact: true }).click();
   await page.locator("#comp-label-0").fill(`Renamed measurement ${run}`);
   const saved = page.waitForResponse(
     (response) =>
@@ -248,9 +246,7 @@ test("an explicitly configured report logarithm follows its component after rena
     contentType: "application/json",
   });
   await page.goto(editor);
-  await page
-    .getByText("Show calculated log10 on patient reports", { exact: true })
-    .click();
+  await page.getByText("Show log10 on reports", { exact: true }).click();
   const disabled = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/tests/${target.id}/sample-results`) &&

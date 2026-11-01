@@ -113,6 +113,22 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void receivedLogAssociationImportsTogetherAndBlankUpdatesPreserveIt() throws Exception {
+        load(componentHandler, "testName,code,label,resultType,displayLog10,log10SourceComponentCode,showOnReport\n"
+                + TEST + ",PRIMARY,Measured,N,Y,LOG,Y\n" + TEST + ",LOG,Received log,N,N,,Y\n", "log-source.csv");
+        String query = "SELECT log10_source_component_code FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'";
+        assertEquals("LOG", jdbc.queryForObject(query, String.class, TEST));
+        load(componentHandler, "testName,code,label,log10SourceComponentCode\n" + TEST + ",PRIMARY,Renamed,\n",
+                "rename-log.csv");
+        assertEquals("LOG", jdbc.queryForObject(query, String.class, TEST));
+        load(componentHandler, "testName,code,displayLog10,log10SourceComponentCode\n" + TEST + ",PRIMARY,N,\n",
+                "disable-log.csv");
+        assertEquals(null, jdbc.queryForObject(query, String.class, TEST));
+        assertEquals(Boolean.FALSE, jdbc.queryForObject(query.replace("log10_source_component_code", "display_log10"),
+                Boolean.class, TEST));
+    }
+
+    @Test
     public void eachAnswerLandsOnTheComponentItsRowNames() throws Exception {
         load(testResultHandler, answers(), "test-results.csv");
 

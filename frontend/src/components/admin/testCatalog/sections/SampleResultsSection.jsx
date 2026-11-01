@@ -176,6 +176,8 @@ const ResultEntryPreview = ({ component, uoms, intl }) => {
 const SAVE_REFUSALS = {
   "logDisplay.numericRequired":
     "error.testCatalog.sampleResults.logNumericRequired",
+  "logDisplay.sourceInvalid":
+    "error.testCatalog.sampleResults.logDisplay.sourceInvalid",
   "decimalPlaces.invalid":
     "error.testCatalog.sampleResults.decimalPlacesInvalid",
   "components.activeNeedsComponent":
@@ -293,8 +295,11 @@ const SampleResultsSection = ({ testId }) => {
       // Numeric-only fields.
       patch.uomId = "";
       patch.reportingDecimalPlaces = null;
-      patch.displayLog10 = false;
       patch.allowMultipleReadings = false;
+    }
+    if (!["N", "A"].includes(nextType)) {
+      patch.displayLog10 = false;
+      patch.log10SourceComponentCode = null;
     }
     if (!isSelectList) {
       // Select-list options are meaningless for non-list types.
@@ -306,7 +311,13 @@ const SampleResultsSection = ({ testId }) => {
   // ── Immutable updaters ─────────────────────────────────────────────────────
   const patchComponent = (ci, patch) =>
     setComponents((prev) =>
-      prev.map((c, i) => (i === ci ? { ...c, ...patch } : c)),
+      prev.map((c, i) => {
+        if (i === ci) return { ...c, ...patch };
+        return patch.code !== undefined &&
+          c.log10SourceComponentCode === prev[ci].code
+          ? { ...c, log10SourceComponentCode: patch.code }
+          : c;
+      }),
     );
 
   // FR-29: create a unit inline, then append it to the picker and select it on
@@ -1132,21 +1143,6 @@ const SampleResultsSection = ({ testId }) => {
                         })
                       }
                     />
-                    <Checkbox
-                      id={`comp-display-log10-${ci}`}
-                      checked={c.displayLog10 === true}
-                      labelText={intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.displayLog10",
-                      })}
-                      onChange={(_event, { checked }) =>
-                        patchComponent(ci, { displayLog10: checked })
-                      }
-                    />
-                    <p>
-                      {intl.formatMessage({
-                        id: "label.testCatalog.sampleResults.displayLog10.helper",
-                      })}
-                    </p>
                     {/* Detection limits (OGC-1148 FR-C1/C2): optional, LOD <= LOQ. */}
                     <div
                       style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
@@ -1201,6 +1197,67 @@ const SampleResultsSection = ({ testId }) => {
                         }
                       />
                     </div>
+                  </>
+                )}
+                {["N", "A"].includes(c.resultType) && (
+                  <>
+                    <Checkbox
+                      id={`comp-display-log10-${ci}`}
+                      checked={c.displayLog10 === true}
+                      labelText={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10",
+                      })}
+                      onChange={(_event, { checked }) =>
+                        patchComponent(ci, {
+                          displayLog10: checked,
+                          log10SourceComponentCode: checked
+                            ? c.log10SourceComponentCode
+                            : null,
+                        })
+                      }
+                    />
+                    <p>
+                      {intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.displayLog10.helper",
+                      })}
+                    </p>
+                    {c.displayLog10 && (
+                      <Select
+                        id={`comp-log10-source-${ci}`}
+                        labelText={intl.formatMessage({
+                          id: "label.testCatalog.sampleResults.log10Source",
+                        })}
+                        value={c.log10SourceComponentCode || ""}
+                        onChange={(event) =>
+                          patchComponent(ci, {
+                            log10SourceComponentCode:
+                              event.target.value || null,
+                          })
+                        }
+                      >
+                        <SelectItem
+                          value=""
+                          text={intl.formatMessage({
+                            id: "label.testCatalog.sampleResults.log10Source.none",
+                          })}
+                        />
+                        {components
+                          .filter(
+                            (source, i) =>
+                              i !== ci &&
+                              source.resultType === "N" &&
+                              source.showOnReport !== false &&
+                              !source.displayLog10,
+                          )
+                          .map((source) => (
+                            <SelectItem
+                              key={source.code}
+                              value={source.code}
+                              text={source.label || source.code}
+                            />
+                          ))}
+                      </Select>
+                    )}
                   </>
                 )}
                 {["D", "M", "C"].includes(c.resultType) ? (

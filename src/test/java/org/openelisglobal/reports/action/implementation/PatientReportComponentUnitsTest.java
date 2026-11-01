@@ -125,7 +125,7 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
         component.setDisplayLog10(true);
         testResultComponentService.update(component);
         String display = ReflectionTestUtils.invokeMethod(report, "formatPatientReportResult", result);
-        assertEquals("0.01\nlog10: −2.19\n(Value used for clinical decisions: 0.0064)", display);
+        assertEquals("0.01\nCalculated log10: −2.19\n(Value used for clinical decisions: 0.0064)", display);
         assertEquals("0.0064", result.getValue());
         assertEquals("0.01", resultService.formatResultForDisplay(result, false));
         component.setDisplayLog10(false);
@@ -148,12 +148,81 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void receivedLogWinsAndOnlyAMissingLogUsesTheMeasurementFallback() {
+        PatientReport report = report();
+        Analysis analysis = analysisService.get("100");
+        ReflectionTestUtils.setField(report, "currentAnalysis", analysis);
+        var load = testResultComponentService.get("vcu-load");
+        var source = testResultComponentService.get("vcu-ct");
+        source.setCode("INSTRUMENT_LOG");
+        source.setLabel("Received log10");
+        source.setSysUserId("1");
+        testResultComponentService.update(source);
+        load.setDisplayLog10(true);
+        load.setLog10SourceComponentCode(source.getCode());
+        load.setSysUserId("1");
+        testResultComponentService.update(load);
+        var results = resultService.getResultsByAnalysis(analysis);
+        var measurement = results.stream().filter(r -> "vcu-load".equals(r.getTestResult().getComponentId()))
+                .findFirst().orElseThrow();
+        var received = results.stream().filter(r -> "vcu-ct".equals(r.getTestResult().getComponentId())).findFirst()
+                .orElseThrow();
+        measurement.setValue("1009.64");
+        measurement.clearReportingDecimalPlaces();
+        received.setValue("3.0040");
+        received.clearReportingDecimalPlaces();
+        ClinicalPatientData data = new ClinicalPatientData();
+        var components = testResultComponentService.getActiveComponentsByTestId("1");
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
+        assertEquals(List.of("1009.64", "3.0040"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", List.of(measurement), components, data);
+        assertEquals("1009.64\nCalculated log10: 3.00", data.getComponents().get(0).value());
+        assertEquals("In Progress", data.getComponents().get(1).value());
+        assertEquals("1009.64", measurement.getEnteredValue());
+        assertEquals("3.0040", received.getEnteredValue());
+        received.setValue(" ");
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
+        assertEquals("1009.64\nCalculated log10: 3.00", data.getComponents().get(0).value());
+        assertEquals("In Progress", data.getComponents().get(1).value());
+        received.setValue("<2");
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data);
+        assertEquals(List.of("1009.64", "<2"), data.getComponents().stream().map(ReportComponentLine::value).toList());
+        // A present but unvalidated received log is pending, not permission to
+        // substitute a calculated number or publish that received value.
+        measurement.setValidatedDate(new java.sql.Timestamp(System.currentTimeMillis()));
+        ReflectionTestUtils.invokeMethod(report, "buildMultiComponentRow", results, components, data, true);
+        assertEquals(List.of("1009.64", "Awaiting validation"),
+                data.getComponents().stream().map(ReportComponentLine::value).toList());
+    }
+
+    @Test
+    public void legacyAlphaMeasurementsCanOptIntoLogDisplayWithoutChangingTypeOrText() {
+        var component = testResultComponentService.get("vcu-load");
+        component.setResultType("A");
+        component.setDisplayLog10(true);
+        component.setSysUserId("1");
+        testResultComponentService.update(component);
+        Result result = resultService.get("100");
+        result.setResultType("A");
+        result.setValue("1000.00");
+        assertEquals("1000.00\nCalculated log10: 3.00",
+                ReflectionTestUtils.invokeMethod(report(), "formatPatientReportResult", result));
+        for (String value : List.of("<1000", "Not detected", "0", "-1")) {
+            result.setValue(value);
+            assertEquals(value, ReflectionTestUtils.invokeMethod(report(), "formatPatientReportResult", result));
+            assertEquals(value, result.getEnteredValue());
+            assertEquals("A", result.getResultType());
+        }
+    }
+
+    @Test
     public void whitespaceDoesNotHideTheClinicalValueOrConfiguredLogarithm() {
         Result result = new Result();
         result.setResultType("N");
         result.setValue(" 6.004 ");
         result.setReportingDecimalPlaces(0);
-        assertEquals("6\nlog10: 0.78\n(Value used for clinical decisions:  6.004 )",
+        assertEquals("6\nCalculated log10: 0.78\n(Value used for clinical decisions:  6.004 )",
                 org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result, true));
         assertEquals(" 6.004 ", result.getEnteredValue());
     }
@@ -166,7 +235,7 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
             result.setResultType("N");
             result.setValue(example[0]);
             result.clearReportingDecimalPlaces();
-            assertEquals(example[0] + "\nlog10: " + example[1],
+            assertEquals(example[0] + "\nCalculated log10: " + example[1],
                     org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result,
                             true));
             assertEquals(example[0], result.getEnteredValue());

@@ -101,8 +101,20 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     public List<TestResultComponent> saveComponentsForTest(String testId, List<TestResultComponent> desired,
             String sysUserId) {
         for (TestResultComponent component : desired) {
-            if (component.getDisplayLog10() && !"N".equals(component.getResultType())) {
-                throw new IllegalArgumentException("displayLog10 requires a numeric component");
+            if (component.getDisplayLog10() && !"N".equals(component.getResultType())
+                    && !"A".equals(component.getResultType())) {
+                throw new IllegalArgumentException("displayLog10 requires a numeric or alpha component");
+            }
+            if (component.getLog10SourceComponentCode() != null) {
+                boolean validSource = component.getDisplayLog10() && desired.stream()
+                        .anyMatch(source -> component.getLog10SourceComponentCode().equals(source.getCode())
+                                && !source.getCode().equals(component.getCode()) && "N".equals(source.getResultType())
+                                && source.getShowOnReport() && !source.getDisplayLog10()
+                                && source.getLog10SourceComponentCode() == null);
+                if (!validSource) {
+                    throw new IllegalArgumentException(
+                            "log10 source must be another visible numeric component without a calculated logarithm");
+                }
             }
             if (component.getReportingDecimalPlaces() != null) {
                 org.openelisglobal.result.util.ReportingDecimalPlaces
@@ -152,6 +164,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
                 match.setDisplayLog10(d.getDisplayLog10());
+                match.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                 match.setLod(d.getLod());
                 match.setLoq(d.getLoq());
                 match.setSysUserId(sysUserId);
@@ -174,6 +187,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
                     slot.setDisplayLog10(d.getDisplayLog10());
+                    slot.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                     slot.setLod(d.getLod());
                     slot.setLoq(d.getLoq());
                     slot.setIsActive("Y");

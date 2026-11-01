@@ -332,6 +332,36 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
+    public void receivedLogAssociationRoundTripsAndRejectsDanglingOrHiddenSources() {
+        ResultComponentDto primary = comp(null, "PRIMARY", "Measurement", 0);
+        primary.resultType = "N";
+        primary.displayLog10 = true;
+        primary.log10SourceComponentCode = "LOG";
+        ResultComponentDto source = comp(null, "LOG", "Received log", 1);
+        source.resultType = "N";
+        source.showOnReport = true;
+        assertEquals(200, controller.saveSampleResults(String.valueOf(TEST_ID), body(primary, source), authedRequest())
+                .getStatusCodeValue());
+        SampleResults saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        var measured = saved.components.stream().filter(c -> "PRIMARY".equals(c.code)).findFirst().orElseThrow();
+        var log = saved.components.stream().filter(c -> "LOG".equals(c.code)).findFirst().orElseThrow();
+        assertEquals("LOG", measured.log10SourceComponentCode);
+        log.code = "RENAMED";
+        var invalid = controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest());
+        assertEquals(422, invalid.getStatusCodeValue());
+        assertEquals("logDisplay.sourceInvalid", invalid.getBody().refusal);
+        measured.log10SourceComponentCode = "RENAMED";
+        log.showOnReport = false;
+        assertEquals(422,
+                controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest()).getStatusCodeValue());
+        log.showOnReport = true;
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest()).getStatusCodeValue());
+        assertEquals("RENAMED", controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.stream()
+                .filter(c -> "PRIMARY".equals(c.code)).findFirst().orElseThrow().log10SourceComponentCode);
+    }
+
+    @org.junit.Test
     public void getSampleResults_emptyReturns200WithNoComponents() {
         ResponseEntity<SampleResults> resp = controller.getSampleResults(String.valueOf(TEST_ID));
         assertEquals(200, resp.getStatusCode().value());

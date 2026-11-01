@@ -59,6 +59,11 @@ public class TestResultComponent extends BaseObject<String> {
     @Column(name = "display_log10", nullable = false)
     private boolean displayLog10 = false;
 
+    // Explicit report-only association within this test; never infer a log field
+    // from its label, terminology code, or unit.
+    @Column(name = "log10_source_component_code", length = 50)
+    private String log10SourceComponentCode;
+
     @Column(name = "default_result", length = 80)
     private String defaultResult;
 
@@ -93,6 +98,14 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setDisplayLog10(boolean displayLog10) {
         this.displayLog10 = displayLog10;
+    }
+
+    public String getLog10SourceComponentCode() {
+        return log10SourceComponentCode;
+    }
+
+    public void setLog10SourceComponentCode(String code) {
+        log10SourceComponentCode = code == null || code.isBlank() ? null : code.trim();
     }
 
     public TestResultComponent() {

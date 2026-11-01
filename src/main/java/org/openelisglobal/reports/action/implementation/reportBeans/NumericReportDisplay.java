@@ -31,11 +31,13 @@ public final class NumericReportDisplay {
                 String logarithm = BigDecimal.valueOf(log).setScale(2, RoundingMode.HALF_UP).toPlainString();
                 // Unicode minus is a numeric sign, so PDF line breaking keeps it with its
                 // digits.
-                display += "\nlog10: " + logarithm.replace('-', '\u2212');
+                display += "\n" + messages.get("label.results.calculatedLog10").replace("{value}",
+                        logarithm.replace('-', '\u2212'));
             }
             if (measured.compareTo(new BigDecimal(result.getDisplayValue().trim())) != 0) {
-                display += "\n(" + messages.get("label.results.clinicalValue")
-                        .replace("{value}", result.getEnteredValue()) + ")";
+                display += "\n("
+                        + messages.get("label.results.clinicalValue").replace("{value}", result.getEnteredValue())
+                        + ")";
             }
         } catch (NumberFormatException qualifiedMeasurement) {
             // Bounds are not exact measurements; do not invent a logarithm for them.

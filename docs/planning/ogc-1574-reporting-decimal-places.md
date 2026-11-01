@@ -189,22 +189,36 @@ minus sign wrapped away from its digits, and a legacy viral-load lookup that
 selected a test by localized name. Catalog names are not calculation
 assignments.
 
-- Each numeric result component now has an explicit `displayLog10` option in
-  Test Catalog > Sample & Results. It is false by default, including on upgrade.
-  No name-based backfill guesses which component should receive a calculation.
-- The `result-components` CSV domain accepts `displayLog10`; a blank update
-  preserves the existing setting. A non-numeric component cannot enable it.
-- Patient reports calculate the optional annotation from the original positive,
-  exact measurement, independently of reporting decimal places. Bounds, zero and
-  negative measurements receive no logarithm. Received logarithmic components
-  remain ordinary independently mapped results; do not enable this option on a
-  component already expressed as a logarithm.
-- The calculated logarithm and the original-value annotation each start on their
-  own line. A numeric minus sign stays with the logarithm's digits.
-- The old name-based special case in legacy result entry, validation and patient
-  reports is removed. Stored values, flags, FHIR and machine-readable exports do
-  not acquire this report-only annotation.
+- Each numeric or legacy alpha result component has an explicit `displayLog10`
+  option in Test Catalog > Sample & Results. It remains off for lab-created
+  tests unless explicitly enabled. Alpha values are parsed only for this report
+  annotation; their stored type, text and clinical handling do not change.
+- The received-log-first policy agreed on 1 November 2026 is explicit:
+  `log10SourceComponentCode` identifies another visible numeric component of the
+  same test. The source cannot itself request a calculated logarithm. The editor
+  updates associations when codes change; the service rejects dangling links,
+  including removal, hidden fields and incompatible types. CSV groups validate
+  together, so row order does not determine association validity.
+- A present source result suppresses calculation. It prints through its own
+  component and normal validation rules. An unvalidated source remains pending,
+  not replaced. Only an absent or blank source allows the fallback, from the
+  original exact positive measurement. Bounds, zero, negative values and text
+  receive no calculated logarithm. Both original measurements remain unchanged.
+- The harness catalog explicitly links HIV-1 Viral Load PRIMARY to LOG.
+  Migration 147 restores the default only for the known base-image ecosystem
+  identity and an untouched component version from before migration 146. Names
+  and LOINC codes alone never authorize an upgrade. Changed or historically
+  ambiguous components require laboratory review. Rollback records preserve
+  subsequent operator edits.
+- The calculated value is labeled **Calculated log10**. Both it and the original
+  clinical-value annotation start on their own line, using the same `en.json`
+  translation keys as the interface. A numeric minus sign stays with its digits.
+  Translated wording is a separate publication step owned by the user.
+- The old name-based special case remains removed from result entry, validation
+  and patient reports. Flags, thresholds, FHIR and numeric exports use the
+  original clinical result. Already issued PDFs are not rewritten.
 
-Upgrade acceptance must include explicit laboratory review of any component that
-needs the report logarithm. Existing names, units and decimal-place settings do
-not enable it. Already issued PDF artifacts are not rewritten.
+Acceptance covers a received log distinct from the calculated value, missing and
+blank received logs, an unvalidated received log, qualified values, legacy alpha
+measurements, source rename/removal validation, CSV import, stable-identity
+upgrade, lab-created lookalikes, explicit operator changes and rollback.
