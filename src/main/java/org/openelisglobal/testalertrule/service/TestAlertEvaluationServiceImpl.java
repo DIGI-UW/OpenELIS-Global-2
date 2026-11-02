@@ -86,8 +86,8 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
         if (test == null) {
             return;
         }
-        // the number drives the rules; what the technologist wrote is what a
-        // person reads in the alert
+        // the number drives the rules; the critical alert shows what the
+        // technologist wrote
         String value = result.getValue();
         String writtenValue = result.getEnteredValue();
         boolean critical = isCriticalValue(result, value);

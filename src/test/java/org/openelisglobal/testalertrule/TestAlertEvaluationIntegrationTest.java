@@ -2,7 +2,6 @@ package org.openelisglobal.testalertrule;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -16,7 +15,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultService;
@@ -33,7 +32,6 @@ public class TestAlertEvaluationIntegrationTest extends BaseWebContextSensitiveT
 
     private static final String RULE = "AlertEvalIT Rule";
     private static final String USER = "1";
-    private static final String SUBJECT_KEY = "notification.testAlert.subject";
     private static final String DICTIONARY_ID = "990001";
 
     @Autowired
@@ -108,8 +106,7 @@ public class TestAlertEvaluationIntegrationTest extends BaseWebContextSensitiveT
 
         List<Map<String, Object>> alerts = externalAlerts();
         assertEquals(1, alerts.size());
-        assertNotEquals("the subject key must exist", SUBJECT_KEY, MessageUtil.getMessage(SUBJECT_KEY, "TB"));
-        assertEquals(MessageUtil.getMessage(SUBJECT_KEY, "TB"), alerts.get(0).get("rendered_subject"));
+        assertEquals("Test alert: TB", alerts.get(0).get("rendered_subject"));
         assertTrue(String.valueOf(alerts.get(0).get("rendered_message")).contains("90.0"));
         assertEquals("officer@example.org", alerts.get(0).get("recipient_email"));
         assertEquals("12345", alerts.get(0).get("reference_accession"));
@@ -163,15 +160,27 @@ public class TestAlertEvaluationIntegrationTest extends BaseWebContextSensitiveT
         result.setValue("90.0");
         result.setSysUserId(USER);
         resultService.update(result);
-        Analysis analysis = analysisService.get("1");
+        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet(USER);
+        Analysis analysis = ResultUtil.resolveModifiedAnalysis(dataSet, "1");
         analysis.setStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
         analysis.setSysUserId(USER);
-        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet(USER);
-        dataSet.getModifiedAnalysis().add(analysis);
 
         logbookPersistService.persistDataSet(dataSet, new ArrayList<>(), USER);
 
         assertEquals(1, externalAlerts().size());
+    }
+
+    @Test
+    public void finalizedResultSavedAgain_queuesNothing() {
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '90.0' WHERE id = 1");
+        jdbcTemplate.update("UPDATE clinlims.analysis SET status_id = ? WHERE id = 1",
+                Integer.valueOf(statusService.getStatusID(AnalysisStatus.Finalized)));
+        ResultsUpdateDataSet dataSet = new ResultsUpdateDataSet(USER);
+        ResultUtil.resolveModifiedAnalysis(dataSet, "1").setSysUserId(USER);
+
+        logbookPersistService.persistDataSet(dataSet, new ArrayList<>(), USER);
+
+        assertEquals(0, externalAlerts().size());
     }
 
     private void validate(String value, AnalysisStatus status) {

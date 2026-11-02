@@ -19,9 +19,7 @@ public record ResultsValidatedEvent(Set<Long> sampleIds, Set<Long> analysisIds) 
             if (!finalizedId.equals(analysis.getStatusId())) {
                 continue;
             }
-            if (analysis.getId() != null) {
-                analysisIds.add(Long.valueOf(analysis.getId()));
-            }
+            analysisIds.add(Long.valueOf(analysis.getId()));
             if (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null) {
                 sampleIds.add(Long.valueOf(analysis.getSampleItem().getSample().getId()));
             }

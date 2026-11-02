@@ -173,8 +173,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             updater.transactionalUpdate(actionDataSet);
         }
 
-        // Results finalized at entry skip validation, so announce them here too.
-        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(actionDataSet.getModifiedAnalysis()));
+        // Results finalized at entry skip validation, so announce them here too,
+        // but not the ones that were already finalized before this save.
+        eventPublisher.publishEvent(ResultsValidatedEvent.finalized(actionDataSet.getModifiedAnalysis().stream()
+                .filter(analysis -> !actionDataSet.getFinalizedBeforeSave().contains(analysis.getId())).toList()));
         return reflexAnalysises;
     }
 

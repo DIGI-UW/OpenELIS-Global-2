@@ -290,6 +290,10 @@ public class ResultUtil {
         if (analysis == null) {
             analysis = analysisService.get(analysisId);
             actionDataSet.getModifiedAnalysis().add(analysis);
+            if (SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)
+                    .equals(analysis.getStatusId())) {
+                actionDataSet.getFinalizedBeforeSave().add(analysisId);
+            }
         }
         return analysis;
     }
