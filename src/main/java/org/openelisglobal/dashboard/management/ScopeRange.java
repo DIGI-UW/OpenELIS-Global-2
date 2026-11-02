@@ -3,8 +3,7 @@ package org.openelisglobal.dashboard.management;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
-// Inclusive lab-calendar dates. The prior period is the same number of days before
-// from, or for quarter and year-to-date the same span of the previous quarter or year.
+// Inclusive lab-calendar dates.
 public record ScopeRange(LocalDate from, LocalDate to, LocalDate priorFrom, LocalDate priorTo) {
 
     public static ScopeRange of(String scope, LocalDate today) {

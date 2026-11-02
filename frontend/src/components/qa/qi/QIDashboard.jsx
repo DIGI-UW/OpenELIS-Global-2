@@ -18,6 +18,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Dropdown } from "@carbon/react";
 import { Renew } from "@carbon/icons-react";
+import { addDays, isLastDayOfMonth, lastDayOfMonth, subYears } from "date-fns";
 import { FormattedMessage, useIntl } from "react-intl";
 import { toLocalIsoDate } from "../../utils/Utils";
 import {
@@ -26,7 +27,6 @@ import {
 } from "../../utils/useServerData";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { formatTat, pctDelta, tatDelta } from "../../reports/tat/tatUtils";
-import { DAY_MS } from "../common/qaDates";
 import {
   NCE_DRILL_URL,
   NCE_LIST_URL,
@@ -50,8 +50,6 @@ const WINDOWS = [
   { id: "ytd", labelKey: "qa.qi.dashboard.window.ytd" },
 ];
 
-const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-
 export function windowDates(windowId, now = labNow()) {
   const to = new Date(now);
   const from = new Date(now);
@@ -60,20 +58,14 @@ export function windowDates(windowId, now = labNow()) {
   let priorTo;
   if (days) {
     from.setDate(from.getDate() - (days - 1));
-    priorTo = new Date(from.getTime() - DAY_MS);
-    priorFrom = new Date(from.getTime() - DAY_MS - (to - from));
+    priorTo = addDays(from, -1);
+    priorFrom = addDays(from, -days);
   } else {
-    // Year to date compares with the same span of last year; a month end with the whole month.
     from.setMonth(0, 1);
-    const year = to.getFullYear() - 1;
-    const month = to.getMonth();
-    const monthEnd = to.getDate() === daysInMonth(to.getFullYear(), month);
-    priorFrom = new Date(year, 0, 1);
-    priorTo = new Date(
-      year,
-      month,
-      monthEnd ? daysInMonth(year, month) : to.getDate(),
-    );
+    priorFrom = subYears(from, 1);
+    priorTo = isLastDayOfMonth(to)
+      ? lastDayOfMonth(subYears(to, 1))
+      : subYears(to, 1);
   }
   return {
     fromDate: toLocalIsoDate(from),
