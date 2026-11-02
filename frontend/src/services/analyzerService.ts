@@ -367,6 +367,10 @@ export interface AnalyzerDeliveryIssuesResponse {
   data?: {
     count: number;
     rows: Array<{ id: string; state: string; actionable: boolean }>;
+    /** False when OpenELIS has no Analyzer Bridge address. */
+    bridgeConfigured?: boolean;
+    /** False when the Bridge is not paired yet; it may still hold results. */
+    bridgePaired?: boolean;
   };
 }
 
@@ -391,6 +395,7 @@ export interface BridgePairingStatus {
     | "BRIDGE_UNPAIRED"
     | "UNREACHABLE"
     | null;
+  clientKeyReadable?: boolean;
 }
 
 export type BridgePairingResponse = BridgePairingStatus & {

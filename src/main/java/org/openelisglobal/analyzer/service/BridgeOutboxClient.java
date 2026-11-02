@@ -77,6 +77,9 @@ public class BridgeOutboxClient {
         try {
             response = "GET".equals(method) ? httpClient.get(url, REQUEST_TIMEOUT)
                     : httpClient.post(url, "{}", REQUEST_TIMEOUT);
+        } catch (BridgeHttpClient.BridgeNotPairedException exception) {
+            throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeNotPaired", Map.of(),
+                    exception);
         } catch (IOException exception) {
             throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeUnreachable",
                     Map.of("detail", String.valueOf(exception.getMessage())), exception);

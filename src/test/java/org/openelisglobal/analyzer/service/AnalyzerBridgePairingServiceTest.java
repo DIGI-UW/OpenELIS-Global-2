@@ -86,6 +86,82 @@ public class AnalyzerBridgePairingServiceTest {
         BridgeTls.privateKey(java.util.Base64.getDecoder().decode(encryptor.decrypt(storedKey)));
     }
 
+    /**
+     * A pairing stored under another installation key (one from before the install
+     * key, not yet upgraded) cannot be read. Every Bridge call used to answer a
+     * bare 500; it now reads as not paired.
+     */
+    @Test
+    public void aPairingThisInstallationCannotDecryptReadsAsNotPaired() {
+        service("").pair(CODE, "7");
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+
+        AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", "", "", "");
+
+        assertTrue(reinstalled.getPairedBridge().isEmpty());
+        assertFalse(reinstalled.getStatus().paired());
+    }
+
+    /**
+     * An unreadable stored key cannot pair on its own, so the page must not say it
+     * will, and it says the key is the problem.
+     */
+    @Test
+    public void anUnreadableKeyIsReportedAndDoesNotPairOnItsOwn() {
+        service("").pair(CODE, "7");
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+
+        AnalyzerBridgePairingService.Status status = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", CODE, "", "").getStatus();
+
+        assertFalse(status.clientKeyReadable());
+        assertFalse(status.pairsAutomatically());
+        assertTrue(service(CODE).getStatus().clientKeyReadable());
+    }
+
+    /**
+     * Pairing again with a new code from the Bridge replaces a key this
+     * installation cannot read, where every attempt used to fail with the key error
+     * until the row was deleted by hand.
+     */
+    @Test
+    public void aNewCodeReplacesAKeyThisInstallationCannotRead() {
+        service("").pair(CODE, "7");
+        String unreadableKey = stored.get().getClientPrivateKey();
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+        AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", "", "", "");
+        bridge.forget();
+
+        AnalyzerBridgePairingService.Status status = reinstalled.pair(CODE, "8");
+
+        assertTrue(status.paired());
+        assertTrue(status.clientKeyReadable());
+        assertEquals(status.clientCertificateSha256(), bridge.pairedClient());
+        assertFalse(unreadableKey.equals(stored.get().getClientPrivateKey()));
+        assertTrue(reinstalled.getPairedBridge().isPresent());
+    }
+
+    @Test
+    public void aRefusedCodeLeavesAnUnreadableKeyAsItWas() {
+        service("").pair(CODE, "7");
+        String unreadableKey = stored.get().getClientPrivateKey();
+        AES256TextEncryptor otherKey = new AES256TextEncryptor();
+        otherKey.setPassword(java.util.UUID.randomUUID().toString());
+        AnalyzerBridgePairingService reinstalled = new AnalyzerBridgePairingServiceImpl(dao, otherKey,
+                bridge.url() + "/", "", "", "");
+        bridge.forget();
+
+        assertThrows(BridgePairingException.class, () -> reinstalled.pair("WRONG", "8"));
+
+        assertEquals(unreadableKey, stored.get().getClientPrivateKey());
+        assertEquals(unreadableKey, dao.findCurrent().orElseThrow().getClientPrivateKey());
+    }
+
     @Test
     public void callsAfterPairingTrustOnlyThePairedBridge() throws Exception {
         AnalyzerBridgePairingService pairing = service("");

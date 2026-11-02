@@ -43,7 +43,18 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
 
     @Override
     public AnalyzerTypeCatalogView getCatalog() {
-        BridgeProfileCatalog bridgeCatalog = bridgeCatalogService.getCatalog();
+        if (!bridgeCatalogService.isConfigured()) {
+            return AnalyzerTypeCatalogView.unavailable(SCHEMA_VERSION, false, false);
+        }
+        BridgeProfileCatalog bridgeCatalog;
+        try {
+            bridgeCatalog = bridgeCatalogService.getCatalog();
+        } catch (BridgeProfileCatalogException e) {
+            if (e.bridgeNotPaired()) {
+                return AnalyzerTypeCatalogView.unavailable(SCHEMA_VERSION, true, false);
+            }
+            throw e;
+        }
         Map<String, List<Analyzer>> analyzersByProfileId = bridgeCatalog.profiles().stream()
                 .map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
                 .collect(Collectors.toMap(Function.identity(), this::affectedAnalyzers));
