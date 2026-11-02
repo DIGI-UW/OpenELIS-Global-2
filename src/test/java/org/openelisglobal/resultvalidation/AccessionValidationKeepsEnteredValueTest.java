@@ -109,6 +109,33 @@ public class AccessionValidationKeepsEnteredValueTest extends BaseWebContextSens
         assertEquals("0.95", resultService.get("100").getValue());
     }
 
+    /**
+     * OGC-1569: Modify starts from the stored 0.9, so typing the reported 1 there
+     * is a correction, not the reported form posted back unchanged.
+     */
+    @Test
+    public void modifySavesTheReportedValueWhenThatIsWhatWasTyped() throws Exception {
+        String typed = row("1").replace("\"result\":\"1\",", "\"result\":\"1\",\"storedResult\":\"0.9\",");
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/modify").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(typed)).andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals("1", resultService.get("100").getValue());
+    }
+
+    @Test
+    public void releasingTheShownRowWithItsStoredValueKeepsTheEnteredValue() throws Exception {
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(row("1").replace("\"result\":\"1\",", "\"result\":\"1\",\"storedResult\":\"0.9\",")))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals("0.9", resultService.get("100").getValue());
+    }
+
     private void release(String shownValue) throws Exception {
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(row(shownValue))).andExpect(status().isOk());

@@ -224,6 +224,29 @@ describe("OGC-1179 — unified Results worklist", () => {
   });
 
   /** #4 — the Status chip and the counts follow the save, without a reload. */
+  /**
+   * OGC-1569 — typing the rounded form of the stored value is an edit. The row
+   * sends what was typed as its measurement, so the server does not read it as
+   * the reported form posted back unchanged.
+   */
+  it("sends a typed value as the measurement, even when it is the reported one", async () => {
+    await renderPage();
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) => callback({}),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit/i }));
+    fireEvent.change(resultField(), { target: { value: "33" } });
+    fireEvent.click(screen.getByTestId("save-button"));
+
+    const [, body] = utilsMock.postToOpenElisServerJsonResponse.mock.calls.find(
+      ([url]: [string]) => url.endsWith("/result"),
+    );
+    const { testResult } = JSON.parse(body);
+    expect(testResult.resultValue).toBe("33");
+    expect(testResult.rawResultValue).toBe("33");
+  });
+
   it("adopts the status the save reports", async () => {
     await renderPage();
     expect(screen.getByText("Not started")).toBeInTheDocument();
