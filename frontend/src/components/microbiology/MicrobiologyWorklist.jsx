@@ -1516,7 +1516,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                                                   isAstGrain &&
                                                   row.astStatus === "REVIEWED"
                                                     ? "microbiology.worklist.viewReviewedAst"
-                                                    : "microbiology.worklist.openCase",
+                                                    : "common.openCase",
                                               })}
                                               onClick={() =>
                                                 history.push(caseUrl)
