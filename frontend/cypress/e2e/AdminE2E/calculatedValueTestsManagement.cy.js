@@ -61,7 +61,7 @@ describe("Calculated Value Tests Management", () => {
   it("Enter Final Result and Submit", () => {
     cy.fixture("ReflexTestsConfig").then((test) => {
       reflexTestsConfigPage.selectThirdSample(test.sample);
-      reflexTestsConfigPage.enterFinalResult(test.searchTest);
+      reflexTestsConfigPage.enterFinalResult(test.calcResultTest);
       reflexTestsConfigPage.addFinalExternatNote(test.externalNote);
       reflexTestsConfigPage.submitButton();
     });
