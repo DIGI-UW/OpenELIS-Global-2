@@ -128,7 +128,7 @@ test("a held control recovers onto its lot once, while a new run records again",
   });
 });
 
-test("shared lot numbers remain distinguishable and level tabs load the matching control", async ({
+test("lot choices distinguish shared numbers and preserve the test across control levels", async ({
   page,
 }, testInfo) => {
   const run = randomUUID().slice(0, 8);
@@ -166,13 +166,19 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
   );
   try {
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    const otherTestId = await activeTestId(page, "Creatinine", "Serum");
     let customLotId: string;
-    for (const controlLevel of ["NORMAL", "HPC"]) {
+    for (const control of [
+      { level: "NORMAL", testId, lotNumber: specimen },
+      { level: "HPC", testId, lotNumber: specimen },
+      { level: "HIGH", testId: otherTestId, lotNumber: `${specimen}-OTHER` },
+      { level: "HIGH", testId, lotNumber: `${specimen}-HIGH` },
+    ]) {
       const lot = await send(page, "post", "/qc/controlLot", {
         productName: name,
-        lotNumber: specimen,
-        controlLevel,
-        testId,
+        lotNumber: control.lotNumber,
+        controlLevel: control.level,
+        testId: control.testId,
         instrumentId: analyzer.id,
         calculationMethod: "MANUFACTURER_FIXED",
         manufacturerMean: 1009.64,
@@ -182,7 +188,7 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
         status: "ACTIVE",
         unitOfMeasure: "copies/mL",
       });
-      if (controlLevel === "HPC") customLotId = lot.id;
+      if (control.level === "HPC") customLotId = lot.id;
     }
     await sendGeneXpertFixture(
       page,
@@ -273,6 +279,23 @@ test("shared lot numbers remain distinguishable and level tabs load the matching
     await expect(
       page.getByTestId("chart-panel-NORMAL").getByText("No QC data available"),
     ).toBeVisible();
+    await page.getByRole("tab", { name: "High", exact: true }).click();
+    await expect(
+      page.getByRole("combobox", { name: "Control lot", exact: true }),
+    ).toContainText(`${specimen}-HIGH — High — HIV-1 Viral Load`);
+    await page.getByRole("tab", { name: "Normal", exact: true }).click();
+    await page
+      .getByTestId("chart-filter-control-level")
+      .getByRole("combobox")
+      .click();
+    await page.getByRole("option", { name: "High", exact: true }).click();
+    await expect(
+      page.getByRole("combobox", { name: "Control lot", exact: true }),
+    ).toContainText(`${specimen}-HIGH — High — HIV-1 Viral Load`);
+    await page.screenshot({
+      path: testInfo.outputPath("different-lot-same-test.png"),
+      fullPage: true,
+    });
   } finally {
     await send(
       page,

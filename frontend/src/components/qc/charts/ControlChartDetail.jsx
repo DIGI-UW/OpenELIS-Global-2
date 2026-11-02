@@ -129,6 +129,9 @@ export const ControlLotChart = ({
             lot.lotNumber === current?.lotNumber &&
             lot.testId === current?.testId,
         ) ||
+        candidates.find(
+          (lot) => current?.testId && lot.testId === current.testId,
+        ) ||
         candidates[0],
     );
   };

@@ -127,3 +127,51 @@ it("filters lots by configured level and does not offer absent levels", async ()
   await userEvent.click(within(dropdown).getByRole("combobox"));
   expect(screen.queryByRole("option", { name: "Low" })).not.toBeInTheDocument();
 });
+
+it.each(["tab", "filter"])(
+  "keeps the current test when the %s selects a level with a different lot number",
+  async (control) => {
+    const defaultResponse = getFromOpenElisServer.getMockImplementation();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("controlLots?")) {
+        return callback([
+          { ...lots[0], lotNumber: "GLUCOSE-NORMAL" },
+          {
+            ...lots[1],
+            id: "hcv-high",
+            lotNumber: "HCV-HIGH",
+            testId: "test-b",
+            testName: "HCV",
+          },
+          { ...lots[1], lotNumber: "GLUCOSE-HIGH" },
+        ]);
+      }
+      return defaultResponse(url, callback);
+    });
+    renderPage();
+    expect(await screen.findByTestId("chart-panel-NORMAL")).toHaveTextContent(
+      "9",
+    );
+    if (control === "tab") {
+      await userEvent.click(screen.getByRole("tab", { name: "High" }));
+    } else {
+      await userEvent.click(
+        within(screen.getByTestId("chart-filter-control-level")).getByRole(
+          "combobox",
+        ),
+      );
+      await userEvent.click(screen.getByRole("option", { name: "High" }));
+    }
+    expect(screen.getByTestId("chart-filter-control-lot")).toHaveTextContent(
+      "GLUCOSE-HIGH — High — Glucose",
+    );
+    expect(
+      screen.getByTestId(
+        control === "tab" ? "chart-panel-HIGH" : "chart-panel-single",
+      ),
+    ).toHaveTextContent("102");
+    expect(screen.getByTestId("control-chart-detail-stats")).toHaveTextContent(
+      "100.00",
+    );
+  },
+);
