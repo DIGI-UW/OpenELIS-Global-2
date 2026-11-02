@@ -38,3 +38,11 @@
     overflow-x: auto;
   }
 }
+
+.microbiology-case-actions {
+  inline-size: max-content;
+
+  .cds--overflow-menu-options__btn {
+    max-inline-size: none;
+  }
+}

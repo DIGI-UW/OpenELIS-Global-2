@@ -32,6 +32,8 @@ import {
   TableBody,
   TableCell,
   TableContainer,
+  OverflowMenu,
+  OverflowMenuItem,
 } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
@@ -58,6 +60,7 @@ export default function CaseViewShell({
   const { configurationProperties } = useContext(ConfigurationContext) || {};
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
   const [infoOpen, setInfoOpen] = useState(true);
+  const [jump, setJump] = useState(null);
   const params = useParams();
   const location = useLocation();
   const history = useHistory();
@@ -77,6 +80,10 @@ export default function CaseViewShell({
     next.set("scope", scope);
     Object.entries(parameters).forEach(([key, value]) => next.set(key, value));
     history.push({ pathname: location.pathname, search: next.toString() });
+  };
+  const openSection = (scope, parameters) => {
+    selectScope(scope, parameters);
+    setJump({ scope });
   };
   const worklistSearch = new URLSearchParams(location.search);
   [
@@ -357,51 +364,51 @@ export default function CaseViewShell({
                   </Column>
                 </Grid>
               </Tile>
-              <div>
-                {detail.canWrite && (
-                  <>
-                    <Button
-                      size="sm"
-                      kind="tertiary"
+              {(detail.canWrite ||
+                (detail.canAmend &&
+                  detail.finalReleaseState === "FINAL_RELEASED")) && (
+                <OverflowMenu
+                  aria-label={t("microbiology.case.actions")}
+                  iconDescription={t("microbiology.case.actions")}
+                  menuOptionsClass="microbiology-case-actions"
+                >
+                  {detail.canWrite && (
+                    <OverflowMenuItem
+                      itemText={t("microbiology.critical.logNotification")}
                       onClick={() =>
-                        selectScope("CRITICAL", {
+                        openSection("CRITICAL", {
                           action: "log-critical",
                           targetType: "CASE",
                           targetId: id,
                         })
                       }
-                    >
-                      {t("microbiology.critical.logNotification")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      kind="tertiary"
-                      onClick={() => selectScope("NONCONFORMANCE")}
-                    >
-                      {t("microbiology.nce.report")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      kind="tertiary"
-                      onClick={() =>
-                        selectScope("NONCONFORMANCE", { action: "mark-lost" })
-                      }
-                    >
-                      {t("microbiology.nce.markLost")}
-                    </Button>
-                  </>
-                )}
-                {detail.canAmend &&
-                  detail.finalReleaseState === "FINAL_RELEASED" && (
-                    <Button
-                      size="sm"
-                      kind="tertiary"
-                      onClick={() => selectScope("AMENDMENT")}
-                    >
-                      {t("microbiology.amendment.open")}
-                    </Button>
+                    />
                   )}
-              </div>
+                  {detail.canWrite && (
+                    <OverflowMenuItem
+                      itemText={t("microbiology.nce.report")}
+                      onClick={() => openSection("NONCONFORMANCE")}
+                    />
+                  )}
+                  {detail.canAmend &&
+                    detail.finalReleaseState === "FINAL_RELEASED" && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.amendment.open")}
+                        onClick={() => openSection("AMENDMENT")}
+                      />
+                    )}
+                  {detail.canWrite && (
+                    <OverflowMenuItem
+                      itemText={t("microbiology.nce.markLost")}
+                      isDelete
+                      hasDivider
+                      onClick={() =>
+                        openSection("NONCONFORMANCE", { action: "mark-lost" })
+                      }
+                    />
+                  )}
+                </OverflowMenu>
+              )}
               <section
                 id="case-information"
                 onFocus={(event) => {
@@ -602,6 +609,7 @@ export default function CaseViewShell({
               </section>
               <CaseTestingWorkspace
                 onScopeChange={selectScope}
+                jump={jump}
                 scanSearch={location.search}
                 key={id}
                 detail={detail}

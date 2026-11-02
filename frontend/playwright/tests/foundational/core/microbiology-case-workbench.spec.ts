@@ -157,9 +157,12 @@ test("reports an NCE and records a separate lost specimen with keyboard access",
   for (const lost of [false, true]) {
     const seeded = await seedMicrobiologyCase(page);
     await page.goto(`/Microbiology/cases/${seeded.caseId}`);
-    const action = page.getByRole("button", {
+    await page
+      .getByRole("button", { name: "Case actions", exact: true })
+      .focus();
+    await page.keyboard.press("Enter");
+    const action = page.getByRole("menuitem", {
       name: lost ? "Mark lost" : "Report NCE",
-      exact: true,
     });
     await action.focus();
     await page.keyboard.press("Enter");

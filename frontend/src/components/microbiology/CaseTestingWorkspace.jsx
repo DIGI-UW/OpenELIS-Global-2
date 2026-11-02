@@ -329,6 +329,7 @@ export default function CaseTestingWorkspace({
   service,
   onCaseChanged,
   onScopeChange,
+  jump,
   scanSearch = "",
 }) {
   const mounted = useRef(true);
@@ -379,6 +380,15 @@ export default function CaseTestingWorkspace({
       document.getElementById("case-information")?.focus();
     }
   }, [routedScope, scanRow, scanSearch]);
+  const handledJump = useRef(null);
+  useEffect(() => {
+    if (!jump || handledJump.current === jump || placement !== jump.scope)
+      return;
+    handledJump.current = jump;
+    const heading = document.querySelector(`#case-scope-${jump.scope} button`);
+    heading?.scrollIntoView?.({ block: "center" });
+    heading?.focus({ preventScroll: true });
+  }, [jump, placement]);
   useEffect(() => {
     if (!scanTarget || placement !== routedScope) return undefined;
     const scroll = () => {
@@ -773,6 +783,7 @@ export default function CaseTestingWorkspace({
         ].map(([scope, label]) => (
           <AccordionItem
             key={scope}
+            id={`case-scope-${scope}`}
             title={t(label)}
             open={placement === scope}
             onHeadingClick={({ isOpen }) => {

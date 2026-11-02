@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { Router, Route } from "react-router-dom";
 import { createMemoryHistory } from "history";
@@ -324,3 +325,74 @@ test.each([
     else expect(link).not.toBeInTheDocument();
   },
 );
+
+describe("case actions", () => {
+  const caseActions = (changes) => {
+    const service = {
+      getCase: vi.fn().mockResolvedValue({ ...shell, ...changes }),
+    };
+    return renderPage(
+      <CaseViewShell service={service} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+  };
+  const openCaseActions = async () => {
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Case actions" }),
+    );
+    return screen.findAllByRole("menuitem", { hidden: true });
+  };
+
+  test("case actions sit in one menu, Mark lost last", async () => {
+    const history = caseActions();
+    const items = await openCaseActions();
+    expect(
+      screen.queryByRole("button", { name: "Report NCE" }),
+    ).not.toBeInTheDocument();
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Log critical notification",
+      "Report NCE",
+      expect.stringMatching(/^Mark lost/),
+    ]);
+    fireEvent.click(items[0]);
+    expect(
+      Object.fromEntries(new URLSearchParams(history.location.search)),
+    ).toEqual({
+      scope: "CRITICAL",
+      action: "log-critical",
+      targetType: "CASE",
+      targetId: "case-1",
+    });
+  });
+
+  test("Mark lost opens the nonconformity section in lost mode", async () => {
+    const history = caseActions();
+    const items = await openCaseActions();
+    fireEvent.click(items[2]);
+    expect(
+      Object.fromEntries(new URLSearchParams(history.location.search)),
+    ).toEqual({ scope: "NONCONFORMANCE", action: "mark-lost" });
+  });
+
+  test("a released case the user cannot edit offers only the amendment", async () => {
+    const history = caseActions({
+      canWrite: false,
+      canAmend: true,
+      finalReleaseState: "FINAL_RELEASED",
+    });
+    const items = await openCaseActions();
+    expect(items.map((item) => item.textContent)).toEqual(["Open amendment"]);
+    fireEvent.click(items[0]);
+    expect(new URLSearchParams(history.location.search).get("scope")).toBe(
+      "AMENDMENT",
+    );
+  });
+
+  test("a case the user can only read has no case actions", async () => {
+    caseActions({ canWrite: false, canAmend: false });
+    expect(await screen.findByText("Test Patient")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Case actions" }),
+    ).not.toBeInTheDocument();
+  });
+});

@@ -10274,6 +10274,7 @@
   "microbiology.case.activityNote": "Activity note",
   "microbiology.case.accessionNumber": "Accession number",
   "microbiology.case.actionError": "Culture action could not be completed",
+  "microbiology.case.actions": "Case actions",
   "microbiology.case.action.markNoGrowth": "Mark no growth ready",
   "microbiology.case.action.recordGrowth": "Record growth detected",
   "microbiology.case.action.rejectCase": "Reject case",

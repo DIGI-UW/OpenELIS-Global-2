@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
+import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { Router } from "react-router-dom";
 import { createMemoryHistory } from "history";
@@ -242,4 +243,25 @@ describe("canonical case workspace", () => {
     expect(history.location.search).toContain("labUnitId=10");
     expect(history.location.search).toContain("q=M9");
   });
+  test.each([
+    ["Log critical notification", "Critical communication"],
+    ["Open amendment", "Amendments"],
+  ])(
+    "%s from the case actions scrolls to and focuses its section",
+    async (item, section) => {
+      const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+      setup("", { finalReleaseState: "FINAL_RELEASED" });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Case actions" }),
+      );
+      await userEvent.click(await screen.findByText(item));
+      const heading = await screen.findByRole("button", {
+        name: section,
+        expanded: true,
+      });
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(scroll.mock.contexts).toContain(heading);
+      scroll.mockRestore();
+    },
+  );
 });
