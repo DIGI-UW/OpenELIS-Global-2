@@ -130,8 +130,8 @@ test(
       instrumentFlags: "N",
       assayName: "Xpert HIV-1 Viral Load XC",
       assayVersion: "3",
-      instrumentOperator: null,
     });
+    expect(original.instrumentOperator ?? null).toBeNull();
     await reception
       .getByRole("button", { name: "Check for setup samples" })
       .click();
