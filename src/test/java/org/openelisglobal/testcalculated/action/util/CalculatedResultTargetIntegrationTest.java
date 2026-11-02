@@ -543,6 +543,31 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
     }
 
     @Test
+    public void reportingDecimalsCannotHideADifferentCalculatedValue() {
+        calculation(GLUCOSE_TEST, null, "*", "0.123");
+        long entered = enterGlucoseByHand("1");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = 0 WHERE test_id = ?", GLUCOSE_TEST);
+
+        runCalculations(operandResult, entered);
+
+        assertEquals("1", valueOf(entered));
+        assertEquals(1, internalNotes(glucoseAnalysis).stream()
+                .filter(note -> note.contains(" gave 1.476") && note.contains("1 was kept")).count());
+    }
+
+    @Test
+    public void reportingDecimalsCannotInventADifferenceFromTheCalculatedValue() {
+        calculation(GLUCOSE_TEST, null, "*", "0.123");
+        long entered = enterGlucoseByHand("1.4760");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = 0 WHERE test_id = ?", GLUCOSE_TEST);
+
+        runCalculations(operandResult, entered);
+
+        assertEquals("1.4760", valueOf(entered));
+        assertEquals(0, internalNotes(glucoseAnalysis).stream().filter(note -> note.contains(" gave ")).count());
+    }
+
+    @Test
     public void aBlankCalculationNeverReplacesTheResultEnteredByHand() {
         calculation(GLUCOSE_TEST, null, "*", "2");
         long entered = enterGlucoseByHand("10");

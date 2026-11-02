@@ -1,7 +1,6 @@
 package org.openelisglobal.testcalculated.action.util;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -344,19 +343,13 @@ public class TestCalculatedUtil {
         if (value == null || entered.getAnalysis() == null || !BoundedDecimal.isBoundedDecimal(value)) {
             return;
         }
-        String calculated = value;
-        if (entered.getTestResult() != null && entered.getTestResult().getSignificantDigits() != null) {
-            calculated = new BigDecimal(value)
-                    .setScale(Integer.parseInt(entered.getTestResult().getSignificantDigits()), RoundingMode.HALF_UP)
-                    .toPlainString();
-        }
         if (BoundedDecimal.isBoundedDecimal(entered.getValue())
-                && new BigDecimal(calculated).compareTo(new BigDecimal(entered.getValue())) == 0) {
+                && new BigDecimal(value).compareTo(new BigDecimal(entered.getValue())) == 0) {
             return;
         }
         Note note = noteService.createSavableNote(
-                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave "
-                        + calculated + "; the entered result " + entered.getValue() + " was kept.",
+                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave " + value
+                        + "; the entered result " + entered.getValue() + " was kept.",
                 CALCULATION_SUBJECT, systemUserId);
         if (!noteService.duplicateNoteExists(note)) {
             noteService.save(note);
