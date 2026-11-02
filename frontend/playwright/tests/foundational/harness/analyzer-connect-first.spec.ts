@@ -19,7 +19,14 @@ import { csrfToken } from "../../../helpers/api-session";
 import { API } from "../../../helpers/analyzer-profile-api";
 
 const expect = baseExpect.configure({ timeout: 20000 });
-type SetupRow = WorklistRow & { readOnly: boolean };
+type SetupRow = WorklistRow & {
+  readOnly: boolean;
+  instrumentFlags?: string;
+  instrumentSampleFlags?: string;
+  assayName?: string;
+  assayVersion?: string;
+  instrumentOperator?: string | null;
+};
 let adoptedAnalyzerId: string | undefined;
 
 test.afterEach(async ({ page }) => {
@@ -103,7 +110,7 @@ test(
     );
     const captured = () =>
       worklistFor<SetupRow>(page, analyzer.id, setupOrder.accession);
-    // The vendor fixture contains six result records plus instrument sample flags.
+    // The vendor fixture contains six retained assay records and result metadata.
     await expect.poll(async () => (await captured()).length).toBe(6);
     const originalRows = await captured();
     for (const row of originalRows) {
@@ -120,6 +127,10 @@ test(
     expect(original).toMatchObject({
       readOnly: true,
       rawResultValue: "1009.64",
+      instrumentFlags: "N",
+      assayName: "Xpert HIV-1 Viral Load XC",
+      assayVersion: "3",
+      instrumentOperator: null,
     });
     await reception
       .getByRole("button", { name: "Check for setup samples" })
@@ -215,6 +226,13 @@ test(
     await expect(held).toBeVisible();
     await expect(held).toContainText("Setup sample");
     await expect(held.getByRole("checkbox")).toHaveCount(0);
+    const metadata = setupEvidence.getByTestId(
+      `instrument-reported-${original.id}`,
+    );
+    await expect(metadata).toContainText("Flag: N");
+    await expect(metadata).toContainText(
+      "Assay: Xpert HIV-1 Viral Load XC, version 3",
+    );
     await page.screenshot({
       path: testInfo.outputPath("retained-setup-evidence-after-activation.png"),
       fullPage: true,

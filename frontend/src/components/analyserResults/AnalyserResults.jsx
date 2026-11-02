@@ -1095,7 +1095,19 @@ const AnalyserResults = (props) => {
                 columns={[
                   {
                     name: intl.formatMessage({ id: "column.name.sampleInfo" }),
-                    selector: (row) => row.accessionNumber,
+                    cell: (row) => (
+                      <div>
+                        {row.accessionNumber}
+                        {row.instrumentSampleFlags && (
+                          <div data-testid="InstrumentSampleFlags">
+                            <FormattedMessage
+                              id="analyzer.results.sampleFlags"
+                              values={{ flags: row.instrumentSampleFlags }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ),
                   },
                   {
                     name: intl.formatMessage({ id: "column.name.testName" }),
@@ -1103,7 +1115,12 @@ const AnalyserResults = (props) => {
                   },
                   {
                     name: intl.formatMessage({ id: "column.name.result" }),
-                    cell: (row) => renderHeldResult(row),
+                    cell: (row) => (
+                      <div>
+                        {renderHeldResult(row)}
+                        <InstrumentReported row={row} />
+                      </div>
+                    ),
                   },
                 ]}
               />

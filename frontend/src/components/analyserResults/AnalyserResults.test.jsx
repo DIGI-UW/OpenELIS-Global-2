@@ -969,7 +969,17 @@ describe("AnalyserResults", () => {
 });
 
 it("separates retained setup evidence from actionable clinical results", () => {
-  renderResults([{ ...heldResult, importIssueReason: "setup_capture" }]);
+  renderResults([
+    {
+      ...heldResult,
+      importIssueReason: "setup_capture",
+      instrumentSampleFlags: "Sample warning",
+      instrumentFlags: "H",
+      assayName: "Viral load assay",
+      assayVersion: "3",
+      instrumentOperator: "Operator 17",
+    },
+  ]);
   expect(
     screen.queryByText(/analyzer results? need attention/),
   ).not.toBeInTheDocument();
@@ -978,6 +988,15 @@ it("separates retained setup evidence from actionable clinical results", () => {
     within(section).getByRole("button", { name: "Retained setup samples (1)" }),
   );
   expect(within(section).getByText("POSITIVE")).toBeVisible();
+  expect(
+    within(section).getByTestId("InstrumentSampleFlags"),
+  ).toHaveTextContent("Sample warning");
+  const metadata = within(section).getByTestId(
+    `instrument-reported-${heldResult.id}`,
+  );
+  expect(metadata).toHaveTextContent("Flag: H");
+  expect(metadata).toHaveTextContent("Assay: Viral load assay, version 3");
+  expect(metadata).toHaveTextContent("Operator: Operator 17");
   expect(within(section).queryByRole("checkbox")).not.toBeInTheDocument();
   expect(screen.queryByTestId("Save-btn")).not.toBeInTheDocument();
   expect(
