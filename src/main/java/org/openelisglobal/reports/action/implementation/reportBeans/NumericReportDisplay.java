@@ -35,7 +35,8 @@ public final class NumericReportDisplay {
                 display += "\n" + messages.get("label.results.calculatedLog10").replace("{value}",
                         logarithm.replace('-', '\u2212'));
             }
-            if (measured.compareTo(new BigDecimal(StringUtil.normalizeScientificNotation(result.getDisplayValue()).trim())) != 0) {
+            if (measured.compareTo(
+                    new BigDecimal(StringUtil.normalizeScientificNotation(result.getDisplayValue()).trim())) != 0) {
                 display += "\n("
                         + messages.get("label.results.clinicalValue").replace("{value}", result.getEnteredValue())
                         + ")";
