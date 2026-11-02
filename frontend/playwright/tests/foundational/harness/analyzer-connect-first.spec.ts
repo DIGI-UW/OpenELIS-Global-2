@@ -15,9 +15,34 @@ import {
 } from "../../../helpers/analyzer-native-traffic";
 import { acceptAll, savedValue } from "../../../helpers/analyzer-review";
 import { GENEXPERT } from "../../../helpers/shipped-profiles";
+import { csrfToken } from "../../../helpers/api-session";
+import { API } from "../../../helpers/analyzer-profile-api";
 
 const expect = baseExpect.configure({ timeout: 20000 });
 type SetupRow = WorklistRow & { readOnly: boolean };
+let adoptedAnalyzerId: string | undefined;
+
+test.afterEach(async ({ page }) => {
+  if (!adoptedAnalyzerId) return;
+  const id = adoptedAnalyzerId;
+  adoptedAnalyzerId = undefined;
+  const response = await page.request.get(`${API}/analyzer/analyzers/${id}`);
+  expect(response.ok()).toBeTruthy();
+  const analyzer = await response.json();
+  if (analyzer.connection?.actualRuntimeState !== "ACTIVE") return;
+  // Adoption binds the shared mock's address. Release that runtime binding so
+  // later sender-only fixtures are not excluded by address-first routing.
+  // Normal deactivation preserves the setup samples and saved routine results.
+  const stopped = await page.request.post(
+    `${API}/analyzer/analyzers/${id}/deactivate`,
+    {
+      headers: { "X-CSRF-Token": await csrfToken(page) },
+      data: {},
+    },
+  );
+  expect(stopped.ok(), await stopped.text()).toBeTruthy();
+  expect((await stopped.json()).deactivated).toBe(true);
+});
 
 test(
   "receives typed setup evidence before mapping approval and keeps it isolated after activation and retransmission",
@@ -44,6 +69,7 @@ test(
     await setup.selectLabUnit(GENEXPERT.labUnit);
     await setup.continueToConnect();
     const analyzer = await analyzerByName(page, name, GENEXPERT.profileId);
+    adoptedAnalyzerId = analyzer.id;
     const reception = page.getByTestId("analyzer-setup-reception");
     await sendUnassignedGeneXpertFixture(
       page,
