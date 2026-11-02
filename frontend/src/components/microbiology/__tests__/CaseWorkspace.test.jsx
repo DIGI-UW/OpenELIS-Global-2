@@ -482,6 +482,17 @@ const barService = (
 });
 
 describe("case bar", () => {
+  test("keeps the case actions on the case bar", async () => {
+    renderPage(
+      <CaseViewShell service={barService()} caseId="case-1" />,
+      "/Microbiology/cases/case-1",
+    );
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    expect(
+      within(bar).getByRole("button", { name: "Case actions" }),
+    ).toBeInTheDocument();
+  });
+
   test("names the case, its status and STAT, and opens a section from its links", async () => {
     const history = renderPage(
       <CaseViewShell service={barService()} caseId="case-1" />,

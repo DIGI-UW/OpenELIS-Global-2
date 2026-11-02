@@ -295,6 +295,52 @@ export default function CaseViewShell({
                   partialReady={partialReady}
                   onReleased={reloadCase}
                 />
+                {(detail.canWrite ||
+                  (detail.canAmend &&
+                    detail.finalReleaseState === "FINAL_RELEASED")) && (
+                  <OverflowMenu
+                    aria-label={t("microbiology.case.actions")}
+                    iconDescription={t("microbiology.case.actions")}
+                    menuOptionsClass="microbiology-case-actions"
+                    flipped
+                  >
+                    {detail.canWrite && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.critical.logNotification")}
+                        onClick={() =>
+                          openSection("CRITICAL", {
+                            action: "log-critical",
+                            targetType: "CASE",
+                            targetId: id,
+                          })
+                        }
+                      />
+                    )}
+                    {detail.canWrite && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.nce.report")}
+                        onClick={() => openSection("NONCONFORMANCE")}
+                      />
+                    )}
+                    {detail.canAmend &&
+                      detail.finalReleaseState === "FINAL_RELEASED" && (
+                        <OverflowMenuItem
+                          itemText={t("microbiology.amendment.open")}
+                          onClick={() => openSection("AMENDMENT")}
+                        />
+                      )}
+                    {detail.canWrite && (
+                      <OverflowMenuItem
+                        itemText={t("microbiology.nce.markLost")}
+                        isDelete
+                        hasDivider
+                        onClick={() =>
+                          openSection("NONCONFORMANCE", { action: "mark-lost" })
+                        }
+                      />
+                    )}
+                  </OverflowMenu>
+                )}
               </div>
               <h1>
                 {t("microbiology.case.heading", {
@@ -438,51 +484,6 @@ export default function CaseViewShell({
                   </Column>
                 </Grid>
               </Tile>
-              {(detail.canWrite ||
-                (detail.canAmend &&
-                  detail.finalReleaseState === "FINAL_RELEASED")) && (
-                <OverflowMenu
-                  aria-label={t("microbiology.case.actions")}
-                  iconDescription={t("microbiology.case.actions")}
-                  menuOptionsClass="microbiology-case-actions"
-                >
-                  {detail.canWrite && (
-                    <OverflowMenuItem
-                      itemText={t("microbiology.critical.logNotification")}
-                      onClick={() =>
-                        openSection("CRITICAL", {
-                          action: "log-critical",
-                          targetType: "CASE",
-                          targetId: id,
-                        })
-                      }
-                    />
-                  )}
-                  {detail.canWrite && (
-                    <OverflowMenuItem
-                      itemText={t("microbiology.nce.report")}
-                      onClick={() => openSection("NONCONFORMANCE")}
-                    />
-                  )}
-                  {detail.canAmend &&
-                    detail.finalReleaseState === "FINAL_RELEASED" && (
-                      <OverflowMenuItem
-                        itemText={t("microbiology.amendment.open")}
-                        onClick={() => openSection("AMENDMENT")}
-                      />
-                    )}
-                  {detail.canWrite && (
-                    <OverflowMenuItem
-                      itemText={t("microbiology.nce.markLost")}
-                      isDelete
-                      hasDivider
-                      onClick={() =>
-                        openSection("NONCONFORMANCE", { action: "mark-lost" })
-                      }
-                    />
-                  )}
-                </OverflowMenu>
-              )}
               <section
                 id="case-information"
                 onFocus={(event) => {
