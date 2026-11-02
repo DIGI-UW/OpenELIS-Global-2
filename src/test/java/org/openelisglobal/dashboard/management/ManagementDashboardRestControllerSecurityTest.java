@@ -211,7 +211,7 @@ public class ManagementDashboardRestControllerSecurityTest extends SecuritySlice
                 }
 
                 @Override
-                public Map<String, BigDecimal> onTimeByLabUnit(ScopeRange scope) {
+                public Map<String, SectionTat> tatBySection(ScopeRange scope) {
                     return Map.of();
                 }
 
