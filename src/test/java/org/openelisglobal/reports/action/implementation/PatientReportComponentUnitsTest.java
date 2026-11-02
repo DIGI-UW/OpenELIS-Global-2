@@ -266,7 +266,14 @@ public class PatientReportComponentUnitsTest extends BaseWebContextSensitiveTest
         result.setValue("1000.00");
         assertEquals("1000.00\nCalculated log10: 3.00",
                 ReflectionTestUtils.invokeMethod(report(), "formatPatientReportResult", result));
-        for (String value : List.of("<1000", "Not detected", "0", "-1")) {
+        for (String value : List.of("150000", "1.5e5", "1.5×10⁵", "1.5 x 10^5")) {
+            result.setValue(value);
+            assertEquals(value + "\nCalculated log10: 5.18",
+                    ReflectionTestUtils.invokeMethod(report(), "formatPatientReportResult", result));
+            assertEquals(value, result.getEnteredValue());
+            assertEquals("A", result.getResultType());
+        }
+        for (String value : List.of("<1000", "<1.5×10⁵", "Not detected", "0", "-1")) {
             result.setValue(value);
             assertEquals(value, ReflectionTestUtils.invokeMethod(report(), "formatPatientReportResult", result));
             assertEquals(value, result.getEnteredValue());

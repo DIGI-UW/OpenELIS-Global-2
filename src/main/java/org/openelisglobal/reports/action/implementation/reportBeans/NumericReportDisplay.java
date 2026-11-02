@@ -2,6 +2,7 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.UiMessages;
 import org.openelisglobal.result.valueholder.Result;
 
@@ -22,7 +23,7 @@ public final class NumericReportDisplay {
             return display;
         }
         try {
-            BigDecimal measured = new BigDecimal(result.getValue().trim());
+            BigDecimal measured = new BigDecimal(StringUtil.normalizeScientificNotation(result.getValue()).trim());
             if (displayLog10 && measured.signum() > 0) {
                 // Scaling avoids double overflow/underflow for valid decimal measurements.
                 long exponent = (long) measured.precision() - measured.scale() - 1;
@@ -34,7 +35,7 @@ public final class NumericReportDisplay {
                 display += "\n" + messages.get("label.results.calculatedLog10").replace("{value}",
                         logarithm.replace('-', '\u2212'));
             }
-            if (measured.compareTo(new BigDecimal(result.getDisplayValue().trim())) != 0) {
+            if (measured.compareTo(new BigDecimal(StringUtil.normalizeScientificNotation(result.getDisplayValue()).trim())) != 0) {
                 display += "\n("
                         + messages.get("label.results.clinicalValue").replace("{value}", result.getEnteredValue())
                         + ")";
