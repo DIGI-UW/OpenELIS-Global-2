@@ -40,6 +40,10 @@
       gap: spacing.$spacing-03;
       align-items: center;
     }
+
+    > .cds--overflow-menu__wrapper {
+      margin-inline-start: auto;
+    }
   }
 
   .microbiology-case-workspace__views {
