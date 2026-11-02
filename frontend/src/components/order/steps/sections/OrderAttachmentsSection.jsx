@@ -13,8 +13,8 @@ import { TrashCan } from "@carbon/icons-react";
 import {
   deleteFromOpenElisServer,
   getFromOpenElisServer,
-  postToOpenElisServerFormData,
 } from "../../../utils/Utils";
+import { uploadOrderAttachments } from "../../api/orderAttachmentsApi";
 import config from "../../../../config.json";
 import { useOrderContext } from "../../OrderContext";
 
@@ -119,21 +119,13 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
       setStagedAttachments((current) => [...current, ...addedFiles]);
       return;
     }
-    const formData = new FormData();
-    addedFiles.forEach((file) => formData.append("files", file, file.name));
-    postToOpenElisServerFormData(
-      `/rest/order/${encodeURIComponent(labNumber)}/attachments`,
-      formData,
-      (status) => {
-        if (status >= 200 && status < 300) {
-          load();
-        } else {
-          setError(
-            intl.formatMessage({ id: "order.attachment.upload.failed" }),
-          );
-        }
-      },
-    );
+    uploadOrderAttachments(labNumber, addedFiles, (status) => {
+      if (status >= 200 && status < 300) {
+        load();
+      } else {
+        setError(intl.formatMessage({ id: "order.attachment.upload.failed" }));
+      }
+    });
   };
 
   const openAttachment = (attachmentId, action) =>

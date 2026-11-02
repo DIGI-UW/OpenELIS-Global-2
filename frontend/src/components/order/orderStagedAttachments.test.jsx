@@ -42,7 +42,6 @@ const answerOrderSearch = () =>
     }
   });
 
-/** Holds a file on a new order, then runs `act` once the order is filled in. */
 const HoldFileThen = ({ act, contextRef }) => {
   const context = useOrderContext();
   contextRef.current = context;

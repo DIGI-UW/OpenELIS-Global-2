@@ -12,7 +12,6 @@ import { useLocation } from "react-router-dom";
 import { FormattedMessage } from "react-intl";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerFormData,
   postToOpenElisServerFullResponse,
   putToOpenElisServer,
 } from "../utils/Utils";
@@ -26,6 +25,7 @@ import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEn
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getEnforcement } from "./api/sampleAcceptanceApi";
+import { uploadOrderAttachments } from "./api/orderAttachmentsApi";
 import {
   buildLoadedOrderData,
   buildSubmissionSampleOrderItems,
@@ -287,29 +287,19 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     if (!orderId || !labNumber || stagedAttachments.length === 0) {
       return;
     }
-    const formData = new FormData();
-    stagedAttachments.forEach((file) =>
-      formData.append("files", file, file.name),
-    );
     setStagedAttachments([]);
-    postToOpenElisServerFormData(
-      `/rest/order/${encodeURIComponent(labNumber)}/attachments`,
-      formData,
-      (status) => {
-        setAttachmentsVersion((version) => version + 1);
-        if (status >= 200 && status < 300) {
-          return;
-        }
-        addNotification?.({
-          kind: NotificationKinds.warning,
-          title: <FormattedMessage id="notification.title" />,
-          message: (
-            <FormattedMessage id="order.attachment.staged.uploadFailed" />
-          ),
-        });
-        setNotificationVisible?.(true);
-      },
-    );
+    uploadOrderAttachments(labNumber, stagedAttachments, (status) => {
+      setAttachmentsVersion((version) => version + 1);
+      if (status >= 200 && status < 300) {
+        return;
+      }
+      addNotification?.({
+        kind: NotificationKinds.warning,
+        title: <FormattedMessage id="notification.title" />,
+        message: <FormattedMessage id="order.attachment.staged.uploadFailed" />,
+      });
+      setNotificationVisible?.(true);
+    });
   }, [orderId, labNumber, stagedAttachments]);
   const [orderData, setOrderDataState] = useState(() =>
     getInitialOrderData(workflowType),
