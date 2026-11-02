@@ -282,6 +282,17 @@ test.describe("OGC-427 batch workplan with reagent QC", () => {
       .getByRole("dialog")
       .filter({ hasText: /Most recent QC failed|Active Westgard violation/ });
     await expect(dialog).toBeVisible();
+    // OGC-1588: the override is not sent until the user says why.
+    await dialog
+      .getByRole("button", { name: /Proceed and create NCE/ })
+      .click();
+    await expect(
+      dialog.getByText("Give the reason before releasing the batch."),
+    ).toBeVisible();
+    const reason = `Control rerun booked ${run}`;
+    await dialog
+      .getByLabel("Reason for releasing without passing QC")
+      .fill(reason);
     const released = page.waitForResponse((response) =>
       response.url().endsWith(`/batches/${batchId}/generate`),
     );
@@ -291,6 +302,10 @@ test.describe("OGC-427 batch workplan with reagent QC", () => {
     const body = await (await released).json();
     const nceNumber = body.releases[0].nceNumber;
     expect(nceNumber).toBeTruthy();
+    expect(body.releases[0].overrideReason).toBe(reason);
+    await expect(
+      tile.getByTestId(`batch-${batchId}-override-reason`),
+    ).toHaveText(`Override reason: ${reason}`);
     const nceTag = tile.getByText(`NCE: ${nceNumber}`);
     await expect(nceTag).toBeVisible();
     await expect(nceTag.locator("xpath=ancestor::a")).toHaveAttribute(
