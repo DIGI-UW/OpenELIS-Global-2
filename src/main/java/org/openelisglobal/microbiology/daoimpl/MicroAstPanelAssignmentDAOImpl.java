@@ -27,7 +27,7 @@ public class MicroAstPanelAssignmentDAOImpl extends BaseDAOImpl<MicroAstPanelAss
     @Transactional(readOnly = true)
     public List<MicroAstPanelAssignment> getOpenByPanelId(String panelId) {
         return entityManager.createQuery(
-                "from MicroAstPanelAssignment e where e.panelId = :id and e.retiredAt is null and not exists (select r.id from MicroAstRun r where r.isolateId = e.isolateId and r.panelId = :id)",
+                "from MicroAstPanelAssignment e where e.panelId = :id and e.retiredAt is null and not exists (select r.id from MicroAstRun r where r.isolateId = e.isolateId and r.panelId = :id and r.status not in ('CANCELLED', 'INVALIDATED', 'RERUN_REQUIRED'))",
                 MicroAstPanelAssignment.class).setParameter("id", panelId).getResultList();
     }
 }

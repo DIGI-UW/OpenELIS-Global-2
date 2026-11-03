@@ -699,6 +699,31 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void isolateWhoseOnlyRunIsRetiredFollowsTheRepublishAndStartsOnTheNewVersion() {
+        var ref = fixtures.createReferenceData(method);
+        breakpointAdminService.activate(ref.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        String v1 = ref.panel().getId();
+        Map<String, String> isolateByStatus = new LinkedHashMap<>();
+        for (String status : List.of("CANCELLED", "RERUN_REQUIRED")) {
+            String id = pick();
+            workspace.act(c.getId(), id, "identify", identification(id, ref.organism().getId()), writer);
+            var run = em.find(MicroAstRun.class, ast.startRun(id, v1, ref.standard().getId(), writer).getId());
+            run.setStatus(status);
+            em.flush();
+            isolateByStatus.put(status, id);
+        }
+
+        String v2 = referenceAdmin.publishPanelVersion(v1, referenceAdmin.getAstPanel(v1), writer).id;
+
+        for (String id : isolateByStatus.values()) {
+            assertEquals(List.of(v2),
+                    panelAssignments.getAssignments(id).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+            assertEquals(v2, ast.startRun(id, v2, ref.standard().getId(), writer).getPanelId());
+        }
+    }
+
+    @Test
     public void routingMultipleAnalysesAndRetriesReceivesExactlyOneIsolate() {
         source = sampleItems.get(source.getId());
         source.setTypeOfSample(isolateType);
