@@ -71,6 +71,8 @@ public class SurveillanceResistanceIntegrationTest extends BaseWebContextSensiti
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/role.xml");
         fixtures.ensureRequiredWorkflowStatuses();
         fixtures.ensureCultureAtmosphere();
         user = fixtures.defaultUserId();
