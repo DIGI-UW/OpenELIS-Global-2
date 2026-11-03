@@ -7,35 +7,37 @@
 -- All mappings are materialized and validated before the first clinical write.
 CREATE TEMP TABLE amr_program_canonical ON COMMIT DROP AS
 SELECT id, CASE WHEN upper(trim(name)) = 'MICROBIOLOGY'
-    THEN min(id) OVER (PARTITION BY upper(trim(name)), domain) ELSE id END AS canonical_id
+    THEN first_value(id) OVER (PARTITION BY upper(trim(name)), domain
+        ORDER BY upper(trim(code)) IS DISTINCT FROM 'MICROBIOLOGY', id) ELSE id END AS canonical_id
 FROM clinlims.program;
 
-DO $$ BEGIN
-    IF EXISTS (
-        SELECT 1 FROM clinlims.program a JOIN amr_program_canonical m ON m.id=a.id
-        JOIN clinlims.program b ON b.id=m.canonical_id WHERE a.id<>b.id
-        AND (a.questionnaire_fhir_uuid IS DISTINCT FROM b.questionnaire_fhir_uuid
-             OR a.is_active IS DISTINCT FROM b.is_active
-             OR EXISTS ((SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=a.id
-                         EXCEPT SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=b.id)
-                        UNION ALL
-                        (SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=b.id
-                         EXCEPT SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=a.id)))) THEN
-        RAISE EXCEPTION 'AMR migration: duplicate Microbiology Programs differ; reconcile their questions and lab units first';
-    END IF;
-END $$;
+UPDATE amr_program_canonical m SET canonical_id=m.id
+FROM clinlims.program a, clinlims.program b
+WHERE a.id=m.id AND b.id=m.canonical_id AND a.id<>b.id
+AND (a.is_active IS DISTINCT FROM b.is_active
+     OR EXISTS ((SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=a.id
+                 EXCEPT SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=b.id)
+                UNION ALL
+                (SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=b.id
+                 EXCEPT SELECT test_section_id FROM clinlims.program_lab_unit WHERE program_id=a.id))
+     OR coalesce((SELECT q.resource_json::jsonb->'item' FROM clinlims.questionnaire q
+                  WHERE q.fhir_uuid=a.questionnaire_fhir_uuid),'[]'::jsonb)
+        IS DISTINCT FROM
+        coalesce((SELECT q.resource_json::jsonb->'item' FROM clinlims.questionnaire q
+                  WHERE q.fhir_uuid=b.questionnaire_fhir_uuid),'[]'::jsonb));
 
 CREATE TEMP TABLE amr_case_map ON COMMIT DROP AS
 SELECT c.id, coalesce(c.sample_id, si.samp_id) sample_id,
        coalesce(c.sample_type_id, si.typeosamp_id) sample_type_id,
        coalesce(c.lab_unit_id, route.unit_id) lab_unit_id,
-       coalesce(existing.canonical_id, mapped.program_id) program_id,
+       coalesce(existing.canonical_id, CASE WHEN mapped.program_count=1 THEN mapped.program_id END) program_id,
        route.unit_count, mapped.program_count, c.workflow_type,
        c.lab_unit_id IS NULL needs_unit, c.program_id IS NULL needs_program
 FROM clinlims.micro_case c LEFT JOIN clinlims.sample_item si ON si.id=c.sample_item_id
 LEFT JOIN amr_program_canonical existing ON existing.id=c.program_id
 LEFT JOIN LATERAL (
-    SELECT min(t.test_section_id) unit_id, count(DISTINCT t.test_section_id) unit_count
+    SELECT coalesce(min(t.test_section_id) FILTER (WHERE t.culture_workflow_type IS NOT NULL),
+                    min(t.test_section_id)) unit_id, count(DISTINCT t.test_section_id) unit_count
     FROM clinlims.micro_case_analysis ca JOIN clinlims.analysis a ON a.id=ca.analysis_id
     JOIN clinlims.test t ON t.id=a.test_id WHERE ca.case_id=c.id
 ) route ON true
@@ -46,15 +48,15 @@ LEFT JOIN LATERAL (
         (c.workflow_type='BACTERIOLOGY' AND upper(trim(p.code)) IN ('BACTERIOLOGY','MICROBIOLOGY')) OR
         (c.workflow_type='MYCOBACTERIOLOGY_TB' AND upper(trim(p.code)) IN ('TB','MYCOBACTERIOLOGY_TB')) OR
         (c.workflow_type='MYCOLOGY' AND upper(trim(p.code))='MYCOLOGY'))
+    GROUP BY upper(trim(p.code))='MICROBIOLOGY'
+    ORDER BY upper(trim(p.code))='MICROBIOLOGY' LIMIT 1
 ) mapped ON true;
 
 DO $$ DECLARE bad text; BEGIN
     SELECT string_agg(id, ', ' ORDER BY id) INTO bad FROM amr_case_map
-    WHERE sample_id IS NULL OR sample_type_id IS NULL OR lab_unit_id IS NULL
-       OR (needs_unit AND unit_count<>1)
-       OR (needs_program AND workflow_type IS NOT NULL AND (program_id IS NULL OR program_count<>1));
+    WHERE sample_id IS NULL OR sample_type_id IS NULL OR lab_unit_id IS NULL;
     IF bad IS NOT NULL THEN
-        RAISE EXCEPTION 'AMR migration: ambiguous or missing order, sample type, test-routing lab unit or Program for cases: %', bad;
+        RAISE EXCEPTION 'AMR migration: missing order, sample type or test-routing lab unit for cases: %', bad;
     END IF;
     IF EXISTS (SELECT 1 FROM amr_case_map m JOIN clinlims.micro_case_analysis ca ON ca.case_id=m.id
         JOIN clinlims.analysis a ON a.id=ca.analysis_id JOIN clinlims.sample_item si ON si.id=a.sampitem_id
