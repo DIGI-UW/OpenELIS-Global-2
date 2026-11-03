@@ -24,7 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.validator.GenericValidator;
-import org.jfree.util.Log;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.project.dao.ProjectDAO;
 import org.openelisglobal.project.daoimpl.ProjectDAOImpl;
@@ -128,7 +128,7 @@ public class ExportTrendsByDate extends CSVSampleExportReport implements IReport
             csvColumnBuilder = getColumnBuilder(projectStr);
             csvColumnBuilder.buildDataSource();
         } catch (Exception e) {
-            Log.error("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
+            LogEvent.logError("Error in " + this.getClass().getSimpleName() + ".createReportItems: ", e);
             add1LineErrorMessage("report.error.message.general.error");
         }
     }

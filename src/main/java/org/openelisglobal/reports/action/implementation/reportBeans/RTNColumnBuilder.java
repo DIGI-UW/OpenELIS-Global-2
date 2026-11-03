@@ -45,6 +45,14 @@ public class RTNColumnBuilder extends CIColumnBuilder {
     }
 
     /**
+     * @param dateType the date the export range applies to; order date when null
+     */
+    public RTNColumnBuilder(DateRange dateRange, String projectStr, DateType dateType) {
+        super(dateRange, projectStr);
+        this.dateType = dateType;
+    }
+
+    /**
      * @see org.openelisglobal.reports.action.implementation.reportBeans.CIColumnBuilder#defineAllReportColumns()
      */
     @Override
@@ -68,7 +76,7 @@ public class RTNColumnBuilder extends CIColumnBuilder {
     @Override
     public void makeSQL() {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -111,7 +119,7 @@ public class RTNColumnBuilder extends CIColumnBuilder {
         for (Dictionary dictionary : rtnList) {
             priorDiseaseList.add(dictionary.getLocalAbbreviation());
         }
-        return priorDiseaseList.toArray(new String[8]);
+        return priorDiseaseList.toArray(new String[0]);
     }
 
     public String[] getRTNExamQuestionNames() {
@@ -120,6 +128,6 @@ public class RTNColumnBuilder extends CIColumnBuilder {
         for (Dictionary dictionary : rtnList) {
             priorDiseaseList.add(dictionary.getLocalAbbreviation());
         }
-        return priorDiseaseList.toArray(new String[8]);
+        return priorDiseaseList.toArray(new String[0]);
     }
 }

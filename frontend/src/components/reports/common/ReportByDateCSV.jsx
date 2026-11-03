@@ -16,6 +16,7 @@ import { AlertDialog } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import config from "../../../config.json";
 import { encodeDate, getFromOpenElisServer } from "../../utils/Utils";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const ReportByDateCSV = (props) => {
   const intl = useIntl();
@@ -43,63 +44,50 @@ const ReportByDateCSV = (props) => {
   });
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let updatedDate = encodeDate(date);
-    let obj = null;
-    switch (datePicker) {
-      case "startDate":
-        obj = {
-          ...reportFormValues,
-          startDate: updatedDate,
-        };
-        break;
-      case "endDate":
-        obj = {
-          ...reportFormValues,
-          endDate: updatedDate,
-        };
-        break;
-      default:
-    }
-    setReportFormValues(obj);
+    const updatedDate = encodeDate(date);
+    setReportFormValues((current) => ({
+      ...current,
+      [datePicker]: updatedDate,
+    }));
   };
 
   const handleSubmit = () => {
     if (!reportFormValues.startDate || !reportFormValues.endDate) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.dateRange.start",
           defaultMessage: "Please select Start and end date.",
         }),
-      });
+      }));
       return;
     }
 
     if (!reportFormValues.studyType) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.report.csv.study",
           defaultMessage: "Please select study type.",
         }),
-      });
+      }));
       return;
     }
     if (props.report === "CIStudyExport" && !reportFormValues.dateType) {
-      setReportFormValues({
-        ...reportFormValues,
+      setReportFormValues((current) => ({
+        ...current,
         error: intl.formatMessage({
           id: "error.report.csv.dateType",
           defaultMessage: "Please select date type.",
         }),
-      });
+      }));
       return;
     }
 
-    setReportFormValues({
-      ...reportFormValues,
+    setReportFormValues((current) => ({
+      ...current,
       error: "",
-    });
+    }));
 
     setLoading(true);
 
@@ -118,31 +106,22 @@ const ReportByDateCSV = (props) => {
 
   useEffect(() => {
     if (props.report === "CIStudyExport") {
-      getFromOpenElisServer("/rest/projects", (data) => {
-        setStatusOptions(data);
-        console.log("data", data);
+      getFromOpenElisServer("/rest/studyprojects", (data) => {
+        setStatusOptions(Array.isArray(data) ? data : []);
       });
     } else {
       getFromOpenElisServer("/rest/trendsprojects", (data) => {
-        setStatusOptions(data);
+        setStatusOptions(Array.isArray(data) ? data : []);
       });
     }
   }, [props]);
 
-  const dateOptions = [
-    {
-      text: "Order Date",
-      value: "ORDER_DATE",
-    },
-    {
-      text: "Result Date",
-      value: "RESULT_DATE",
-    },
-    {
-      text: "Print Date",
-      value: "PRINT_DATE",
-    },
-  ];
+  const dateOptions = ["ORDER_DATE", "RESULT_DATE", "PRINT_DATE"].map(
+    (value) => ({
+      value,
+      text: intl.formatMessage({ id: `report.csv.dateType.${value}` }),
+    }),
+  );
 
   return (
     <>
@@ -202,29 +181,23 @@ const ReportByDateCSV = (props) => {
                 <br />
               </Column>
               <Column lg={8} md={4} sm={4}>
-                <Select
+                <SearchableSelect
                   id="studyType"
                   labelText={intl.formatMessage({
                     id: "report.select.studttype",
                   })}
-                  value={reportFormValues.studyType}
-                  onChange={(e) => {
-                    setReportFormValues({
-                      ...reportFormValues,
-                      studyType: e.target.value,
-                    });
+                  placeholder={intl.formatMessage({
+                    id: "report.select.studttype",
+                  })}
+                  options={statusOptions}
+                  value={reportFormValues.studyType ?? ""}
+                  onChange={(id) => {
+                    setReportFormValues((current) => ({
+                      ...current,
+                      studyType: id,
+                    }));
                   }}
-                >
-                  <SelectItem value="" text="Select Study Type" />
-
-                  {statusOptions.map((statusOption) => (
-                    <SelectItem
-                      key={statusOption.id}
-                      value={statusOption.id}
-                      text={statusOption.value}
-                    />
-                  ))}
-                </Select>
+                />
               </Column>
               <Column lg={16}>
                 {" "}
@@ -237,15 +210,21 @@ const ReportByDateCSV = (props) => {
                     labelText={intl.formatMessage({
                       id: "report.label.site.dateType",
                     })}
-                    value={reportFormValues.dateType}
+                    value={reportFormValues.dateType ?? ""}
                     onChange={(e) => {
-                      setReportFormValues({
-                        ...reportFormValues,
-                        dateType: e.target.value,
-                      });
+                      const dateType = e.target.value;
+                      setReportFormValues((current) => ({
+                        ...current,
+                        dateType,
+                      }));
                     }}
                   >
-                    <SelectItem value="" text="Select Date Type" />
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "report.csv.dateType.select",
+                      })}
+                    />
                     {dateOptions.map((dateOption) => (
                       <SelectItem
                         key={dateOption.value}

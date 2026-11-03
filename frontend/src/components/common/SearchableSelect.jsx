@@ -67,9 +67,12 @@ const SearchableSelect = ({
         foldForSearch(inputValue) === foldForSearch(selectedLabel) ||
         matchesSearch(item?.value, inputValue)
       }
-      onChange={({ selectedItem: chosen }) =>
-        onChange(chosen ? String(chosen.id) : "")
-      }
+      onChange={({ selectedItem: chosen }) => {
+        const id = chosen ? String(chosen.id) : "";
+        if (id !== String(value ?? "")) {
+          onChange(id);
+        }
+      }}
     />
   );
 };

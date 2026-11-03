@@ -97,7 +97,7 @@ public class StudyVLColumnBuilder extends CIStudyColumnBuilder {
     public void makeSQL() {
         // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;

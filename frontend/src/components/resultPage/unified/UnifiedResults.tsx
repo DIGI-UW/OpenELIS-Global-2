@@ -18,8 +18,6 @@ import {
   Pagination,
   Search,
   Section,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -94,6 +92,7 @@ import Avatar from "./Avatar";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import SearchableSelect from "../../common/SearchableSelect";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
@@ -1438,20 +1437,14 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               sm={4}
               className="unifiedResultsToolbarColumn"
             >
-              <Select
+              <SearchableSelect
                 id="unifiedResultsLabUnit"
                 labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                options={labUnits}
                 value={selectedLabUnit}
                 disabled={Boolean(selectedPatient)}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setSelectedLabUnit(e.target.value)
-                }
-              >
-                <SelectItem text="" value="" />
-                {labUnits.map((unit) => (
-                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-                ))}
-              </Select>
+                onChange={(id: string) => setSelectedLabUnit(id)}
+              />
             </Column>
             <Column
               lg={3}

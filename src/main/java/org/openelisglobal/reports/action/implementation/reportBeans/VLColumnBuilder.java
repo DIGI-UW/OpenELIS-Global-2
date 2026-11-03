@@ -89,7 +89,7 @@ public class VLColumnBuilder extends CIColumnBuilder {
     @Override
     public void makeSQL() {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;

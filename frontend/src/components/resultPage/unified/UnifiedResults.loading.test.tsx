@@ -53,6 +53,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnitForTest";
 
 const LAB_UNITS = [{ id: "56", value: "Biochemistry", domain: "CLINICAL" }];
 const STATUSES = [{ id: "4", value: "Not started" }];
@@ -119,9 +120,7 @@ describe("Unified Results loader", () => {
   it("shows a loader while the worklist is being fetched and hides it once the rows arrive", () => {
     expect(loader()).toBeNull();
 
-    fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-      target: { value: "56" },
-    });
+    chooseLabUnit("Biochemistry");
 
     expect(loader()).not.toBeNull();
     expect(screen.getByText("Loading results...")).toBeInTheDocument();
@@ -133,9 +132,7 @@ describe("Unified Results loader", () => {
   });
 
   it("shows the loader again while another server page is being fetched", () => {
-    fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-      target: { value: "56" },
-    });
+    chooseLabUnit("Biochemistry");
     releaseWorklist(PAGE_ONE);
     expect(loader()).toBeNull();
 
@@ -155,9 +152,7 @@ describe("Unified Results loader", () => {
   });
 
   it("hides the loader when the fetch fails, so the failure notice is not covered", () => {
-    fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-      target: { value: "56" },
-    });
+    chooseLabUnit("Biochemistry");
     expect(loader()).not.toBeNull();
 
     releaseWorklist({ status: 500, error: "Internal Server Error" });

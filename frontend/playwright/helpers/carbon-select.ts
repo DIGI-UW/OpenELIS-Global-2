@@ -59,6 +59,20 @@ export async function chooseCarbonOption(
 }
 
 /**
+ * Choose the first option a Carbon ComboBox lists, for a step that needs any
+ * real choice from site data. Returns the option's text.
+ */
+export async function chooseFirstCarbonOption(
+  combobox: Locator,
+): Promise<string> {
+  const first = (await openListbox(combobox)).getByRole("option").first();
+  const text = (await first.innerText()).trim();
+  await first.click();
+  await expect(combobox).toHaveValue(text);
+  return text;
+}
+
+/**
  * Tick an option in a Carbon MultiSelect or FilterableMultiSelect. The menu
  * stays open and the control shows only a count, so the option's
  * `aria-selected`, which Carbon derives from `selectedItems`, is the signal.

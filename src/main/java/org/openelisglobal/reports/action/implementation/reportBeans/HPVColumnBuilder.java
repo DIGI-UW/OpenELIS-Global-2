@@ -82,7 +82,7 @@ public class HPVColumnBuilder extends CIStudyColumnBuilder {
 
     protected void appendResultCrosstab(Date lowDate, Date highDate) {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -130,7 +130,7 @@ public class HPVColumnBuilder extends CIStudyColumnBuilder {
      */
     protected String buildWhereSamplePatienOrgSQL(Date lowDate, Date highDate) {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -159,7 +159,7 @@ public class HPVColumnBuilder extends CIStudyColumnBuilder {
     @Override
     public void makeSQL() {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;

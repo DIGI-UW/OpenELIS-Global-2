@@ -70,6 +70,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnitForTest";
 
 const row = (analysisId: string, testName: string, resultValue = "") => ({
   id: "r-" + analysisId,
@@ -130,9 +131,7 @@ describe("OGC-1266 — a rule firing on save keeps other rows' unsaved results",
         <UnifiedResults />
       </IntlProvider>,
     );
-    fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-      target: { value: "56" },
-    });
+    chooseLabUnit("Biochemistry");
     const fields = () =>
       Array.from(
         document.querySelectorAll('input[id^="unifiedResultValue-"]'),

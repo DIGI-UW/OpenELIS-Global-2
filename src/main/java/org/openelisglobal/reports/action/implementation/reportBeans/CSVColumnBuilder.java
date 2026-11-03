@@ -181,16 +181,17 @@ public abstract class CSVColumnBuilder {
         List<Project> allProjects = projectService.getAllProjects();
         for (Project project : allProjects) {
             String projectTag;
+            String nameKey = project.getNameKey() == null ? "" : project.getNameKey();
             // Watch the order on these 1st 2!
-            if (project.getNameKey().contains("ARVF")) {
+            if (nameKey.contains("ARVF")) {
                 projectTag = "ARVS";
-            } else if (project.getNameKey().contains("ARV")) {
+            } else if (nameKey.contains("ARV")) {
                 projectTag = "ARVB";
-            } else if (project.getNameKey().contains("VLS")) {
+            } else if (nameKey.contains("VLS")) {
                 projectTag = "VLS";
-            } else if (project.getNameKey().contains("Recency")) {
+            } else if (nameKey.contains("Recency")) {
                 projectTag = "RTRI";
-            } else if (project.getNameKey().contains("HPV")) {
+            } else if (nameKey.contains("HPV")) {
                 projectTag = "HPV";
             } else {
                 // otherwise we use the letters from the Sample ID prefix, which

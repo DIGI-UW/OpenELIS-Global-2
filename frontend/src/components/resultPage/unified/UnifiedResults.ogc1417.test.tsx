@@ -81,6 +81,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnitForTest";
 
 /** Serum Uric Acid as QA configured it: normal 20-80, valid 0-100, critical <10 or >90. */
 const worklistRow = () => ({
@@ -123,9 +124,7 @@ const renderPage = async () => {
       <UnifiedResults />
     </IntlProvider>,
   );
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "165" },
-  });
+  chooseLabUnit("Biochemistry");
   expect(document.querySelector("tbody tr")).not.toBeNull();
 };
 

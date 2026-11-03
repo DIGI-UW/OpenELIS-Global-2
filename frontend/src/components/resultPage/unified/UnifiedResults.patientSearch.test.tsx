@@ -68,6 +68,7 @@ vi.mock("../../patient/SearchPatientForm", () => ({
 }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnitForTest";
 
 const LAB_UNITS = [{ id: "56", value: "Biochemistry", domain: "CLINICAL" }];
 const STATUSES = [{ id: "4", value: "Not started" }];
@@ -95,11 +96,6 @@ const renderPage = () => {
     </IntlProvider>,
   );
 };
-
-const chooseLabUnit = () =>
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "56" },
-  });
 
 const worklistCalls = () =>
   utilsMock.getFromOpenElisServer.mock.calls
@@ -146,7 +142,7 @@ describe("Search by patient on the unified worklist", () => {
 
   it("loads the selected patient's results with only patientPK and keeps them on Load results", () => {
     renderPage();
-    chooseLabUnit();
+    chooseLabUnit("Biochemistry");
     expect(lastWorklistParams().get("testSectionId")).toBe("56");
 
     fireEvent.click(searchByPatient());
@@ -164,7 +160,7 @@ describe("Search by patient on the unified worklist", () => {
     expect(new URLSearchParams(window.location.search).get("patientId")).toBe(
       "123",
     );
-    expect(screen.getByLabelText(/Lab Unit/i)).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: /Lab Unit/i })).toBeDisabled();
     expect(screen.getByLabelText(/Test date/i)).toBeDisabled();
 
     const before = worklistCalls().length;
@@ -177,7 +173,7 @@ describe("Search by patient on the unified worklist", () => {
 
   it("clearing the patient returns to the lab-unit worklist", () => {
     renderPage();
-    chooseLabUnit();
+    chooseLabUnit("Biochemistry");
     fireEvent.click(searchByPatient());
     fireEvent.click(screen.getByTestId("mock-pick-patient"));
 
@@ -190,7 +186,7 @@ describe("Search by patient on the unified worklist", () => {
     expect(new URLSearchParams(window.location.search).has("patientId")).toBe(
       false,
     );
-    expect(screen.getByLabelText(/Lab Unit/i)).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: /Lab Unit/i })).toBeEnabled();
   });
 
   it("reopening the search drops the patientId from the URL so the form does not reselect it", () => {
