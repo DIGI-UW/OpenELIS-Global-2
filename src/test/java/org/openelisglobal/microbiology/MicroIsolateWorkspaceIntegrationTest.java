@@ -65,6 +65,10 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroAstService ast;
     @Autowired
+    private MicrobiologyReferenceAdminService referenceAdmin;
+    @Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
+    @Autowired
     private MicroOrderRoutingService routing;
     @Autowired
     private org.openelisglobal.test.service.TestSectionService units;
@@ -565,6 +569,42 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         assertEquals(run.getId(), stored.getId());
         assertEquals("REVIEWED", stored.getStatus());
         assertEquals(selected, stored.isReportable());
+    }
+
+    @Test
+    public void isolateWithoutARunStartsOnThePanelVersionPublishedAfterItsAssignment() {
+        String id = pick();
+        var ref = fixtures.createReferenceData(method);
+        breakpointAdminService.activate(ref.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        workspace.act(c.getId(), id, "identify", identification(id, ref.organism().getId()), writer);
+        String v1 = ref.panel().getId();
+        String v2 = referenceAdmin.publishPanelVersion(v1, referenceAdmin.getAstPanel(v1), writer).id;
+
+        var run = ast.startRun(id, v2, ref.standard().getId(), writer);
+
+        assertEquals(v2, run.getPanelId());
+        assertEquals(List.of(v2),
+                panelAssignments.getAssignments(id).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+    }
+
+    @Test
+    public void isolateWithARunKeepsItsPanelVersionWhenANewVersionIsPublished() {
+        String id = pick();
+        var ref = fixtures.createReferenceData(method);
+        breakpointAdminService.activate(ref.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        workspace.act(c.getId(), id, "identify", identification(id, ref.organism().getId()), writer);
+        String v1 = ref.panel().getId();
+        var run = ast.startRun(id, v1, ref.standard().getId(), writer);
+
+        String v2 = referenceAdmin.publishPanelVersion(v1, referenceAdmin.getAstPanel(v1), writer).id;
+
+        assertNotEquals(v1, v2);
+        assertEquals(List.of(v1),
+                panelAssignments.getAssignments(id).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+        assertEquals(v1, ast.getRunsForIsolate(id).getFirst().getPanelId());
+        assertEquals(run.getId(), ast.getRunsForIsolate(id).getFirst().getId());
     }
 
     @Test

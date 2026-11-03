@@ -146,6 +146,28 @@ public class MicroEnvironmentalMigrationLiquibaseRollbackTest {
         }
     }
 
+    @Test
+    public void organismDefaultOnASupersededPanelMovesToItsCurrentVersion() throws Exception {
+        try (var postgres = postgres()) {
+            try (Connection c = postgres.createConnection("")) {
+                var database = database(c);
+                var resources = new ClassLoaderResourceAccessor();
+                var contexts = new Contexts("test");
+                updateUntil(new Liquibase("liquibase/base-changelog.xml", resources, database), contexts,
+                        "126-amr-organism-default-current-panel");
+                execute(c,
+                        "INSERT INTO clinlims.micro_ast_panel(id,name,workflow_type,organism_group,logical_key,is_current,version_number) VALUES ('panel-v1','Panel','BACTERIOLOGY','Enterobacterales','family','N',1),('panel-v2','Panel','BACTERIOLOGY','Enterobacterales','family','Y',2),('other','Other','BACTERIOLOGY','Enterobacterales','other','Y',1)");
+                execute(c,
+                        "INSERT INTO clinlims.micro_organism(id,display_name,short_name,gram_stain,default_ast_panel_id) VALUES ('stale','Stale','Stale','NEGATIVE','panel-v1'),('current','Current','Current','NEGATIVE','other')");
+                c.commit();
+                new Liquibase("liquibase/3.5.x.x/126-amr-organism-default-current-panel.xml", resources, database)
+                        .update(contexts);
+                assertEquals("current:other,stale:panel-v2", scalar(c,
+                        "SELECT string_agg(id||':'||default_ast_panel_id, ',' ORDER BY id) FROM clinlims.micro_organism WHERE id IN ('current','stale')"));
+            }
+        }
+    }
+
     private static PostgreSQLContainer<?> postgres() {
         var postgres = new PostgreSQLContainer<>("postgres:14.4");
         postgres.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
