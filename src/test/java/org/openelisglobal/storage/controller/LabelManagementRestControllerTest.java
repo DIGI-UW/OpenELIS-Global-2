@@ -14,6 +14,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.service.LabelManagementService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
@@ -142,6 +144,21 @@ public class LabelManagementRestControllerTest extends BaseWebContextSensitiveTe
         Integer count = countRowsInTable("storage_location_print_history");
         assertNotNull("Print history should be recorded", count);
         assertTrue("Print history count should be > 0", count > 0);
+    }
+
+    @Test
+    public void printHistory_ShouldRecordAuthenticatedUserId_WhenUserSessionPresent() throws Exception {
+        String deviceId = String.valueOf(TEST_STORAGE_DEVICE_ID);
+        int expectedUserId = 999;
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(expectedUserId);
+
+        mockMvc.perform(post("/rest/storage/device/" + deviceId + "/print-label")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData)).andExpect(status().isOk());
+
+        int count = countRowsInTableWhere("storage_location_print_history",
+                "location_id = '" + deviceId + "' AND printed_by = '" + expectedUserId + "'");
+        assertTrue("Print history with authenticated user ID should be recorded", count > 0);
     }
 
     @Test
