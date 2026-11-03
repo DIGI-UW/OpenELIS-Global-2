@@ -880,7 +880,7 @@ export default function CaseTestingWorkspace({
                     renderNotes={renderNotes}
                     detail={detail}
                     service={service}
-                    onChanged={onCaseChanged}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {placement === "REPORT" && (

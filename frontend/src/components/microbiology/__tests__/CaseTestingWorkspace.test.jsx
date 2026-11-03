@@ -682,6 +682,67 @@ test("reviewed AST entry remains read-only for a writer and validator", async ()
   ).not.toBeInTheDocument();
 });
 
+test("cancelling an AST run refreshes the case timeline", async () => {
+  const api = service();
+  const ast = {
+    canEnter: true,
+    canValidate: true,
+    standards: [],
+    dst: { classification: "NOT_APPLICABLE", drugs: [] },
+    isolates: [
+      {
+        id: "i1",
+        label: "ISO-1",
+        assignments: [],
+        panels: [],
+        choices: [],
+        runs: [
+          {
+            id: "run",
+            status: "AWAITING_RESULTS",
+            technique: "BROTH_MICRODILUTION",
+            breakpointVersion: "2026",
+            orderedAntibiotics: [],
+            readings: [],
+          },
+        ],
+      },
+    ],
+  };
+  api.getAstWorkspace = vi.fn().mockResolvedValue(ast);
+  api.astAction = vi.fn().mockResolvedValue(ast);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?section=ast"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: messages["microbiology.m6.action.cancel"],
+    }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(
+    within(modal).getByLabelText(messages["microbiology.m6.reason"]),
+    { target: { value: "Started on the wrong isolate" } },
+  );
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    within(modal).getByRole("button", {
+      name: messages["microbiology.m6.save"],
+      exact: true,
+    }),
+  );
+  await waitFor(() => expect(api.astAction).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
 test("consumes a critical communication target after saving and unlocks the next entry", async () => {
   const api = service();
   api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
