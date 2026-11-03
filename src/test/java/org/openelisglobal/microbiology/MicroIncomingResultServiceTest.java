@@ -64,7 +64,7 @@ public class MicroIncomingResultServiceTest {
         prior.setOriginalCaseId("case");
         prior.setTestId("12");
         prior.setState("PLACED");
-        prior.setStructuredResult("{\"components\":[]}");
+        prior.setStructuredResult("{\"components\":[{\"componentId\":\"primary\",\"value\":\"3\"}]}");
         when(queue.findDelivery("case", "12", "source-run")).thenReturn(prior);
         var f = service.receive("case", "tube", "12", "ANALYZER", "source-run", "3", payload, true, "1");
         assertEquals(prior.getId(), f.id);

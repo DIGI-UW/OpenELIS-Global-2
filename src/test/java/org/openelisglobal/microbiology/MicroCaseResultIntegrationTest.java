@@ -248,46 +248,8 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         if (retest)
             workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
         String priorRevision = analyses.get(analysis.getId()).getRevision();
-        var patient = fixtures.createPatient("M7PAT");
-        var human = new org.openelisglobal.samplehuman.valueholder.SampleHuman();
-        human.setSampleId(analysis.getSampleItem().getSample().getId());
-        human.setPatientId(patient.getId());
-        human.setSysUserId(actor);
-        em.persist(human);
-        var analyzer = new org.openelisglobal.analyzer.valueholder.Analyzer();
-        analyzer.setName("M7 acceptance " + UUID.randomUUID());
-        analyzer.setActive(true);
-        analyzer.setSysUserId(actor);
-        em.persist(analyzer);
-        var stagedRows = new ArrayList<org.openelisglobal.analyzerresults.valueholder.AnalyzerResults>();
-        for (var component : payload().components) {
-            var row = new org.openelisglobal.analyzerresults.valueholder.AnalyzerResults();
-            row.setAnalyzerId(analyzer.getId());
-            row.setAccessionNumber(analysis.getSampleItem().getSample().getAccessionNumber());
-            row.setInstrumentSpecimenId(row.getAccessionNumber());
-            row.setInstrumentPatientId(patient.getExternalId());
-            row.setTestId(analysis.getTest().getId());
-            row.setTestName(analysis.getTest().getName());
-            row.setComponentId(component.componentId);
-            row.setResult(retest ? "56" : component.value);
-            row.setRawResultValue(row.getResult());
-            row.setResultType("N");
-            row.setCompleteDate(Timestamp.from(Instant.now()));
-            row.setSourceConnectionId("M7-review-connection");
-            row.setSourceMessageId("M7-review-delivery");
-            stagedRows.add(row);
-        }
-        analyzerStaging.insertAnalyzerResults(stagedRows, "1");
-        em.flush();
-        var decisions = stagedRows.stream().map(row -> {
-            var item = new org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem();
-            item.setId(row.getId());
-            item.setTestId(row.getTestId());
-            item.setAccessionNumber(row.getAccessionNumber());
-            item.setInstrumentSpecimenId(row.getInstrumentSpecimenId());
-            item.setResult(row.getResult());
-            return item;
-        }).toList();
+        var stagedRows = stageAnalyzerRows(retest ? "56" : null);
+        var decisions = decisionsFor(stagedRows);
         analyzerAcceptance.acceptAndPersist(decisions, actor);
         assertEquals(retest ? 2 : 0, results.getResultsByAnalysis(analysis).size());
         assertTrue(incomingItems.forCase(microCase.getId()).isEmpty());
@@ -319,6 +281,86 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             assertEquals(Set.of("56"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
                     .collect(java.util.stream.Collectors.toSet()));
         }
+        assertEquals(Long.valueOf(0),
+                em.createQuery("select count(r) from AnalyzerResults r where r.id in :ids", Long.class)
+                        .setParameter("ids", stagedRows.stream().map(row -> row.getId()).toList()).getSingleResult());
+    }
+
+    private List<org.openelisglobal.analyzerresults.valueholder.AnalyzerResults> stageAnalyzerRows(String value) {
+        var patient = fixtures.createPatient("M7PAT");
+        var human = new org.openelisglobal.samplehuman.valueholder.SampleHuman();
+        human.setSampleId(analysis.getSampleItem().getSample().getId());
+        human.setPatientId(patient.getId());
+        human.setSysUserId(actor);
+        em.persist(human);
+        var analyzer = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        analyzer.setName("M7 acceptance " + UUID.randomUUID());
+        analyzer.setActive(true);
+        analyzer.setSysUserId(actor);
+        em.persist(analyzer);
+        var stagedRows = new ArrayList<org.openelisglobal.analyzerresults.valueholder.AnalyzerResults>();
+        for (var component : payload().components) {
+            var row = new org.openelisglobal.analyzerresults.valueholder.AnalyzerResults();
+            row.setAnalyzerId(analyzer.getId());
+            row.setAccessionNumber(analysis.getSampleItem().getSample().getAccessionNumber());
+            row.setInstrumentSpecimenId(row.getAccessionNumber());
+            row.setInstrumentPatientId(patient.getExternalId());
+            row.setTestId(analysis.getTest().getId());
+            row.setTestName(analysis.getTest().getName());
+            row.setComponentId(component.componentId);
+            row.setResult(value == null ? component.value : value);
+            row.setRawResultValue(row.getResult());
+            row.setResultType("N");
+            row.setCompleteDate(Timestamp.from(Instant.now()));
+            row.setSourceConnectionId("M7-review-connection");
+            row.setSourceMessageId("M7-review-delivery");
+            stagedRows.add(row);
+        }
+        analyzerStaging.insertAnalyzerResults(stagedRows, "1");
+        em.flush();
+        return stagedRows;
+    }
+
+    private List<org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem> decisionsFor(
+            List<org.openelisglobal.analyzerresults.valueholder.AnalyzerResults> stagedRows) {
+        return stagedRows.stream().map(row -> {
+            var item = new org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem();
+            item.setId(row.getId());
+            item.setTestId(row.getTestId());
+            item.setAccessionNumber(row.getAccessionNumber());
+            item.setInstrumentSpecimenId(row.getInstrumentSpecimenId());
+            item.setResult(row.getResult());
+            return item;
+        }).toList();
+    }
+
+    @Test
+    public void heldAnalyzerComponentRecoveredAndAcceptedLaterReachesTheAnalysis() {
+        var stagedRows = stageAnalyzerRows(null);
+        var held = stagedRows.get(1);
+        held.setImportIssueReason(
+                org.openelisglobal.analyzerresults.valueholder.AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+        em.merge(held);
+        em.flush();
+        var decisions = decisionsFor(stagedRows);
+        decisions.forEach(item -> item.setIsAccepted(true));
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        assertEquals(Set.of("12"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                .collect(java.util.stream.Collectors.toSet()));
+
+        var recovered = analyzerStaging.get(held.getId());
+        recovered.setImportIssueReason(null);
+        em.merge(recovered);
+        em.flush();
+        var later = decisionsFor(List.of(recovered));
+        later.get(0).setIsAccepted(true);
+        analyzerAcceptance.acceptAndPersist(later, actor);
+        em.flush();
+
+        assertEquals(Set.of("12", "34"), results.getResultsByAnalysis(analysis).stream().map(r -> r.getValue())
+                .collect(java.util.stream.Collectors.toSet()));
+        assertEquals(1, incomingItems.forCase(microCase.getId()).size());
         assertEquals(Long.valueOf(0),
                 em.createQuery("select count(r) from AnalyzerResults r where r.id in :ids", Long.class)
                         .setParameter("ids", stagedRows.stream().map(row -> row.getId()).toList()).getSingleResult());

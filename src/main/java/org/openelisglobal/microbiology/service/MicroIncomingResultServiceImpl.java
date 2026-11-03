@@ -93,7 +93,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         var prior = incoming.findDelivery(caseId, testId, key);
         if (prior != null)
-            return form(prior);
+            return addMissingComponents(prior, result, actor);
         var item = new MicroIncomingItem();
         item.setMicroCase(c);
         item.setOriginalCaseId(caseId);
@@ -142,6 +142,39 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         incoming.insert(item);
         audit(caseId, "INCOMING_RECEIVED", item.getId(), null, actor);
         return form(item);
+    }
+
+    private MicroIncomingForm addMissingComponents(MicroIncomingItem prior, MicroCaseResultRequestForm result,
+            String actor) {
+        var stored = decode(prior.getStructuredResult());
+        String storedNote = stored.note;
+        Set<String> storedIds = new HashSet<>();
+        stored.components.forEach(component -> storedIds.add(component.componentId));
+        var addedComponents = new ArrayList<MicroCaseResultRequestForm.ResultComponent>();
+        for (var component : result.components) {
+            if (component != null && !storedIds.contains(component.componentId))
+                addedComponents.add(component);
+        }
+        if (addedComponents.isEmpty())
+            return form(prior);
+        var merged = new ArrayList<>(stored.components);
+        merged.addAll(addedComponents);
+        stored.components = merged;
+        prior.setStructuredResult(encode(stored));
+        if ("PLACED".equals(prior.getState())) {
+            String caseId = prior.getMicroCase().getId();
+            String analysisId = prior.getPlacementTarget();
+            var analysis = links.getAnalyses(caseId).stream().filter(a -> analysisId.equals(a.getId())).findFirst()
+                    .orElseThrow();
+            var added = new MicroCaseResultRequestForm();
+            added.components = addedComponents;
+            added.note = Objects.equals(result.note, storedNote) ? null : result.note;
+            added.version = MicroCaseResultServiceImpl.version(analysis,
+                    links.getByCaseAndAnalysis(caseId, analysisId));
+            results.saveResults(caseId, analysisId, added, actor, null);
+        }
+        incoming.update(prior);
+        return form(prior);
     }
 
     @Transactional
