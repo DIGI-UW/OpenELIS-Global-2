@@ -10,6 +10,7 @@ case "$1" in
   backend-tests)
     printf 'code\n' > "$OE_CI_PHASE_FILE"
     (cd dataexport && ../scripts/run-java21 mvn clean install)
+    scripts/run-java21 mvn -f module-contracts/pom.xml clean install
     scripts/run-java21 mvn clean install -Dspotless.check.skip=true
     ;;
   deployment-contract)

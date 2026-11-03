@@ -300,6 +300,12 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
         cwd=context.repo_root,
         environment=environment,
     )
+    module_contracts = context.repo_root / "module-contracts" / "pom.xml"
+    run(
+        [str(java), "mvn", "-q", "-f", str(module_contracts), "install", "-DskipTests", "-Dmaven.test.skip=true"],
+        cwd=context.repo_root,
+        environment=environment,
+    )
     run(
         [str(java), "mvn", "-q", "package", "-DskipTests", "-Dmaven.test.skip=true"],
         cwd=context.repo_root,
