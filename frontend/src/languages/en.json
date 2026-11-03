@@ -13773,6 +13773,7 @@
   "microbiology.m6.clinicalContext.help": "Choose from the clinical request. The specimen alone does not establish the indication. This choice is retained with this run.",
   "microbiology.m6.clinicalContext.unspecified": "Unspecified — use only unconditional breakpoints",
   "microbiology.m6.clinicalContext.nonMeningitis": "Indications other than meningitis",
+  "microbiology.m6.error.AST_PANEL_ALREADY_ASSIGNED": "This isolate already has another version of this AST panel assigned. Reload the case and start the run from the assigned panel.",
   "microbiology.m6.error.AST_CLINICAL_CONTEXT_UNSUPPORTED": "This clinical indication is not supported for automatic interpretation.",
   "microbiology.m6.ast": "AST / DST",
   "microbiology.m6.dst": "TB resistance classification",
