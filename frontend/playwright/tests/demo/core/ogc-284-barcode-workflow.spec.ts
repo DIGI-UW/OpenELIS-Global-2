@@ -231,9 +231,14 @@ async function fillSampleStep(page: Page) {
     await quantity.fill("1");
   }
 
-  const uomSelect = page.locator("select#uomId_0");
-  if (await uomSelect.isVisible()) {
-    await uomSelect.selectOption({ index: 1 });
+  const uom = page.getByRole("combobox", { name: "Sample Unit Of Measure" });
+  if (await uom.isVisible()) {
+    await uom.click();
+    await page
+      .locator(`[id="${await uom.getAttribute("aria-controls")}"]`)
+      .getByRole("option")
+      .first()
+      .click();
   }
 
   await selectPanelOrTest(page);
