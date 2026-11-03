@@ -108,6 +108,18 @@ const setup = (search = "", changes = {}) => {
 };
 
 describe("canonical case workspace", () => {
+  test("says the Program is not set when the case has none", async () => {
+    setup();
+    expect(await screen.findByText("Program not set")).toBeInTheDocument();
+  });
+  test("names the case's Program instead of the not-set text", async () => {
+    setup("", {
+      programId: "7",
+      programs: [{ id: "7", value: "Bacteriology" }],
+    });
+    expect(await screen.findAllByText("Bacteriology")).not.toHaveLength(0);
+    expect(screen.queryByText("Program not set")).not.toBeInTheDocument();
+  });
   test("shows the date of birth in the site's date format", async () => {
     setup("", {
       dateLocale: "fr-FR",
