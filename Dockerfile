@@ -39,18 +39,30 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     && cp -r /root/.m2/repository/org/itech /build/dataexport-m2/org/
 
 ##
+# Build the module contracts (openelis-spi, openelis-module-api), which the WAR depends on
+#
+COPY ./module-contracts /build/module-contracts
+WORKDIR /build/module-contracts
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests \
+    && mkdir -p /build/dataexport-m2/org/openelisglobal \
+    && cp -r /root/.m2/repository/org/openelisglobal/. /build/dataexport-m2/org/openelisglobal/
+
+##
 # Build the Project
 #
-# NOTE: Each step overlays dataexport artifacts into the cache mount. The
-# org/itech directory may already exist without the required dataexport
-# versions, so checking only for that parent directory is insufficient.
+# NOTE: Each step overlays dataexport and module-contract artifacts into the
+# cache mount. The org/itech directory may already exist without the required
+# dataexport versions, so checking only for that parent directory is
+# insufficient.
 #
 WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mkdir -p /root/.m2/repository/org/itech \
+    mkdir -p /root/.m2/repository/org/itech /root/.m2/repository/org/openelisglobal \
     && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \
+    && cp -r /build/dataexport-m2/org/openelisglobal/. /root/.m2/repository/org/openelisglobal/ \
     && mvn dependency:go-offline
 
 ARG SKIP_SPOTLESS="false"
@@ -59,8 +71,9 @@ COPY ./src /build/src
 # that print their labels from it (see the pom's ui-languages resource).
 COPY ./frontend/src/languages /build/frontend/src/languages
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mkdir -p /root/.m2/repository/org/itech \
+    mkdir -p /root/.m2/repository/org/itech /root/.m2/repository/org/openelisglobal \
     && cp -r /build/dataexport-m2/org/itech/. /root/.m2/repository/org/itech/ \
+    && cp -r /build/dataexport-m2/org/openelisglobal/. /root/.m2/repository/org/openelisglobal/ \
     && mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##

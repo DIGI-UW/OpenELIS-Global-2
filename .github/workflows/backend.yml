@@ -120,6 +120,7 @@ jobs:
               - 'src/**'
               - 'pom.xml'
               - 'dataexport/**'
+              - 'module-contracts/**'
               - 'fhir/**'
               - 'Dockerfile'
               - 'build.docker-compose.yml'
@@ -160,6 +161,9 @@ jobs:
           cd dataexport
           mvn clean install
           cd ..
+
+      - name: Build the module contracts
+        run: mvn -f module-contracts/pom.xml clean install
 
       - name: Build main project
         run: mvn clean install -Dspotless.check.skip=true
