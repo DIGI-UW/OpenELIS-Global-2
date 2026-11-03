@@ -576,9 +576,9 @@ public class MicroAstServiceTest {
     @Test
     public void legacyManualReadingUsesFallbackAuthorityWithMissingStandardId() {
         prepareLegacyInterpretation(null, true);
-        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.06"),
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.2"),
                 "1");
-        assertEquals("INTERMEDIATE", reading.getInterpretation());
+        assertEquals("RESISTANT", reading.getInterpretation());
         assertEquals("fallback-rule", reading.getBreakpointRuleId());
         verify(breakpointService, never()).getStandard(any());
     }
@@ -586,9 +586,9 @@ public class MicroAstServiceTest {
     @Test
     public void legacyManualReadingUsesFallbackAuthorityWithBlankStandardId() {
         prepareLegacyInterpretation("  ", true);
-        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.06"),
+        MicroAstReading reading = service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("0.2"),
                 "1");
-        assertEquals("INTERMEDIATE", reading.getInterpretation());
+        assertEquals("RESISTANT", reading.getInterpretation());
         verify(breakpointService, never()).getStandard(any());
     }
 
@@ -607,11 +607,11 @@ public class MicroAstServiceTest {
         service.applyAnalyzerResults(new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", "v9.02",
                 "org-analyzer", "E. coli", new BigDecimal("99.5"), List.of(), "qc-1", true, new Timestamp(1000),
                 new Timestamp(2000), List.of(),
-                List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("0.06"), "ug/mL", "SUSCEPTIBLE", "r-1"))),
+                List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("0.2"), "ug/mL", "SUSCEPTIBLE", "r-1"))),
                 "1");
         ArgumentCaptor<MicroAstReading> reading = ArgumentCaptor.forClass(MicroAstReading.class);
         verify(readingDAO).insert(reading.capture());
-        assertEquals("INTERMEDIATE", reading.getValue().getInterpretation());
+        assertEquals("RESISTANT", reading.getValue().getInterpretation());
         assertEquals("fallback-rule", reading.getValue().getBreakpointRuleId());
         verify(breakpointService, never()).getStandard(any());
     }
