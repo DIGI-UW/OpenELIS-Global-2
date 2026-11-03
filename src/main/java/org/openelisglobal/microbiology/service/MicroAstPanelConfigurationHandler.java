@@ -138,9 +138,6 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
             MicroAstPanelAntibioticAdminForm drug = new MicroAstPanelAntibioticAdminForm();
             drug.antibioticId = antibiotic.getId();
             drug.diskContent = blankToNull(row.get("diskContent"));
-            drug.tier = row.isBlank("tier") ? 1 : row.integer("tier");
-            drug.reportBehavior = row.isBlank("reportBehavior") ? "ALWAYS"
-                    : row.get("reportBehavior").trim().toUpperCase(Locale.ROOT);
             form.antibiotics.add(drug);
         }
 
@@ -163,8 +160,7 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         for (int i = 0; i < wanted.antibiotics.size(); i++) {
             var a = existing.antibiotics.get(i);
             var b = wanted.antibiotics.get(i);
-            if (!Objects.equals(a.antibioticId, b.antibioticId) || !Objects.equals(a.diskContent, b.diskContent)
-                    || !Objects.equals(a.tier, b.tier) || !Objects.equals(a.reportBehavior, b.reportBehavior)) {
+            if (!Objects.equals(a.antibioticId, b.antibioticId) || !Objects.equals(a.diskContent, b.diskContent)) {
                 return false;
             }
         }

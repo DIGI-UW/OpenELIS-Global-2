@@ -38,8 +38,6 @@ public class MicroAstResponseService {
             var f = new MicroAstRunAntibioticForm();
             f.antibioticId = ordered.getAntibioticId();
             f.displayOrder = ordered.getDisplayOrder();
-            f.tier = ordered.getTier();
-            f.reportBehavior = ordered.getReportBehavior();
             return f;
         }).toList();
     }
@@ -108,7 +106,6 @@ public class MicroAstResponseService {
             orderedForm.antibioticId = ordered.getAntibioticId();
             orderedForm.antibioticName = antibiotics.get(ordered.getAntibioticId()).orElseThrow().getDisplayName();
             orderedForm.displayOrder = ordered.getDisplayOrder();
-            orderedForm.tier = ordered.getTier();
             orderedForm.reportBehavior = ordered.getReportBehavior();
             orderedForm.reportRuleId = ordered.getReportRuleId();
             if (orderedForm.reportRuleId != null && !released) {

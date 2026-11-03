@@ -85,12 +85,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
     private org.openelisglobal.role.service.RoleService roles;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService referenceAdmin;
     @PersistenceContext
     private EntityManager em;
     private MicroCase c;
     private MicrobiologyTestFixtures.ReferenceData reference;
     private String writer, validator, outsider, isolate, drugB;
-    private MicroAstPanelAntibiotic drugBPanelRow;
     private String sampleTypeId;
 
     @Before
@@ -128,7 +129,6 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         ordered.setAntibioticId(drugB);
         ordered.setDisplayOrder(2);
         panelDrugs.insert(ordered);
-        drugBPanelRow = ordered;
         var rule = new MicroBreakpointRule();
         rule.setStandardId(reference.standard().getId());
         rule.setOrganismId(reference.organism().getId());
@@ -675,8 +675,7 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
 
     @Test
     public void reportOnlyIfResistantStartsUntickedAndTicksOnAResistantReading() {
-        drugBPanelRow.setReportBehavior("SUPPRESS_UNLESS_RESISTANT");
-        panelDrugs.update(drugBPanelRow);
+        reportingRule(reference.organism().getId(), null, List.of(), "SUPPRESS_UNLESS_RESISTANT");
         var susceptible = start(isolate);
         assertFalse(agent(susceptible, drugB).isReported());
         enter(susceptible, "4");
@@ -685,6 +684,19 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         enter(resistant, "64");
         assertTrue(agent(resistant, drugB).isReported());
         assertTrue(agent(resistant, reference.antibiotic().getId()).isReported());
+    }
+
+    @Test
+    public void aDrugNoRuleMatchesIsReportedOnAPanelSavedFromTheEditor() {
+        var drug = new org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm();
+        drug.antibioticId = drugB;
+        var form = new org.openelisglobal.microbiology.form.MicroAstPanelAdminForm();
+        form.name = "Editor panel " + UUID.randomUUID();
+        form.antibiotics = List.of(drug);
+        var panel = referenceAdmin.createPanel(form, writer);
+        var run = ast.startRun(isolate, panel.id, reference.standard().getId(), "Editor panel", List.of(), writer);
+        assertTrue(agent(run, drugB).isReported());
+        assertEquals("ALWAYS", agent(run, drugB).getReportBehavior());
     }
 
     @Test
@@ -1262,25 +1274,17 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void previewUsesThePanelsReportBehaviorWhenNoRuleMatches() {
-        var request = previewOf(suppressedUnlessResistantDrug());
-        var row = ast.previewReportingRules(request).rows.get(0);
-        assertEquals("SUPPRESS_UNLESS_RESISTANT", row.reportBehavior);
-        assertFalse(row.reported);
-    }
-
-    @Test
     public void previewIgnoresTheDefaultPanelForAnNtmOrganismAsRealRunsDo() {
         reference.organism().setSusceptibilityProtocol("NTM");
         organisms.update(reference.organism());
         em.flush();
-        var result = ast.previewReportingRules(previewOf(suppressedUnlessResistantDrug()));
+        var result = ast.previewReportingRules(previewOf(thirdPanelDrug()));
         assertNull(result.defaultPanelName);
         assertEquals("ALWAYS", result.rows.get(0).reportBehavior);
         assertTrue(result.rows.get(0).reported);
     }
 
-    private String suppressedUnlessResistantDrug() {
+    private String thirdPanelDrug() {
         var drug = new MicroAntibiotic();
         drug.setDisplayName("Third agent");
         drug.setWhonetCode("C" + UUID.randomUUID().toString().substring(0, 7));
@@ -1289,7 +1293,6 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         row.setPanelId(reference.panel().getId());
         row.setAntibioticId(drug.getId());
         row.setDisplayOrder(3);
-        row.setReportBehavior("SUPPRESS_UNLESS_RESISTANT");
         panelDrugs.insert(row);
         em.flush();
         return drug.getId();

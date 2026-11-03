@@ -62,7 +62,8 @@ indication match, and saves it active unless `active: NO`. A reporting rule file
 is applied whole or not at all: a bad row rolls back every row before it. A
 reload of an unchanged file writes no revision history. Rules absent from the
 file are left alone, and the AST rules page exports the same format, so an
-export re-imports without changes.
+export re-imports without changes. An antibiotic that no rule matches is
+reported.
 
 QC range files carry one expected range per row:
 `qc_strain,agent,method,disk_content,guideline,version,low,high`. `agent` is a

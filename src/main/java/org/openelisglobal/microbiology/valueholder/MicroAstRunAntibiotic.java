@@ -26,9 +26,6 @@ public class MicroAstRunAntibiotic extends BaseObject<String> {
     @Column(name = "display_order", nullable = false)
     private Integer displayOrder = 0;
 
-    @Column(name = "tier", nullable = false)
-    private Integer tier = 1;
-
     @Column(name = "report_behavior", nullable = false, length = 30)
     private String reportBehavior = "ALWAYS";
 
@@ -73,14 +70,6 @@ public class MicroAstRunAntibiotic extends BaseObject<String> {
 
     public void setDisplayOrder(Integer displayOrder) {
         this.displayOrder = displayOrder;
-    }
-
-    public Integer getTier() {
-        return tier;
-    }
-
-    public void setTier(Integer tier) {
-        this.tier = tier;
     }
 
     public String getReportBehavior() {

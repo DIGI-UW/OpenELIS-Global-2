@@ -41,7 +41,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private static final Pattern ORGANISM_WHONET = Pattern.compile("[a-z0-9]{3,10}");
     private static final Pattern ANTIBIOTIC_WHONET = Pattern.compile("[A-Z0-9]{2,10}");
     private static final Set<String> ROUTES = Set.of("ORAL", "IV", "BOTH", "TOPICAL");
-    private static final Set<String> REPORT_BEHAVIORS = Set.of("ALWAYS", "CASCADE", "SUPPRESS_UNLESS_RESISTANT");
 
     private final MicroOrganismDAO organismDAO;
     private final MicroAntibioticDAO antibioticDAO;
@@ -344,12 +343,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             if (row.diskContent != null && row.diskContent.trim().length() > 40) {
                 throw new IllegalArgumentException("Disk content is longer than 40 characters: " + antibioticId);
             }
-            if (row.tier == null || row.tier < 1 || row.tier > 3) {
-                throw new IllegalArgumentException("tier must be between 1 and 3");
-            }
-            if (!REPORT_BEHAVIORS.contains(row.reportBehavior)) {
-                throw new IllegalArgumentException("Invalid report behavior: " + row.reportBehavior);
-            }
         }
     }
 
@@ -360,8 +353,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             row.setPanelId(panelId);
             row.setAntibioticId(request.antibioticId);
             row.setDisplayOrder(order++);
-            row.setTier(request.tier);
-            row.setReportBehavior(request.reportBehavior);
             row.setDiskContent(trimToNull(request.diskContent));
             panelAntibioticDAO.insert(row);
         }
@@ -429,8 +420,6 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                 item.whonetCode = antibiotic.getWhonetCode();
             });
             item.displayOrder = row.getDisplayOrder();
-            item.tier = row.getTier();
-            item.reportBehavior = row.getReportBehavior();
             item.diskContent = row.getDiskContent();
             form.antibiotics.add(item);
         }
