@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -10,6 +11,7 @@ import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCance
 const api = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  notify: vi.fn(),
 }));
 
 vi.mock("../../utils/Utils", () => ({
@@ -22,7 +24,7 @@ vi.mock("../../layout/Layout", async () => {
   const { createContext } = await import("react");
   return {
     NotificationContext: createContext({
-      addNotification: () => {},
+      addNotification: (notification) => api.notify(notification),
       notificationVisible: false,
       setNotificationVisible: () => {},
     }),
@@ -63,14 +65,37 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
-const sampleTypeSelect = () => document.getElementById("selectSampleType");
-const currentTestSelect = () => document.getElementById("selectSampleType1");
+const sampleTypeBox = () =>
+  screen.getByRole("combobox", { name: "Sample Type" });
+const currentTestBox = () =>
+  screen.getByRole("combobox", { name: "Current test" });
+const replaceWithBox = () =>
+  screen.getByRole("combobox", { name: "Replace with" });
 
-// The tests of a sample type feed both the Current test and the Replace with
-// lists, so the name shows up more than once.
+const listedIn = async (box) => {
+  await userEvent.click(box);
+  const names = within(
+    document.getElementById(box.getAttribute("aria-controls")),
+  )
+    .queryAllByRole("option")
+    .map((option) => option.textContent);
+  await userEvent.keyboard("{Escape}");
+  return names;
+};
+
+const choose = async (box, typed, option) => {
+  await userEvent.type(box, typed);
+  await userEvent.click(screen.getByRole("option", { name: option }));
+};
+
+const chooseSerum = async () => {
+  await screen.findByRole("combobox", { name: "Sample Type" });
+  await choose(sampleTypeBox(), "ser", "Serum");
+};
+
 const currentTestOffers = async (name) => {
-  const options = await screen.findAllByText(name);
-  return options.some((option) => currentTestSelect().contains(option));
+  await waitFor(() => expect(currentTestBox()).toBeInTheDocument());
+  return (await listedIn(currentTestBox())).includes(name);
 };
 
 /**
@@ -109,16 +134,19 @@ describe("BatchTestReassignmentAndCancelation provider calls", () => {
         expect.any(Function),
       ),
     );
-    expect(await screen.findByText("Serum")).toBeInTheDocument();
+    expect(
+      await listedIn(
+        await screen.findByRole("combobox", { name: "Sample Type" }),
+      ),
+    ).toEqual(["Serum", "Urines"]);
 
     expect(providerCalls()).toEqual([]);
   });
 
   it("asks for a sample type's tests with the chosen id, never with null", async () => {
     renderPage();
-    await screen.findByText("Serum");
 
-    fireEvent.change(sampleTypeSelect(), { target: { value: "2" } });
+    await chooseSerum();
 
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(
@@ -137,11 +165,10 @@ describe("BatchTestReassignmentAndCancelation provider calls", () => {
 
   it("asks for a test's pending analyses only once a test is chosen", async () => {
     renderPage();
-    await screen.findByText("Serum");
-    fireEvent.change(sampleTypeSelect(), { target: { value: "2" } });
+    await chooseSerum();
     expect(await currentTestOffers("Amylase")).toBe(true);
 
-    fireEvent.change(currentTestSelect(), { target: { value: "17" } });
+    await choose(currentTestBox(), "amy", "Amylase");
 
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith(
@@ -179,10 +206,9 @@ describe("BatchTestReassignmentAndCancelation provider calls", () => {
       setTimeout(() => callback({}), 0);
     });
     renderPage();
-    await screen.findByText("Serum");
-    fireEvent.change(sampleTypeSelect(), { target: { value: "2" } });
+    await chooseSerum();
     expect(await currentTestOffers("Amylase")).toBe(true);
-    fireEvent.change(currentTestSelect(), { target: { value: "17" } });
+    await choose(currentTestBox(), "amy", "Amylase");
     fireEvent.click(await screen.findByLabelText("DEV01260000000000002"));
     fireEvent.click(screen.getByRole("button", { name: "Ok" }));
 
@@ -192,6 +218,113 @@ describe("BatchTestReassignmentAndCancelation provider calls", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Accept" })).toBeNull(),
     );
-    expect(await screen.findByText("Serum")).toBeInTheDocument();
+    expect(sampleTypeBox()).toHaveValue("");
+    expect(await listedIn(sampleTypeBox())).toEqual(["Serum", "Urines"]);
+    expect(api.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Successfully saved" }),
+    );
+  });
+});
+
+/**
+ * The sample type, current test and replacement lists are searched by typing
+ * (OGC-1515); "Include inactive tests" decides whether inactive tests are
+ * offered as the current test, and only active tests are offered as
+ * replacements.
+ */
+describe("BatchTestReassignmentAndCancelation searchable lists", () => {
+  beforeEach(() => {
+    api.get.mockReset();
+    api.post.mockReset();
+    api.get.mockImplementation((url, callback) => {
+      if (url === "/rest/BatchTestReassignment") {
+        callback(batchTestReassignment);
+      } else if (url.startsWith("/rest/AllTestsForSampleTypeProvider")) {
+        callback({
+          tests: [
+            { id: "17", name: "Amylase", isActive: "Y" },
+            { id: "18", name: "Créatinine", isActive: "Y" },
+            { id: "19", name: "Old Amylase", isActive: "N" },
+          ],
+        });
+      } else if (url.startsWith("/rest/getPendingAnalysisForTestProvider")) {
+        callback({
+          notStarted: [],
+          technicianRejection: [],
+          biologistRejection: [],
+          notValidated: [],
+        });
+      } else {
+        callback({});
+      }
+    });
+  });
+
+  it("narrows the sample types to what is typed", async () => {
+    renderPage();
+    const box = await screen.findByRole("combobox", { name: "Sample Type" });
+
+    await userEvent.type(box, "URI");
+
+    expect(
+      screen.getAllByRole("option").map((option) => option.textContent),
+    ).toEqual(["Urines"]);
+  });
+
+  it("offers inactive tests as the current test only while Include inactive tests is ticked", async () => {
+    renderPage();
+    await chooseSerum();
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        "/rest/AllTestsForSampleTypeProvider?sampleTypeId=2",
+        expect.any(Function),
+      ),
+    );
+
+    expect(await listedIn(currentTestBox())).toEqual([
+      "Amylase",
+      "Créatinine",
+      "Old Amylase",
+    ]);
+    await userEvent.click(screen.getByLabelText("Include inactive tests"));
+
+    expect(await listedIn(currentTestBox())).toEqual(["Amylase", "Créatinine"]);
+  });
+
+  it("adds each chosen replacement as a tag, offers only active tests not yet chosen, and empties the box", async () => {
+    renderPage();
+    await chooseSerum();
+    await userEvent.click(
+      screen.getByLabelText(
+        "Cancel test for lab numbers selected, do not assign a new test",
+      ),
+    );
+
+    await choose(replaceWithBox(), "creat", "Créatinine");
+
+    expect(
+      screen.getByText("Créatinine", { selector: ".cds--tag *, .cds--tag" }),
+    ).toBeInTheDocument();
+    expect(replaceWithBox()).toHaveValue("");
+    expect(replaceWithBox()).toHaveFocus();
+    expect(await listedIn(replaceWithBox())).toEqual(["Amylase"]);
+  });
+
+  it("forgets the current test and the replacements when another sample type is chosen", async () => {
+    renderPage();
+    await chooseSerum();
+    await choose(currentTestBox(), "amy", "Amylase");
+    expect(currentTestBox()).toHaveValue("Amylase");
+
+    await userEvent.clear(sampleTypeBox());
+    await choose(sampleTypeBox(), "uri", "Urines");
+
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        "/rest/AllTestsForSampleTypeProvider?sampleTypeId=5",
+        expect.any(Function),
+      ),
+    );
+    expect(currentTestBox()).toHaveValue("");
   });
 });
