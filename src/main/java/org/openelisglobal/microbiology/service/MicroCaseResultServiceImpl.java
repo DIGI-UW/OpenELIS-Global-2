@@ -50,6 +50,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.qc.service.QcHoldService qcHolds;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.userrole.service.UserRoleService userRoles;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -96,6 +98,11 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         this.acknowledgements = acknowledgements;
     }
 
+    private boolean mayModifyResults(String actor) {
+        return !ResultUtil.modifyResultsRoleBased()
+                || userRoles.userInRole(actor, List.of(Constants.ROLE_RESULTS, Constants.ROLE_GLOBAL_ADMIN));
+    }
+
     private List<TestResultItem> loadRows(List<Analysis> analyses, String actor) {
         var loader = loaders.getObject();
         loader.setSysUser(actor);
@@ -123,6 +130,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var list = links.getAnalyses(caseId).stream()
                 .filter(a -> !links.getByCaseAndAnalysis(caseId, a.getId()).isCultureOrder()).toList();
         var rows = loadRows(list, actor);
+        boolean mayModify = mayModifyResults(actor);
         List<MicroCaseTestForm> forms = new ArrayList<>();
         for (var a : list) {
             var link = links.getByCaseAndAnalysis(caseId, a.getId());
@@ -146,7 +154,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
                     : link.getPerformedAt().toLocalDateTime().toLocalDate().toString();
             f.performedByDisplay = display(link);
             boolean mutable = mutable(c) && !List.of("Finalized", "Canceled", "SampleRejected").contains(f.status);
-            f.canEdit = mutable && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS);
+            f.canEdit = mutable && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS)
+                    && (mayModify || "NotStarted".equals(f.status));
             f.selfValidationBlocked = selfValidation.blocked(a, actor);
             f.canValidate = mutable && "TechnicalAcceptance".equals(f.status) && !f.selfValidationBlocked
                     && access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_VALIDATION);
@@ -315,6 +324,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (checkToken)
             checkVersion(a, links.getByCaseAndAnalysis(caseId, analysisId), request == null ? null : request.version);
         requireEditable(a);
+        if (checkToken && !"NotStarted".equals(state(a)) && !mayModifyResults(actor))
+            throw new AccessDeniedException("MICROBIOLOGY_MODIFY_RESULTS_ROLE_REQUIRED");
         if (!checkToken && !"NotStarted".equals(state(a)))
             bad("MICROBIOLOGY_INCOMING_EXISTING_RESULT");
         if (request.note != null && request.note.length() > 4000)

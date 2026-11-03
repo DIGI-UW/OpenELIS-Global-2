@@ -799,6 +799,31 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void modifyResultsRoleSettingLocksSavedResultsForUsersWithoutTheRole() {
+        String previous = ConfigurationProperties.getInstance().getPropertyValue(Property.roleRequiredForModifyResults);
+        ConfigurationProperties.getInstance().setPropertyValue(Property.roleRequiredForModifyResults, "true");
+        try {
+            workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+
+            assertFalse(workspace.getTests(microCase.getId(), actor).get(0).canEdit);
+            var edit = payload();
+            edit.components.get(0).value = "56";
+            assertThrows(AccessDeniedException.class,
+                    () -> workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor)));
+
+            var grant = new org.openelisglobal.userrole.valueholder.UserRole();
+            grant.setSystemUserId(actor);
+            grant.setRoleId(roles.getRoleByName(Constants.ROLE_RESULTS).getId());
+            em.persist(grant);
+            em.flush();
+            assertTrue(workspace.getTests(microCase.getId(), actor).get(0).canEdit);
+            workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor));
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.roleRequiredForModifyResults, previous);
+        }
+    }
+
+    @Test
     public void validationDoesNotFinishSampleWithOutstandingAnalysis() {
         var sibling = fixtures.createAnalysis(analysis.getSampleItem(), fixtures.createCatalogTest());
         sibling.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
