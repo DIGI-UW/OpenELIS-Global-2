@@ -383,7 +383,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         sample.setSortOrder(String.valueOf(sort));
         sample.setQuantity(1.0);
         sample.setFhirUuid(UUID.randomUUID());
-        sample.setExternalId(origin.getSample().getAccessionNumber() + "-" + i.getIsolateLabel());
+        sample.setExternalId(origin.getSample().getAccessionNumber() + "-" + sort);
         sample.setSysUserId(actor);
         sample.setId(sampleItems.insert(sample));
         membership.addSample(c.getId(), sample.getId(), actor);

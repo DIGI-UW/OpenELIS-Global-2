@@ -148,15 +148,19 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     private MicroCaseInoculation culture(String outcome) {
+        return culture(c, source, outcome);
+    }
+
+    private MicroCaseInoculation culture(MicroCase target, SampleItem specimen, String outcome) {
         var a = new MicroCaseActivity();
-        a.setCaseId(c.getId());
+        a.setCaseId(target.getId());
         a.setActivityType("CULTURE_INOCULATED");
         a.setPerformedBy(writer);
         activities.insert(a);
         var row = new MicroCaseInoculation();
-        row.setCaseId(c.getId());
+        row.setCaseId(target.getId());
         row.setActivityId(a.getId());
-        row.setSourceSampleItemId(source.getId());
+        row.setSourceSampleItemId(specimen.getId());
         row.setContainerIdentifier("M5-" + UUID.randomUUID());
         row.setMedia("Stored culture");
         row.setOutcome(outcome);
@@ -166,12 +170,16 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     private String pick() {
+        return pick(c, source);
+    }
+
+    private String pick(MicroCase target, SampleItem specimen) {
         var r = new MicroIsolateWorkspaceRequestForm();
-        r.cultureId = culture("GROWTH").getId();
+        r.cultureId = culture(target, specimen, "GROWTH").getId();
         r.gramStain = "Gram negative";
         r.colonyMorphology = "Smooth colonies";
         r.significance = "COLONIZER";
-        return workspace.pick(c.getId(), r, writer).isolates.getLast().id();
+        return workspace.pick(target.getId(), r, writer).isolates.getLast().id();
     }
 
     @Test
@@ -279,6 +287,41 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         assertEquals(isolateType.getId(), item.getTypeOfSampleId());
         assertEquals(2, sampleItems.getSampleItemsBySampleId(source.getSample().getId()).size());
         assertTrue(cultures.getSources(c.getId()).stream().anyMatch(s -> child.equals(s.getId())));
+    }
+
+    @Test
+    public void isolateTubesFromTwoCasesOnOneOrderGetDifferentBarcodes() {
+        var secondSpecimen = new SampleItem();
+        secondSpecimen.setSample(source.getSample());
+        secondSpecimen.setTypeOfSample(source.getTypeOfSample());
+        secondSpecimen.setSortOrder("2");
+        secondSpecimen.setStatusId(source.getStatusId());
+        secondSpecimen.setSysUserId(writer);
+        secondSpecimen.setId(sampleItems.insert(secondSpecimen));
+        var other = new MicroCase();
+        other.setSampleId(source.getSample().getId());
+        other.setSampleItemId(secondSpecimen.getId());
+        other.setSampleTypeId(secondSpecimen.getTypeOfSampleId());
+        other.setLabUnitId(c.getLabUnitId());
+        other.setCreatedBy(writer);
+        cases.insert(other);
+        membership.addSample(other.getId(), secondSpecimen.getId(), writer);
+        em.flush();
+        String first = pick(c, source);
+        String second = pick(other, secondSpecimen);
+        var r = new MicroIsolateWorkspaceRequestForm();
+        r.sampleTypeId = isolateType.getId();
+        r.purpose = "LABEL";
+
+        workspace.act(c.getId(), first, "sample-item", r, writer);
+        workspace.act(other.getId(), second, "sample-item", r, writer);
+
+        String accession = source.getSample().getAccessionNumber();
+        assertEquals(List.of("ISO-1", "ISO-1"), List.of(isolates.get(first).orElseThrow().getIsolateLabel(),
+                isolates.get(second).orElseThrow().getIsolateLabel()));
+        assertEquals(List.of(accession + "-3", accession + "-4"),
+                List.of(sampleItems.get(isolates.get(first).orElseThrow().getSampleItemId()).getExternalId(),
+                        sampleItems.get(isolates.get(second).orElseThrow().getSampleItemId()).getExternalId()));
     }
 
     @Test
