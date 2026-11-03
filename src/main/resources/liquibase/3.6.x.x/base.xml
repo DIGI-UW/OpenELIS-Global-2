@@ -42,5 +42,7 @@
   <!-- OGC-1507: shipped NCE and dictionary labels read through display keys; stored labels record who wrote them -->
   <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
   <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
+  <!-- OGC-1579: module system state table (numbered 030 to leave room for develop's next changesets) -->
+  <include relativeToChangelogFile="true" file="030-module-state.xml"/>
 
 </databaseChangeLog>

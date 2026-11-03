@@ -127,6 +127,7 @@ the id with hyphens replaced by underscores:
 | Message keys     | `mod.<id>.*`; a menu `displayKey` must use this prefix                                                                                                                                                       |
 | Menu element ids | `menu_mod_<id_>` or `menu_mod_<id_>_*`                                                                                                                                                                       |
 | REST paths       | `/rest/modules/<id>/**`; a controller mapped elsewhere fails the module                                                                                                                                      |
+| Report ids       | unique across modules and never the id of a report the core ships; a module cannot take over a built-in report                                                                                               |
 | Routes           | `/m/<id>/**` only; every route names a permission or a role                                                                                                                                                  |
 | Tables           | `mod_<id_>_*` in the `clinlims` schema; changeset ids start with `<id>-` with author `<id>`, the changelog lives under `liquibase/<id>/`                                                                     |
 | Java packages    | `backend.basePackages`, the activator, the entities and the extension classes under `org.openelisglobal.module.<name>`; `api`, `manifest`, `runtime`, `web` and `testkit` belong to the core and are refused |
@@ -187,6 +188,88 @@ my-module/
 └── src/test/java/...                         tests
 ```
 
-The remaining phases of the module system add to this page: the runtime
-(discovery, class loading, child contexts, migrations, permissions, menus), the
-frontend shell and the packaging and installation steps.
+## How the runtime loads a module
+
+1. **Discovery.** At start-up the registry lists `*.jar` in
+   `/var/lib/openelis-global/modules` (a `<jar>.disabled` marker skips a JAR),
+   reads each manifest, computes its SHA-256 and validates it. Two JARs with one
+   id stop start-up naming both files.
+2. **Switches and compatibility.** `modules.disabled` (comma-separated ids) and
+   `modules.<id>.enabled=false` mark a module `DISABLED`. A module whose
+   `requires.openelis`, `requires.coreApi` or `requires.spi` the running
+   versions do not satisfy, a missing or wrong-version dependency, a conflict or
+   a dependency cycle mark it `INCOMPATIBLE`. Skipped modules are reported by
+   `GET /rest/module-registry` and in the log, and the core starts.
+3. **Class loading.** Each remaining module gets one parent-first class loader
+   over its JAR and its extracted `lib/*.jar` (cached under
+   `modules-cache/<id>/<sha256>/`). A class the core ships always resolves to
+   the core's copy; a bundled library the core also ships is reported as
+   shadowed. Modules named in `requires.modules` are visible, searched after the
+   core. The activator, the entities and the extensions must load from the
+   module and implement their contracts, or the module is `INVALID`.
+4. **Migrations.** After the core changelog and before the entity manager
+   factory, each `VALIDATED` module's changelog runs through the Liquibase API
+   with the module's class loader. Every changeset id must start with `<id>-`
+   and carry the module id as author (refused before anything runs). The
+   installed version is recorded in `clinlims.module_state`; a JAR older than
+   the recorded version is refused unless `modules.<id>.allowDowngrade=true`. A
+   failing changeset stops start-up naming the module, as a failing core
+   changeset does.
+5. **Entities.** The declared entity classes join the core persistence unit
+   (same session factory, transactions and `clinlims` schema).
+6. **Child context.** Once the root context is refreshed, each `MIGRATED` module
+   gets its own Spring context whose parent is the core's: the module's
+   `basePackages` are scanned, the activator and the extensions become beans,
+   `@Transactional` joins the core transaction manager and `@PreAuthorize` is
+   enforced. A module injects any core service; the core never sees module
+   beans, so a module `@Primary` bean cannot replace a core bean.
+7. **Contributions.** Declared extensions are registered with the extension
+   registry (the report factory consults it first). Every `@RestController` of
+   the module is registered into the core request mapping; a mapping outside
+   `/rest/modules/<id>/` fails the module. Permission keys become
+   `system_module` rows named `mod.<id>.<key>` (first install also grants the
+   `defaultRoles`), menu entries join the menu tree in memory (Menu Management
+   refuses to edit them; who sees one is decided by its permission in Role
+   Management), and a menu entry with an `actionURL` and a `permission` gets a
+   `system_module_url` row so the menu hides it from users who lack the key.
+8. **Start.** `validate` then `onStart` run with the module's class loader as
+   context loader; `onStart` must return within `modules.startTimeoutSeconds`
+   (60). The module is `STARTED`; `module_state` records the start.
+
+Any failure after validation (migration, context refresh, a controller outside
+the prefix, `validate`, `onStart`) stops the application with the module named
+and the two ways to recover: the `<jar>.disabled` marker file or
+`modules.<id>.enabled=false`, then a restart.
+
+### Events
+
+Spring events never flow from the core context into a module's. The core
+publishes `openelis-spi` events (`SampleCreatedEvent` when an order with its
+samples is saved) and the runtime forwards them into every started module,
+inside the publishing transaction, where ordinary `@EventListener` and
+`@TransactionalEventListener` methods receive them. A module's own events do
+reach the core's listeners; its lifecycle events (`ContextRefreshedEvent`) do
+not, so core start-up listeners run once.
+
+### Configuration
+
+Module settings are `modules.<id>.<key>` properties in the application's
+property sources (the mounted properties directory, `/run/secrets`, the
+environment), typed and defaulted by the manifest's `configuration.properties`;
+`ModuleContext.configuration()` reads them. Properties marked `exposeToFrontend`
+are served by `GET /rest/module-registry/{id}/config`.
+
+### Operations
+
+| Operation   | Steps                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Install     | Copy the JAR into the mounted modules directory (`volume/modules` in this repository's compose files, `configs/modules` in `openelis-docker`), restart the webapp.                   |
+| Upgrade     | Replace the JAR (never two versions of one id), restart; migrations and `onUpgrade` run.                                                                                             |
+| Disable     | Create `<jar>.disabled` next to the JAR, or set `modules.<id>.enabled=false`, restart.                                                                                               |
+| Remove      | Delete the JAR, restart. Tables and permission rows stay (the data belongs to the site); menu entries and routes vanish.                                                             |
+| Strict mode | Put a `modules.lock` in the modules directory with one `id@version sha256` line per allowed JAR; unlisted or changed JARs are `INVALID`.                                             |
+| Inspect     | `GET /rest/module-registry` (any user) lists every module with its state and reason; `GET /rest/module-registry/{id}` (administrators) adds the JAR, digest, libraries and warnings. |
+| State table | `clinlims.module_state` keeps the last outcome per module id: MIGRATED, STARTED or FAILED from a start, DISABLED, INVALID or INCOMPATIBLE when discovery set the module aside.       |
+
+The frontend shell and the packaging steps are described in the next sections as
+those phases land.
