@@ -766,6 +766,39 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void validationRefusesAResultUnderAnOpenQcHold() {
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor)).get(0);
+        var nce = new org.openelisglobal.qaevent.valueholder.NcEvent();
+        nce.setName("Failed control");
+        nce.setTitle("Failed control");
+        nce.setNceNumber("M3-QC-" + System.nanoTime());
+        nce.setStatus("Pending");
+        nce.setTriggerSourceType(
+                org.openelisglobal.qaevent.service.QcViolationNceServiceImpl.TRIGGER_SOURCE_QC_VIOLATION);
+        nce.setReportDate(new java.sql.Date(System.currentTimeMillis()));
+        nce.setDateOfEvent(new java.sql.Date(System.currentTimeMillis()));
+        nce.setSysUserId(actor);
+        em.persist(nce);
+        var held = new org.openelisglobal.qaevent.valueholder.NceSpecimen();
+        held.setNceId(nce.getId());
+        held.setSampleItemId(Integer.valueOf(analysis.getSampleItem().getId()));
+        held.setAnalysisId(Integer.valueOf(analysis.getId()));
+        em.persist(held);
+        em.flush();
+        String previous = ConfigurationProperties.getInstance().getPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION);
+        ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION, "true");
+        try {
+            var refused = assertThrows(ResponseStatusException.class,
+                    () -> workspace.validateResult(microCase.getId(), analysis.getId(), saved.version, validator));
+
+            assertEquals(409, refused.getStatusCode().value());
+            assertEquals("TechnicalAcceptance", workspace.getTests(microCase.getId(), validator).get(0).status);
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION, previous);
+        }
+    }
+
+    @Test
     public void validationDoesNotFinishSampleWithOutstandingAnalysis() {
         var sibling = fixtures.createAnalysis(analysis.getSampleItem(), fixtures.createCatalogTest());
         sibling.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
