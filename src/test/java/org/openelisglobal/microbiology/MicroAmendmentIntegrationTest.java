@@ -26,6 +26,7 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
+import org.openelisglobal.microbiology.service.MicroAstReportChoiceService;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroCaseAmendmentService;
@@ -37,6 +38,7 @@ import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicroReportVersionService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
+import org.openelisglobal.microbiology.valueholder.MicroAstReportChoice;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
@@ -104,6 +106,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     private MicroCaseAmendmentService amendmentService;
 
     @Autowired
+    private MicroAstReportChoiceService reportChoiceService;
+
+    @Autowired
     private MicroReportVersionService reportVersionService;
 
     @Autowired
@@ -158,6 +163,12 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
                 new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        MicroAstRun superseded = astService.getRunsForIsolate(fixture.isolateId()).getFirst();
+        MicroAstRun corrected = astService.startRun(fixture.isolateId(), fixture.panelId(),
+                superseded.getBreakpointStandardId(), fixture.userId());
+        astService.getPanelAntibiotics(fixture.panelId()).forEach(ordered -> astService.recordReading(corrected.getId(),
+                ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), fixture.userId()));
+        astService.reviewRun(corrected.getId(), fixture.userId());
         reportReleaseService.releaseAmended(fixture.caseId(), fixture.userId());
 
         List<MicroReportVersion> versions = reportVersionService.getVersions(fixture.caseId());
@@ -183,6 +194,37 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(MicroCaseStage.FINAL_RELEASED.name(), relocked.getStage());
         assertEquals(MicroCaseFinalReleaseState.FINAL_RELEASED.name(), relocked.getFinalReleaseState());
         assertNull(amendmentService.getOpenAmendment(fixture.caseId()));
+    }
+
+    @Test
+    public void cancellingAnAmendedReidentificationRestoresTheReleasedSusceptibilitySelection() {
+        FinalCase fixture = createFinalCase();
+        MicroAstRun released = astService.getRunsForIsolate(fixture.isolateId()).getFirst();
+        List<String> releasedReadings = selectedReadingIds(fixture.isolateId());
+        assertEquals(astService.getReadingsForRun(released.getId()).stream().map(r -> r.getId()).sorted().toList(),
+                releasedReadings);
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism correctedOrganism = fixtures.createOrganism("Klebsiella oxytoca " + UUID.randomUUID(),
+                "Enterobacterales", fixture.panelId());
+
+        isolateService.updateIdentification(fixture.isolateId(), correctedOrganism.getId(), "Klebsiella pneumoniae",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+
+        assertEquals(List.of(), selectedReadingIds(fixture.isolateId()));
+        assertEquals("RERUN_REQUIRED", astService.getRunsForIsolate(fixture.isolateId()).getFirst().getStatus());
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(releasedReadings, selectedReadingIds(fixture.isolateId()));
+        MicroAstRun restored = astService.getRunsForIsolate(fixture.isolateId()).getFirst();
+        assertEquals("REVIEWED", restored.getStatus());
+        assertTrue(restored.isReportable());
+    }
+
+    private List<String> selectedReadingIds(String isolateId) {
+        return reportChoiceService.getChoices(isolateId).stream().map(MicroAstReportChoice::getReadingId).sorted()
+                .toList();
     }
 
     @Test

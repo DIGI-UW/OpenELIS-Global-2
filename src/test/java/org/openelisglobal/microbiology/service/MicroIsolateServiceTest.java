@@ -17,10 +17,12 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
@@ -61,6 +63,12 @@ public class MicroIsolateServiceTest {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "access", access);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "panelAssignments",
                 org.mockito.Mockito.mock(MicroAstPanelAssignmentService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "runDAO",
+                org.mockito.Mockito.mock(MicroAstRunDAO.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "reportChoices",
+                org.mockito.Mockito.mock(MicroAstReportChoiceService.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "organismDAO",
+                org.mockito.Mockito.mock(MicroOrganismDAO.class));
         lenient().when(access.hasLabUnitRole(any(), any(), any())).thenReturn(true);
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");
