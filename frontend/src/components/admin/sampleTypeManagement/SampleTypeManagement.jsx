@@ -1433,9 +1433,9 @@ function SampleTypeManagement({ intl }) {
                                 }))
                               }
                               helperText={intl.formatMessage({
-                                id: "label.sampleType.domain.helper",
+                                id: "label.sampleType.domain.helperAllDomains",
                                 defaultMessage:
-                                  "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
+                                  "Determines which workflow mode (Clinical, Environmental or Vector) this sample type appears in.",
                               })}
                             >
                               {domains.map((d) => (

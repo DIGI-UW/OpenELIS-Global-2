@@ -2944,6 +2944,7 @@
   "label.sampleType.domain.clinical": "Clinical",
   "label.sampleType.domain.environmental": "Environmental",
   "label.sampleType.domain.helper": "Determines which workflow mode (Clinical or Environmental) this sample type appears in.",
+  "label.sampleType.domain.helperAllDomains": "Determines which workflow mode (Clinical, Environmental or Vector) this sample type appears in.",
   "label.sampleType.filterDomain": "Filter by domain",
   "label.sampleType.testCount": "Tests",
   "label.sampleType.actions": "Actions",

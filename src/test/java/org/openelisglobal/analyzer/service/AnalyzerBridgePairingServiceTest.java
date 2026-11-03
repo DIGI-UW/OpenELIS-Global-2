@@ -123,6 +123,21 @@ public class AnalyzerBridgePairingServiceTest {
     }
 
     /**
+     * Another installation's key sometimes decrypts without an error into text that
+     * is no key at all, about one time in two hundred and fifty; that key is as
+     * unreadable as one that does not decrypt, never an IllegalArgumentException.
+     */
+    @Test
+    public void aKeyThatDecryptsToSomethingElseIsUnreadableToo() {
+        service("").pair(CODE, "7");
+        stored.get().setClientPrivateKey(encryptor.encrypt("?not a key?"));
+        bridge.forget();
+
+        assertFalse(service(CODE).getStatus().clientKeyReadable());
+        assertThrows(BridgePairingException.class, () -> service("").pair("WRONG", "8"));
+    }
+
+    /**
      * Pairing again with a new code from the Bridge replaces a key this
      * installation cannot read, where every attempt used to fail with the key error
      * until the row was deleted by hand.
