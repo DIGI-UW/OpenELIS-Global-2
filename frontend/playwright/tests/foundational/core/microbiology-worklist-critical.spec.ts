@@ -2,6 +2,7 @@ import { test, expect } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { Sidenav } from "../../../fixtures/sidenav";
 import { seedMicrobiologyWorklistCase } from "../../../helpers/seed-microbiology-data";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const openCaseSection = async (page: Page, name: string, section: string) => {
@@ -12,9 +13,7 @@ const openCaseSection = async (page: Page, name: string, section: string) => {
     amendment: "AMENDMENT",
     isolates: "ISOLATES",
   };
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption(scopes[section]);
+  await openMicrobiologyCaseScope(page, scopes[section]);
   await expect
     .poll(() => new URL(page.url()).searchParams.get("scope"))
     .toBe(scopes[section]);

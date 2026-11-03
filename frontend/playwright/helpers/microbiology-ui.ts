@@ -5,6 +5,41 @@ import {
   type SeededMicrobiologyCase,
 } from "./seed-microbiology-data";
 
+const caseScopeHeading = (page: Page, scope: string) =>
+  page.locator(
+    scope === "HISTORY"
+      ? "#case-history .cds--accordion__heading"
+      : `#case-scope-${scope} > .cds--accordion__heading`,
+  );
+
+export const openMicrobiologyCaseScope = async (page: Page, scope: string) => {
+  const heading = caseScopeHeading(page, scope);
+  await expect(heading).toBeVisible({ timeout: LONG_TIMEOUT });
+  if ((await heading.getAttribute("aria-expanded")) !== "true")
+    await heading.click();
+  await expect(heading).toHaveAttribute("aria-expanded", "true");
+};
+
+export const expectMicrobiologyCaseScopeOpen = async (
+  page: Page,
+  scope: string,
+) =>
+  expect(caseScopeHeading(page, scope)).toHaveAttribute(
+    "aria-expanded",
+    "true",
+    {
+      timeout: LONG_TIMEOUT,
+    },
+  );
+
+export const openMicrobiologyCaseInfo = async (page: Page) => {
+  const heading = page.getByRole("button", { name: "Case info", exact: true });
+  await expect(heading).toBeVisible({ timeout: LONG_TIMEOUT });
+  if ((await heading.getAttribute("aria-expanded")) !== "true")
+    await heading.click();
+  await expect(heading).toHaveAttribute("aria-expanded", "true");
+};
+
 export const openMicrobiologyCaseSection = async (
   page: Page,
   sectionName: string,
@@ -20,9 +55,7 @@ export const openMicrobiologyCaseSection = async (
   };
   if (!values[sectionName])
     throw new Error(`Unknown case section ${sectionName}`);
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption(values[sectionName]);
+  await openMicrobiologyCaseScope(page, values[sectionName]);
 };
 
 export const selectCarbonRadio = async (page: Page, radio: Locator) => {

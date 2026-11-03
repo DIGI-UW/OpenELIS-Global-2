@@ -61,10 +61,14 @@ export default function CaseViewShell({
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   const { configurationProperties } = useContext(ConfigurationContext) || {};
   const canCorrectSamples = hasRole(userSessionDetails, Roles.RECEPTION);
-  const [infoOpen, setInfoOpen] = useState(true);
   const [jump, setJump] = useState(null);
   const params = useParams();
   const location = useLocation();
+  const [infoOpen, setInfoOpen] = useState(() =>
+    ["case-info", "order-detail"].includes(
+      new URLSearchParams(location.search).get("section"),
+    ),
+  );
   const history = useHistory();
   const selectScope = (scope, parameters = {}) => {
     const next = new URLSearchParams(location.search);
@@ -81,7 +85,7 @@ export default function CaseViewShell({
     ].forEach((key) => next.delete(key));
     next.set("scope", scope);
     Object.entries(parameters).forEach(([key, value]) => next.set(key, value));
-    history.push({ pathname: location.pathname, search: next.toString() });
+    history.replace({ pathname: location.pathname, search: next.toString() });
   };
   const openSection = (scope, parameters) => {
     selectScope(scope, parameters);
@@ -221,6 +225,14 @@ export default function CaseViewShell({
         if (currentCase.current === id) setDetail(next);
       })
       .catch(() => setError(true));
+  const currentScope = new URLSearchParams(location.search).get("scope");
+  const worklistLink = (
+    <RouterLink
+      to={`${MICROBIOLOGY_WORKLIST_PATH}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
+    >
+      {t("microbiology.worklist.title")}
+    </RouterLink>
+  );
   // i18n-keys: microbiology.case.status.*
   return (
     <Grid
@@ -230,11 +242,7 @@ export default function CaseViewShell({
     >
       <Column lg={16} md={8} sm={4}>
         <Stack gap={5}>
-          <RouterLink
-            to={`${MICROBIOLOGY_WORKLIST_PATH}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
-          >
-            {t("microbiology.worklist.title")}
-          </RouterLink>
+          {!detail && worklistLink}
           {loading && <InlineLoading description={t("common.loading")} />}
           {error && (
             <InlineNotification
@@ -250,6 +258,7 @@ export default function CaseViewShell({
                 aria-label={t("microbiology.case.bar")}
                 className="microbiology-case-workspace__case-bar"
               >
+                {worklistLink}
                 <div className="microbiology-case-workspace__case-bar-identity">
                   <span>
                     <strong>{detail.accessionNumber || detail.id}</strong>
@@ -282,6 +291,7 @@ export default function CaseViewShell({
                       key={scope}
                       size="sm"
                       kind="ghost"
+                      aria-current={currentScope === scope ? "true" : undefined}
                       onClick={() => openSection(scope)}
                     >
                       {t(label)}
@@ -357,7 +367,7 @@ export default function CaseViewShell({
                       count: incomingCount,
                     })}
                   </p>
-                  <Button kind="ghost" onClick={() => selectScope("INCOMING")}>
+                  <Button kind="ghost" onClick={() => openSection("INCOMING")}>
                     {t("microbiology.incoming.open")}
                   </Button>
                 </Tile>

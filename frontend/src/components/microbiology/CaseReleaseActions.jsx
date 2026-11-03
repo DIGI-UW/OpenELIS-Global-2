@@ -110,6 +110,7 @@ export default function CaseReleaseActions({
         {detail.canWrite && !detail.amendmentOpen && (
           <Button
             kind="tertiary"
+            size="sm"
             disabled={busy || !online || !readiness || !partialReady}
             onClick={() => release("preliminary")}
           >
@@ -117,7 +118,11 @@ export default function CaseReleaseActions({
           </Button>
         )}
         {detail.canValidate && (
-          <Button disabled={busy || !online || blocked} onClick={openDialog}>
+          <Button
+            size="sm"
+            disabled={busy || !online || blocked}
+            onClick={openDialog}
+          >
             {finalLabel}
           </Button>
         )}
