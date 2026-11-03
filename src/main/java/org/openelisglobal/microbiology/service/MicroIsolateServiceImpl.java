@@ -1,11 +1,16 @@
 package org.openelisglobal.microbiology.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAstRun;
+import org.openelisglobal.microbiology.valueholder.MicroAstRunStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
@@ -16,6 +21,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +32,12 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     private MicrobiologyCaseAccessService access;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroAstPanelAssignmentService panelAssignments;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstRunDAO runDAO;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstReportChoiceService reportChoices;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroOrganismDAO organismDAO;
     private final MicroCaseDAO caseDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -142,6 +154,8 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroIsolateIdentificationEvent event = identificationHistoryService.recordChange(previous, isolate, reason,
                 performedBy);
         MicroIsolate updated = isolateDAO.update(isolate);
+        if (previous.getOrganismId() != null && !previous.getOrganismId().equals(updated.getOrganismId()))
+            retireSusceptibility(updated, performedBy);
         panelAssignments.assignDefault(updated, performedBy);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,
                 identificationActivityNote(isolate, previous, reason),
@@ -185,9 +199,31 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
             return isolate.getPreliminaryOrganismText().trim();
         }
         if (isolate.getOrganismId() != null && !isolate.getOrganismId().trim().isEmpty()) {
-            return isolate.getOrganismId().trim();
+            String id = isolate.getOrganismId().trim();
+            return organismDAO.get(id).map(MicroOrganism::getDisplayName).orElse(id);
         }
         return "unidentified";
+    }
+
+    private void retireSusceptibility(MicroIsolate isolate, String performedBy) {
+        List<String> markedRunIds = new ArrayList<>();
+        for (MicroAstRun run : runDAO.getByIsolateId(isolate.getId())) {
+            if (List.of("CANCELLED", "INVALIDATED", "RERUN_REQUIRED").contains(run.getStatus()))
+                continue;
+            run.setStatus(MicroAstRunStatus.RERUN_REQUIRED.name());
+            run.setReportable(false);
+            runDAO.update(run);
+            markedRunIds.add(run.getId());
+        }
+        int cleared = reportChoices.clear(isolate.getId());
+        if (!markedRunIds.isEmpty() || cleared > 0) {
+            String note = "AST results for isolate " + isolate.getIsolateLabel()
+                    + " need repeating after re-identification";
+            String json = "{\"isolateId\":\"" + isolate.getId() + "\",\"astRunIds\":["
+                    + String.join(",", markedRunIds.stream().map(id -> "\"" + id + "\"").toList())
+                    + "],\"clearedReportChoices\":" + cleared + "}";
+            recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_INVALIDATED, performedBy, note, json);
+        }
     }
 
     private String optionalId(String value) {
