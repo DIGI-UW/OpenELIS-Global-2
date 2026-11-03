@@ -189,20 +189,24 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     }
 
     private String identificationActivityNote(MicroIsolate updated, MicroIsolate previous, String reason) {
-        String note = "Isolate " + updated.getIsolateLabel() + " identification changed from "
-                + identificationLabel(previous) + " to " + identificationLabel(updated);
+        String note = previous.getOrganismId() != null && previous.getOrganismId().equals(updated.getOrganismId())
+                ? "Isolate " + updated.getIsolateLabel() + " identification confirmed as "
+                        + identificationLabel(updated)
+                : "Isolate " + updated.getIsolateLabel() + " identification changed from "
+                        + identificationLabel(previous) + " to " + identificationLabel(updated);
         return reason == null || reason.trim().isEmpty() ? note : note + ": " + reason.trim();
     }
 
     private String identificationLabel(MicroIsolate isolate) {
+        String id = isolate.getOrganismId() == null ? "" : isolate.getOrganismId().trim();
+        var organism = id.isEmpty() ? java.util.Optional.<MicroOrganism>empty() : organismDAO.get(id);
+        if (organism.isPresent()) {
+            return organism.get().getDisplayName();
+        }
         if (isolate.getPreliminaryOrganismText() != null && !isolate.getPreliminaryOrganismText().trim().isEmpty()) {
             return isolate.getPreliminaryOrganismText().trim();
         }
-        if (isolate.getOrganismId() != null && !isolate.getOrganismId().trim().isEmpty()) {
-            String id = isolate.getOrganismId().trim();
-            return organismDAO.get(id).map(MicroOrganism::getDisplayName).orElse(id);
-        }
-        return "unidentified";
+        return id.isEmpty() ? "unidentified" : id;
     }
 
     private void retireSusceptibility(MicroIsolate isolate, String performedBy) {

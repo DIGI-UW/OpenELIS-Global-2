@@ -658,6 +658,25 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
                         + ": Confirmatory identification")::equals));
     }
 
+    @Test
+    public void reconfirmingTheSameOrganismRecordsAConfirmationByName() {
+        String id = pick();
+        workspace.act(c.getId(), id, "identify", identification(id, organismA), writer);
+        reload();
+        var identified = isolates.get(id).orElseThrow();
+        identified.setPreliminaryOrganismText("Escherichia coli");
+        isolates.update(identified);
+        em.flush();
+
+        workspace.act(c.getId(), id, "reidentify", identification(id, organismA), validator);
+        reload();
+
+        String expected = "Isolate " + identified.getIsolateLabel() + " identification confirmed as "
+                + organisms.get(organismA).orElseThrow().getDisplayName() + ": Confirmatory identification";
+        assertTrue(
+                activities.getByCaseId(c.getId()).stream().map(MicroCaseActivity::getNote).anyMatch(expected::equals));
+    }
+
     private List<String> selectedReadingIds(String isolateId) {
         return reportChoices.getChoices(isolateId).stream().map(MicroAstReportChoice::getReadingId).toList();
     }
