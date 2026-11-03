@@ -5200,6 +5200,7 @@
   "notification.error": "Error",
   "notification.info": "Information",
   "notification.invalid.confirm.password": "Your entered password is not same as above password.",
+  "user.notFound": "This user could not be found. The link may be out of date; open the user from User Management.",
   "notification.invalid.loginName": "Login name may only contain letters and the characters . _ @ - (no digits).",
   "notification.invalid.name": "Please enter Alphanumeric values only.",
   "notification.invalid.password": "Please enter password according to instructions.",
