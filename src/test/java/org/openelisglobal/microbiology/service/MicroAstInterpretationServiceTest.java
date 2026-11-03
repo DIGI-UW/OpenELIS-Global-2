@@ -103,4 +103,24 @@ public class MicroAstInterpretationServiceTest {
                 service.interpret(rule, MicroAstMethod.ZONE, new BigDecimal("20"), "CLSI"));
     }
 
+    @Test
+    public void clsiMicAtAPrintedBreakpointKeepsThatBreakpointsCategory() {
+        MicroBreakpointRule rule = new MicroBreakpointRule();
+        rule.setSusceptibleValue(new BigDecimal("0.12"));
+        rule.setResistantValue(new BigDecimal("0.25"));
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.12"), "CLSI"));
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.125"), "CLSI"));
+        assertEquals(MicroAstInterpretation.RESISTANT,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.19"), "CLSI"));
+        rule.setSusceptibleValue(new BigDecimal("0.06"));
+        rule.setIntermediateLowerValue(new BigDecimal("0.12"));
+        rule.setIntermediateUpperValue(new BigDecimal("0.12"));
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.06"), "CLSI"));
+        assertEquals(MicroAstInterpretation.INTERMEDIATE,
+                service.interpret(rule, MicroAstMethod.MIC, new BigDecimal("0.1"), "CLSI"));
+    }
+
 }
