@@ -397,8 +397,6 @@ describe("microbiology reference administration", () => {
           antibioticId: antibiotic.id,
           antibioticName: antibiotic.displayName,
           whonetCode: antibiotic.whonetCode,
-          tier: 1,
-          reportBehavior: "ALWAYS",
         },
       ],
     });
@@ -453,6 +451,71 @@ describe("microbiology reference administration", () => {
         name: /Gram negative panel.*v1.*Historical.*Active/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("edits panel antibiotics without a tier or report behavior", async () => {
+    const user = userEvent.setup();
+    const panel = {
+      id: "panel-v1",
+      logicalKey: "panel-logical-key",
+      name: "Gram negative panel",
+      versionNumber: 1,
+      current: true,
+      active: true,
+      antibiotics: [
+        {
+          id: "panel-row-1",
+          antibioticId: "cip",
+          antibioticName: "Ciprofloxacin",
+          whonetCode: "CIP",
+        },
+      ],
+    };
+    getReferencePage.mockResolvedValue({ rows: [panel], total: 1 });
+    getReferenceOptions.mockResolvedValue([
+      { id: "gen", label: "Gentamicin", code: "GEN" },
+    ]);
+    getAstPanel.mockResolvedValue(panel);
+    publishAstPanel.mockResolvedValue({
+      ...panel,
+      id: "panel-v2",
+      versionNumber: 2,
+    });
+
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: panel.id }} setQuery={vi.fn()} />,
+    );
+
+    expect(await screen.findByText("Ciprofloxacin")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tier")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Report behavior")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Antibiotic" }), {
+      target: { value: "Gentamicin" },
+    });
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Gentamicin (GEN)" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Gentamicin")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.admin.astPanels.publishVersion"],
+      }),
+    );
+
+    await waitFor(() => expect(publishAstPanel).toHaveBeenCalledTimes(1));
+    const rows = publishAstPanel.mock.calls[0][0].antibiotics;
+    expect(rows.map((row) => row.antibioticId)).toEqual(["cip", "gen"]);
+    rows.forEach((row) => {
+      expect(row).not.toHaveProperty("tier");
+      expect(row).not.toHaveProperty("reportBehavior");
+    });
   });
 
   it("requires impact confirmation before deactivating a referenced organism", async () => {

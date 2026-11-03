@@ -710,4 +710,5 @@
   <include file="152-amr-v3-qc-ranges.xml" relativeToChangelogFile="true"/>
   <include file="153-amr-v3-ast-qc.xml" relativeToChangelogFile="true"/>
   <include file="154-amr-v3-critical-outcome.xml" relativeToChangelogFile="true"/>
+  <include file="155-amr-v3-panel-report-cleanup.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

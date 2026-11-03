@@ -36,7 +36,14 @@ public class MicrobiologyR1AstOrderedAntibioticsLiquibaseRollbackTest {
                 ClassLoaderResourceAccessor resources = new ClassLoaderResourceAccessor();
 
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
-                fullChangelog.update(new Contexts("test"));
+                var contexts = new Contexts("test");
+                var pending = fullChangelog.listUnrunChangeSets(contexts, new liquibase.LabelExpression());
+                int beforeCleanup = 0;
+                while (beforeCleanup < pending.size()
+                        && !pending.get(beforeCleanup).getId().equals("155-amr-v3-panel-report-cleanup"))
+                    beforeCleanup++;
+                assertTrue(beforeCleanup < pending.size());
+                fullChangelog.update(beforeCleanup, contexts, new liquibase.LabelExpression());
                 assertTrue(tableExists(connection, "micro_ast_run_antibiotic"));
 
                 Liquibase orderedChangelog = new Liquibase(
