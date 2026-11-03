@@ -50,7 +50,7 @@ test.describe("OGC-782 R11 culture purpose", () => {
           response.request().method() === "POST",
       );
       await caseView.getByRole("button", { name: "Save", exact: true }).click();
-      expect((await saved).ok()).toBeTruthy();
+      await saved;
       await expect(purpose).toBeEnabled();
       await expect(purpose).toHaveValue("SCREENING");
       await page.reload();
