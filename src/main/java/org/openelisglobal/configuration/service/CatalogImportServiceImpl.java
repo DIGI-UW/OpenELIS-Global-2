@@ -79,16 +79,28 @@ public class CatalogImportServiceImpl implements CatalogImportService {
         ConfigurationImportRun run = importRunService.start(ConfigurationImportRun.SOURCE_APPLY, sysUserId);
         List<FilePlan> plans = new ArrayList<>();
         boolean failed = false;
+        Map<Path, byte[]> previous = null;
         try {
-            storeAll(byDomain);
+            previous = storeAll(byDomain);
             for (Map.Entry<String, List<MultipartFile>> entry : byDomain.entrySet()) {
                 for (MultipartFile file : entry.getValue()) {
                     plans.add(applyFile(entry.getKey(), fileNameOf(file)));
                 }
             }
+            for (FilePlan plan : plans) {
+                if (plan.error() != null) {
+                    Path path = directoryFor(plan.domain()).resolve(plan.fileName());
+                    restore(path, previous.get(path));
+                }
+            }
             failed = plans.stream().anyMatch(plan -> plan.error() != null);
         } catch (RuntimeException e) {
             failed = true;
+            if (previous != null) {
+                for (Map.Entry<Path, byte[]> entry : previous.entrySet()) {
+                    restore(entry.getKey(), entry.getValue());
+                }
+            }
             LogEvent.logError(CLASS_NAME, "apply", e.getMessage());
             throw e;
         } finally {
@@ -237,15 +249,17 @@ public class CatalogImportServiceImpl implements CatalogImportService {
      * a batch is kept whole or not at all: when one copy fails, the files this
      * batch added are removed again and the failure names the file and the
      * directory the webapp could not write to. A file that replaced an earlier
-     * version stays replaced.
+     * version stays replaced when a later copy fails.
      */
-    private void storeAll(Map<String, List<MultipartFile>> byDomain) {
+    private Map<Path, byte[]> storeAll(Map<String, List<MultipartFile>> byDomain) {
         List<Path> added = new ArrayList<>();
+        Map<Path, byte[]> previous = new LinkedHashMap<>();
         for (Map.Entry<String, List<MultipartFile>> entry : byDomain.entrySet()) {
             for (MultipartFile file : entry.getValue()) {
                 Path target = directoryFor(entry.getKey()).resolve(fileNameOf(file));
                 boolean replacing = Files.exists(target);
                 try {
+                    previous.put(target, replacing ? Files.readAllBytes(target) : null);
                     Files.createDirectories(target.getParent());
                     Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
                 } catch (IOException e) {
@@ -257,6 +271,19 @@ public class CatalogImportServiceImpl implements CatalogImportService {
                     added.add(target);
                 }
             }
+        }
+        return previous;
+    }
+
+    private static void restore(Path path, byte[] earlier) {
+        try {
+            if (earlier == null) {
+                Files.deleteIfExists(path);
+            } else {
+                Files.write(path, earlier);
+            }
+        } catch (IOException e) {
+            LogEvent.logWarn(CLASS_NAME, "restore", "Could not restore " + path + ": " + e.getMessage());
         }
     }
 
