@@ -48,6 +48,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private MicroCaseInoculationDAO cultureRows;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.qc.service.QcHoldService qcHolds;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -449,6 +451,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (!"TechnicalAcceptance".equals(state(a)))
             bad("MICROBIOLOGY_RESULT_NOT_AWAITING_VALIDATION");
         selfValidation.requireAnotherValidator(a, actor);
+        if (!qcHolds.analysisIdsBlockedFromRelease(List.of(a.getId())).isEmpty())
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "MICROBIOLOGY_RESULT_QC_HOLD");
         a.setStatusId(statuses.getStatusID(AnalysisStatus.Finalized));
         a.setReleasedDate(MicroCaseServiceImpl.now());
         a.setSysUserId(actor);
