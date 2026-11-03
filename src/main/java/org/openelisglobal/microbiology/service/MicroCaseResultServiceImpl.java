@@ -463,12 +463,13 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var context = new org.openelisglobal.resultvalidation.bean.AnalysisItem();
         context.setAccessionNumber(sample.getAccessionNumber());
         var sampleUpdates = new ArrayList<org.openelisglobal.sample.valueholder.Sample>();
-        validation.persistdata(List.of(), List.of(a), saved, List.of(context), sampleUpdates, new ArrayList<>(), data,
+        var validated = new ArrayList<>(List.of(a));
+        validation.persistdata(List.of(), validated, saved, List.of(context), sampleUpdates, new ArrayList<>(), data,
                 org.openelisglobal.common.services.registration.ValidationUpdateRegister.getRegisteredUpdaters(),
                 actor);
         afterCommit(() -> {
             try {
-                fhir.transformPersistResultValidationFhirObjects(List.of(), List.of(a), saved, List.of(context),
+                fhir.transformPersistResultValidationFhirObjects(List.of(), validated, saved, List.of(context),
                         sampleUpdates, new ArrayList<>());
             } catch (org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException failure) {
                 org.openelisglobal.common.log.LogEvent.logError(failure);

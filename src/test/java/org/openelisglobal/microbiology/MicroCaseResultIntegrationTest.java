@@ -737,6 +737,35 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void validatingOnAnOrderWithAQcSampleItemFinalizesTheResult() {
+        var qcItem = new org.openelisglobal.sampleitem.valueholder.SampleItem();
+        qcItem.setSample(analysis.getSampleItem().getSample());
+        qcItem.setTypeOfSample(analysis.getSampleItem().getTypeOfSample());
+        qcItem.setSortOrder("2");
+        qcItem.setStatusId(fixtures.ensureSampleEnteredStatus());
+        qcItem.setSysUserId(actor);
+        em.persist(qcItem);
+        var qcAnalysis = fixtures.createAnalysis(qcItem, fixtures.createCatalogTest());
+        qcAnalysis.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
+        em.merge(qcAnalysis);
+        var profile = new org.openelisglobal.qc.valueholder.SampleItemQcProfile();
+        profile.setId(UUID.randomUUID().toString());
+        profile.setSampleItemId(Integer.valueOf(qcItem.getId()));
+        profile.setQcType("POSITIVE");
+        profile.setSystemUserId(1);
+        em.persist(profile);
+        em.flush();
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor)).get(0);
+
+        var validated = workspace.validateResult(microCase.getId(), analysis.getId(), saved.version, validator).get(0);
+
+        assertEquals("Finalized", validated.status);
+        assertEquals(statuses.getStatusID(AnalysisStatus.Finalized),
+                em.createQuery("select a.statusId from Analysis a where a.id = :id", String.class)
+                        .setParameter("id", qcAnalysis.getId()).getSingleResult());
+    }
+
+    @Test
     public void validationDoesNotFinishSampleWithOutstandingAnalysis() {
         var sibling = fixtures.createAnalysis(analysis.getSampleItem(), fixtures.createCatalogTest());
         sibling.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
