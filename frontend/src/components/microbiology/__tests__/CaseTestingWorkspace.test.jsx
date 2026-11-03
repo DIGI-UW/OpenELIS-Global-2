@@ -769,6 +769,9 @@ test("consumes a critical communication target after saving and unlocks the next
   fireEvent.change(screen.getByLabelText("Recipient"), {
     target: { value: "Provider" },
   });
+  fireEvent.change(screen.getByLabelText("Call outcome"), {
+    target: { value: "CONFIRMED" },
+  });
   fireEvent.change(screen.getByLabelText("Message"), {
     target: { value: "Critical result called" },
   });

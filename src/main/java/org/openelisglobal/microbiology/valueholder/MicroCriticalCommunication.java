@@ -36,6 +36,9 @@ public class MicroCriticalCommunication extends BaseObject<String> {
     @Column(name = "communication_method", nullable = false, length = 40)
     private String communicationMethod = "PHONE";
 
+    @Column(name = "outcome", length = 30)
+    private String outcome;
+
     @Column(name = "message", nullable = false)
     private String message;
 
@@ -128,6 +131,14 @@ public class MicroCriticalCommunication extends BaseObject<String> {
 
     public void setCommunicationMethod(String communicationMethod) {
         this.communicationMethod = communicationMethod;
+    }
+
+    public String getOutcome() {
+        return outcome;
+    }
+
+    public void setOutcome(String outcome) {
+        this.outcome = outcome;
     }
 
     public String getMessage() {
