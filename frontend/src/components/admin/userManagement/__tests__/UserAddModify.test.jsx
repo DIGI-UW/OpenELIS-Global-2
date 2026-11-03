@@ -258,6 +258,76 @@ describe("UserAddModify", () => {
       expect(document.querySelector(".cds--modal.is-visible")).toBeNull();
       expect(rowSelect(HEMATOLOGY)).toBeNull();
     });
+
+    describe("All Permissions", () => {
+      // The lab unit offers a role outside the four ids the checkbox used to
+      // hardcode, and is not offered two of them.
+      const DATA_MANAGER = "12";
+      const offered = [
+        { elementID: "4", roleId: RECEPTION, roleName: "Reception" },
+        { elementID: "7", roleId: VALIDATION, roleName: "Validation" },
+        { elementID: "12", roleId: DATA_MANAGER, roleName: "Data Manager" },
+      ];
+      const allPermissions = () =>
+        document.getElementById(`all-permissions-${HEMATOLOGY}`);
+      const roleBox = (elementID) =>
+        document.getElementById(`${elementID}-${HEMATOLOGY}`);
+      const offeredBoxes = () => offered.map((role) => roleBox(role.elementID));
+
+      const renderOffering = async (grants, labUnitRoles = offered) => {
+        getFromOpenElisServer.mockImplementation((url, callback) => {
+          if (url.startsWith("/rest/UnifiedSystemUser"))
+            return callback({ ...user("qa_heme", grants), labUnitRoles });
+          if (url.startsWith("/rest/users")) return callback([]);
+          return callback(undefined);
+        });
+        renderAt("/MasterListsPage/userEdit?ID=5-5&startingRecNo=1");
+        await waitFor(() => expect(allPermissions()).not.toBeNull());
+      };
+
+      it("selects every role the lab unit offers", async () => {
+        await renderOffering({ [HEMATOLOGY]: [] });
+
+        await userEvent.click(allPermissions());
+
+        offeredBoxes().forEach((box) => expect(box).toBeChecked());
+        expect(allPermissions()).toBeChecked();
+      });
+
+      it("keeps the roles already selected while adding the missing ones", async () => {
+        await renderOffering({ [HEMATOLOGY]: [DATA_MANAGER] });
+
+        await userEvent.click(allPermissions());
+
+        offeredBoxes().forEach((box) => expect(box).toBeChecked());
+      });
+
+      it("stays unticked while any offered role is unselected", async () => {
+        await renderOffering({ [HEMATOLOGY]: ["4", "5", "7", "10"] });
+
+        expect(roleBox("4")).toBeChecked();
+        expect(roleBox("12")).not.toBeChecked();
+        expect(allPermissions()).not.toBeChecked();
+      });
+
+      it("clears every offered role when it is unticked", async () => {
+        await renderOffering({
+          [HEMATOLOGY]: offered.map((role) => role.roleId),
+        });
+        await waitFor(() => expect(allPermissions()).toBeChecked());
+
+        await userEvent.click(allPermissions());
+
+        offeredBoxes().forEach((box) => expect(box).not.toBeChecked());
+        expect(allPermissions()).not.toBeChecked();
+      });
+
+      it("stays unticked when the lab unit offers no roles", async () => {
+        await renderOffering({ [HEMATOLOGY]: [] }, []);
+
+        expect(allPermissions()).not.toBeChecked();
+      });
+    });
   });
 
   it("says the user could not be found instead of showing an empty form", async () => {
