@@ -144,6 +144,7 @@ docs/debug-local/
 META-INF/
 # The module contracts ship their manifest schema as a META-INF resource.
 !module-contracts/openelis-module-api/src/main/resources/META-INF/
+!module-test/src/test/resources/META-INF/
 
 # Vitest run logs + cache (local test-output scratch)
 frontend/vitest-*.log
