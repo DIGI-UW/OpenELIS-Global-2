@@ -137,6 +137,7 @@ public class MicroAstWorkspaceService {
                                     .toList(),
                     request.orderedAntibioticIds, actor);
             case "invalidate" -> ast.invalidateAndRepeat(request.runId, request.reason, request.analyzerCardId, actor);
+            case "cancel" -> ast.cancelRun(request.runId, request.reason, actor);
             default -> throw new IllegalArgumentException("Unknown AST action");
             }
         return get(caseId, actor);

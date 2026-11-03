@@ -583,3 +583,42 @@ it("explains a resolution rejected because the DST evidence changed", async () =
   expect(message).toBeDefined();
   expect(await within(modal).findByText(message)).toBeInTheDocument();
 });
+
+it("cancels a run started by mistake with a recorded reason", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const save = within(modal).getByRole("button", {
+    name: t("save"),
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Started on the wrong isolate" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.astAction).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        action: "cancel",
+        isolateId: "i1",
+        runId: "run",
+        reason: "Started on the wrong isolate",
+      }),
+      false,
+    ),
+  );
+});
+
+it("does not offer cancel once a run has readings", async () => {
+  show(workspace("IN_PROGRESS"));
+  expect(await screen.findByText("Ampicillin")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: t("action.cancel") }),
+  ).not.toBeInTheDocument();
+});

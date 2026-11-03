@@ -683,6 +683,28 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     @Override
     @Transactional
+    public MicroAstRun cancelRun(String runId, String reason, String performedBy) {
+        requireAttemptReason(reason);
+        MicroAstRun run = requireRun(runId);
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        authorization.requireWrite(isolate.getCaseId(), performedBy,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        requireMutableRun(run, isolate.getCaseId());
+        if (!Set.of(MicroAstRunStatus.IN_PROGRESS.name(), MicroAstRunStatus.AWAITING_RESULTS.name())
+                .contains(run.getStatus()) || !readingDAO.getByRunId(runId).isEmpty()) {
+            throw new MicroAstConflictException("AST_RUN_CANNOT_BE_CANCELLED");
+        }
+        run.setStatus(MicroAstRunStatus.CANCELLED.name());
+        run.setReportable(false);
+        MicroAstRun updated = runDAO.update(run);
+        recordActivity(isolate.getCaseId(), MicroCaseActivityType.AST_RUN_CANCELLED, performedBy, reason.trim(),
+                "{\"astRunId\":\"" + runId + "\"}");
+        return updated;
+    }
+
+    @Override
+    @Transactional
     public MicroAstRun selectReportableRun(String runId, String performedBy) {
         MicroCaseServiceImpl.requireText(runId, "runId");
         MicroAstRun selected = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));

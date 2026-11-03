@@ -11,6 +11,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.dao.*;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.microbiology.form.MicroAstWorkspaceForm;
 import org.openelisglobal.microbiology.form.MicroDstForm;
 import org.openelisglobal.microbiology.service.*;
 import org.openelisglobal.microbiology.valueholder.*;
@@ -58,6 +59,12 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     private MicroReportProjectionService projection;
     @Autowired
     private MicroDstService dst;
+    @Autowired
+    private MicroCaseReadinessService readiness;
+    @Autowired
+    private MicroAstWorkspaceService workspace;
+    @Autowired
+    private MicroCaseActivityDAO activities;
     @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
@@ -410,5 +417,55 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals("DST_EVIDENCE_CHANGED",
                 assertThrows(MicroAstConflictException.class, () -> dst.resolve(c.getId(), request, validator))
                         .getMessage());
+    }
+
+    @Test
+    public void anOpenAstRunBlocksReleaseUntilCancelledAndStaysInTheHistory() {
+        var first = start(isolate);
+        enter(first, "4");
+        ast.reviewRun(first.getId(), validator);
+        var mistake = ast.startRepeatRun(first.getId(), MicroAstAttemptType.RETEST, "Second attempt",
+                MicroAstTechnique.BROTH_MICRODILUTION, writer);
+        em.flush();
+        assertTrue(readiness.getReadiness(c.getId()).blockers.contains("AST_RUN_OPEN"));
+
+        var cancel = new MicroAstWorkspaceForm.Action();
+        cancel.isolateId = isolate;
+        cancel.runId = mistake.getId();
+        cancel.action = "cancel";
+        cancel.reason = " ";
+        assertThrows(IllegalArgumentException.class, () -> workspace.act(c.getId(), cancel, writer, false));
+        cancel.reason = "Started on the wrong isolate";
+        var form = workspace.act(c.getId(), cancel, writer, false);
+        em.flush();
+        assertFalse(readiness.getReadiness(c.getId()).blockers.contains("AST_RUN_OPEN"));
+        assertEquals("CANCELLED", form.isolates.stream().flatMap(i -> i.runs().stream())
+                .filter(r -> r.id.equals(mistake.getId())).findFirst().orElseThrow().status);
+        assertTrue(
+                activities.getByCaseId(c.getId()).stream().anyMatch(a -> "AST_RUN_CANCELLED".equals(a.getActivityType())
+                        && "Started on the wrong isolate".equals(a.getNote())));
+
+        var withReading = ast.startRepeatRun(first.getId(), MicroAstAttemptType.RETEST, "Third attempt",
+                MicroAstTechnique.BROTH_MICRODILUTION, writer);
+        ast.recordReading(withReading.getId(), drugB, new BigDecimal("4"), writer);
+        cancel.runId = withReading.getId();
+        assertEquals("AST_RUN_CANNOT_BE_CANCELLED",
+                assertThrows(MicroAstConflictException.class, () -> workspace.act(c.getId(), cancel, writer, false))
+                        .getMessage());
+    }
+
+    @Test
+    public void aCaseWithNothingToReportCannotBeReleased() {
+        var source = fixtures.createSampleWithSampleItem("M6");
+        var empty = new MicroCase();
+        empty.setSampleId(source.getSample().getId());
+        empty.setSampleItemId(source.getId());
+        empty.setLabUnitId(c.getLabUnitId());
+        empty.setCreatedBy(writer);
+        cases.insert(empty);
+        em.flush();
+        var blocked = readiness.getReadiness(empty.getId());
+        assertFalse(blocked.finalReleaseReady);
+        assertTrue(blocked.blockers.contains("REPORTABLE_WORK_REQUIRED"));
     }
 }

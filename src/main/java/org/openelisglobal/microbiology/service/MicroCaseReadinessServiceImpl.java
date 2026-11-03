@@ -76,6 +76,8 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         if (pendingCultureSetup
                 || cultureRows.stream().anyMatch(row -> row.getOutcome() == null || row.getOutcomeAt() == null))
             addBlocker(readiness, "CULTURE_OUTCOME_REQUIRED");
+        if (caseAnalyses.isEmpty() && cultureRows.isEmpty() && isolates.isEmpty())
+            addBlocker(readiness, "REPORTABLE_WORK_REQUIRED");
         for (var analysis : caseAnalyses) {
             var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
             if (MicroPatientReportService.selected(link) && !analysis.getTest().isInLabOnly()
@@ -121,6 +123,8 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
                     .filter(run -> MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())).toList();
             readiness.astRunsTotal += activeRuns.size();
             readiness.astRunsComplete += reviewedRuns.size();
+            if (reviewedRuns.size() < activeRuns.size())
+                addBlocker(readiness, "AST_RUN_OPEN");
             boolean identified = MicroIsolateIdentificationStatus.CONFIRMED.name()
                     .equals(isolate.getIdentificationStatus()) && isolate.getOrganismId() != null
                     && !isolate.getOrganismId().isBlank();
