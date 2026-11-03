@@ -78,6 +78,12 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     public List<Analysis> persistDataSet(ResultsUpdateDataSet actionDataSet, List<IResultUpdate> updaters,
             String sysUserId) {
         for (Note note : actionDataSet.getNoteList()) {
+            // A note already recorded on the analysis (the same text posted again with
+            // a row) is kept once; refusing it used to fail the whole save, value and
+            // all, as "An error occurred while updating" (OGC-1569).
+            if (noteService.duplicateNoteExists(note)) {
+                continue;
+            }
             noteService.insert(note);
             // Every rejection opens its NCE (trigger: TEST_REJECTION). All
             // rejection paths funnel through this persist, so the hook lives

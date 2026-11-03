@@ -17,12 +17,12 @@ import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -471,8 +471,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             saveErrors(result);
         }
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "LogbookResults()", "Attempted save of stale page.");
@@ -617,7 +616,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (e.getCause() instanceof StaleObjectStateException) {
                 errorMsg = "errors.OptimisticLockException";
             } else {
-                LogEvent.logDebug(e);
+                LogEvent.logError(e);
                 errorMsg = "errors.UpdateException";
             }
 

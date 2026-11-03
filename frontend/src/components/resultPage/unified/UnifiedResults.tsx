@@ -1040,6 +1040,8 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       // rounded, so posting it back would quietly rewrite the stored one.
       if (!writesResultValue(rowStates[worklistRowKey(row)] || "EMPTY")) {
         item.resultValue = row.rawResultValue ?? row.resultValue;
+      } else {
+        item.rawResultValue = row.resultValue;
       }
       delete item.result;
       delete item.analysisNotes;
