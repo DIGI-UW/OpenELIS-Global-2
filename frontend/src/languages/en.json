@@ -4390,6 +4390,7 @@
   "label.test.batch.cancel.start": "You have selected to cancel the test",
   "label.test.batch.no.change.finish": "tests will not be changed.",
   "label.test.batch.replace.start": "The following",
+  "label.test.batch.replace.with": "You have selected to replace the test {current} with {replacements}.",
   "label.test.deactivate": "The following tests will be deactivated:",
   "label.test.display.order": "Test display order",
   "label.test.order.confirm": "Verify: Enable/disable test orderability",

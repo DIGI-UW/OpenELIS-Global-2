@@ -328,3 +328,111 @@ describe("BatchTestReassignmentAndCancelation searchable lists", () => {
     expect(currentTestBox()).toHaveValue("");
   });
 });
+
+/**
+ * Ticking "do not assign a new test" again sent the chosen replacements as a
+ * comma-joined string, which the server refuses; the refusal answered 200 and
+ * the page said "Successfully saved" with nothing cancelled. The confirmation
+ * also said "cancel" while replacing and never named the new test.
+ */
+describe("BatchTestReassignmentAndCancelation saving", () => {
+  const doNotReplace = () =>
+    screen.getByLabelText(
+      "Cancel test for lab numbers selected, do not assign a new test",
+    );
+
+  const sentWad = () =>
+    JSON.parse(JSON.parse(api.post.mock.calls[0][1]).jsonWad);
+
+  beforeEach(() => {
+    api.get.mockReset();
+    api.post.mockReset();
+    api.notify.mockReset();
+    api.get.mockImplementation((url, callback) => {
+      if (url === "/rest/BatchTestReassignment") {
+        callback(batchTestReassignment);
+      } else if (url.startsWith("/rest/AllTestsForSampleTypeProvider")) {
+        callback({
+          tests: [
+            { id: "17", name: "Amylase", isActive: "Y" },
+            { id: "18", name: "Créatinine", isActive: "Y" },
+          ],
+        });
+      } else if (url.startsWith("/rest/getPendingAnalysisForTestProvider")) {
+        callback({
+          notStarted: [{ id: "901", labNo: "DEV01260000000000002" }],
+          technicianRejection: [],
+          biologistRejection: [],
+          notValidated: [],
+        });
+      } else {
+        callback({});
+      }
+    });
+  });
+
+  const chooseAmylaseOnOneSample = async () => {
+    await chooseSerum();
+    await choose(currentTestBox(), "amy", "Amylase");
+    fireEvent.click(await screen.findByLabelText("DEV01260000000000002"));
+  };
+
+  it("names the replacement in the confirmation and sends it as a list", async () => {
+    api.post.mockImplementation((url, body, callback) => callback({}));
+    renderPage();
+    await chooseAmylaseOnOneSample();
+    await userEvent.click(doNotReplace());
+    await choose(replaceWithBox(), "creat", "Créatinine");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ok" }));
+
+    expect(
+      await screen.findByText(
+        /You have selected to replace the test Amylase with Créatinine\./,
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    expect(sentWad().replace).toEqual(["18"]);
+  });
+
+  it("drops the chosen replacements when do not assign a new test is ticked again", async () => {
+    api.post.mockImplementation((url, body, callback) => callback({}));
+    renderPage();
+    await chooseAmylaseOnOneSample();
+    await userEvent.click(doNotReplace());
+    await choose(replaceWithBox(), "creat", "Créatinine");
+
+    await userEvent.click(doNotReplace());
+    fireEvent.click(screen.getByRole("button", { name: "Ok" }));
+
+    expect(
+      await screen.findByText(/You have selected to cancel the test Amylase/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    expect(sentWad().replace).toEqual([]);
+  });
+
+  it("says the save failed when the server refuses it", async () => {
+    api.post.mockImplementation((url, body, callback) =>
+      callback({ error: "validation", status: 400, fieldErrors: [] }),
+    );
+    renderPage();
+    await chooseAmylaseOnOneSample();
+    fireEvent.click(screen.getByRole("button", { name: "Ok" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+
+    await waitFor(() =>
+      expect(api.notify).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Error While saving" }),
+      ),
+    );
+    expect(api.notify).not.toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Successfully saved" }),
+    );
+    expect(screen.getByRole("button", { name: "Accept" })).toBeInTheDocument();
+    expect(currentTestBox()).toHaveValue("Amylase");
+  });
+});

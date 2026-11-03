@@ -235,7 +235,7 @@ function BatchTestReassignmentAndCancelation() {
   }
 
   function sampleTypeListPostCallback(res) {
-    if (res) {
+    if (res && !res.error) {
       setIsLoading(false);
       addNotification({
         title: intl.formatMessage({
@@ -252,7 +252,9 @@ function BatchTestReassignmentAndCancelation() {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id: res ? "error.save.msg" : "server.error.msg",
+        }),
       });
       setNotificationVisible(true);
     }
@@ -530,20 +532,11 @@ function BatchTestReassignmentAndCancelation() {
                 checked={replaceWith}
                 onChange={() => {
                   setReplaceWith(!replaceWith);
-                  if (replaceWith) {
-                    setJsonWad((prevJsonWad) => ({
-                      ...prevJsonWad,
-                      replace: [],
-                    }));
-                  } else {
-                    const selectedTestIds = sampleTestTypeToGetTagList
-                      .map((item) => item.id)
-                      .join(",");
-                    setJsonWad((prevJsonWad) => ({
-                      ...prevJsonWad,
-                      replace: selectedTestIds,
-                    }));
-                  }
+                  setSampleTestTypeToGetTagList([]);
+                  setJsonWad((prevJsonWad) => ({
+                    ...prevJsonWad,
+                    replace: [],
+                  }));
                 }}
               />
 
@@ -787,8 +780,22 @@ function BatchTestReassignmentAndCancelation() {
                   {jsonWad.sampleType}
                   <br />
                   <br />
-                  <FormattedMessage id="label.test.batch.cancel.start" />{" "}
-                  {jsonWad.current}{" "}
+                  {sampleTestTypeToGetTagList.length ? (
+                    <FormattedMessage
+                      id="label.test.batch.replace.with"
+                      values={{
+                        current: jsonWad.current,
+                        replacements: sampleTestTypeToGetTagList
+                          .map((tag) => tag.name)
+                          .join(", "),
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <FormattedMessage id="label.test.batch.cancel.start" />{" "}
+                      {jsonWad.current}
+                    </>
+                  )}{" "}
                   <FormattedMessage id="label.test.batch.cancel.finish" />
                   <br />
                   <br />
