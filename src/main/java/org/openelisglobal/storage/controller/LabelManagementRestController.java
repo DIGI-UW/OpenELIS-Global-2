@@ -209,8 +209,4 @@ public class LabelManagementRestController extends BaseRestController {
         }
         return "1";
     }
-
-    private String getCurrentUserId() {
-        return getCurrentUserId(null);
-    }
 }
