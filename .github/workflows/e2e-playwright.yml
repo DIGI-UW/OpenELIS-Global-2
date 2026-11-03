@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - develop
+      - modula
       - main
       - "release/**"
       - fix/madagascar-accession-results-file-e2e

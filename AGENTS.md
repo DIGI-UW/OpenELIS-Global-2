@@ -2409,8 +2409,12 @@ Before creating PR, verify ALL items:
   operational troubleshooting guide for CI maintainers
 - **Module System Architecture:** `specs/plans/module-system-architecture.md` -
   research and design for the implementation-specific module/plugin system
-  (backend module JARs, frontend remotes, manifests, roadmap); design only, not
-  implemented
+  (backend module JARs, frontend remotes, manifests, roadmap); being implemented
+  on the `modula` branch
+- **Module System Decision Record:** `docs/adr/0001-module-system.md` - the
+  accepted architecture, the Phase 0 decisions (publishing, package naming,
+  strict mode, schema layout, route policy, fail policy, loader engine) and the
+  decision-check results
 
 ### Testing Documentation
 
