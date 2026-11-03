@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.util.*;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.microbiology.dao.*;
 import org.openelisglobal.microbiology.form.MicroDstForm;
 import org.openelisglobal.microbiology.valueholder.*;
@@ -18,7 +19,6 @@ public class MicroDstService {
     private final MicroIsolateDAO isolates;
     private final MicroOrganismDAO organisms;
     private final MicroAntibioticDAO antibiotics;
-    private final MicroAstRunDAO runs;
     private final MicroAstReportChoiceService choices;
     private final MicroCaseAnalysisDAO links;
     private final MicroMolecularDstBindingDAO bindings;
@@ -28,13 +28,12 @@ public class MicroDstService {
     private final MicroCaseAuthorizationService authorization;
 
     public MicroDstService(MicroIsolateDAO isolates, MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics,
-            MicroAstRunDAO runs, MicroAstReportChoiceService choices, MicroCaseAnalysisDAO links,
-            MicroMolecularDstBindingDAO bindings, MicroDstResolutionDAO resolutions, ResultService results,
-            IStatusService statuses, MicroCaseAuthorizationService authorization) {
+            MicroAstReportChoiceService choices, MicroCaseAnalysisDAO links, MicroMolecularDstBindingDAO bindings,
+            MicroDstResolutionDAO resolutions, ResultService results, IStatusService statuses,
+            MicroCaseAuthorizationService authorization) {
         this.isolates = isolates;
         this.organisms = organisms;
         this.antibiotics = antibiotics;
-        this.runs = runs;
         this.choices = choices;
         this.links = links;
         this.bindings = bindings;
@@ -58,18 +57,14 @@ public class MicroDstService {
         }
         Map<String, List<MicroDstForm.Evidence>> evidence = new TreeMap<>();
         for (var i : tb)
-            for (var run : runs.getByIsolateId(i.getId())) {
-                if (List.of("INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus()))
-                    continue;
-                for (var r : choices.latest(run.getId()))
-                    evidence.computeIfAbsent(r.getAntibioticId(), x -> new ArrayList<>())
-                            .add(new MicroDstForm.Evidence("PHENOTYPIC", r.getId(),
-                                    MicroAstReportChoiceService.interpretation(r), "REVIEWED".equals(run.getStatus())));
-            }
+            for (var r : choices.getSelectedReadings(i.getId()))
+                evidence.computeIfAbsent(r.getAntibioticId(), x -> new ArrayList<>()).add(new MicroDstForm.Evidence(
+                        "PHENOTYPIC", r.getId(), MicroAstReportChoiceService.interpretation(r), true));
         var configured = bindings.getBindings();
         for (var a : links.getAnalyses(caseId)) {
             var link = links.getByCaseAndAnalysis(caseId, a.getId());
-            if (!"INITIAL".equals(link.getPlacement()) || link.getCancelledAt() != null)
+            if (link.getPlacement() == null || !MicroCaseAnalysis.SPECIMEN_TEST_PLACEMENTS.contains(link.getPlacement())
+                    || statuses.getAnalysisStatusForID(a.getStatusId()) != AnalysisStatus.Finalized)
                 continue;
             for (var result : results.getResultsByAnalysis(a)) {
                 if (result.getTestResult() == null || result.getTestResult().getComponentId() == null)
@@ -81,8 +76,7 @@ public class MicroDstService {
                                 : Objects.equals(b.getSusceptibleValue(), result.getValue()) ? "SUSCEPTIBLE"
                                         : "INDETERMINATE";
                         evidence.computeIfAbsent(b.getAntibioticId(), x -> new ArrayList<>())
-                                .add(new MicroDstForm.Evidence("MOLECULAR", result.getId(), interpretation,
-                                        "Finalized".equals(statuses.getAnalysisStatusForID(a.getStatusId()).name())));
+                                .add(new MicroDstForm.Evidence("MOLECULAR", result.getId(), interpretation, true));
                     }
             }
         }
@@ -107,7 +101,9 @@ public class MicroDstService {
             var observed = entries.stream().map(MicroDstForm.Evidence::interpretation)
                     .filter(v -> Set.of("SUSCEPTIBLE", "RESISTANT").contains(v))
                     .collect(java.util.stream.Collectors.toSet());
-            boolean discordant = observed.size() > 1;
+            var phenotypic = calls(entries, "PHENOTYPIC");
+            boolean discordant = calls(entries, "MOLECULAR").stream()
+                    .anyMatch(m -> phenotypic.stream().anyMatch(p -> !m.equals(p)));
             String fingerprint = fingerprint(entries);
             var resolution = prior.stream()
                     .filter(r -> r.getAntibioticId().equals(antibiotic.getId())
@@ -142,8 +138,6 @@ public class MicroDstService {
                 .findFirst().orElseThrow(() -> new MicroAstConflictException("DST_EVIDENCE_CHANGED"));
         if (!drug.discordant() || !drug.evidenceFingerprint().equals(request.evidenceFingerprint))
             throw new MicroAstConflictException("DST_EVIDENCE_CHANGED");
-        if (drug.evidence().stream().anyMatch(e -> !e.validated()))
-            throw new MicroAstConflictException("DST_EVIDENCE_NOT_VALIDATED");
         var resolution = new MicroDstResolution();
         resolution.setCaseId(caseId);
         resolution.setAntibioticId(request.antibioticId);
@@ -163,5 +157,11 @@ public class MicroDstService {
         } catch (java.security.NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    private static Set<String> calls(List<MicroDstForm.Evidence> entries, String source) {
+        return entries.stream().filter(e -> source.equals(e.source())).map(MicroDstForm.Evidence::interpretation)
+                .filter(v -> Set.of("SUSCEPTIBLE", "RESISTANT").contains(v))
+                .collect(java.util.stream.Collectors.toSet());
     }
 }
