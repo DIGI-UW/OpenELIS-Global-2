@@ -66,12 +66,13 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
                 .toList();
         var cultureRows = cultures.getRows(caseId).stream().filter(r -> r.getCancelledAt() == null).toList();
         var caseAnalyses = links.getAnalyses(caseId);
-        boolean pendingCultureSetup = caseAnalyses.stream().anyMatch(analysis -> {
+        var cultureOrders = caseAnalyses.stream().filter(analysis -> {
             var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
-            return link.isCultureOrder() && link.getCancelledAt() == null
-                    && (analysis.getSampleItem() == null || cultureRows.stream()
-                            .noneMatch(row -> analysis.getSampleItem().getId().equals(row.getSourceSampleItemId())));
-        });
+            return link.isCultureOrder() && link.getCancelledAt() == null;
+        }).toList();
+        boolean pendingCultureSetup = cultureOrders.stream()
+                .anyMatch(analysis -> analysis.getSampleItem() == null || cultureRows.stream()
+                        .noneMatch(row -> analysis.getSampleItem().getId().equals(row.getSourceSampleItemId())));
         if (pendingCultureSetup
                 || cultureRows.stream().anyMatch(row -> row.getOutcome() == null || row.getOutcomeAt() == null))
             addBlocker(readiness, "CULTURE_OUTCOME_REQUIRED");
@@ -102,7 +103,7 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
             addBlocker(readiness, "TB_DISCORDANCE_UNRESOLVED");
         boolean noGrowthReady = !cultureRows.isEmpty() && cultureRows.stream().allMatch(row -> java.util.Set
                 .of("NO_GROWTH", "CONTAMINATED").contains(row.getOutcome() == null ? "" : row.getOutcome()));
-        if (isolates.isEmpty() && !noGrowthReady) {
+        if (isolates.isEmpty() && (!cultureRows.isEmpty() || !cultureOrders.isEmpty()) && !noGrowthReady) {
             readiness.finalReleaseReady = false;
             readiness.blockers.add("ISOLATE_REQUIRED");
         }

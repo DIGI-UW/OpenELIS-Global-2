@@ -966,4 +966,23 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         e.setReason("Correction fixture");
         return e;
     }
+
+    @Test
+    public void onlyCultureWorkRequiresAnIsolateBeforeFinalRelease() {
+        var link = new MicroCaseAnalysis();
+        link.setCaseId(c.getId());
+        link.setAnalysisId(fixtures.createAnalysis(source, fixtures.createCatalogTest()).getId());
+        link.setPlacement("INITIAL");
+        link.setCaseRole(MicroCaseRole.DIRECT);
+        em.persist(link);
+        em.flush();
+        assertFalse(readiness.getReadiness(c.getId()).blockers.contains("ISOLATE_REQUIRED"));
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        em.flush();
+        assertTrue(readiness.getReadiness(c.getId()).blockers.contains("ISOLATE_REQUIRED"));
+        link.setCaseRole(MicroCaseRole.DIRECT);
+        culture("GROWTH");
+        em.flush();
+        assertTrue(readiness.getReadiness(c.getId()).blockers.contains("ISOLATE_REQUIRED"));
+    }
 }
