@@ -56,6 +56,16 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroReportProjectionService projection;
     @Autowired
+    private MicroOrderRoutingService routing;
+    @Autowired
+    private MicroCaseAnalysisDAO analysisLinks;
+    @Autowired
+    private MicroMolecularDstBindingDAO molecularBindings;
+    @Autowired
+    private MicroDstService dst;
+    @Autowired
+    private MicroCaseReadinessService readiness;
+    @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
     private org.openelisglobal.role.service.RoleService roles;
@@ -223,8 +233,12 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     private String isolate(String label) {
+        return isolate(c.getId(), label);
+    }
+
+    private String isolate(String caseId, String label) {
         var i = new MicroIsolate();
-        i.setCaseId(c.getId());
+        i.setCaseId(caseId);
         i.setIsolateLabel(label);
         i.setCreatedBy(writer);
         i.setOrganismId(reference.organism().getId());
@@ -285,6 +299,148 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals("SUSCEPTIBLE", byDrug.get(drugB).interpretation());
         assertEquals("2026", byDrug.get(drugB).version());
         assertEquals(new BigDecimal("4.0000"), readings.get(original.get(0).getId()).orElseThrow().getRawValue());
+    }
+
+    @Test
+    public void xpertOrderedAtEntryWithRifResistanceAgainstSusceptiblePhenotypeBlocksRelease() {
+        var tb = tbCaseWithXpert("RIF_DETECTED");
+        var run = start(tb.isolateId());
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+
+        var rif = rifampicin(tb.caseId());
+        assertEquals("DISCORDANT", rif.interpretation());
+        assertEquals(Set.of("MOLECULAR:RESISTANT", "PHENOTYPIC:SUSCEPTIBLE"), sources(rif));
+        assertTrue(readiness.getReadiness(tb.caseId()).blockers.contains("TB_DISCORDANCE_UNRESOLVED"));
+    }
+
+    @Test
+    public void unreviewedRunDoesNotChangeTheTbClassification() {
+        var tb = tbCaseWithXpert("RIF_NOT_DETECTED");
+        var run = start(tb.isolateId());
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+        String before = dst.evaluate(tb.caseId()).classification;
+
+        var repeat = ast.startRepeatRun(run.getId(), MicroAstAttemptType.RETEST, "Confirm rifampicin",
+                MicroAstTechnique.BROTH_MICRODILUTION, writer);
+        enter(repeat, "64");
+
+        assertEquals(before, dst.evaluate(tb.caseId()).classification);
+        var rif = rifampicin(tb.caseId());
+        assertEquals("SUSCEPTIBLE", rif.interpretation());
+        assertFalse(rif.discordant());
+    }
+
+    @Test
+    public void originalRunAndItsSelectedRepeatAreNotDiscordant() {
+        var tb = tbCaseWithXpert("RIF_DETECTED");
+        var run = start(tb.isolateId());
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+        var repeat = ast.startRepeatRun(run.getId(), MicroAstAttemptType.RETEST, "Confirm rifampicin",
+                MicroAstTechnique.BROTH_MICRODILUTION, writer);
+        var repeated = enter(repeat, "64");
+        ast.reviewRun(repeat.getId(), validator);
+        choices.select(tb.isolateId(), reference.antibiotic().getId(), repeated.get(0).getId(), "Confirmed resistance",
+                validator);
+
+        var rif = rifampicin(tb.caseId());
+        assertEquals("RESISTANT", rif.interpretation());
+        assertFalse(rif.discordant());
+        assertEquals(Set.of("MOLECULAR:RESISTANT", "PHENOTYPIC:RESISTANT"), sources(rif));
+    }
+
+    @Test
+    public void untickedMolecularResultIsNotTbEvidence() {
+        var tb = tbCaseWithXpert("RIF_DETECTED");
+        tb.xpert().setPlacement("INITIAL");
+        analysisLinks.update(tb.xpert());
+        var run = start(tb.isolateId());
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+
+        reports.selectAnalysis(tb.caseId(), tb.xpert().getAnalysisId(), false, validator);
+
+        var rif = rifampicin(tb.caseId());
+        assertEquals("SUSCEPTIBLE", rif.interpretation());
+        assertEquals(Set.of("PHENOTYPIC:SUSCEPTIBLE"), sources(rif));
+    }
+
+    private record TbCase(String caseId, String isolateId, MicroCaseAnalysis xpert) {
+    }
+
+    private TbCase tbCaseWithXpert(String xpertValue) {
+        var organism = organisms.get(reference.organism().getId()).orElseThrow();
+        organism.setSusceptibilityProtocol("TB");
+        organisms.update(organism);
+        reference.panel().setSusceptibilityProtocol("TB");
+        panels.update(reference.panel());
+        var drug = antibiotics.get(reference.antibiotic().getId()).orElseThrow();
+        drug.setResistanceRole("RIFAMPICIN");
+        antibiotics.update(drug);
+
+        var xpert = em.find(org.openelisglobal.test.valueholder.Test.class, fixtures.createCatalogTest().getId());
+        xpert.setTestSection(em.find(org.openelisglobal.test.valueholder.TestSection.class, c.getLabUnitId()));
+        xpert.setOpensMicrobiologyCase(true);
+        xpert.setMicrobiologyCaseRole("DIRECT");
+        var specimen = fixtures.createSampleWithSampleItem("M6TB");
+        specimen.setTypeOfSample(fixtures.createTypeOfSample());
+        var analysis = fixtures.createAnalysis(specimen, xpert);
+        analysis.setStatusId(fixtures.ensureAnalysisFinalizedStatus());
+        var request = new org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest();
+        request.setSample(specimen.getSample());
+        request.setTypeOfSample(specimen.getTypeOfSample());
+        request.setSampleItem(specimen);
+        request.setRequestedTests(xpert.getId());
+        request.setStatus(org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.COLLECTED);
+        request.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+        em.persist(request);
+        em.flush();
+        routing.routeOrder(specimen.getSample(), writer);
+        var link = analysisLinks.getActiveByAnalysisId(analysis.getId());
+        assertEquals("INITIAL_TESTING", link.getPlacement());
+
+        var component = new org.openelisglobal.testresultcomponent.valueholder.TestResultComponent();
+        component.setTestId(xpert.getId());
+        component.setCode("RIF");
+        component.setLabel("Rifampicin resistance");
+        component.setResultType("D");
+        em.persist(component);
+        var option = new org.openelisglobal.testresult.valueholder.TestResult();
+        option.setTest(xpert);
+        option.setTestResultType("D");
+        option.setComponentId(component.getId());
+        option.setSortOrder("1");
+        em.persist(option);
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setAnalysis(analysis);
+        result.setTestResult(option);
+        result.setValue(xpertValue);
+        result.setResultType("D");
+        result.setSysUserId(writer);
+        em.persist(result);
+        var binding = new MicroMolecularDstBinding();
+        binding.setTestId(xpert.getId());
+        binding.setComponentId(option.getComponentId());
+        binding.setAntibioticId(reference.antibiotic().getId());
+        binding.setResistantValue("RIF_DETECTED");
+        binding.setSusceptibleValue("RIF_NOT_DETECTED");
+        molecularBindings.insert(binding);
+        em.flush();
+        return new TbCase(link.getCaseId(), isolate(link.getCaseId(), "ISO-TB"), link);
+    }
+
+    private org.openelisglobal.microbiology.form.MicroDstForm.Drug rifampicin(String caseId) {
+        em.flush();
+        em.clear();
+        return dst.evaluate(caseId).drugs.stream().filter(d -> d.antibioticId().equals(reference.antibiotic().getId()))
+                .findFirst().orElseThrow();
+    }
+
+    private static Set<String> sources(org.openelisglobal.microbiology.form.MicroDstForm.Drug drug) {
+        return drug.evidence().stream().map(e -> e.source() + ":" + e.interpretation())
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     @Test
