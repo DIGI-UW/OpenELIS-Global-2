@@ -22,4 +22,12 @@ public class MicroAstPanelAssignmentDAOImpl extends BaseDAOImpl<MicroAstPanelAss
                 .createQuery("from MicroAstPanelAssignment e where e.isolateId = :id", MicroAstPanelAssignment.class)
                 .setParameter("id", id).getResultList();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstPanelAssignment> getOpenByPanelId(String panelId) {
+        return entityManager.createQuery(
+                "from MicroAstPanelAssignment e where e.panelId = :id and e.retiredAt is null and not exists (select r.id from MicroAstRun r where r.isolateId = e.isolateId and r.panelId = :id)",
+                MicroAstPanelAssignment.class).setParameter("id", panelId).getResultList();
+    }
 }

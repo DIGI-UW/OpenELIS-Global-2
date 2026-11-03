@@ -13,6 +13,7 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
@@ -27,6 +28,7 @@ import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -45,6 +47,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAntibioticDAO antibioticDAO;
     private final MicroAstPanelDAO panelDAO;
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
+    private final MicroAstPanelAssignmentDAO assignmentDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
@@ -52,11 +55,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
             MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
-            TypeOfSampleService typeOfSampleService) {
+            TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
+        this.assignmentDAO = assignmentDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.methodService = methodService;
         this.typeOfSampleService = typeOfSampleService;
@@ -247,11 +251,15 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         applyPanel(published, request, actorId);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);
-        // Organisms keep defaulting to the panel, now at its current version.
+        // Organisms and isolates without a run follow the panel to its current version.
         for (MicroOrganism organism : organismDAO.getByDefaultAstPanelId(current.getId())) {
             organism.setDefaultAstPanelId(published.getId());
             organism.setLastUpdatedBy(actorId);
             organismDAO.update(organism);
+        }
+        for (MicroAstPanelAssignment assignment : assignmentDAO.getOpenByPanelId(current.getId())) {
+            assignment.setPanelId(published.getId());
+            assignmentDAO.update(assignment);
         }
         return toPanelForm(published);
     }
