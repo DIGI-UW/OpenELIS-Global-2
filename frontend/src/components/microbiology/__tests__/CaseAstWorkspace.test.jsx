@@ -615,6 +615,39 @@ it("cancels a run started by mistake with a recorded reason", async () => {
   );
 });
 
+it("explains a run that can no longer be cancelled", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_RUN_CANNOT_BE_CANCELLED" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Started on the wrong isolate" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  const message = messages["microbiology.m6.error.AST_RUN_CANNOT_BE_CANCELLED"];
+  expect(message).toBeDefined();
+  expect(await within(modal).findByText(message)).toBeInTheDocument();
+});
+
+it("explains a resolution the server rejects as invalid", async () => {
+  const service = show(discordantRifampicin());
+  service.resolveDst = vi.fn().mockRejectedValue({
+    response: { message: "DST_RESOLUTION_INVALID" },
+  });
+  const modal = await resolveDiscordance(service);
+  const message = messages["microbiology.m6.error.DST_RESOLUTION_INVALID"];
+  expect(message).toBeDefined();
+  expect(await within(modal).findByText(message)).toBeInTheDocument();
+});
+
 it("does not offer cancel once a run has readings", async () => {
   show(workspace("IN_PROGRESS"));
   expect(await screen.findByText("Ampicillin")).toBeInTheDocument();

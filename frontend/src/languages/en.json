@@ -14283,6 +14283,8 @@
   "microbiology.m6.error.AST_INSTRUMENT_INTERPRETATION_MISMATCH": "The instrument interpretation differs from the calculated interpretation. Review the affected agent and record an override reason.",
   "microbiology.m6.error.MICROBIOLOGY_ACCESS_DENIED": "You do not have permission to perform this action in this lab unit.",
   "microbiology.m6.error.MICROBIOLOGY_CASE_LOCKED": "This case is locked. Open an amendment before changing released results.",
+  "microbiology.m6.error.AST_RUN_CANNOT_BE_CANCELLED": "Only a run that is still in progress or awaiting results, with no readings entered, can be cancelled. Reload the case to see its current state.",
+  "microbiology.m6.error.DST_RESOLUTION_INVALID": "Choose Susceptible or Resistant and give a reason of at most 4000 characters.",
   "microbiology.m6.error.DST_EVIDENCE_CHANGED": "The DST evidence for this drug has changed. Reload the case and review the evidence before resolving.",
   "microbiology.testing.noteType": "Note type",
   "microbiology.testing.internalNote": "Internal",
