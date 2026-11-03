@@ -84,6 +84,19 @@ public class QCControlLot extends BaseObject<String> {
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "qc_frequency_type", nullable = false, length = 20)
+    private QCFrequencyType qcFrequencyType = QCFrequencyType.DAILY;
+
+    @Column(name = "qc_frequency_hours")
+    private Integer qcFrequencyHours;
+
+    @Column(name = "shift_definition_hours")
+    private Integer shiftDefinitionHours = 8;
+
+    @Column(name = "qc_required", nullable = false)
+    private Boolean qcRequired = Boolean.TRUE;
+
     @PrePersist
     protected void onCreate() {
         if (fhirUuid == null) {
@@ -222,5 +235,37 @@ public class QCControlLot extends BaseObject<String> {
 
     public void setSystemUserId(Integer systemUserId) {
         this.systemUserId = systemUserId;
+    }
+
+    public QCFrequencyType getQcFrequencyType() {
+        return qcFrequencyType;
+    }
+
+    public void setQcFrequencyType(QCFrequencyType qcFrequencyType) {
+        this.qcFrequencyType = qcFrequencyType;
+    }
+
+    public Integer getQcFrequencyHours() {
+        return qcFrequencyHours;
+    }
+
+    public void setQcFrequencyHours(Integer qcFrequencyHours) {
+        this.qcFrequencyHours = qcFrequencyHours;
+    }
+
+    public Integer getShiftDefinitionHours() {
+        return shiftDefinitionHours;
+    }
+
+    public void setShiftDefinitionHours(Integer shiftDefinitionHours) {
+        this.shiftDefinitionHours = shiftDefinitionHours;
+    }
+
+    public Boolean getQcRequired() {
+        return qcRequired;
+    }
+
+    public void setQcRequired(Boolean qcRequired) {
+        this.qcRequired = qcRequired;
     }
 }

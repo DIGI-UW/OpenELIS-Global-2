@@ -3,37 +3,12 @@ package org.openelisglobal.pathology;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import java.util.Map;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.program.controller.pathology.PathologyController;
-import org.openelisglobal.sample.service.SampleLabUnitScopeService;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.util.AopTestUtils;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
-import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 /**
  * The two endpoints that take a block or a slide out of use, and the case save
@@ -47,79 +22,15 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * untraceable, and is answered with the sentence that says so rather than as a
  * server error.
  */
-public class PathologyControllerDeactivateTest extends BaseWebContextSensitiveTest {
-
-    private static final String BLOCK_ENDPOINT = "/rest/pathology/block/101/deactivate";
-
-    private static final String SLIDE_ENDPOINT = "/rest/pathology/slide/201/deactivate";
-
-    private static final String CASE_VIEW_ENDPOINT = "/rest/pathology/caseView/1";
-
-    private static final int LEGACY_BLOCK_ID = 101;
+public class PathologyControllerDeactivateTest extends PathologyControllerTestSupport {
 
     private static final int LEGACY_SLIDE_ID = 201;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final String BLOCK_ENDPOINT = "/rest/pathology/block/" + LEGACY_BLOCK_ID + "/deactivate";
 
-    private AnnotationConfigWebApplicationContext securityContext;
+    private static final String SLIDE_ENDPOINT = "/rest/pathology/slide/" + LEGACY_SLIDE_ID + "/deactivate";
 
-    @Configuration
-    @EnableWebMvc
-    @EnableWebSecurity
-    @EnableMethodSecurity
-    static class TestConfig {
-
-        /**
-         * AppTestConfig does not component-scan org.openelisglobal.program.controller,
-         * so the controller has no bean in the parent context. It is built here against
-         * the parent's own services rather than mocks, because what a retirement has to
-         * leave behind is a real row and a real audit entry.
-         */
-        @Bean
-        PathologyController pathologyController(ApplicationContext context) {
-            return context.getParent().getAutowireCapableBeanFactory().createBean(PathologyController.class);
-        }
-
-        /**
-         * AppTestConfig also excludes SecurityConfig, so the application's own chains
-         * are unreachable from a database-backed test. This reproduces the rule that
-         * chain applies to /rest/**, which is anyRequest().authenticated(), and asks
-         * for the refusal as a status rather than the redirect to /LoginPage the
-         * production chain's form login answers a browser with.
-         */
-        @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-            http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                    .httpBasic(Customizer.withDefaults());
-            return http.build();
-        }
-    }
-
-    @Before
-    public void init() throws Exception {
-        executeDataSetWithStateManagement("testdata/pathology-sample-with-patient.xml");
-        // The fixture replaces system_user with its own users, so authenticate as one
-        // of them.
-        authenticateAs("technician1");
-
-        // Add the security interceptors without bootstrapping a second
-        // database-backed application.
-        securityContext = new AnnotationConfigWebApplicationContext();
-        securityContext.setParent(webApplicationContext);
-        securityContext.setServletContext(webApplicationContext.getServletContext());
-        securityContext.register(TestConfig.class);
-        securityContext.refresh();
-        mockMvc = MockMvcBuilders.webAppContextSetup(securityContext).apply(springSecurity()).build();
-    }
-
-    @After
-    public void tearDown() {
-        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN"
-                + " (SELECT id FROM clinlims.reference_tables WHERE name IN ('PATHOLOGY_BLOCK', 'PATHOLOGY_SLIDE'))");
-        if (securityContext != null) {
-            securityContext.close();
-        }
-    }
+    private static final String CASE_VIEW_ENDPOINT = "/rest/pathology/caseView/1";
 
     @Test
     public void deactivate_withoutAPrincipal_isRefused() throws Exception {
@@ -169,20 +80,13 @@ public class PathologyControllerDeactivateTest extends BaseWebContextSensitiveTe
      * use.
      */
     @Test
-    public void deactivate_ofACaseOutsideTheUsersUnits_answers404() throws Exception {
-        Object scope = AopTestUtils.getUltimateTargetObject(
-                webApplicationContext.getBean(org.openelisglobal.program.service.ProgramSampleLabUnitScope.class));
-        Object realService = ReflectionTestUtils.getField(scope, "sampleLabUnitScopeService");
-        SampleLabUnitScopeService outside = Mockito.mock(SampleLabUnitScopeService.class);
-        ReflectionTestUtils.setField(scope, "sampleLabUnitScopeService", outside);
-        try {
+    public void deactivate_ofACaseOutsideTheUsersUnits_answers404() throws Throwable {
+        asAUserOutsideTheCaseUnits(() -> {
             assertEquals(HttpStatus.NOT_FOUND.value(), postAsTechnician(BLOCK_ENDPOINT, null).getStatus());
             assertEquals(HttpStatus.NOT_FOUND.value(), postAsTechnician(SLIDE_ENDPOINT, null).getStatus());
-            assertTrue("the block is still in use", isActive("pathology_block", LEGACY_BLOCK_ID));
-            assertTrue("the slide is still in use", isActive("pathology_slide", LEGACY_SLIDE_ID));
-        } finally {
-            ReflectionTestUtils.setField(scope, "sampleLabUnitScopeService", realService);
-        }
+        });
+        assertTrue("the block is still in use", isActive("pathology_block", LEGACY_BLOCK_ID));
+        assertTrue("the slide is still in use", isActive("pathology_slide", LEGACY_SLIDE_ID));
     }
 
     @Test
@@ -208,27 +112,25 @@ public class PathologyControllerDeactivateTest extends BaseWebContextSensitiveTe
         assertEquals("nothing was stored", 1, slideCountOnCase(1));
     }
 
+    @Test
+    public void aTissueTypeOutsideTheCategory_isA400NamingTheRule() throws Exception {
+        MockHttpServletResponse response = postAsTechnician(CASE_VIEW_ENDPOINT,
+                "{\"status\":\"GROSSING\","
+                        + "\"blocks\":[{\"id\":101,\"location\":\"Lab 1\",\"tissueTypeId\":\"424242\"}],"
+                        + "\"reports\":[],\"slides\":[]}");
+
+        assertEquals("a tissue type the laboratory never configured is the client asking for something the"
+                + " category does not hold", HttpStatus.BAD_REQUEST.value(), response.getStatus());
+        String error = String.valueOf(bodyOf(response).get("error"));
+        assertTrue("and the answer names the id and the category it is not an entry of: " + error,
+                error.contains("424242") && error.contains("pathology_tissue_types"));
+        assertEquals("nothing was stored on the block", 0,
+                jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM clinlims.pathology_block WHERE id = ? AND tissue_type_id IS NOT NULL",
+                        Integer.class, LEGACY_BLOCK_ID).intValue());
+    }
+
     // helpers
-
-    private MockHttpServletResponse postAsTechnician(String endpoint, String body) throws Exception {
-        if (body == null) {
-            return mockMvc.perform(post(endpoint).with(user("technician1"))).andReturn().getResponse();
-        }
-        return mockMvc
-                .perform(post(endpoint).with(user("technician1")).contentType(MediaType.APPLICATION_JSON).content(body))
-                .andReturn().getResponse();
-    }
-
-    private Map<String, Object> bodyOf(MockHttpServletResponse response) throws Exception {
-        return objectMapper.readValue(response.getContentAsString(), new TypeReference<Map<String, Object>>() {
-        });
-    }
-
-    private boolean isActive(String table, int id) {
-        List<Boolean> active = jdbcTemplate.queryForList("SELECT active FROM clinlims." + table + " WHERE id = ?",
-                Boolean.class, id);
-        return !active.isEmpty() && Boolean.TRUE.equals(active.get(0));
-    }
 
     private int slideCountOnCase(int pathologySampleId) {
         return jdbcTemplate.queryForObject(

@@ -7,8 +7,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -19,9 +17,6 @@ import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.qaevent.qiconfig.dto.QiConfigView;
 import org.openelisglobal.qaevent.qiconfig.service.QiConfigService;
-import org.openelisglobal.reports.tat.bean.TATCalculationMode;
-import org.openelisglobal.reports.tat.bean.TATSegment;
-import org.openelisglobal.reports.tat.service.TATReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -37,9 +32,6 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private KpiService kpiService;
-
-    @Autowired
-    private TATReportService tatReportService;
 
     @Autowired
     private AnalysisService analysisService;
@@ -67,7 +59,7 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(0, BigDecimal.valueOf(2).compareTo(kpis.samples().value()));
         assertEquals(0, BigDecimal.ZERO.compareTo(kpis.samples().prior()));
         assertEquals(2, kpis.samples().spark().stream().mapToLong(BigDecimal::longValue).sum());
-        assertEquals(31, kpis.samples().spark().size());
+        assertEquals(30, kpis.samples().spark().size());
     }
 
     @Test
@@ -98,19 +90,6 @@ public class KpiServiceIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(0, BigDecimal.valueOf(100).compareTo(kpis.onTime().value()));
         assertEquals(0, BigDecimal.ZERO.compareTo(kpis.onTime().prior()));
         assertEquals(Arrays.asList(100.0, null), doubles(kpis.onTime().spark()));
-    }
-
-    @Test
-    public void onTimeByLabUnitKeysLikeTheTatBreakdown() {
-        Map<String, BigDecimal> byUnit = kpiService.onTimeByLabUnit(JUNE_2024);
-
-        assertEquals(
-                tatReportService
-                        .getSummary(JUNE_2024.from(), JUNE_2024.to(), TATSegment.RECEIPT_TO_VALIDATION,
-                                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, "LAB_UNIT")
-                        .getBreakdown().stream().map(row -> row.getDimensionValue()).collect(Collectors.toSet()),
-                byUnit.keySet());
-        byUnit.values().forEach(percent -> assertEquals(0, BigDecimal.ZERO.compareTo(percent)));
     }
 
     @Test

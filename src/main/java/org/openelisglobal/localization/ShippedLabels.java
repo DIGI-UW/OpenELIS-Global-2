@@ -77,14 +77,31 @@ public final class ShippedLabels {
     }
 
     /**
+     * Whether a shipped value shows a translation of its own in the locale's
+     * language (Transifex's, or the configuration file's), so Translation
+     * Management does not list it as missing there.
+     */
+    public static boolean hasShippedTranslation(String displayKey, Localization stored, Locale locale) {
+        return isShipped(displayKey)
+                && translation(displayKey, stored, locale == null ? Locale.ENGLISH : locale) != null;
+    }
+
+    /**
      * The key's text for the locale when it is English or Transifex translated it,
-     * else the configuration file's translation, else null.
+     * else the configuration file's translation as OpenELIS ships it, else as the
+     * database stored it, else null. The shipped copy comes first so that a
+     * correction to it reaches every lab, also one whose database stored the older
+     * text (a Reset, or the configuration loader).
      */
     private static String translation(String displayKey, Localization stored, Locale locale) {
         String key = displayKey.trim();
         String translated = UiMessages.cached(locale).get(key);
         if (Locale.ENGLISH.getLanguage().equals(locale.getLanguage()) || !translated.equals(englishLabel(key))) {
             return translated;
+        }
+        String shipped = UiMessages.referenceDataTranslation(key, locale);
+        if (shipped != null) {
+            return shipped;
         }
         return stored == null ? null : stored.getSystemValue(locale.getLanguage());
     }

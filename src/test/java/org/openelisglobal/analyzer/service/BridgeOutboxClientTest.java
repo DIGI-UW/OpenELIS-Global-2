@@ -47,6 +47,21 @@ public class BridgeOutboxClientTest {
         assertEquals("OE_REJECTED", rows.get(0).path("failureReason").asText());
     }
 
+    /**
+     * A Bridge that is not paired yet is a state OpenELIS knows, so it has its own
+     * key rather than reading as an unreachable Bridge.
+     */
+    @Test
+    public void anUnpairedBridgeIsReportedAsNotPaired() throws Exception {
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))
+                .thenThrow(new BridgeHttpClient.BridgeNotPairedException());
+
+        BridgeAnalyzerConnectionException failure = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> client.list("DMQ"));
+
+        assertEquals("analyzer.deliveryIssues.error.bridgeNotPaired", failure.messageKey());
+    }
+
     @Test
     public void readsEveryPageOfALargeBacklog() throws Exception {
         when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))

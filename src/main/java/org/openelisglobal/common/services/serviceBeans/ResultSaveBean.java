@@ -32,6 +32,7 @@ public class ResultSaveBean {
     private String qualifiedDictionaryId;
     private String resultId;
     private String resultValue;
+    private String rawResultValue;
     private String reportable;
     private Double lowerNormalRange;
     private Double upperNormalRange;
@@ -115,6 +116,19 @@ public class ResultSaveBean {
 
     public void setResultValue(String resultValue) {
         this.resultValue = resultValue;
+    }
+
+    /**
+     * The unrounded value the client holds for this result, when it sends one: the
+     * stored measurement for a row posted back as served, or what was typed on a
+     * page that edits from the measurement (OGC-1569).
+     */
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
     }
 
     public String getReportable() {

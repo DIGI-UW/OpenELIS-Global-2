@@ -11,6 +11,7 @@ import {
 } from "../../languages";
 import TranslationOverrideProvider from "../../languages/TranslationOverrideProvider";
 import { ConfigurationContext, NotificationContext } from "./contexts";
+import { useNotificationList } from "./notificationList";
 
 // Declared in ./contexts so a component Layout renders can read one without
 // importing Layout back; re-exported here because this is where the rest of the
@@ -64,7 +65,12 @@ export default function Layout(props) {
   const [resetConfig, setResetConfig] = useState(false);
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  const {
+    notifications,
+    addNotification,
+    removeNotification,
+    notificationShown,
+  } = useNotificationList();
   const [supportedLocales, setSupportedLocales] = useState([]);
   const [enabledLanguages, setEnabledLanguages] = useState(defaultLanguages);
 
@@ -110,18 +116,6 @@ export default function Layout(props) {
   // like /login have no sidenav to make room for.
   const isLocked =
     userSessionDetails.authenticated && navPersistent && !isFocusedAuthRoute;
-
-  const addNotification = (notificationBody) => {
-    setNotifications((current) => [...current, notificationBody]);
-  };
-
-  const removeNotification = (index) => {
-    setNotifications((current) => {
-      const newNotifications = [...current];
-      newNotifications.splice(index, 1);
-      return newNotifications;
-    });
-  };
 
   const fetchConfigurationProperties = (res) => {
     setConfigurationProperties((current) => res || current);
@@ -196,6 +190,7 @@ export default function Layout(props) {
             notifications,
             addNotification,
             removeNotification,
+            notificationShown,
           }}
         >
           <div className="d-flex flex-column min-vh-100">

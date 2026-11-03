@@ -78,7 +78,10 @@ const SAVED_CALCULATION = {
 
 const { postSpy } = vi.hoisted(() => ({ postSpy: vi.fn() }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async () => ({
+  resolveApiErrorMessage: (
+    (await vi.importActual("../../../utils/Utils")) as any
+  ).resolveApiErrorMessage,
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (typeof callback !== "function") return;
     if (url.startsWith("/rest/test-calculations")) {
@@ -105,9 +108,10 @@ vi.mock("../../../utils/Utils", () => ({
     }
     callback([]);
   }),
-  postToOpenElisServer: vi.fn((url, body, callback) => {
+  postToOpenElisServerFullResponse: vi.fn((url, body, callback) => {
     postSpy(url, body);
-    if (typeof callback === "function") callback(200);
+    if (typeof callback === "function")
+      callback(new Response(null, { status: 200 }));
   }),
 }));
 

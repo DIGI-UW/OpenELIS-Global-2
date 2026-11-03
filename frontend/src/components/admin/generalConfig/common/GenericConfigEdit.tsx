@@ -32,6 +32,7 @@ import {
 } from "../../../layout/Layout";
 
 import { FormattedMessage, useIntl } from "react-intl";
+import { settingName } from "./settingLabels";
 
 interface GenericConfigEditProps {
   menuType: string;
@@ -294,7 +295,7 @@ const GenericConfigEdit = ({
                   </h4>
                 </Column>
                 <Column lg={3} md={6} sm={3}>
-                  {FormEntryConfig.paramName}
+                  {settingName(intl, FormEntryConfig.paramName)}
                 </Column>
               </Grid>
               <br />

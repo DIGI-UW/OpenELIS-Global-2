@@ -36,6 +36,9 @@ public class PathologySampleForm {
 
     private String microscopyExam;
 
+    /** Null when the client did not post it, so the stored flag stands. */
+    private Boolean decalcificationRequired;
+
     private List<String> conclusions;
 
     private String conclusionText;
@@ -139,6 +142,14 @@ public class PathologySampleForm {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public Boolean getDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(Boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
     }
 
     public String getConclusionText() {

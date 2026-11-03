@@ -112,6 +112,7 @@ import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
 import BatchWorkplan from "./components/workplan/BatchWorkplan";
+import BatchWorkplanPrint from "./components/workplan/batch/BatchWorkplanPrint";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -1627,6 +1628,12 @@ export default function App() {
                   path="/Workplan"
                   exact
                   component={() => <BatchWorkplan />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/Workplan/batch/:id/print"
+                  exact
+                  component={() => <BatchWorkplanPrint />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute

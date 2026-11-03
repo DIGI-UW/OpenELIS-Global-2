@@ -10,6 +10,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ServerDataState from "../../utils/ServerDataState";
 import QASimpleTable from "../common/QASimpleTable";
 import QIConfigEditor from "./QIConfigEditor";
+import CompositeWeightsPanel from "../../dashboards/management/CompositeWeightsPanel";
 import { thresholdParts } from "./qiThresholds";
 import "../common/QAStyles.css";
 
@@ -98,6 +99,8 @@ const QIConfigList = () => {
       ) : (
         <QASimpleTable rows={rows} headers={HEADERS} size="lg" />
       )}
+
+      <CompositeWeightsPanel />
 
       {editing && (
         <QIConfigEditor

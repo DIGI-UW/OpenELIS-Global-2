@@ -14,7 +14,9 @@ For a value whose display key is in `en.json`, in the user's language:
    Translation Management);
 2. the key's translation from the language file, when Transifex has one;
 3. the translation the shipped configuration file carried, while Transifex has
-   none yet;
+   none yet: as OpenELIS ships it in
+   `src/main/resources/shipped-reference-data/translations-<language>.json`, so
+   a correction there reaches every lab, else as the database stored it;
 4. the key's English.
 
 A value whose key is not in `en.json` is the site's own (created in the app or
@@ -38,11 +40,14 @@ configuration file names a key that is not in `en.json`. With `--list` it prints
 every key the shipped files use; an unused-key scan of `en.json` must count
 those as used, because no source file names them.
 
-## Files in this folder
+## Files
 
-- `translations-fr.json`, `translations-es.json`, `translations-id.json`: the
-  translations the shipped configuration files carry for keys Transifex has not
-  translated yet, keyed by display key, for a Transifex maintainer to import.
+- `src/main/resources/shipped-reference-data/translations-fr.json`,
+  `translations-es.json`, `translations-id.json`: the translations the shipped
+  configuration files carry for keys Transifex has not translated yet, keyed by
+  display key, and the French of the earlier NCE list (from the server's former
+  message bundle, corrected to the glossary). OpenELIS shows them until
+  Transifex has the key; they are also for a Transifex maintainer to import.
   Once they are in Transifex, the `localization:fr/es/id` columns can be removed
   from the shipped files.
 - `developer-notes.csv`: a note per key saying which list it belongs to, for the

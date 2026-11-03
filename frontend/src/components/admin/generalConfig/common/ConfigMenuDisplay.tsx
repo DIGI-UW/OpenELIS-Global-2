@@ -25,6 +25,7 @@ import { AlertDialog } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit";
+import { settingDescription, settingName } from "./settingLabels";
 
 interface ConfigMenuDisplayProps {
   id: string;
@@ -260,10 +261,17 @@ function ConfigMenuDisplayContent(props: ConfigMenuDisplayProps) {
               <Grid fullWidth={true} className="gridBoundary">
                 <Column lg={16} md={8} sm={4}>
                   <DataTable
-                    rows={orderEntryConfigurationList.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )}
+                    rows={orderEntryConfigurationList
+                      .slice((page - 1) * pageSize, page * pageSize)
+                      .map((item) => ({
+                        ...item,
+                        name: settingName(intl, item.name),
+                        description: settingDescription(
+                          intl,
+                          item.name,
+                          item.description,
+                        ),
+                      }))}
                     headers={[
                       {
                         key: "select",

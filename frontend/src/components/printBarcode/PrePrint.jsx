@@ -9,6 +9,7 @@ import {
   NumberInput,
   Button,
 } from "@carbon/react";
+import config from "../../config.json";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
 import AutoComplete from "../common/AutoComplete";
@@ -164,7 +165,7 @@ const PrePrint = () => {
       facilityName: facilityId,
       testIds: selectedTestIds,
     });
-    setSource(`LabelMakerServlet?${params.toString()}`);
+    setSource(`${config.serverBaseUrl}/LabelMakerServlet?${params.toString()}`);
     setRenderBarcode(true);
   };
 

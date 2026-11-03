@@ -65,6 +65,22 @@ public class BatchWorkplan extends BaseObject<Long> {
     @Column(name = "updated_by_user_id")
     private Integer updatedByUserId;
 
+    @Column(name = "reagent_id")
+    private Long reagentId;
+
+    @Column(name = "reagent_lot_id")
+    private Long reagentLotId;
+
+    @Column(name = "instrument_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String instrumentId;
+
+    @Column(name = "generated_at")
+    private Timestamp generatedAt;
+
+    @Column(name = "generated_by_user_id")
+    private Integer generatedByUserId;
+
     @OneToMany(mappedBy = "batchWorkplan", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC")
     private List<BatchWorkplanItem> items = new ArrayList<>();
@@ -157,6 +173,47 @@ public class BatchWorkplan extends BaseObject<Long> {
 
     public void setUpdatedByUserId(Integer updatedByUserId) {
         this.updatedByUserId = updatedByUserId;
+    }
+
+    public Long getReagentId() {
+        return reagentId;
+    }
+
+    public void setReagentId(Long reagentId) {
+        this.reagentId = reagentId;
+    }
+
+    public Long getReagentLotId() {
+        return reagentLotId;
+    }
+
+    public void setReagentLotId(Long reagentLotId) {
+        this.reagentLotId = reagentLotId;
+    }
+
+    /** The analyzer the batch runs on, or null for a manual bench batch. */
+    public String getInstrumentId() {
+        return instrumentId;
+    }
+
+    public void setInstrumentId(String instrumentId) {
+        this.instrumentId = instrumentId;
+    }
+
+    public Timestamp getGeneratedAt() {
+        return generatedAt;
+    }
+
+    public void setGeneratedAt(Timestamp generatedAt) {
+        this.generatedAt = generatedAt;
+    }
+
+    public Integer getGeneratedByUserId() {
+        return generatedByUserId;
+    }
+
+    public void setGeneratedByUserId(Integer generatedByUserId) {
+        this.generatedByUserId = generatedByUserId;
     }
 
     public List<BatchWorkplanItem> getItems() {

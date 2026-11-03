@@ -288,13 +288,26 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
     }
 
     private void runCalculations() {
+        runCalculations(operandResult);
+    }
+
+    /** One save that recorded each of the given results. */
+    private void runCalculations(long... savedResults) {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            Map<String, List<String>> reflexes = new HashMap<>();
-            ResultSet resultSet = new ResultSet(resultService.get(String.valueOf(operandResult)), null, null,
-                    patientService.get(String.valueOf(patientId)), sampleService.get(String.valueOf(sampleId)),
-                    reflexes, false);
-            testCalculatedUtil.addNewTestsToDBForCalculatedTests(List.of(resultSet), userId);
+            List<ResultSet> resultSets = new ArrayList<>();
+            for (long savedResult : savedResults) {
+                Map<String, List<String>> reflexes = new HashMap<>();
+                resultSets.add(new ResultSet(resultService.get(String.valueOf(savedResult)), null, null,
+                        patientService.get(String.valueOf(patientId)), sampleService.get(String.valueOf(sampleId)),
+                        reflexes, false));
+            }
+            testCalculatedUtil.addNewTestsToDBForCalculatedTests(resultSets, userId);
         });
+    }
+
+    private List<String> internalNotes(long analysisId) {
+        return jdbc.queryForList("SELECT text FROM clinlims.note WHERE reference_id = ? AND note_type = 'I'",
+                String.class, analysisId);
     }
 
     private void cleanup() {
@@ -399,6 +412,120 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
         runCalculations();
 
         assertEquals("10", valueOf(entered));
+    }
+
+    /**
+     * OGC-1587: a rule that reads its own result (saved before such rules were
+     * refused) overwrote the value the technician had just typed with its own
+     * output: 5.5 became 11. The entered value stays, and the rule's value is noted
+     * beside it.
+     */
+    @Test
+    public void aRuleReadingItsOwnResultKeepsTheValueEntered() {
+        calculation(PCR_TEST, componentA, "*", "2");
+
+        runCalculations();
+
+        assertEquals("12", valueOf(operandResult));
+        List<String> notes = internalNotes(pcrAnalysis);
+        assertEquals(notes.toString(), 1,
+                notes.stream().filter(note -> note.contains(" gave 24") && note.contains("12 was kept")).count());
+    }
+
+    /**
+     * A value typed for the rule's own test in the same save is what was measured;
+     * the rule does not replace it.
+     */
+    @Test
+    public void aValueEnteredForTheResultInTheSameSaveIsKept() {
+        calculation(GLUCOSE_TEST, null, "*", "2");
+        long entered = enterGlucoseByHand("10");
+
+        runCalculations(operandResult, entered);
+
+        assertEquals("10", valueOf(entered));
+        assertEquals(1, internalNotes(glucoseAnalysis).stream().filter(note -> note.contains(" gave 24")).count());
+    }
+
+    /**
+     * The Results page saves one row at a time: a value typed for the rule's test
+     * before its input was saved is kept too.
+     */
+    @Test
+    public void aValueTypedBeforeTheInputWasSavedIsKept() {
+        calculation(GLUCOSE_TEST, null, "*", "2");
+        long entered = enterGlucoseByHand("10");
+        runCalculations(entered);
+
+        runCalculations();
+
+        assertEquals("10", valueOf(entered));
+    }
+
+    /** The value a rule wrote itself still follows its input. */
+    @Test
+    public void aCalculatedValueFollowsItsInput() {
+        calculation(GLUCOSE_TEST, null, "*", "2");
+        runCalculations();
+        assertEquals(24.0, Double.parseDouble(glucoseValue()), 0.0);
+
+        jdbc.update("UPDATE clinlims.result SET value = '15' WHERE id = ?", operandResult);
+        runCalculations();
+
+        assertEquals(30.0, Double.parseDouble(glucoseValue()), 0.0);
+    }
+
+    /**
+     * A rule writing one component of the analysis whose other component is entered
+     * by hand keeps following that input when it is re-saved.
+     */
+    @Test
+    public void aComponentCalculationFollowsItsInputOnTheSameAnalysis() {
+        calculation(PCR_TEST, componentB, "+", "30");
+        runCalculations();
+        assertEquals(42.0, Double.parseDouble(componentBValue(pcrAnalysis)), 0.0);
+
+        jdbc.update("UPDATE clinlims.result SET value = '20' WHERE id = ?", operandResult);
+        runCalculations();
+
+        assertEquals(50.0, Double.parseDouble(componentBValue(pcrAnalysis)), 0.0);
+    }
+
+    /**
+     * Once someone saves a value over the calculated one, it is theirs: a later
+     * change to the input notes the rule's value instead of replacing it.
+     */
+    @Test
+    public void aCalculatedValueSavedByHandIsNoLongerRecalculated() {
+        calculation(GLUCOSE_TEST, null, "*", "2");
+        runCalculations();
+        long glucoseResult = jdbc.queryForObject("SELECT id FROM clinlims.result WHERE analysis_id = ?", Long.class,
+                glucoseAnalysis);
+        jdbc.update("UPDATE clinlims.result SET value = '50' WHERE id = ?", glucoseResult);
+        runCalculations(glucoseResult);
+
+        jdbc.update("UPDATE clinlims.result SET value = '15' WHERE id = ?", operandResult);
+        runCalculations();
+
+        assertEquals("50", valueOf(glucoseResult));
+        assertEquals(1, internalNotes(glucoseAnalysis).stream().filter(note -> note.contains(" gave 30")).count());
+    }
+
+    private String glucoseValue() {
+        return jdbc.queryForObject("SELECT value FROM clinlims.result WHERE analysis_id = ?", String.class,
+                glucoseAnalysis);
+    }
+
+    /** A rule that agrees with what was entered has nothing to add. */
+    @Test
+    public void anEnteredValueTheRuleAgreesWithGetsNoNote() {
+        calculation(GLUCOSE_TEST, null, "*", "2");
+        long entered = enterGlucoseByHand("24");
+
+        runCalculations(operandResult, entered);
+
+        assertEquals("24", valueOf(entered));
+        assertEquals(0, internalNotes(glucoseAnalysis).stream().filter(note -> note.contains(" gave ")).count());
     }
 
     @Test

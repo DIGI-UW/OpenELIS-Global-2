@@ -494,6 +494,16 @@ describe("SampleTypeManagement", () => {
     expect(name).toHaveAttribute("aria-invalid", "true");
   });
 
+  test("the domain help names every domain the select offers", async () => {
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+
+    expect(
+      await screen.findByText(
+        "Determines which workflow mode (Clinical, Environmental or Vector) this sample type appears in.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   test("a create sends the description the admin typed, not the name", async () => {
     api.post.mockImplementation((_url, _body, callback) => callback({}));
     renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");

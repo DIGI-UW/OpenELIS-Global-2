@@ -26,6 +26,7 @@ nav:
        - Examples of FHIR messages used: messages.md
        - Deploy Consolidated Server: csbuild.md
        - Setup High Availability Failover: failover.md
+       - Run on Other Ports or Behind a Reverse Proxy: reverse-proxy.md
     - Develop: 
        - Dev Environment Setup Instructions: dev_setup.md
        - Developers Notes: dev.md

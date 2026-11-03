@@ -143,12 +143,23 @@ public class LocalizationRestController extends BaseController {
      */
     @GetMapping("/missing/{locale}")
     public ResponseEntity<List<LocalizationDTO>> getMissingTranslations(@PathVariable String locale) {
-        List<Localization> missing = localizationService.findMissingTranslationsForLocale(locale);
         Map<String, String> shippedKeys = localizationService.shippedDisplayKeysByLocalizationId();
+        List<Localization> missing = withoutShippedTranslation(locale, shippedKeys);
         List<SupportedLocale> active = supportedLocaleService.getAllActive();
         List<LocalizationDTO> dtos = missing.stream().map(l -> toDTO(l, shippedKeys, active))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * The entries with no stored label for the locale, less the shipped values that
+     * show a translation there anyway (OGC-1507 BR-1).
+     */
+    private List<Localization> withoutShippedTranslation(String locale, Map<String, String> shippedKeys) {
+        Locale target = Locale.forLanguageTag(locale);
+        return localizationService.findMissingTranslationsForLocale(locale).stream()
+                .filter(l -> !ShippedLabels.hasShippedTranslation(shippedKeys.get(l.getId()), l, target))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -164,12 +175,13 @@ public class LocalizationRestController extends BaseController {
         TranslationStatsDTO stats = new TranslationStatsDTO();
         stats.setTotalEntries(totalEntries);
 
+        Map<String, String> shippedKeys = localizationService.shippedDisplayKeysByLocalizationId();
         Map<String, LocaleStatsDTO> localeStats = new HashMap<>();
         for (Object[] row : rows) {
             String localeCode = (String) row[0];
             String displayName = (String) row[1];
-            int translated = ((Number) row[2]).intValue();
-            int missing = ((Number) row[3]).intValue();
+            int missing = withoutShippedTranslation(localeCode, shippedKeys).size();
+            int translated = totalEntries - missing;
 
             LocaleStatsDTO localeStat = new LocaleStatsDTO();
             localeStat.setLocaleCode(localeCode);

@@ -139,7 +139,7 @@
                </Realm>
 
                <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+                    unpackWARs="true" autoDeploy="false" deployOnStartup="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"

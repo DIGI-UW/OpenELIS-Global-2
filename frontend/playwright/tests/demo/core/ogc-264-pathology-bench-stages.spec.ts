@@ -129,7 +129,8 @@ test.describe("OGC-264: Pathology Dashboard bench stages", () => {
       await pagination.getByLabel("Items per page").selectOption("50");
 
       const decalcificationSwitch = page.getByRole("cell", {
-        name: "pathology.stage.DECALCIFICATION.enabled",
+        name: "Pathology stage: Decalcification",
+        exact: true,
       });
       await expect(decalcificationSwitch).toBeVisible({ timeout: UI_TIMEOUT });
 
@@ -138,7 +139,8 @@ test.describe("OGC-264: Pathology Dashboard bench stages", () => {
       await decalcificationSwitch.scrollIntoViewIfNeeded();
       await expect(
         page.getByRole("cell", {
-          name: "pathology.stage.UNDER_REVIEW.enabled",
+          name: "Pathology stage: Under Pathologist Review",
+          exact: true,
         }),
       ).toBeVisible();
 

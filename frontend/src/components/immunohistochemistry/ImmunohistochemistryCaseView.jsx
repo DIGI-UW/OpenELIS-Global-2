@@ -1591,22 +1591,25 @@ function ImmunohistochemistryCaseView() {
                       <Column lg={2} md={4} sm={2}>
                         <h6>
                           {" "}
-                          <FormattedMessage id="pathology.label.grossexam" /> :
+                          <FormattedMessage id="pathology.label.grossExam" /> :
                         </h6>
                       </Column>
                       <Column lg={14} md={4} sm={2}>
-                        <Tag>{immunohistochemistrySampleInfo.grossExam} </Tag>
+                        <p className="pathology-exam-text">
+                          {immunohistochemistrySampleInfo.grossExam}
+                        </p>
                       </Column>
                       <Column lg={2} md={4} sm={2}>
                         <h6>
                           {" "}
-                          <FormattedMessage id="pathology.label.microexam" /> :
+                          <FormattedMessage id="pathology.label.microscopyExam" />{" "}
+                          :
                         </h6>
                       </Column>
                       <Column lg={14} md={4} sm={2}>
-                        <Tag>
-                          {immunohistochemistrySampleInfo.microscopyExam}{" "}
-                        </Tag>
+                        <p className="pathology-exam-text">
+                          {immunohistochemistrySampleInfo.microscopyExam}
+                        </p>
                       </Column>
                       <Column lg={2} md={4} sm={2}>
                         <h6>

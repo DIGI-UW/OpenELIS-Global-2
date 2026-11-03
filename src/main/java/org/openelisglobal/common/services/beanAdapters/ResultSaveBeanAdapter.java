@@ -37,6 +37,7 @@ public class ResultSaveBeanAdapter {
         bean.setQualifiedDictionaryId(item.getQualifiedDictionaryId());
         bean.setResultId(item.getResultId());
         bean.setResultValue(item.getShadowResultValue());
+        bean.setRawResultValue(item.getRawResultValue());
         bean.setReportable(item.getReportable());
         bean.setLowerNormalRange(item.getLowerNormalRange());
         bean.setUpperNormalRange(item.getUpperNormalRange());
@@ -68,6 +69,7 @@ public class ResultSaveBeanAdapter {
         bean.setQualifiedDictionaryId(item.getQualifiedDictionaryId());
         bean.setResultId(item.getResultId());
         bean.setResultValue(item.getResult());
+        bean.setRawResultValue(item.getStoredResult());
         // bean.setReportable("N");
         bean.setSignificantDigits(item.getSignificantDigits());
 

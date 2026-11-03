@@ -13,6 +13,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IResultSaveService;
@@ -351,8 +352,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
         request.getSession().setAttribute(SAVE_DISABLED, "true");
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
@@ -838,6 +838,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             return errorResponse(400, "modificationReasonRequired");
         }
         bindRowToAnalysis(item, analysis);
+        item.setStoredResult(item.getResult());
         item.setIsAccepted(false);
         item.setIsRejected(false);
         item.setNoteContext(NOTE_CONTEXT_MODIFICATION);

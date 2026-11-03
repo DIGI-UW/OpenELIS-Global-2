@@ -16,6 +16,7 @@ import {
   PasswordInput,
   Checkbox,
   FormGroup,
+  InlineNotification,
   Modal,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
@@ -47,7 +48,10 @@ const breadcrumbs = [
   },
 ];
 
-const passwordPatternRegex = /^(?=.*[*$#!])(?=.*[a-zA-Z0-9]).{7,}$/;
+// The server's rule (HaitiPasswordValidation, used by the shipped CDI setting):
+// 7+ letters, digits, _ or *$#!, with at least one of *$#!. Accepting other
+// characters here let a save through that the server then refused.
+const passwordPatternRegex = /^(?=.*[*$#!])[A-Za-z0-9_*$#!]{7,}$/;
 // Mirrors the seeded server username charset (site information
 // "userNameCharset", checked by NameValidator USERNAME): never stricter than
 // what the server accepts, or stored login names such as qa_recept render
@@ -56,8 +60,8 @@ const loginNameRegex = /^[a-zàâçéèêëîïôûùüÿñæœ ._@-]+$/i;
 const nameRegex = /^(?=.*[a-zA-Z])[a-zA-Z .'_@-]*$/;
 const ALL_LAB_UNITS = "AllLabUnits";
 const ALL_LAB_UNITS_EXCLUSIVE_ERROR = "labUnitRoles.allLabUnitsExclusive";
-// The save endpoint answers 200 for a refused save too; only this forward
-// means the user was written.
+// Only this forward means the user was written; a refused save answers 400
+// with the reason in the user's language (OGC-1545).
 const SAVED_USER_FORWARD = "redirect:/UnifiedSystemUser";
 
 function UserAddModify() {
@@ -69,6 +73,9 @@ function UserAddModify() {
   const intl = useIntl();
 
   const [saveButton, setSaveButton] = useState(true);
+  // The server's refusal of the login, shown under the field (OGC-1593): the
+  // site's userNameCharset can be stricter than the pattern checked here.
+  const [loginNameRefusal, setLoginNameRefusal] = useState(null);
   const [validation, setValidation] = useState({
     validatepassword: false,
     password: false,
@@ -120,6 +127,7 @@ function UserAddModify() {
   const invalidateServerData = useInvalidateServerData();
   const loadedUserFor = useRef(null);
   const reloadUser = useRef(false);
+  const savingUser = useRef(false);
 
   // The form is seeded once per user from a read made after mount (never from
   // the cached copy of an earlier visit) and again after a save. Every other
@@ -365,6 +373,10 @@ function UserAddModify() {
   }, [selectedTestSectionLabUnits]);
 
   function userSavePostCall() {
+    if (savingUser.current) {
+      return;
+    }
+    savingUser.current = true;
     setIsLoading(true);
     postToOpenElisServerJsonResponse(
       `/rest/UnifiedSystemUser`,
@@ -376,6 +388,7 @@ function UserAddModify() {
   }
 
   function userSavePostCallback(res) {
+    savingUser.current = false;
     const responseStatus = res?.statusCode ?? res?.status ?? 200;
     const saved =
       res && responseStatus < 400 && res.forward === SAVED_USER_FORWARD;
@@ -396,21 +409,27 @@ function UserAddModify() {
       reloadUser.current = true;
       invalidateServerData();
     } else {
+      if (res?.errorKey === "errors.loginName.charset" && res?.error) {
+        setLoginNameRefusal(res.error);
+      }
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id:
-            res?.error === ALL_LAB_UNITS_EXCLUSIVE_ERROR
-              ? "systemuserrole.allLabUnits.exclusive.error"
-              : "server.error.msg",
-        }),
+        message:
+          res?.error === ALL_LAB_UNITS_EXCLUSIVE_ERROR
+            ? intl.formatMessage({
+                id: "systemuserrole.allLabUnits.exclusive.error",
+              })
+            : res?.errorKey && res?.error
+              ? res.error
+              : intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
     }
   }
 
   function handleUserLoginNameChange(e) {
+    setLoginNameRefusal(null);
     const value = e.target.value.trim();
     const isValid = loginNameRegex.test(value);
 
@@ -845,6 +864,21 @@ function UserAddModify() {
     );
   }
 
+  if (readUserFailed && ID !== "0") {
+    return (
+      <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          data-testid="user-not-found"
+          title={intl.formatMessage({ id: "user.notFound" })}
+        />
+      </div>
+    );
+  }
+
   return (
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
@@ -883,6 +917,7 @@ function UserAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="login-name"
+                      maxLength={30}
                       {...requiredProps()}
                       className="defalut"
                       type="text"
@@ -891,15 +926,19 @@ function UserAddModify() {
                         id: "login.login.name",
                       })}
                       invalid={
+                        !!loginNameRefusal ||
                         !!(
                           userDataShow &&
                           userDataShow.userLoginName &&
                           !loginNameRegex.test(userDataShow.userLoginName)
                         )
                       }
-                      invalidText={intl.formatMessage({
-                        id: "notification.invalid.loginName",
-                      })}
+                      invalidText={
+                        loginNameRefusal ||
+                        intl.formatMessage({
+                          id: "notification.invalid.loginName",
+                        })
+                      }
                       required={true}
                       value={
                         userDataShow && userDataShow.userLoginName
@@ -1028,6 +1067,7 @@ function UserAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="first-name"
+                      maxLength={30}
                       {...requiredProps()}
                       className="defalut"
                       type="text"
@@ -1064,6 +1104,7 @@ function UserAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="last-name"
+                      maxLength={30}
                       {...requiredProps()}
                       className="defalut"
                       type="text"

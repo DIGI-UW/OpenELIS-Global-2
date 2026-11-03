@@ -161,6 +161,18 @@ public class HibernateMappingValidationTest {
     }
 
     /**
+     * A case is flagged for decalcification or it is not; the column is NOT NULL.
+     */
+    @Test
+    public void pathologySample_mapsTheDecalcificationFlag() {
+        EntityType<PathologySample> pathologySample = sessionFactory.getMetamodel().entity(PathologySample.class);
+
+        assertEquals("decalcificationRequired is a primitive boolean, so it is never unknown", boolean.class,
+                pathologySample.getAttribute("decalcificationRequired").getJavaType());
+        assertColumn(PathologySample.class, "decalcificationRequired", "decalcification_required");
+    }
+
+    /**
      * One accessor for active, because Hibernate cannot choose between
      * {@code isActive()} and {@code getActive()}.
      */

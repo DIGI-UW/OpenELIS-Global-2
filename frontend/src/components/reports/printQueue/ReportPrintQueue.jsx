@@ -735,6 +735,8 @@ export default function ReportPrintQueue() {
           <Column lg={4} md={4} sm={4}>
             <ClickableTile
               data-testid="tile-to-print"
+              role="button"
+              aria-pressed={printStatus === "UNPRINTED" && states.length === 0}
               style={{ minHeight: "auto", padding: "0.5rem 1rem" }}
               onClick={() => {
                 clearSearch();
@@ -753,6 +755,12 @@ export default function ReportPrintQueue() {
           <Column lg={4} md={4} sm={4}>
             <ClickableTile
               data-testid="tile-amended-to-print"
+              role="button"
+              aria-pressed={
+                printStatus === "UNPRINTED" &&
+                states.length === 1 &&
+                states[0] === "AMENDED"
+              }
               style={{ minHeight: "auto", padding: "0.5rem 1rem" }}
               onClick={() => {
                 clearSearch();
@@ -1237,7 +1245,7 @@ export default function ReportPrintQueue() {
               getTableProps,
               getExpandHeaderProps,
             }) => (
-              <TableContainer>
+              <TableContainer className="report-queue-table">
                 <Table {...getTableProps()} size="md">
                   <TableHead>
                     <TableRow>
@@ -1246,6 +1254,11 @@ export default function ReportPrintQueue() {
                         <TableHeader
                           key={header.key}
                           {...getHeaderProps({ header })}
+                          className={
+                            header.key === "action"
+                              ? "report-queue-action"
+                              : undefined
+                          }
                           isSortable={!!header.sortable}
                           isSortHeader={sort.key === header.key}
                           sortDirection={
@@ -1340,7 +1353,7 @@ export default function ReportPrintQueue() {
                                     id: "reportQueue.version.none",
                                   })}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="report-queue-action">
                               {row.nothingReleased ? (
                                 <Button
                                   size="sm"

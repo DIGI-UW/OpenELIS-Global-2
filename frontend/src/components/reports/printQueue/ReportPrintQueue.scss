@@ -3,3 +3,23 @@
 .report-queue-active-search .cds--interactive--tag-children {
   max-inline-size: none;
 }
+
+// Print stays in view when a page of long rows is wider than the table area,
+// for example at 1280px with the side nav pinned (OGC-431 QA). Carbon makes the
+// last header cell static, hence the extra class in the selector.
+.report-queue-table .cds--data-table .report-queue-action {
+  position: sticky;
+  inset-inline-end: 0;
+  z-index: 1;
+  box-shadow: -1px 0 0 var(--cds-border-subtle);
+}
+
+// Rows take their colour from the table body; the pinned cell covers the
+// cells scrolling under it, so it carries the colour itself.
+.report-queue-table .cds--data-table td.report-queue-action {
+  background-color: var(--cds-layer);
+}
+
+.report-queue-table .cds--data-table tr:hover td.report-queue-action {
+  background-color: var(--cds-layer-hover);
+}
