@@ -5,8 +5,6 @@ import {
   Grid,
   Column,
   Section,
-  SelectItem,
-  Select,
   Button,
   Loading,
 } from "@carbon/react";
@@ -14,6 +12,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { AlertDialog } from "../../common/CustomNotification";
 import CustomDatePicker from "../../common/CustomDatePicker";
+import SearchableSelect from "../../common/SearchableSelect";
 import config from "../../../config.json";
 import { encodeDate, Roles } from "../../utils/Utils";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -148,7 +147,6 @@ const ReportByDate = (props) => {
       }
     };
 
-    console.log("props", props);
     if (
       props.report === "activityReportByTest" ||
       props.report === "activityReportByPanel" ||
@@ -227,35 +225,23 @@ const ReportByDate = (props) => {
               </Column>
               <Column lg={8} md={8} sm={4}>
                 {list && list.length > 0 && (
-                  <Select
+                  <SearchableSelect
                     id="type"
                     labelText={intl.formatMessage({
                       id: "label.form.searchby",
                     })}
+                    placeholder={intl.formatMessage({
+                      id: getSelectLabel(),
+                    })}
+                    options={list}
                     value={reportFormValues.value}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setReportFormValues({
                         ...reportFormValues,
-                        value: e.target.value,
+                        value,
                       })
                     }
-                  >
-                    <SelectItem
-                      key={"emptyselect"}
-                      value={""}
-                      text={intl.formatMessage({
-                        id: getSelectLabel(),
-                        defaultMessage: "Seelect Test",
-                      })}
-                    />
-                    {list.map((statusOption) => (
-                      <SelectItem
-                        key={statusOption.id}
-                        value={statusOption.id}
-                        text={statusOption.value}
-                      />
-                    ))}
-                  </Select>
+                  />
                 )}
               </Column>
             </Grid>
