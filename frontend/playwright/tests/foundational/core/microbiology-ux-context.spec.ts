@@ -1,7 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyMissingContext } from "../../../helpers/seed-microbiology-data";
-import { selectCultureMedium } from "../../../helpers/microbiology-ui";
+import {
+  openMicrobiologyCaseInfo,
+  openMicrobiologyCaseScope,
+  selectCultureMedium,
+} from "../../../helpers/microbiology-ui";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -11,6 +15,7 @@ test("completes missing clinical context through release blockers, preserves row
   test.setTimeout(150_000);
   const seeded = await seedMicrobiologyMissingContext(page);
   await page.goto(`/Microbiology/cases/${seeded.caseId}?scope=REPORT`);
+  await openMicrobiologyCaseInfo(page);
   const origin = page.getByLabel("Patient origin", { exact: true });
   await expect(origin).toHaveValue("");
   await page.getByRole("button", { name: "Case info", exact: true }).click();
@@ -38,14 +43,14 @@ test("completes missing clinical context through release blockers, preserves row
     }),
   ).toHaveCount(0, { timeout: LONG_TIMEOUT });
   await page.reload();
+  await openMicrobiologyCaseInfo(page);
   await expect(origin).toHaveValue("INPATIENT");
   await expect(exposure).toHaveValue("true");
   await expect(page.getByLabel(/Antibiotic name/)).toHaveValue("Ampicillin");
   await expect(
     page.getByLabel("Date of admission", { exact: true }),
   ).toHaveValue("");
-  const section = page.getByLabel("Testing section", { exact: true });
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await page
     .getByRole("button", { name: "Inoculate culture", exact: true })
     .click();
@@ -104,7 +109,7 @@ test("completes missing clinical context through release blockers, preserves row
   await dialog.getByLabel("Outcome", { exact: true }).selectOption("NO_GROWTH");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(culture.getByText("No growth", { exact: true })).toBeVisible();
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   const release = page.getByRole("button", {
     name: "Release final report",
     exact: true,
@@ -134,6 +139,7 @@ test("completes missing clinical context through release blockers, preserves row
   await amendment
     .getByRole("button", { name: "Open amendment", exact: true })
     .click();
+  await openMicrobiologyCaseInfo(page);
   await expect(origin).toBeEnabled({ timeout: LONG_TIMEOUT });
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 });

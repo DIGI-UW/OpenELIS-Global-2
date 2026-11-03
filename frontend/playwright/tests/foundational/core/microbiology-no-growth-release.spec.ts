@@ -1,4 +1,7 @@
-import { selectCultureMedium } from "../../../helpers/microbiology-ui";
+import {
+  openMicrobiologyCaseScope,
+  selectCultureMedium,
+} from "../../../helpers/microbiology-ui";
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyNoGrowthReporting } from "../../../helpers/seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
@@ -11,8 +14,7 @@ test("records no growth without publishing, then releases one final negative rep
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  const section = page.getByLabel("Testing section", { exact: true });
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await page
     .getByRole("button", { name: "Inoculate culture", exact: true })
     .click();
@@ -39,11 +41,11 @@ test("records no growth without publishing, then releases one final negative rep
     .filter({ has: page.getByRole("heading", { name: /UAT-NO-GROWTH-01/ }) })
     .first();
   await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   await expect(
     page.getByRole("button", { name: "Release final report", exact: true }),
   ).toBeDisabled();
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await row
     .getByRole("button", { name: "Record outcome", exact: true })
     .click();
@@ -52,7 +54,7 @@ test("records no growth without publishing, then releases one final negative rep
   await expect(row.getByText("No growth", { exact: true })).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   await expect(page.getByText(/UAT-NO-GROWTH-01: No growth/)).toBeVisible();
   const versions = page.getByLabel("Report version", { exact: true });
   await expect(versions.locator("option")).toHaveCount(1);
@@ -66,7 +68,7 @@ test("records no growth without publishing, then releases one final negative rep
     timeout: LONG_TIMEOUT,
   });
   await page.reload();
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await expect(
     page.getByRole("button", { name: "Inoculate culture", exact: true }),
   ).toHaveCount(0);

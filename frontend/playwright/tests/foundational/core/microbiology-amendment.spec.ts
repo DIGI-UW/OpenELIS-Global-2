@@ -6,6 +6,7 @@ import {
   enterAndValidateAstRun,
   startAstRun,
 } from "../../../helpers/microbiology-ast-reporting-workflow";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const attachScreenshot = async (
@@ -73,9 +74,7 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Record a reasoned isolate re-identification", async () => {
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("ISOLATES");
+      await openMicrobiologyCaseScope(page, "ISOLATES");
       await expect(page).toHaveURL(/scope=ISOLATES$/);
       await page.getByRole("button", { name: "Reidentify" }).click();
       const dialog = page.getByRole("dialog");
@@ -117,9 +116,7 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Repeat susceptibility testing for the corrected organism", async () => {
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("AST");
+      await openMicrobiologyCaseScope(page, "AST");
       await expect(
         page.getByTestId(`ast-run-${seeded.astRunId}`),
       ).toContainText("Repeat required", { timeout: LONG_TIMEOUT });
@@ -133,9 +130,7 @@ test.describe("Microbiology final-report amendments", () => {
     });
 
     await test.step("Release and inspect immutable report versions", async () => {
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("AMENDMENT");
+      await openMicrobiologyCaseScope(page, "AMENDMENT");
       await expect(page).toHaveURL(/scope=AMENDMENT$/);
       await page
         .getByRole("button", { name: "Release amended report" })

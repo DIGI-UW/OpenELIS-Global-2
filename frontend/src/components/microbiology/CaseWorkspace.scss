@@ -1,8 +1,13 @@
+@use "@carbon/styles/scss/breakpoint";
 @use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
 
 .microbiology-case-workspace {
   min-width: 0;
+
+  [id] {
+    scroll-margin-top: 12rem;
+  }
 
   .cds--css-grid-column {
     min-width: 0;
@@ -43,6 +48,14 @@
 
     > .cds--overflow-menu__wrapper {
       margin-inline-start: auto;
+    }
+
+    &-jump [aria-current="true"] {
+      box-shadow: inset 0 -2px 0 var(--cds-border-interactive);
+    }
+
+    @include breakpoint.breakpoint-down(md) {
+      position: static;
     }
   }
 

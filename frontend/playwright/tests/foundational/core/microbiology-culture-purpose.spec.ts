@@ -8,6 +8,7 @@ import {
   expectWhonetExportReady,
 } from "../../../helpers/whonet-export";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import type { Page, TestInfo } from "@playwright/test";
 
 const metric = (page: Page, label: string) =>
@@ -56,9 +57,7 @@ test.describe("OGC-782 R11 culture purpose", () => {
       await page.reload();
       await expect(purpose).toHaveValue("SCREENING");
       await attachScreenshot(page, testInfo, "r11-culture-purpose-corrected");
-      await page
-        .getByLabel("Testing section", { exact: true })
-        .selectOption("HISTORY");
+      await openMicrobiologyCaseScope(page, "HISTORY");
       const timeline = page.getByRole("table", {
         name: "Case timeline",
         exact: true,

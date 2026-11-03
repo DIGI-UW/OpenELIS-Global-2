@@ -80,9 +80,7 @@ describe("case testing workspace", () => {
     api.addNote.mockRejectedValue(new Error("save failed"));
     show(api);
     await screen.findByText("Two-component assay");
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "HISTORY" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Case timeline" }));
     fireEvent.change(screen.getByLabelText("New note"), {
       target: { value: "Follow up" },
     });
@@ -327,9 +325,7 @@ describe("case testing workspace", () => {
     show(api);
     await screen.findByText("Two-component assay");
     expect(screen.queryByText("Additional assay")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "ADDITIONAL" },
-    });
+    fireEvent.click(document.querySelector("#case-scope-ADDITIONAL button"));
     expect(screen.getByText("Additional assay")).toBeTruthy();
     expect(screen.queryByText("Two-component assay")).toBeNull();
   });
@@ -505,10 +501,7 @@ describe("culture test chooser", () => {
       ],
     });
     await screen.findByText("Two-component assay");
-    fireEvent.change(
-      screen.getByLabelText(messages["microbiology.testing.scope"]),
-      { target: { value: "CULTURE" } },
-    );
+    fireEvent.click(document.querySelector("#case-scope-CULTURE button"));
     await screen.findByRole("heading", { name: /PLATE-1/ });
   };
   test("Gram shortcut adds the test under its culture and opens its result editor", async () => {
@@ -620,7 +613,10 @@ it("honors the worklist setup action through the shared chooser and records the 
     </IntlProvider>,
   );
   const dialog = await screen.findByRole("dialog");
-  expect(screen.getByLabelText("Testing section")).toHaveValue("CULTURE");
+  expect(document.querySelector("#case-scope-CULTURE button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   expect(within(dialog).getByLabelText("Outcome")).toHaveValue("GROWTH");
   fireEvent.click(
     within(dialog).getByRole("button", { name: "Save", exact: true }),
@@ -636,9 +632,7 @@ it("honors the worklist setup action through the shared chooser and records the 
   expect(changed).toHaveBeenCalledTimes(1);
   expect(navigate).toHaveBeenCalledWith("CULTURE");
   await waitFor(() => expect(api.getTimeline).toHaveBeenCalledTimes(2));
-  fireEvent.change(screen.getByLabelText("Testing section"), {
-    target: { value: "HISTORY" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Case timeline" }));
   expect(await screen.findByText(/Recorded growth/)).toBeVisible();
 });
 
@@ -869,7 +863,10 @@ test("pending AST links focus the requested isolate after loading and navigation
   const { rerender } = render(view("i2"));
   const target = await screen.findByTestId("ast-isolate-i2");
   await waitFor(() => expect(target).toHaveFocus());
-  expect(screen.getByLabelText("Testing section")).toHaveValue("AST");
+  expect(document.querySelector("#case-scope-AST button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
   expect(screen.getByTestId("ast-isolate-i1")).not.toHaveFocus();
   rerender(view("i1"));
   await waitFor(() =>

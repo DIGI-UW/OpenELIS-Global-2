@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import { seedReviewedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
+import { openMicrobiologyCaseScope } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 test("preserves the original AST reading and reports the explicitly selected retest", async ({
@@ -47,9 +48,7 @@ test("preserves the original AST reading and reports the explicitly selected ret
   await expect(
     original.getByRole("row", { name: /Ciprofloxacin \(UAT\)/ }),
   ).toContainText("4");
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   await page
     .getByRole("button", { name: "Release partial report", exact: true })
     .click();
