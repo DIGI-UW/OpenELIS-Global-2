@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { ComboBox } from "@carbon/react";
 import { foldForSearch, matchesSearch } from "./searchText";
+import { RequiredMarker, requiredProps } from "./RequiredMarker";
 
 /**
  * A single choice from a list that comes from site data (tests, labs, units,
@@ -10,7 +11,8 @@ import { foldForSearch, matchesSearch } from "./searchText";
  * list is offered again.
  *
  * Options are `{ id, value }` like {@link CustomSelect}; `onChange` receives
- * the chosen id, or "" when the choice is cleared.
+ * the chosen id, or "" when the choice is cleared. `required` marks the label
+ * and tells assistive technology; `onBlur` fires when focus leaves the input.
  */
 const SearchableSelect = ({
   id,
@@ -25,6 +27,8 @@ const SearchableSelect = ({
   disabled,
   size,
   className,
+  required = false,
+  onBlur,
 }) => {
   const selectedItem = useMemo(
     () =>
@@ -38,7 +42,18 @@ const SearchableSelect = ({
     <ComboBox
       id={id}
       className={className}
-      titleText={labelText}
+      titleText={
+        required ? (
+          <>
+            {labelText}
+            <RequiredMarker />
+          </>
+        ) : (
+          labelText
+        )
+      }
+      {...requiredProps(required)}
+      onBlur={onBlur}
       placeholder={placeholder}
       helperText={helperText}
       invalid={invalid}
