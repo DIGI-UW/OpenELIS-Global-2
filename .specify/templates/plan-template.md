@@ -70,6 +70,8 @@ Verify compliance with
       dates with frozen or injected clocks when current time is used. Document
       these choices in Test Data Management below.
 - [ ] **Schema Management**: Database changes via Liquibase changesets only
+      (new migrations in `changes/` named `YYYYMMDDTHHMM-<ticket>-<slug>.xml` with
+      `logicalFilePath` and `id` matching file stem; do NOT edit `base.xml`)
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
 - [ ] **Security & Compliance**: RBAC, audit trail, input validation included
