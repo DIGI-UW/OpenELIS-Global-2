@@ -40,6 +40,7 @@ const validationActions = [
   "qc-override",
 ];
 const reasons = [
+  "cancel",
   "override",
   "revert",
   "select",
@@ -528,6 +529,12 @@ export default function CaseAstWorkspace({
                       {canEnter &&
                         ["QC_FAILED", "RESULTS_IN"].includes(run.status) &&
                         button("invalidate", isolate, run)}
+                      {canEnter &&
+                        ["IN_PROGRESS", "AWAITING_RESULTS"].includes(
+                          run.status,
+                        ) &&
+                        run.readings.length === 0 &&
+                        button("cancel", isolate, run)}
                       {canValidate &&
                         run.status === "QC_FAILED" &&
                         button("qc-override", isolate, run)}
