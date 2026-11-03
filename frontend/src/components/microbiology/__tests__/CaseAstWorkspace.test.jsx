@@ -512,3 +512,74 @@ it("asks for a panel adjustment reason only when the run does not use the organi
   );
   expect(save).toBeEnabled();
 });
+
+const discordantRifampicin = () => {
+  const data = workspace();
+  data.dst = {
+    classification: "DISCORDANT",
+    drugs: [
+      {
+        antibioticId: "rif",
+        label: "Rifampicin",
+        interpretation: "DISCORDANT",
+        discordant: true,
+        evidenceFingerprint: "fp",
+        evidence: [
+          {
+            source: "MOLECULAR",
+            sourceId: "m1",
+            interpretation: "RESISTANT",
+            validated: true,
+          },
+          {
+            source: "PHENOTYPIC",
+            sourceId: "p1",
+            interpretation: "SUSCEPTIBLE",
+            validated: true,
+          },
+        ],
+      },
+    ],
+  };
+  return data;
+};
+const resolveDiscordance = async (service) => {
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.resolve") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("reason")), {
+    target: { value: "Reference laboratory confirmed resistance" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() => expect(service.resolveDst).toHaveBeenCalledTimes(1));
+  return modal;
+};
+
+it("resolves a discordant drug with only the resolution fields", async () => {
+  const service = show(discordantRifampicin());
+  service.resolveDst = vi.fn().mockResolvedValue({});
+  await resolveDiscordance(service);
+  expect(service.resolveDst).toHaveBeenCalledWith("c1", {
+    antibioticId: "rif",
+    evidenceFingerprint: "fp",
+    interpretation: "RESISTANT",
+    reason: "Reference laboratory confirmed resistance",
+  });
+});
+
+it("explains a resolution rejected because the DST evidence changed", async () => {
+  const service = show(discordantRifampicin());
+  service.resolveDst = vi.fn().mockRejectedValue({
+    response: {
+      error: "MICROBIOLOGY_AST_CONFLICT",
+      message: "DST_EVIDENCE_CHANGED",
+    },
+  });
+  const modal = await resolveDiscordance(service);
+  const message = messages["microbiology.m6.error.DST_EVIDENCE_CHANGED"];
+  expect(message).toBeDefined();
+  expect(await within(modal).findByText(message)).toBeInTheDocument();
+});

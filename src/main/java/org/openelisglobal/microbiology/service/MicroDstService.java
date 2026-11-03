@@ -139,7 +139,7 @@ public class MicroDstService {
         if (request.reason.length() > 4000 || !Set.of("SUSCEPTIBLE", "RESISTANT").contains(request.interpretation))
             throw new IllegalArgumentException("DST_RESOLUTION_INVALID");
         var drug = evaluate(caseId).drugs.stream().filter(d -> d.antibioticId().equals(request.antibioticId))
-                .findFirst().orElseThrow();
+                .findFirst().orElseThrow(() -> new MicroAstConflictException("DST_EVIDENCE_CHANGED"));
         if (!drug.discordant() || !drug.evidenceFingerprint().equals(request.evidenceFingerprint))
             throw new MicroAstConflictException("DST_EVIDENCE_CHANGED");
         if (drug.evidence().stream().anyMatch(e -> !e.validated()))

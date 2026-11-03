@@ -213,7 +213,14 @@ export default function CaseAstWorkspace({
     try {
       const { adjustPanel, ...request } = draft;
       if (draft.action === "resolve") {
-        await service.resolveDst(detail.id, draft);
+        const { antibioticId, evidenceFingerprint, interpretation, reason } =
+          draft;
+        await service.resolveDst(detail.id, {
+          antibioticId,
+          evidenceFingerprint,
+          interpretation,
+          reason,
+        });
         setData(await service.getAstWorkspace(detail.id));
       } else
         setData(

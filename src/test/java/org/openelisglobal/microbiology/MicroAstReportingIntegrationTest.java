@@ -11,6 +11,7 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.dao.*;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.microbiology.form.MicroDstForm;
 import org.openelisglobal.microbiology.service.*;
 import org.openelisglobal.microbiology.valueholder.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     private MicroReportVersionService versions;
     @Autowired
     private MicroReportProjectionService projection;
+    @Autowired
+    private MicroDstService dst;
     @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
@@ -395,5 +398,17 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         em.flush();
         assertThrows(MicroCaseLockedException.class,
                 () -> ast.recordReading(run.getId(), drugB, new BigDecimal("4"), writer));
+    }
+
+    @Test
+    public void resolvingADrugWithoutDstEvidenceIsAConflict() {
+        var request = new MicroDstForm.ResolutionRequest();
+        request.antibioticId = drugB;
+        request.evidenceFingerprint = "none";
+        request.interpretation = "RESISTANT";
+        request.reason = "Reference laboratory result";
+        assertEquals("DST_EVIDENCE_CHANGED",
+                assertThrows(MicroAstConflictException.class, () -> dst.resolve(c.getId(), request, validator))
+                        .getMessage());
     }
 }
