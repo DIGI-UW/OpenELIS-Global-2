@@ -121,7 +121,6 @@ test.describe("OGC-782 M3 reference administration demo", () => {
       await expect(panelDialog).toContainText(
         "Saving creates a new panel version",
       );
-      await panelDialog.getByLabel("Tier").first().selectOption("2");
       await demo.evidence("ogc-782-m3-03-panel-version-editor", {
         locator: panelDialog,
       });

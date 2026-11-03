@@ -859,8 +859,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private boolean reapplyReportingRule(MicroAstRun run, MicroAstRunAntibiotic ordered) {
         String antibioticId = ordered.getAntibioticId();
         var rule = findReportingRule(run, antibioticId);
-        String reportBehavior = rule.map(MicroReportingRule::getReportBehavior)
-                .orElseGet(() -> panelReportBehavior(run.getPanelId(), antibioticId));
+        String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
         ordered.setReportBehavior(reportBehavior);
         ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
         boolean changed = false;
@@ -1073,12 +1072,11 @@ public class MicroAstServiceImpl implements MicroAstService {
     private void snapshotOrderedAntibiotics(MicroAstRun run, List<OrderedAntibiotic> antibiotics) {
         for (OrderedAntibiotic source : antibiotics) {
             var rule = findReportingRule(run, source.antibioticId);
-            String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse(source.reportBehavior);
+            String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
             MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
             ordered.setAstRunId(run.getId());
             ordered.setAntibioticId(source.antibioticId);
             ordered.setDisplayOrder(source.displayOrder);
-            ordered.setTier(source.tier);
             ordered.setReportBehavior(reportBehavior);
             ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
             ordered.setDiskContent(source.diskContent);
@@ -1098,7 +1096,6 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setAstRunId(target.getId());
             ordered.setAntibioticId(sourceRow.getAntibioticId());
             ordered.setDisplayOrder(sourceRow.getDisplayOrder());
-            ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
             ordered.setReportRuleId(sourceRow.getReportRuleId());
             ordered.setDiskContent(sourceRow.getDiskContent());
@@ -1133,7 +1130,6 @@ public class MicroAstServiceImpl implements MicroAstService {
             ordered.setAstRunId(target.getId());
             ordered.setAntibioticId(sourceRow.getAntibioticId());
             ordered.setDisplayOrder(sourceRow.getDisplayOrder());
-            ordered.setTier(sourceRow.getTier());
             ordered.setReportBehavior(sourceRow.getReportBehavior());
             ordered.setReportRuleId(sourceRow.getReportRuleId());
             ordered.setDiskContent(sourceRow.getDiskContent());
@@ -1257,12 +1253,6 @@ public class MicroAstServiceImpl implements MicroAstService {
                 sampleTypeId, run.getClinicalContext());
     }
 
-    private String panelReportBehavior(String panelId, String antibioticId) {
-        return panelAntibioticDAO.getByPanelId(panelId).stream()
-                .filter(row -> antibioticId.equals(row.getAntibioticId()))
-                .map(MicroAstPanelAntibiotic::getReportBehavior).findFirst().orElse("ALWAYS");
-    }
-
     @Override
     @Transactional(readOnly = true)
     public MicroReportingRulePreviewResultForm previewReportingRules(MicroReportingRulePreviewForm request) {
@@ -1303,8 +1293,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                 row.reportRuleId = rule.getId();
                 row.note = rule.noteFor(row.interpretation);
             } else {
-                row.reportBehavior = defaultPanelId == null ? "ALWAYS"
-                        : panelReportBehavior(defaultPanelId, antibioticId);
+                row.reportBehavior = "ALWAYS";
             }
             row.reported = defaultReported(row.reportBehavior, row.interpretation);
             result.rows.add(row);
@@ -1441,8 +1430,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                     throw new IllegalArgumentException("AST_ANTIBIOTIC_NOT_ACTIVE");
                 }
             }
-            ordered.add(new OrderedAntibiotic(antibioticId, displayOrder++, panelRow == null ? 1 : panelRow.getTier(),
-                    panelRow == null ? "ALWAYS" : panelRow.getReportBehavior(),
+            ordered.add(new OrderedAntibiotic(antibioticId, displayOrder++,
                     panelRow == null ? null : panelRow.getDiskContent()));
         }
         return new OrderedSelection(ordered, !requestedIds.equals(baselineIds));
@@ -1493,8 +1481,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private record OrderedSelection(List<OrderedAntibiotic> antibiotics, boolean adjusted) {
     }
 
-    private record OrderedAntibiotic(String antibioticId, Integer displayOrder, Integer tier, String reportBehavior,
-            String diskContent) {
+    private record OrderedAntibiotic(String antibioticId, Integer displayOrder, String diskContent) {
     }
 
     private void synchronizeReportableRuns(String isolateId) {

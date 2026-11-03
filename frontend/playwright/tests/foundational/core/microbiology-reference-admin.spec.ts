@@ -211,7 +211,6 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
     await expect(
       editor.getByText(/Saving creates a new panel version/),
     ).toBeVisible();
-    await editor.getByLabel("Tier").first().selectOption("2");
     await editor.getByRole("button", { name: "Publish new version" }).click();
     const confirmation = page.getByRole("dialog");
     await expect(
