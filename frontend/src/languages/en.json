@@ -14243,6 +14243,7 @@
   "microbiology.program.reportingTrack": "Reporting track",
   "microbiology.whonet.includeEnvironmental": "Include environmental isolates",
   "microbiology.case.program": "Program",
+  "microbiology.case.programNotSet": "Program not set",
   "microbiology.environmental.certificate": "Download Laporan Hasil certificate",
   "microbiology.whonet.surveyPrograms": "Include survey or study Programs",
   "microbiology.whonet.selectSurveyPrograms": "Select Programs",

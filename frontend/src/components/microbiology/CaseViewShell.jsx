@@ -321,11 +321,9 @@ export default function CaseViewShell({
                     </p>
                     <p>{detail.labUnit}</p>
                     <p>
-                      {
-                        (detail.programs || []).find(
-                          (p) => p.id === detail.programId,
-                        )?.value
-                      }
+                      {(detail.programs || []).find(
+                        (p) => p.id === detail.programId,
+                      )?.value || t("microbiology.case.programNotSet")}
                     </p>
                     {detail.reportingTrack && (
                       <Tag type="teal">{detail.reportingTrack}</Tag>
