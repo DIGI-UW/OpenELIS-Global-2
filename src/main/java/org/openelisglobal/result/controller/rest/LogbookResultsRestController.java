@@ -539,40 +539,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
             List<Analysis> newResultAnalyses = actionDataSet.getNewResults().stream().map(a -> a.result.getAnalysis())
                     .collect(Collectors.toList());
-            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
-            String message = MessageUtil.getMessage("notification.result.stat");
-            StringBuffer sb = new StringBuffer(message);
-            for (String userId : systemUserIds) {
-                // Pool-anchored analyses have analysis.sampleItem == null; resolve
-                // the owning Sample via AnalysisAnchorService so vector orders
-                // don't NPE in this STAT-notification path.
-                List<Analysis> userAnalyses = userService
-                        .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
-                        .filter(a -> {
-                            Sample s = analysisAnchorService.resolveSample(a);
-                            return s != null && OrderPriority.STAT.equals(s.getPriority());
-                        }).collect(Collectors.toList());
-
-                if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                    List<String> userTests = userAnalyses.stream().map(a -> {
-                        Sample s = analysisAnchorService.resolveSample(a);
-                        String accession = s != null ? s.getAccessionNumber() : "";
-                        return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
-                                + a.getTest().getLocalizedName();
-                    }).collect(Collectors.toList());
-                    String testString = String.join(", ", userTests);
-                    sb.append(testString);
-                    try {
-                        Notification notification = new Notification();
-                        notification.setMessage(sb.toString());
-                        notification.setUser(systemUserService.getUserById(userId));
-                        notification.setCreatedDate(OffsetDateTime.now());
-                        notification.setReadAt(null);
-                        notificationDAO.save(notification);
-                    } catch (Exception e) {
-                    }
-                }
-            }
+            sendStatResultNotifications(newResultAnalyses);
 
             String currentUser = getSysUserId(request);
             // Reflex / calculated tests triggered by this result entry: surface in
@@ -799,6 +766,44 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                         Long.valueOf(item.getEqaAnalystId()), sysUserId);
             } catch (RuntimeException e) {
                 LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
+            }
+        }
+    }
+
+    void sendStatResultNotifications(List<Analysis> newResultAnalyses) {
+        if (newResultAnalyses == null || newResultAnalyses.isEmpty()) {
+            return;
+        }
+        List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+        String message = MessageUtil.getMessage("notification.result.stat");
+        for (String userId : systemUserIds) {
+            // Pool-anchored analyses have analysis.sampleItem == null; resolve
+            // the owning Sample via AnalysisAnchorService so vector orders
+            // don't NPE in this STAT-notification path.
+            List<Analysis> userAnalyses = userService
+                    .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
+                    .filter(a -> {
+                        Sample s = analysisAnchorService.resolveSample(a);
+                        return s != null && OrderPriority.STAT.equals(s.getPriority());
+                    }).collect(Collectors.toList());
+
+            if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                List<String> userTests = userAnalyses.stream().map(a -> {
+                    Sample s = analysisAnchorService.resolveSample(a);
+                    String accession = s != null ? s.getAccessionNumber() : "";
+                    return AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(accession) + " - "
+                            + a.getTest().getLocalizedName();
+                }).collect(Collectors.toList());
+                String testString = String.join(", ", userTests);
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(message + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
+                }
             }
         }
     }
