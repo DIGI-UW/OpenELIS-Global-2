@@ -28,6 +28,16 @@ public class MicroAstReportChoiceService {
         this.authorization = authorization;
     }
 
+    @Transactional
+    public int clear(String isolateId) {
+        int cleared = 0;
+        for (var choice : choices.getByIsolateId(isolateId)) {
+            choices.delete(choice);
+            cleared++;
+        }
+        return cleared;
+    }
+
     public List<MicroAstReportChoice> getChoices(String isolateId) {
         return choices.getByIsolateId(isolateId);
     }
@@ -134,6 +144,25 @@ public class MicroAstReportChoiceService {
                     choice.setSelectedBy(actor);
                     choice.setSelectedAt(MicroCaseServiceImpl.now());
                     choices.update(choice);
+                }
+            }
+            var current = choices.getByIsolateId(isolate.getId());
+            for (var prior : expected) {
+                if (current.stream().anyMatch(c -> c.getAntibioticId().equals(prior.antibioticId())))
+                    continue;
+                var choice = new MicroAstReportChoice();
+                choice.setAntibioticId(prior.antibioticId());
+                choice.setReadingId(prior.readingId());
+                choice.setSelectedBy(actor);
+                choice.setSelectedAt(MicroCaseServiceImpl.now());
+                choice.setIsolateId(isolate.getId());
+                choices.insert(choice);
+            }
+            for (var choice : choices.getByIsolateId(isolate.getId())) {
+                var run = readings.get(choice.getReadingId()).flatMap(r -> runs.get(r.getAstRunId())).orElse(null);
+                if (run != null && "RERUN_REQUIRED".equals(run.getStatus())) {
+                    run.setStatus("REVIEWED");
+                    runs.update(run);
                 }
             }
             if (isolate.getCancelledAt() == null)

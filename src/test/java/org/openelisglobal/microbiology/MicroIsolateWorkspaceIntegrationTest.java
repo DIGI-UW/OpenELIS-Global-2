@@ -69,6 +69,10 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroAstPanelAssignmentService panelAssignments;
     @Autowired
+    private MicroAstReportChoiceService reportChoices;
+    @Autowired
+    private MicroOrganismDAO organisms;
+    @Autowired
     private MicroOrderRoutingService routing;
     @Autowired
     private org.openelisglobal.test.service.TestSectionService units;
@@ -545,7 +549,7 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void reidentificationLeavesReviewedSusceptibilityReadingsAndSelectionUntouched() {
+    public void reidentificationToAnotherOrganismRetiresItsRunsAndReportChoices() {
         String id = pick();
         var ref = fixtures.createReferenceData(method);
         breakpointAdminService.activate(ref.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
@@ -555,20 +559,64 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         ast.recordReading(run.getId(), ref.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"), writer);
         ast.reviewRun(run.getId(), validator);
         reload();
-        var before = ast.getReadingsForRun(run.getId()).getFirst();
-        String readingId = before.getId(), interpretation = before.getInterpretation();
-        BigDecimal raw = before.getRawValue();
-        boolean selected = ast.getRunsForIsolate(id).getFirst().isReportable();
+        String readingId = ast.getReadingsForRun(run.getId()).getFirst().getId();
+        assertEquals(List.of(readingId), selectedReadingIds(id));
+
         workspace.act(c.getId(), id, "reidentify", identification(id, organismB), validator);
         reload();
-        var after = ast.getReadingsForRun(run.getId()).getFirst();
-        assertEquals(readingId, after.getId());
-        assertEquals(interpretation, after.getInterpretation());
-        assertEquals(raw, after.getRawValue());
+
         var stored = ast.getRunsForIsolate(id).getFirst();
-        assertEquals(run.getId(), stored.getId());
+        assertEquals("RERUN_REQUIRED", stored.getStatus());
+        assertFalse(stored.isReportable());
+        assertEquals(List.of(), selectedReadingIds(id));
+        assertEquals(readingId, ast.getReadingsForRun(run.getId()).getFirst().getId());
+        assertEquals(1, activities.getByCaseId(c.getId()).stream().filter(
+                a -> "AST_RUN_INVALIDATED".equals(a.getActivityType()) && a.getStructuredData().contains(run.getId()))
+                .count());
+    }
+
+    @Test
+    public void confirmingTheSameOrganismKeepsItsRunsAndReportChoices() {
+        String id = pick();
+        var ref = fixtures.createReferenceData(method);
+        breakpointAdminService.activate(ref.standard().getId(), new java.sql.Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
+        workspace.act(c.getId(), id, "identify", identification(id, ref.organism().getId()), writer);
+        var run = ast.startRun(id, ref.panel().getId(), ref.standard().getId(), writer);
+        ast.recordReading(run.getId(), ref.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"), writer);
+        ast.reviewRun(run.getId(), validator);
+        reload();
+        String readingId = ast.getReadingsForRun(run.getId()).getFirst().getId();
+
+        workspace.act(c.getId(), id, "reidentify", identification(id, ref.organism().getId()), validator);
+        reload();
+
+        var stored = ast.getRunsForIsolate(id).getFirst();
         assertEquals("REVIEWED", stored.getStatus());
-        assertEquals(selected, stored.isReportable());
+        assertTrue(stored.isReportable());
+        assertEquals(List.of(readingId), selectedReadingIds(id));
+        assertEquals(0, activities.getByCaseId(c.getId()).stream()
+                .filter(a -> "AST_RUN_INVALIDATED".equals(a.getActivityType())).count());
+    }
+
+    @Test
+    public void identificationActivityNamesTheOrganisms() {
+        String id = pick();
+        workspace.act(c.getId(), id, "identify", identification(id, organismA), writer);
+        reload();
+        workspace.act(c.getId(), id, "reidentify", identification(id, organismB), validator);
+        reload();
+        String label = isolates.get(id).orElseThrow().getIsolateLabel();
+
+        assertTrue(activities.getByCaseId(c.getId()).stream().map(MicroCaseActivity::getNote)
+                .anyMatch(("Isolate " + label + " identification changed from "
+                        + organisms.get(organismA).orElseThrow().getDisplayName() + " to "
+                        + organisms.get(organismB).orElseThrow().getDisplayName()
+                        + ": Confirmatory identification")::equals));
+    }
+
+    private List<String> selectedReadingIds(String isolateId) {
+        return reportChoices.getChoices(isolateId).stream().map(MicroAstReportChoice::getReadingId).toList();
     }
 
     @Test
