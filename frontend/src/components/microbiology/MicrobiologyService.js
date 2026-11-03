@@ -297,21 +297,6 @@ export const logCriticalCommunication = (caseId, payload) =>
     );
   });
 
-export const acknowledgeCriticalCommunication = (communicationId) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/critical-communications/${communicationId}/acknowledge`,
-      JSON.stringify({}),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
-    );
-  });
-
 export const closeCriticalCommunication = (communicationId, payload) =>
   new Promise((resolve) => {
     putToOpenElisServerFullResponse(
@@ -469,7 +454,6 @@ const MicrobiologyService = {
   getWorklistRows,
   getCriticalCommunications,
   logCriticalCommunication,
-  acknowledgeCriticalCommunication,
   closeCriticalCommunication,
   getNceCategories,
   getNceReportingUnits,

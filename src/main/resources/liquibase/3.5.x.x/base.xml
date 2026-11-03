@@ -709,4 +709,5 @@
   <include file="151-amr-v3-interpretation-rules.xml" relativeToChangelogFile="true"/>
   <include file="152-amr-v3-qc-ranges.xml" relativeToChangelogFile="true"/>
   <include file="153-amr-v3-ast-qc.xml" relativeToChangelogFile="true"/>
+  <include file="154-amr-v3-critical-outcome.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
