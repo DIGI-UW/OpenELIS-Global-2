@@ -64,24 +64,37 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
             byPanel.computeIfAbsent(required(row, "panelName").toLowerCase(Locale.ROOT), key -> new ArrayList<>())
                     .add(row);
         }
-        Map<String, List<String>> defaults = new LinkedHashMap<>();
-        for (List<CsvRow> panelRows : byPanel.values()) {
-            LoadedRow<String> outcome = transaction.run(() -> loadPanel(panelRows));
-            for (CsvRow row : panelRows) {
-                summary.record(outcome, getClass().getSimpleName(), row.lineNumber());
-            }
-            flushUnresolvedReferences(fileName, panelRows.get(0).lineNumber());
-            String claims = sameValue(panelRows, "defaultFor", "");
-            if (!claims.isBlank()) {
-                MicroAstPanel current = panels.findCurrentByNameIgnoreCase(required(panelRows.get(0), "panelName"));
-                if (current != null) {
-                    defaults.put(current.getId(), List.of(claims.split("\\s*;\\s*")));
+        transaction.run(() -> {
+            Map<String, List<String>> defaults = new LinkedHashMap<>();
+            List<String> errors = new ArrayList<>();
+            for (List<CsvRow> panelRows : byPanel.values()) {
+                try {
+                    LoadedRow<String> outcome = loadPanel(panelRows);
+                    for (CsvRow row : panelRows) {
+                        summary.record(outcome, getClass().getSimpleName(), row.lineNumber());
+                    }
+                    String claims = sameValue(panelRows, "defaultFor", "");
+                    if (!claims.isBlank()) {
+                        MicroAstPanel current = panels
+                                .findCurrentByNameIgnoreCase(required(panelRows.get(0), "panelName"));
+                        if (current != null) {
+                            defaults.put(current.getId(), List.of(claims.split("\\s*;\\s*")));
+                        }
+                    }
+                } catch (RuntimeException e) {
+                    errors.add(CsvLoadSummary.reason(e));
+                } finally {
+                    flushUnresolvedReferences(fileName, panelRows.get(0).lineNumber());
                 }
             }
-        }
-        if (!defaults.isEmpty()) {
-            transaction.run(() -> assignDefaults(defaults));
-        }
+            if (!errors.isEmpty()) {
+                throw new IllegalArgumentException(String.join("; ", errors));
+            }
+            if (!defaults.isEmpty()) {
+                assignDefaults(defaults);
+            }
+            return null;
+        });
     }
 
     private int assignDefaults(Map<String, List<String>> claimsByPanel) {
@@ -131,14 +144,23 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         MicroAstPanelAdminForm form = new MicroAstPanelAdminForm();
         form.name = required(first, "panelName");
         form.susceptibilityProtocol = sameValue(rows, "susceptibilityProtocol", "GENERAL").toUpperCase(Locale.ROOT);
+        List<String> errors = new ArrayList<>();
         for (CsvRow row : rows) {
-            String code = required(row, "antibioticWhonetCode");
-            var antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code).orElseThrow(
-                    () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code));
-            MicroAstPanelAntibioticAdminForm drug = new MicroAstPanelAntibioticAdminForm();
-            drug.antibioticId = antibiotic.getId();
-            drug.diskContent = blankToNull(row.get("diskContent"));
-            form.antibiotics.add(drug);
+            try {
+                String code = required(row, "antibioticWhonetCode");
+                var antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code)
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Line " + row.lineNumber() + ": unknown antibiotic " + code));
+                MicroAstPanelAntibioticAdminForm drug = new MicroAstPanelAntibioticAdminForm();
+                drug.antibioticId = antibiotic.getId();
+                drug.diskContent = blankToNull(row.get("diskContent"));
+                form.antibiotics.add(drug);
+            } catch (IllegalArgumentException e) {
+                errors.add(e.getMessage());
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
         }
 
         MicroAstPanel current = panels.findCurrentByNameIgnoreCase(form.name);

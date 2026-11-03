@@ -280,6 +280,54 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void reportingRuleFileListsEveryUnknownNameWithItsLineAndSavesNothing() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.20", "UNKNOWNS");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        String sampleType = "CSF " + java.util.UUID.randomUUID().toString().substring(0, 8);
+        String csv = RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,,,,,\n" + "SPECIES," + organism.getDisplayName() + "," + sampleType + ","
+                + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n" + "SPECIES," + organism.getDisplayName()
+                + ",ANY,NO_SUCH_AGENT,Missing,REPORT,,,,,,,,\n" + "SPECIES,No such organism,ANY," + fixture.antibiotic
+                + ",Synthetic,REPORT,,,,,,,,\n";
+        writeReportingRules(csv);
+        var file = new org.springframework.mock.web.MockMultipartFile("files", "reporting-rules.csv", "text/csv",
+                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        String previewed = catalog
+                .preview(java.util.List.of(file), java.util.List.of("microbiology-reporting-rules"), "1").files().get(0)
+                .error();
+        String reloaded = reloadReportingRules(false).files().get(0).errorMessage();
+
+        for (String error : java.util.List.of(previewed, reloaded)) {
+            assertTrue(error, error.contains("Line 3: unknown sample type " + sampleType));
+            assertTrue(error, error.contains("Line 4: unknown antibiotic NO_SUCH_AGENT"));
+            assertTrue(error, error.contains("Line 5: unknown organism No such organism"));
+        }
+        assertTrue(rulesFor(antibioticId).isEmpty());
+        assertEquals(Integer.valueOf(3), unresolvedReferences.getOpen().stream()
+                .filter(r -> sampleType.equals(r.getReferenceValue())).findFirst().orElseThrow().getLineNumber());
+    }
+
+    @Test
+    public void panelFileListsEveryUnknownAntibioticWithItsLineAndSavesNothing() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.21", "PANELUNK");
+        load(fixture);
+        writePanels("panelName,antibioticWhonetCode\nSynthetic good panel," + fixture.antibiotic
+                + "\nSynthetic unknown panel,NO_SUCH_AGENT_A\nSynthetic unknown panel," + fixture.antibiotic
+                + "\nSynthetic unknown panel,NO_SUCH_AGENT_B\nSecond unknown panel,NO_SUCH_AGENT_C\n");
+
+        String error = reloadPanels(false).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 3: unknown antibiotic NO_SUCH_AGENT_A"));
+        assertTrue(error, error.contains("Line 5: unknown antibiotic NO_SUCH_AGENT_B"));
+        assertTrue(error, error.contains("Line 6: unknown antibiotic NO_SUCH_AGENT_C"));
+        assertNull(panels.findCurrentByNameIgnoreCase("Synthetic good panel"));
+        assertNull(panels.findCurrentByNameIgnoreCase("Synthetic unknown panel"));
+    }
+
+    @Test
     public void panelFileCreatesVersionsAndAssignsTheMostSpecificDefault() throws Exception {
         var fixture = new ReferencePackageFixture("2099.8", "PANEL");
         load(fixture);
