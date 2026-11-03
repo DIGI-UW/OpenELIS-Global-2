@@ -4,6 +4,46 @@ import { seedMicrobiologyAstReporting } from "./seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "./microbiology-patient-report";
 import { LONG_TIMEOUT } from "./timeouts";
 
+export async function startAstRun(
+  page: Page,
+  isolate: Locator,
+  breakpointStandardId: string,
+) {
+  await isolate
+    .getByRole("button", { name: "Start AST run", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Breakpoint standard", { exact: true })
+    .selectOption(breakpointStandardId);
+  await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+}
+
+export async function enterAndValidateAstRun(
+  page: Page,
+  run: Locator,
+  value: string,
+) {
+  const dialog = page.getByRole("dialog");
+  const rows = run.getByRole("table").getByRole("row");
+  await expect(rows).toHaveCount(3);
+  for (let index = 1; index <= 2; index++) {
+    await rows
+      .nth(index)
+      .getByRole("button", { name: "Enter reading", exact: true })
+      .click();
+    await dialog.getByLabel("MIC / zone", { exact: true }).fill(value);
+    await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(dialog).toHaveCount(0, { timeout: LONG_TIMEOUT });
+  }
+  await run.getByRole("button", { name: "Validate run", exact: true }).click();
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    run.getByRole("button", { name: "Repeat", exact: true }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+}
+
 export async function runMicrobiologyAstReportingWorkflow(
   page: Page,
   testInfo: TestInfo,
@@ -28,43 +68,16 @@ export async function runMicrobiologyAstReportingWorkflow(
   await section.selectOption("AST");
   const isolate = page.getByTestId(`ast-isolate-${seeded.isolateId}`);
   await expect(isolate).toBeVisible({ timeout: LONG_TIMEOUT });
-  await isolate
-    .getByRole("button", { name: "Start AST run", exact: true })
-    .click();
+  await startAstRun(page, isolate, seeded.activeBreakpointStandardId!);
   const dialog = page.getByRole("dialog");
-  await dialog
-    .getByLabel("Breakpoint standard", { exact: true })
-    .selectOption(seeded.activeBreakpointStandardId!);
-  await expect(dialog.getByLabel(/Reason/)).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Save", exact: true }).click();
   const runs = isolate.locator('[data-testid^="ast-run-"]');
   await expect(runs).toHaveCount(1, { timeout: LONG_TIMEOUT });
   const firstRun = runs.nth(0);
-  const enter = async (run: Locator, value: string) => {
-    const rows = run.getByRole("table").getByRole("row");
-    await expect(rows).toHaveCount(3);
-    for (let index = 1; index <= 2; index++) {
-      await rows
-        .nth(index)
-        .getByRole("button", { name: "Enter reading", exact: true })
-        .click();
-      await dialog.getByLabel("MIC / zone", { exact: true }).fill(value);
-      await dialog.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(dialog).toHaveCount(0, { timeout: LONG_TIMEOUT });
-    }
-    await run
-      .getByRole("button", { name: "Validate run", exact: true })
-      .click();
-    await dialog.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(
-      run.getByRole("button", { name: "Repeat", exact: true }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-  };
   await checkpoint?.(
     1,
     "Record and validate the initial susceptibility readings",
   );
-  await enter(firstRun, "4");
+  await enterAndValidateAstRun(page, firstRun, "4");
   await section.selectOption("REPORT");
   await page
     .getByRole("button", { name: "Release partial report", exact: true })
@@ -84,7 +97,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(runs).toHaveCount(2, { timeout: LONG_TIMEOUT });
   const repeated = runs.nth(1);
-  await enter(repeated, "64");
+  await enterAndValidateAstRun(page, repeated, "64");
   await repeated
     .getByRole("table")
     .getByRole("row")

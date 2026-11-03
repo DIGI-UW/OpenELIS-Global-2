@@ -2,6 +2,10 @@ import { test, expect } from "../../../helpers/test-base";
 import type { Page, TestInfo } from "@playwright/test";
 import { seedFinalizedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
+import {
+  enterAndValidateAstRun,
+  startAstRun,
+} from "../../../helpers/microbiology-ast-reporting-workflow";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const attachScreenshot = async (
@@ -110,6 +114,22 @@ test.describe("Microbiology final-report amendments", () => {
       await expect(history).toContainText(
         "MALDI-TOF repeat corrected the organism",
       );
+    });
+
+    await test.step("Repeat susceptibility testing for the corrected organism", async () => {
+      await page
+        .getByLabel("Testing section", { exact: true })
+        .selectOption("AST");
+      await expect(
+        page.getByTestId(`ast-run-${seeded.astRunId}`),
+      ).toContainText("Repeat required", { timeout: LONG_TIMEOUT });
+      const isolate = page.getByTestId(`ast-isolate-${seeded.isolateId}`);
+      await startAstRun(page, isolate, seeded.activeBreakpointStandardId!);
+      const corrected = isolate.locator(
+        `[data-testid^="ast-run-"]:not([data-testid="ast-run-${seeded.astRunId}"])`,
+      );
+      await expect(corrected).toHaveCount(1, { timeout: LONG_TIMEOUT });
+      await enterAndValidateAstRun(page, corrected, "4");
     });
 
     await test.step("Release and inspect immutable report versions", async () => {
