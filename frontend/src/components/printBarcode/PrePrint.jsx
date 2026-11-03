@@ -1,4 +1,4 @@
-import { React, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import {
   Checkbox,

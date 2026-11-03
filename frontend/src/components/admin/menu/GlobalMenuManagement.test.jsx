@@ -219,3 +219,34 @@ test("OGC-1418: does not offer the retired Validation entries, so they cannot be
     screen.queryByTestId("menu-settings-menu_accession_validation"),
   ).toBeNull();
 });
+
+test("a module's entry is shown read-only with a note pointing to Role Management", async () => {
+  const contributed = {
+    menu: {
+      elementId: "menu_mod_alpha",
+      displayKey: "mod.alpha.menu.title",
+      isActive: true,
+      actionURL: "/m/alpha/home",
+      icon: null,
+      presentationStyle: null,
+    },
+    childMenus: [],
+  };
+  fetchFromOpenElisServer.mockResolvedValue([editable, contributed]);
+  mount();
+
+  const entry = await screen.findByTestId("menu-settings-menu_mod_alpha");
+  fireEvent.click(
+    within(entry).getByRole("button", { name: "mod.alpha.menu.title" }),
+  );
+
+  expect(within(entry).getByRole("switch")).toBeDisabled();
+  expect(
+    screen.getByTestId("menu-module-note-menu_mod_alpha"),
+  ).toHaveTextContent("Role Management");
+  const patient = screen.getByTestId("menu-settings-custom");
+  fireEvent.click(
+    within(patient).getByRole("button", { name: "Patient", exact: true }),
+  );
+  expect(within(patient).getByRole("switch")).toBeEnabled();
+});

@@ -188,6 +188,31 @@ my-module/
 └── src/test/java/...                         tests
 ```
 
+## Testing a module
+
+`org.openelisglobal:openelis-module-test` (built from `module-test/` after the
+application, `mvn -f module-test/pom.xml install`) is a JUnit 4 base class a
+module extends in its test sources:
+
+```java
+public class MyModuleContractTest extends ModuleContractTest {
+}
+```
+
+It checks, at the module's build time and with the core's own validator, the
+contract the core enforces when it loads the JAR: the manifest is valid and its
+kind matches its declarations; every declared class exists and plays its role
+(activator, entities, extension points); the changelog exists and its changesets
+carry the module id as prefix and author; every REST controller under the base
+packages maps under `/rest/modules/<id>/` and every handler is guarded by
+`@PreAuthorize`; the frontend bundle ships its entry and its English messages
+use only `mod.<id>.` keys (`-DskipFrontend=true` skips the bundle checks in a
+backend-only build). `manifest()` returns the validated manifest for the
+module's own assertions.
+
+Service and controller logic is tested the usual way, with the core services
+mocked; the runtime itself is covered by the core's module tests.
+
 ## How the runtime loads a module
 
 1. **Discovery.** At start-up the registry lists `*.jar` in
@@ -271,5 +296,109 @@ are served by `GET /rest/module-registry/{id}/config`.
 | Inspect     | `GET /rest/module-registry` (any user) lists every module with its state and reason; `GET /rest/module-registry/{id}` (administrators) adds the JAR, digest, libraries and warnings. |
 | State table | `clinlims.module_state` keeps the last outcome per module id: MIGRATED, STARTED or FAILED from a start, DISABLED, INVALID or INCOMPATIBLE when discovery set the module aside.       |
 
-The frontend shell and the packaging steps are described in the next sections as
-those phases land.
+## The frontend: the shell, module pages and the core surface
+
+The React application is a Module Federation host (`@module-federation/vite`)
+and, under the name `openelis_core`, a remote of its own. After login it reads
+`GET /rest/module-registry`, keeps the started modules whose
+`requires.frontendContract` accepts the shell's contract version (`1.0.0`),
+registers each one's remote entry
+(`/api/OpenELIS-Global/modules/<id>/remoteEntry.js`, served from the module JAR)
+and merges each one's message file for the active locale into the translations.
+Module pages render under `/m/<id>/...` behind the same `SecureRoute` gate as
+core pages, each inside its own error boundary: a module that fails to load
+shows a notice with a retry where its page would be and the rest of the
+application is unaffected. Administrators see every module, its state and reason
+under Admin, Modules.
+
+A module's frontend is a Vite build with the same plugin, exposing one component
+per route and per slot contribution, sharing the shell's singletons and
+importing the core surface:
+
+| Import                     | What it gives a module                                                                                                                                                                                                                                                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `openelis_core/components` | `SearchPatientForm`, `PatientHeader`, `CustomDatePicker`, `CustomTimePicker`, `CustomLabNumberInput`, `CustomSelect`, `CustomTextInput`, `CustomCheckBox`, `AutoComplete`, `PageBreadCrumb`, `ConfirmPopup`, `AlertDialog`, `NotificationKinds`, `Spinner`, `PageTitle`, `RequiredMarker`, `RouteErrorBoundary`, `ServerPageArrows` |
+| `openelis_core/api`        | `getFromOpenElisServer`, `fetchFromOpenElisServer`, `postToOpenElisServer`, `postToOpenElisServerJsonResponse`, `putToOpenElisServer`, `putToOpenElisServerJsonResponse`, `deleteFromOpenElisServer`, `hasRole`, `hasPermission`, `serverQuery`, `useServerData`, `config`                                                          |
+| `openelis_core/hooks`      | `useInAppNavigation`, `useUrlFilters`, `useActiveLocales`, `useDomains`                                                                                                                                                                                                                                                             |
+| `openelis_core/contexts`   | `UserSessionDetailsContext`, `ConfigurationContext`, `NotificationContext`                                                                                                                                                                                                                                                          |
+| `openelis_core/sdk`        | `useSession`, `usePermission`, `useRole`, `useConfigurationProperties`, `useNotifications`, `useOpenElisApi`, `useModuleConfig`, `useModule`, `ExtensionSlot`, `ModuleErrorBoundary`, `FRONTEND_CONTRACT_VERSION`                                                                                                                   |
+
+Everything in that table renders or runs the shell's own instance: a module
+never bundles a copy of React, the router, react-intl, Carbon, the query client
+or the core components. The shell's shared singletons are `react`, `react-dom`,
+`react-router-dom`, `react-intl`, `@carbon/react`, `@carbon/icons-react` and
+`@tanstack/react-query` (`frontend/module-federation.config.js`); a module
+declares the same list as shared in its own Vite configuration:
+
+```ts
+// module: frontend/vite.config.ts
+import { federation } from "@module-federation/vite";
+
+export default defineConfig({
+  plugins: [
+    react(),
+    federation({
+      name: "specimen_followup", // the module id with hyphens replaced
+      filename: "remoteEntry.js",
+      exposes: {
+        "./FollowUpListPage": "./src/pages/FollowUpListPage.jsx",
+      },
+      remotes: {
+        openelis_core: {
+          type: "module",
+          name: "openelis_core",
+          entry: "/remoteEntry.js", // the shell's entry, same origin
+        },
+      },
+      shared: {
+        react: { singleton: true, requiredVersion: "^17.0.0" },
+        "react-dom": { singleton: true, requiredVersion: "^17.0.0" },
+        "react-router-dom": { singleton: true, requiredVersion: "^5.2.0" },
+        "react-intl": { singleton: true, requiredVersion: "^5.20.0" },
+        "@carbon/react": { singleton: true, requiredVersion: "^1.15.0" },
+        "@carbon/icons-react": { singleton: true, requiredVersion: "^11.17.0" },
+        "@tanstack/react-query": {
+          singleton: true,
+          requiredVersion: "^4.44.0",
+        },
+      },
+    }),
+  ],
+  build: {
+    outDir:
+      "../src/main/resources/META-INF/resources/modules/specimen-followup",
+  },
+});
+```
+
+Messages live in `messages/<locale>.json` inside the same asset directory, keyed
+`mod.<id>.*`. The backend reads every bundle from the JAR once and sends them
+with the registry (`modules[].messages`, keyed by locale, the module's own keys
+only), so the shell has a module's labels before it renders its menu entries and
+pages; it picks the exact locale, then the base language, then English, and a
+menu entry whose key has no message stays hidden rather than show the key.
+Additions to the exposed surface are frontend-contract minors; removals, prop
+changes and a shared singleton's major (React 18 will be one) are majors,
+declared by the shell and checked against each module's
+`requires.frontendContract` before its bundle is loaded.
+
+In development, `localStorage["oe.module-override.<id>"]` may point a module's
+remote entry at the module's own Vite dev server so pages can be iterated on
+without rebuilding the JAR.
+
+### Extension slots
+
+The core renders `home.dashboard.cards` on the home dashboard (context
+`{ user }`) and `patient.header.actions` in the patient header (context
+`{ patientId }`); `ExtensionSlot.SLOTS` lists them. There is no feature flag for
+the shell: without a started module it makes one registry request after login
+and renders exactly as before.
+
+A core page may render `<ExtensionSlot name="..." context={{ ... }} />`; every
+started module that declares a contribution to that slot in its manifest
+(`frontend.slots[]`) renders there in order, each in its own error boundary. The
+catalogue starts with `home.dashboard.cards` (`{ user }`) and
+`patient.header.actions` (`{ patientId }`), both experimental.
+
+The packaging steps and the module template are described in the next section as
+that phase lands.
