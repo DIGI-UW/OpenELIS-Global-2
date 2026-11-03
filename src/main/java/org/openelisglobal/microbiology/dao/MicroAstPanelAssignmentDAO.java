@@ -6,4 +6,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
 
 public interface MicroAstPanelAssignmentDAO extends BaseDAO<MicroAstPanelAssignment, String> {
     List<MicroAstPanelAssignment> getByIsolateId(String id);
+
+    List<MicroAstPanelAssignment> getOpenByPanelId(String panelId);
 }
