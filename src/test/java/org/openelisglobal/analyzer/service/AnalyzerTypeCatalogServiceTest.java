@@ -49,12 +49,54 @@ public class AnalyzerTypeCatalogServiceTest {
 
     @Before
     public void setUp() {
+        org.mockito.Mockito.lenient().when(bridgeCatalogService.isConfigured()).thenReturn(true);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
         when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(answers());
         when(testResultService.getActiveTestResultsByTest("100")).thenReturn(List.of(numericResult()));
         service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
                 new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService,
                 confirmationService, mappingService);
+    }
+
+    /**
+     * OGC-1594: with no Bridge address there are no types to offer, and the page
+     * says so; it used to answer 502 as if the Bridge had failed.
+     */
+    @Test
+    public void withoutABridgeAddressTheCatalogIsEmptyAndSaysSo() {
+        when(bridgeCatalogService.isConfigured()).thenReturn(false);
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        assertEquals(false, result.bridgeConfigured());
+        assertEquals(0, result.summary().total());
+        assertEquals(List.of(), result.types());
+        org.mockito.Mockito.verify(bridgeCatalogService, org.mockito.Mockito.never()).getCatalog();
+    }
+
+    /**
+     * A Bridge that is not paired holds the types but cannot be asked for them
+     * yet: the catalog is empty and says it is not paired, where it answered 502.
+     */
+    @Test
+    public void withAnUnpairedBridgeTheCatalogIsEmptyAndSaysSo() {
+        when(bridgeCatalogService.getCatalog()).thenThrow(BridgeProfileCatalogException
+                .notPaired(new BridgeHttpClient.BridgeNotPairedException()));
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        assertEquals(true, result.bridgeConfigured());
+        assertEquals(false, result.bridgePaired());
+        assertEquals(0, result.summary().total());
+        assertEquals(List.of(), result.types());
+    }
+
+    @Test
+    public void anUnreachableBridgeStillFailsTheCatalog() {
+        when(bridgeCatalogService.getCatalog())
+                .thenThrow(new BridgeProfileCatalogException("Bridge profile catalog request failed"));
+
+        org.junit.Assert.assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
     }
 
     @Test
@@ -67,6 +109,8 @@ public class AnalyzerTypeCatalogServiceTest {
 
         AnalyzerTypeCatalogView result = service.getCatalog();
 
+        assertEquals(true, result.bridgeConfigured());
+        assertEquals(true, result.bridgePaired());
         assertEquals("1.0", result.schemaVersion());
         assertEquals(2, result.summary().total());
         assertEquals(1, result.summary().inUse());

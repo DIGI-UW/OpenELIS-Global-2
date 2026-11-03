@@ -211,6 +211,60 @@ describe("DeliveryIssuesPanel", () => {
     ).toBeVisible();
   });
 
+  it("says the Bridge is not paired instead of claiming it holds nothing", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        status: "success",
+        data: {
+          count: 0,
+          rows: [],
+          bridgeConfigured: true,
+          bridgePaired: false,
+        },
+      }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText("The Analyzer Bridge is not paired"),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Results it holds are listed here once it is paired on the Analyzers page.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("The Bridge has no undelivered results."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says no Bridge address is configured instead of claiming it holds nothing", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        status: "success",
+        data: {
+          count: 0,
+          rows: [],
+          bridgeConfigured: false,
+          bridgePaired: false,
+        },
+      }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        "No Analyzer Bridge address is configured for OpenELIS.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("The Analyzer Bridge is not paired"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("The Bridge has no undelivered results."),
+    ).not.toBeInTheDocument();
+  });
+
   it("says so when the Bridge cannot be reached", async () => {
     getFromOpenElisServer.mockImplementation((_url, callback) =>
       callback(undefined),

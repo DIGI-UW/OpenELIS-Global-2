@@ -52,6 +52,7 @@ const DeliveryIssuesPanel = () => {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [bridgeState, setBridgeState] = useState(null);
   const [pendingId, setPendingId] = useState(null);
   const [actionError, setActionError] = useState(null);
 
@@ -62,6 +63,15 @@ const DeliveryIssuesPanel = () => {
         Array.isArray(data?.rows) && data.count === data.rows.length;
       setRows(valid ? data.rows : []);
       setLoadFailed(!valid);
+      setBridgeState(
+        !valid
+          ? null
+          : data.bridgeConfigured === false
+            ? "notConfigured"
+            : data.bridgePaired === false
+              ? "notPaired"
+              : null,
+      );
       setLoadError(
         !valid && response?.messageKey
           ? formatActionError(intl, response)
@@ -197,6 +207,27 @@ const DeliveryIssuesPanel = () => {
               id: "analyzer.deliveryIssues.loadFailed",
             })
           }
+        />
+      ) : bridgeState === "notConfigured" ? (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.error.notConfigured",
+          })}
+        />
+      ) : bridgeState === "notPaired" ? (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzer.bridgePairing.unpaired.title",
+          })}
+          subtitle={intl.formatMessage({
+            id: "analyzer.deliveryIssues.notPaired.subtitle",
+          })}
         />
       ) : tableRows.length === 0 ? (
         <InlineNotification
