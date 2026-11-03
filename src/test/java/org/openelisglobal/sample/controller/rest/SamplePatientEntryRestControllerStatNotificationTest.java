@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,6 +34,7 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.context.MessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Regression test for Issue #4862: STAT Order notifications must not accumulate
@@ -57,9 +59,17 @@ public class SamplePatientEntryRestControllerStatNotificationTest {
     @InjectMocks
     private SamplePatientEntryRestController controller;
 
+    private Object previousMessageUtil;
+
     @Before
     public void setUp() {
+        previousMessageUtil = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         MessageUtil.setMessageSource(messageSource);
+    }
+
+    @After
+    public void tearDown() {
+        ReflectionTestUtils.setField(MessageUtil.class, "instance", previousMessageUtil);
     }
 
     @Test
@@ -106,6 +116,54 @@ public class SamplePatientEntryRestControllerStatNotificationTest {
         assertEquals("user2", capturedNotifications.get(1).getUser().getId());
         assertEquals("STAT priority Order with Lab Number LAB-101 has been Created for Tests : Liver Function Test",
                 capturedNotifications.get(1).getMessage());
+    }
+
+    @Test
+    public void sendStatOrderNotifications_addsTrailingSpace_whenBaseMessageLacksOne() {
+        SampleOrderItem orderItem = new SampleOrderItem();
+        orderItem.setLabNo("LAB-101");
+        orderItem.setPriority(OrderPriority.STAT);
+
+        when(userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS)).thenReturn(Collections.singletonList("user1"));
+
+        Sample sample = mock(Sample.class);
+        when(sampleService.getSampleByAccessionNumber("LAB-101")).thenReturn(sample);
+
+        Analysis analysis1 = createMockAnalysis("Full Blood Count");
+        List<Analysis> allAnalyses = Collections.singletonList(analysis1);
+        when(sampleService.getAnalysis(sample)).thenReturn(allAnalyses);
+
+        // Base message without trailing space
+        when(messageSource.getMessage(eq("notification.order.stat"), any(), any(), any()))
+                .thenReturn("STAT priority Order with Lab Number LAB-101 has been Created for Tests :");
+
+        when(userService.filterAnalysesByLabUnitRoles("user1", allAnalyses, Constants.ROLE_RESULTS))
+                .thenReturn(Collections.singletonList(analysis1));
+
+        SystemUser user1 = new SystemUser();
+        user1.setId("user1");
+        when(systemUserService.getUserById("user1")).thenReturn(user1);
+
+        controller.sendStatOrderNotifications(orderItem);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationDAO).save(captor.capture());
+        assertEquals("STAT priority Order with Lab Number LAB-101 has been Created for Tests : Full Blood Count",
+                captor.getValue().getMessage());
+    }
+
+    @Test
+    public void sendStatOrderNotifications_isNoOp_whenNoSampleFound() {
+        SampleOrderItem orderItem = new SampleOrderItem();
+        orderItem.setLabNo("LAB-UNKNOWN");
+        orderItem.setPriority(OrderPriority.STAT);
+
+        when(sampleService.getSampleByAccessionNumber("LAB-UNKNOWN")).thenReturn(null);
+
+        controller.sendStatOrderNotifications(orderItem);
+
+        verify(userService, never()).filterAnalysesByLabUnitRoles(any(), any(), any());
+        verify(notificationDAO, never()).save(any());
     }
 
     @Test

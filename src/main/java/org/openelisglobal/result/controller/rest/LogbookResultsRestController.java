@@ -775,7 +775,11 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             return;
         }
         List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
         String message = MessageUtil.getMessage("notification.result.stat");
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
         for (String userId : systemUserIds) {
             // Pool-anchored analyses have analysis.sampleItem == null; resolve
             // the owning Sample via AnalysisAnchorService so vector orders
@@ -797,7 +801,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 String testString = String.join(", ", userTests);
                 try {
                     Notification notification = new Notification();
-                    notification.setMessage(message + testString);
+                    notification.setMessage(prefix + testString);
                     notification.setUser(systemUserService.getUserById(userId));
                     notification.setCreatedDate(OffsetDateTime.now());
                     notification.setReadAt(null);

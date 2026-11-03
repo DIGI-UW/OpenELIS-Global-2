@@ -167,7 +167,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
     private final String REFERRAL_CONFORMATION_ID;
     private static final String REFLEX_ACCESSIONS = "reflex_accessions";
 
-    private LogbookResultsController(ReferralTypeService referralTypeService) {
+    public LogbookResultsController(ReferralTypeService referralTypeService) {
         ReferralType referralType = referralTypeService.getReferralTypeByName("Confirmation");
         if (referralType != null) {
             REFERRAL_CONFORMATION_ID = referralType.getId();
@@ -944,7 +944,11 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             return;
         }
         List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
         String message = MessageUtil.getMessage("notification.result.stat");
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
         for (String userId : systemUserIds) {
             List<Analysis> userAnalyses = userService
                     .filterAnalysesByLabUnitRoles(userId, newResultAnalyses, Constants.ROLE_VALIDATION).stream()
@@ -961,7 +965,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                 String testString = String.join(", ", userTests);
                 try {
                     Notification notification = new Notification();
-                    notification.setMessage(message + testString);
+                    notification.setMessage(prefix + testString);
                     notification.setUser(systemUserService.getUserById(userId));
                     notification.setCreatedDate(OffsetDateTime.now());
                     notification.setReadAt(null);

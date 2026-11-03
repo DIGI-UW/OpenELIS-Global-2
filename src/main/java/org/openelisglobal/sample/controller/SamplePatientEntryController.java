@@ -434,28 +434,39 @@ public class SamplePatientEntryController extends BaseSampleEntryController {
     }
 
     void sendStatOrderNotifications(SampleOrderItem sampleOrder) {
-        if (sampleOrder != null && OrderPriority.STAT.equals(sampleOrder.getPriority())) {
-            List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
-            Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
-            List<Analysis> analyses = statSample != null ? sampleService.getAnalysis(statSample) : null;
-            String message = MessageUtil.getMessage("notification.order.stat",
-                    AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
-            for (String userId : systemUserIds) {
-                List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
-                        Constants.ROLE_RESULTS);
-                if (userAnalyses != null && !userAnalyses.isEmpty()) {
-                    List<String> tests = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
-                            .collect(Collectors.toList());
-                    String testString = String.join(", ", tests);
-                    try {
-                        Notification notification = new Notification();
-                        notification.setMessage(message + testString);
-                        notification.setUser(systemUserService.getUserById(userId));
-                        notification.setCreatedDate(OffsetDateTime.now());
-                        notification.setReadAt(null);
-                        notificationDAO.save(notification);
-                    } catch (Exception e) {
-                    }
+        if (sampleOrder == null || !OrderPriority.STAT.equals(sampleOrder.getPriority())) {
+            return;
+        }
+        Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+        if (statSample == null) {
+            return;
+        }
+        List<Analysis> analyses = sampleService.getAnalysis(statSample);
+        if (analyses == null || analyses.isEmpty()) {
+            return;
+        }
+        List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
+        if (systemUserIds == null || systemUserIds.isEmpty()) {
+            return;
+        }
+        String message = MessageUtil.getMessage("notification.order.stat",
+                AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
+        String prefix = (message != null && message.endsWith(" ")) ? message : message + " ";
+        for (String userId : systemUserIds) {
+            List<Analysis> userAnalyses = userService.filterAnalysesByLabUnitRoles(userId, analyses,
+                    Constants.ROLE_RESULTS);
+            if (userAnalyses != null && !userAnalyses.isEmpty()) {
+                List<String> tests = userAnalyses.stream().map(a -> a.getTest().getLocalizedName())
+                        .collect(Collectors.toList());
+                String testString = String.join(", ", tests);
+                try {
+                    Notification notification = new Notification();
+                    notification.setMessage(prefix + testString);
+                    notification.setUser(systemUserService.getUserById(userId));
+                    notification.setCreatedDate(OffsetDateTime.now());
+                    notification.setReadAt(null);
+                    notificationDAO.save(notification);
+                } catch (Exception e) {
                 }
             }
         }

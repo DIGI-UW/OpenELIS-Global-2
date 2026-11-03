@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,8 +62,11 @@ public class LogbookResultsRestControllerStatNotificationTest {
     @InjectMocks
     private LogbookResultsRestController controller;
 
+    private Object previousMessageUtil;
+
     @Before
     public void setUp() {
+        previousMessageUtil = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         MessageUtil.setMessageSource(messageSource);
         ReflectionTestUtils.setField(controller, "userRoleService", userRoleService);
         ReflectionTestUtils.setField(controller, "userService", userService);
@@ -71,8 +75,13 @@ public class LogbookResultsRestControllerStatNotificationTest {
         ReflectionTestUtils.setField(controller, "notificationDAO", notificationDAO);
     }
 
+    @After
+    public void tearDown() {
+        ReflectionTestUtils.setField(MessageUtil.class, "instance", previousMessageUtil);
+    }
+
     @Test
-    public void sendStatResultNotifications_doesNotAccumulateTestsAcrossUsers() {
+    public void sendStatResultNotifications_doesNotAccumulateTestsAcrossUsers_andAddsSpaceForRealEnglishMessage() {
         Analysis analysis1 = createMockAnalysis("Full Blood Count");
         Analysis analysis2 = createMockAnalysis("Liver Function Test");
         List<Analysis> newResultAnalyses = Arrays.asList(analysis1, analysis2);
@@ -89,8 +98,10 @@ public class LogbookResultsRestControllerStatNotificationTest {
 
         when(userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION)).thenReturn(Arrays.asList("user1", "user2"));
 
+        // Real English message contract without trailing space (from
+        // message_en.properties:3851)
         when(messageSource.getMessage(eq("notification.result.stat"), any(), any(), any()))
-                .thenReturn("STAT priority Test Results have been created for Tests : ");
+                .thenReturn("STAT priority Test Results have been created for Tests :");
 
         when(userService.filterAnalysesByLabUnitRoles("user1", newResultAnalyses, Constants.ROLE_VALIDATION))
                 .thenReturn(Collections.singletonList(analysis1));
@@ -120,6 +131,40 @@ public class LogbookResultsRestControllerStatNotificationTest {
         assertEquals("user2", capturedNotifications.get(1).getUser().getId());
         assertEquals("STAT priority Test Results have been created for Tests : " + expectedAccession2
                 + " - Liver Function Test", capturedNotifications.get(1).getMessage());
+    }
+
+    @Test
+    public void sendStatResultNotifications_doesNotDoubleSpace_whenLocaleAlreadyIncludesTrailingSpace() {
+        Analysis analysis1 = createMockAnalysis("Full Blood Count");
+        List<Analysis> newResultAnalyses = Collections.singletonList(analysis1);
+
+        Sample statSample1 = mock(Sample.class);
+        when(statSample1.getPriority()).thenReturn(OrderPriority.STAT);
+        when(statSample1.getAccessionNumber()).thenReturn("LAB-101");
+        when(analysisAnchorService.resolveSample(analysis1)).thenReturn(statSample1);
+
+        when(userRoleService.getUserIdsForRole(Constants.ROLE_VALIDATION))
+                .thenReturn(Collections.singletonList("user1"));
+
+        // Message that already includes trailing space
+        when(messageSource.getMessage(eq("notification.result.stat"), any(), any(), any()))
+                .thenReturn("STAT priority Test Results have been created for Tests : ");
+
+        when(userService.filterAnalysesByLabUnitRoles("user1", newResultAnalyses, Constants.ROLE_VALIDATION))
+                .thenReturn(Collections.singletonList(analysis1));
+
+        SystemUser user1 = new SystemUser();
+        user1.setId("user1");
+        when(systemUserService.getUserById("user1")).thenReturn(user1);
+
+        controller.sendStatResultNotifications(newResultAnalyses);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationDAO).save(captor.capture());
+
+        String expectedAccession1 = AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay("LAB-101");
+        assertEquals("STAT priority Test Results have been created for Tests : " + expectedAccession1
+                + " - Full Blood Count", captor.getValue().getMessage());
     }
 
     @Test
