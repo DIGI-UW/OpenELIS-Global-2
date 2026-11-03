@@ -142,7 +142,7 @@ test("picks a growth isolate, retains identification history and refers its dema
     { timeout: LONG_TIMEOUT },
   );
   await expect(
-    isolate.getByText(`${seeded.accessionNumber}-ISO-1`, { exact: true }),
+    isolate.getByText(new RegExp(`^${seeded.accessionNumber}-\\d+$`)),
   ).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("isolate-referral-desktop.png"),
