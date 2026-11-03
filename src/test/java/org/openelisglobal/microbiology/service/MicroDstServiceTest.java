@@ -22,8 +22,6 @@ public class MicroDstServiceTest {
     @Mock
     private MicroAntibioticDAO antibiotics;
     @Mock
-    private MicroAstRunDAO runs;
-    @Mock
     private MicroAstReportChoiceService choices;
     @Mock
     private MicroCaseAnalysisDAO links;
@@ -42,7 +40,6 @@ public class MicroDstServiceTest {
     private MicroOrganism organism;
     private org.openelisglobal.result.valueholder.Result molecular;
     private MicroCaseAnalysis link;
-    private MicroAstRun run;
     private final List<MicroDstResolution> history = new ArrayList<>();
 
     @Before
@@ -61,15 +58,11 @@ public class MicroDstServiceTest {
         drug.setDisplayName("Configured agent");
         drug.setResistanceRole("RIFAMPICIN");
         when(antibiotics.getActiveAntibiotics()).thenReturn(List.of(drug));
-        run = new MicroAstRun();
-        run.setId("run");
-        run.setStatus("REVIEWED");
-        when(runs.getByIsolateId("i")).thenReturn(List.of(run));
         var reading = new MicroAstReading();
         reading.setId("reading");
         reading.setAntibioticId("rif");
         reading.setInterpretation("SUSCEPTIBLE");
-        when(choices.latest("run")).thenReturn(List.of(reading));
+        when(choices.getSelectedReadings("i")).thenReturn(List.of(reading));
         var test = new org.openelisglobal.test.valueholder.Test();
         test.setId("test");
         var analysis = new org.openelisglobal.analysis.valueholder.Analysis();
@@ -126,18 +119,13 @@ public class MicroDstServiceTest {
     }
 
     @Test
-    public void pendingPhenotypicEvidenceCannotBeResolved() {
-        run.setStatus("RESULTS_IN");
-        var pending = service.evaluate("c");
-        var request = new MicroDstForm.ResolutionRequest();
-        request.antibioticId = "rif";
-        request.evidenceFingerprint = pending.drugs.get(0).evidenceFingerprint();
-        request.interpretation = "RESISTANT";
-        request.reason = "Reviewed";
-        assertEquals("DST_EVIDENCE_NOT_VALIDATED",
-                assertThrows(MicroAstConflictException.class, () -> service.resolve("c", request, "supervisor"))
-                        .getMessage());
-        assertTrue(history.isEmpty());
+    public void unfinalizedMolecularResultIsNotEvidence() {
+        when(statuses.getAnalysisStatusForID("final")).thenReturn(AnalysisStatus.NotStarted);
+        var state = service.evaluate("c");
+        assertFalse(state.unresolvedDiscordance);
+        assertEquals("SUSCEPTIBLE", state.drugs.get(0).interpretation());
+        assertEquals(List.of("PHENOTYPIC"),
+                state.drugs.get(0).evidence().stream().map(MicroDstForm.Evidence::source).toList());
     }
 
     @Test
@@ -145,12 +133,25 @@ public class MicroDstServiceTest {
         molecular.setValue("indeterminate-code");
         assertEquals("INDETERMINATE", service.evaluate("c").drugs.get(0).interpretation());
         link.setPlacement("ADDITIONAL");
-        assertEquals("SUSCEPTIBLE", service.evaluate("c").drugs.get(0).interpretation());
+        assertEquals("INDETERMINATE", service.evaluate("c").drugs.get(0).interpretation());
     }
 
     @Test public void validatedInitialMolecularResistanceIsAvailableBeforeCultureIdentification() {
         when(isolates.getByCaseId("c")).thenReturn(List.of());
         var state=service.evaluate("c");assertEquals("RR",state.classification);assertEquals("MOLECULAR",state.drugs.get(0).evidence().get(0).source());
+    }
+
+    @Test
+    public void disagreeingMolecularResultsAloneAreNotDiscordant() {
+        when(isolates.getByCaseId("c")).thenReturn(List.of());
+        var second = new org.openelisglobal.result.valueholder.Result();
+        second.setId("second");
+        second.setTestResult(molecular.getTestResult());
+        second.setValue("coded-susceptible");
+        when(results.getResultsByAnalysis(any())).thenReturn(List.of(molecular, second));
+        var state = service.evaluate("c");
+        assertFalse(state.unresolvedDiscordance);
+        assertEquals("INDETERMINATE", state.drugs.get(0).interpretation());
     }
 
     @Test

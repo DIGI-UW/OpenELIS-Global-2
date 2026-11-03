@@ -14283,7 +14283,6 @@
   "microbiology.m6.error.MICROBIOLOGY_ACCESS_DENIED": "You do not have permission to perform this action in this lab unit.",
   "microbiology.m6.error.MICROBIOLOGY_CASE_LOCKED": "This case is locked. Open an amendment before changing released results.",
   "microbiology.m6.error.DST_EVIDENCE_CHANGED": "The DST evidence for this drug has changed. Reload the case and review the evidence before resolving.",
-  "microbiology.m6.error.DST_EVIDENCE_NOT_VALIDATED": "Validate every DST result for this drug before resolving the discordance.",
   "microbiology.testing.noteType": "Note type",
   "microbiology.testing.internalNote": "Internal",
   "microbiology.enum.QUESTIONNAIRE_UPDATED": "Questionnaire updated",

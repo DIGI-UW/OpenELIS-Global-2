@@ -20,6 +20,9 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    public static final java.util.Set<String> SPECIMEN_TEST_PLACEMENTS = java.util.Set.of("INITIAL", "INITIAL_TESTING",
+            "ADDITIONAL");
+
     @Id
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();
