@@ -1,4 +1,8 @@
-import { selectCultureMedium } from "../../../helpers/microbiology-ui";
+import {
+  openMicrobiologyCaseInfo,
+  openMicrobiologyCaseScope,
+  selectCultureMedium,
+} from "../../../helpers/microbiology-ui";
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyEnvironmental } from "../../../helpers/seed-microbiology-data";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
@@ -16,6 +20,7 @@ test("routes a site subject, records environmental culture context and releases 
   await expect(page.getByText(/Outlet tap/)).toBeVisible();
   await expect(page.getByText(/Requester: M8 requester/)).toBeVisible();
   await expect(page.getByText("Date of birth", { exact: true })).toHaveCount(0);
+  await openMicrobiologyCaseInfo(page);
   const purpose = page.getByLabel("Culture purpose", { exact: true });
   await expect(purpose).toHaveValue("ROUTINE_MONITORING");
   await purpose.selectOption("POST_CLEANING_CHECK");
@@ -29,10 +34,10 @@ test("routes a site subject, records environmental culture context and releases 
   await savedContext;
   await expect(purpose).toBeEnabled();
   await page.reload();
+  await openMicrobiologyCaseInfo(page);
   await expect(purpose).toHaveValue("POST_CLEANING_CHECK");
   await expect(page.getByLabel("Replicates", { exact: true })).toHaveValue("3");
-  const section = page.getByLabel("Testing section", { exact: true });
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await page
     .getByRole("button", { name: "Inoculate culture", exact: true })
     .click();
@@ -56,11 +61,11 @@ test("routes a site subject, records environmental culture context and releases 
     .locator('[data-testid^="culture-row-"]')
     .filter({ has: page.getByRole("heading", { name: /M8-WATER-PLATE/ }) });
   await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   await expect(
     page.getByRole("button", { name: "Release final report", exact: true }),
   ).toBeDisabled();
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await row
     .getByRole("button", { name: "Record outcome", exact: true })
     .click();
@@ -69,7 +74,7 @@ test("routes a site subject, records environmental culture context and releases 
   await expect(row.getByText("No growth", { exact: true })).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   await expect(page.getByText(/M8-WATER-PLATE: No growth/)).toBeVisible();
   const versions = page.getByLabel("Report version", { exact: true });
   await expect(versions.locator("option")).toHaveCount(1);
@@ -87,14 +92,14 @@ test("routes a site subject, records environmental culture context and releases 
   });
   await (await refreshedCase).finished();
   await page.reload();
-  await section.selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await expect(
     page.getByRole("button", { name: "Inoculate culture", exact: true }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Record outcome", exact: true }),
   ).toHaveCount(0);
-  await section.selectOption("REPORT");
+  await openMicrobiologyCaseScope(page, "REPORT");
   const downloaded = page.waitForEvent("download");
   await page
     .getByRole("button", {
