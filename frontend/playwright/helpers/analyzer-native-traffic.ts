@@ -82,8 +82,11 @@ async function activeListenerPort(
   expect(connection, "OpenELIS reads the Bridge connection").toBeDefined();
   expect(connection?.actualRuntimeState).toBe("ACTIVE");
   expect(
-    connection?.fields.find((field) => field.key === "senderId")?.currentValue,
-    "The UI-configured sender must match the instrument message",
+    String(
+      connection?.fields.find((field) => field.key === "senderId")
+        ?.currentValue || "",
+    ).split("^")[0],
+    "The saved identity must name the mock's instrument instance (component 1)",
   ).toBe(senderId);
   const probeResponse = await request.post(`${analyzerUrl}/test-connection`, {
     headers: { "X-CSRF-Token": await csrfToken(page) },
@@ -120,8 +123,31 @@ export async function sendGeneXpertFixture(
   patient?: { id: string; name: string },
   messageTime?: string,
 ): Promise<string> {
-  const request = page.request;
   const port = await activeListenerPort(page, analyzerId, senderId);
+  return sendUnassignedGeneXpertFixture(
+    page,
+    accession,
+    fixture,
+    senderId,
+    instrumentCodes,
+    patient,
+    messageTime,
+    port,
+  );
+}
+
+/** Send before an identity is configured, so setup must adopt the received sender. */
+export async function sendUnassignedGeneXpertFixture(
+  page: Page,
+  accession: string,
+  fixture: GeneXpertFixture,
+  senderId: string,
+  instrumentCodes: Record<string, string> = {},
+  patient?: { id: string; name: string },
+  messageTime?: string,
+  port = 12001,
+): Promise<string> {
+  const request = page.request;
   const source = await geneXpertMockSource(request, port);
   const destination = source.destination;
   const response = await request.post(

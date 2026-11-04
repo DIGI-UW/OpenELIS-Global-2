@@ -382,6 +382,19 @@ export const getAnalyzerDeliveryIssues = (
   getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
 };
 
+/** Requeue one retained Bridge receipt without changing its identity. */
+export const retryAnalyzerDelivery = (
+  id: string,
+  callback: DataCallback<
+    { status: string; id: string; state: string } | undefined
+  >,
+) =>
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer/delivery-issues/${encodeURIComponent(id)}/retry`,
+    "{}",
+    callback,
+  );
+
 export interface BridgePairingStatus {
   bridgeUrl: string;
   paired: boolean;

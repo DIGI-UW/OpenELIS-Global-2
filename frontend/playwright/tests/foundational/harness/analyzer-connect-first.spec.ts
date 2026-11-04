@@ -9,12 +9,47 @@ import {
 } from "../../../helpers/analyzer-api";
 import { activeTestId } from "../../../helpers/analyzer-catalog-api";
 import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
-import { sendGeneXpertFixture } from "../../../helpers/analyzer-native-traffic";
+import {
+  sendGeneXpertFixture,
+  sendUnassignedGeneXpertFixture,
+} from "../../../helpers/analyzer-native-traffic";
 import { acceptAll, savedValue } from "../../../helpers/analyzer-review";
 import { GENEXPERT } from "../../../helpers/shipped-profiles";
+import { csrfToken } from "../../../helpers/api-session";
+import { API } from "../../../helpers/analyzer-profile-api";
 
 const expect = baseExpect.configure({ timeout: 20000 });
-type SetupRow = WorklistRow & { readOnly: boolean };
+type SetupRow = WorklistRow & {
+  readOnly: boolean;
+  instrumentFlags?: string;
+  instrumentSampleFlags?: string;
+  assayName?: string;
+  assayVersion?: string;
+  instrumentOperator?: string | null;
+};
+let adoptedAnalyzerId: string | undefined;
+
+test.afterEach(async ({ page }) => {
+  if (!adoptedAnalyzerId) return;
+  const id = adoptedAnalyzerId;
+  adoptedAnalyzerId = undefined;
+  const response = await page.request.get(`${API}/analyzer/analyzers/${id}`);
+  expect(response.ok()).toBeTruthy();
+  const analyzer = await response.json();
+  if (analyzer.connection?.actualRuntimeState !== "ACTIVE") return;
+  // Adoption binds the shared mock's address. Release that runtime binding so
+  // later sender-only fixtures are not excluded by address-first routing.
+  // Normal deactivation preserves the setup samples and saved routine results.
+  const stopped = await page.request.post(
+    `${API}/analyzer/analyzers/${id}/deactivate`,
+    {
+      headers: { "X-CSRF-Token": await csrfToken(page) },
+      data: {},
+    },
+  );
+  expect(stopped.ok(), await stopped.text()).toBeTruthy();
+  expect((await stopped.json()).deactivated).toBe(true);
+});
 
 test(
   "receives typed setup evidence before mapping approval and keeps it isolated after activation and retransmission",
@@ -25,7 +60,7 @@ test(
     test.setTimeout(180000);
     const run = randomUUID().slice(0, 8);
     const name = `Connect first ${run}`;
-    const sender = `S1573-${run}`;
+    const sender = `GX-${run}`;
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
@@ -40,21 +75,11 @@ test(
     await setup.fillName(name);
     await setup.selectLabUnit(GENEXPERT.labUnit);
     await setup.continueToConnect();
-    await setup.fillSenderId(sender);
     const analyzer = await analyzerByName(page, name, GENEXPERT.profileId);
+    adoptedAnalyzerId = analyzer.id;
     const reception = page.getByTestId("analyzer-setup-reception");
-    await reception
-      .getByRole("button", { name: "Start receiving setup samples" })
-      .click();
-    await expect(
-      reception.getByRole("button", { name: "Stop setup reception" }),
-    ).toBeVisible();
-    expect((await analyzerByName(page, name, GENEXPERT.profileId)).status).toBe(
-      "VALIDATION",
-    );
-    await sendGeneXpertFixture(
+    await sendUnassignedGeneXpertFixture(
       page,
-      analyzer.id,
       setupOrder.accession,
       { assay: "hivvl", outcome: "quantified" },
       sender,
@@ -62,9 +87,30 @@ test(
       undefined,
       "20261028160000",
     );
+    const sources = page.getByTestId("analyzer-received-sources");
+    await expect(async () => {
+      await sources
+        .getByRole("button", { name: "Check for received senders" })
+        .click();
+      await expect(sources.getByText(sender, { exact: false })).toBeVisible();
+    }).toPass({ timeout: 20000 });
+    const receivedSource = sources
+      .locator('[data-testid^="analyzer-received-source-"]')
+      .filter({ hasText: sender });
+    await expect(receivedSource).toContainText(`${sender}^GeneXpert^1.0`);
+    await receivedSource
+      .getByRole("button", { name: "This is my analyzer" })
+      .click();
+    await expect(page.getByText(/Setup sample queued/)).toBeVisible();
+    await expect(
+      reception.getByRole("button", { name: "Stop setup reception" }),
+    ).toBeVisible();
+    expect((await analyzerByName(page, name, GENEXPERT.profileId)).status).toBe(
+      "VALIDATION",
+    );
     const captured = () =>
       worklistFor<SetupRow>(page, analyzer.id, setupOrder.accession);
-    // The vendor fixture contains six result records plus instrument sample flags.
+    // The vendor fixture contains six retained assay records and result metadata.
     await expect.poll(async () => (await captured()).length).toBe(6);
     const originalRows = await captured();
     for (const row of originalRows) {
@@ -81,7 +127,11 @@ test(
     expect(original).toMatchObject({
       readOnly: true,
       rawResultValue: "1009.64",
+      instrumentFlags: "N",
+      assayName: "Xpert HIV-1 Viral Load XC",
+      assayVersion: "3",
     });
+    expect(original.instrumentOperator ?? null).toBeNull();
     await reception
       .getByRole("button", { name: "Check for setup samples" })
       .click();
@@ -91,6 +141,7 @@ test(
     await page.screenshot({
       path: testInfo.outputPath("connect-setup-reception.png"),
       fullPage: true,
+      animations: "disabled",
     });
     await reception
       .getByRole("button", { name: "Stop setup reception" })
@@ -128,6 +179,7 @@ test(
     await page.screenshot({
       path: testInfo.outputPath("verify-typed-setup-evidence.png"),
       fullPage: true,
+      animations: "disabled",
     });
     await page.getByRole("button", { name: "Finish and activate" }).click();
     await expect(setup.surface).not.toBeVisible();
@@ -155,13 +207,36 @@ test(
       });
       expect(row.testId ?? null).toBeNull();
     }
+    await page.goto("/qa/qc/dashboard");
+    await page.getByTestId("instruments-search").fill(name);
+    const qcInstrument = page.getByTestId(`instrument-row-${analyzer.id}`);
+    await expect(qcInstrument).toContainText(name);
+    await expect(qcInstrument).toContainText("Not configured");
     await page.goto(`/AnalyzerResults?id=${analyzer.id}`);
-    const held = page.getByTestId(`held-analyzer-result-${original.id}`);
+    await expect(
+      page.getByText(/analyzer results? need attention/),
+    ).toHaveCount(0);
+    const setupEvidence = page.getByTestId("analyzer-setup-evidence");
+    await setupEvidence
+      .getByRole("button", { name: "Retained setup samples (6)" })
+      .click();
+    const held = setupEvidence.getByTestId(
+      `held-analyzer-result-${original.id}`,
+    );
+    await expect(held).toBeVisible();
     await expect(held).toContainText("Setup sample");
     await expect(held.getByRole("checkbox")).toHaveCount(0);
+    const metadata = setupEvidence.getByTestId(
+      `instrument-reported-${original.id}`,
+    );
+    await expect(metadata).toContainText("Flag: N");
+    await expect(metadata).toContainText(
+      "Assay: Xpert HIV-1 Viral Load XC, version 3",
+    );
     await page.screenshot({
-      path: testInfo.outputPath("setup-remains-held-after-activation.png"),
+      path: testInfo.outputPath("retained-setup-evidence-after-activation.png"),
       fullPage: true,
+      animations: "disabled",
     });
     const routineOrder = await createClinicalOrder(page, {
       testIds: [testId],

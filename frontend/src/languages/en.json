@@ -13975,5 +13975,16 @@
   "analyzer.connection.live.missing": "Connection not configured",
   "analyzer.connection.live.attention": "Connection needs attention",
   "analyzer.connection.live.stopped": "Reception stopped",
-  "analyzer.connection.live.running": "Bridge reception active"
+  "analyzer.connection.live.running": "Bridge reception active",
+  "analyzer.setup.sources.title": "Identify this analyzer from received traffic",
+  "analyzer.setup.sources.help": "Send a sample from the instrument, then check for received senders. Select its sender and address below to save the connection, start setup reception, and retry that sample as setup evidence.",
+  "analyzer.setup.sources.refresh": "Check for received senders",
+  "analyzer.setup.sources.loadError": "Received senders could not be loaded. Try again.",
+  "analyzer.setup.sources.empty": "No unassigned senders found. Send a sample and check again.",
+  "analyzer.setup.sources.identity": "{sender} \u2014 {address}, port {port}",
+  "analyzer.setup.sources.adopt": "This is my analyzer",
+  "analyzer.setup.sources.retryError": "The connection was saved for setup, but the sample could not be queued. Check Undelivered results before retrying.",
+  "analyzer.setup.sources.queued": "Setup sample queued. Check for setup samples to confirm it arrived; queued does not mean received.",
+  "analyzer.results.setupEvidence.title": "Retained setup samples ({count})",
+  "analyzer.results.setupEvidence.help": "These samples were received during setup. They remain available as evidence and do not require clinical review."
 }

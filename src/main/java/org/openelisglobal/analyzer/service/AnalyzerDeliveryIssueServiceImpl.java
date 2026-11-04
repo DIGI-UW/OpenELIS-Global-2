@@ -67,7 +67,9 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
                 text(row, "protocol"), text(row, "accession"), row.path("attempts").asInt(0), text(row, "receivedAt"),
                 text(row, "failureReason"),
                 row.path("lastHttpStatus").isNumber() ? row.path("lastHttpStatus").asInt() : null,
-                text(row, "lastError"), DEAD_LETTERED.equals(state));
+                text(row, "lastError"), DEAD_LETTERED.equals(state),
+                row.path("listenerPort").isIntegralNumber() ? row.path("listenerPort").asInt() : null,
+                text(row, "transport"));
     }
 
     private static String text(JsonNode row, String field) {

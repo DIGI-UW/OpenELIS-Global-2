@@ -633,6 +633,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                 step === "connect" &&
                 (candidate ? (
                   <AnalyzerConnectionSetup
+                    protocol={selectedType?.protocol}
                     key={`${candidate.id}:${candidate.profileId}:${candidate.profileRevision}`}
                     candidate={candidate}
                     onCandidateChange={setCandidate}

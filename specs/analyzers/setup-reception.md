@@ -30,8 +30,20 @@ evidence, without assigning a local result target or processing QC. The original
 bundle and receipt identity remain intact. The mapping editor displays this
 evidence using the delivered number/text interpretation and units. Neither
 mapping application nor routine activation converts a setup sample into a
-clinical result. The operator can remove it from review with the existing
-audited confirmation; its bundle remains on the delivery receipt.
+clinical result. The review page groups these rows in a separate retained setup-evidence section.
+They never contribute to the held-result attention count, including before or
+after activation. The operator can remove a capture with the existing audited
+confirmation; its bundle remains on the delivery receipt.
+
+Connect offers unassigned network senders from the Bridge's retained delivery
+metadata. The operator explicitly identifies their instrument by its complete
+received sender, source address and listener port. Saving uses the existing
+connection settings, then START_SETUP must acknowledge Validation reception
+before the selected original receipt is retried. A queued retry is not presented
+as successful reception. Refresh remains available for traffic arriving after
+Connect was opened. OpenELIS neither parses the raw message nor overrides the
+Bridge's identity resolution; already-bound or interpreted deliveries are not
+offered for reassignment.
 
 Normal activation still requires the exact saved and confirmed local mapping
 and a matching Bridge acknowledgment. New deliveries after activation follow
