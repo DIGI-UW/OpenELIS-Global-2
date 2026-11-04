@@ -44,6 +44,8 @@
   <include relativeToChangelogFile="true" file="024-sample-requester-sample-index.xml"/>
   <!-- OGC-1599: panels an upgrade left on CLINICAL move to the domain their members share -->
   <include relativeToChangelogFile="true" file="025-panel-domain-from-members.xml"/>
+  <!-- OGC-1200: runs; analyzer values and accepted results name their run -->
+  <include relativeToChangelogFile="true" file="026-result-run.xml"/>
 
   <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
   <!-- M8 consumes the case structure and site routing above, including on fresh installs. -->
