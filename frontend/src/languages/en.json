@@ -11371,7 +11371,7 @@
   "menu.configuration.saved": "Menu settings saved.",
   "menu.presentation.sectionHint": "Section headings group their child menu items without a link.",
   "menu.presentation.sectionIconHint": "Icons are shown on menu items, not section headings.",
-  "menu.module.managed": "This entry belongs to a module and cannot be changed here. Who sees it is decided by its permission in Role Management.",
+  "menu.module.managed": "This entry belongs to a module and cannot be changed here. Who sees it is decided by the roles that hold its permission, assigned in User Management.",
   "analyzer.action.copyMappings": "Copy Mappings",
   "analyzer.action.delete": "Delete",
   "analyzer.action.edit": "Edit",
