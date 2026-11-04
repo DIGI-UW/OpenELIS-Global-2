@@ -81,7 +81,7 @@ module.
     "basePackages": ["org.openelisglobal.module.followup"],
     "activator": "org.openelisglobal.module.followup.SpecimenFollowUpModule",
     "entities": ["org.openelisglobal.module.followup.domain.FollowUp"],
-    "liquibase": "liquibase/specimen-followup/changelog.xml"
+    "liquibase": "liquibase/base.xml"
   },
   "permissions": [
     {
@@ -121,16 +121,16 @@ Every namespace the module owns derives from `id` (lower-case, starts with a
 letter, letters, digits and hyphens, 3 to 41 characters). With `<id_>` meaning
 the id with hyphens replaced by underscores:
 
-| Namespace        | Rule                                                                                                                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Permission keys  | `mod.<id>.<key>`; the manifest declares `<key>` only                                                                                                                                                         |
-| Message keys     | `mod.<id>.*`; a menu `displayKey` must use this prefix                                                                                                                                                       |
-| Menu element ids | `menu_mod_<id_>` or `menu_mod_<id_>_*`                                                                                                                                                                       |
-| REST paths       | `/rest/modules/<id>/**`; a controller mapped elsewhere fails the module                                                                                                                                      |
-| Report ids       | unique across modules and never the id of a report the core ships; a module cannot take over a built-in report                                                                                               |
-| Routes           | `/m/<id>/**` only; every route names a permission or a role                                                                                                                                                  |
-| Tables           | `mod_<id_>_*` in the `clinlims` schema; changeset ids start with `<id>-` with author `<id>`, the changelog lives under `liquibase/<id>/`                                                                     |
-| Java packages    | `backend.basePackages`, the activator, the entities and the extension classes under `org.openelisglobal.module.<name>`; `api`, `manifest`, `runtime`, `web` and `testkit` belong to the core and are refused |
+| Namespace        | Rule                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Permission keys  | `mod.<id>.<key>`; the manifest declares `<key>` only                                                                                                                                                                                                                                                                                                                                      |
+| Message keys     | `mod.<id>.*`; a menu `displayKey` must use this prefix                                                                                                                                                                                                                                                                                                                                    |
+| Menu element ids | `menu_mod_<id_>` or `menu_mod_<id_>_*`                                                                                                                                                                                                                                                                                                                                                    |
+| REST paths       | `/rest/modules/<id>/**`; a controller mapped elsewhere fails the module                                                                                                                                                                                                                                                                                                                   |
+| Report ids       | unique across modules and never the id of a report the core ships; a module cannot take over a built-in report                                                                                                                                                                                                                                                                            |
+| Routes           | `/m/<id>/**` only; every route names a permission or a role                                                                                                                                                                                                                                                                                                                               |
+| Tables           | `mod_<id_>_*` in the `clinlims` schema; changeset ids start with `<id>-` with author `<id>`; the manifest names one master changelog under `liquibase/` (`liquibase/base.xml`) that includes the module's changelog files in order, as the core's `base.xml` files do; a changelog path is part of every changeset's identity, so a file that has run on a site is never moved or renamed |
+| Java packages    | `backend.basePackages`, the activator, the entities and the extension classes under `org.openelisglobal.module.<name>`; `api`, `manifest`, `runtime`, `web` and `testkit` belong to the core and are refused                                                                                                                                                                              |
 
 Other rules:
 
@@ -182,7 +182,8 @@ the system user, and a logger.
 my-module/
 ├── pom.xml                                   provided: openelis-module-api, openelis-spi, openelisglobal:classes
 ├── src/main/resources/META-INF/openelis-module.json
-├── src/main/resources/liquibase/my-module/changelog.xml
+├── src/main/resources/liquibase/base.xml      includes the changelog files below, in order
+├── src/main/resources/liquibase/my-module/001-tables.xml
 ├── src/main/java/org/openelisglobal/module/<name>/...  activator, entities, services, controllers
 ├── frontend/                                 the pages, built into src/main/resources/META-INF/resources/modules/<id>/
 └── src/test/java/...                         tests
@@ -233,13 +234,13 @@ mocked; the runtime itself is covered by the core's module tests.
    core. The activator, the entities and the extensions must load from the
    module and implement their contracts, or the module is `INVALID`.
 4. **Migrations.** After the core changelog and before the entity manager
-   factory, each `VALIDATED` module's changelog runs through the Liquibase API
-   with the module's class loader. Every changeset id must start with `<id>-`
-   and carry the module id as author (refused before anything runs). The
-   installed version is recorded in `clinlims.module_state`; a JAR older than
-   the recorded version is refused unless `modules.<id>.allowDowngrade=true`. A
-   failing changeset stops start-up naming the module, as a failing core
-   changeset does.
+   factory, each `VALIDATED` module's master changelog (`backend.liquibase`,
+   `liquibase/base.xml` with its includes) runs through the Liquibase API, read
+   from the module JAR alone. Every changeset id must start with `<id>-` and
+   carry the module id as author (refused before anything runs). The installed
+   version is recorded in `clinlims.module_state`; a JAR older than the recorded
+   version is refused unless `modules.<id>.allowDowngrade=true`. A failing
+   changeset stops start-up naming the module, as a failing core changeset does.
 5. **Entities.** The declared entity classes join the core persistence unit
    (same session factory, transactions and `clinlims` schema).
 6. **Child context.** Once the root context is refreshed, each `MIGRATED` module

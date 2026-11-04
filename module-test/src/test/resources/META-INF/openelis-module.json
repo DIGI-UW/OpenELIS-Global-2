@@ -19,7 +19,7 @@
     "entities": [
       "org.openelisglobal.module.kitfixture.domain.Thing"
     ],
-    "liquibase": "liquibase/kitfixture/changelog.xml",
+    "liquibase": "liquibase/base.xml",
     "extensions": [
       {
         "spi": "report",
