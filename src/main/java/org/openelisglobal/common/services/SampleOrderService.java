@@ -24,6 +24,8 @@ import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -89,6 +91,20 @@ public class SampleOrderService {
         this.sample = sample;
     }
 
+    /**
+     * The "Other" entry of the sampling location list (local abbreviation "Other"),
+     * which asks the user to type the location. Its id differs between sites, so
+     * the order screens learn it from here.
+     *
+     * @return the entry's id, or null when the list has no such entry
+     */
+    static String otherTestLocationCodeId() {
+        return SpringContext.getBean(DictionaryService.class)
+                .getDictionaryEntrysByCategoryAbbreviation("categoryName", "testLocationCode", false).stream()
+                .filter(entry -> "Other".equalsIgnoreCase(entry.getLocalAbbreviation())).map(Dictionary::getId)
+                .findFirst().orElse(null);
+    }
+
     private SampleOrderItem getBaseSampleOrderItem() {
         SampleOrderItem orderItems = new SampleOrderItem();
 
@@ -116,6 +132,7 @@ public class SampleOrderService {
         if (needTestLocationCode) {
             orderItems.setTestLocationCodeList(
                     DisplayListService.getInstance().getList(DisplayListService.ListType.TEST_LOCATION_CODE));
+            orderItems.setOtherTestLocationCodeId(otherTestLocationCodeId());
         }
 
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(ConfigurationProperties.Property.ORDER_PROGRAM,

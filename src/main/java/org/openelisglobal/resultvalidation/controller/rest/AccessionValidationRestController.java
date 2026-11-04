@@ -619,7 +619,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 List<Result> results = new ArrayList<>();
                 if (areResults(analysisItem)) {
-                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     results = createResultFromAnalysisItem(analysisItem, analysis, analysis, noteUpdateList,
                             deletableList);
                     for (Result result : results) {
@@ -836,7 +835,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             return errorResponse(400, "modificationReasonRequired");
         }
         bindRowToAnalysis(item, analysis);
-        item.setStoredResult(item.getResult());
         item.setIsAccepted(false);
         item.setIsRejected(false);
         item.setNoteContext(NOTE_CONTEXT_MODIFICATION);

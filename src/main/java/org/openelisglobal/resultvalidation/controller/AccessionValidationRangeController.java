@@ -405,7 +405,6 @@ public class AccessionValidationRangeController extends BaseResultValidationCont
                 createNeededNotes(analysisItem, analysis, noteUpdateList);
 
                 if (areResults(analysisItem)) {
-                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     List<Result> results = createResultFromAnalysisItem(analysisItem, analysis, analysis,
                             noteUpdateList, deletableList);
                     for (Result result : results) {

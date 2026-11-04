@@ -320,13 +320,13 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
      * callers handle it as one rather than letting it escape as a 500.
      */
     private BridgeTls.Identity clientIdentity(AnalyzerBridgePairing record) throws GeneralSecurityException {
-        String privateKey;
+        byte[] privateKey;
         try {
-            privateKey = encryptor.decrypt(record.getClientPrivateKey());
-        } catch (EncryptionOperationNotPossibleException e) {
+            privateKey = Base64.getDecoder().decode(encryptor.decrypt(record.getClientPrivateKey()));
+        } catch (EncryptionOperationNotPossibleException | IllegalArgumentException e) {
             throw new GeneralSecurityException("the client key cannot be decrypted with this installation's key", e);
         }
-        return new BridgeTls.Identity(BridgeTls.privateKey(Base64.getDecoder().decode(privateKey)),
+        return new BridgeTls.Identity(BridgeTls.privateKey(privateKey),
                 BridgeTls.certificate(record.getClientCertificate()));
     }
 

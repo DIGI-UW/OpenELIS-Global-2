@@ -63,18 +63,24 @@ describe("EQAOrderForm deep link from My Cycles", () => {
 
   const cycleSelect = () => screen.findByLabelText(messages["eqa.order.cycle"]);
   const programmeSelect = () =>
-    screen.findByLabelText(messages["eqa.order.programme"]);
+    screen.findByRole("combobox", {
+      name: new RegExp(`^${messages["eqa.order.programme"]}`),
+    });
 
   test("preselects the linked cycle and the enrollment whose programme matches its scheme", async () => {
     renderForm("?isEQA=true&cycleId=12");
     expect(await cycleSelect()).toHaveValue("12");
-    expect(await programmeSelect()).toHaveValue("7");
+    expect(await programmeSelect()).toHaveValue(
+      "CPHL National HIV Viral Load EQA",
+    );
   });
 
   test("an explicit enrollmentId on the link wins over the name match", async () => {
     renderForm("?isEQA=true&cycleId=12&enrollmentId=8");
     expect(await cycleSelect()).toHaveValue("12");
-    expect(await programmeSelect()).toHaveValue("8");
+    expect(await programmeSelect()).toHaveValue(
+      "CPHL National HIV Serology EQA",
+    );
   });
 
   test("without a linked cycle both selects start empty", async () => {

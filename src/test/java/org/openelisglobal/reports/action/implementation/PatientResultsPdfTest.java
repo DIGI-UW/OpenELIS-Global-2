@@ -67,6 +67,48 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void negativeCalculatedLogarithmAndOriginalMeasurementRemainReadable() throws Exception {
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setResultType("N");
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        var data = rows(ORDER);
+        data.get(0).setResult(
+                org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result, true));
+        String text = PdfText.of(render(data, Map.of(ORDER, order())));
+        assertTrue(text, text.contains("−2.19"));
+        assertTrue(text, text.contains("0.0064"));
+        assertTrue(text, text.contains("0.01"));
+    }
+
+    @Test
+    public void clinicalValueAnnotationUsesTheReportTranslationCatalog() throws Exception {
+        Path directory = overrides.getRoot().toPath();
+        Files.writeString(directory.resolve("fr.json"),
+                "{\"label.results.clinicalValue\": \"Valeur utilisée pour les décisions cliniques : {value}\"}");
+        UiMessages french = UiMessages.forLocale(Locale.FRENCH, directory);
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setResultType("N");
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        String annotated = org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay
+                .format(result, true, french);
+        assertEquals("0.01\nCalculated log10: −2.19\n(Valeur utilisée pour les décisions cliniques : 0.0064)",
+                annotated);
+        var data = rows(ORDER);
+        data.get(0).setResult(annotated);
+        String text = PdfText.of(PatientResultsPdf.render(settings(), french, data, Map.of(ORDER, order())))
+                .replaceAll("\\s+", " ");
+        assertTrue(text, text.contains("Valeur utilisée"));
+        assertTrue(text, text.contains("décisions cliniques"));
+        assertTrue(text, text.contains("0.0064"));
+        assertTrue(text, text.contains("−2.19"));
+        assertFalse(text, text.contains("Value used for clinical decisions"));
+        assertFalse(text, text.contains("{value}"));
+        assertEquals("0.0064", result.getEnteredValue());
+    }
+
+    @Test
     public void printsOnTheSitesPaperSize() throws Exception {
         ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, "Letter");
         byte[] letter = render(rows(ORDER), Map.of(ORDER, order()));

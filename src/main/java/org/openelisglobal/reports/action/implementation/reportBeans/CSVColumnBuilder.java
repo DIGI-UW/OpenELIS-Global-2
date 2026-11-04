@@ -170,6 +170,21 @@ public abstract class CSVColumnBuilder {
         }
     }
 
+    /**
+     * When the sample's latest report was generated, for a print-date range. A
+     * subquery on the sample, so it holds inside the crosstab queries, which have
+     * no join to document_track.
+     */
+    protected static final String LAST_PRINT_DATE = "(SELECT dt.report_generation_time FROM clinlims.document_track AS dt"
+            + " WHERE dt.row_id = s.id ORDER BY dt.id DESC LIMIT 1) ";
+
+    /**
+     * When the sample's last analysis was released, for a result-date range in a
+     * query that has the sample but no analysis.
+     */
+    protected static final String LAST_RELEASE_DATE = "(SELECT max(ra.released_date) FROM clinlims.analysis AS ra"
+            + " JOIN clinlims.sample_item AS rsi ON rsi.id = ra.sampitem_id WHERE rsi.samp_id = s.id) ";
+
     /** map to provide appropriate tag to identify the project. */
     static Map<String /* project Id */, String /* project tag */> projectTagById = new HashMap<>();
 
@@ -181,16 +196,17 @@ public abstract class CSVColumnBuilder {
         List<Project> allProjects = projectService.getAllProjects();
         for (Project project : allProjects) {
             String projectTag;
+            String nameKey = project.getNameKey() == null ? "" : project.getNameKey();
             // Watch the order on these 1st 2!
-            if (project.getNameKey().contains("ARVF")) {
+            if (nameKey.contains("ARVF")) {
                 projectTag = "ARVS";
-            } else if (project.getNameKey().contains("ARV")) {
+            } else if (nameKey.contains("ARV")) {
                 projectTag = "ARVB";
-            } else if (project.getNameKey().contains("VLS")) {
+            } else if (nameKey.contains("VLS")) {
                 projectTag = "VLS";
-            } else if (project.getNameKey().contains("Recency")) {
+            } else if (nameKey.contains("Recency")) {
                 projectTag = "RTRI";
-            } else if (project.getNameKey().contains("HPV")) {
+            } else if (nameKey.contains("HPV")) {
                 projectTag = "HPV";
             } else {
                 // otherwise we use the letters from the Sample ID prefix, which

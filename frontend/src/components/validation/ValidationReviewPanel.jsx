@@ -99,9 +99,7 @@ const Field = ({ labelKey, value, testId }) => (
  * count starts from that count.
  */
 const modifyStartValue = (row) =>
-  row.resultType === "N" && !row.displayResultAsLog && row.storedResult != null
-    ? row.storedResult
-    : (row.result ?? "");
+  row.displayResultAsLog ? displayResult(row) : (row.result ?? "");
 
 const ValidationReviewPanel = ({
   data: row,
@@ -333,6 +331,14 @@ const ValidationReviewPanel = ({
             </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
+            {row.resultType === "N" && displayResult(row) !== row.result && (
+              <div className="unifiedFieldHint">
+                <FormattedMessage
+                  id="label.results.clinicalValue"
+                  values={{ value: row.result }}
+                />
+              </div>
+            )}
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
