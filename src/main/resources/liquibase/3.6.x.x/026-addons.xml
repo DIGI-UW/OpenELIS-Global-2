@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <!-- Add-ons: signed packages registered by an administrator, run by the
+       operator as separate services. The registry (addon), the files of each
+       add-on's sandboxed UI (addon_asset), a transactional outbox of domain
+       events filled by triggers (addon_event), one delivery row per event and
+       subscribed add-on (addon_delivery), and the server-side token key
+       (addon_secret). Design: docs/addons/design.md -->
+
+  <changeSet id="024-addon" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="addon"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="addon">
+      <column name="id" type="VARCHAR(32)"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="name" type="VARCHAR(120)"><constraints nullable="false"/></column>
+      <column name="version" type="VARCHAR(40)"><constraints nullable="false"/></column>
+      <column name="publisher" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="provenance" type="VARCHAR(16)" defaultValue="UNVERIFIED"><constraints nullable="false"/></column>
+      <column name="verified_publisher" type="VARCHAR(64)"/>
+      <column name="description" type="VARCHAR(1000)"/>
+      <column name="manifest" type="TEXT"><constraints nullable="false"/></column>
+      <column name="image" type="VARCHAR(255)"><constraints nullable="false"/></column>
+      <column name="scopes" type="VARCHAR(400)" defaultValue=""><constraints nullable="false"/></column>
+      <column name="events" type="VARCHAR(400)" defaultValue=""><constraints nullable="false"/></column>
+      <column name="enabled" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="endpoint" type="VARCHAR(255)"/>
+      <column name="event_secret" type="VARCHAR(512)"><constraints nullable="false"/></column>
+      <column name="api_key_hash" type="VARCHAR(64)"><constraints nullable="false" unique="true" uniqueConstraintName="uq_addon_api_key_hash"/></column>
+      <column name="config" type="TEXT" defaultValue="{}"><constraints nullable="false"/></column>
+      <column name="installed_at" type="TIMESTAMPTZ" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="installed_by" type="VARCHAR(64)"/>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="addon"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="024-addon-asset" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="addon_asset"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="addon_asset">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="addon_id" type="VARCHAR(32)">
+        <constraints nullable="false" foreignKeyName="fk_addon_asset_addon" referencedTableSchemaName="clinlims"
+          referencedTableName="addon" referencedColumnNames="id" deleteCascade="true"/>
+      </column>
+      <column name="path" type="VARCHAR(160)"><constraints nullable="false"/></column>
+      <column name="content_type" type="VARCHAR(80)"><constraints nullable="false"/></column>
+      <column name="content" type="BYTEA"><constraints nullable="false"/></column>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <addUniqueConstraint schemaName="clinlims" tableName="addon_asset" columnNames="addon_id, path"
+      constraintName="uq_addon_asset_path"/>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="addon_asset"/>
+    </rollback>
+  </changeSet>
+
+  <!-- The outbox. A trigger writes a row in the same transaction as the change
+       it describes, so every write path (screens, REST, FHIR, analyzers) emits
+       the event, and a rolled-back change emits nothing. data carries codes
+       only (lab number, ids), never patient details. -->
+  <changeSet id="024-addon-event" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="addon_event"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="addon_event">
+      <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="type" type="VARCHAR(64)"><constraints nullable="false"/></column>
+      <column name="accession_number" type="VARCHAR(64)"/>
+      <column name="data" type="TEXT"><constraints nullable="false"/></column>
+      <column name="created_at" type="TIMESTAMPTZ" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="fanned" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+    </createTable>
+    <createIndex schemaName="clinlims" tableName="addon_event" indexName="idx_addon_event_created">
+      <column name="created_at"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="addon_event" indexName="idx_addon_event_accession">
+      <column name="accession_number"/>
+    </createIndex>
+    <sql>CREATE INDEX idx_addon_event_unfanned ON clinlims.addon_event (id) WHERE NOT fanned;</sql>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="addon_event"/>
+    </rollback>
+  </changeSet>
+
+  <changeSet id="024-addon-delivery" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="addon_delivery"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="addon_delivery">
+      <column name="event_id" type="BIGINT">
+        <constraints nullable="false" foreignKeyName="fk_addon_delivery_event" referencedTableSchemaName="clinlims"
+          referencedTableName="addon_event" referencedColumnNames="id" deleteCascade="true"/>
+      </column>
+      <column name="addon_id" type="VARCHAR(32)">
+        <constraints nullable="false" foreignKeyName="fk_addon_delivery_addon" referencedTableSchemaName="clinlims"
+          referencedTableName="addon" referencedColumnNames="id" deleteCascade="true"/>
+      </column>
+      <column name="status" type="VARCHAR(16)" defaultValue="PENDING"><constraints nullable="false"/></column>
+      <column name="attempts" type="INTEGER" defaultValueNumeric="0"><constraints nullable="false"/></column>
+      <column name="next_attempt_at" type="TIMESTAMPTZ" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="locked_by" type="VARCHAR(64)"/>
+      <column name="locked_until" type="TIMESTAMPTZ"/>
+      <column name="last_status_code" type="INTEGER"/>
+      <column name="last_error" type="VARCHAR(500)"/>
+      <column name="delivered_at" type="TIMESTAMPTZ"/>
+    </createTable>
+    <addPrimaryKey schemaName="clinlims" tableName="addon_delivery" columnNames="event_id, addon_id"
+      constraintName="pk_addon_delivery"/>
+    <createIndex schemaName="clinlims" tableName="addon_delivery" indexName="idx_addon_delivery_due">
+      <column name="status"/>
+      <column name="next_attempt_at"/>
+    </createIndex>
+    <createIndex schemaName="clinlims" tableName="addon_delivery" indexName="idx_addon_delivery_addon">
+      <column name="addon_id"/>
+    </createIndex>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="addon_delivery"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Server-side keys of the add-on mechanism (the key that signs add-on
+       tokens). Values are encrypted by the application; they never leave the
+       server. -->
+  <changeSet id="024-addon-secret" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <not><tableExists schemaName="clinlims" tableName="addon_secret"/></not>
+    </preConditions>
+    <createTable schemaName="clinlims" tableName="addon_secret">
+      <column name="name" type="VARCHAR(64)"><constraints primaryKey="true" nullable="false"/></column>
+      <column name="value" type="VARCHAR(512)"><constraints nullable="false"/></column>
+      <column name="last_updated" type="TIMESTAMPTZ" defaultValueComputed="now()"/>
+    </createTable>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="addon_secret"/>
+    </rollback>
+  </changeSet>
+
+  <!-- Writes an event only when an enabled add-on subscribes to its type, so a
+       laboratory without add-ons never fills the table. -->
+  <changeSet id="024-addon-emit-function" author="openelisglobal">
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION clinlims.addon_emit(p_type TEXT, p_accession TEXT, p_data TEXT) RETURNS VOID AS $$
+      BEGIN
+          IF EXISTS (SELECT 1 FROM clinlims.addon a
+                     WHERE a.enabled AND (',' || a.events || ',') LIKE ('%,' || p_type || ',%')) THEN
+              INSERT INTO clinlims.addon_event (type, accession_number, data) VALUES (p_type, p_accession, p_data);
+          END IF;
+      END;
+      $$ LANGUAGE plpgsql;
+    </sql>
+    <rollback>
+      <sql>DROP FUNCTION IF EXISTS clinlims.addon_emit(TEXT, TEXT, TEXT);</sql>
+    </rollback>
+  </changeSet>
+
+  <!-- order.created: a new sample (order) row. -->
+  <changeSet id="024-addon-trigger-order-created" author="openelisglobal">
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION clinlims.addon_tg_order_created() RETURNS TRIGGER AS $$
+      BEGIN
+          PERFORM clinlims.addon_emit('order.created', NEW.accession_number,
+              json_build_object('accessionNumber', NEW.accession_number, 'sampleId', NEW.id::TEXT)::TEXT);
+          RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    </sql>
+    <sql splitStatements="false">
+      DROP TRIGGER IF EXISTS addon_order_created ON clinlims.sample;
+      CREATE TRIGGER addon_order_created AFTER INSERT ON clinlims.sample
+          FOR EACH ROW EXECUTE FUNCTION clinlims.addon_tg_order_created();
+    </sql>
+    <rollback>
+      <sql>DROP TRIGGER IF EXISTS addon_order_created ON clinlims.sample;</sql>
+      <sql>DROP FUNCTION IF EXISTS clinlims.addon_tg_order_created();</sql>
+    </rollback>
+  </changeSet>
+
+  <!-- result.validated: an analysis moves to Finalized, whichever path did it. -->
+  <changeSet id="024-addon-trigger-result-validated" author="openelisglobal">
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION clinlims.addon_tg_result_validated() RETURNS TRIGGER AS $$
+      DECLARE
+          finalized NUMERIC;
+          acc TEXT;
+          code TEXT;
+      BEGIN
+          IF TG_OP = 'UPDATE' AND OLD.status_id IS NOT DISTINCT FROM NEW.status_id THEN
+              RETURN NEW;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM clinlims.addon a
+                         WHERE a.enabled AND (',' || a.events || ',') LIKE '%,result.validated,%') THEN
+              RETURN NEW;
+          END IF;
+          SELECT id INTO finalized FROM clinlims.status_of_sample
+           WHERE status_type = 'ANALYSIS' AND name = 'Finalized' LIMIT 1;
+          IF finalized IS NULL OR NEW.status_id IS DISTINCT FROM finalized THEN
+              RETURN NEW;
+          END IF;
+          SELECT s.accession_number INTO acc FROM clinlims.sample_item si
+            JOIN clinlims.sample s ON s.id = si.samp_id WHERE si.id = NEW.sampitem_id;
+          SELECT COALESCE(t.local_code, '') INTO code FROM clinlims.test t WHERE t.id = NEW.test_id;
+          PERFORM clinlims.addon_emit('result.validated', acc,
+              json_build_object('accessionNumber', acc, 'analysisId', NEW.id::TEXT, 'testCode', code)::TEXT);
+          RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    </sql>
+    <sql splitStatements="false">
+      DROP TRIGGER IF EXISTS addon_result_validated ON clinlims.analysis;
+      CREATE TRIGGER addon_result_validated AFTER INSERT OR UPDATE OF status_id ON clinlims.analysis
+          FOR EACH ROW EXECUTE FUNCTION clinlims.addon_tg_result_validated();
+    </sql>
+    <rollback>
+      <sql>DROP TRIGGER IF EXISTS addon_result_validated ON clinlims.analysis;</sql>
+      <sql>DROP FUNCTION IF EXISTS clinlims.addon_tg_result_validated();</sql>
+    </rollback>
+  </changeSet>
+
+  <!-- report.printed: a print or reprint recorded by the Report Print Queue (017). -->
+  <changeSet id="024-addon-trigger-report-printed" author="openelisglobal">
+    <preConditions onFail="MARK_RAN">
+      <tableExists schemaName="clinlims" tableName="report_print_event"/>
+      <tableExists schemaName="clinlims" tableName="report_version"/>
+    </preConditions>
+    <sql splitStatements="false">
+      CREATE OR REPLACE FUNCTION clinlims.addon_tg_report_printed() RETURNS TRIGGER AS $$
+      DECLARE
+          acc TEXT;
+          kind TEXT;
+      BEGIN
+          SELECT s.accession_number, v.report_type INTO acc, kind FROM clinlims.report_version v
+            JOIN clinlims.sample s ON s.id = v.sample_id WHERE v.id = NEW.report_version_id;
+          PERFORM clinlims.addon_emit('report.printed', acc,
+              json_build_object('accessionNumber', acc, 'reportType', kind, 'reprint', NEW.reprint)::TEXT);
+          RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    </sql>
+    <sql splitStatements="false">
+      DROP TRIGGER IF EXISTS addon_report_printed ON clinlims.report_print_event;
+      CREATE TRIGGER addon_report_printed AFTER INSERT ON clinlims.report_print_event
+          FOR EACH ROW EXECUTE FUNCTION clinlims.addon_tg_report_printed();
+    </sql>
+    <rollback>
+      <sql>DROP TRIGGER IF EXISTS addon_report_printed ON clinlims.report_print_event;</sql>
+      <sql>DROP FUNCTION IF EXISTS clinlims.addon_tg_report_printed();</sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
