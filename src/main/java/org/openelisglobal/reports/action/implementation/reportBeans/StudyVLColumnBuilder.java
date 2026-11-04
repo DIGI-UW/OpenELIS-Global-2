@@ -133,7 +133,7 @@ public class StudyVLColumnBuilder extends CIStudyColumnBuilder {
         appendObservationHistoryCrosstab(dateRange.getLowDate(), dateRange.getHighDate(), dateColumn);
         // current ARV treatments
         appendRepeatingObservation(SQLConstant.CURRENT_ARV_TREATMENT_INNS, 4, dateRange.getLowDate(),
-                dateRange.getHighDate(), DateType.RESULT_DATE.equals(dateType) ? LAST_RELEASE_DATE : dateColumn);
+                dateRange.getHighDate(), treatmentCrosstabDate(dateColumn));
         // result
         // appendResultCrosstab(dateRange.getLowDate(), dateRange.getHighDate() );
         query.append(",  clinlims.analysis as a \n");
@@ -164,5 +164,14 @@ public class StudyVLColumnBuilder extends CIStudyColumnBuilder {
         // no don't insert another crosstab or table here, go up before the main WHERE
         // clause
         return;
+    }
+
+    /**
+     * The date the ARV treatment crosstab filters on. That crosstab has the sample
+     * but no analysis, so a result-date range uses the sample's last release date
+     * there.
+     */
+    String treatmentCrosstabDate(String dateColumn) {
+        return DateType.RESULT_DATE.equals(dateType) ? LAST_RELEASE_DATE : dateColumn;
     }
 }

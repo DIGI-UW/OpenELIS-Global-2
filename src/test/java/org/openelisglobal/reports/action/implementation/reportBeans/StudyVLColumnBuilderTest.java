@@ -1,5 +1,6 @@
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -16,15 +17,23 @@ import org.openelisglobal.reports.form.ReportForm.DateType;
  */
 public class StudyVLColumnBuilderTest extends BaseWebContextSensitiveTest {
 
-    @Test
-    public void filtersTheTreatmentCrosstabOnTheSamplesReleaseDate() {
+    private Report.DateRange range() {
         Report.DateRange range = new ExportStudyProjectByDate().new DateRange("01/10/2026", "04/11/2026");
         assertTrue(range.validateHighLowDate("report.error.message.date.received.missing"));
-        StudyVLColumnBuilder builder = new StudyVLColumnBuilder(range, "28", DateType.RESULT_DATE);
+        return range;
+    }
 
-        builder.makeSQL();
+    @Test
+    public void filtersTheTreatmentCrosstabOnTheSamplesReleaseDate() {
+        StudyVLColumnBuilder builder = new StudyVLColumnBuilder(range(), "28", DateType.RESULT_DATE);
 
-        String sql = builder.query.toString();
-        assertTrue(sql.contains("rsi.samp_id = s.id"));
+        assertEquals(CSVColumnBuilder.LAST_RELEASE_DATE, builder.treatmentCrosstabDate("a.released_date "));
+    }
+
+    @Test
+    public void keepsTheChosenDateForTheOtherDateTypes() {
+        StudyVLColumnBuilder builder = new StudyVLColumnBuilder(range(), "28", DateType.ORDER_DATE);
+
+        assertEquals("s.entered_date ", builder.treatmentCrosstabDate("s.entered_date "));
     }
 }
