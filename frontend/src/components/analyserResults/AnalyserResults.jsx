@@ -172,6 +172,9 @@ const AnalyserResults = (props) => {
   const heldPatientResults = patientResults.filter(
     (result) => result.importIssueReason,
   );
+  const needsPlacementDecision = heldPatientResults.some((result) =>
+    REVIEWABLE_HOLDS.includes(result.importIssueReason),
+  );
   const actionablePatientResults = patientResults.filter(
     (result) =>
       !result.importIssueReason ||
@@ -680,7 +683,7 @@ const AnalyserResults = (props) => {
                   id: "label.testCatalog.specimenType",
                 })}
                 helperText={intl.formatMessage({
-                  id: "notice.testCatalog.intake.awaitingSpecimen",
+                  id: "analyzer.placement.chooseSpecimen.help",
                 })}
                 defaultValue={row.typeOfSampleId || ""}
                 onChange={(e) => handleSampleTypeChoice(e, row.id)}
@@ -881,7 +884,9 @@ const AnalyserResults = (props) => {
             { count: heldPatientResults.length },
           )}
           subtitle={intl.formatMessage({
-            id: "analyzer.results.held.subtitle",
+            id: needsPlacementDecision
+              ? "analyzer.results.held.placementGuidance"
+              : "analyzer.results.held.otherGuidance",
           })}
           lowContrast
           hideCloseButton
