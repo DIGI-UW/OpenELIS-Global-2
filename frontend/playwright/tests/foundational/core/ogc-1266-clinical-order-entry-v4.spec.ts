@@ -201,6 +201,12 @@ test.describe("OGC-1266 clinical order entry", () => {
     await expect(page).toHaveURL(/\/order\/clinical\/qa\?order=/, {
       timeout: LONG_TIMEOUT,
     });
+    // Save and next names the saved order here too (OGC-1598).
+    await expect(
+      page
+        .locator(".cds--toast-notification")
+        .filter({ hasText: `Order ${labNumber} has been saved.` }),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       page.getByRole("heading", { level: 1, name: "Sample check" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
