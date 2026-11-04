@@ -26,6 +26,31 @@ public class AnalyzerNormalizedResultContractTest {
     private static final FhirContext FHIR = FhirContext.forR4();
 
     @Test
+    public void versionTwelveRequiresExactlyOneValidReceiptPurpose() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Device device = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Device.class::isInstance).map(Device.class::cast).findFirst().orElseThrow();
+        String root = "https://openelis-global.org/fhir/StructureDefinition/";
+        device.getExtensionByUrl(root + "analyzer-contract-version").setValue(new StringType("1.2"));
+        // Existing flag evidence keeps its explicit role under the newer contract.
+        for (var entry : bundle.getEntry()) {
+            if (entry.getResource() instanceof Observation observation) {
+                observation.getInterpretation().forEach(value -> value.addExtension(root + "analyzer-result-part",
+                        new org.hl7.fhir.r4.model.CodeType("flag")));
+            }
+        }
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+        var purpose = device.addExtension().setUrl(root + "analyzer-delivery-purpose")
+                .setValue(new org.hl7.fhir.r4.model.CodeType("SETUP"));
+        assertEquals("SETUP", AnalyzerNormalizedResultContract.parse(bundle, FHIR).deliveryPurpose());
+        purpose.setValue(new org.hl7.fhir.r4.model.CodeType("unknown"));
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+        purpose.setValue(new org.hl7.fhir.r4.model.CodeType("SETUP"));
+        device.addExtension(root + "analyzer-delivery-purpose", new org.hl7.fhir.r4.model.CodeType("ROUTINE"));
+        assertThrows(IllegalArgumentException.class, () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+    }
+
+    @Test
     public void newContractDoesNotGuessAnInterpretationRoleFromItsCode() throws IOException {
         Bundle bundle = fixture("normalized-known-test.fhir.json");
         Device device = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)

@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   activateAnalyzer,
+  startAnalyzerSetupReception,
   applyAnalyzerMapping,
   createAnalyzer,
   getAnalyzer,
@@ -27,6 +28,8 @@ import AnalyzerSetup from "./AnalyzerSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
+  startAnalyzerSetupReception: vi.fn(),
+  deactivateAnalyzer: vi.fn(),
   applyAnalyzerMapping: vi.fn(),
   createAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
@@ -216,6 +219,17 @@ describe("AnalyzerSetup Instrument step", () => {
     window.history.replaceState({}, "", "/analyzers?setup=instrument");
     // Verify embeds the mapping editor, which loads the catalog's tests and,
     // for a mapped test, its answers and components.
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        activated: true,
+        status: "ACTIVE",
+        blockers: [],
+      }),
+    );
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(connectedCandidate()),
+    );
     getAnalyzerMappingTests.mockImplementation((callback) => callback([]));
     getAnalyzerMappingResultOptions.mockImplementation((_id, callback) =>
       callback([]),
@@ -298,7 +312,7 @@ describe("AnalyzerSetup Instrument step", () => {
       await screen.findByRole("option", { name: "Molecular Biology" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Assays" }),
+      screen.getByRole("button", { name: "Continue to Connect" }),
     );
 
     await waitFor(() =>
@@ -318,7 +332,7 @@ describe("AnalyzerSetup Instrument step", () => {
       "42",
     );
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "assays",
+      "connect",
     );
   });
 
@@ -379,7 +393,7 @@ describe("AnalyzerSetup Instrument step", () => {
     renderSetup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Continue to Assays" }),
+      await screen.findByRole("button", { name: "Continue to Connect" }),
     );
 
     expect(screen.getByText("Select an analyzer type")).toBeVisible();
@@ -388,7 +402,7 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(createAnalyzer).not.toHaveBeenCalled();
   });
 
-  it("persists the selected candidate and advances to URL-backed Assays", async () => {
+  it("persists the selected candidate and advances to URL-backed Connect", async () => {
     window.history.replaceState(
       {},
       "",
@@ -432,7 +446,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Assays" }),
+      screen.getByRole("button", { name: "Continue to Connect" }),
     );
 
     expect(createAnalyzer).toHaveBeenCalledWith(
@@ -446,12 +460,12 @@ describe("AnalyzerSetup Instrument step", () => {
     );
     const params = new URLSearchParams(window.location.search);
     expect(params.get("search")).toBe("gene");
-    expect(params.get("setup")).toBe("assays");
+    expect(params.get("setup")).toBe("connect");
     expect(params.get("analyzerId")).toBe("42");
     expect(params.get("profile")).toBe(activeType.profileId);
     expect(params.get("revision")).toBe("3");
     expect(
-      screen.getByRole("heading", { level: 3, name: "Assays" }).closest("li"),
+      screen.getByRole("heading", { level: 3, name: "Connect" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
     expect(screen.getByText("GX bench 1")).toBeVisible();
     expect(screen.getByText("Molecular Biology")).toBeVisible();
@@ -497,21 +511,21 @@ describe("AnalyzerSetup Instrument step", () => {
       callback(connectedCandidate()),
     );
     const history = renderSetupWithHistory(
-      `/analyzers?search=gene&setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+      `/analyzers?search=gene&setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
     );
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Edit Verify" }),
+      await screen.findByRole("button", { name: "Edit Connect" }),
     );
 
     let params = new URLSearchParams(history.location.search);
     expect(params.get("search")).toBe("gene");
-    expect(params.get("setup")).toBe("verify");
+    expect(params.get("setup")).toBe("connect");
     expect(params.get("analyzerId")).toBe("42");
     expect(params.get("profile")).toBe(activeType.profileId);
     expect(params.get("revision")).toBe("3");
     expect(
-      screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
+      screen.getByRole("heading", { level: 3, name: "Connect" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
 
     await userEvent.click(
@@ -565,7 +579,7 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(params.get("revision")).toBe(String(activeType.revision));
   });
 
-  it("reloads the analyzer mapping sign-off and advances a current candidate to Connect", async () => {
+  it("reloads the analyzer mapping sign-off and activates only the reviewed candidate", async () => {
     const entry = `/analyzers?search=gene&setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`;
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
@@ -573,7 +587,8 @@ describe("AnalyzerSetup Instrument step", () => {
     applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
       callback(connectedCandidate()),
     );
-    const history = renderSetupWithHistory(entry);
+    const onClose = vi.fn();
+    renderSetupWithHistory(entry, onClose);
 
     expect(
       await screen.findAllByTestId("analyzer-type-mapping-row"),
@@ -586,7 +601,7 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(getAnalyzerMapping).toHaveBeenCalledWith("42", expect.any(Function));
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Connect" }),
+      screen.getByRole("button", { name: "Finish and activate" }),
     );
     expect(applyAnalyzerMapping).toHaveBeenCalledWith(
       "42",
@@ -597,15 +612,8 @@ describe("AnalyzerSetup Instrument step", () => {
       },
       expect.any(Function),
     );
-    const params = new URLSearchParams(history.location.search);
-    expect(params.get("search")).toBe("gene");
-    expect(params.get("setup")).toBe("connect");
-    expect(params.get("analyzerId")).toBe("42");
-    expect(params.get("profile")).toBe(activeType.profileId);
-    expect(params.get("revision")).toBe("3");
-    expect(await screen.findByRole("spinbutton", { name: "Port" })).toHaveValue(
-      55000,
-    );
+    expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("shows unconfigured control recognition during verification without blocking connection setup", async () => {
@@ -635,14 +643,14 @@ describe("AnalyzerSetup Instrument step", () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Continue to Connect" }),
+      screen.getByRole("button", { name: "Finish and activate" }),
     ).toBeEnabled();
     expect(
       screen.queryByText("This interface does not transmit control results"),
     ).not.toBeInTheDocument();
   });
 
-  it("keeps Connect closed while a record of an assay that is on is unmapped", async () => {
+  it("blocks routine activation while a record of an assay that is on is unmapped", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
@@ -670,11 +678,11 @@ describe("AnalyzerSetup Instrument step", () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Continue to Connect" }),
+      screen.getByRole("button", { name: "Finish and activate" }),
     ).toBeDisabled();
   });
 
-  it("does not hold Connect closed for an assay this instrument does not run", async () => {
+  it("does not block routine activation for an assay this instrument does not run", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
@@ -700,20 +708,21 @@ describe("AnalyzerSetup Instrument step", () => {
         ],
       }),
     );
-    const history = renderSetupWithHistory(
+    const onClose = vi.fn();
+    renderSetupWithHistory(
       `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+      onClose,
     );
 
     const button = await screen.findByRole("button", {
-      name: "Continue to Connect",
+      name: "Finish and activate",
     });
     await waitFor(() => expect(button).toBeEnabled());
     expect(screen.queryByText("FLU")).not.toBeInTheDocument();
     await userEvent.click(button);
     expect(applyAnalyzerMapping).toHaveBeenCalled();
-    expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "connect",
-    );
+    expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("stays on Verify and explains when the reviewed mapping revision changed", async () => {
@@ -731,7 +740,7 @@ describe("AnalyzerSetup Instrument step", () => {
     const history = renderSetupWithHistory(entry);
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Continue to Connect" }),
+      await screen.findByRole("button", { name: "Finish and activate" }),
     );
 
     expect(
@@ -750,7 +759,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
   });
 
-  it("blocks Connect and resolves in the embedded mapping editor when verification needs attention", async () => {
+  it("blocks routine activation and resolves in the embedded mapping editor when verification needs attention", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback({
         id: "42",
@@ -788,7 +797,7 @@ describe("AnalyzerSetup Instrument step", () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Continue to Connect" }),
+      screen.getByRole("button", { name: "Finish and activate" }),
     ).toBeDisabled();
     expect(
       screen.queryByRole("link", { name: "Review mappings" }),
@@ -836,11 +845,11 @@ describe("AnalyzerSetup Instrument step", () => {
       await screen.findByRole("option", { name: "Molecular Biology" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Assays" }),
+      screen.getByRole("button", { name: "Continue to Connect" }),
     );
 
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "assays",
+      "connect",
     );
     history.goBack();
     await waitFor(() =>
@@ -857,7 +866,7 @@ describe("AnalyzerSetup Instrument step", () => {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "GX bench A");
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Assays" }),
+      screen.getByRole("button", { name: "Continue to Connect" }),
     );
 
     expect(createAnalyzer).not.toHaveBeenCalled();
@@ -872,74 +881,27 @@ describe("AnalyzerSetup Instrument step", () => {
       expect.any(Function),
     );
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "assays",
+      "connect",
     );
     expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
       "42",
     );
   });
 
-  it("shows exact mapping and recognition blockers in the Connect step", async () => {
-    const candidate = connectedCandidate();
-    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
-    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
-      callback({
-        analyzerId: "42",
-        status: "SETUP",
+  it("keeps routine analyzer restart recovery on the activation controls", async () => {
+    const candidate = connectedCandidate({ status: "ACTIVE" });
+    candidate.connection = {
+      ...candidate.connection,
+      readiness: {
         ready: false,
-        activated: false,
         blockers: [
-          { code: "analyzer.activation.blocker.mappings", args: {} },
-          { code: "analyzer.activation.blocker.recognition", args: {} },
+          {
+            messageKey: "analyzer.connection.readiness.restoreFailed",
+          },
         ],
-      }),
-    );
-
-    const history = renderSetupWithHistory(
-      `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
-    );
-
-    expect(
-      await screen.findByText("Analyzer mappings must be verified again."),
-    ).toBeVisible();
-    expect(
-      screen.getByText("Control recognition must be verified again."),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "Finish and activate" }),
-    ).toBeVisible();
-    expect(activateAnalyzer).not.toHaveBeenCalled();
-    expect(
-      screen.getByText("Mappings need to be verified again"),
-    ).toBeVisible();
-    expect(
-      screen.queryByText("Mappings reviewed for this setup"),
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Verify mappings" }),
-    );
-    const params = new URLSearchParams(history.location.search);
-    expect(params.get("setup")).toBe("verify");
-    expect(params.get("analyzerId")).toBe("42");
-  });
-
-  it("saves current settings and activates without requiring a connection test", async () => {
+      },
+    };
     const onClose = vi.fn();
-    const candidate = connectedCandidate();
-    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
-    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
-      callback({
-        analyzerId: "42",
-        status: "SETUP",
-        ready: true,
-        activated: false,
-        blockers: [],
-      }),
-    );
-    updateAnalyzer.mockImplementation((_id, payload, callback) =>
-      callback({ ...candidate, ...payload }),
-    );
     activateAnalyzer.mockImplementation((_id, callback) =>
       callback({
         analyzerId: "42",
@@ -949,36 +911,190 @@ describe("AnalyzerSetup Instrument step", () => {
         blockers: [],
       }),
     );
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, _payload, callback) =>
+      callback(candidate),
+    );
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: false,
+        blockers: [],
+      }),
+    );
+    renderSetupWithHistory(`/analyzers?setup=connect&analyzerId=42`, onClose);
+    expect(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Start receiving setup samples" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Continue to Assays" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Finish and activate" }),
+    );
+    expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it.each(["INACTIVE", "ERROR"])(
+    "restores %s routine reception from Verify before closing",
+    async (runtimeState) => {
+      const candidate = connectedCandidate({ status: "ACTIVE" });
+      candidate.connection.actualRuntimeState = runtimeState;
+      candidate.connection.readiness = {
+        ready: false,
+        blockers: [
+          { messageKey: "analyzer.connection.readiness.restoreFailed" },
+        ],
+      };
+      getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+      applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+        callback(candidate),
+      );
+      const onClose = vi.fn();
+      renderSetupWithHistory(`/analyzers?setup=verify&analyzerId=42`, onClose);
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Finish and activate" }),
+      );
+      expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps Verify open when routine reception cannot be restored", async () => {
+    const candidate = connectedCandidate({ status: "ACTIVE" });
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(candidate),
+    );
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        activated: false,
+        blockers: [],
+      }),
+    );
+    const onClose = vi.fn();
+    renderSetupWithHistory(`/analyzers?setup=verify&analyzerId=42`, onClose);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+    expect(
+      await screen.findByText(
+        "Could not apply the reviewed mappings. Reload Verify and try again.",
+      ),
+    ).toBeVisible();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("uses the post-apply runtime state without activating a recovered connection twice", async () => {
+    const candidate = connectedCandidate({ status: "ACTIVE" });
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    const recovered = {
+      ...candidate,
+      connection: { ...candidate.connection, actualRuntimeState: "ACTIVE" },
+    };
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(recovered),
+    );
+    const onClose = vi.fn();
+    renderSetupWithHistory(`/analyzers?setup=verify&analyzerId=42`, onClose);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+    expect(activateAnalyzer).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("opens setup reception before mapping approval and keeps clinical activation separate", async () => {
+    const candidate = connectedCandidate();
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        ready: false,
+        status: "SETUP",
+        activated: false,
+        blockers: [{ code: "analyzer.activation.blocker.mappings", args: {} }],
+      }),
+    );
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
+    startAnalyzerSetupReception.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        receiving: true,
+        status: "VALIDATION",
+        blockers: [],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Start receiving setup samples",
+      }),
+    );
+    expect(updateAnalyzer).toHaveBeenCalledWith(
+      "42",
+      expect.objectContaining({
+        connectionValues: { listenerPort: 55000 },
+      }),
+      expect.any(Function),
+    );
+    expect(startAnalyzerSetupReception).toHaveBeenCalledWith(
+      "42",
+      expect.any(Function),
+    );
+    expect(activateAnalyzer).not.toHaveBeenCalled();
+    expect(applyAnalyzerMapping).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("button", { name: "Stop setup reception" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Continue to Assays" }),
+    ).toBeEnabled();
+  });
+
+  it("saves connection settings first and activates from Verify without requiring a probe", async () => {
+    const onClose = vi.fn();
+    const candidate = connectedCandidate();
+    getAnalyzer.mockImplementation((_id, callback) => callback(candidate));
+    updateAnalyzer.mockImplementation((_id, payload, callback) =>
+      callback({ ...candidate, ...payload }),
+    );
     renderSetupWithHistory(
       `/analyzers?setup=connect&analyzerId=42&profile=${activeType.profileId}&revision=3`,
       onClose,
     );
-
-    expect(
-      await screen.findByText("Analyzer is ready to activate"),
-    ).toBeVisible();
-    expect(screen.getByText("Mappings reviewed for this setup")).toBeVisible();
-
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Continue to Assays" }),
+    );
+    expect(updateAnalyzer).toHaveBeenCalledWith(
+      "42",
+      expect.objectContaining({
+        connectionValues: { listenerPort: 55000 },
+      }),
+      expect.any(Function),
+    );
+    expect(activateAnalyzer).not.toHaveBeenCalled();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Continue to Verify" }),
+    );
     await userEvent.click(
       await screen.findByRole("button", { name: "Finish and activate" }),
     );
-
-    await waitFor(() =>
-      expect(updateAnalyzer).toHaveBeenCalledWith(
-        "42",
-        {
-          name: "GX bench 1",
-          profileId: activeType.profileId,
-          profileRevision: activeType.revision,
-          testUnitIds: ["7"],
-          connectionValues: { listenerPort: 55000 },
-        },
-        expect.any(Function),
-      ),
-    );
     expect(activateAnalyzer).toHaveBeenCalledWith("42", expect.any(Function));
     expect(testConnection).not.toHaveBeenCalled();
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("saves setup for later without activating or testing the connection", async () => {

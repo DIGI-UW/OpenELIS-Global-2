@@ -624,6 +624,19 @@ export const activateAnalyzer = (
   );
 };
 
+export const startAnalyzerSetupReception = (
+  id: string,
+  callback: ApiCallback,
+) => {
+  postAnalyzerLifecycle(id, "setup-reception", callback, (error) => ({
+    analyzerId: id,
+    receiving: false,
+    blockers: [],
+    error,
+    statusCode: 0,
+  }));
+};
+
 export const reactivateAnalyzer = (
   id: string,
   callback: ApiCallback<AnalyzerActivationResultView>,
@@ -727,7 +740,7 @@ export const changeAnalyzerUse = (
 
 const postAnalyzerLifecycle = <T extends object>(
   id: string,
-  action: "activate" | "deactivate" | "reactivate",
+  action: "activate" | "deactivate" | "reactivate" | "setup-reception",
   callback: ApiCallback<T>,
   networkFailure: (error: string) => T,
 ) => {
