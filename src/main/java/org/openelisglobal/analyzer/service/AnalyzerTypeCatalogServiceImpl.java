@@ -43,15 +43,28 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
 
     @Override
     public AnalyzerTypeCatalogView getCatalog() {
-        BridgeProfileCatalog bridgeCatalog = bridgeCatalogService.getCatalog();
+        if (!bridgeCatalogService.isConfigured()) {
+            return AnalyzerTypeCatalogView.unavailable(SCHEMA_VERSION, false, false);
+        }
+        BridgeProfileCatalog bridgeCatalog;
+        try {
+            bridgeCatalog = bridgeCatalogService.getCatalog();
+        } catch (BridgeProfileCatalogException e) {
+            if (e.bridgeNotPaired()) {
+                return AnalyzerTypeCatalogView.unavailable(SCHEMA_VERSION, true, false);
+            }
+            throw e;
+        }
         Map<String, List<Analyzer>> analyzersByProfileId = bridgeCatalog.profiles().stream()
                 .map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
                 .collect(Collectors.toMap(Function.identity(), this::affectedAnalyzers));
         List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
+        AnalyzerMappingCatalogState catalog = AnalyzerMappingCatalogState.load(mappingCatalogService, activeTests);
 
         List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream().map(revision -> {
             BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-            return summarize(revision, analyzersByProfileId.getOrDefault(profile.profileId(), List.of()), activeTests);
+            return summarize(revision, analyzersByProfileId.getOrDefault(profile.profileId(), List.of()), activeTests,
+                    catalog);
         }).sorted(Comparator.comparing(summary -> summary.displayName().toLowerCase(Locale.ROOT))).toList();
 
         int inUse = (int) types.stream().filter(type -> type.usedBy() > 0).count();
@@ -68,8 +81,9 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     public AnalyzerTypeCatalogView.TypeSummary getType(String profileId, int revision) {
         BridgeProfileCatalog.ProfileRevision profileRevision = bridgeCatalogService.getProfile(profileId, revision);
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(profileRevision.profile());
-        return summarize(profileRevision, affectedAnalyzers(profile.profileId()),
-                mappingCatalogService.searchActiveTests(null));
+        List<AnalyzerMappingCatalogService.TestOption> activeTests = mappingCatalogService.searchActiveTests(null);
+        return summarize(profileRevision, affectedAnalyzers(profile.profileId()), activeTests,
+                AnalyzerMappingCatalogState.load(mappingCatalogService, activeTests));
     }
 
     /**
@@ -78,10 +92,11 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
      * each analyzer keeps its own mapping.
      */
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
-            List<Analyzer> analyzers, List<AnalyzerMappingCatalogService.TestOption> activeTests) {
+            List<Analyzer> analyzers, List<AnalyzerMappingCatalogService.TestOption> activeTests,
+            AnalyzerMappingCatalogState catalog) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
         List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers = analyzers.stream()
-                .map(analyzer -> affectedAnalyzer(analyzer, profile)).toList();
+                .map(analyzer -> affectedAnalyzer(analyzer, profile, catalog)).toList();
         String status = profile.status();
         AnalyzerMappingDraft defaults = mappingDefaults.resolve(profile, activeTests);
         // Both figures count rows of the defaults: a test and each of its parts, and
@@ -106,8 +121,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         return mappingDAO.findAnalyzersInForceOnProfile(profileId);
     }
 
-    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer,
-            BridgeAnalyzerProfile profile) {
+    private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer, BridgeAnalyzerProfile profile,
+            AnalyzerMappingCatalogState catalog) {
         AnalyzerMapping inForce = analyzer.getMapping();
         AnalyzerMapping latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElse(inForce);
         // A saved adoption already targets the latest mapping's revision; it waits for
@@ -116,7 +131,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         boolean newerMappingRevision = latest.getRevisionNumber() > inForce.getRevisionNumber();
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
                 inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision,
-                mappingService.findById(inForce.getId()).map(confirmationService::assessCurrent)
+                mappingService.findById(inForce.getId())
+                        .map(mapping -> confirmationService.assessCurrent(mapping, catalog))
                         .map(assessment -> assessment.currentConfirmation().isPresent()).orElse(false));
     }
 

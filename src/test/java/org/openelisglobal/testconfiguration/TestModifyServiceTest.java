@@ -241,7 +241,7 @@ public class TestModifyServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(1, before.size());
         assertEquals("N", before.get(0).getTestResultType());
         assertEquals("7.5", before.get(0).getValue());
-        assertEquals("2", before.get(0).getSignificantDigits());
+        assertEquals("2", before.get(0).getReportingDecimalPlaces());
 
         TestAddParams params = buildBaseParams("1", "1");
         params.sampleList.add(buildSampleEntry("100", "1"));
@@ -252,7 +252,7 @@ public class TestModifyServiceTest extends BaseWebContextSensitiveTest {
         replacement.setValue("9.9");
         replacement.setSortOrder("1");
         replacement.setIsActive(true);
-        replacement.setSignificantDigits("3");
+        replacement.setReportingDecimalPlaces("3");
         replacement.setDefault(false);
         sets.get(0).testResults.add(replacement);
 
@@ -263,7 +263,7 @@ public class TestModifyServiceTest extends BaseWebContextSensitiveTest {
 
         TestResult added = after.stream().filter(tr -> "9.9".equals(tr.getValue())).findFirst().get();
         assertEquals("N", added.getTestResultType());
-        assertEquals("3", added.getSignificantDigits());
+        assertEquals("3", added.getReportingDecimalPlaces());
         assertEquals("1", added.getTest().getId());
     }
 

@@ -174,4 +174,6 @@
   <!-- OGC-427: batch workplan reagent and QC release. After qc/ and qa/, whose
        control lot table and QA Officer role it extends -->
   <include file="liquibase/qa/049-batch-workplan-reagent-qc.xml" />
+  <!-- OGC-1588: the reason a batch was released over QC that was not Pass -->
+  <include file="liquibase/qa/050-batch-workplan-override-reason.xml" />
 </databaseChangeLog>

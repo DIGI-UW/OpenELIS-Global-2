@@ -128,6 +128,57 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertIndependentControlRuns(prepareQualitativeControl("POS", true));
     }
 
+    @Test
+    public void unmatchedNumericControlRemainsVisibleAndRecoversExactlyOnceAfterLotCorrection() throws Exception {
+        Bundle bundle = prepareControl(true);
+        jdbc.update("UPDATE clinlims.qc_control_lot SET control_level = 'OTHER' WHERE id = ?", QC_LOT_ID);
+        var receipt = importService.importBundle(bundle, "1");
+        assertEquals(0, receipt.controlResultsProcessed());
+        assertEquals(1, receipt.resultsHeld());
+        AnalyzerResults held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_LOT_MISSING, held.getImportIssueReason());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        jdbc.update(
+                "UPDATE clinlims.qc_control_lot SET lot_number = 'QC-LOT-WBC-2026-08', control_level = 'NORMAL' WHERE id = ?",
+                QC_LOT_ID);
+        assertEquals(1, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertFalse(resultsService.get(held.getId()).isReadOnly());
+        assertEquals(0, new BigDecimal("7.1").compareTo(jdbc.queryForObject(
+                "SELECT result_value FROM clinlims.qc_result WHERE control_lot_id = ?", BigDecimal.class, QC_LOT_ID)));
+        assertEquals(receipt, importService.importBundle(bundle, "1"));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
+    public void aMultiRecordControlCreatesOnlyThePrimaryQcMeasurement() throws Exception {
+        Bundle bundle = prepareControl(true, false);
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active, result_type)"
+                + " VALUES ('comp-control-aux', ?, 'AUX', 'Control auxiliary', 1, 'Y', 'N')", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                + " (mapping_id, source_row_key, mapping_state, test_id, component_id, last_updated)"
+                + " VALUES (?, 'AUX', 'BOUND', ?, 'comp-control-aux', NOW())", MAPPING_ID, TEST_ID);
+        Observation auxiliary = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow().copy();
+        auxiliary.getCode().getCodingFirstRep().setCode("AUX");
+        auxiliary.setId("auxiliary");
+        auxiliary.getValueQuantity().setValue(new BigDecimal("999"));
+        bundle.addEntry().setFullUrl("urn:uuid:control-auxiliary").setResource(auxiliary);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
+        var receipt = importService.importBundle(bundle, "1");
+        assertEquals(2, receipt.resultsStaged());
+        assertEquals(0, receipt.resultsHeld());
+        assertEquals(1, receipt.controlResultsProcessed());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, new BigDecimal("7.1").compareTo(jdbc.queryForObject(
+                "SELECT result_value FROM clinlims.qc_result WHERE control_lot_id = ?", BigDecimal.class, QC_LOT_ID)));
+    }
+
     private void assertIndependentControlRuns(Bundle first) {
         AnalyzerNormalizedResultImportSummary firstReceipt = importService.importBundle(first, "1");
         assertEquals(1, firstReceipt.controlResultsProcessed());
@@ -853,7 +904,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
      * for its answer it is held for that reason.
      */
     @Test
-    public void everyRowAControlHeldWholeRecoversIntoIsCheckedAgainstQc() throws Exception {
+    public void aControlHeldWholeRecoversItsMeasurementWithoutChartingItsAuxiliaryCall() throws Exception {
         Bundle bundle = prepareControl(true, false);
         jdbc.update("INSERT INTO clinlims.test_result_component"
                 + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
@@ -885,8 +936,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
         assertEquals("the number and the call, once each", 2, recovered.size());
         AnalyzerResults call = stagedOn(recovered, "comp-call");
-        assertTrue(call.isReadOnly());
-        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, call.getImportIssueReason());
+        assertFalse(call.isReadOnly());
+        assertNull(call.getImportIssueReason());
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
     }
 
     @Test

@@ -13,6 +13,7 @@ import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
@@ -27,6 +28,7 @@ import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -45,6 +47,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAntibioticDAO antibioticDAO;
     private final MicroAstPanelDAO panelDAO;
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
+    private final MicroAstPanelAssignmentDAO assignmentDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
@@ -52,11 +55,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
             MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
-            TypeOfSampleService typeOfSampleService) {
+            TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
+        this.assignmentDAO = assignmentDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.methodService = methodService;
         this.typeOfSampleService = typeOfSampleService;
@@ -100,6 +104,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         organism.setWhonetCode(code);
         organism.setOclCode(trimToNull(request.oclCode));
         organism.setOrganismGroup(request.organismGroup.trim());
+        organism.setSusceptibilityProtocol(
+                MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         organism.setGramStain(trimToNull(request.gramStain));
         organism.setInitialSignificance(request.initialSignificance.trim().toUpperCase(Locale.ROOT));
         organism.setDefaultAstPanelId(trimToNull(request.defaultAstPanelId));
@@ -167,6 +173,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         antibiotic.setDisplayName(name);
         antibiotic.setWhonetCode(code);
         antibiotic.setAntibioticClass(antibioticClass);
+        antibiotic.setResistanceRole(MicroTbResistanceClassifier.Role.valueOf(request.resistanceRole).name());
         antibiotic.setRoute(route);
         antibiotic.setNotes(trimToNull(request.notes));
         antibiotic.setIsActive(request.active ? "Y" : "N");
@@ -244,6 +251,15 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         applyPanel(published, request, actorId);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);
+        for (MicroOrganism organism : organismDAO.getByDefaultAstPanelId(current.getId())) {
+            organism.setDefaultAstPanelId(published.getId());
+            organism.setLastUpdatedBy(actorId);
+            organismDAO.update(organism);
+        }
+        for (MicroAstPanelAssignment assignment : assignmentDAO.getOpenByPanelId(current.getId())) {
+            assignment.setPanelId(published.getId());
+            assignmentDAO.update(assignment);
+        }
         return toPanelForm(published);
     }
 
@@ -300,6 +316,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         }
         panel.setName(requireText(request.name, "name"));
         panel.setOrganismGroup(trimToNull(request.organismGroup));
+        panel.setSusceptibilityProtocol(
+                MicroTbResistanceClassifier.Protocol.valueOf(request.susceptibilityProtocol).name());
         panel.setSpecimenTypeId(trimToNull(request.specimenTypeId));
         panel.setIsActive(request.active ? "Y" : "N");
         panel.setIsCurrent("Y");
@@ -323,6 +341,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             if (!seen.add(antibioticId)) {
                 throw new IllegalArgumentException("Duplicate antibiotic: " + antibioticId);
             }
+            if (row.diskContent != null && row.diskContent.trim().length() > 40) {
+                throw new IllegalArgumentException("Disk content is longer than 40 characters: " + antibioticId);
+            }
             if (row.tier == null || row.tier < 1 || row.tier > 3) {
                 throw new IllegalArgumentException("tier must be between 1 and 3");
             }
@@ -341,6 +362,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             row.setDisplayOrder(order++);
             row.setTier(request.tier);
             row.setReportBehavior(request.reportBehavior);
+            row.setDiskContent(trimToNull(request.diskContent));
             panelAntibioticDAO.insert(row);
         }
     }
@@ -353,6 +375,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.whonetCode = organism.getWhonetCode();
         form.oclCode = organism.getOclCode();
         form.organismGroup = organism.getOrganismGroup();
+        form.susceptibilityProtocol = organism.getSusceptibilityProtocol();
         form.gramStain = organism.getGramStain();
         form.initialSignificance = organism.getInitialSignificance();
         form.defaultAstPanelId = organism.getDefaultAstPanelId();
@@ -373,6 +396,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.displayName = antibiotic.getDisplayName();
         form.whonetCode = antibiotic.getWhonetCode();
         form.antibioticClass = antibiotic.getAntibioticClass();
+        form.resistanceRole = antibiotic.getResistanceRole();
         form.route = antibiotic.getRoute();
         form.notes = antibiotic.getNotes();
         form.active = "Y".equals(antibiotic.getIsActive());
@@ -389,6 +413,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.supersedesPanelId = panel.getSupersedesPanelId();
         form.name = panel.getName();
         form.organismGroup = panel.getOrganismGroup();
+        form.susceptibilityProtocol = panel.getSusceptibilityProtocol();
         form.specimenTypeId = panel.getSpecimenTypeId();
         form.active = "Y".equals(panel.getIsActive());
         form.current = "Y".equals(panel.getIsCurrent());
@@ -406,6 +431,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             item.displayOrder = row.getDisplayOrder();
             item.tier = row.getTier();
             item.reportBehavior = row.getReportBehavior();
+            item.diskContent = row.getDiskContent();
             form.antibiotics.add(item);
         }
         return form;

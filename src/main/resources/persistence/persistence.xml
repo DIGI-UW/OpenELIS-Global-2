@@ -93,12 +93,24 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureExtension</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroIncomingItem</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroBenchAction</class>
+        <class>org.openelisglobal.workplan.valueholder.WorkplanPrintRecord</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureProposal</class>
+
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReading</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstOverrideEvent</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroAstReportChoice</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroMolecularDstBinding</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroDstResolution</class>
+
         <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroReportVersion</class>

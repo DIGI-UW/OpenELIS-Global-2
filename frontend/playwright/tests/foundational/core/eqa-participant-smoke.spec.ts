@@ -109,14 +109,15 @@ test.describe.serial("EQA participant lane", () => {
         ).toBeVisible({ timeout: UI_TIMEOUT });
         // The link names the cycle, and the form preselects it together with
         // the enrollment whose scheme name matches, so a user arriving from
-        // "Receive panel" fills in only the receipt itself. The ids are
-        // asserted, not just that the selects are non-empty: any other
-        // cycle or enrollment landing here would pass a weaker check.
+        // "Receive panel" fills in only the receipt itself. The cycle id and
+        // this run's own scheme name are asserted, not just that the controls
+        // are filled: any other cycle or enrollment landing here would pass a
+        // weaker check.
         await expect(page.locator("select#eqa-cycle")).toHaveValue(
           seed.cycleId,
         );
-        await expect(page.locator("select#eqa-program")).toHaveValue(
-          seed.enrollmentId,
+        await expect(page.locator("#eqa-program")).toHaveValue(
+          seed.programName,
         );
         await page.locator("#eqa-provider-sample-id").fill(`PS-${RUN}`);
         // Both being chosen is what reveals the Panel Receipt block.

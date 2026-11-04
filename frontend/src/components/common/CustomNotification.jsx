@@ -1,6 +1,7 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { ToastNotification } from "@carbon/react";
 import { NotificationContext } from "../layout/Layout";
+import { notificationTimeout } from "../layout/notificationList";
 
 export const NotificationKinds = {
   info: "info",
@@ -9,8 +10,20 @@ export const NotificationKinds = {
   warning: "warning",
 };
 
+/**
+ * The page's toasts. Each one it shows is reported to the queue, which removes
+ * it when its time is up even if this dialog is hidden or the page changes
+ * first.
+ */
 export const AlertDialog = () => {
-  const { notifications, removeNotification } = useContext(NotificationContext);
+  const { notifications, removeNotification, notificationShown } =
+    useContext(NotificationContext);
+
+  useEffect(() => {
+    (notifications || []).forEach((notificationBody) =>
+      notificationShown?.(notificationBody),
+    );
+  }, [notifications, notificationShown]);
 
   return (
     <div className="toastDisplay">
@@ -18,17 +31,15 @@ export const AlertDialog = () => {
         notifications.map((notificationBody, index) => {
           return (
             <ToastNotification
-              key={index}
+              key={notificationBody.id ?? index}
               title={notificationBody.title}
-              timeout={
-                notificationBody.kind !== NotificationKinds.error ? 2000 : 3000
-              }
+              timeout={notificationTimeout(notificationBody.kind)}
               onClose={(event) => {
                 // Remove notification from array when it closes automatically
-                removeNotification(index);
+                removeNotification(notificationBody.id);
               }}
               onCloseButtonClick={(event) => {
-                removeNotification(index);
+                removeNotification(notificationBody.id);
               }}
               lowContrast={true}
               kind={notificationBody.kind}

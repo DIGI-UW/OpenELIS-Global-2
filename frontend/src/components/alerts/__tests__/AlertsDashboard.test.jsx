@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { act, render, screen, within, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -166,21 +167,50 @@ describe("AlertsDashboard", () => {
     expect(within(table).getByText("15/01/2026 10:00")).toBeTruthy();
   });
 
-  test("Alert Type filter offers the types the server lists, by label", () => {
+  test("Alert Type filter offers the types the server lists, by label", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderWithIntl(<AlertsDashboard />);
 
-    const options = Array.from(
-      document.querySelectorAll("#alert-type-filter option"),
-    )
-      .map((option) => option.textContent)
-      .filter(Boolean);
-    expect(options).toEqual([
+    const box = screen.getByRole("combobox", { name: "Alert Type" });
+    await user.click(box);
+
+    expect(
+      within(document.getElementById(box.getAttribute("aria-controls")))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual([
       "EQA Deadline",
       "Sample Expiration",
       "EQA Submission Failed",
       "Microbiology Critical",
       "Referral Rejected",
     ]);
+  });
+
+  test("Alert Type is searched by typing and filters the alerts by the chosen type (OGC-1515)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithIntl(<AlertsDashboard />);
+    const box = screen.getByRole("combobox", { name: "Alert Type" });
+
+    await user.type(box, "eqa");
+    expect(
+      within(document.getElementById(box.getAttribute("aria-controls")))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["EQA Deadline", "EQA Submission Failed"]);
+    await user.click(
+      screen.getByRole("option", { name: "EQA Submission Failed" }),
+    );
+
+    await act(async () => {
+      vi.runOnlyPendingTimers();
+    });
+    const dashboardCalls = getFromOpenElisServer.mock.calls
+      .map(([url]) => url)
+      .filter((url) => url.startsWith("/rest/alerts/dashboard?"));
+    expect(dashboardCalls[dashboardCalls.length - 1]).toContain(
+      "type=EQA_SUBMISSION_FAILED",
+    );
   });
 
   test("an acknowledged alert offers Resolve, which posts the comment to resolve", () => {
@@ -250,9 +280,15 @@ describe("AlertsDashboard", () => {
     expect(getFromOpenElisServer).toHaveBeenCalled();
   });
 
-  test("offers the microbiology critical alert type filter", () => {
+  test("offers the microbiology critical alert type filter", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderWithIntl(<AlertsDashboard />);
-    expect(screen.getByText("Microbiology Critical")).toBeTruthy();
+
+    await user.click(screen.getByRole("combobox", { name: "Alert Type" }));
+
+    expect(
+      screen.getByRole("option", { name: "Microbiology Critical" }),
+    ).toBeTruthy();
   });
 
   test("renders a microbiology critical alert row", () => {

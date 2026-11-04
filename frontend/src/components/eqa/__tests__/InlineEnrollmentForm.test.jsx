@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
@@ -37,6 +37,21 @@ const mockServer = (cycles = []) =>
     else callback([]);
   });
 
+const schemeSelector = () => screen.getByRole("combobox", { name: "Scheme" });
+
+const chooseScheme = (name) => {
+  fireEvent.click(schemeSelector());
+  fireEvent.click(screen.getByRole("option", { name }));
+};
+
+const offeredSchemes = () => {
+  const combobox = schemeSelector();
+  fireEvent.click(combobox);
+  return within(document.getElementById(combobox.getAttribute("aria-controls")))
+    .queryAllByRole("option")
+    .map((option) => option.textContent);
+};
+
 const renderForm = (props) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -53,11 +68,10 @@ describe("InlineEnrollmentForm", () => {
     mockServer();
     renderForm({ enrollment: null, enrollments: ENROLLED });
 
-    const options = Array.from(
-      screen.getByLabelText("Scheme").querySelectorAll("option"),
-    ).map((option) => option.textContent);
-
-    expect(options).toEqual(["Virology PT", "Not listed - type the name"]);
+    expect(offeredSchemes()).toEqual([
+      "Virology PT",
+      "Not listed - type the name",
+    ]);
   });
 
   test("picking a scheme fills the programme name and its provider", () => {
@@ -65,9 +79,7 @@ describe("InlineEnrollmentForm", () => {
     const onSave = vi.fn();
     renderForm({ enrollment: null, enrollments: ENROLLED, onSave });
 
-    fireEvent.change(screen.getByLabelText("Scheme"), {
-      target: { value: "Virology PT" },
-    });
+    chooseScheme("Virology PT");
 
     expect(screen.getByLabelText("Scheme Name")).toHaveValue("Virology PT");
     expect(screen.getByLabelText("Provider")).toHaveValue("NHLS");
@@ -85,9 +97,7 @@ describe("InlineEnrollmentForm", () => {
     const onSave = vi.fn();
     renderForm({ enrollment: null, enrollments: ENROLLED, onSave });
 
-    fireEvent.change(screen.getByLabelText("Scheme"), {
-      target: { value: "Virology PT" },
-    });
+    chooseScheme("Virology PT");
 
     // The test's analyte picker appears once the test is selected.
     expect(screen.getByLabelText("Glucose")).toBeInTheDocument();
@@ -128,7 +138,7 @@ describe("InlineEnrollmentForm", () => {
       enrollments: ENROLLED,
     });
 
-    expect(screen.getByLabelText("Scheme")).toBeDisabled();
+    expect(schemeSelector()).toBeDisabled();
     expect(screen.getByLabelText("Scheme Name")).toBeDisabled();
     expect(screen.getByLabelText("Provider")).toBeDisabled();
     expect(
@@ -150,7 +160,7 @@ describe("InlineEnrollmentForm", () => {
       enrollments: ENROLLED,
     });
 
-    expect(screen.getByLabelText("Scheme")).toBeEnabled();
+    expect(schemeSelector()).toBeEnabled();
     expect(screen.getByLabelText("Scheme Name")).toBeEnabled();
     expect(screen.getByLabelText("Provider")).toBeEnabled();
   });

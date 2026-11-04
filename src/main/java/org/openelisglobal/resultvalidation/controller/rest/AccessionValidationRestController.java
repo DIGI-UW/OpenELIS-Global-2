@@ -13,6 +13,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IResultSaveService;
@@ -310,6 +311,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             form.setQcFailureList(validationUtility.findFailedQcForAccession(form.getAccessionNumber()));
         }
 
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(form.getResultList(), getSysUserId(request));
         return form;
     }
 
@@ -349,8 +352,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
         request.getSession().setAttribute(SAVE_DISABLED, "true");
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
@@ -619,7 +621,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 List<Result> results = new ArrayList<>();
                 if (areResults(analysisItem)) {
-                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     results = createResultFromAnalysisItem(analysisItem, analysis, analysis, noteUpdateList,
                             deletableList);
                     for (Result result : results) {
@@ -1088,6 +1089,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 skipped.add(skipReason(entry.getKey(), "notFound"));
                 continue;
             }
+            if (group.stream().anyMatch(AnalysisItem::isSelfValidationBlocked)) {
+                skipped.add(skipReason(entry.getKey(), "selfValidationBlocked"));
+                continue;
+            }
             if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
                 skipped.add(skipReason(entry.getKey(), "notClear"));
                 continue;
@@ -1382,6 +1387,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<AnalysisItem> visible = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows,
                 Constants.ROLE_VALIDATION);
         markQcHolds(visible);
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(visible, getSysUserId(request));
         return visible;
     }
 
