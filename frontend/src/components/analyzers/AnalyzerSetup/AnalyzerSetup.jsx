@@ -504,7 +504,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                       {intl.formatMessage({
                         id: submitting
                           ? "analyzer.setup.instrument.saving"
-                          : "analyzer.setup.instrument.continue",
+                          : "analyzer.setup.instrument.continueToConnect",
                       })}
                     </Button>
                   </div>
@@ -613,8 +613,8 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     >
                       {intl.formatMessage({
                         id: selectingBinding
-                          ? "analyzer.setup.verify.selecting"
-                          : "analyzer.setup.verify.continue",
+                          ? "analyzer.setup.verify.finishingActivation"
+                          : "analyzer.setup.verify.finishAndActivate",
                       })}
                     </Button>
                   </div>
