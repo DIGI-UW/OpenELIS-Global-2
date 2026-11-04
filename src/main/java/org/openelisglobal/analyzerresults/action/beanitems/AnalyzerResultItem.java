@@ -53,6 +53,7 @@ public class AnalyzerResultItem implements Serializable {
     private String redirectReason;
     private AnalyzerResultPlacement placement;
     private String deliveryReceiptId;
+    private Long runId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String result;
@@ -232,6 +233,20 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setDeliveryReceiptId(String deliveryReceiptId) {
         this.deliveryReceiptId = deliveryReceiptId;
+    }
+
+    /**
+     * OGC-1200: the run the value arrived in, restored from the staged row; never
+     * read from a request.
+     */
+    @JsonIgnore
+    public Long getRunId() {
+        return runId;
+    }
+
+    @JsonIgnore
+    public void setRunId(Long runId) {
+        this.runId = runId;
     }
 
     /**

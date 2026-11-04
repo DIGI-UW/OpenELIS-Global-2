@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -58,6 +59,8 @@ import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
+import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -136,6 +139,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private SampleEQAService sampleEQAService;
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private ResultRunService resultRunService;
     @Autowired
     private AnalysisAnchorService analysisAnchorService;
     @Autowired
@@ -374,6 +379,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 }
             }
 
+            resultRunService.markWaiting(filteredTests);
             paging.setDatabaseResults(request, form, filteredTests);
             LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
                     "After setDatabaseResults: form.getTestResult() size="
@@ -508,6 +514,17 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         rejectEqaRowsMissingAnalyst(tests);
+
+        for (TestResultItem modified : actionDataSet.getModifiedItems()) {
+            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()));
+            if (waiting.isPresent()) {
+                Map<String, Object> refusal = new HashMap<>();
+                refusal.put("error",
+                        MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+                refusal.put("waitingRun", waiting.get());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
+            }
+        }
 
         List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(actionDataSet.getModifiedItems());
         List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
