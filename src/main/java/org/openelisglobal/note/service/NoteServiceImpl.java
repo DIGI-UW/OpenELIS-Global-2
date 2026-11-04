@@ -9,10 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.Hibernate;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -391,7 +393,9 @@ public class NoteServiceImpl extends AuditableBaseObjectServiceImpl<Note, String
     @Override
     @Transactional(readOnly = true)
     public List<Note> getAllNotesByRefIdRefTable(Note note) {
-        return getBaseObjectDAO().getAllNotesByRefIdRefTable(note);
+        List<Note> notes = getBaseObjectDAO().getAllNotesByRefIdRefTable(note);
+        initializeNoteSystemUsers(notes);
+        return notes;
     }
 
     @Override
@@ -400,14 +404,34 @@ public class NoteServiceImpl extends AuditableBaseObjectServiceImpl<Note, String
         Map<String, Object> propertyValues = new HashMap<>();
         propertyValues.put("referenceId", refId);
         propertyValues.put("referenceTableId", table_id);
-        return baseObjectDAO.getAllMatchingOrdered(propertyValues, "lastupdated", false);
+        List<Note> notes = baseObjectDAO.getAllMatchingOrdered(propertyValues, "lastupdated", false);
+        initializeNoteSystemUsers(notes);
+        return notes;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Note> getNotesChronologicallyByRefIdAndRefTableAndType(String objectId, String tableId,
             List<String> filter) {
-        return getBaseObjectDAO().getNotesChronologicallyByRefIdAndRefTableAndType(objectId, tableId, filter);
+        List<Note> notes = getBaseObjectDAO().getNotesChronologicallyByRefIdAndRefTableAndType(objectId, tableId,
+                filter);
+        initializeNoteSystemUsers(notes);
+        return notes;
+    }
+
+    private void initializeNoteSystemUsers(List<Note> notes) {
+        if (notes != null) {
+            for (Note note : notes) {
+                if (note != null && note.getSystemUser() != null) {
+                    try {
+                        Hibernate.initialize(note.getSystemUser());
+                    } catch (RuntimeException e) {
+                        LogEvent.logWarn(this.getClass().getSimpleName(), "initializeNoteSystemUsers",
+                                "Failed to initialize note system user: " + e.getMessage());
+                    }
+                }
+            }
+        }
     }
 
     @Override

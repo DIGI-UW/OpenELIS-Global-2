@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
@@ -65,6 +66,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ServiceRequestTransformServiceImpl implements ServiceRequestTransformService {
@@ -154,6 +156,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ServiceRequest> transformToServiceRequests(SamplePatientUpdateData updateData,
             SampleTestCollection sampleTestCollection) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequests",
@@ -171,11 +174,13 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ServiceRequest transformToServiceRequest(String anlaysisId) {
         return this.transformToServiceRequest(analysisService.get(anlaysisId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ServiceRequest transformToServiceRequest(Analysis analysis) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequest",
                 "transformToServiceRequest called");
@@ -262,8 +267,16 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         serviceRequest.setCode(terminologyTransformService.transformTestToCodeableConcept(test.getId(),
                 analysisSampleItem == null ? null : analysisSampleItem.getTypeOfSampleId()));
         serviceRequest.setAuthoredOnElement(authoredOnFor(sample));
-        for (Note note : noteService.getNotes(analysis)) {
-            serviceRequest.addNote(common.transformNoteToAnnotation(note));
+        List<Note> analysisNotes = noteService.getNotes(analysis);
+        if (analysisNotes != null) {
+            for (Note note : analysisNotes) {
+                if (note != null && Note.EXTERNAL.equals(note.getNoteType())) {
+                    Annotation annotation = common.transformNoteToAnnotation(note);
+                    if (annotation != null) {
+                        serviceRequest.addNote(annotation);
+                    }
+                }
+            }
         }
         // TODO performer type?
 
