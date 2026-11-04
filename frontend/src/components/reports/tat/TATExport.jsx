@@ -9,13 +9,17 @@ function TATExport({ filters, buildQueryString }) {
 
   const handleExport = (format) => {
     const qs = buildQueryString(filters, `&format=${format}`);
-    window.open(`${config.serverBaseUrl}/rest/reports/tat/export?${qs}`, "_blank");
+    window.open(
+      `${config.serverBaseUrl}/rest/reports/tat/export?${qs}`,
+      "_blank",
+    );
   };
 
   return (
     <OverflowMenu
       renderIcon={Download}
-      menuButtonLabel={intl.formatMessage({ id: "reports.tat.export" })}
+      aria-label={intl.formatMessage({ id: "reports.tat.export" })}
+      iconDescription={intl.formatMessage({ id: "reports.tat.export" })}
       flipped
     >
       <OverflowMenuItem

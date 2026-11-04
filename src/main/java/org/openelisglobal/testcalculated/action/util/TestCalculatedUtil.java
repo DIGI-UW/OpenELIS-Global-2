@@ -14,9 +14,9 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import org.apache.commons.lang3.StringUtils;
-import org.jfree.util.Log;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -240,12 +240,14 @@ public class TestCalculatedUtil {
                         ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
                         ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
                         try {
-                            Log.debug("Calculation Rule: " + calculation.getName() + " Function : "
-                                    + function.toString());
+                            LogEvent.logDebug("TestCalculatedUtil", "addNewTestsToDBForCalculatedTests",
+                                    "Calculation Rule: " + calculation.getName() + " Function : "
+                                            + function.toString());
                             value = scriptEngine.eval(function.toString()).toString();
-                            Log.debug("Calculation Rule: " + calculation.getName() + " Value  : " + value);
+                            LogEvent.logDebug("TestCalculatedUtil", "addNewTestsToDBForCalculatedTests",
+                                    "Calculation Rule: " + calculation.getName() + " Value  : " + value);
                         } catch (ScriptException e) {
-                            Log.error("Invalid Calculation Rule: " + calculation.getName(), e);
+                            LogEvent.logError("Invalid Calculation Rule: " + calculation.getName(), e);
                         }
                     }
                     Result entered = enteredAtDestination(resultCalculation, resultSet, calculation);

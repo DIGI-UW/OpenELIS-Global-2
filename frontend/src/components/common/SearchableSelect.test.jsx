@@ -85,4 +85,44 @@ describe("SearchableSelect", () => {
 
     expect(onChange).toHaveBeenLastCalledWith("");
   });
+
+  it("does not report a value the parent set, only a choice the user made", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <SearchableSelect
+        id="probe"
+        labelText="Lab unit"
+        options={[]}
+        value="2"
+        onChange={onChange}
+      />,
+    );
+    rerender(
+      <SearchableSelect
+        id="probe"
+        labelText="Lab unit"
+        options={OPTIONS}
+        value="2"
+        onChange={onChange}
+      />,
+    );
+    rerender(
+      <SearchableSelect
+        id="probe"
+        labelText="Lab unit"
+        options={OPTIONS}
+        value="3"
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByRole("combobox")).toHaveValue("Sérologie VIH");
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.clear(screen.getByRole("combobox"));
+    await userEvent.type(screen.getByRole("combobox"), "biochi");
+    await userEvent.click(screen.getByRole("option", { name: "Biochimie" }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith("2");
+  });
 });

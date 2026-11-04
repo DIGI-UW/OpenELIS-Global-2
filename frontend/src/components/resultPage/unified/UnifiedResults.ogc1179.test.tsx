@@ -72,6 +72,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 /** A numeric result stored more precisely than its test reports to. */
 const worklistRow = (overrides = {}) => ({
@@ -122,9 +123,7 @@ const renderPage = async (rows = [worklistRow()]) => {
     </IntlProvider>,
   );
   // the page loads its worklist once a Lab Unit is selected
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "165" },
-  });
+  chooseLabUnit("Molecular Biology");
   expect(
     screen.getByRole("table", { name: "Results worklist" }),
   ).toBeInTheDocument();

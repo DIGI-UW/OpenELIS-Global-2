@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import { seedMicrobiologyCase } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseFirstCarbonOption } from "../../../helpers/carbon-select";
 
 const selectConfiguredOption = async (
   select: import("@playwright/test").Locator,
@@ -368,9 +369,8 @@ test.describe("Microbiology case workbench", () => {
       reportPanel.getByLabel("Category"),
       "Category",
     );
-    await selectConfiguredOption(
-      reportPanel.getByLabel("Reporting unit"),
-      "Reporting unit",
+    await chooseFirstCarbonOption(
+      reportPanel.getByRole("combobox", { name: /Reporting unit/ }),
     );
     const reportMajor = reportPanel.getByRole("radio", { name: "Major" });
     await reportMajor.focus();
@@ -419,9 +419,8 @@ test.describe("Microbiology case workbench", () => {
     await expect(lostPanel.getByLabel("Category")).toBeDisabled();
     await expect(lostPanel.getByLabel("Type")).toBeDisabled();
     await expect(lostPanel.getByLabel("Type")).toHaveValue(/.+/);
-    await selectConfiguredOption(
-      lostPanel.getByLabel("Reporting unit"),
-      "Reporting unit",
+    await chooseFirstCarbonOption(
+      lostPanel.getByRole("combobox", { name: /Reporting unit/ }),
     );
     const lostMajor = lostPanel.getByRole("radio", { name: "Major" });
     await lostMajor.focus();
