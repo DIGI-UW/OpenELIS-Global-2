@@ -18,6 +18,7 @@ import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
+import Extensions from "../addons/Extensions";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
 import ProviderTitleMenu from "./providerTitle/ProviderTitleMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
@@ -366,6 +367,7 @@ function Admin() {
         component={ExternalConnectionAddModify}
       />
       <Route path={`${path}/DatabaseCleaning`} component={DatabaseCleaning} />
+      <Route path={`${path}/extensions`} component={Extensions} />
       <Route
         path={`${path}/vectorSurveillanceSetup`}
         component={VectorSurveillanceSetup}
