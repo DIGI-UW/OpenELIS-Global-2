@@ -10,6 +10,7 @@ import {
   Grid,
   InlineNotification,
   Link as CarbonLink,
+  Modal,
   Pagination,
   Select,
   SelectItem,
@@ -89,12 +90,14 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
   const draftEdits = useRef({});
+  const removalLauncher = useRef(null);
   const history = useHistory();
   const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
+  const formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
 
   const intl = useIntl();
 
@@ -104,6 +107,7 @@ const AnalyserResults = (props) => {
   const [resultAlert, setResultAlert] = useState(null);
   const [bundleReceiptId, setBundleReceiptId] = useState(null);
   const [dismissingRunIds, setDismissingRunIds] = useState([]);
+  const [removalCandidate, setRemovalCandidate] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -257,7 +261,7 @@ const AnalyserResults = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: needsPlacementDecision ? "14rem" : "5rem",
     },
     {
       id: "notes",
@@ -466,13 +470,17 @@ const AnalyserResults = (props) => {
       "analyzer.results.failedRun.error",
     );
 
-  const removeHeldResult = (row) =>
+  const confirmHeldRemoval = () => {
+    if (!removalCandidate) return;
+    const row = removalCandidate;
+    setRemovalCandidate(null);
     decideHeldResult(
       row,
       "dismiss",
       "analyzer.results.held.removed",
       "analyzer.results.held.removeError",
     );
+  };
 
   const renderHeldResult = (row) => {
     const resolutionUrl = buildHeldResultResolutionUrl(row, props.analyzerId);
@@ -511,7 +519,10 @@ const AnalyserResults = (props) => {
           kind="ghost"
           size="sm"
           disabled={dismissingRunIds.includes(row.id)}
-          onClick={() => removeHeldResult(row)}
+          onClick={(event) => {
+            removalLauncher.current = event.currentTarget;
+            setRemovalCandidate(row);
+          }}
         >
           <FormattedMessage id="analyzer.results.held.remove" />
         </Button>
@@ -591,7 +602,6 @@ const AnalyserResults = (props) => {
   };
 
   const renderCell = (row, index, column, id) => {
-    let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
@@ -758,7 +768,10 @@ const AnalyserResults = (props) => {
               kind="ghost"
               size="sm"
               disabled={dismissingRunIds.includes(row.id)}
-              onClick={() => removeHeldResult(row)}
+              onClick={(event) => {
+                removalLauncher.current = event.currentTarget;
+                setRemovalCandidate(row);
+              }}
             >
               <FormattedMessage id="analyzer.results.held.remove" />
             </Button>
@@ -1089,6 +1102,46 @@ const AnalyserResults = (props) => {
           </AccordionItem>
         </Accordion>
       )}
+      <Modal
+        open={Boolean(removalCandidate)}
+        danger
+        launcherButtonRef={
+          removalLauncher.current ? removalLauncher : undefined
+        }
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "analyzer.results.removeConfirm.heading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "analyzer.results.removeConfirm.remove",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setRemovalCandidate(null)}
+        onRequestSubmit={confirmHeldRemoval}
+      >
+        {removalCandidate && (
+          <p>
+            <FormattedMessage
+              id="analyzer.results.removeConfirm.body"
+              values={{
+                test:
+                  removalCandidate.componentLabel ||
+                  removalCandidate.testName ||
+                  removalCandidate.rawTestCode,
+                value:
+                  removalCandidate.rawResultValue ||
+                  removalCandidate.result ||
+                  "—",
+                accession: formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(
+                      removalCandidate.accessionNumber,
+                    )
+                  : removalCandidate.accessionNumber,
+              }}
+            />
+          </p>
+        )}
+      </Modal>
       <ResultAlertModal
         open={Boolean(resultAlert)}
         alerts={resultAlert?.alerts || []}

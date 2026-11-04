@@ -11,13 +11,14 @@ import AnalyserResults, {
   buildHeldResultResolutionUrl,
 } from "./AnalyserResults";
 
-const { postResults, getFromServer } = vi.hoisted(() => ({
+const { postResults, getFromServer, formatLabNumber } = vi.hoisted(() => ({
   postResults: vi.fn(),
   getFromServer: vi.fn(),
+  formatLabNumber: vi.fn((value) => value),
 }));
 
 vi.mock("../utils/Utils", () => ({
-  convertAlphaNumLabNumForDisplay: (value) => value,
+  convertAlphaNumLabNumForDisplay: formatLabNumber,
   postToOpenElisServerFullResponse: postResults,
   getFromOpenElisServer: getFromServer,
 }));
@@ -60,6 +61,7 @@ const renderResults = (
   resultList = [heldResult],
   sampleGroup = [resultList[0]],
   extraProps = {},
+  accessionFormat = "",
 ) => {
   const history = createMemoryHistory({
     initialEntries: ["/AnalyzerResults?id=2001"],
@@ -69,7 +71,9 @@ const renderResults = (
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <ConfigurationContext.Provider
-          value={{ configurationProperties: { AccessionFormat: "" } }}
+          value={{
+            configurationProperties: { AccessionFormat: accessionFormat },
+          }}
         >
           <NotificationContext.Provider
             value={{
@@ -111,6 +115,7 @@ describe("AnalyserResults", () => {
   beforeEach(() => {
     postResults.mockReset();
     getFromServer.mockReset();
+    formatLabNumber.mockReset().mockImplementation((value) => value);
   });
 
   it("ticks only the groupings whose every result is matched when saving all", () => {
@@ -524,6 +529,30 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each(["unknown_analyzer_result_value", "awaiting_specimen"])(
+    "cancels removal of %s without sending a request or losing the row",
+    async (reason) => {
+      renderResults([{ ...heldResult, importIssueReason: reason }]);
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Remove from review" }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Remove result from review?",
+      });
+      expect(dialog).toHaveTextContent("QUAL_RESULT");
+      expect(dialog).toHaveTextContent("POSITIVE");
+      expect(dialog).toHaveTextContent("ACC654321");
+      expect(dialog).toHaveTextContent("cannot be undone");
+      expect(postResults).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      expect(dialog.closest(".cds--modal")).not.toHaveClass("is-visible");
+      expect(
+        screen.getByRole("button", { name: "Remove from review" }),
+      ).toBeInTheDocument();
+      expect(postResults).not.toHaveBeenCalled();
+    },
+  );
+
   it("removes a held result from review", async () => {
     postResults.mockImplementation((_endpoint, _body, callback) =>
       callback({ status: 204 }),
@@ -535,6 +564,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     expect(postResults.mock.calls[0][0]).toBe(
       "/rest/analyzer/results/1004/dismiss",
@@ -548,6 +582,20 @@ describe("AnalyserResults", () => {
         }),
       ),
     );
+  });
+
+  it("uses the displayed lab number in the removal confirmation", async () => {
+    formatLabNumber.mockReturnValue("ACC-654-321");
+    renderResults([heldResult], [heldResult], {}, "ALPHANUM");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    expect(within(dialog).getByText(/ACC-654-321/)).toBeInTheDocument();
+    expect(screen.getByTestId("LabNo")).toHaveTextContent("ACC-654-321");
+    expect(postResults).not.toHaveBeenCalled();
   });
 
   it("preserves other rows' unsaved choices when removing a held result", async () => {
@@ -567,6 +615,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     await vi.waitFor(() =>
       expect(refreshResults).toHaveBeenCalledWith(1, {
@@ -590,6 +643,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     expect(postResults.mock.calls[0][0]).toBe(
       `/rest/analyzer/results/${mappedQualitativeResult.id}/dismiss`,

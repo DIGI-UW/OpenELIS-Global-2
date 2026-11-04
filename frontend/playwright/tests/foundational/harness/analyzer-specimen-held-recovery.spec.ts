@@ -180,6 +180,39 @@ test(
     await expect(
       page.getByText("Held results cannot be accepted", { exact: false }),
     ).toHaveCount(0);
+    const heldRow = page.getByRole("row").filter({
+      has: page.locator(`[id="resultList${original[0].id}.note"]`),
+    });
+    const remove = heldRow.getByRole("button", {
+      name: "Remove from review",
+      exact: true,
+    });
+    // The neighboring Notes field previously covered the action's center.
+    // A text-presence assertion cannot catch an obscured click target.
+    await remove.scrollIntoViewIfNeeded();
+    await expect
+      .poll(() =>
+        remove.evaluate((button) => {
+          const box = button.getBoundingClientRect();
+          return [0.25, 0.5, 0.75].every((fraction) =>
+            button.contains(
+              document.elementFromPoint(
+                box.left + box.width * fraction,
+                box.top + box.height / 2,
+              ),
+            ),
+          );
+        }),
+      )
+      .toBe(true);
+    await remove.click();
+    const cancel = page.getByRole("button", { name: "Cancel", exact: true });
+    await expect(cancel).toBeFocused();
+    await cancel.click();
+    await expect(remove).toBeFocused();
+    expect((await rows()).map((row) => row.id)).toEqual(
+      original.map((row) => row.id),
+    );
     await page.screenshot({
       path: testInfo.outputPath("specimen-held.png"),
       fullPage: true,

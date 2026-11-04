@@ -168,10 +168,66 @@ for (const decimal of [
       await expect(received).toContainText("Text");
 
       await page.goto(`/AnalyzerResults?id=${analyzer.id}`);
-      await page
-        .getByRole("button", { name: "Remove from review", exact: true })
-        .click();
+      let removals = 0;
+      const removalRequest = (request: import("@playwright/test").Request) => {
+        if (
+          request.method() === "POST" &&
+          request.url().endsWith(`/results/${original.id}/dismiss`)
+        )
+          removals++;
+      };
+      page.on("request", removalRequest);
+      const remove = page.getByRole("button", {
+        name: "Remove from review",
+        exact: true,
+      });
+      await remove.click();
+      const dialog = page.getByRole("dialog", {
+        name: "Remove result from review?",
+      });
+      await expect(dialog).toContainText(code);
+      await expect(dialog).toContainText(decimal.raw);
+      await expect(dialog).toContainText(order.accession);
+      await expect(dialog).toContainText("cannot be undone");
+      await expect(dialog.getByRole("button", { name: /Remove$/ })).toHaveClass(
+        /cds--btn--danger/,
+      );
+      expect(removals).toBe(0);
+      await page.screenshot({
+        path: testInfo.outputPath("confirm-held-removal.png"),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await expect(remove).toBeFocused();
+      expect(removals).toBe(0);
+      expect((await rows()).map((row) => row.id)).toContain(original.id);
+      await remove.click();
+      const removed = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().endsWith(`/results/${original.id}/dismiss`),
+      );
+      await dialog.getByRole("button", { name: /Remove$/ }).click();
+      await removed;
+      await expect(remove).toHaveCount(0);
+      await expect(page.getByTestId("analyzer-results-empty")).toBeVisible();
       await expect.poll(async () => (await rows()).length).toBe(0);
+      expect(removals).toBe(1);
+      page.off("request", removalRequest);
+      const receiptId = (
+        original as typeof original & { deliveryReceiptId: string }
+      ).deliveryReceiptId;
+      expect(receiptId).toBeTruthy();
+      const retained = await page.request.get(
+        `${API}/analyzer/deliveries/${receiptId}/bundle`,
+      );
+      expect(await retained.text()).toContain(decimal.raw);
+      // Reapplying mappings must not resurrect a deliberately removed row.
+      await page.goto(`/analyzers/${analyzer.id}/mapping`);
+      await applyMappings(page);
+      expect(await rows()).toHaveLength(0);
 
       // Keep the value and its position unchanged. Only the corrected profile is
       // different; the completion time identifies a new instrument run.
