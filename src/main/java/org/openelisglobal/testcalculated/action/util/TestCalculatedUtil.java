@@ -1,7 +1,6 @@
 package org.openelisglobal.testcalculated.action.util;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -346,19 +345,13 @@ public class TestCalculatedUtil {
         if (value == null || entered.getAnalysis() == null || !BoundedDecimal.isBoundedDecimal(value)) {
             return;
         }
-        String calculated = value;
-        if (entered.getTestResult() != null && entered.getTestResult().getSignificantDigits() != null) {
-            calculated = new BigDecimal(value)
-                    .setScale(Integer.parseInt(entered.getTestResult().getSignificantDigits()), RoundingMode.HALF_UP)
-                    .toPlainString();
-        }
         if (BoundedDecimal.isBoundedDecimal(entered.getValue())
-                && new BigDecimal(calculated).compareTo(new BigDecimal(entered.getValue())) == 0) {
+                && new BigDecimal(value).compareTo(new BigDecimal(entered.getValue())) == 0) {
             return;
         }
         Note note = noteService.createSavableNote(
-                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave "
-                        + calculated + "; the entered result " + entered.getValue() + " was kept.",
+                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave " + value
+                        + "; the entered result " + entered.getValue() + " was kept.",
                 CALCULATION_SUBJECT, systemUserId);
         if (!noteService.duplicateNoteExists(note)) {
             noteService.save(note);
@@ -417,8 +410,8 @@ public class TestCalculatedUtil {
                 result = new Result();
             }
             result.setTestResult(testResult);
-            if (testResult.getSignificantDigits() != null) {
-                result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
+            if (testResult.getReportingDecimalPlaces() != null) {
+                result.setReportingDecimalPlaces(Integer.valueOf(testResult.getReportingDecimalPlaces()));
             }
             result.setResultType(resultType);
             result.setSysUserId(systemUserId);
@@ -439,10 +432,6 @@ public class TestCalculatedUtil {
                         result.setValue("");
                     }
                 } else if ("N".equals(resultType)) {
-                    if (testResult.getSignificantDigits() != null) {
-                        double factor = Math.pow(10, Double.valueOf(testResult.getSignificantDigits()));
-                        value = String.valueOf(Math.round(Double.valueOf(value) * factor) / factor);
-                    }
                     result.setValue(value);
                     resultCalculated = true;
                 }
@@ -465,7 +454,7 @@ public class TestCalculatedUtil {
                 }
                 if (recorded != null) {
                     recorded.setTestResult(result.getTestResult());
-                    recorded.setSignificantDigits(result.getSignificantDigits());
+                    recorded.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
                     recorded.setResultType(result.getResultType());
                     recorded.setSysUserId(systemUserId);
                     recorded.setValue(result.getValue());

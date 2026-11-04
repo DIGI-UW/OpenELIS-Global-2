@@ -211,7 +211,7 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
   });
 
   it("Modify starts from the value as entered, not as rounded for display (OGC-1544)", () => {
-    renderPanel(row({ result: "1", storedResult: "0.9" }));
+    renderPanel(row({ result: "0.9", displayResult: "1" }));
     fireEvent.click(screen.getByTestId("review-modify"));
     expect(screen.getByDisplayValue("0.9")).toBeInTheDocument();
 
@@ -220,11 +220,24 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(screen.getByDisplayValue("0.9")).toBeInTheDocument();
   });
 
+  it("release submits the full clinical value while showing its reporting value", () => {
+    renderPanel(
+      row({ result: "1.176", displayResult: "1", resultFlag: "CRITICAL" }),
+    );
+    expect(screen.getByTestId("review-result-value")).toHaveTextContent("1");
+    expect(
+      screen.getByText("Value used for clinical decisions: 1.176"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Validate & release"));
+    const [, body] = lastPost();
+    expect(JSON.parse(body).result).toBe("1.176");
+  });
+
   it("a viral load shown as its count starts Modify from that count (OGC-1544)", () => {
     renderPanel(
       row({
-        result: "1234",
-        storedResult: "1234 (3.09)",
+        result: "1234 (3.09)",
+        displayResult: "1234",
         displayResultAsLog: true,
       }),
     );

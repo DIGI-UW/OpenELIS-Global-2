@@ -223,6 +223,9 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         else if (observation.hasValueQuantity()) {
 
             String value = observation.getValueQuantity().getValueElement().getValueAsString();
+            if (observation.getValueQuantity().hasComparator()) {
+                value = observation.getValueQuantity().getComparator().toCode() + value;
+            }
 
             bean.setResultValue(value);
             bean.setShadowResultValue(value);
@@ -257,11 +260,25 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
             return;
         }
         try {
-            new BigDecimal(bean.getResultValue().trim());
+            numericQuantity(bean.getResultValue());
         } catch (NumberFormatException e) {
             throw new UnprocessableEntityException("Observation value '" + bean.getResultValue()
                     + "' is not a number, and test " + test.getDescription() + " records numeric results");
         }
+    }
+
+    private static Quantity numericQuantity(String value) {
+        Quantity quantity = new Quantity();
+        String numericValue = value.trim();
+        for (String comparator : new String[] { "<=", ">=", "<", ">" }) {
+            if (numericValue.startsWith(comparator)) {
+                quantity.setComparator(Quantity.QuantityComparator.fromCode(comparator));
+                numericValue = numericValue.substring(comparator.length()).trim();
+                break;
+            }
+        }
+        quantity.setValue(new BigDecimal(StringUtil.normalizeScientificNotation(numericValue)));
+        return quantity;
     }
 
     @Override
@@ -342,14 +359,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         }
 
         if (!GenericValidator.isBlankOrNull(result.getValue())) {
-            // in case of Viral load test
-            if (result.getAnalysis().getTest().getName().equalsIgnoreCase("Viral Load")) {
-                Quantity quantity = new Quantity();
-                long finalResult = result.getVLValueAsNumber();
-                quantity.setValue(finalResult);
-                quantity.setUnit(resultService.getUOM(result));
-                observation.setValue(quantity);
-            } else if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
+            if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
                 observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
@@ -358,8 +368,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
                 observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
-                Quantity quantity = new Quantity();
-                quantity.setValue(new BigDecimal(StringUtil.getActualNumericValue(result.getReportedValue())));
+                Quantity quantity = numericQuantity(result.getValue());
                 quantity.setUnit(resultService.getUOM(result));
                 observation.setValue(quantity);
             } else if (TypeOfTestResultServiceImpl.ResultType.isTextOnlyVariant(result.getResultType())) {

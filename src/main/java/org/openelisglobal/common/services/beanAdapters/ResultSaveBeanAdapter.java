@@ -41,7 +41,7 @@ public class ResultSaveBeanAdapter {
         bean.setReportable(item.getReportable());
         bean.setLowerNormalRange(item.getLowerNormalRange());
         bean.setUpperNormalRange(item.getUpperNormalRange());
-        bean.setSignificantDigits(item.getSignificantDigits());
+        bean.setReportingDecimalPlaces(item.getReportingDecimalPlaces());
         if (!GenericValidator.isBlankOrNull(item.getExpandedUncertainty())) {
             try {
                 BigDecimal u = new BigDecimal(item.getExpandedUncertainty());
@@ -71,7 +71,7 @@ public class ResultSaveBeanAdapter {
         bean.setResultValue(item.getResult());
         bean.setRawResultValue(item.getStoredResult());
         // bean.setReportable("N");
-        bean.setSignificantDigits(item.getSignificantDigits());
+        bean.setReportingDecimalPlaces(item.getReportingDecimalPlaces());
 
         return bean;
     }

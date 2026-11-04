@@ -66,7 +66,7 @@ public class AccessionValidationKeepsEnteredValueTest extends BaseWebContextSens
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/validation-review-panel.xml");
-        jdbcTemplate.update("UPDATE clinlims.result SET value = '0.9', significant_digits = 0 WHERE id = 100");
+        jdbcTemplate.update("UPDATE clinlims.result SET value = '0.9', reporting_decimal_places = 0 WHERE id = 100");
         authenticateAs("testUser");
         userService.saveUserLabUnitRoles(systemUserService.get("1"), Map.of("AllLabUnits", Set.of("9400")), "1");
         entityManager.flush();
@@ -81,22 +81,22 @@ public class AccessionValidationKeepsEnteredValueTest extends BaseWebContextSens
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         JsonNode row = rowFor(new ObjectMapper().readTree(body), "100");
-        assertEquals("1", row.get("result").asText());
-        assertEquals("0.9", row.get("storedResult").asText());
+        assertEquals("0.9", row.get("result").asText());
+        assertEquals("1", row.get("displayResult").asText());
     }
 
     @Test
-    public void releasingTheRowAsShownKeepsTheEnteredValue() throws Exception {
-        release("1");
+    public void releasingTheClinicalFormValueKeepsTheEnteredValue() throws Exception {
+        release("0.9");
 
         assertEquals("0.9", resultService.get("100").getValue());
     }
 
     @Test
     public void aValueTheValidatorChangedOnReleaseIsSaved() throws Exception {
-        release("2");
+        release("1");
 
-        assertEquals("2", resultService.get("100").getValue());
+        assertEquals("1", resultService.get("100").getValue());
     }
 
     @Test

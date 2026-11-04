@@ -149,6 +149,20 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
                 + " VALUES (?, ?, ?, 'N', ?, NOW())", operandResult, pcrAnalysis, testResultA, operandValue);
     }
 
+    @Test
+    public void reportingDecimalsNeverRoundCalculatedClinicalResults() {
+        calculation(GLUCOSE_TEST, null, "*", "0.123");
+        for (Integer places : new Integer[] { null, 0, 1, 2 }) {
+            jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = ? WHERE test_id = ?", places,
+                    GLUCOSE_TEST);
+            runCalculations();
+            String value = jdbc.queryForObject("SELECT value FROM clinlims.result WHERE analysis_id = ?", String.class,
+                    glucoseAnalysis);
+            assertEquals("the reporting setting must not alter 12 * 0.123", 0,
+                    new java.math.BigDecimal("1.476").compareTo(new java.math.BigDecimal(value)));
+        }
+    }
+
     private String componentBValue(long analysisId) {
         return jdbc.queryForObject(
                 "SELECT r.value FROM clinlims.result r JOIN clinlims.test_result tr"
@@ -525,6 +539,31 @@ public class CalculatedResultTargetIntegrationTest extends BaseWebContextSensiti
         runCalculations(operandResult, entered);
 
         assertEquals("24", valueOf(entered));
+        assertEquals(0, internalNotes(glucoseAnalysis).stream().filter(note -> note.contains(" gave ")).count());
+    }
+
+    @Test
+    public void reportingDecimalsCannotHideADifferentCalculatedValue() {
+        calculation(GLUCOSE_TEST, null, "*", "0.123");
+        long entered = enterGlucoseByHand("1");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = 0 WHERE test_id = ?", GLUCOSE_TEST);
+
+        runCalculations(operandResult, entered);
+
+        assertEquals("1", valueOf(entered));
+        assertEquals(1, internalNotes(glucoseAnalysis).stream()
+                .filter(note -> note.contains(" gave 1.476") && note.contains("1 was kept")).count());
+    }
+
+    @Test
+    public void reportingDecimalsCannotInventADifferenceFromTheCalculatedValue() {
+        calculation(GLUCOSE_TEST, null, "*", "0.123");
+        long entered = enterGlucoseByHand("1.4760");
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = 0 WHERE test_id = ?", GLUCOSE_TEST);
+
+        runCalculations(operandResult, entered);
+
+        assertEquals("1.4760", valueOf(entered));
         assertEquals(0, internalNotes(glucoseAnalysis).stream().filter(note -> note.contains(" gave ")).count());
     }
 

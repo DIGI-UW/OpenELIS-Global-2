@@ -385,7 +385,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setLastUpdated(result.getLastupdated());
         resultItem.setReadOnly((held && !awaitingReview) || result.isReadOnly() || result.getTestId() == null);
         resultItem.setResult(held && !awaitingReview ? result.getRawResultValue() : getResultForItem(result));
-        resultItem.setSignificantDigits(acceptService.significantDigitsFor(result));
+        resultItem.setReportingDecimalPlaces(acceptService.reportingDecimalPlacesFor(result));
         resultItem.setTestResultType(result.getResultType());
         resultItem
                 .setDictionaryResultList(held && !awaitingReview ? new ArrayList<>() : getDictionaryResultList(result));
