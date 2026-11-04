@@ -24,7 +24,7 @@ test.describe("Microbiology initial testing", () => {
     await expect(fields).toHaveCount(2);
     await fields.nth(0).fill("12.5");
     await expect(
-      table.getByText(/saved as entered and reported rounded/),
+      table.getByText(/full entered value is retained/),
     ).toBeVisible();
     await expect(
       table.getByRole("button", { name: "Save results", exact: true }),
