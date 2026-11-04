@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -919,6 +920,122 @@ class DevStackPublishedImagesTest(unittest.TestCase):
         self.assertTrue(self.dev_stack.parse_args(["up", "--build"]).build)
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             self.dev_stack.parse_args(["up", "--skip-build", "--build"])
+
+
+class DevStackModuleTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.temp.name)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def module_checkout(self, name, module_id, port=None):
+        path = self.root / name
+        (path / "src/main/resources/META-INF").mkdir(parents=True)
+        (path / "pom.xml").write_text("<project/>", encoding="utf-8")
+        (path / "src/main/resources/META-INF/openelis-module.json").write_text(
+            f'{{"id": "{module_id}", "frontend": {{"entry": "remoteEntry.js"}}}}', encoding="utf-8"
+        )
+        (path / "frontend").mkdir()
+        (path / "frontend/package.json").write_text('{"scripts": {"dev": "vite"}}', encoding="utf-8")
+        if port:
+            (path / "frontend/vite.config.js").write_text(
+                f"export default {{ server: {{ port: {port}, strictPort: true }} }};", encoding="utf-8"
+            )
+        return path
+
+    def module_jar(self, path, module_id):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("META-INF/openelis-module.json", f'{{"id": "{module_id}"}}')
+        return path
+
+    def test_up_accepts_repeated_module_paths(self):
+        args = self.dev_stack.parse_args(["up", "--module", "/a", "--module=/b"])
+
+        self.assertEqual(args.module, ["/a", "/b"])
+        self.assertEqual(self.dev_stack.parse_args(["up"]).module, [])
+
+    def test_module_checkout_reads_id_entry_and_dev_port(self):
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes", port=5190)))
+
+        self.assertEqual(module.module_id, "lab-notes")
+        self.assertEqual(module.entry, "remoteEntry.js")
+        self.assertEqual(module.dev_port, 5190)
+
+    def test_module_without_vite_config_uses_the_default_port(self):
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes")))
+
+        self.assertEqual(module.dev_port, self.dev_stack.DEFAULT_MODULE_DEV_PORT)
+
+    def test_a_folder_without_a_module_manifest_is_refused(self):
+        (self.root / "plain").mkdir()
+        with self.assertRaisesRegex(RuntimeError, "openelis-module.json"):
+            self.dev_stack.read_module_checkout(str(self.root / "plain"))
+
+    def test_two_modules_on_one_dev_port_are_refused(self):
+        first = str(self.module_checkout("a", "first"))
+        second = str(self.module_checkout("b", "second"))
+
+        with self.assertRaisesRegex(RuntimeError, "both serve their pages on port"):
+            self.dev_stack.read_module_checkouts([first, second])
+
+    def test_deploy_replaces_other_copies_of_the_same_module_only(self):
+        repo = self.root / "repo"
+        context = self.dev_stack.StackContext(repo, "p", repo, ())
+        modules_dir = repo / "volume" / "modules"
+        old = self.module_jar(modules_dir / "lab-notes-0.9.0.jar", "lab-notes")
+        other = self.module_jar(modules_dir / "other-1.0.0.jar", "other")
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes")))
+        built = self.module_jar(module.path / "target" / "lab-notes-1.0.0.jar", "lab-notes")
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            changed = self.dev_stack.deploy_module_jar(context, module, built)
+            unchanged = self.dev_stack.deploy_module_jar(context, module, built)
+
+        self.assertTrue(changed)
+        self.assertFalse(unchanged)
+        self.assertFalse(old.exists())
+        self.assertTrue(other.exists())
+        self.assertEqual((modules_dir / "lab-notes.jar").read_bytes(), built.read_bytes())
+
+    def test_built_jar_is_the_one_carrying_the_module_manifest(self):
+        module = self.dev_stack.read_module_checkout(str(self.module_checkout("m", "lab-notes")))
+        (module.path / "target").mkdir()
+        (module.path / "target" / "lab-notes-sources.jar").write_bytes(b"not a module")
+        built = self.module_jar(module.path / "target" / "lab-notes-1.0.0.jar", "lab-notes")
+
+        self.assertEqual(self.dev_stack.built_module_jar(module), built)
+
+    def test_proxy_sends_the_remote_entry_to_the_dev_server_in_every_server_block(self):
+        harness = self.root / "harness"
+        config = harness / "volume" / "nginx" / "nginx.conf"
+        config.parent.mkdir(parents=True)
+        config.write_text(
+            "server {\n        location /api/ {\n        }\n}\nserver {\n        location /api/ {\n        }\n}\n",
+            encoding="utf-8",
+        )
+        context = self.dev_stack.StackContext(self.root, "p", harness, ())
+        module = self.dev_stack.ModuleCheckout(self.root, "lab-notes", "remoteEntry.js", 5190)
+
+        self.dev_stack.route_module_pages(context, [module])
+
+        routed = config.read_text(encoding="utf-8")
+        self.assertEqual(
+            routed.count("location = /api/OpenELIS-Global/modules/lab-notes/remoteEntry.js {"), 2
+        )
+        self.assertIn("return 307 http://localhost:5190/remoteEntry.js;", routed)
+        self.assertLess(routed.index("lab-notes/remoteEntry.js"), routed.index("location /api/ {"))
+
+    def test_no_modules_leave_the_proxy_config_untouched(self):
+        context = self.dev_stack.StackContext(self.root, "p", self.root / "missing", ())
+
+        self.dev_stack.route_module_pages(context, [])
 
 
 if __name__ == "__main__":

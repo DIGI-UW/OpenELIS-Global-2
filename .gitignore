@@ -164,3 +164,8 @@ volume/nce-attachments/
 # Generated local development certificates and private keys
 /.dev-stack/tls/
 /.dev-stack/images.json
+# Module dev servers started by scripts/dev-stack up --module
+/.dev-stack/modules/
+# Installed module JARs (volume/modules/README.md stays)
+/volume/modules/*.jar
+/volume/modules/*.disabled

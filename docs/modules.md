@@ -384,9 +384,11 @@ changes and a shared singleton's major (React 18 will be one) are majors,
 declared by the shell and checked against each module's
 `requires.frontendContract` before its bundle is loaded.
 
-In development, `localStorage["oe.module-override.<id>"]` may point a module's
-remote entry at the module's own Vite dev server so pages can be iterated on
-without rebuilding the JAR.
+In development, `scripts/dev-stack up --module <module checkout>` builds the
+module, installs its JAR and serves its pages from the module's own Vite dev
+server with hot reload (see the README's "Running a module from its source").
+Outside the dev stack, `localStorage["oe.module-override.<id>"]` may point a
+module's remote entry at that dev server instead.
 
 ### Extension slots
 
