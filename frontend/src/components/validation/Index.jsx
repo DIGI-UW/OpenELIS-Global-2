@@ -7,11 +7,21 @@ import { Heading, Grid, Column, Section } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { serverPageSizeOf } from "../utils/serverPaging";
+import ExtensionSlot, { useSlot } from "../addons/ExtensionSlot";
+import { SLOT_RESULT_VALIDATION } from "../addons/slots";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sidenav.label.validation", link: "/validation" },
 ];
+
+/** Lab numbers of the rows the page currently holds, at most 50. */
+export const accessionsOnScreen = (results) =>
+  Array.from(
+    new Set(
+      (results?.resultList || []).map((r) => r.accessionNumber).filter(Boolean),
+    ),
+  ).slice(0, 50);
 
 const Index = () => {
   const { notificationVisible } = useContext(NotificationContext);
@@ -42,6 +52,8 @@ const Index = () => {
       serverPageSizeOf(next?.paging, next?.resultList?.length ?? 0, previous),
     );
   }, []);
+  // Add-on side panel (result-validation-side-panel-slot); none: layout unchanged.
+  const hasAddons = useSlot(SLOT_RESULT_VALIDATION).length > 0;
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -64,7 +76,7 @@ const Index = () => {
         registerPageLoader={registerPageLoader}
       />
       <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
+        <Column lg={hasAddons ? 12 : 16} md={8} sm={4}>
           <Validation
             params={params}
             results={results}
@@ -73,6 +85,17 @@ const Index = () => {
             loadPage={loadPage}
           />
         </Column>
+        {hasAddons && (
+          <Column lg={4} md={8} sm={4}>
+            <ExtensionSlot
+              name={SLOT_RESULT_VALIDATION}
+              state={{
+                page: "result-validation",
+                accessionNumbers: accessionsOnScreen(results),
+              }}
+            />
+          </Column>
+        )}
       </Grid>
     </>
   );

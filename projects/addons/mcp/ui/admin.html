@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MCP access</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main id="app" class="mcp" data-state="loading">
+      <p id="error" class="mcp__error" role="alert" hidden data-testid="mcp-error"></p>
+
+      <section class="mcp__section" aria-labelledby="h-endpoint">
+        <h2 id="h-endpoint">Endpoint</h2>
+        <p class="mcp__note">
+          AI agents (Claude Code, Claude Desktop, other MCP clients) connect here with a token
+          created below. Access is read-only; every call is recorded.
+        </p>
+        <div class="mcp__row">
+          <code id="endpoint" class="mcp__code" data-testid="mcp-endpoint"></code>
+        </div>
+        <p class="mcp__label">Claude Code</p>
+        <div class="mcp__row">
+          <input
+            id="example"
+            class="mcp__copy"
+            readonly
+            data-testid="mcp-example"
+            aria-label="Command to add this server to Claude Code"
+          />
+          <button id="copy-example" type="button" class="mcp__button mcp__button--ghost">
+            Copy
+          </button>
+        </div>
+        <p class="mcp__note">
+          Granted by OpenELIS: <span id="scopes" data-testid="mcp-scopes"></span>
+        </p>
+        <p id="limits" class="mcp__note"></p>
+      </section>
+
+      <section class="mcp__section" aria-labelledby="h-new">
+        <h2 id="h-new">New agent token</h2>
+        <form id="create" class="mcp__form">
+          <label class="mcp__field"
+            >Name of the agent and its user
+            <input
+              id="name"
+              required
+              maxlength="100"
+              placeholder="Claude Code — Dr Lan"
+              data-testid="mcp-name"
+            />
+          </label>
+          <label class="mcp__check">
+            <input id="identifiers" type="checkbox" data-testid="mcp-identifiers" />
+            Include patient names and identifiers
+          </label>
+          <p id="identifiers-warning" class="mcp__warning">
+            Names, patient ids, national ids and dates of birth will reach the agent and its model
+            provider. Turn this on only for staff agents that need them.
+          </p>
+          <label class="mcp__field"
+            >Expires after
+            <select id="expiry" data-testid="mcp-expiry">
+              <option value="">never</option>
+              <option value="7">7 days</option>
+              <option value="30" selected>30 days</option>
+              <option value="90">90 days</option>
+              <option value="365">1 year</option>
+            </select>
+          </label>
+          <button id="create-button" type="submit" class="mcp__button" data-testid="mcp-create">
+            Create token
+          </button>
+        </form>
+        <div id="created" class="mcp__created" hidden data-testid="mcp-created">
+          <p>
+            <strong>Copy this token now.</strong> It is not shown again; if it is lost, revoke it
+            and create another.
+          </p>
+          <div class="mcp__row">
+            <input
+              id="token"
+              class="mcp__copy"
+              readonly
+              aria-label="New token"
+              data-testid="mcp-token"
+            />
+            <button id="copy-token" type="button" class="mcp__button mcp__button--ghost">
+              Copy
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="mcp__section" aria-labelledby="h-agents">
+        <h2 id="h-agents">Agent tokens</h2>
+        <table class="mcp__table" data-testid="mcp-agents">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Identifiers</th>
+              <th>Created</th>
+              <th>Expires</th>
+              <th>Last used</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="agents"></tbody>
+        </table>
+        <p id="no-agents" class="mcp__note" hidden>No tokens yet.</p>
+      </section>
+
+      <section class="mcp__section" aria-labelledby="h-audit">
+        <h2 id="h-audit">Recent calls</h2>
+        <div class="mcp__row">
+          <label class="mcp__field mcp__field--inline"
+            >Agent
+            <select id="audit-agent" data-testid="mcp-audit-agent">
+              <option value="">all</option>
+            </select>
+          </label>
+          <button id="audit-reload" type="button" class="mcp__button mcp__button--ghost">
+            Reload
+          </button>
+        </div>
+        <table class="mcp__table" data-testid="mcp-audit">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Agent</th>
+              <th>Client</th>
+              <th>Tool</th>
+              <th>Arguments</th>
+              <th>Outcome</th>
+              <th>Rows</th>
+              <th>ms</th>
+            </tr>
+          </thead>
+          <tbody id="audit"></tbody>
+        </table>
+        <p id="no-audit" class="mcp__note" hidden>No calls in the last 7 days.</p>
+      </section>
+    </main>
+    <script src="admin.js"></script>
+  </body>
+</html>
