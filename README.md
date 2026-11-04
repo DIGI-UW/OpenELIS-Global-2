@@ -170,7 +170,9 @@ JAR. To remove the module, delete `volume/modules/<id>.jar` and run `up` again.
 `DEV_STACK_IMAGE_TAG=modula` selects the development images published from the
 `modula` branch, which can load modules; `--build` builds them from the checkout
 instead. Node.js is needed on the host for the dev server; without it the pages
-are served from the JAR.
+are served from the JAR. If the dev server stops (a reboot, a crash), the
+module's pages fail to load until the command is run again; `up` without
+`--module` goes back to the pages built into the JAR.
 
 #### The Instances can be accessed at
 

@@ -532,7 +532,7 @@ def start_module_dev_server(
     log_path = state / f"{module.module_id}-vite.log"
     with log_path.open("w", encoding="utf-8") as log:
         process = subprocess.Popen(
-            ["npm", "run", "dev"],
+            ["npm", "run", "dev", "--", "--port", str(module.dev_port), "--strictPort"],
             cwd=frontend,
             env=environment,
             stdin=subprocess.DEVNULL,
@@ -1062,6 +1062,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         heal_war_mount(context)
         modules_changed = False
+        if modules and not args.build:
+            if args.skip_build:
+                reuse_recorded_images(context, environment)
+            else:
+                pull_image(context, environment, environment["DEV_STACK_BACKEND_IMAGE"])
+            require_module_support(context, environment)
         if not args.skip_build:
             build_application(context, environment, install_for_modules=bool(modules))
             for module in modules:
