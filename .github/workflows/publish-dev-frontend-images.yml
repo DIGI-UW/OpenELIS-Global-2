@@ -7,7 +7,7 @@ name: Publishing / Dev Images / Frontend
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, modula]
   workflow_dispatch:
 
 env:
@@ -37,7 +37,10 @@ jobs:
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR_FRONTEND=${platform//\//-}" >> $GITHUB_ENV
           branch="${{ github.ref_name }}"
-          if [ "$branch" = "develop" ]; then
+          # develop and the module-system integration branch publish the same
+          # dev image under their own tag (:develop, :modula); any other branch
+          # gets an image of its own.
+          if [ "$branch" = "develop" ] || [ "$branch" = "modula" ]; then
             image_name="${{ env.DOCKER_NAME }}-frontend-dev"
           else
             slug="${branch//\//-}"

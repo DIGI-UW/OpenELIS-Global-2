@@ -15,7 +15,7 @@ name: Publishing / Dev Images / Support (database, fhir, proxy)
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, modula]
     paths:
       - "db/**"
       - "fhir/**"
