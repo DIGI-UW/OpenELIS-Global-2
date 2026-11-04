@@ -122,8 +122,8 @@ public class MenuController {
     /**
      * A module's menu entries live only in memory (see ModuleMenuContributor): an
      * edit would answer 200 and vanish at the next restart, so the editor refuses
-     * them. A module entry is shown to the roles that hold its permission, which
-     * Role Management controls.
+     * them. A module entry is shown to the roles that hold its permission; those
+     * roles are assigned in User Management.
      */
     static void refuseModuleEntries(List<MenuItem> menuItems) {
         if (menuItems == null) {
@@ -136,7 +136,8 @@ public class MenuController {
             Menu menu = item.getMenu();
             if (menu != null && MenuUtil.isModuleEntry(menu.getElementId())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "menu entry " + menu.getElementId()
-                        + " belongs to a module and cannot be edited here; manage who sees it through Role Management");
+                        + " belongs to a module and cannot be edited here; who sees it follows from the roles that hold its"
+                        + " permission, assigned in User Management");
             }
             refuseModuleEntries(item.getChildMenus());
         }

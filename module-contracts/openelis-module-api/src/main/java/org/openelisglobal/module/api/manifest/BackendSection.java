@@ -52,7 +52,8 @@ public class BackendSection {
 
     /**
      * Class-path location of the module changelog inside the JAR, for example
-     * {@code liquibase/my-module/changelog.xml}.
+     * {@code liquibase/base.xml}, which includes the module's changelog files in
+     * order.
      */
     public String getLiquibase() {
         return liquibase;

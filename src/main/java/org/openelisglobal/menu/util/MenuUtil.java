@@ -32,7 +32,15 @@ public class MenuUtil {
 
     private static List<MenuItem> root;
     private static final List<Menu> insertedMenus = new ArrayList<>();
-    private static final MenuService menuService = SpringContext.getBean(MenuService.class);
+
+    /**
+     * Looked up per call, not in the class initializer: the string checks of this
+     * class ({@link #isModuleEntry}) are used where no Spring context exists yet,
+     * and an eager lookup made the class unloadable in that case.
+     */
+    private static MenuService menuService() {
+        return SpringContext.getBean(MenuService.class);
+    }
 
     /**
      * The intent of this method is to allow menu items to be added outside of the
@@ -90,7 +98,7 @@ public class MenuUtil {
         }
 
         // Filtered here, not in MenuController, so banner.jsp gets the same tree.
-        return menuService.filterByPrivilege(root);
+        return menuService().filterByPrivilege(root);
     }
 
     public static List<MenuItem> getUnfilteredMenuTree() {
@@ -102,7 +110,7 @@ public class MenuUtil {
     }
 
     private static void createTree() {
-        List<Menu> menuList = new ArrayList<>(menuService.getAll());
+        List<Menu> menuList = new ArrayList<>(menuService().getAll());
 
         Map<String, Menu> idToMenuMap = new HashMap<>();
 

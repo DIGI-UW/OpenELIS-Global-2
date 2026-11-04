@@ -1,5 +1,6 @@
 package org.openelisglobal.module.runtime.persistence;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -16,7 +17,6 @@ import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.module.api.ModuleState;
 import org.openelisglobal.module.runtime.ModuleRecord;
@@ -98,7 +98,7 @@ public class ModuleLiquibaseRunner {
                 module.transition(ModuleState.FAILED, e.getMessage());
                 states.recordFailure(module, e.getMessage());
                 throw e;
-            } catch (LiquibaseException | SQLException | RuntimeException e) {
+            } catch (LiquibaseException | SQLException | IOException | RuntimeException e) {
                 String message = "changelog " + changelog + " failed: " + e.getMessage();
                 module.transition(ModuleState.FAILED, message);
                 states.recordFailure(module, message);
@@ -112,13 +112,13 @@ public class ModuleLiquibaseRunner {
                         : recorded.equals(module.version()) ? "" : " (from " + recorded + ")"));
     }
 
-    private void applyChangelog(ModuleRecord module, String changelog) throws LiquibaseException, SQLException {
+    private void applyChangelog(ModuleRecord module, String changelog)
+            throws LiquibaseException, SQLException, IOException {
         Connection connection = dataSource.getConnection();
         Database database = DatabaseFactory.getInstance()
                 .findCorrectDatabaseImplementation(new JdbcConnection(connection));
         try {
-            Liquibase liquibase = new Liquibase(changelog, new ClassLoaderResourceAccessor(module.classLoader()),
-                    database);
+            Liquibase liquibase = new Liquibase(changelog, ModuleChangelogs.accessor(module.jarPath()), database);
             DatabaseChangeLog parsed = liquibase.getDatabaseChangeLog();
             checkChangeSets(module, parsed);
             liquibase.update(new Contexts(contexts), new LabelExpression());

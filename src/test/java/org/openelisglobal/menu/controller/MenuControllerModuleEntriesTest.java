@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Menu Management cannot edit a module's in-memory entries: the save is refused
- * with a message naming Role Management, while ordinary entries save as before.
+ * with a message naming User Management, while ordinary entries save as before.
  */
 public class MenuControllerModuleEntriesTest {
 
@@ -58,7 +58,7 @@ public class MenuControllerModuleEntriesTest {
         } catch (ResponseStatusException e) {
             assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
             assertTrue(e.getReason(), e.getReason().contains(CONTRIBUTED));
-            assertTrue(e.getReason(), e.getReason().contains("Role Management"));
+            assertTrue(e.getReason(), e.getReason().contains("User Management"));
         }
     }
 

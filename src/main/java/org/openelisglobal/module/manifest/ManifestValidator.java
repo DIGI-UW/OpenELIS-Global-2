@@ -281,10 +281,11 @@ public final class ManifestValidator {
             }
         }
         if (backend.getLiquibase() != null && kind == ModuleKind.MODULE) {
-            String expected = "liquibase/" + manifest.getId() + "/";
-            if (!backend.getLiquibase().startsWith(expected)) {
-                problems.add(new Problem("/backend/liquibase", "must live under '" + expected
-                        + "' (the module class loader is parent-first, so any other path could shadow a core changelog)"));
+            String changelog = backend.getLiquibase();
+            if (!changelog.startsWith("liquibase/") || changelog.endsWith("/") || changelog.contains("..")) {
+                problems.add(new Problem("/backend/liquibase",
+                        "must be a changelog file under 'liquibase/' in the JAR, usually 'liquibase/base.xml'"
+                                + " including the module's changelog files in order"));
             }
         }
         if (kind == ModuleKind.PROVIDER) {

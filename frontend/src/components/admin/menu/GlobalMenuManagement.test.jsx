@@ -220,7 +220,7 @@ test("OGC-1418: does not offer the retired Validation entries, so they cannot be
   ).toBeNull();
 });
 
-test("a module's entry is shown read-only with a note pointing to Role Management", async () => {
+test("a module's entry is shown read-only with a note pointing to User Management", async () => {
   const contributed = {
     menu: {
       elementId: "menu_mod_alpha",
@@ -243,7 +243,7 @@ test("a module's entry is shown read-only with a note pointing to Role Managemen
   expect(within(entry).getByRole("switch")).toBeDisabled();
   expect(
     screen.getByTestId("menu-module-note-menu_mod_alpha"),
-  ).toHaveTextContent("Role Management");
+  ).toHaveTextContent("User Management");
   const patient = screen.getByTestId("menu-settings-custom");
   fireEvent.click(
     within(patient).getByRole("button", { name: "Patient", exact: true }),

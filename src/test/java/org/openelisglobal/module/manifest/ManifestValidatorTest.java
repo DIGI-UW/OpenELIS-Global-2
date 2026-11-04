@@ -269,13 +269,25 @@ public class ManifestValidatorTest {
     }
 
     @Test
-    public void changelogOutsideTheModuleDirectoryIsRefused() {
-        ManifestValidation validation = validator.validate(edited("valid-module.json",
-                root -> ((ObjectNode) root.get("backend")).put("liquibase", "liquibase/base-changelog.xml")));
+    public void changelogOutsideTheLiquibaseDirectoryIsRefused() {
+        for (String location : new String[] { "db/changelog.xml", "liquibase/", "liquibase/../x.xml" }) {
+            ManifestValidation validation = validator.validate(
+                    edited("valid-module.json", root -> ((ObjectNode) root.get("backend")).put("liquibase", location)));
 
-        assertFalse(validation.isValid());
-        assertTrue(validation.describe(), hasProblemAt(validation, "/backend/liquibase"));
-        assertTrue(validation.describe(), validation.describe().contains("liquibase/example-workflow/"));
+            assertFalse(location, validation.isValid());
+            assertTrue(validation.describe(), hasProblemAt(validation, "/backend/liquibase"));
+            assertTrue(validation.describe(), validation.describe().contains("liquibase/base.xml"));
+        }
+    }
+
+    @Test
+    public void baseChangelogUnderLiquibaseIsAccepted() {
+        for (String location : new String[] { "liquibase/base.xml", "liquibase/example-workflow/changelog.xml" }) {
+            ManifestValidation validation = validator.validate(
+                    edited("valid-module.json", root -> ((ObjectNode) root.get("backend")).put("liquibase", location)));
+
+            assertTrue(location + ": " + validation.describe(), validation.isValid());
+        }
     }
 
     @Test

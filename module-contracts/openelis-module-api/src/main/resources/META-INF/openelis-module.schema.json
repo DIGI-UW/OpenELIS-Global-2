@@ -71,7 +71,11 @@
         },
         "activator": { "type": "string", "minLength": 1 },
         "entities": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "liquibase": { "type": "string", "minLength": 1 },
+        "liquibase": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The module's master changelog inside the JAR, usually liquibase/base.xml, which includes the module's changelog files in order as the core's base.xml files do"
+        },
         "extensions": {
           "type": "array",
           "items": {

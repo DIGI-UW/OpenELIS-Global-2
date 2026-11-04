@@ -32,6 +32,7 @@ import org.openelisglobal.module.api.manifest.Requires;
 import org.openelisglobal.module.manifest.ManifestReader;
 import org.openelisglobal.module.manifest.ManifestValidation;
 import org.openelisglobal.module.manifest.ManifestValidator;
+import org.openelisglobal.module.runtime.persistence.ModuleChangelogs;
 import org.openelisglobal.module.version.VersionRanges;
 
 /**
@@ -112,7 +113,8 @@ public final class ModuleDiscovery {
                     record.transition(ModuleState.VALIDATED);
                 }
             } catch (IOException e) {
-                record.transition(ModuleState.INVALID, "cannot read the JAR: " + e.getMessage());
+                record.transition(ModuleState.INVALID, "cannot read the JAR or extract its libraries: "
+                        + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
         for (ModuleRecord record : ordered) {
@@ -439,8 +441,14 @@ public final class ModuleDiscovery {
                             + " (" + extension.getSpi() + ")");
                 }
             }
-            if (backend.getLiquibase() != null && loader.findResource(backend.getLiquibase()) == null) {
-                problems.add("changelog " + backend.getLiquibase() + " is not in the JAR");
+            if (backend.getLiquibase() != null) {
+                try {
+                    if (!ModuleChangelogs.exists(record.jarPath(), backend.getLiquibase())) {
+                        problems.add("changelog " + backend.getLiquibase() + " is not in the JAR");
+                    }
+                } catch (IOException e) {
+                    problems.add("changelog " + backend.getLiquibase() + " cannot be read: " + e.getMessage());
+                }
             }
         }
         if (manifest.getFrontend() != null) {
