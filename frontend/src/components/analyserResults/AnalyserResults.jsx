@@ -543,6 +543,31 @@ const AnalyserResults = (props) => {
             <FormattedMessage id="analyzer.results.held.conflictingAnswerMapping" />
           </div>
         )}
+        {row.importIssueReason === "qc_lot_missing" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.qcLotMissing" />
+            </div>
+            <div>
+              <CarbonLink as={RouterLink} to="/qa/qc/control-lots">
+                <FormattedMessage id="analyzer.results.held.setQcLot" />
+              </CarbonLink>
+            </div>
+            {props.analyzerId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/analyzers/${encodeURIComponent(props.analyzerId)}/mapping`}
+              >
+                <FormattedMessage id="analyzer.results.held.retryQcMapping" />
+              </CarbonLink>
+            )}
+          </>
+        )}
+        {row.importIssueReason === "qc_value_unsupported" && (
+          <div>
+            <FormattedMessage id="analyzer.results.held.qcValueUnsupported" />
+          </div>
+        )}
         {row.importIssueReason === "qc_target_missing" && (
           <>
             <div>

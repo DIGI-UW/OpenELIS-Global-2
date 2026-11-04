@@ -50,7 +50,6 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String RAW_VALUE = EXTENSION_ROOT + "analyzer-raw-value";
     private static final String SOURCE_TRANSPORT = EXTENSION_ROOT + "analyzer-source-transport";
     private static final String PATIENT_SOURCE = EXTENSION_ROOT + "analyzer-patient-source";
-    private static final String LOT_NUMBER = "http://openelis-global.org/fhir/qc/lot-number";
     private static final String CONTROL_LEVEL = "http://openelis-global.org/fhir/qc/control-level";
     private static final String V2_SUBID = "http://hl7.org/fhir/StructureDefinition/observation-v2-subid";
     private static final String ORIGINAL_SUB_IDENTIFIER = "original-sub-identifier";
@@ -253,7 +252,6 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         Timestamp completed = observation.hasEffectiveDateTimeType()
                 ? new Timestamp(observation.getEffectiveDateTimeType().getValue().getTime())
                 : null;
-        String lotNumber = optionalExtensionText(observation, LOT_NUMBER);
         String controlLevel = optionalExtensionText(observation, CONTROL_LEVEL);
         Observation retained = observation.copy();
         if (version != null) {
@@ -268,9 +266,9 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 .collect(java.util.stream.Collectors.joining("\n"));
 
         return new Result(accessionNumber, rawCodes.get(0), rawValue, units, resultType, classification,
-                sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
-                completed, sourcePayload, patient == null ? null : patient.identifier(),
-                patient == null ? null : patient.name(), note.isEmpty() ? null : note,
+                sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, controlLevel, completed,
+                sourcePayload, patient == null ? null : patient.identifier(), patient == null ? null : patient.name(),
+                note.isEmpty() ? null : note,
                 observation.hasDataAbsentReason() && observation.getDataAbsentReason().getCoding().stream()
                         .anyMatch(coding -> "http://terminology.hl7.org/CodeSystem/data-absent-reason"
                                 .equals(coding.getSystem()) && "error".equals(coding.getCode())),
@@ -490,11 +488,10 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
      */
     public record Result(String accessionNumber, String rawTestCode, String rawValue, String units, String resultType,
             String classification, String sourceTransport, String recognitionMode, String recognitionOutcome,
-            String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
-            String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
-            boolean runFailed, String comparator, String subIdentity, String number, String call, String flags,
-            String assayName, String assayVersion, String operator,
-            List<org.openelisglobal.terminology.Coding> testCodings,
+            String recognitionFingerprint, String controlLevel, Timestamp completeDate, String sourcePayload,
+            String instrumentPatientId, String instrumentPatientName, String note, boolean runFailed, String comparator,
+            String subIdentity, String number, String call, String flags, String assayName, String assayVersion,
+            String operator, List<org.openelisglobal.terminology.Coding> testCodings,
             List<org.openelisglobal.terminology.Coding> answerCodings) {
 
         /**

@@ -200,6 +200,29 @@ analyzer code. OpenELIS has no file poller and never opens a result file.
   work. Administrative profile adoption and local mapping approval are explicit;
   whole-profile fingerprints are not delivery or recovery gates.
 
+## Operational control recording
+
+The approved local mapping identifies the test's primary measurement. Only a
+control row mapped to that primary result is charted in operational QC;
+auxiliary readings and calls remain available in review and on the retained
+delivery. A primary log measurement is handled by its local component mapping,
+not by testing a vendor record name or recalculating the instrument's value.
+
+For the mapped test and analyzer, the reported specimen identifier may identify
+one usable control lot directly. A reported control level must agree with that
+lot when present. Otherwise the reported level must identify exactly one usable
+lot. ACTIVE and ESTABLISHMENT lots are usable; merely being the only lot does
+not establish a match. The retired Bridge lot-number extension is not a source
+of lot identity.
+
+No matching lot or missing qualitative target leaves the primary control held
+with a reason and a path to configuration. Applying the analyzer's mapping
+retries the retained observation. Only persisted QC measurements count as
+recorded. Delivery retries remain idempotent; a new control run has a new delivery
+identity and may reuse its specimen identifier. Off-scale quantities remain
+visible for review; their boundary is not an exact measurement for a QC chart.
+The lab's existing release-blocking setting is unchanged.
+
 ## Where the detail is
 
 - Product design, in
