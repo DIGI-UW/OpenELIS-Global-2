@@ -167,7 +167,7 @@ public class SampleTestingMappingIntegrationTest extends BaseWebContextSensitive
         Result stored = results.get(firstId);
         assertEquals(primary.getId(), stored.getTestResult().getComponentId());
         assertEquals("120.125", stored.getValue());
-        assertEquals(-1, stored.getSignificantDigits());
+        assertEquals(-1, stored.getReportingDecimalPlaces());
         assertEquals("120.125", results.get(secondId).getValue());
 
         List<TestResultComponent> renamed = components.getActiveComponentsByTestId("1");

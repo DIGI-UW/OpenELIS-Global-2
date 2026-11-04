@@ -35,6 +35,10 @@
         code="200" status_type="ANALYSIS" lastupdated="2024-01-01 12:30:00"
         name="Finalized" display_key="status.finalized" is_active="Y" />
 
+    <status_of_sample id="3" description="Finished"
+        code="300" status_type="ORDER" lastupdated="2024-01-01 10:00:00"
+        name="Testing finished" display_key="status.finished" is_active="Y" />
+
     <organization id="401" lastupdated="2024-06-03 12:00:00.0"
         name="Global Health Org" city="New York" zip_code="10001"
         mls_sentinel_lab_flag="Y" short_name="GHG" multiple_unit="NYC Unit"
@@ -72,12 +76,12 @@
 
     <result id="300" sort_order="1" result_type="N" value="85.0"
         is_reportable="Y" lastupdated="2025-04-04 14:00:00" min_normal="70.0"
-        max_normal="100.0" significant_digits="1" grouping="0"
+        max_normal="100.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="301" sort_order="2" result_type="N" value="14.5"
         is_reportable="Y" lastupdated="2025-07-07 14:00:00" min_normal="12.0"
-        max_normal="16.0" significant_digits="1" grouping="0"
+        max_normal="16.0" reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <sample id="1" accession_number="12345" status_id="1"
@@ -185,5 +189,6 @@
         createSave tests. -->
     <referral_subcontract />
     <referral_status_history />
+    <note />
 
 </dataset>

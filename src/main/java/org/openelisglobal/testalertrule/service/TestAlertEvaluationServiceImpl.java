@@ -138,15 +138,9 @@ public class TestAlertEvaluationServiceImpl implements TestAlertEvaluationServic
      * Whether the recorded value is the value the rule names.
      *
      * <p>
-     * A numeric result is stored to the test's significant digits, so 200 entered
-     * on a two-digit test is persisted as "200.00". A rule authored for 200 holds
-     * the string the user typed, and comparing the two as text says they differ.
-     *
-     * <p>
-     * This is why the rule appeared to work on a new result and not on an edited
-     * one: entering a value posts the characters typed, while editing one posts
-     * what the field was showing — the formatted value. Same measurement, same
-     * rule, two spellings of the number. A numeric rule is about the number.
+     * Numeric equality ignores equivalent trailing zeros ("200" and "200.00").
+     * Historical results may contain reporting padding; a rule is about the
+     * clinical number rather than its text representation.
      *
      * <p>
      * The rule's value may itself be written in scientific notation, the way the

@@ -1,5 +1,6 @@
 package org.openelisglobal.testcalculated.action.util;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -12,9 +13,9 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import org.apache.commons.lang3.StringUtils;
-import org.jfree.util.Log;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -79,6 +80,7 @@ public class TestCalculatedUtil {
     public List<Analysis> addNewTestsToDBForCalculatedTests(List<ResultSet> resultSetList, String sysUserId)
             throws IllegalStateException {
         calculatedResults.clear();
+        releaseResultsSavedByHand(resultSetList);
         List<Analysis> analyses = new ArrayList<>();
         for (ResultSet resultSet : resultSetList) {
             if (resultSet.result == null) {
@@ -187,6 +189,7 @@ public class TestCalculatedUtil {
                     if (!isMissingParams && usesAgeWithoutBirthDate(calculation, resultSet.patient)) {
                         isMissingParams = true;
                     }
+                    String value = null;
                     if (!isMissingParams) {
                         StringBuffer function = new StringBuffer();
                         calculation.getOperations().forEach(operation -> {
@@ -235,32 +238,124 @@ public class TestCalculatedUtil {
                         });
                         ScriptEngineManager scriptEngineManager = new ScriptEngineManager();
                         ScriptEngine scriptEngine = scriptEngineManager.getEngineByName("JavaScript");
-                        String value = null;
                         try {
-                            Log.debug("Calculation Rule: " + calculation.getName() + " Function : "
-                                    + function.toString());
+                            LogEvent.logDebug("TestCalculatedUtil", "addNewTestsToDBForCalculatedTests",
+                                    "Calculation Rule: " + calculation.getName() + " Function : "
+                                            + function.toString());
                             value = scriptEngine.eval(function.toString()).toString();
-                            Log.debug("Calculation Rule: " + calculation.getName() + " Value  : " + value);
+                            LogEvent.logDebug("TestCalculatedUtil", "addNewTestsToDBForCalculatedTests",
+                                    "Calculation Rule: " + calculation.getName() + " Value  : " + value);
                         } catch (ScriptException e) {
-                            Log.error("Invalid Calculation Rule: " + calculation.getName(), e);
+                            LogEvent.logError("Invalid Calculation Rule: " + calculation.getName(), e);
                         }
-                        Analysis analysis = createCalculatedResult(resultCalculation, resultSet, calculation, value,
-                                sysUserId);
-                        if (analysis != null) {
-                            analyses.add(analysis);
-                        }
-
-                    } else {
-                        Analysis analysis = createCalculatedResult(resultCalculation, resultSet, calculation, null,
-                                sysUserId);
-                        if (analysis != null) {
-                            analyses.add(analysis);
-                        }
+                    }
+                    Result entered = enteredAtDestination(resultCalculation, resultSet, calculation);
+                    if (entered != null) {
+                        noteKeptEntry(entered, calculation, value, sysUserId);
+                        continue;
+                    }
+                    Analysis analysis = createCalculatedResult(resultCalculation, resultSet, calculation, value,
+                            sysUserId);
+                    if (analysis != null) {
+                        analyses.add(analysis);
                     }
                 }
             }
         }
         return analyses;
+    }
+
+    /**
+     * A calculated result that a user has just saved a value on is theirs from then
+     * on: the calculation lets go of the row, so a later change to one of its
+     * inputs does not write over what they entered.
+     */
+    private void releaseResultsSavedByHand(List<ResultSet> resultSetList) {
+        for (ResultSet resultSet : resultSetList) {
+            if (resultSet.result == null || resultSet.result.getId() == null) {
+                continue;
+            }
+            for (ResultCalculation owner : resultcalculationService
+                    .getResultCalculationsByResultId(resultSet.result.getId())) {
+                owner.setResult(null);
+                resultcalculationService.update(owner);
+            }
+        }
+    }
+
+    /**
+     * The value already recorded where the calculation would write, when someone
+     * entered it rather than this rule; null when the rule may write there.
+     *
+     * <p>
+     * A value typed in is what was measured, and a rule never writes over it. A
+     * rule that reads its own result, two rules that read each other's, or a rule
+     * whose input was saved after its result was typed, used to replace what the
+     * technician had entered without a word. The rule may write an empty place, or
+     * the row it wrote itself that nobody has since saved by hand.
+     */
+    private Result enteredAtDestination(ResultCalculation resultCalculation, ResultSet resultSet,
+            Calculation calculation) {
+        if (resultCalculation.getResult() != null || calculation.getTestId() == null) {
+            return null;
+        }
+        Analysis destination = orderedDestination(resultSet.result, calculation);
+        if (destination == null || destination.getId() == null) {
+            return null;
+        }
+        String testId = calculation.getTestId().toString();
+        String component = StringUtils.isNotBlank(calculation.getComponentId()) ? calculation.getComponentId()
+                : ruleResultScope.primaryComponentId(testId);
+        for (Result recorded : resultService.getResultsByAnalysis(destination)) {
+            if (StringUtils.isNotBlank(recorded.getValue()) && ruleResultScope.matchesComponent(recorded, component)) {
+                return recorded;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The analysis of the resulting test the order already carries on the specimen
+     * the calculation reports on, found without creating anything.
+     */
+    private Analysis orderedDestination(Result trigger, Calculation calculation) {
+        Analysis currentAnalysis = trigger.getAnalysis();
+        if (currentAnalysis == null || calculation.getTestId() == null) {
+            return null;
+        }
+        Test test = testService.get(calculation.getTestId().toString());
+        SampleItem targetItem = null;
+        if (calculation.getSampleId() != null) {
+            targetItem = currentAnalysis.getSampleItem() == null ? null
+                    : ruleResultScope.sampleItemForTarget(currentAnalysis.getSampleItem().getSample(),
+                            calculation.getSampleId().toString());
+            if (targetItem == null) {
+                return null;
+            }
+        }
+        return orderedTargetAnalysis(currentAnalysis, test, targetItem);
+    }
+
+    /**
+     * Leaves both values where the lab can see them: when the rule would have given
+     * something other than what was entered, the analysis gets an internal note
+     * naming the rule and the value it calculated.
+     */
+    private void noteKeptEntry(Result entered, Calculation calculation, String value, String systemUserId) {
+        if (value == null || entered.getAnalysis() == null || !BoundedDecimal.isBoundedDecimal(value)) {
+            return;
+        }
+        if (BoundedDecimal.isBoundedDecimal(entered.getValue())
+                && new BigDecimal(value).compareTo(new BigDecimal(entered.getValue())) == 0) {
+            return;
+        }
+        Note note = noteService.createSavableNote(
+                entered.getAnalysis(), NoteType.INTERNAL, "Calculation rule " + calculation.getName() + " gave " + value
+                        + "; the entered result " + entered.getValue() + " was kept.",
+                CALCULATION_SUBJECT, systemUserId);
+        if (!noteService.duplicateNoteExists(note)) {
+            noteService.save(note);
+        }
     }
 
     /**
@@ -315,8 +410,8 @@ public class TestCalculatedUtil {
                 result = new Result();
             }
             result.setTestResult(testResult);
-            if (testResult.getSignificantDigits() != null) {
-                result.setSignificantDigits(Integer.valueOf(testResult.getSignificantDigits()));
+            if (testResult.getReportingDecimalPlaces() != null) {
+                result.setReportingDecimalPlaces(Integer.valueOf(testResult.getReportingDecimalPlaces()));
             }
             result.setResultType(resultType);
             result.setSysUserId(systemUserId);
@@ -337,10 +432,6 @@ public class TestCalculatedUtil {
                         result.setValue("");
                     }
                 } else if ("N".equals(resultType)) {
-                    if (testResult.getSignificantDigits() != null) {
-                        double factor = Math.pow(10, Double.valueOf(testResult.getSignificantDigits()));
-                        value = String.valueOf(Math.round(Double.valueOf(value) * factor) / factor);
-                    }
                     result.setValue(value);
                     resultCalculated = true;
                 }
@@ -363,7 +454,7 @@ public class TestCalculatedUtil {
                 }
                 if (recorded != null) {
                     recorded.setTestResult(result.getTestResult());
-                    recorded.setSignificantDigits(result.getSignificantDigits());
+                    recorded.setReportingDecimalPlaces(result.getReportingDecimalPlaces());
                     recorded.setResultType(result.getResultType());
                     recorded.setSysUserId(systemUserId);
                     recorded.setValue(result.getValue());

@@ -403,6 +403,32 @@ public class TestCatalogSampleResultsLifecycleIntegrationTest extends BaseWebCon
     // -- 6, 7, 8: the rulings of 11 Oct 2026 ---------------------------------
 
     @org.junit.Test
+    public void copyingATestPreservesItsReceivedLogReportingPolicy() {
+        ResultComponentDto primary = comp(primaryId(), "PRIMARY", "Measurement", true, 0);
+        primary.displayLog10 = true;
+        primary.log10SourceComponentCode = "LOG";
+        ResultComponentDto received = comp(null, "LOG", "Received log10", false, 1);
+        assertEquals(200, save(primary, received));
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, 'LifecycleIT copy', 'LifecycleIT copy desc', 'N', ?, NOW())",
+                COPY_TARGET_ID, UUID.randomUUID().toString());
+
+        componentService.copyComponentsFromTest(testId(), String.valueOf(COPY_TARGET_ID), "1");
+
+        var copied = componentService.getByTestIdAndCode(String.valueOf(COPY_TARGET_ID), "PRIMARY");
+        assertTrue(copied.getDisplayLog10());
+        assertEquals("LOG", copied.getLog10SourceComponentCode());
+        var copiedSource = componentService.getByTestIdAndCode(String.valueOf(COPY_TARGET_ID),
+                copied.getLog10SourceComponentCode());
+        assertNotEquals(byCode("LOG").id, copiedSource.getId());
+        assertEquals(String.valueOf(COPY_TARGET_ID), copiedSource.getTestId());
+        assertEquals("N", copiedSource.getResultType());
+        assertTrue(copiedSource.getShowOnReport());
+        assertEquals("LOG", byCode("PRIMARY").log10SourceComponentCode);
+    }
+
+    @org.junit.Test
     public void anActiveTestKeepsAtLeastOneComponent_anInactiveOneMayHaveNone() {
         primaryId();
         jdbc.update("UPDATE clinlims.test SET is_active = 'Y' WHERE id = ?", TEST_ID);

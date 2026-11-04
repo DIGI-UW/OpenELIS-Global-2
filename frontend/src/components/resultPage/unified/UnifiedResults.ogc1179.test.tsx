@@ -72,6 +72,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 /** A numeric result stored more precisely than its test reports to. */
 const worklistRow = (overrides = {}) => ({
@@ -83,7 +84,7 @@ const worklistRow = (overrides = {}) => ({
   resultType: "N",
   resultValue: "33",
   rawResultValue: "33.7",
-  significantDigits: 0,
+  reportingDecimalPlaces: 0,
   analysisStatusId: "4",
   analysisLastupdated: "1700000000000",
   normalRange: "",
@@ -122,9 +123,7 @@ const renderPage = async (rows = [worklistRow()]) => {
     </IntlProvider>,
   );
   // the page loads its worklist once a Lab Unit is selected
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "165" },
-  });
+  chooseLabUnit("Molecular Biology");
   expect(
     screen.getByRole("table", { name: "Results worklist" }),
   ).toBeInTheDocument();
@@ -213,17 +212,38 @@ describe("OGC-1179 — unified Results worklist", () => {
     fireEvent.change(resultField(), { target: { value: "34.55" } });
     expect(screen.getByTestId("save-button")).toBeEnabled();
     expect(
-      screen.getByText(/saved as entered and reported rounded/),
+      screen.getByText(/full entered value is retained/),
     ).toBeInTheDocument();
 
     fireEvent.change(resultField(), { target: { value: "34" } });
     expect(screen.getByTestId("save-button")).toBeEnabled();
-    expect(
-      screen.queryByText(/saved as entered and reported rounded/),
-    ).toBeNull();
+    expect(screen.queryByText(/full entered value is retained/)).toBeNull();
   });
 
   /** #4 — the Status chip and the counts follow the save, without a reload. */
+  /**
+   * OGC-1569 — typing the rounded form of the stored value is an edit. The row
+   * sends what was typed as its measurement, so the server does not read it as
+   * the reported form posted back unchanged.
+   */
+  it("sends a typed value as the measurement, even when it is the reported one", async () => {
+    await renderPage();
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) => callback({}),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit/i }));
+    fireEvent.change(resultField(), { target: { value: "33" } });
+    fireEvent.click(screen.getByTestId("save-button"));
+
+    const [, body] = utilsMock.postToOpenElisServerJsonResponse.mock.calls.find(
+      ([url]: [string]) => url.endsWith("/result"),
+    );
+    const { testResult } = JSON.parse(body);
+    expect(testResult.resultValue).toBe("33");
+    expect(testResult.rawResultValue).toBe("33");
+  });
+
   it("adopts the status the save reports", async () => {
     await renderPage();
     expect(screen.getByText("Not started")).toBeInTheDocument();
@@ -261,7 +281,7 @@ describe("OGC-1179 — unified Results worklist", () => {
       worklistRow({
         resultValue: "110.00",
         rawResultValue: "110",
-        significantDigits: 2,
+        reportingDecimalPlaces: 2,
       }),
     ]);
     utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
@@ -359,7 +379,7 @@ describe("OGC-1179 — a save and its sibling component rows", () => {
     resultType: "N",
     resultValue: value,
     rawResultValue: value,
-    significantDigits: 2,
+    reportingDecimalPlaces: 2,
     analysisStatusId: "4",
     analysisLastupdated: "1700000000000",
   });

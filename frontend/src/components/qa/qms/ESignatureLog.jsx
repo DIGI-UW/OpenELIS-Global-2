@@ -7,6 +7,7 @@ import {
   Dropdown,
   Modal,
   Pagination,
+  Search,
 } from "@carbon/react";
 import { Download, DocumentPdf } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -17,6 +18,7 @@ import {
   toLocalIsoDateTime,
 } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import SearchableSelect from "../../common/SearchableSelect";
 import QASimpleTable from "../common/QASimpleTable";
 import QAEmptyState from "../common/QAEmptyState";
 import { lastDays } from "../common/qaDates";
@@ -45,6 +47,8 @@ const HEADERS = [
 
 const MEANINGS = ["AUTHORED", "VALIDATED_AND_RELEASED", "REJECTED"];
 
+const SEARCH_DELAY_MS = 300;
+
 const RECORD_TYPES = [
   "RESULT",
   "RESULT_BATCH",
@@ -69,6 +73,8 @@ const ESignatureLog = () => {
   const [applied, setApplied] = useState(defaultFilters);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
+  const [search, setSearch] = useState("");
+  const [text, setText] = useState("");
   const [users, setUsers] = useState([]);
   // "csv" | "pdf" while the empty-filter export confirm is open
   const [pendingExport, setPendingExport] = useState(null);
@@ -85,12 +91,26 @@ const ESignatureLog = () => {
     });
   }, []);
 
+  useEffect(() => {
+    const typed = search.trim();
+    if (typed === text) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      setPage(0);
+      setText(typed);
+    }, SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [search, text]);
+
   const buildFilterParams = useCallback(
     () =>
       new URLSearchParams(
-        Object.entries(applied).filter(([, value]) => value !== ""),
+        Object.entries({ ...applied, text }).filter(
+          ([, value]) => value !== "",
+        ),
       ),
-    [applied],
+    [applied, text],
   );
 
   const fetchLog = useCallback(() => {
@@ -127,6 +147,8 @@ const ESignatureLog = () => {
     setDraft(defaults);
     setPage(0);
     setApplied(defaults);
+    setSearch("");
+    setText("");
   };
 
   const openExport = (format) => {
@@ -140,7 +162,7 @@ const ESignatureLog = () => {
   // Empty-filter export warns first (OGC-703): only the date range is set,
   // so the export may cover everything up to the 10,000-row cap.
   const handleExport = (format) => {
-    if (applied.signerId || applied.meaning || applied.recordType) {
+    if (applied.signerId || applied.meaning || applied.recordType || text) {
       openExport(format);
     } else {
       setPendingExport(format);
@@ -158,10 +180,7 @@ const ESignatureLog = () => {
     { id: "", label: allLabel },
     ...RECORD_TYPES.map((t) => ({ id: t, label: t })),
   ];
-  const userItems = [
-    { id: "", label: allLabel },
-    ...users.map((u) => ({ id: String(u.id), label: u.value })),
-  ];
+  const userOptions = users.map((u) => ({ id: String(u.id), value: u.value }));
 
   const rows = (data?.items || []).map((item) => ({
     id: String(item.signatureId),
@@ -181,6 +200,14 @@ const ESignatureLog = () => {
       <p className="qi-dashboard__subtitle">
         <FormattedMessage id="qa.qms.esigLog.subtitle" />
       </p>
+      <Search
+        id="esig-log-search"
+        size="lg"
+        labelText={intl.formatMessage({ id: "qa.qms.esigLog.search" })}
+        placeholder={intl.formatMessage({ id: "qa.qms.esigLog.search" })}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
       <div className="qi-dashboard__controls" data-testid="esig-log-filters">
         <DatePicker
           datePickerType="range"
@@ -227,17 +254,14 @@ const ESignatureLog = () => {
             setDraft({ ...draft, recordType: selectedItem?.id || "" })
           }
         />
-        <Dropdown
+        <SearchableSelect
           id="esig-log-user"
           className="qi-dashboard__filter"
-          titleText={intl.formatMessage({ id: "common.user" })}
-          label={allLabel}
-          items={userItems}
-          itemToString={(item) => item?.label || ""}
-          selectedItem={userItems.find((i) => i.id === draft.signerId)}
-          onChange={({ selectedItem }) =>
-            setDraft({ ...draft, signerId: selectedItem?.id || "" })
-          }
+          labelText={intl.formatMessage({ id: "common.user" })}
+          placeholder={allLabel}
+          options={userOptions}
+          value={draft.signerId}
+          onChange={(signerId) => setDraft({ ...draft, signerId })}
         />
         <Button
           size="md"
@@ -301,8 +325,9 @@ const ESignatureLog = () => {
         </p>
       ) : rows.length === 0 ? (
         <QAEmptyState
-          titleKey="qa.empty.esigLog.title"
+          titleKey={text ? "searchableList.noMatch" : "qa.empty.esigLog.title"}
           subheadKey="qa.empty.esigLog.subhead"
+          values={{ query: text }}
         />
       ) : (
         <>

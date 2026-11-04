@@ -60,6 +60,20 @@ export async function labUnitOf(page: Page, testId: string): Promise<string> {
   return String(info.labUnitId);
 }
 
+/** The name a lab unit shows under, for the searchable Lab Unit boxes. */
+export async function labUnitNameOf(
+  page: Page,
+  unitId: string,
+): Promise<string> {
+  const units = await getJson<Array<{ id: string; value: string }>>(
+    page,
+    "/rest/displayList/TEST_SECTION_ACTIVE",
+  );
+  const name = units.find((unit) => String(unit.id) === unitId)?.value;
+  expect(name, `lab unit ${unitId} is active`).toBeTruthy();
+  return name ?? "";
+}
+
 interface PagedList {
   paging?: {
     totalPages?: string | number;
