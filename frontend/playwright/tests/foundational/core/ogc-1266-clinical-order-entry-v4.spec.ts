@@ -201,11 +201,14 @@ test.describe("OGC-1266 clinical order entry", () => {
     await expect(page).toHaveURL(/\/order\/clinical\/qa\?order=/, {
       timeout: LONG_TIMEOUT,
     });
-    // Save and next names the saved order here too (OGC-1598).
+    // Save and next names the saved order here too (OGC-1598). Enter Order's
+    // save raised the same message moments earlier and may still be shown, so
+    // the newest toast is this step's.
     await expect(
       page
         .locator(".cds--toast-notification")
-        .filter({ hasText: `Order ${labNumber} has been saved.` }),
+        .filter({ hasText: `Order ${labNumber} has been saved.` })
+        .last(),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       page.getByRole("heading", { level: 1, name: "Sample check" }),
