@@ -125,4 +125,36 @@ describe("SearchableSelect", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenLastCalledWith("2");
   });
+
+  it("shows the chosen label again when a search is abandoned with Escape", async () => {
+    const onChange = vi.fn();
+    render(<Controlled onChange={onChange} initial="2" />);
+    const box = screen.getByRole("combobox");
+    expect(box).toHaveValue("Biochimie");
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "hema");
+    await userEvent.keyboard("{Escape}");
+
+    expect(box).toHaveValue("Biochimie");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("shows the chosen label again when focus leaves a half-typed search", async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <Controlled onChange={onChange} initial="2" />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+    const box = screen.getByRole("combobox");
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "hema");
+    await userEvent.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(box).toHaveValue("Biochimie");
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
