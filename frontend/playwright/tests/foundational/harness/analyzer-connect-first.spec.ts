@@ -34,21 +34,19 @@ test.afterEach(async ({ page }) => {
   const id = adoptedAnalyzerId;
   adoptedAnalyzerId = undefined;
   const response = await page.request.get(`${API}/analyzer/analyzers/${id}`);
-  expect(response.ok()).toBeTruthy();
   const analyzer = await response.json();
   if (analyzer.connection?.actualRuntimeState !== "ACTIVE") return;
   // Adoption binds the shared mock's address. Release that runtime binding so
   // later sender-only fixtures are not excluded by address-first routing.
   // Normal deactivation preserves the setup samples and saved routine results.
-  const stopped = await page.request.post(
-    `${API}/analyzer/analyzers/${id}/deactivate`,
-    {
-      headers: { "X-CSRF-Token": await csrfToken(page) },
-      data: {},
-    },
-  );
-  expect(stopped.ok(), await stopped.text()).toBeTruthy();
-  expect((await stopped.json()).deactivated).toBe(true);
+  await page.request.post(`${API}/analyzer/analyzers/${id}/deactivate`, {
+    headers: { "X-CSRF-Token": await csrfToken(page) },
+    data: {},
+  });
+  const list = new AnalyzerListPage(page);
+  await list.goto();
+  await list.search(analyzer.name);
+  await expect(list.getStatusBadge(id)).toHaveText("Inactive");
 });
 
 test(

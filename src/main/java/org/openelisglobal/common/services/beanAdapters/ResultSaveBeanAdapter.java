@@ -69,7 +69,8 @@ public class ResultSaveBeanAdapter {
         bean.setQualifiedDictionaryId(item.getQualifiedDictionaryId());
         bean.setResultId(item.getResultId());
         bean.setResultValue(item.getResult());
-        bean.setRawResultValue(item.getStoredResult());
+        // Validation posts the clinical value; displayResult is presentation only.
+        bean.setRawResultValue(item.getResult());
         // bean.setReportable("N");
         bean.setReportingDecimalPlaces(item.getReportingDecimalPlaces());
 

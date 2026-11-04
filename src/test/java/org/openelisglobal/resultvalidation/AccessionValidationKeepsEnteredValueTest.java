@@ -115,7 +115,7 @@ public class AccessionValidationKeepsEnteredValueTest extends BaseWebContextSens
      */
     @Test
     public void modifySavesTheReportedValueWhenThatIsWhatWasTyped() throws Exception {
-        String typed = row("1").replace("\"result\":\"1\",", "\"result\":\"1\",\"storedResult\":\"0.9\",");
+        String typed = row("1").replace("\"result\":\"1\",", "\"result\":\"1\",\"displayResult\":\"1\",");
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/modify").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(typed)).andExpect(status().isOk());
         entityManager.flush();
@@ -125,10 +125,10 @@ public class AccessionValidationKeepsEnteredValueTest extends BaseWebContextSens
     }
 
     @Test
-    public void releasingTheShownRowWithItsStoredValueKeepsTheEnteredValue() throws Exception {
+    public void releasingTheClinicalRowWithRoundedDisplayKeepsTheEnteredValue() throws Exception {
         mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(row("1").replace("\"result\":\"1\",", "\"result\":\"1\",\"storedResult\":\"0.9\",")))
+                .content(row("0.9").replace("\"result\":\"0.9\",", "\"result\":\"0.9\",\"displayResult\":\"1\",")))
                 .andExpect(status().isOk());
         entityManager.flush();
         entityManager.clear();
