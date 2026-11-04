@@ -36,6 +36,7 @@ import org.openelisglobal.patienttype.util.PatientTypeMap;
 import org.openelisglobal.patienttype.valueholder.PatientPatientType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.testcalculated.service.EgfrCalculationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,6 +101,8 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     private PatientPhotoService patientPhotoService;
     @Autowired
     private PatientIdDocumentService patientIdDocumentService;
+    @Autowired
+    private EgfrCalculationService egfrCalculationService;
 
     @PostConstruct
     public void initializeGlobalVariables() {
@@ -211,6 +214,37 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
             patient.setFhirUuid(UUID.randomUUID());
         }
         return super.insert(patient);
+    }
+
+    /**
+     * Every patient update goes through here (patient management, order entry,
+     * FHIR). The sex and birth date are read as stored before the update, the way
+     * the audit trail reads the old record, so that a change to either can
+     * recalculate the patient's eGFRs in the same transaction. (A patient already
+     * loaded and changed in this same transaction has no separate stored copy to
+     * compare with; callers load the patient before the saving transaction.)
+     */
+    @Override
+    @Transactional
+    public Patient update(Patient patient) {
+        String previousGender = null;
+        Timestamp previousBirthDate = null;
+        boolean stored = false;
+        if (patient.getId() != null) {
+            Patient before = getBaseObjectDAO().get(patient.getId()).orElse(null);
+            if (before != null && before != patient) {
+                previousGender = before.getGender();
+                previousBirthDate = before.getBirthDate();
+                stored = true;
+                getBaseObjectDAO().evict(before);
+            }
+        }
+        Patient updated = super.update(patient);
+        if (stored) {
+            egfrCalculationService.updateEgfrForPatientChange(updated, previousGender, previousBirthDate,
+                    patient.getSysUserId());
+        }
+        return updated;
     }
 
     public static String getPatientSTIdentity() {

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A female patient born 1999-03-01 with creatinine 0.62 mg/dL collected
+    on 2026-10-15 and an eGFR (CKD-EPI 2021) of 125 that was calculated. -->
+<dataset>
+    <localization id="1" description="Creatinine" />
+    <localization id="2" description="eGFR" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Creatinine" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="eGFR (CKD-EPI 2021)" />
+
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Doe" first_name="John" initials="JD" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <unit_of_measure id="1" name="mg/dL"
+        description="Milligrams per deciliter" />
+    <unit_of_measure id="2" name="mL/min/1.73 m2"
+        description="eGFR" />
+
+    <status_of_sample id="1" name="Pending" code="1"
+        status_type="SAMPLE" is_active="Y" lastupdated="2025-03-18" />
+
+    <type_of_sample id="1" description="Serum" domain="H"
+        name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+
+    <organization id="3" lastupdated="2024-06-03 12:00:00.0"
+        name="Lab" short_name="LAB" local_abbrev="1" code="LAB001" />
+
+    <test_section id="1" name="Biochemistry"
+        description="Biochemistry" org_id="3" is_external="N"
+        lastupdated="2025-03-20 12:00:00.0" sort_order="1"
+        name_localization_id="1" display_key="Biochemistry" domain="CLINICAL" />
+
+    <test id="1" uom_id="1" description="Creatinine" loinc="2160-0"
+        reporting_description="Creatinine" active_begin="2025-01-01 12:00:00"
+        lastupdated="2025-03-20 12:00:00" test_section_id="1"
+        local_code="CREA" sort_order="1" name="Creatinine" orderable="true"
+        guid="egfr-test-crea" name_localization_id="1"
+        antimicrobial_resistance="false" />
+    <test id="2" uom_id="2" description="eGFR (CKD-EPI 2021)"
+        loinc="98979-8" reporting_description="eGFR"
+        active_begin="2025-01-01 12:00:00" lastupdated="2025-03-20 12:00:00"
+        test_section_id="1" local_code="EGFR" sort_order="2"
+        name="eGFR (CKD-EPI 2021)" orderable="true" guid="egfr-test-egfr"
+        name_localization_id="2" antimicrobial_resistance="false" />
+
+    <sample id="1" accession_number="EGFR0000001" status_id="1"
+        received_date="2026-10-15 09:00:00.0"
+        entered_date="2026-10-15 09:00:00.0"
+        collection_date="2026-10-15 08:00:00.0"
+        lastupdated="2026-10-15 09:00:00" />
+    <sample_item id="1" sort_order="1" status_id="1"
+        samp_id="1" typeosamp_id="1" collection_date="2026-10-15 08:00:00"
+        lastupdated="2026-10-15 09:00:00" />
+
+    <person id="1" last_name="Test" first_name="Egfr"
+        lastUpdated="2026-10-15 09:00:00" />
+    <patient id="1" person_id="1" gender="F"
+        birth_date="1999-03-01 00:00:00" entered_birth_date="01/03/1999"
+        lastUpdated="2026-10-15 09:00:00" />
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2026-10-15 09:00:00" />
+
+    <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"
+        revision="1" status_id="1" analysis_type="ROUTINE"
+        lastupdated="2026-10-15 10:00:00" is_reportable="Y"
+        entry_date="2026-10-15 10:00:00" corrected="false"
+        fhir_uuid="0c6e5d0a-0b44-4c55-9a8c-3f6f6a1e0001"
+        result_calculated="false" />
+    <analysis id="2" sampitem_id="1" test_sect_id="1" test_id="2"
+        revision="1" status_id="1" analysis_type="ROUTINE"
+        lastupdated="2026-10-15 10:00:00" is_reportable="Y"
+        entry_date="2026-10-15 10:00:00" corrected="false"
+        fhir_uuid="0c6e5d0a-0b44-4c55-9a8c-3f6f6a1e0002"
+        result_calculated="true" />
+
+    <result id="1" analysis_id="1" sort_order="1" result_type="N"
+        value="0.62" is_reportable="Y" lastupdated="2026-10-15 10:00:00"
+        significant_digits="2"
+        fhir_uuid="0c6e5d0a-0b44-4c55-9a8c-3f6f6a1e0101" />
+    <result id="2" analysis_id="2" sort_order="1" result_type="N"
+        value="125" is_reportable="Y" lastupdated="2026-10-15 10:00:00"
+        significant_digits="0"
+        fhir_uuid="0c6e5d0a-0b44-4c55-9a8c-3f6f6a1e0102" />
+</dataset>
