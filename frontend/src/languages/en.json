@@ -13968,5 +13968,12 @@
   "label.testCatalog.sampleResults.log10Source": "Received log10 result field",
   "label.testCatalog.sampleResults.log10Source.none": "No received field — calculate when possible",
   "error.testCatalog.sampleResults.logDisplay.sourceInvalid": "Not saved: {component} requires another visible numeric result field without its own calculated logarithm. Choose a valid received log10 field or clear it.",
-  "label.results.calculatedLog10": "Calculated log10: {value}"
+  "label.results.calculatedLog10": "Calculated log10: {value}",
+  "analyzer.connection.live.unknown": "Could not check connection",
+  "analyzer.connection.live.checking": "Checking connection",
+  "analyzer.connection.live.unavailable": "Connection unavailable",
+  "analyzer.connection.live.missing": "Connection not configured",
+  "analyzer.connection.live.attention": "Connection needs attention",
+  "analyzer.connection.live.stopped": "Reception stopped",
+  "analyzer.connection.live.running": "Bridge reception active"
 }

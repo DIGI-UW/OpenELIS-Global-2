@@ -117,6 +117,7 @@ describe("AnalyzersList", () => {
       toJSON: () => ({}),
     });
     window.history.replaceState({}, "", "/analyzers");
+    getAnalyzer.mockImplementation(() => undefined);
     getAnalyzerTypeCatalog.mockImplementation((callback) =>
       callback({
         schemaVersion: "1.0",
@@ -134,7 +135,274 @@ describe("AnalyzersList", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  test("a stored Active row does not claim reception before Bridge evidence arrives", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    let respond;
+    getAnalyzer.mockImplementation((_id, callback) => {
+      respond = callback;
+    });
+    renderWithIntl(<AnalyzersList />);
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Checking connection",
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("0");
+    await act(async () =>
+      respond(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    expect(screen.getByTestId("analyzer-connection-1")).toHaveTextContent(
+      "Bridge reception active",
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+  });
+
+  test.each([
+    undefined,
+    {
+      connected: false,
+      connectionErrorKey: "analyzer.bridge.connection.httpStatus",
+    },
+  ])(
+    "unreachable or lost Bridge connection cannot leave a green Active badge: %j",
+    async (detail) => {
+      getAnalyzers.mockImplementation((_filters, callback) =>
+        callback({
+          analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+        }),
+      );
+      getAnalyzer.mockImplementation((_id, callback) => callback(detail));
+      renderWithIntl(<AnalyzersList />);
+      expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+        detail ? "Connection unavailable" : "Could not check connection",
+      );
+      expect(screen.getByTestId("stat-active")).toHaveTextContent("0");
+      expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("1");
+      await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+      expect(
+        await screen.findByRole("menuitem", { name: "Configure connection" }),
+      ).toBeVisible();
+    },
+  );
+
+  test("hidden tabs pause polling and repeated focus events respect the refresh interval", async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [createMockAnalyzer({ status: "ACTIVE" })] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    hidden = true;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(90_000);
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    hidden = false;
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(getAnalyzer).toHaveBeenCalledTimes(3);
+  });
+
+  test("list refresh preserves observations but a replacement connection must be checked", async () => {
+    let reload;
+    const analyzer = createMockAnalyzer({ status: "ACTIVE" });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      reload = callback;
+      callback({ analyzers: [analyzer] });
+    });
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    getAnalyzer.mockImplementation(() => undefined);
+    await act(async () => reload({ analyzers: [{ ...analyzer }] }));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    expect(getAnalyzer).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      reload({
+        analyzers: [{ ...analyzer, bridgeConnectionId: "replacement" }],
+      }),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Checking connection",
+    );
+    expect(getAnalyzer).toHaveBeenCalledTimes(2);
+  });
+
+  test("a stopped Bridge runtime offers reactivation even when the saved lifecycle is Active", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "INACTIVE",
+          },
+        }),
+      ),
+    );
+    renderWithIntl(<AnalyzersList />);
+    expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+      "Reception stopped",
+    );
+    await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+    expect(
+      await screen.findByTestId("analyzer-action-reactivate-1"),
+    ).toBeVisible();
+  });
+
+  test("reactivation refreshes a stopped observation immediately despite unchanged connection IDs", async () => {
+    const analyzer = createMockAnalyzer({ status: "ACTIVE" });
+    let runtime = "INACTIVE";
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({ analyzers: [{ ...analyzer }] }),
+    );
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        ...analyzer,
+        connection: { readiness: { ready: true }, actualRuntimeState: runtime },
+      }),
+    );
+    reactivateAnalyzer.mockImplementation((_id, callback) => {
+      runtime = "ACTIVE";
+      callback({ analyzerId: analyzer.id, activated: true });
+    });
+    renderWithIntl(<AnalyzersList />);
+    expect(await screen.findByTestId("status-badge-1")).toHaveTextContent(
+      "Reception stopped",
+    );
+    await userEvent.click(screen.getByTestId("analyzer-row-overflow-1"));
+    await userEvent.click(
+      await screen.findByTestId("analyzer-action-reactivate-1"),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Reactivate analyzer",
+        exact: true,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+        /^Active$/,
+      ),
+    );
+    expect(screen.getByTestId("stat-active")).toHaveTextContent("1");
+    expect(screen.getByTestId("stat-needs-attention")).toHaveTextContent("0");
+  });
+
+  test("periodic checks reveal Bridge loss and recovery without reloading the list", async () => {
+    vi.useFakeTimers();
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    let detail = createMockAnalyzer({
+      connection: { readiness: { ready: true }, actualRuntimeState: "ACTIVE" },
+    });
+    getAnalyzer.mockImplementation((_id, callback) => callback(detail));
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+    detail = undefined;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Could not check connection",
+    );
+    detail = createMockAnalyzer({
+      connection: { readiness: { ready: true }, actualRuntimeState: "ACTIVE" },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(/^Active$/);
+  });
+
+  test("a hung lookup expires and cannot overwrite the warning with a late response", async () => {
+    vi.useFakeTimers();
+    getAnalyzers.mockImplementation((_filters, callback) =>
+      callback({
+        analyzers: [createMockAnalyzer({ status: "ACTIVE" })],
+      }),
+    );
+    let respond;
+    getAnalyzer.mockImplementation((_id, callback) => {
+      respond = callback;
+    });
+    await act(async () => renderWithIntl(<AnalyzersList />));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Could not check connection",
+    );
+    await act(async () =>
+      respond(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    expect(screen.getByTestId("status-badge-1")).toHaveTextContent(
+      "Could not check connection",
+    );
   });
 
   /**
@@ -785,6 +1053,16 @@ describe("AnalyzersList", () => {
   });
 
   test("surfaces held result attention and opens the affected analyzer results", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
     getAnalyzers.mockImplementation((_filters, callback) => {
       act(() => {
         callback({
@@ -1119,6 +1397,16 @@ describe("AnalyzersList", () => {
    * 3. Assert: Verify lifecycle stage badge is displayed with correct color
    */
   test("testStatusBadge_DisplaysCorrectly", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(
+        createMockAnalyzer({
+          connection: {
+            readiness: { ready: true },
+            actualRuntimeState: "ACTIVE",
+          },
+        }),
+      ),
+    );
     // Arrange: Setup API mocks with analyzer data including status
     const mockAnalyzers = [
       createMockAnalyzer({
