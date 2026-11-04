@@ -318,7 +318,7 @@ public class ResultSaveService {
 
     private void setStandardResultValues(String incoming, String postedMeasurement, Result result) {
         String value = valueToStore(incoming, postedMeasurement, result.getEnteredValue(), result.getResultType(),
-                result.getSignificantDigits());
+                result.getReportingDecimalPlaces());
         if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getEnteredValue()))
                 && !isSameValue(value, result)) {
             updatedResult = true;
@@ -379,8 +379,7 @@ public class ResultSaveService {
             return incoming;
         }
         String entered = enteredValue.trim();
-        String served = StringUtil.isScientificNotation(entered) ? StringUtil.padMantissa(entered, decimalPlaces)
-                : StringUtil.roundToPlaces(StringUtil.normalizeScientificNotation(entered), decimalPlaces);
+        String served = StringUtil.roundToPlaces(entered, decimalPlaces);
         return incoming.trim().equals(served == null ? null : served.trim()) ? enteredValue : incoming;
     }
 
