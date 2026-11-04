@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="143-amr-disk-content" author="openelis">
+  <comment>A zone breakpoint holds only for the disk content it was published for.</comment>
+  <addColumn schemaName="clinlims" tableName="micro_breakpoint_rule">
+   <column name="disk_content" type="varchar(40)"/>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic">
+   <column name="disk_content" type="varchar(40)"/>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic">
+   <column name="disk_content" type="varchar(40)"/>
+  </addColumn>
+  <rollback>
+   <sql splitStatements="false"><![CDATA[
+    DO $$ BEGIN
+     IF EXISTS (SELECT 1 FROM clinlims.micro_ast_run_antibiotic WHERE disk_content IS NOT NULL) THEN
+      RAISE EXCEPTION 'Cannot discard the disk content recorded on existing AST runs';
+     END IF;
+    END $$;
+   ]]></sql>
+   <dropColumn schemaName="clinlims" tableName="micro_ast_run_antibiotic" columnName="disk_content"/>
+   <dropColumn schemaName="clinlims" tableName="micro_ast_panel_antibiotic" columnName="disk_content"/>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="disk_content"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

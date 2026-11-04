@@ -1,3 +1,4 @@
+import { labTimeZone } from "./MicrobiologyTime";
 import React from "react";
 import { Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
@@ -63,7 +64,9 @@ const CultureSetSummary = ({
                   members.map(
                     (member) =>
                       member.collectionDate &&
-                      intl.formatTime(member.collectionDate),
+                      intl.formatTime(member.collectionDate, {
+                        timeZone: labTimeZone(),
+                      }),
                   ),
                 ),
                 unique(

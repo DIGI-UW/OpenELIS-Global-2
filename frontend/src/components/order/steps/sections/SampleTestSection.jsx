@@ -36,6 +36,7 @@ const SampleTestSection = ({
   isReadOnly,
   workflowType,
   orderData,
+  renderSampleNote,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -1824,7 +1825,25 @@ const SampleTestSection = ({
                               <Checkbox
                                 key={test.id}
                                 id={`test-${sampleIndex}-${test.id}`}
-                                labelText={test.name}
+                                labelText={
+                                  test.opensMicrobiologyCase ? (
+                                    <>
+                                      {test.name}{" "}
+                                      <Tag
+                                        type="cool-gray"
+                                        size="sm"
+                                        className="micro-test-tag"
+                                      >
+                                        {intl.formatMessage({
+                                          id: "microbiology.case.title",
+                                          defaultMessage: "Microbiology case",
+                                        })}
+                                      </Tag>
+                                    </>
+                                  ) : (
+                                    test.name
+                                  )
+                                }
                                 checked={isTestSelected(sampleIndex, test.id)}
                                 onChange={(_, { checked }) =>
                                   handleTestToggle(sampleIndex, test, checked)
@@ -1874,6 +1893,7 @@ const SampleTestSection = ({
                 </Column>
               )}
             </Grid>
+            {renderSampleNote?.(sampleIndex)}
           </div>
         ),
       )}

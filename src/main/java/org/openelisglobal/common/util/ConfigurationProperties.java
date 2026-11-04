@@ -334,6 +334,7 @@ public abstract class ConfigurationProperties {
         RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
         // OGC-1147: does an open QC failure block release, or only warn
         QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
+        BLOCK_SELF_VALIDATION("blockSelfValidation", "text"),
 
         // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
