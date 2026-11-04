@@ -1095,7 +1095,9 @@ public class TestCatalogEditorRestController {
         public Integer displayOrder;
         public String resultType;
         public String uomId;
-        public Integer significantDigits;
+        public Integer reportingDecimalPlaces;
+        public Boolean displayLog10;
+        public String log10SourceComponentCode;
         public String defaultResult;
         public Boolean allowMultipleReadings;
         // Exactly one component per test is primary — the one mirrored to the
@@ -1175,8 +1177,8 @@ public class TestCatalogEditorRestController {
      * 255, severity and color 20 (OGC-1467).
      */
     private static boolean componentTooLong(ResultComponentDto c) {
-        if (longerThan(c.code, 50) || longerThan(c.label, 255) || longerThan(c.defaultResult, 80)
-                || c.options.stream().anyMatch(o -> longerThan(o.value, 80))) {
+        if (longerThan(c.code, 50) || longerThan(c.log10SourceComponentCode, 50) || longerThan(c.label, 255)
+                || longerThan(c.defaultResult, 80) || c.options.stream().anyMatch(o -> longerThan(o.value, 80))) {
             return true;
         }
         return c.interpretations.stream().anyMatch(i -> longerThan(i.valueMatch, 80) || longerThan(i.text, 255)
@@ -1258,6 +1260,20 @@ public class TestCatalogEditorRestController {
             if (!knownResultType(c.resultType)) {
                 return refusedSampleResults(testId, "resultType.unknown", c.label);
             }
+            if (Boolean.TRUE.equals(c.displayLog10) && !"N".equals(c.resultType) && !"A".equals(c.resultType)) {
+                return refusedSampleResults(testId, "logDisplay.numericRequired", shortName(c.label));
+            }
+            if (!isBlank(c.log10SourceComponentCode) && (!Boolean.TRUE.equals(c.displayLog10) || body.components
+                    .stream()
+                    .noneMatch(source -> c.log10SourceComponentCode.trim().equals(source.code)
+                            && !source.code.equals(c.code) && "N".equals(source.resultType)
+                            && !Boolean.FALSE.equals(source.showOnReport) && !Boolean.TRUE.equals(source.displayLog10)
+                            && isBlank(source.log10SourceComponentCode)))) {
+                return refusedSampleResults(testId, "logDisplay.sourceInvalid", shortName(c.label));
+            }
+            if (c.reportingDecimalPlaces != null && (c.reportingDecimalPlaces < 0 || c.reportingDecimalPlaces > 10)) {
+                return refusedSampleResults(testId, "decimalPlaces.invalid", shortName(c.label));
+            }
             if (!codes.add(c.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
@@ -1296,7 +1312,9 @@ public class TestCatalogEditorRestController {
             e.setDisplayOrder(c.displayOrder != null ? c.displayOrder : 0);
             e.setResultType(c.resultType);
             e.setUomId(c.uomId);
-            e.setSignificantDigits(c.significantDigits);
+            e.setReportingDecimalPlaces(c.reportingDecimalPlaces);
+            e.setDisplayLog10(Boolean.TRUE.equals(c.displayLog10));
+            e.setLog10SourceComponentCode(c.log10SourceComponentCode);
             e.setDefaultResult(c.defaultResult);
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
@@ -1390,7 +1408,9 @@ public class TestCatalogEditorRestController {
             dto.displayOrder = c.getDisplayOrder();
             dto.resultType = c.getResultType();
             dto.uomId = c.getUomId();
-            dto.significantDigits = c.getSignificantDigits();
+            dto.reportingDecimalPlaces = c.getReportingDecimalPlaces();
+            dto.displayLog10 = c.getDisplayLog10();
+            dto.log10SourceComponentCode = c.getLog10SourceComponentCode();
             dto.defaultResult = c.getDefaultResult();
             if (isBlank(dto.defaultResult) && c.getId().equals(primaryId) && legacyDefault != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(c.getResultType())) {

@@ -231,6 +231,84 @@ beforeEach(() => {
 });
 
 describe("QAOverview", () => {
+  test.each([
+    ["unconfigured inventory", 0, 0, 0, 2, null, "No QC data yet"],
+    [
+      "partially configured inventory",
+      1,
+      0,
+      0,
+      2,
+      null,
+      "1 of 2 instruments in control",
+    ],
+    [
+      "fully in-control inventory",
+      2,
+      0,
+      0,
+      2,
+      "green",
+      "2 of 2 instruments in control",
+    ],
+    [
+      "warning with an unconfigured instrument",
+      0,
+      1,
+      0,
+      2,
+      "amber",
+      "0 of 2 instruments in control",
+    ],
+    [
+      "rejection with an unconfigured instrument",
+      0,
+      0,
+      1,
+      2,
+      "red",
+      "0 of 2 instruments in control",
+    ],
+  ])(
+    "QC overview and inspector agree for %s",
+    async (_, compliant, warning, rejected, total, status, text) => {
+      const read = fetchFromOpenElisServer.getMockImplementation();
+      fetchFromOpenElisServer.mockImplementation((url) =>
+        url.includes("/rest/qa/overview/summary")
+          ? Promise.resolve({
+              ...SUMMARY,
+              qc: {
+                ...SUMMARY.qc,
+                compliantInstruments: compliant,
+                warningInstruments: warning,
+                nonCompliantInstruments: rejected,
+                totalInstruments: total,
+              },
+            })
+          : read(url),
+      );
+      await renderPage();
+      const pillars = screen.getByRole("region", { name: "Pillar Status" });
+      expect(
+        within(pillars).getByText(text).closest(".qa-pillar-chip"),
+      ).toHaveClass(`qa-pillar-${status || "none"}`);
+      fireEvent.click(
+        screen.getByRole("button", { name: /Inspector readiness/ }),
+      );
+      const inspector = screen.getByRole("region", {
+        name: /Inspector readiness/,
+      });
+      const answer = within(inspector)
+        .getByText(
+          compliant + warning + rejected === 0 ? text : `${text} (30d)`,
+        )
+        .closest("button");
+      const icon = answer.querySelector(".qa-pillar-icon");
+      if (status) expect(icon).toHaveClass(`qa-live-${status}`);
+      else expect(icon).toHaveTextContent("—");
+    },
+  );
+
   test("renders the six sections; remaining placeholders match the light-up plan", async () => {
     await renderPage();
 

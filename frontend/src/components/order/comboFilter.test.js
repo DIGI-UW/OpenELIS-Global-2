@@ -29,6 +29,20 @@ describe("filterByTypedLabel", () => {
     expect(visible("Cytology", "Cytology")).toHaveLength(3);
   });
 
+  it("ignores accents in the label and in what is typed", () => {
+    const accented = [{ id: "7", value: "Hématologie" }];
+    const shown = (inputValue) =>
+      accented.filter((item) =>
+        filterByTypedLabel("")({ item, itemToString, inputValue }),
+      );
+    expect(shown("hemato")).toHaveLength(1);
+    expect(shown("HÉMA")).toHaveLength(1);
+  });
+
+  it("lists everything while the input shows the selected label, accents aside", () => {
+    expect(visible("Hematologie", "Hématologie")).toHaveLength(3);
+  });
+
   it("lists nothing when no label matches", () => {
     expect(visible("zzz")).toEqual([]);
   });

@@ -281,6 +281,20 @@ describe("UserAddModify", () => {
     });
   });
 
+  it("says the user could not be found instead of showing an empty form", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/UnifiedSystemUser")) return callback(undefined);
+      if (url.startsWith("/rest/users")) return callback([]);
+      return callback(undefined);
+    });
+    renderAt("/MasterListsPage/userEdit?ID=999-888&startingRecNo=1");
+
+    expect(
+      await screen.findByTestId("user-not-found", {}, { timeout: 10000 }),
+    ).toHaveTextContent("This user could not be found.");
+    expect(document.getElementById("login-name")).toBeNull();
+  });
+
   describe("login name", () => {
     it("accepts a stored login name with an underscore", async () => {
       renderExisting("qa_recept", {});
@@ -391,6 +405,32 @@ describe("UserAddModify", () => {
       expect(notification.message).toBe(
         "Login name, qa_heme, is already in use.  Please select another.",
       );
+    });
+
+    it("shows the server's charset refusal under Login Name until the login changes (OGC-1593)", async () => {
+      const refusal = "Login name may only contain these characters: a-z ._@-";
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+        cb({
+          forward: "unifiedSystemUserDefinition",
+          errorKey: "errors.loginName.charset",
+          error: refusal,
+          statusCode: 400,
+        }),
+      );
+      renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
+      await waitFor(() =>
+        expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+      );
+
+      const notification = await save();
+
+      expect(notification.message).toBe(refusal);
+      const login = document.getElementById("login-name");
+      expect(login).toHaveAttribute("data-invalid", "true");
+      expect(screen.getByText(refusal)).toBeInTheDocument();
+
+      await userEvent.type(login, "x");
+      expect(screen.queryByText(refusal)).not.toBeInTheDocument();
     });
 
     it("sends one save for a double click while the first is in flight (OGC-1545 review)", async () => {

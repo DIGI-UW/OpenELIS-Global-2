@@ -382,6 +382,36 @@ const renderCodeForm = (props = {}) =>
   );
 
 describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
+  it("preserves medium environment defaults when editing tracking flags", async () => {
+    const item = {
+      id: 1007,
+      code: "CULTURE-AGAR",
+      name: "Culture agar",
+      itemType: "REAGENT",
+      stabilityAfterOpening: 1,
+      usualAtmosphereId: "42",
+      usualTemperature: 37,
+      microbiologyMedium: false,
+      trackLots: "N",
+    };
+    InventoryItemAPI.update.mockResolvedValue(item);
+    renderForm({ item });
+    fireEvent.click(await screen.findByLabelText("Microbiology medium"));
+    fireEvent.click(screen.getByLabelText("Track lots and expiry"));
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => {
+      expect(InventoryItemAPI.update).toHaveBeenCalledWith(
+        item.id,
+        expect.objectContaining({
+          microbiologyMedium: true,
+          trackLots: "Y",
+          usualAtmosphereId: "42",
+          usualTemperature: 37,
+        }),
+      );
+    });
+  });
+
   it("shows an editable Code field with an auto-generate hint when adding a new item", async () => {
     renderCodeForm();
 

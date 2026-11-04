@@ -58,7 +58,7 @@ public class UnifiedSystemUserSaveRefusalTest extends BaseWebContextSensitiveTes
     public void aSecondUserWithTheSameNameAndAnotherLoginIsCreated() throws Exception {
         MvcResult saved = mockMvc
                 .perform(post("/rest/UnifiedSystemUser").session(session).contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newUser("jdoe2", "John", "Doe"))))
+                        .content(objectMapper.writeValueAsString(newUser("jdoeb", "John", "Doe"))))
                 .andReturn();
 
         assertEquals(saved.getResponse().getContentAsString(), 200, saved.getResponse().getStatus());
@@ -68,7 +68,7 @@ public class UnifiedSystemUserSaveRefusalTest extends BaseWebContextSensitiveTes
                         "SELECT count(*) FROM clinlims.system_user WHERE first_name = 'John' AND last_name = 'Doe'",
                         Integer.class));
         assertEquals(Integer.valueOf(1), jdbcTemplate
-                .queryForObject("SELECT count(*) FROM clinlims.login_user WHERE login_name = 'jdoe2'", Integer.class));
+                .queryForObject("SELECT count(*) FROM clinlims.login_user WHERE login_name = 'jdoeb'", Integer.class));
     }
 
     @Test
@@ -100,6 +100,56 @@ public class UnifiedSystemUserSaveRefusalTest extends BaseWebContextSensitiveTes
 
         assertEquals(Integer.valueOf(0), jdbcTemplate
                 .queryForObject("SELECT count(*) FROM clinlims.login_user WHERE login_name = ?", Integer.class, login));
+    }
+
+    /**
+     * OGC-1593: a login holding a character outside the site's userNameCharset went
+     * on to the insert, failed there and answered a bare 500 with nothing saved.
+     */
+    @Test
+    public void aLoginOutsideTheAllowedCharactersIsRefusedWith400NamingThem() throws Exception {
+        mockMvc.perform(post("/rest/UnifiedSystemUser").session(session).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newUser("<b>x", "Jane", "Roe"))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorKey").value("errors.loginName.charset"))
+                .andExpect(jsonPath("$.error").value(CoreMatchers.startsWith("Login name may only contain")))
+                .andExpect(jsonPath("$.error").value(CoreMatchers.containsString("@")));
+
+        assertEquals(Integer.valueOf(0), jdbcTemplate
+                .queryForObject("SELECT count(*) FROM clinlims.login_user WHERE login_name = '<b>x'", Integer.class));
+        assertEquals(Integer.valueOf(0),
+                jdbcTemplate.queryForObject(
+                        "SELECT count(*) FROM clinlims.system_user WHERE first_name = 'Jane' AND last_name = 'Roe'",
+                        Integer.class));
+    }
+
+    @Test
+    public void anEmptyLoginIsRefusedNamingTheLogin() throws Exception {
+        mockMvc.perform(post("/rest/UnifiedSystemUser").session(session).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newUser("", "Jane", "Roe"))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorKey").value("errors.loginName.required"))
+                .andExpect(jsonPath("$.error").value("Login name is required"));
+    }
+
+    @Test
+    public void aNameOutsideTheAllowedCharactersIsRefusedWith400() throws Exception {
+        mockMvc.perform(post("/rest/UnifiedSystemUser").session(session).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newUser("jroe", "<b>Jane", "Roe"))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errorKey").value("errors.userName.charset"));
+
+        assertEquals(Integer.valueOf(0), jdbcTemplate
+                .queryForObject("SELECT count(*) FROM clinlims.login_user WHERE login_name = 'jroe'", Integer.class));
+    }
+
+    /**
+     * A user id that names no user (a stale link) answered 500 and an empty form.
+     */
+    @Test
+    public void aUserIdThatNamesNoUserIsNotFound() throws Exception {
+        mockMvc.perform(
+                get("/rest/UnifiedSystemUser?ID=999999-888888").session(session).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/rest/UnifiedSystemUser?ID=abc").session(session).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 
     /**

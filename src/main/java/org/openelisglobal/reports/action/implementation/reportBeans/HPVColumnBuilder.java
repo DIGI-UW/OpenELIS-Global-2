@@ -81,7 +81,7 @@ public class HPVColumnBuilder extends CIStudyColumnBuilder {
     @Override
     public void makeSQL() {
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -89,7 +89,7 @@ public class HPVColumnBuilder extends CIStudyColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "a.released_date ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }

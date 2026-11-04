@@ -19,12 +19,14 @@ package org.openelisglobal.reports.action.implementation.reportBeans;
 
 import java.sql.Date;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.form.ReportForm.DateType;
 
 /**
  * @author pahill (pahill@uw.edu)
  * @since May 18, 2011
  */
 public abstract class ARVColumnBuilder extends CIColumnBuilder {
+    private DateType dateType;
 
     /**
      * @param dateRange
@@ -32,6 +34,14 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
      */
     public ARVColumnBuilder(DateRange dateRange, String projectStr) {
         super(dateRange, projectStr);
+    }
+
+    /**
+     * @param dateType the date the export range applies to; order date when null
+     */
+    public ARVColumnBuilder(DateRange dateRange, String projectStr, DateType dateType) {
+        super(dateRange, projectStr);
+        this.dateType = dateType;
     }
 
     /** This is the order we want them in the CSV file. */
@@ -45,7 +55,20 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
     @Override
     public void makeSQL() {
 
+        // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
+        case ORDER_DATE:
+            dateColumn = "s.entered_date ";
+            break;
+        case RESULT_DATE:
+            dateColumn = "a.released_date ";
+            break;
+        case PRINT_DATE:
+            dateColumn = LAST_PRINT_DATE;
+        default:
+            break;
+        }
 
         query = new StringBuilder();
         Date lowDate = dateRange.getLowDate();

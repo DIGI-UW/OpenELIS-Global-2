@@ -27,12 +27,14 @@ import java.util.List;
 import org.openelisglobal.dictionary.ObservationHistoryList;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.reports.action.implementation.Report.DateRange;
+import org.openelisglobal.reports.form.ReportForm.DateType;
 
 /**
  * @author pahill (pahill@uw.edu)
  * @since May 18, 2011
  */
 public class RTNColumnBuilder extends CIColumnBuilder {
+    private DateType dateType;
 
     /**
      * @param dateRange
@@ -40,6 +42,14 @@ public class RTNColumnBuilder extends CIColumnBuilder {
      */
     public RTNColumnBuilder(DateRange dateRange, String projectStr) {
         super(dateRange, projectStr);
+    }
+
+    /**
+     * @param dateType the date the export range applies to; order date when null
+     */
+    public RTNColumnBuilder(DateRange dateRange, String projectStr, DateType dateType) {
+        super(dateRange, projectStr);
+        this.dateType = dateType;
     }
 
     /**
@@ -66,7 +76,18 @@ public class RTNColumnBuilder extends CIColumnBuilder {
     @Override
     public void makeSQL() {
         String dateColumn = "s.entered_date ";
-
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
+        case ORDER_DATE:
+            dateColumn = "s.entered_date ";
+            break;
+        case RESULT_DATE:
+            dateColumn = "a.released_date ";
+            break;
+        case PRINT_DATE:
+            dateColumn = LAST_PRINT_DATE;
+        default:
+            break;
+        }
         query = new StringBuilder();
         Date lowDate = dateRange.getLowDate();
         Date highDate = dateRange.getHighDate();
@@ -98,7 +119,7 @@ public class RTNColumnBuilder extends CIColumnBuilder {
         for (Dictionary dictionary : rtnList) {
             priorDiseaseList.add(dictionary.getLocalAbbreviation());
         }
-        return priorDiseaseList.toArray(new String[8]);
+        return priorDiseaseList.toArray(new String[0]);
     }
 
     public String[] getRTNExamQuestionNames() {
@@ -107,6 +128,6 @@ public class RTNColumnBuilder extends CIColumnBuilder {
         for (Dictionary dictionary : rtnList) {
             priorDiseaseList.add(dictionary.getLocalAbbreviation());
         }
-        return priorDiseaseList.toArray(new String[8]);
+        return priorDiseaseList.toArray(new String[0]);
     }
 }

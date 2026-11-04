@@ -20,7 +20,8 @@
         received_date="2002-03-04" />
     <sample_item id="992200" samp_id="992200" sort_order="1"
         status_id="1" />
-    <project id="992220" name="Export access fixture" is_active="Y"
+    <project id="992220"
+        name="Early Infant Diagnosis for HIV Study" is_active="Y"
         program_code="LDBS" display_key="project.EIDStudy.name" />
     <person />
     <patient />
