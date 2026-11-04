@@ -113,7 +113,8 @@ public final class ModuleDiscovery {
                     record.transition(ModuleState.VALIDATED);
                 }
             } catch (IOException e) {
-                record.transition(ModuleState.INVALID, "cannot read the JAR: " + e.getMessage());
+                record.transition(ModuleState.INVALID, "cannot read the JAR or extract its libraries: "
+                        + e.getClass().getSimpleName() + ": " + e.getMessage());
             }
         }
         for (ModuleRecord record : ordered) {

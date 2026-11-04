@@ -72,7 +72,7 @@ function MenuSettings({ item, drafts, onChange, saving, label }) {
   const iconNames = Object.keys(navigationIcons);
   const Icon = navigationIcons[current.icon];
   // A module's entries live only in memory and the server refuses to edit
-  // them; who sees one is decided by its permission in Role Management.
+  // them; who sees one follows from the roles that hold its permission.
   const contributed =
     (typeof menu.displayKey === "string" &&
       menu.displayKey.startsWith("mod.")) ||

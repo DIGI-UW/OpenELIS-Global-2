@@ -31,8 +31,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Every key is granted to the Global Administrator role at every start, so an
  * administrator can always reach a module's pages and endpoints, and
  * {@code defaultRoles} are granted on the module's first install only, so later
- * changes in Role Management are never undone. Each menu entry with an
- * {@code actionURL} and a {@code permission} also gets a
+ * changes to the roles that hold a key are never undone. Each menu entry with
+ * an {@code actionURL} and a {@code permission} also gets a
  * {@code system_module_url} row, which is how the core's menu service hides
  * entries from users who lack the key.
  */
@@ -112,7 +112,7 @@ public class ModulePermissionRegistrar {
         Role role = roleService.getRoleByName(roleName);
         if (role == null) {
             module.addWarning("role '" + roleName + "' for " + systemModule.getSystemModuleName()
-                    + " does not exist; grant the key in Role Management");
+                    + " does not exist; the key stays with the roles that hold it");
             LogEvent.logWarn(LOG, "grant", "[module:" + module.id() + "] no role named '" + roleName + "' for "
                     + systemModule.getSystemModuleName());
             return;
