@@ -121,6 +121,7 @@ jobs:
               - 'pom.xml'
               - 'dataexport/**'
               - 'module-contracts/**'
+              - 'module-test/**'
               - 'fhir/**'
               - 'Dockerfile'
               - 'build.docker-compose.yml'

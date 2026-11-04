@@ -1103,6 +1103,7 @@
                             <include>src/main/java/**/*.java</include>
                             <include>src/test/java/**/*.java</include>
                             <include>module-contracts/**/src/**/*.java</include>
+                            <include>module-test/**/src/**/*.java</include>
                             <include>modules/**/src/**/*.java</include>
                         </includes>
                         <excludes>
