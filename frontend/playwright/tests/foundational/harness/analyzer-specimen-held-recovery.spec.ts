@@ -81,31 +81,32 @@ test(
     );
     expect(listener.status).toBe("PASSED");
     // Generic mock traffic proves the review workflow, not a manufacturer's layout.
-    await page.request.post(
-      `${process.env.MOCK_SIMULATOR_URL}/simulate/astm/mindray_ba88a`,
-      {
-        data: {
-          destination: `tcp://bridge.openelis.org:${listener.details.port}`,
-          sender_id: sender,
-          sample_id: accession,
-          completed_at: "20261028140000",
-          results: [
-            {
-              test_code: "P15760",
-              type: "TEXT",
-              value: "1.02",
-              unit: "mmol/L",
-            },
-            {
-              test_code: "P15761",
-              type: "TEXT",
-              value: "2.34",
-              unit: "mmol/L",
-            },
-          ],
-        },
+    const mock =
+      process.env.MOCK_SIMULATOR_URL ||
+      process.env.MOCK_URL ||
+      "http://localhost:8085";
+    await page.request.post(`${mock}/simulate/astm/mindray_ba88a`, {
+      data: {
+        destination: `tcp://bridge.openelis.org:${listener.details.port}`,
+        sender_id: sender,
+        sample_id: accession,
+        completed_at: "20261028140000",
+        results: [
+          {
+            test_code: "P15760",
+            type: "TEXT",
+            value: "1.02",
+            unit: "mmol/L",
+          },
+          {
+            test_code: "P15761",
+            type: "TEXT",
+            value: "2.34",
+            unit: "mmol/L",
+          },
+        ],
       },
-    );
+    });
     const rows = () => worklistFor(page, analyzer.id, accession);
     await expect.poll(async () => (await rows()).length).toBe(2);
     const original = await rows();

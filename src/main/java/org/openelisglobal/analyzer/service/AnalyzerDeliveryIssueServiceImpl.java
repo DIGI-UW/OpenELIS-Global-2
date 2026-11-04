@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -9,7 +10,6 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueService {
@@ -26,15 +26,20 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<AnalyzerDeliveryIssue> getOpenIssues() {
+        // The analyzer service completes its read transaction before Bridge I/O.
         Map<String, Analyzer> byConnection = analyzerService.getAllWithMapping().stream()
                 .filter(analyzer -> analyzer.getBridgeConnectionId() != null).collect(
                         Collectors.toMap(Analyzer::getBridgeConnectionId, Function.identity(), (first, next) -> first));
-        List<AnalyzerDeliveryIssue> issues = new ArrayList<>();
-        outboxClient.list(DEAD_LETTERED).forEach(row -> issues.add(toIssue(row, byConnection)));
-        outboxClient.list(RETRYING).forEach(row -> issues.add(toIssue(row, byConnection)));
-        return issues;
+        Map<String, AnalyzerDeliveryIssue> issues = new LinkedHashMap<>();
+        for (String state : List.of(DEAD_LETTERED, RETRYING, "RECEIVED", "PENDING")) {
+            outboxClient.list(state).forEach(row -> {
+                AnalyzerDeliveryIssue issue = toIssue(row, byConnection);
+                // An entry can move between state-filtered reads. Show it once.
+                issues.put(issue.id(), issue);
+            });
+        }
+        return new ArrayList<>(issues.values());
     }
 
     @Override
@@ -43,7 +48,7 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
         // The Bridge records only OpenELIS's service account, so the person who asked
         // is recorded here.
         LogEvent.logInfo(getClass().getSimpleName(), "retry",
-                "Analyzer delivery " + outboxEntryId + " retried by user " + actor);
+                "Analyzer delivery " + outboxEntryId + " retry requested by user " + actor);
     }
 
     @Override

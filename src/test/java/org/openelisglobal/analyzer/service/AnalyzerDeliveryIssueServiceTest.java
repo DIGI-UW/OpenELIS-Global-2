@@ -70,6 +70,29 @@ public class AnalyzerDeliveryIssueServiceTest {
     }
 
     @Test
+    public void includesQueuedWorkUntilItIsDelivered() throws Exception {
+        when(analyzerService.getAllWithMapping()).thenReturn(List.of());
+        when(outboxClient.list("DMQ")).thenReturn(List.of());
+        when(outboxClient.list("RETRYING")).thenReturn(List.of());
+        when(outboxClient.list("RECEIVED")).thenReturn(List.of(row("{\"id\":\"queued-1\",\"state\":\"RECEIVED\"}")));
+        when(outboxClient.list("PENDING")).thenReturn(List.of(row("{\"id\":\"queued-2\",\"state\":\"PENDING\"}")));
+        List<AnalyzerDeliveryIssue> issues = service.getOpenIssues();
+        assertEquals(2, issues.size());
+        assertTrue(issues.stream().noneMatch(AnalyzerDeliveryIssue::actionable));
+    }
+
+    @Test
+    public void showsAnEntryOnceWhenItMovesDuringStateReads() throws Exception {
+        when(analyzerService.getAllWithMapping()).thenReturn(List.of());
+        when(outboxClient.list("DMQ")).thenReturn(List.of(row("{\"id\":\"moving\",\"state\":\"DMQ\"}")));
+        when(outboxClient.list("RECEIVED")).thenReturn(List.of(row("{\"id\":\"moving\",\"state\":\"RECEIVED\"}")));
+        List<AnalyzerDeliveryIssue> issues = service.getOpenIssues();
+        assertEquals(1, issues.size());
+        assertEquals("RECEIVED", issues.get(0).state());
+        assertFalse(issues.get(0).actionable());
+    }
+
+    @Test
     public void keepsRowsFromUnrecognizedSendersWithoutAnAnalyzer() throws Exception {
         when(analyzerService.getAllWithMapping()).thenReturn(List.of(analyzer("12", "GeneXpert bench 1", "conn-7")));
         when(outboxClient.list("DMQ")).thenReturn(List.of(row("""
