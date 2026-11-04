@@ -180,12 +180,12 @@ test.describe
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-grossing");
 
-    const location = rowNamed(cassetteRows(page), "A1").getByLabel(
-      "Storage Location A1",
-      {
-        exact: true,
-      },
-    );
+    // A saved cassette row has one editable field: its storage location.
+    const location = rowNamed(cassetteRows(page), "A1").getByRole("textbox", {
+      name: "Storage Location A1",
+      exact: true,
+    });
+    await expect(location).toHaveCount(1);
     await location.fill("Drawer 5");
     await saveDraft(page, seeded.pathologySampleId);
 
@@ -201,7 +201,8 @@ test.describe
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-grossing");
     await expect(
-      rowNamed(cassetteRows(page), "A1").getByLabel("Storage Location A1", {
+      rowNamed(cassetteRows(page), "A1").getByRole("textbox", {
+        name: "Storage Location A1",
         exact: true,
       }),
     ).toHaveValue("Drawer 5");

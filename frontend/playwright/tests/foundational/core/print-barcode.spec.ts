@@ -1,4 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { createSampleOrder } from "../../../helpers/seed-tat-data";
 import { openSideNavItem } from "../../../helpers/sidenav";
 import {
@@ -13,7 +14,9 @@ import {
  * Pre-print: the Pre-Print Labels button stays disabled until at least one
  * test is chosen; choosing a panel for a sample type picks its tests, enables
  * the button, and printing renders the label frame for exactly those tests
- * and the chosen site.
+ * and the chosen site. The sample type, panels and tests are each searched by
+ * typing (OGC-1515), and a test ticked before its panel is printed once and
+ * stays ticked when the panel is unticked.
  *
  * Existing order: submitting a freshly seeded accession shows that order's
  * patient and the print-set, reprint and per-label controls for its order and
@@ -59,12 +62,67 @@ test.describe("Print Bar Code Labels", () => {
     });
 
     await test.step("choose the sample type", async () => {
-      await page
-        .locator("select#selectSampleType")
-        .selectOption({ label: SAMPLE_TYPE });
+      await chooseCarbonOption(
+        page.getByRole("combobox", { name: "Sample Type" }),
+        SAMPLE_TYPE,
+      );
       await expect(panel).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(panel).not.toBeChecked();
       // A sample type alone chooses no test.
+      await expect(prePrint).toBeDisabled();
+    });
+
+    await test.step("the panels and tests narrow to what is typed", async () => {
+      const searchPanels = page.getByRole("searchbox", {
+        name: "Search panels",
+      });
+      await searchPanels.fill(PANEL.slice(6, 12).toUpperCase());
+      await expect(panel).toBeVisible();
+      await expect(page.locator('input[id^="panel_"]')).toHaveCount(1);
+      await searchPanels.fill("");
+
+      const searchTests = page.getByRole("searchbox", { name: "Search tests" });
+      await searchTests.fill(PANEL_TEST.slice(0, 3).toLowerCase());
+      await expect(panelTest).toBeVisible();
+      await searchTests.fill(`${PANEL_TEST}-none`);
+      await expect(panelTest).toHaveCount(0);
+      await expect(
+        page.getByText(`Nothing matches "${PANEL_TEST}-none".`),
+      ).toBeVisible();
+      await searchTests.fill("");
+      await expect(panelTest).toBeVisible();
+    });
+
+    await test.step("a test ticked before its panel is printed once", async () => {
+      await page
+        .locator(`label[for="${await panelTest.getAttribute("id")}"]`)
+        .click();
+      await expect(panelTest).toBeChecked();
+      await expect(page.getByTestId("preprint-tests-selected")).toContainText(
+        PANEL_TEST,
+      );
+      await page
+        .locator(`label[for="${await panel.getAttribute("id")}"]`)
+        .click();
+      await prePrint.click();
+      const src = new URL(
+        (await page
+          .locator('iframe[src*="LabelMakerServlet"]')
+          .getAttribute("src")) ?? "",
+        "https://placeholder.invalid/",
+      );
+      const ids = src.searchParams.get("testIds")?.split(",") ?? [];
+      expect(ids.length).toBe(new Set(ids).size);
+      await page
+        .locator(`label[for="${await panel.getAttribute("id")}"]`)
+        .click();
+      await expect(panel).not.toBeChecked();
+      await expect(panelTest).toBeChecked();
+      await expect(prePrint).toBeEnabled();
+      await page
+        .locator(`label[for="${await panelTest.getAttribute("id")}"]`)
+        .click();
+      await expect(panelTest).not.toBeChecked();
       await expect(prePrint).toBeDisabled();
     });
 

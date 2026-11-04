@@ -67,6 +67,77 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void microbiologyBlockPrintsBetweenOrdinaryResultsAndContinuesAcrossPages() throws Exception {
+        var before = row(ORDER, "Microbiology", "Before culture", "Negative", "");
+        var micro = row(ORDER, "Microbiology", "Culture anchor", "", "");
+        var after = row(ORDER, "Microbiology", "After culture", "Positive", "");
+        var report = new org.openelisglobal.microbiology.form.MicroPatientReportForm();
+        report.classification = "NOT_APPLICABLE";
+        var drugs = new ArrayList<org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility>();
+        for (int i = 0; i < 80; i++)
+            drugs.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Susceptibility("d" + i,
+                    "Agent " + i, "reading", "run", "64", "ug/mL", "RESISTANT", "CLSI", "2026", "EXACT"));
+        report.isolates.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Isolate("i", "ISO-1",
+                "Escherichia coli", drugs));
+        report.notes.add(new org.openelisglobal.microbiology.form.MicroPatientReportForm.Note("External clinical note",
+                "Validator", null));
+        micro.setMicrobiologyRows(org.openelisglobal.microbiology.service.MicroPatientReportRows.of(report));
+        byte[] pdf = render(List.of(before, micro, after), Map.of(ORDER, order()));
+        String text = PdfText.of(pdf).replaceAll("\\s+", " ");
+        assertTrue(text, text.contains("Agent 79 64 ug/mL Resistant CLSI 2026"));
+        assertTrue(text, text.contains("External clinical note"));
+        assertTrue(text, text.indexOf("Before culture") < text.indexOf("Initial testing"));
+        assertTrue(text, text.indexOf("Additional testing") < text.indexOf("After culture"));
+        assertTrue(PdfText.pageCount(pdf) > 1);
+        for (int page = 2; page <= PdfText.pageCount(pdf); page++) {
+            assertTrue(PdfText.ofPage(pdf, page).contains(ORDER));
+        }
+        org.junit.Assert.assertFalse(text, text.contains("Culture anchor"));
+    }
+
+    @Test
+    public void negativeCalculatedLogarithmAndOriginalMeasurementRemainReadable() throws Exception {
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setResultType("N");
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        var data = rows(ORDER);
+        data.get(0).setResult(
+                org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay.format(result, true));
+        String text = PdfText.of(render(data, Map.of(ORDER, order())));
+        assertTrue(text, text.contains("−2.19"));
+        assertTrue(text, text.contains("0.0064"));
+        assertTrue(text, text.contains("0.01"));
+    }
+
+    @Test
+    public void clinicalValueAnnotationUsesTheReportTranslationCatalog() throws Exception {
+        Path directory = overrides.getRoot().toPath();
+        Files.writeString(directory.resolve("fr.json"),
+                "{\"label.results.clinicalValue\": \"Valeur utilisée pour les décisions cliniques : {value}\"}");
+        UiMessages french = UiMessages.forLocale(Locale.FRENCH, directory);
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setResultType("N");
+        result.setValue("0.0064");
+        result.setReportingDecimalPlaces(2);
+        String annotated = org.openelisglobal.reports.action.implementation.reportBeans.NumericReportDisplay
+                .format(result, true, french);
+        assertEquals("0.01\nCalculated log10: −2.19\n(Valeur utilisée pour les décisions cliniques : 0.0064)",
+                annotated);
+        var data = rows(ORDER);
+        data.get(0).setResult(annotated);
+        String text = PdfText.of(PatientResultsPdf.render(settings(), french, data, Map.of(ORDER, order())))
+                .replaceAll("\\s+", " ");
+        assertTrue(text, text.contains("Valeur utilisée"));
+        assertTrue(text, text.contains("décisions cliniques"));
+        assertTrue(text, text.contains("0.0064"));
+        assertTrue(text, text.contains("−2.19"));
+        assertFalse(text, text.contains("Value used for clinical decisions"));
+        assertFalse(text, text.contains("{value}"));
+        assertEquals("0.0064", result.getEnteredValue());
+    }
+
+    @Test
     public void printsOnTheSitesPaperSize() throws Exception {
         ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, "Letter");
         byte[] letter = render(rows(ORDER), Map.of(ORDER, order()));

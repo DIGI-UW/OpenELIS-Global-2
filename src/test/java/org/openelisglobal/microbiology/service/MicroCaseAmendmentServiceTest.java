@@ -60,6 +60,8 @@ public class MicroCaseAmendmentServiceTest {
     public void setUp() {
         service = new MicroCaseAmendmentServiceImpl(caseDAO, amendmentDAO, activityDAO, reportVersionService, astRunDAO,
                 isolateDAO, identificationHistoryService);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "versions",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroReportVersionDAO.class));
     }
 
     @Test

@@ -15,6 +15,7 @@ import OrderContextCard from "./OrderContextCard";
 import RangeNotAppliedWarning from "./RangeNotAppliedWarning";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
+import MicroCasesOpened from "./MicroCasesOpened";
 import ToContinueChecklist from "./ToContinueChecklist";
 import { useOrderContext, SaveStatus } from "./OrderContext";
 import "./order-workflow.scss";
@@ -300,6 +301,8 @@ const OrderWorkflowLayout = ({
             )}
 
           <SavedNextAction steps={steps} activeStep={activeStep} />
+
+          <MicroCasesOpened />
 
           {/* Main Content Area */}
           <div

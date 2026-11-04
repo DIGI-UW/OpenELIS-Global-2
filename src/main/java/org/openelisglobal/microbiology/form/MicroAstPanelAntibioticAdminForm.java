@@ -8,4 +8,5 @@ public class MicroAstPanelAntibioticAdminForm {
     public Integer displayOrder;
     public Integer tier;
     public String reportBehavior;
+    public String diskContent;
 }

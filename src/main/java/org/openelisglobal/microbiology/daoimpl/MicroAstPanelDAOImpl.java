@@ -56,6 +56,15 @@ public class MicroAstPanelDAOImpl extends BaseDAOImpl<MicroAstPanel, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public MicroAstPanel findCurrentByNameIgnoreCase(String name) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroAstPanel p where lower(p.name) = lower(:name) and p.isCurrent = 'Y'",
+                        MicroAstPanel.class)
+                .setParameter("name", name).setMaxResults(1).uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroAstPanel> search(String q, String status, String organismGroup, String sort, int offset,
             int limit) {
         Query<MicroAstPanel> query = entityManager.unwrap(Session.class)

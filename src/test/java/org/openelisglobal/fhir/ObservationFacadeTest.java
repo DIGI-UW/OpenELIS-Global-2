@@ -288,6 +288,47 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void updateObservation_preservesLessThanQuantity() throws Exception {
+        assertQualifiedQuantityRoundTrip("<");
+    }
+
+    @Test
+    public void updateObservation_preservesLessOrEqualQuantity() throws Exception {
+        assertQualifiedQuantityRoundTrip("<=");
+    }
+
+    @Test
+    public void updateObservation_preservesGreaterThanQuantity() throws Exception {
+        assertQualifiedQuantityRoundTrip(">");
+    }
+
+    @Test
+    public void updateObservation_preservesGreaterOrEqualQuantity() throws Exception {
+        assertQualifiedQuantityRoundTrip(">=");
+    }
+
+    private void assertQualifiedQuantityRoundTrip(String comparator) throws Exception {
+        attachPanelToAnalysis("1");
+        String updateJson = observationJson(RESULT_WITH_PROVIDER_UUID, "\"status\": \"final\",", LOINC_CODING, SUBJECT,
+                SPECIMEN, BASED_ON, """
+                        "valueQuantity": {
+                          "value": 99.00,
+                          "comparator": "%s",
+                          "unit": "g/L"
+                        }""".formatted(comparator));
+
+        MockHttpServletResponse updated = serve(putObservation(RESULT_WITH_PROVIDER_UUID, updateJson));
+        assertEquals(updated.getContentAsString(), 200, updated.getStatus());
+        assertEquals(comparator + "99.00", resultService.getResultByFhirUuid(RESULT_WITH_PROVIDER_UUID).getValue());
+
+        MockHttpServletResponse read = serve(buildFhirRequest("GET", "/Observation/" + RESULT_WITH_PROVIDER_UUID));
+        assertEquals(read.getContentAsString(), 200, read.getStatus());
+        JsonNode quantity = objectMapper.readTree(read.getContentAsString()).get("valueQuantity");
+        assertEquals(comparator, quantity.get("comparator").asText());
+        assertEquals(0, new java.math.BigDecimal("99.00").compareTo(quantity.get("value").decimalValue()));
+    }
+
+    @Test
     public void updateObservation_withTheResourceAsRead_recordsNoModification() throws Exception {
         attachPanelToAnalysis("1");
         MockHttpServletResponse read = serve(buildFhirRequest("GET", "/Observation/" + RESULT_WITH_PROVIDER_UUID));

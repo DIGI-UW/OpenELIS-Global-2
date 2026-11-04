@@ -81,4 +81,18 @@ public class ResultCalculationDAOImpl extends BaseDAOImpl<ResultCalculation, Int
         }
         return Collections.emptyList();
     }
+
+    @Override
+    public List<ResultCalculation> getResultCalculationsByResultId(String resultId) {
+        try {
+            String sql = "from ResultCalculation r WHERE r.result.id = :resultId";
+            Query<ResultCalculation> query = entityManager.unwrap(Session.class).createQuery(sql,
+                    ResultCalculation.class);
+            query.setParameter("resultId", resultId);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getResultCalculationsByResultId");
+        }
+        return Collections.emptyList();
+    }
 }

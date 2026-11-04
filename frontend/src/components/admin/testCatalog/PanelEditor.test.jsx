@@ -184,6 +184,14 @@ describe("PanelBasicInfoSection (FRS rules)", () => {
     expect(screen.getByLabelText("Vector")).toBeEnabled();
   });
 
+  it("shows how much of the 20-character name limit is used, so a longer name is not cut without notice", async () => {
+    wrap();
+    await screen.findByTestId("panel-editor-title");
+    const name = document.querySelector("#panel-name");
+    expect(name).toHaveAttribute("maxlength", "20");
+    expect(screen.getByText(`${name.value.length}/20`)).toBeInTheDocument();
+  });
+
   it("derived sample types render read-only", async () => {
     wrap();
     await screen.findByTestId("panel-editor-title");

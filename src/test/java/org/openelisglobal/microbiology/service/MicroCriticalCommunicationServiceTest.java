@@ -70,6 +70,28 @@ public class MicroCriticalCommunicationServiceTest {
     }
 
     @Test
+    public void environmentalCommunicationUsesTheOrderRequesterInsteadOfAClinicalRecipient() {
+        var c = new MicroCase();
+        c.setId("case-1");
+        c.setSiteId("site");
+        c.setSampleId("order");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(c));
+        var observations = org.mockito.Mockito
+                .mock(org.openelisglobal.observationhistory.service.ObservationHistoryService.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "observations", observations);
+        when(observations.getRawValueForSample(
+                org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType.ENV_CONTACT_PERSON,
+                "order")).thenReturn("Water authority requester");
+        when(observations.getRawValueForSample(
+                org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType.ENV_CONTACT_PHONE,
+                "order")).thenReturn("555-0100");
+        var communication = service.logCommunication("case-1", "Ward physician", "Critical water result", false, "1");
+        assertEquals("Water authority requester", communication.getRecipient());
+        assertEquals("555-0100", communication.getRecipientContact());
+        verify(communicationDAO).insert(communication);
+    }
+
+    @Test
     public void logsCriticalCommunicationWithFreeTextRecipientAndActivity() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");

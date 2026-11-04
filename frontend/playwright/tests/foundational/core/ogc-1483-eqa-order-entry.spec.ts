@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { LONG_TIMEOUT, NAV_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1483: the v4 Enter Order EQA box offers the lab's active enrollments,
@@ -70,6 +71,8 @@ const seed = async (page: Page) => {
   return {
     activeId,
     withdrawnId,
+    activeLabel: `${scheme} (PW)`,
+    withdrawnLabel: `PW1483 withdrawn ${s} (PW)`,
     cycleId: String((await cycle.json()).id),
   };
 };
@@ -87,7 +90,8 @@ test.describe("Enter Order EQA box (OGC-1483)", () => {
 
   test("only active enrollments are offered", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const { activeId, withdrawnId } = await seed(page);
+    const { activeId, withdrawnId, activeLabel, withdrawnLabel } =
+      await seed(page);
 
     const listed = (await (
       await page.request.get(`${API}/rest/eqa/my-programs?active=true`)
@@ -98,19 +102,23 @@ test.describe("Enter Order EQA box (OGC-1483)", () => {
     await page.goto("/order/clinical/enter?eqa=true", {
       waitUntil: "domcontentloaded",
     });
-    await expect(
-      page.locator(`#eqaProgramId option[value="${activeId}"]`),
-    ).toHaveCount(1, { timeout: NAV_TIMEOUT });
-    await expect(
-      page.locator(`#eqaProgramId option[value="${withdrawnId}"]`),
-    ).toHaveCount(0);
+    const scheme = page.locator("#eqaProgramId");
+    await expect(scheme).toBeVisible({ timeout: NAV_TIMEOUT });
+    await scheme.fill("PW1483");
+    const offered = page
+      .locator(`[id="${await scheme.getAttribute("aria-controls")}"]`)
+      .getByRole("option");
+    await expect(offered.filter({ hasText: activeLabel })).toHaveCount(1, {
+      timeout: NAV_TIMEOUT,
+    });
+    await expect(offered.filter({ hasText: withdrawnLabel })).toHaveCount(0);
   });
 
   test("a chosen cycle prefills the deadline, and no cycle only warns", async ({
     page,
   }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const { activeId, cycleId } = await seed(page);
+    const { activeLabel, cycleId } = await seed(page);
     await page.goto("/order/clinical/enter?eqa=true", {
       waitUntil: "domcontentloaded",
     });
@@ -122,10 +130,10 @@ test.describe("Enter Order EQA box (OGC-1483)", () => {
     await expect(page.locator("#order-patient-search-lastName")).toHaveCount(0);
     await expect(page.getByText("Choose the EQA scheme")).toBeVisible();
 
-    await expect(
-      page.locator(`#eqaProgramId option[value="${activeId}"]`),
-    ).toHaveCount(1, { timeout: LONG_TIMEOUT });
-    await page.locator("#eqaProgramId").selectOption(activeId);
+    await expect(page.locator("#eqaProgramId")).toBeEnabled({
+      timeout: LONG_TIMEOUT,
+    });
+    await chooseCarbonOption(page.locator("#eqaProgramId"), activeLabel);
     await expect(
       page.getByText(/not linked to a cycle, so it will not be submitted/),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
