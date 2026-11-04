@@ -37,6 +37,9 @@ public class QCChartDataRestController {
     @Autowired
     private QCChartDataService chartDataService;
 
+    @Autowired
+    private org.openelisglobal.qc.service.QCControlLotService controlLotService;
+
     /**
      * Get chart data for a specific control lot with optional filtering. GET
      * /rest/qc/charts/{controlLotId}
@@ -73,7 +76,8 @@ public class QCChartDataRestController {
             // Build response
             ChartDataResponse response = new ChartDataResponse();
             response.setControlLotId(controlLotId);
-            response.setDataPoints(buildDataPoints(results, violations));
+            var lot = controlLotService.get(controlLotId);
+            response.setDataPoints(buildDataPoints(results, violations, lot == null ? null : lot.getControlLevel()));
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -130,12 +134,14 @@ public class QCChartDataRestController {
         }
     }
 
-    private List<ChartDataPoint> buildDataPoints(List<QCResult> results, List<QCRuleViolation> violations) {
+    private List<ChartDataPoint> buildDataPoints(List<QCResult> results, List<QCRuleViolation> violations,
+            String controlLevel) {
         List<ChartDataPoint> dataPoints = new ArrayList<>();
 
         for (QCResult result : results) {
             ChartDataPoint point = new ChartDataPoint();
             point.setResultId(result.getId());
+            point.setControlLevel(controlLevel);
             point.setTimestamp(result.getRunDateTime() != null ? result.getRunDateTime().toInstant().toString() : null);
             point.setValue(result.getResultValue() != null ? result.getResultValue().doubleValue() : null);
             point.setZScore(result.getZScore() != null ? result.getZScore().doubleValue() : null);
@@ -184,6 +190,15 @@ public class QCChartDataRestController {
 
     /** Individual data point for the chart. */
     public static class ChartDataPoint {
+        private String controlLevel;
+
+        public String getControlLevel() {
+            return controlLevel;
+        }
+
+        public void setControlLevel(String controlLevel) {
+            this.controlLevel = controlLevel;
+        }
 
         private String resultId;
         private String timestamp;

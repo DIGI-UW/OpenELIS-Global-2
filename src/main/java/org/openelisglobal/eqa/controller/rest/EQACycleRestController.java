@@ -388,7 +388,8 @@ public class EQACycleRestController extends BaseRestController {
      */
     private boolean hasResult(Analysis analysis) {
         for (Result result : resultService.getResultsByAnalysis(analysis)) {
-            String rendered = resultService.getSimpleResultValue(result);
+            String rendered = ("N".equals(result.getResultType()) ? result.getValue()
+                    : resultService.formatSimpleResultForDisplay(result));
             if (rendered != null && !rendered.isBlank()) {
                 return true;
             }
@@ -413,7 +414,8 @@ public class EQACycleRestController extends BaseRestController {
         }
         StringBuilder value = new StringBuilder();
         for (Result result : resultService.getResultsByAnalysis(analysis)) {
-            String rendered = resultService.getSimpleResultValue(result);
+            String rendered = ("N".equals(result.getResultType()) ? result.getValue()
+                    : resultService.formatSimpleResultForDisplay(result));
             if (rendered != null && !rendered.isBlank()) {
                 value.append(value.length() == 0 ? "" : ", ").append(rendered);
             }

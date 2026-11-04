@@ -7,6 +7,7 @@ import java.util.List;
 public class MicroCaseDetailForm {
 
     public String id;
+    public boolean readOnlyAccess;
     public String sampleItemId;
     public String patientId;
     public String patientName;

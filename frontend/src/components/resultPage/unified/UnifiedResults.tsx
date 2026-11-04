@@ -18,8 +18,6 @@ import {
   Pagination,
   Search,
   Section,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -94,6 +92,7 @@ import Avatar from "./Avatar";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import SearchableSelect from "../../common/SearchableSelect";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
@@ -1040,6 +1039,8 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
       // rounded, so posting it back would quietly rewrite the stored one.
       if (!writesResultValue(rowStates[worklistRowKey(row)] || "EMPTY")) {
         item.resultValue = row.rawResultValue ?? row.resultValue;
+      } else {
+        item.rawResultValue = row.resultValue;
       }
       delete item.result;
       delete item.analysisNotes;
@@ -1431,25 +1432,19 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               />
             </Column>
             <Column
-              lg={3}
+              lg={4}
               md={4}
               sm={4}
               className="unifiedResultsToolbarColumn"
             >
-              <Select
+              <SearchableSelect
                 id="unifiedResultsLabUnit"
                 labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                options={labUnits}
                 value={selectedLabUnit}
                 disabled={Boolean(selectedPatient)}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setSelectedLabUnit(e.target.value)
-                }
-              >
-                <SelectItem text="" value="" />
-                {labUnits.map((unit) => (
-                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-                ))}
-              </Select>
+                onChange={(id: string) => setSelectedLabUnit(id)}
+              />
             </Column>
             <Column
               lg={3}
@@ -1504,7 +1499,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               </Button>
             </Column>
             <Column
-              lg={4}
+              lg={3}
               md={2}
               sm={4}
               className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
@@ -1677,7 +1672,12 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
                   const isExpanded = expandedRowKey === key;
-                  const flag = resultFlagFor(row);
+                  const flag = resultFlagFor({
+                    ...row,
+                    resultValue: isRowEditable(state)
+                      ? row.resultValue
+                      : (row.rawResultValue ?? row.resultValue),
+                  });
                   return (
                     <React.Fragment key={key}>
                       <TableRow>

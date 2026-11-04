@@ -367,6 +367,10 @@ export interface AnalyzerDeliveryIssuesResponse {
   data?: {
     count: number;
     rows: Array<{ id: string; state: string; actionable: boolean }>;
+    /** False when OpenELIS has no Analyzer Bridge address. */
+    bridgeConfigured?: boolean;
+    /** False when the Bridge is not paired yet; it may still hold results. */
+    bridgePaired?: boolean;
   };
 }
 
@@ -377,6 +381,19 @@ export const getAnalyzerDeliveryIssues = (
 ) => {
   getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
 };
+
+/** Requeue one retained Bridge receipt without changing its identity. */
+export const retryAnalyzerDelivery = (
+  id: string,
+  callback: DataCallback<
+    { status: string; id: string; state: string } | undefined
+  >,
+) =>
+  postToOpenElisServerJsonResponse(
+    `/rest/analyzer/delivery-issues/${encodeURIComponent(id)}/retry`,
+    "{}",
+    callback,
+  );
 
 export interface BridgePairingStatus {
   bridgeUrl: string;
@@ -391,6 +408,7 @@ export interface BridgePairingStatus {
     | "BRIDGE_UNPAIRED"
     | "UNREACHABLE"
     | null;
+  clientKeyReadable?: boolean;
 }
 
 export type BridgePairingResponse = BridgePairingStatus & {
@@ -619,6 +637,19 @@ export const activateAnalyzer = (
   );
 };
 
+export const startAnalyzerSetupReception = (
+  id: string,
+  callback: ApiCallback,
+) => {
+  postAnalyzerLifecycle(id, "setup-reception", callback, (error) => ({
+    analyzerId: id,
+    receiving: false,
+    blockers: [],
+    error,
+    statusCode: 0,
+  }));
+};
+
 export const reactivateAnalyzer = (
   id: string,
   callback: ApiCallback<AnalyzerActivationResultView>,
@@ -722,7 +753,7 @@ export const changeAnalyzerUse = (
 
 const postAnalyzerLifecycle = <T extends object>(
   id: string,
-  action: "activate" | "deactivate" | "reactivate",
+  action: "activate" | "deactivate" | "reactivate" | "setup-reception",
   callback: ApiCallback<T>,
   networkFailure: (error: string) => T,
 ) => {

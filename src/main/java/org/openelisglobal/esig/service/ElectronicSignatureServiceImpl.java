@@ -197,6 +197,21 @@ public class ElectronicSignatureServiceImpl extends AuditableBaseObjectServiceIm
         return electronicSignatureDAO.countSearchSignatures(startDate, endDate, signerId, meaning, recordType);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, String text, int page, int pageSize) {
+        return electronicSignatureDAO.searchSignatures(startDate, endDate, signerId, meaning, recordType, text, page,
+                pageSize);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType, String text) {
+        return electronicSignatureDAO.countSearchSignatures(startDate, endDate, signerId, meaning, recordType, text);
+    }
+
     // ========================
     // First-Use Certification
     // ========================

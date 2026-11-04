@@ -13,6 +13,7 @@ import org.openelisglobal.externalconnections.valueholder.ExternalConnection.Aut
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
 import org.springframework.beans.propertyeditors.URIEditor;
+import org.springframework.context.MessageSource;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -36,6 +37,16 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @ControllerAdvice
 public class ControllerSetup extends ResponseEntityExceptionHandler {
+
+    /**
+     * Keeps the reason a ResponseStatusException or other ErrorResponse carries in
+     * its problem detail. The site's message source answers an unknown code with
+     * the code itself, so resolving the "problemDetail.*" codes through it replaced
+     * every reason with a message code, and no such keys exist to translate.
+     */
+    @Override
+    public void setMessageSource(MessageSource messageSource) {
+    }
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {

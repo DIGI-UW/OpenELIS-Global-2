@@ -55,9 +55,6 @@ public class ActivityReportByTest extends ActivityReport implements IReportCreat
             testName = testSelection.getSelectionAsName();
         }
 
-        // do not print the separator bar between name/Id and tests
-        reportParameters.put("underlineResults", false);
-
         List<Result> resultList = ResultServiceImpl.getResultsInTimePeriodWithTest(dateRange.getLowDate(),
                 dateRange.getHighDate(), testSelection.getSelection());
         testsResults = new ArrayList<>(resultList.size());

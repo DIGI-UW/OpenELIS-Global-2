@@ -18,7 +18,10 @@ import messages from "../../../../languages/en.json";
 
 const { postSpy } = vi.hoisted(() => ({ postSpy: vi.fn() }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async () => ({
+  resolveApiErrorMessage: (
+    (await vi.importActual("../../../utils/Utils")) as any
+  ).resolveApiErrorMessage,
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (typeof callback !== "function") return;
     if (url === "/rest/test-calculations") {
@@ -64,11 +67,12 @@ vi.mock("../../../utils/Utils", () => ({
     callback([]);
   }),
   // Default the post callback to a 200 status so toggle clicks don't revert.
-  // Utils.js#postToOpenElisServer passes response.status (a NUMBER) — mirror
-  // that here so the test catches strict-equality regressions in callers.
-  postToOpenElisServer: vi.fn((url, _body, callback) => {
+  // The full-response helper hands the caller a Response; a 200 one keeps
+  // toggle clicks from reverting.
+  postToOpenElisServerFullResponse: vi.fn((url, _body, callback) => {
     postSpy(url);
-    if (typeof callback === "function") callback(200);
+    if (typeof callback === "function")
+      callback(new Response(null, { status: 200 }));
   }),
 }));
 

@@ -1,5 +1,6 @@
 import { test, expect, Page } from "../../../helpers/test-base";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1449, Enter Order (v4) test list for a sample:
@@ -15,7 +16,7 @@ const API = "/api/OpenELIS-Global";
 const ENTER_ORDER = "/order/clinical/enter";
 const TESTS_FOR_TYPE = /\/rest\/sample-type-tests\?sampleType=/;
 
-type SampleType = { id: string; names: string[] };
+type SampleType = { id: string; value: string; names: string[] };
 
 async function twoSampleTypesWithDistinctTests(
   page: Page,
@@ -37,7 +38,7 @@ async function twoSampleTypesWithDistinctTests(
       names.length &&
       found.every((other) => names.some((n) => !other.names.includes(n)))
     ) {
-      found.push({ id: String(type.id), names });
+      found.push({ id: String(type.id), value: type.value, names });
     }
     if (found.length === 2) {
       return [found[0], found[1]];
@@ -72,8 +73,8 @@ test.describe("Enter Order tests loading (OGC-1449)", () => {
       page.waitForEvent("requestfinished", { predicate: isFirst }),
       page.waitForEvent("requestfailed", { predicate: isFirst }),
     ]);
-    await sampleType.selectOption(first.id);
-    await sampleType.selectOption(second.id);
+    await chooseCarbonOption(sampleType, first.value);
+    await chooseCarbonOption(sampleType, second.value);
     await expect(section.getByText(onlySecond[0]).first()).toBeVisible({
       timeout: UI_TIMEOUT,
     });
@@ -85,7 +86,7 @@ test.describe("Enter Order tests loading (OGC-1449)", () => {
         ),
     );
 
-    await expect(sampleType).toHaveValue(second.id);
+    await expect(sampleType).toHaveValue(second.value);
     await expect(section.getByText(onlySecond[0]).first()).toBeVisible();
     await expect(section.getByText(onlyFirst[0])).toHaveCount(0);
   });
@@ -106,14 +107,14 @@ test.describe("Enter Order tests loading (OGC-1449)", () => {
     const section = page.getByTestId("order-sample-test-section");
     await expect(sampleType).toBeVisible({ timeout: NAV_TIMEOUT });
 
-    await sampleType.selectOption(first.id);
+    await chooseCarbonOption(sampleType, first.value);
 
     await expect(section.getByRole("alert")).toHaveText(
       "The tests for this sample type could not be loaded.Retry",
       { timeout: 10_000 },
     );
     await expect(section.getByText(/^Loading/)).toHaveCount(0);
-    await expect(sampleType).toHaveValue(first.id);
+    await expect(sampleType).toHaveValue(first.value);
 
     await page.unroute(TESTS_FOR_TYPE);
     await section.getByRole("button", { name: "Retry" }).click();

@@ -180,24 +180,24 @@
         antimicrobial_resistance="false" />
 
     <test_result id="1" test_id="1" result_group="1"
-        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        scriptlet_id="1" sort_order="1" is_quantifiable="true"
-        is_active="true" is_normal="true" />
+        flags="FLAG1" tst_rslt_type="N" value="5.6"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" scriptlet_id="1" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
     <test_result id="2" test_id="2" result_group="2"
         flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 
     <test_result id="3" test_id="3" result_group="1"
-        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        scriptlet_id="1" sort_order="1" is_quantifiable="true"
-        is_active="true" is_normal="true" />
+        flags="FLAG1" tst_rslt_type="N" value="5.6"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" scriptlet_id="1" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
     <test_result id="4" test_id="4" result_group="2"
         flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 
@@ -272,31 +272,31 @@
     <result id="3" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="3" test_result_id="1" is_reportable="Y"
         lastupdated="2025-04-04 14:00:00" min_normal="70.0" max_normal="100.0"
-        significant_digits="1" grouping="1"
+        reporting_decimal_places="1" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
     <result id="4" analysis_id="2" sort_order="2" result_type="N"
         value="14.5" analyte_id="4" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
-        parent_id="3" significant_digits="1" grouping="1"
+        parent_id="3" reporting_decimal_places="1" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <result id="5" analysis_id="1" sort_order="3" result_type="N"
         value="950" analyte_id="7" test_result_id="1" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="500" max_normal="1500"
-        parent_id="3" significant_digits="0" grouping="1"
+        parent_id="3" reporting_decimal_places="0" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440005" />
 
     <result id="6" analysis_id="2" sort_order="4" result_type="N"
         value="2300" analyte_id="6" test_result_id="2" is_reportable="Y"
         lastupdated="2025-07-07 14:00:00" min_normal="1800" max_normal="4000"
-        parent_id="4" significant_digits="0" grouping="1"
+        parent_id="4" reporting_decimal_places="0" grouping="1"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440006" />
 
     <result id="7" analysis_id="2" sort_order="5" result_type="N"
         value="Normal" analyte_id="5" test_result_id="2" is_reportable="Y"
-        lastupdated="2025-07-07 14:00:00" significant_digits="0" grouping="1"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440007" />
+        lastupdated="2025-07-07 14:00:00" reporting_decimal_places="0"
+        grouping="1" fhir_uuid="550e8400-e29b-41d4-a716-446655440007" />
 
     <result_signature id="2" result_id="3"
         system_user_id="1" is_supervisor="true"

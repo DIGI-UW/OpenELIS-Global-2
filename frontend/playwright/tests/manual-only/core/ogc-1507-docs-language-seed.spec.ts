@@ -1,5 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import { API_PREFIX } from "../../../helpers/admin-ui";
+import { chooseFirstCarbonOption } from "../../../helpers/carbon-select";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 import * as fs from "fs";
 import * as path from "path";
@@ -82,7 +83,7 @@ test("seed one NCE per shipped category in the documentation language", async ({
     await expect(
       categorySelect.locator("option", { hasText: category.name }),
     ).toHaveCount(1, { timeout: UI_TIMEOUT });
-    await page.locator("#reporting-unit").selectOption({ index: 1 });
+    await chooseFirstCarbonOption(page.locator("#reporting-unit"));
     await categorySelect.selectOption(category.id);
     await page.locator("#nce-type").selectOption(category.types[0].id);
     await page.getByTestId("nce-severity-MINOR").click();
