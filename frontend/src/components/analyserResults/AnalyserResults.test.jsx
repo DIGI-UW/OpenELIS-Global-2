@@ -11,13 +11,14 @@ import AnalyserResults, {
   buildHeldResultResolutionUrl,
 } from "./AnalyserResults";
 
-const { postResults, getFromServer } = vi.hoisted(() => ({
+const { postResults, getFromServer, formatLabNumber } = vi.hoisted(() => ({
   postResults: vi.fn(),
   getFromServer: vi.fn(),
+  formatLabNumber: vi.fn((value) => value),
 }));
 
 vi.mock("../utils/Utils", () => ({
-  convertAlphaNumLabNumForDisplay: (value) => value,
+  convertAlphaNumLabNumForDisplay: formatLabNumber,
   postToOpenElisServerFullResponse: postResults,
   getFromOpenElisServer: getFromServer,
 }));
@@ -60,6 +61,7 @@ const renderResults = (
   resultList = [heldResult],
   sampleGroup = [resultList[0]],
   extraProps = {},
+  accessionFormat = "",
 ) => {
   const history = createMemoryHistory({
     initialEntries: ["/AnalyzerResults?id=2001"],
@@ -69,7 +71,9 @@ const renderResults = (
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <ConfigurationContext.Provider
-          value={{ configurationProperties: { AccessionFormat: "" } }}
+          value={{
+            configurationProperties: { AccessionFormat: accessionFormat },
+          }}
         >
           <NotificationContext.Provider
             value={{
@@ -111,6 +115,7 @@ describe("AnalyserResults", () => {
   beforeEach(() => {
     postResults.mockReset();
     getFromServer.mockReset();
+    formatLabNumber.mockReset().mockImplementation((value) => value);
   });
 
   it("ticks only the groupings whose every result is matched when saving all", () => {
@@ -343,6 +348,15 @@ describe("AnalyserResults", () => {
     };
     renderResults([result]);
 
+    expect(
+      screen.getByText(
+        /choose a specimen or analysis, place the result on the correct order, or explain a patient mismatch/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Held results cannot be accepted/),
+    ).not.toBeInTheDocument();
+
     fireEvent.change(screen.getByRole("combobox", { name: "Sample type" }), {
       target: { value: "40" },
     });
@@ -352,6 +366,61 @@ describe("AnalyserResults", () => {
     const submitted = JSON.parse(postResults.mock.calls[0][1]);
     expect(submitted.resultList[0].typeOfSampleId).toBe("40");
     expect(submitted.resultList[0].isAccepted).toBe(true);
+  });
+
+  it("explains both kinds of work when specimen and mapping holds share the page", () => {
+    renderResults([
+      heldResult,
+      { ...mappedQualitativeResult, importIssueReason: "awaiting_specimen" },
+    ]);
+    expect(
+      screen.getByText(
+        /choose a specimen or analysis, place the result on the correct order, or explain a patient mismatch/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Review.*mapping/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("explains an unmatched control and offers lot setup and retry", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        isControl: true,
+        importIssueReason: "qc_lot_missing",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+    expect(
+      await screen.findByText(/No matching control lot was found/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Review control lots" }),
+    ).toHaveAttribute("href", "/qa/qc/control-lots");
+    expect(
+      screen.getByRole("link", { name: "Apply mapping to retry control" }),
+    ).toHaveAttribute("href", expect.stringContaining("/mapping"));
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains why an off-scale control cannot be charted as an exact measurement", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        isControl: true,
+        importIssueReason: "qc_value_unsupported",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+    expect(
+      await screen.findByText(
+        /an off-scale value cannot be treated as an exact measurement/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("explains a control held for a missing QC target and links to that test's targets", async () => {
@@ -460,6 +529,30 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each(["unknown_analyzer_result_value", "awaiting_specimen"])(
+    "cancels removal of %s without sending a request or losing the row",
+    async (reason) => {
+      renderResults([{ ...heldResult, importIssueReason: reason }]);
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Remove from review" }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Remove result from review?",
+      });
+      expect(dialog).toHaveTextContent("QUAL_RESULT");
+      expect(dialog).toHaveTextContent("POSITIVE");
+      expect(dialog).toHaveTextContent("ACC654321");
+      expect(dialog).toHaveTextContent("cannot be undone");
+      expect(postResults).not.toHaveBeenCalled();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      expect(dialog.closest(".cds--modal")).not.toHaveClass("is-visible");
+      expect(
+        screen.getByRole("button", { name: "Remove from review" }),
+      ).toBeInTheDocument();
+      expect(postResults).not.toHaveBeenCalled();
+    },
+  );
+
   it("removes a held result from review", async () => {
     postResults.mockImplementation((_endpoint, _body, callback) =>
       callback({ status: 204 }),
@@ -471,6 +564,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     expect(postResults.mock.calls[0][0]).toBe(
       "/rest/analyzer/results/1004/dismiss",
@@ -484,6 +582,20 @@ describe("AnalyserResults", () => {
         }),
       ),
     );
+  });
+
+  it("uses the displayed lab number in the removal confirmation", async () => {
+    formatLabNumber.mockReturnValue("ACC-654-321");
+    renderResults([heldResult], [heldResult], {}, "ALPHANUM");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Remove from review" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    expect(within(dialog).getByText(/ACC-654-321/)).toBeInTheDocument();
+    expect(screen.getByTestId("LabNo")).toHaveTextContent("ACC-654-321");
+    expect(postResults).not.toHaveBeenCalled();
   });
 
   it("preserves other rows' unsaved choices when removing a held result", async () => {
@@ -503,6 +615,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     await vi.waitFor(() =>
       expect(refreshResults).toHaveBeenCalledWith(1, {
@@ -526,6 +643,11 @@ describe("AnalyserResults", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Remove from review" }),
     );
+    expect(postResults).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove result from review?",
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Remove$/ }));
 
     expect(postResults.mock.calls[0][0]).toBe(
       `/rest/analyzer/results/${mappedQualitativeResult.id}/dismiss`,
@@ -844,4 +966,40 @@ describe("AnalyserResults", () => {
     expect(resent.resultList[0].result).toBe("25");
     expect(resent.resultList[0].criticalAcknowledged).toBe(true);
   });
+});
+
+it("separates retained setup evidence from actionable clinical results", () => {
+  renderResults([
+    {
+      ...heldResult,
+      importIssueReason: "setup_capture",
+      instrumentSampleFlags: "Sample warning",
+      instrumentFlags: "H",
+      assayName: "Viral load assay",
+      assayVersion: "3",
+      instrumentOperator: "Operator 17",
+    },
+  ]);
+  expect(
+    screen.queryByText(/analyzer results? need attention/),
+  ).not.toBeInTheDocument();
+  const section = screen.getByTestId("analyzer-setup-evidence");
+  fireEvent.click(
+    within(section).getByRole("button", { name: "Retained setup samples (1)" }),
+  );
+  expect(within(section).getByText("POSITIVE")).toBeVisible();
+  expect(
+    within(section).getByTestId("InstrumentSampleFlags"),
+  ).toHaveTextContent("Sample warning");
+  const metadata = within(section).getByTestId(
+    `instrument-reported-${heldResult.id}`,
+  );
+  expect(metadata).toHaveTextContent("Flag: H");
+  expect(metadata).toHaveTextContent("Assay: Viral load assay, version 3");
+  expect(metadata).toHaveTextContent("Operator: Operator 17");
+  expect(within(section).queryByRole("checkbox")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("Save-btn")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("There are no records to display"),
+  ).not.toBeInTheDocument();
 });

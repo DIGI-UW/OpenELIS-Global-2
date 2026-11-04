@@ -28,7 +28,7 @@ import {
   holdingDeadline,
   shortestHoldingMinutes,
 } from "../../dateUtils";
-import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
+import SearchableSelect from "../../../common/SearchableSelect";
 
 const SampleTestSection = ({
   samples,
@@ -36,6 +36,7 @@ const SampleTestSection = ({
   isReadOnly,
   workflowType,
   orderData,
+  renderSampleNote,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -943,25 +944,20 @@ const SampleTestSection = ({
                         {sampleIndex + 1}
                       </td>
                       <td className="env-manifest-cell">
-                        <Select
+                        <SearchableSelect
                           id={`sampleType-${sampleIndex}`}
-                          labelText=""
                           hideLabel
+                          labelText={intl.formatMessage({
+                            id: "sample.type",
+                            defaultMessage: "Sample Type",
+                          })}
+                          options={sampleTypes}
                           value={sample.sampleTypeId || ""}
-                          onChange={(e) =>
-                            handleSampleTypeChange(sampleIndex, e.target.value)
+                          onChange={(id) =>
+                            handleSampleTypeChange(sampleIndex, id)
                           }
                           disabled={isReadOnly}
-                        >
-                          <SelectItem value="" text="" />
-                          {sampleTypes.map((type) => (
-                            <SelectItem
-                              key={type.id}
-                              value={type.id}
-                              text={type.value}
-                            />
-                          ))}
-                        </Select>
+                        />
                       </td>
                       <td className="env-manifest-cell">
                         <Select
@@ -1521,38 +1517,23 @@ const SampleTestSection = ({
 
             <Grid>
               <Column lg={8} md={4} sm={4}>
-                <Select
+                <SearchableSelect
                   id={`sampleType-${sampleIndex}`}
-                  labelText={
-                    <span>
-                      {intl.formatMessage({
-                        id: "sample.type",
-                        defaultMessage: "Sample Type",
-                      })}
-                      <RequiredMarker />
-                    </span>
-                  }
-                  {...requiredProps()}
+                  required
+                  labelText={intl.formatMessage({
+                    id: "sample.type",
+                    defaultMessage: "Sample Type",
+                  })}
+                  options={sampleTypes}
                   value={sample.sampleTypeId || ""}
-                  onChange={(e) =>
-                    handleSampleTypeChange(sampleIndex, e.target.value)
-                  }
+                  onChange={(id) => handleSampleTypeChange(sampleIndex, id)}
                   helperText={intl.formatMessage({
                     id: "sample.type.helper",
                     defaultMessage:
                       "Select a specimen type — available panels and tests update after selection.",
                   })}
                   disabled={isReadOnly}
-                >
-                  <SelectItem value="" text="" />
-                  {sampleTypes.map((type) => (
-                    <SelectItem
-                      key={type.id}
-                      value={type.id}
-                      text={type.value}
-                    />
-                  ))}
-                </Select>
+                />
               </Column>
 
               {hasSetTest(sample, sampleIndex) && (
@@ -1844,7 +1825,25 @@ const SampleTestSection = ({
                               <Checkbox
                                 key={test.id}
                                 id={`test-${sampleIndex}-${test.id}`}
-                                labelText={test.name}
+                                labelText={
+                                  test.opensMicrobiologyCase ? (
+                                    <>
+                                      {test.name}{" "}
+                                      <Tag
+                                        type="cool-gray"
+                                        size="sm"
+                                        className="micro-test-tag"
+                                      >
+                                        {intl.formatMessage({
+                                          id: "microbiology.case.title",
+                                          defaultMessage: "Microbiology case",
+                                        })}
+                                      </Tag>
+                                    </>
+                                  ) : (
+                                    test.name
+                                  )
+                                }
                                 checked={isTestSelected(sampleIndex, test.id)}
                                 onChange={(_, { checked }) =>
                                   handleTestToggle(sampleIndex, test, checked)
@@ -1894,6 +1893,7 @@ const SampleTestSection = ({
                 </Column>
               )}
             </Grid>
+            {renderSampleNote?.(sampleIndex)}
           </div>
         ),
       )}

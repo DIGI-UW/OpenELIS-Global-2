@@ -69,7 +69,7 @@ public class RTRIColumnBuilder extends CIStudyColumnBuilder {
     public void makeSQL() {
         // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -77,7 +77,7 @@ public class RTRIColumnBuilder extends CIStudyColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "a.released_date ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }

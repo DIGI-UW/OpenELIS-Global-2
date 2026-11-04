@@ -59,6 +59,8 @@ public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, Str
 
     List<Test> getAllTestsBySampleTypeId(String sampleTypeId);
 
+    int countTestsBySampleTypeId(String sampleTypeId);
+
     List<Test> getActiveTestsBySampleTypeId(String sampleType, boolean b);
 
     List<Test> getActiveTestsBySampleTypeIdAndTestUnit(String sampleType, boolean b, List<String> testUnitIds);

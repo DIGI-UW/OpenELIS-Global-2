@@ -6,6 +6,7 @@
  */
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -72,6 +73,10 @@ describe("Dictionary menu refresh", () => {
       if (url.startsWith("/rest/DictionaryMenu")) return callback(menuList);
       if (url.startsWith("/rest/SearchDictionaryMenu"))
         return callback(menuList);
+      if (url === "/rest/dictionary-categories")
+        return callback([
+          { id: "5", description: "General", categoryName: "General" },
+        ]);
       return callback([]);
     });
     postToOpenElisServer.mockReset();
@@ -137,6 +142,15 @@ describe("Dictionary menu refresh", () => {
     fireEvent.change(document.getElementById("localAbbrev"), {
       target: { value: "EB" },
     });
+    await userEvent.type(
+      within(dialog).getByRole("combobox", { name: /Dictionary Category/ }),
+      "Gen",
+    );
+    await userEvent.click(screen.getByRole("option", { name: "General" }));
+    await userEvent.click(
+      within(dialog).getByRole("combobox", { name: /Is Active/ }),
+    );
+    await userEvent.click(screen.getByRole("option", { name: "Y" }));
 
     // Only the server knows about Entry B.
     menuList = { menuList: [entry(1, "Entry A"), entry(2, "Entry B")] };

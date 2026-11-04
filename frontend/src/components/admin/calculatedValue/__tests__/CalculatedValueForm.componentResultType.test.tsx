@@ -79,10 +79,13 @@ const SAVED_CALCULATION = {
 const { postSpy, notificationSpy, response } = vi.hoisted(() => ({
   postSpy: vi.fn(),
   notificationSpy: vi.fn(),
-  response: { status: 200 },
+  response: { status: 200, body: null as unknown },
 }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async () => ({
+  resolveApiErrorMessage: (
+    (await vi.importActual("../../../utils/Utils")) as any
+  ).resolveApiErrorMessage,
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (typeof callback !== "function") return;
     if (url.startsWith("/rest/test-calculations")) {
@@ -109,9 +112,15 @@ vi.mock("../../../utils/Utils", () => ({
     }
     callback([]);
   }),
-  postToOpenElisServer: vi.fn((url, body, callback) => {
+  postToOpenElisServerFullResponse: vi.fn((url, body, callback) => {
     postSpy(url, body);
-    if (typeof callback === "function") callback(response.status);
+    if (typeof callback === "function")
+      callback(
+        new Response(
+          response.body === null ? null : JSON.stringify(response.body),
+          { status: response.status },
+        ),
+      );
   }),
 }));
 
@@ -165,6 +174,7 @@ describe("Final Result is described by its component", () => {
     postSpy.mockReset();
     notificationSpy.mockReset();
     response.status = 200;
+    response.body = null;
     SAVED_CALCULATION.operations = [
       { id: null, order: 0, type: "INTEGER", value: "1", sampleId: null },
     ];
@@ -273,6 +283,10 @@ describe("Final Result is described by its component", () => {
       },
     ];
     response.status = 400;
+    response.body = {
+      messageKey: "error.invalid.calculation.logic",
+      messageArgs: {},
+    };
     renderForm();
     await flush();
     const form = componentPicker().closest("form") as HTMLFormElement;

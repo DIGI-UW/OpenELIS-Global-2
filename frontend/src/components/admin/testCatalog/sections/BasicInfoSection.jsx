@@ -104,6 +104,7 @@ const BasicInfoSection = ({ testId }) => {
   const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [staleSave, setStaleSave] = useState(null);
   const [form, setForm] = useState(null);
   const [pendingDomain, setPendingDomain] = useState(null);
@@ -492,10 +493,12 @@ const BasicInfoSection = ({ testId }) => {
   };
 
   const handleActivate = (gapsAcknowledged) => {
+    setActivating(true);
     postToOpenElisServerJsonResponse(
       `/rest/test-catalog/tests/${testId}/activate`,
       JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
       (res) => {
+        setActivating(false);
         if (res && (res.status === 422 || res.statusCode === 422)) {
           // FR-57/FR-59 — incomplete test: surface the checklist, never silently
           // succeed or flip the toggle.
@@ -1058,6 +1061,7 @@ const BasicInfoSection = ({ testId }) => {
           kind="primary"
           disabled={
             saving ||
+            activating ||
             Boolean(staleSave) ||
             timeHoldingInvalid ||
             invalidThresholds.length > 0 ||

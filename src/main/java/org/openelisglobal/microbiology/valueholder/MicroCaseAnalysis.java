@@ -20,6 +20,9 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    public static final java.util.Set<String> SPECIMEN_TEST_PLACEMENTS = java.util.Set.of("INITIAL", "INITIAL_TESTING",
+            "ADDITIONAL");
+
     @Id
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();
@@ -57,6 +60,57 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     @Column(name = "cancellation_reason")
     private String cancellationReason;
+
+    @Column(name = "entered_by")
+    private String enteredBy;
+    @Column(name = "tested_elsewhere")
+    private boolean testedElsewhere;
+    @Column(name = "performing_lab_id")
+    private String performingLabId;
+    @Column(name = "performing_user_id")
+    private String performingUserId;
+    @Column(name = "performed_at")
+    private Timestamp performedAt;
+
+    public String getEnteredBy() {
+        return enteredBy;
+    }
+
+    public void setEnteredBy(String value) {
+        enteredBy = value;
+    }
+
+    public boolean getTestedElsewhere() {
+        return testedElsewhere;
+    }
+
+    public void setTestedElsewhere(boolean value) {
+        testedElsewhere = value;
+    }
+
+    public String getPerformingLabId() {
+        return performingLabId;
+    }
+
+    public void setPerformingLabId(String value) {
+        performingLabId = value;
+    }
+
+    public String getPerformingUserId() {
+        return performingUserId;
+    }
+
+    public void setPerformingUserId(String value) {
+        performingUserId = value;
+    }
+
+    public Timestamp getPerformedAt() {
+        return performedAt;
+    }
+
+    public void setPerformedAt(Timestamp value) {
+        performedAt = value;
+    }
 
     @Override
     public String getId() {
@@ -98,6 +152,13 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     public void setProjectedResultId(String projectedResultId) {
         this.projectedResultId = projectedResultId;
+    }
+
+    /**
+     * Culture orders are fulfilled by culture rows, not an extra free-text result.
+     */
+    public boolean isCultureOrder() {
+        return caseRole == MicroCaseRole.CULTURE && cultureId == null;
     }
 
     public MicroCaseRole getCaseRole() {
@@ -146,5 +207,20 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     public void setCancellationReason(String cancellationReason) {
         this.cancellationReason = cancellationReason;
+    }
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "culture_id")
+    private String cultureId;
+    @Column(name = "selected_for_report")
+    private Boolean selectedForReport;
+
+    public Boolean getSelectedForReport() {
+        return selectedForReport;
+    }
+
+    public void setSelectedForReport(Boolean value) {
+        selectedForReport = value;
     }
 }
