@@ -645,6 +645,8 @@ class DevStackContractTest(unittest.TestCase):
             patch.object(self.dev_stack, "configure_tls"),
             patch.object(self.dev_stack, "verify_tls"),
             patch.object(self.dev_stack, "print_endpoints"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "run") as run,
         ):
             self.dev_stack.main(["up", "--no-wait", "--no-scenarios"])
@@ -826,6 +828,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             patch.object(self.dev_stack, "build_images") as build_images,
             patch.object(self.dev_stack, "pull_images") as pull_images,
             patch.object(self.dev_stack, "record_images") as record_images,
+            patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "start_services"),
             patch.object(self.dev_stack, "reload_proxy"),
             patch.object(self.dev_stack, "configure_tls"),
@@ -1036,6 +1039,54 @@ class DevStackModuleTest(unittest.TestCase):
         context = self.dev_stack.StackContext(self.root, "p", self.root / "missing", ())
 
         self.dev_stack.route_module_pages(context, [])
+
+
+
+class DevStackSetupTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def test_up_defaults_to_the_full_setup(self):
+        self.assertEqual(self.dev_stack.parse_args(["up"]).setup, "full")
+        self.assertEqual(self.dev_stack.parse_args(["up", "--setup", "light"]).setup, "light")
+        self.assertEqual(self.dev_stack.parse_args(["up", "--setup=light"]).setup, "light")
+
+    def test_an_unknown_setup_is_refused(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            self.dev_stack.parse_args(["up", "--setup", "tiny"])
+
+    def test_light_adds_its_override_last_and_full_does_not(self):
+        full = self.dev_stack.make_context(REPO_ROOT)
+        light = self.dev_stack.make_context(REPO_ROOT, "light")
+
+        self.assertEqual(full.setup, "full")
+        self.assertNotIn("docker-compose.light.yml", [path.name for path in full.compose_files])
+        self.assertEqual(light.compose_files[-1].name, "docker-compose.light.yml")
+        self.assertTrue(light.compose_files[-1].is_file())
+        self.assertEqual(light.project, full.project)
+
+    def test_light_override_drops_the_fhir_dependency_and_blanks_the_external_urls(self):
+        override = (REPO_ROOT / "projects" / "analyzer-harness" / "docker-compose.light.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("depends_on: !override", override)
+        self.assertNotIn("fhir.openelis.org:", override)
+        self.assertIn('ORG_OPENELISGLOBAL_FHIRSTORE_URI: ""', override)
+        self.assertIn('ANALYZER_BRIDGE_URL: ""', override)
+
+    def test_light_services_leave_out_fhir_bridge_and_simulator(self):
+        for service in self.dev_stack.FULL_ONLY_SERVICES:
+            self.assertNotIn(service, self.dev_stack.LIGHT_SERVICES)
+
+    def test_the_last_up_setup_is_remembered_for_later_commands(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            self.assertEqual(self.dev_stack.recorded_setup(root), "full")
+            context = self.dev_stack.StackContext(root, "p", root, (), "light")
+            self.dev_stack.record_setup(context)
+            self.assertEqual(self.dev_stack.recorded_setup(root), "light")
 
 
 if __name__ == "__main__":

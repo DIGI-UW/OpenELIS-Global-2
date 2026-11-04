@@ -27,6 +27,13 @@ class StackContext(NamedTuple):
     project: str
     project_dir: Path
     compose_files: tuple[Path, ...]
+    setup: str = "full"
+
+
+SETUPS = ("full", "light")
+# Services the light setup leaves out: the FHIR server, the Analyzer Bridge and the analyzer simulator.
+FULL_ONLY_SERVICES = ("fhir.openelis.org", "openelis-analyzer-bridge", "astm-simulator")
+LIGHT_SERVICES = ("certs", "db.openelis.org", "harness-catalog-init", "oe.openelis.org", "frontend.openelis.org", "proxy")
 
 
 class ModuleCheckout(NamedTuple):
@@ -67,7 +74,9 @@ def slugify(value: str, limit: int = 28) -> str:
     return slug[:limit].rstrip("-")
 
 
-def make_context(repo_root: Path) -> StackContext:
+def make_context(repo_root: Path, setup: str = "full") -> StackContext:
+    if setup not in SETUPS:
+        raise ValueError(f"--setup must be one of {', '.join(SETUPS)}")
     root = repo_root.resolve()
     digest = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:8]
     project = f"oe2-{slugify(root.name)}-{digest}-dev"
@@ -79,7 +88,26 @@ def make_context(repo_root: Path) -> StackContext:
         project_dir / "docker-compose.letsencrypt.yml",
         project_dir / "docker-compose.worktree.yml",
     )
-    return StackContext(root, project, project_dir, compose_files)
+    if setup == "light":
+        compose_files += (project_dir / "docker-compose.light.yml",)
+    return StackContext(root, project, project_dir, compose_files, setup)
+
+
+def setup_record(repo_root: Path) -> Path:
+    return repo_root.resolve() / ".dev-stack" / "setup"
+
+
+def recorded_setup(repo_root: Path) -> str:
+    """The setup the last `up` of this checkout started, full when none was recorded."""
+    record = setup_record(repo_root)
+    setup = record.read_text(encoding="utf-8").strip() if record.is_file() else "full"
+    return setup if setup in SETUPS else "full"
+
+
+def record_setup(context: StackContext) -> None:
+    record = setup_record(context.repo_root)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(context.setup + "\n", encoding="utf-8")
 
 
 def read_dotenv(path: Path) -> dict[str, str]:
@@ -210,8 +238,15 @@ def start_services(
     *,
     refresh_running_backend: bool,
 ) -> None:
+    services = LIGHT_SERVICES if context.setup == "light" else ()
+    if context.setup == "light":
+        run(
+            compose_command(context, "rm", "--stop", "--force", *FULL_ONLY_SERVICES),
+            cwd=context.project_dir,
+            environment=environment,
+        )
     run(
-        compose_command(context, "up", "-d", "--no-build", "--remove-orphans"),
+        compose_command(context, "up", "-d", "--no-build", "--remove-orphans", *services),
         cwd=context.project_dir,
         environment=environment,
     )
@@ -712,11 +747,13 @@ def pull_images(
     context: StackContext, environment: dict[str, str], changed_submodules: Sequence[str]
 ) -> None:
     """Pull the published development images and say what they cannot reflect."""
-    for _, variable, _, _ in APPLICATION_IMAGES:
+    for service, variable, _, _ in APPLICATION_IMAGES:
+        if context.setup == "light" and service in FULL_ONLY_SERVICES:
+            continue
         pull_image(context, environment, environment[variable])
     images = {service: environment[variable] for service, variable, _, _ in APPLICATION_IMAGES}
     for path, service in SUBMODULE_SERVICES.items():
-        if path in changed_submodules:
+        if path in changed_submodules and not (context.setup == "light" and service in FULL_ONLY_SERVICES):
             print(
                 f"Warning: {service} runs the published {images[service]}, not the {path} "
                 "checkout. Rerun with --build to run the checkout.",
@@ -757,10 +794,12 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     endpoints = {
         "BASE_URL": f"https://{authority}",
         "OE_BACKEND_URL": f"https://localhost:{published_port(context, 'oe.openelis.org', 8443, environment)}",
-        "FHIR_URL": f"https://localhost:{published_port(context, 'fhir.openelis.org', 8443, environment)}",
         "DB_PORT": str(published_port(context, "db.openelis.org", 5432, environment)),
         "COMPOSE_PROJECT_NAME": context.project,
     }
+    if context.setup == "light":
+        return endpoints
+    endpoints["FHIR_URL"] = f"https://localhost:{published_port(context, 'fhir.openelis.org', 8443, environment)}"
     subnet_prefix = environment["ANALYZER_SUBNET_PREFIX"]
     endpoints.update(
         {
@@ -1002,6 +1041,15 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Build the application images from this checkout instead of using the published ones.",
     )
+    up.add_argument(
+        "--setup",
+        choices=SETUPS,
+        default="full",
+        help=(
+            "full (default): the whole stack with the FHIR server, the Analyzer Bridge and the analyzer simulator; "
+            "light: only the database, the webapp, the frontend and the proxy."
+        ),
+    )
     up.add_argument("--no-wait", action="store_true")
     up.add_argument("--no-scenarios", action="store_true")
     up.add_argument(
@@ -1041,7 +1089,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
     args = parse_args(argv if argv is not None else sys.argv[1:])
-    context = make_context(Path(__file__).resolve().parent.parent)
+    repo_root = Path(__file__).resolve().parent.parent
+    setup = args.setup if args.command == "up" else recorded_setup(repo_root)
+    context = make_context(repo_root, setup)
     environment = build_environment(context)
 
     if args.command == "doctor":
@@ -1099,9 +1149,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         reload_proxy(context, environment)
         configure_tls(context, environment)
         verify_tls(context, environment)
+        record_setup(context)
         if not args.no_wait:
             wait_for_login(context, environment)
-            if not args.no_scenarios:
+            if not args.no_scenarios and context.setup == "full":
                 initialize_harness_scenarios(context, environment)
         print_endpoints(context, environment)
     elif args.command == "down":
