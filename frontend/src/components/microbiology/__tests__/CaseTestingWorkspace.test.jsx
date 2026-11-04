@@ -283,7 +283,7 @@ describe("case testing workspace", () => {
     await openEditor();
     enter("MTB", "12.5");
     expect(
-      await screen.findByText(/saved as entered and reported rounded/),
+      await screen.findByText(/full entered value is retained/),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save results" })).toBeEnabled();
     enter("MTB", "12");
