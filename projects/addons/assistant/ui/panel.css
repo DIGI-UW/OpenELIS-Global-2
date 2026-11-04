@@ -1,0 +1,54 @@
+/* Carbon-like look (IBM Plex is the OpenELIS font; system fonts as fallback). */
+:root {
+  --text: #161616;
+  --text-2: #525252;
+  --border: #e0e0e0;
+  --layer: #f4f4f4;
+  --interactive: #0f62fe;
+  --error: #da1e28;
+  --warning: #f1c21b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.43;
+  color: var(--text);
+  background: #fff;
+}
+.ai { display: flex; flex-direction: column; gap: 8px; padding: 8px 12px 12px; min-height: 100vh; }
+.ai__head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ai__quota { color: var(--text-2); font-size: 12px; }
+.ai__link { border: 0; background: none; color: var(--interactive); cursor: pointer; padding: 4px 0; font: inherit; font-size: 12px; }
+.ai__link:hover { text-decoration: underline; }
+.ai__note { margin: 0; color: var(--text-2); font-size: 12px; }
+.ai__log { display: flex; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; }
+.ai__msg { padding: 8px 12px; border-radius: 2px; overflow-wrap: anywhere; }
+.ai__msg--q { align-self: flex-end; max-width: 90%; background: #edf5ff; }
+.ai__msg--a { background: var(--layer); }
+.ai__msg--pending { color: var(--text-2); font-style: italic; }
+.ai__msg--seed { border-left: 3px solid var(--border); color: var(--text-2); font-size: 12px; }
+.ai__md p { margin: 0 0 6px; }
+.ai__md ul, .ai__md ol { margin: 0 0 6px; padding-left: 20px; }
+.ai__md-h { margin-top: 4px; }
+.ai__md code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+.ai__tag { display: inline-block; margin-top: 4px; padding: 0 6px; background: var(--warning); font-size: 11px; }
+.ai__suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai__chip {
+  border: 1px solid var(--border); background: #fff; border-radius: 16px; padding: 4px 10px;
+  font: inherit; font-size: 12px; cursor: pointer; text-align: left;
+}
+.ai__chip:hover { background: var(--layer); }
+.ai__error { margin: 0; color: var(--error); font-size: 13px; }
+.ai__form { display: flex; gap: 6px; align-items: flex-end; }
+.ai__form textarea {
+  flex: 1; resize: vertical; min-height: 40px; padding: 8px; border: 0; border-bottom: 1px solid #8d8d8d;
+  background: var(--layer); font: inherit;
+}
+.ai__send {
+  border: 0; background: var(--interactive); color: #fff; padding: 10px 16px; font: inherit; cursor: pointer;
+}
+.ai__send:disabled { opacity: 0.5; cursor: default; }
+.ai__foot { color: var(--text-2); font-size: 11px; border-top: 1px solid var(--border); padding-top: 6px; }
+[data-state="off"] .ai__form, [data-state="off"] .ai__suggestions { opacity: 0.4; pointer-events: none; }
