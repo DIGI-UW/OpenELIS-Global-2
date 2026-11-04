@@ -105,7 +105,7 @@ public class StudyVLColumnBuilder extends CIStudyColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }
@@ -133,7 +133,7 @@ public class StudyVLColumnBuilder extends CIStudyColumnBuilder {
         appendObservationHistoryCrosstab(dateRange.getLowDate(), dateRange.getHighDate(), dateColumn);
         // current ARV treatments
         appendRepeatingObservation(SQLConstant.CURRENT_ARV_TREATMENT_INNS, 4, dateRange.getLowDate(),
-                dateRange.getHighDate(), dateColumn);
+                dateRange.getHighDate(), DateType.RESULT_DATE.equals(dateType) ? LAST_RELEASE_DATE : dateColumn);
         // result
         // appendResultCrosstab(dateRange.getLowDate(), dateRange.getHighDate() );
         query.append(",  clinlims.analysis as a \n");

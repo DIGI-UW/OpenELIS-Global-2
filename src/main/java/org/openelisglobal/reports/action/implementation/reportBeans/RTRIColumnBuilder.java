@@ -77,7 +77,7 @@ public class RTRIColumnBuilder extends CIStudyColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "a.released_date ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }

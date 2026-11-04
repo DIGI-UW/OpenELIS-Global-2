@@ -64,7 +64,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
-import { chooseLabUnit } from "./chooseLabUnitForTest";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 /** A numeric result not yet entered: the row the ticket was reproduced on. */
 const worklistRow = () => ({

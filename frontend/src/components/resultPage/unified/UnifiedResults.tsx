@@ -1432,7 +1432,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               />
             </Column>
             <Column
-              lg={3}
+              lg={4}
               md={4}
               sm={4}
               className="unifiedResultsToolbarColumn"
@@ -1499,7 +1499,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               </Button>
             </Column>
             <Column
-              lg={4}
+              lg={3}
               md={2}
               sm={4}
               className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"

@@ -50,4 +50,14 @@ public class RTNColumnBuilderTest extends BaseWebContextSensitiveTest {
         assertFalse(Arrays.asList(builder.getRTNDiseaseQuestionNames()).contains(null));
         assertFalse(Arrays.asList(builder.getRTNExamQuestionNames()).contains(null));
     }
+
+    @Test
+    public void runsItsQueryOnThePrintDate() throws Exception {
+        RTNColumnBuilder builder = new RTNColumnBuilder(range(), "26", DateType.PRINT_DATE);
+
+        builder.buildDataSource();
+        builder.closeResultSet();
+
+        assertTrue(builder.query.toString().contains("clinlims.document_track"));
+    }
 }

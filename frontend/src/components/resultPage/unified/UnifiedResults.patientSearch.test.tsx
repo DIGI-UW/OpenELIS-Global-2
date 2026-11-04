@@ -68,7 +68,7 @@ vi.mock("../../patient/SearchPatientForm", () => ({
 }));
 
 import UnifiedResults from "./UnifiedResults";
-import { chooseLabUnit } from "./chooseLabUnitForTest";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 const LAB_UNITS = [{ id: "56", value: "Biochemistry", domain: "CLINICAL" }];
 const STATUSES = [{ id: "4", value: "Not started" }];

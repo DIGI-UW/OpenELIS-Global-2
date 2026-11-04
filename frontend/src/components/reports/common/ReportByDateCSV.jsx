@@ -114,7 +114,7 @@ const ReportByDateCSV = (props) => {
         setStatusOptions(Array.isArray(data) ? data : []);
       });
     }
-  }, [props]);
+  }, [props.report]);
 
   const dateOptions = ["ORDER_DATE", "RESULT_DATE", "PRINT_DATE"].map(
     (value) => ({

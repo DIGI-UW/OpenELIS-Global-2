@@ -170,6 +170,21 @@ public abstract class CSVColumnBuilder {
         }
     }
 
+    /**
+     * When the sample's latest report was generated, for a print-date range. A
+     * subquery on the sample, so it holds inside the crosstab queries, which have
+     * no join to document_track.
+     */
+    protected static final String LAST_PRINT_DATE = "(SELECT dt.report_generation_time FROM clinlims.document_track AS dt"
+            + " WHERE dt.row_id = s.id ORDER BY dt.id DESC LIMIT 1) ";
+
+    /**
+     * When the sample's last analysis was released, for a result-date range in a
+     * query that has the sample but no analysis.
+     */
+    protected static final String LAST_RELEASE_DATE = "(SELECT max(ra.released_date) FROM clinlims.analysis AS ra"
+            + " JOIN clinlims.sample_item AS rsi ON rsi.id = ra.sampitem_id WHERE rsi.samp_id = s.id) ";
+
     /** map to provide appropriate tag to identify the project. */
     static Map<String /* project Id */, String /* project tag */> projectTagById = new HashMap<>();
 

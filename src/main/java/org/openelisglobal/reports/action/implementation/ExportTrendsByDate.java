@@ -154,7 +154,7 @@ public class ExportTrendsByDate extends CSVSampleExportReport implements IReport
                 currentAccessionNumber = splitBase[0];
             }
         }
-        if (writeAble(splitBase[16].trim())) {
+        if (splitBase != null && writeAble(splitBase[16].trim())) {
             writeConsolidatedBaseToBuffer(buffer, splitBase);
         }
     }

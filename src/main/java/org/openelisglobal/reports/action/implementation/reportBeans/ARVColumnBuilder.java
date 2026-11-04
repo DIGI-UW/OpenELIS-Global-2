@@ -65,7 +65,7 @@ public abstract class ARVColumnBuilder extends CIColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }
