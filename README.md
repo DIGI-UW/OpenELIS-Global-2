@@ -136,6 +136,44 @@ which frontend dependency, Dockerfile, Analyzer Bridge and mock changes need.
 Native builds, focused tests, domain setup and published-image deployment are
 described in [the development guide](docs/dev_setup.md).
 
+#### Running a module from its source
+
+Give `up` the folder of any [module](docs/modules.md) source checkout, meaning a
+folder with a `pom.xml` and `src/main/resources/META-INF/openelis-module.json`.
+Repeat `--module` for several modules; a relative path is resolved from the
+current directory:
+
+```bash
+DEV_STACK_IMAGE_TAG=modula scripts/dev-stack up --module=/path/to/my-module
+```
+
+For example, `--module=../openelis-module-specimen-followup` runs a module
+checked out next to this repository. Every run of the command builds and deploys
+both halves of each module again:
+
+- **Backend:** `up` installs the core artifacts the module compiles against,
+  builds the module JAR, copies it to `volume/modules/<id>.jar` (replacing any
+  other copy of that module) and restarts the webapp, which migrates the
+  module's tables and registers its permissions, menus and pages.
+- **Frontend:** `up` starts the module's Vite dev server (`npm run dev` in the
+  module's `frontend/`, log in `.dev-stack/modules/<id>-vite.log`) and routes
+  the shell's request for the module's pages to it. Page edits hot reload in the
+  browser.
+
+After a change to the module's Java code, Liquibase files or manifest, run the
+same command again: it rebuilds the JAR, replaces the installed copy and
+restarts the webapp, so the new version migrates and starts.
+`scripts/dev-stack down` stops the module dev servers. The JAR stays installed
+for later `up` runs without `--module`, which serve the pages built into the
+JAR. To remove the module, delete `volume/modules/<id>.jar` and run `up` again.
+
+`DEV_STACK_IMAGE_TAG=modula` selects the development images published from the
+`modula` branch, which can load modules; `--build` builds them from the checkout
+instead. Node.js is needed on the host for the dev server; without it the pages
+are served from the JAR. If the dev server stops (a reboot, a crash), the
+module's pages fail to load until the command is run again; `up` without
+`--module` goes back to the pages built into the JAR.
+
 #### The Instances can be accessed at
 
 | Instance     |                      URL                       | credentials (user : password) |
