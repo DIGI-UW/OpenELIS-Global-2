@@ -33,8 +33,13 @@ bash scripts/setup-workspace.sh
 Start development:
 
 ```bash
-scripts/dev-stack up
+scripts/dev-stack up                  # full stack (default, same as --setup full)
+scripts/dev-stack up --setup light    # database, webapp, frontend and proxy only
 ```
+
+The light setup leaves out the FHIR server, the Analyzer Bridge and the analyzer
+simulator. Add `--module=<module source folder>` to build and run a module; see
+the README's "Running a module from its source".
 
 Use the URL printed by `up`. Retrieve it later with `scripts/dev-stack url`.
 Localhost works with the generated `.env`; no domain or port settings are

@@ -136,6 +136,19 @@ which frontend dependency, Dockerfile, Analyzer Bridge and mock changes need.
 Native builds, focused tests, domain setup and published-image deployment are
 described in [the development guide](docs/dev_setup.md).
 
+`up` starts the full stack by default. `--setup light` starts only the database,
+the webapp, the frontend and the proxy, without the FHIR server, the Analyzer
+Bridge and the analyzer simulator, which every lab workflow can do without (see
+the light setup above):
+
+```bash
+scripts/dev-stack up --setup light   # database, webapp, frontend, proxy
+scripts/dev-stack up                 # the full stack (same as --setup full)
+```
+
+Switching setups reuses the same database. `status`, `env` and `down` follow the
+setup of the last `up`.
+
 #### Running a module from its source
 
 Run `scripts/dev-stack up` **from this repository (the OpenELIS core checkout),
@@ -149,6 +162,9 @@ current directory:
 cd OpenELIS-Global-2                                  # the core checkout
 scripts/dev-stack up --module=/path/to/my-module      # the module's source folder
 ```
+
+`--module` works with either setup, for example
+`scripts/dev-stack up --setup light --module=/path/to/my-module`.
 
 For example, `--module=../openelis-module-specimen-followup` runs a module
 checked out next to this repository. Every run of the command builds and deploys
