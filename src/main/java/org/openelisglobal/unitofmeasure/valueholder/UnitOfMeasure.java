@@ -13,23 +13,52 @@
  */
 package org.openelisglobal.unitofmeasure.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.EnumValueItemImpl;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.localization.valueholder.Localization;
 
+@Setter
+@Getter
+@DynamicUpdate
+@Entity
+@Table(name = "UNIT_OF_MEASURE")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class UnitOfMeasure extends EnumValueItemImpl {
 
+    @Id
+    @GeneratedValue(generator = "unit_of_measure_seq_gen")
+    @GenericGenerator(name = "unit_of_measure_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @org.hibernate.annotations.Parameter(name = "sequence_name", value = "unit_of_measure_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0)
     private String id;
 
+    @Column(name = "NAME", length = 20)
     private String unitOfMeasureName;
 
+    @Column(name = "DESCRIPTION", length = 60)
     private String description;
 
+    @Column(name = "CODE", length = 50)
     private String code;
 
+    @Column(name = "UCUM_CODE", length = 50)
     private String ucumCode;
 
-    private ValueHolderInterface localization;
+    @Transient
+    private Localization localization;
 
     public UnitOfMeasure() {
         super();
@@ -40,41 +69,16 @@ public class UnitOfMeasure extends EnumValueItemImpl {
         this.key = id;
     }
 
-    public String getId() {
-        return id;
+    @PostPersist
+    @PostLoad
+    private void syncEnumFields() {
+        this.key = id;
+        this.name = this.unitOfMeasureName;
     }
 
     public void setUnitOfMeasureName(String unitOfMeasureName) {
         this.unitOfMeasureName = unitOfMeasureName;
         this.name = unitOfMeasureName;
-    }
-
-    public String getUnitOfMeasureName() {
-        return unitOfMeasureName;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setUcumCode(String ucumCode) {
-        this.ucumCode = ucumCode;
-    }
-
-    public String getUcumCode() {
-        return ucumCode;
     }
 
     @Override
@@ -100,7 +104,4 @@ public class UnitOfMeasure extends EnumValueItemImpl {
         return (Localization) _localization;
     }
 
-    public void setLocalization(Localization localization) {
-        this.localization.setValue(localization);
-    }
 }
