@@ -176,7 +176,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         c.setLabel(label);
         c.setIsPrimary(primary);
         c.setResultType("N");
-        c.setSignificantDigits(0);
+        c.setReportingDecimalPlaces(0);
         c.setDisplayOrder(primary ? 0 : 1);
         return c;
     }
@@ -679,7 +679,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
 
     private void configurePrecision(int places) {
         var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
-        configured.forEach(c -> c.setSignificantDigits(places));
+        configured.forEach(c -> c.setReportingDecimalPlaces(places));
         components.saveSampleResults(analysis.getTest().getId(), configured, null, null, actor);
         em.flush();
     }

@@ -35,7 +35,7 @@ const component = (id, name) => ({
   resultType: "N",
   resultValue: "",
   rawResultValue: "",
-  significantDigits: 0,
+  reportingDecimalPlaces: 0,
   dictionaryResults: [],
 });
 const assay = {

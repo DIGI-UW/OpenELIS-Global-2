@@ -543,7 +543,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
                 String mantissa = exponent < 0 ? normalized : normalized.substring(0, exponent);
                 int dot = mantissa.indexOf('.');
                 int places = dot < 0 ? 0 : mantissa.length() - dot - 1;
-                int configured = row.getSignificantDigits();
+                int configured = row.getReportingDecimalPlaces();
                 if (!Objects.equals(value, row.getRawResultValue()) && configured >= 0
                         && (exponent < 0 || configured > 0) && places > configured)
                     bad("MICROBIOLOGY_INVALID_PRECISION");

@@ -5,6 +5,7 @@ import {
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
 import { apiPost } from "../../../helpers/admin-ui";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { csrfToken } from "../../../helpers/api-session";
 import {
   letters,
@@ -16,7 +17,8 @@ import {
  * Batch Order Entry (/SampleBatchEntrySetup): the setup screen's gating, then
  * one order saved per barcode in On Demand and Pre-Printed modes, for the
  * routine form and the EID study form. Each saved order is read back on Modify
- * Order.
+ * Order. The sample type, panels and tests are searched by typing (OGC-1515),
+ * and changing the sample type drops the tests chosen for the previous one.
  */
 
 const API = "/api/OpenELIS-Global/rest";
@@ -93,9 +95,10 @@ async function chooseRoutineSerum(
   await page
     .getByRole("combobox", { name: "Form:", exact: true })
     .selectOption("routine");
-  await page
-    .getByRole("combobox", { name: "Sample Type" })
-    .selectOption({ label: "Serum" });
+  await chooseCarbonOption(
+    page.getByRole("combobox", { name: "Sample Type" }),
+    "Serum",
+  );
   for (const label of [...panels, ...tests]) await tick(page, label);
 }
 
@@ -221,6 +224,37 @@ test.describe("Batch order entry", () => {
 
     await toggle(page, "Serologie VIH");
     await expect(checkbox(page, "Serologie VIH")).not.toBeChecked();
+    await expect(next).toBeDisabled();
+  });
+
+  test("the lists narrow to what is typed, and a new sample type drops the previous tests", async ({
+    page,
+  }) => {
+    await openSetup(page);
+    await chooseRoutineSerum(page, [], []);
+    await page
+      .getByRole("combobox", { name: "Methods" })
+      .selectOption({ label: "On Demand" });
+    const next = main(page).getByRole("button", { name: "Next", exact: true });
+
+    await main(page)
+      .getByRole("searchbox", { name: "Search panels" })
+      .fill("SÉROLOGIE");
+    await expect(checkbox(page, "Serologie VIH")).toBeVisible();
+    await expect(main(page).locator('input[id^="panel_"]')).toHaveCount(1);
+    await main(page)
+      .getByRole("searchbox", { name: "Search tests" })
+      .fill("ALAT");
+    await tick(page, "GPT/ALAT");
+    await expect(next).toBeEnabled();
+
+    await chooseCarbonOption(
+      page.getByRole("combobox", { name: "Sample Type" }),
+      "Whole Blood",
+    );
+    await expect(main(page).locator('input[id^="test_"]:checked')).toHaveCount(
+      0,
+    );
     await expect(next).toBeDisabled();
   });
 

@@ -99,13 +99,13 @@ public class MicroPatientReportService {
                     throw new IllegalStateException("REPORT_COMPONENT_UNAVAILABLE");
                 String label = component != null ? component.getLabel()
                         : result.getAnalyte() == null ? "" : result.getAnalyte().getAnalyteName();
-                String value = results.getSimpleResultValue(result);
+                String value = results.formatSimpleResultForDisplay(result);
                 if ("D".equals(result.getResultType())) {
                     var quantified = analysisResults.stream()
                             .filter(child -> child.getParentResult() != null
                                     && result.getId().equals(child.getParentResult().getId())
                                     && "A".equals(child.getResultType()) && !"N".equals(child.getIsReportable()))
-                            .map(results::getSimpleResultValue).filter(v -> v != null && !v.isBlank()).toList();
+                            .map(results::formatSimpleResultForDisplay).filter(v -> v != null && !v.isBlank()).toList();
                     if (!quantified.isEmpty())
                         value += " " + String.join(" ", quantified);
                 }

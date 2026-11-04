@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { describe, expect, it, vi } from "vitest";
+import { Modal } from "@carbon/react";
 import SearchableSelect from "./SearchableSelect";
 
 const OPTIONS = [
@@ -84,5 +85,97 @@ describe("SearchableSelect", () => {
     await userEvent.click(screen.getByRole("button", { name: /clear/i }));
 
     expect(onChange).toHaveBeenLastCalledWith("");
+  });
+
+  it("does not report a value the parent set, only a choice the user made", async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <SearchableSelect
+        id="probe"
+        labelText="Lab unit"
+        options={[]}
+        value="2"
+        onChange={onChange}
+      />,
+    );
+    rerender(
+      <SearchableSelect
+        id="probe"
+        labelText="Lab unit"
+        options={OPTIONS}
+        value="2"
+        onChange={onChange}
+      />,
+    );
+    rerender(
+      <SearchableSelect
+        id="probe"
+        labelText="Lab unit"
+        options={OPTIONS}
+        value="3"
+        onChange={onChange}
+      />,
+    );
+
+    expect(screen.getByRole("combobox")).toHaveValue("Sérologie VIH");
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.clear(screen.getByRole("combobox"));
+    await userEvent.type(screen.getByRole("combobox"), "biochi");
+    await userEvent.click(screen.getByRole("option", { name: "Biochimie" }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenLastCalledWith("2");
+  });
+
+  it("shows the chosen label again when a search is abandoned with Escape", async () => {
+    const onChange = vi.fn();
+    render(<Controlled onChange={onChange} initial="2" />);
+    const box = screen.getByRole("combobox");
+    expect(box).toHaveValue("Biochimie");
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "hema");
+    await userEvent.keyboard("{Escape}");
+
+    expect(box).toHaveValue("Biochimie");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("shows the chosen label again when focus leaves a half-typed search", async () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <Controlled onChange={onChange} initial="2" />
+        <button type="button">elsewhere</button>
+      </>,
+    );
+    const box = screen.getByRole("combobox");
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "hema");
+    await userEvent.click(screen.getByRole("button", { name: "elsewhere" }));
+
+    expect(box).toHaveValue("Biochimie");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps Escape for the search inside a dialog, so the dialog stays open", async () => {
+    const onRequestClose = vi.fn();
+    render(
+      <Modal open modalHeading="New cycle" onRequestClose={onRequestClose}>
+        <Controlled onChange={vi.fn()} initial="2" />
+      </Modal>,
+    );
+    const box = screen.getByRole("combobox");
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "hema");
+    await userEvent.keyboard("{Escape}");
+
+    expect(onRequestClose).not.toHaveBeenCalled();
+    expect(box).toHaveValue("Biochimie");
+
+    await userEvent.keyboard("{Escape}");
+    expect(onRequestClose).toHaveBeenCalled();
   });
 });

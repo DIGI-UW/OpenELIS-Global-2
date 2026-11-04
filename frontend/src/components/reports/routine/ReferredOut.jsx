@@ -1,12 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  Form,
-  Heading,
-  Grid,
-  Column,
-  Section,
-  Button,
-} from "@carbon/react";
+import { Form, Heading, Grid, Column, Section, Button } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -42,7 +35,10 @@ const ReferredOut = () => {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/displayList/REFERRAL_ORGANIZATIONS", fetchLocationCodes);
+    getFromOpenElisServer(
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
+      fetchLocationCodes,
+    );
     return () => {
       componentMounted.current = false;
     };
@@ -58,24 +54,11 @@ const ReferredOut = () => {
   ];
 
   const handleDatePickerChangeDate = (datePicker, date) => {
-    let updatedDate = encodeDate(date);
-    let obj = null;
-    switch (datePicker) {
-      case "startDate":
-        obj = {
-          ...reportFormValues,
-          startDate: updatedDate,
-        };
-        break;
-      case "endDate":
-        obj = {
-          ...reportFormValues,
-          endDate: updatedDate,
-        };
-        break;
-      default:
-    }
-    setReportFormValues(obj);
+    const updatedDate = encodeDate(date);
+    setReportFormValues((current) => ({
+      ...current,
+      [datePicker]: updatedDate,
+    }));
   };
 
   const handlePrinting = () => {

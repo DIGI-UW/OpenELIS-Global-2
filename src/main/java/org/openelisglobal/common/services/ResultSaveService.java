@@ -297,7 +297,11 @@ public class ResultSaveService {
         result.setResultType(serviceBean.getResultType());
         result.setMinNormal(serviceBean.getLowerNormalRange());
         result.setMaxNormal(serviceBean.getUpperNormalRange());
-        result.setSignificantDigits(serviceBean.getSignificantDigits());
+        if (serviceBean.getReportingDecimalPlaces() < 0) {
+            result.clearReportingDecimalPlaces();
+        } else {
+            result.setReportingDecimalPlaces(serviceBean.getReportingDecimalPlaces());
+        }
     }
 
     private void setAnalyteForResult(Result result) {
@@ -314,7 +318,7 @@ public class ResultSaveService {
 
     private void setStandardResultValues(String incoming, String postedMeasurement, Result result) {
         String value = valueToStore(incoming, postedMeasurement, result.getEnteredValue(), result.getResultType(),
-                result.getSignificantDigits());
+                result.getReportingDecimalPlaces());
         if (!(GenericValidator.isBlankOrNull(value) || GenericValidator.isBlankOrNull(result.getEnteredValue()))
                 && !isSameValue(value, result)) {
             updatedResult = true;
@@ -330,10 +334,9 @@ public class ResultSaveService {
     }
 
     /**
-     * A numeric result rewritten in another scientific notation, or padded to its
-     * significant digits as Validation saves it back ("1.2" as "1.20"), is the same
-     * result, so it must not book a correction against a report that has already
-     * gone out.
+     * A numeric result rewritten in another scientific notation, or with equivalent
+     * trailing zeros ("1.2" as "1.20"), is the same result, so it must not book a
+     * correction against a report that has already gone out.
      */
     static boolean isSameValue(String value, String enteredValue, String resultType) {
         String entered = StringUtil.blankIfNull(enteredValue);
@@ -376,8 +379,7 @@ public class ResultSaveService {
             return incoming;
         }
         String entered = enteredValue.trim();
-        String served = StringUtil.isScientificNotation(entered) ? StringUtil.padMantissa(entered, decimalPlaces)
-                : StringUtil.roundToPlaces(StringUtil.normalizeScientificNotation(entered), decimalPlaces);
+        String served = StringUtil.roundToPlaces(entered, decimalPlaces);
         return incoming.trim().equals(served == null ? null : served.trim()) ? enteredValue : incoming;
     }
 

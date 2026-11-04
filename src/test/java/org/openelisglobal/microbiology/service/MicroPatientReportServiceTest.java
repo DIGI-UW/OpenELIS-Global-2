@@ -138,8 +138,8 @@ public class MicroPatientReportServiceTest {
         option.setComponentId("hidden");
         hiddenResult.setTestResult(option);
         when(results.getResultsByAnalysis(analysis)).thenReturn(List.of(parent, child, privateChild, hiddenResult));
-        when(results.getSimpleResultValue(parent)).thenReturn("Bacteria present");
-        when(results.getSimpleResultValue(child)).thenReturn("10^5 CFU/mL");
+        when(results.formatSimpleResultForDisplay(parent)).thenReturn("Bacteria present");
+        when(results.formatSimpleResultForDisplay(child)).thenReturn("10^5 CFU/mL");
         var noDst = new MicroDstForm();
         noDst.classification = "NOT_APPLICABLE";
         when(dst.evaluate("c")).thenReturn(noDst);
@@ -147,7 +147,7 @@ public class MicroPatientReportServiceTest {
         assertEquals(1, report.validatedResults);
         assertEquals(1, report.initial.get(0).values().size());
         assertEquals("Bacteria present 10^5 CFU/mL", report.initial.get(0).values().get(0).value());
-        verify(results, never()).getSimpleResultValue(privateChild);
-        verify(results, never()).getSimpleResultValue(hiddenResult);
+        verify(results, never()).formatSimpleResultForDisplay(privateChild);
+        verify(results, never()).formatSimpleResultForDisplay(hiddenResult);
     }
 }

@@ -1451,7 +1451,7 @@ public class MicrobiologyUatScenarioService {
         primary.setLabel("Initial value");
         primary.setIsPrimary(true);
         primary.setResultType("N");
-        primary.setSignificantDigits(0);
+        primary.setReportingDecimalPlaces(0);
         primary.setDisplayOrder(0);
         var desired = new java.util.ArrayList<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent>();
         desired.add(primary);
@@ -1461,7 +1461,7 @@ public class MicrobiologyUatScenarioService {
             secondary.setLabel("Second value");
             secondary.setIsPrimary(false);
             secondary.setResultType("N");
-            secondary.setSignificantDigits(0);
+            secondary.setReportingDecimalPlaces(0);
             secondary.setDisplayOrder(1);
             desired.add(secondary);
         }

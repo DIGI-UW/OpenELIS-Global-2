@@ -150,7 +150,7 @@ public class TestResultItem implements ResultItem, Serializable {
      */
     private String criticalRange = "";
 
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     private String expandedUncertainty;
 
@@ -1357,12 +1357,12 @@ public class TestResultItem implements ResultItem, Serializable {
         this.normalRange = normalRange;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getExpandedUncertainty() {

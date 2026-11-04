@@ -18,6 +18,10 @@ public interface AnalyzerMappingConfirmationService {
 
     AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate);
 
+    /** Assess multiple mappings against a catalog read for this operation. */
+    AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate,
+            AnalyzerMappingCatalogState catalog);
+
     Optional<AnalyzerMappingConfirmation> findForMapping(String mappingId);
 
 }

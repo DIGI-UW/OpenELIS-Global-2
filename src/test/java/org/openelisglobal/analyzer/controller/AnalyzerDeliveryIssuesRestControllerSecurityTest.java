@@ -49,7 +49,7 @@ public class AnalyzerDeliveryIssuesRestControllerSecurityTest extends SecuritySl
         reset(deliveryIssueService);
         when(deliveryIssueService.getOpenIssues()).thenReturn(List.of(new AnalyzerDeliveryIssue("ob-1", "DMQ", "12",
                 "GeneXpert bench 1", "conn-7", "10.1.2.3", "GENEXPERT^GeneXpert^6.2", "ASTM", "DEV0126100001", 5,
-                "2026-09-24T01:00:00Z", "OE_REJECTED", 422, "Unknown test code", true)));
+                "2026-09-24T01:00:00Z", "OE_REJECTED", 422, "Unknown test code", true, 12001, "TCP")));
     }
 
     @Test
@@ -139,7 +139,8 @@ public class AnalyzerDeliveryIssuesRestControllerSecurityTest extends SecuritySl
     @Test
     public void retryWithAnalyserImportRole_retriesThatEntry() throws Exception {
         mockMvc.perform(post(BASE + "/ob-1/retry").with(user("operator").roles("ANALYSER_IMPORT"))
-                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(17))).andExpect(status().isOk());
+                .requestAttr(IActionConstants.USER_SESSION_DATA, sessionFor(17))).andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("accepted")).andExpect(jsonPath("$.state").value("QUEUED"));
         verify(deliveryIssueService).retry("ob-1", "17");
     }
 

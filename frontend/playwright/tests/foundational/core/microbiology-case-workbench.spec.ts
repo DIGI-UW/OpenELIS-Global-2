@@ -11,6 +11,7 @@ import {
   openMicrobiologyCaseSection,
 } from "../../../helpers/microbiology-ui";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+import { chooseFirstCarbonOption } from "../../../helpers/carbon-select";
 
 const selectConfiguredOption = async (
   field: import("@playwright/test").Locator,
@@ -177,7 +178,9 @@ test("reports an NCE and records a separate lost specimen with keyboard access",
       await expect(panel.getByLabel("Category")).toBeDisabled();
       await expect(panel.getByLabel("Type")).toHaveValue(/.+/);
     } else await selectConfiguredOption(panel.getByLabel("Category"));
-    await selectConfiguredOption(panel.getByLabel("Reporting unit"));
+    await chooseFirstCarbonOption(
+      panel.getByRole("combobox", { name: /Reporting unit/ }),
+    );
     await panel
       .getByRole("radio", { name: "Major", exact: true })
       .press("Space");
