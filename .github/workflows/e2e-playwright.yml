@@ -15,7 +15,10 @@ on:
       - spec/782-*
       - feat/782-*
   push:
-    branches: [develop]
+    # A push to modula builds and tests like develop so that "Publish images"
+    # can retag the tested images with the branch name; only develop deploys
+    # to the testing VM.
+    branches: [develop, modula]
   release:
     types: [published]
   workflow_dispatch:
