@@ -131,6 +131,12 @@ RUN chown tomcat_admin:tomcat /healthcheck.sh; \
 ADD install/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
     chmod 770 /docker-entrypoint.sh;
+
+# The same Tomcat configuration as the release image (TLS on 8443 from the
+# mounted keystore, the application under /api/OpenELIS-Global), so a published
+# development image runs wherever the release image runs. The local launcher
+# mounts its own copy over it.
+COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml
 USER root
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
