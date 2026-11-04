@@ -470,8 +470,8 @@ def require_module_support(context: StackContext, environment: dict[str, str]) -
     except subprocess.CalledProcessError:
         raise RuntimeError(
             f"The backend image {image} cannot load modules (its entrypoint predates the module runtime). "
-            "Use images built with module support: DEV_STACK_IMAGE_TAG=<branch with modules, e.g. modula> "
-            "scripts/dev-stack up --module ..., or add --build to build them from this checkout."
+            "Pull newer development images (rerun up without --skip-build), or add --build to build "
+            "them from this checkout."
         ) from None
 
 

@@ -138,13 +138,16 @@ described in [the development guide](docs/dev_setup.md).
 
 #### Running a module from its source
 
-Give `up` the folder of any [module](docs/modules.md) source checkout, meaning a
+Run `scripts/dev-stack up` **from this repository (the OpenELIS core checkout),
+not from the module's folder**, and give it the module's folder with `--module`.
+The module folder is any [module](docs/modules.md) source checkout, meaning a
 folder with a `pom.xml` and `src/main/resources/META-INF/openelis-module.json`.
 Repeat `--module` for several modules; a relative path is resolved from the
 current directory:
 
 ```bash
-DEV_STACK_IMAGE_TAG=modula scripts/dev-stack up --module=/path/to/my-module
+cd OpenELIS-Global-2                                  # the core checkout
+scripts/dev-stack up --module=/path/to/my-module      # the module's source folder
 ```
 
 For example, `--module=../openelis-module-specimen-followup` runs a module
@@ -167,12 +170,10 @@ restarts the webapp, so the new version migrates and starts.
 for later `up` runs without `--module`, which serve the pages built into the
 JAR. To remove the module, delete `volume/modules/<id>.jar` and run `up` again.
 
-`DEV_STACK_IMAGE_TAG=modula` selects the development images published from the
-`modula` branch, which can load modules; `--build` builds them from the checkout
-instead. Node.js is needed on the host for the dev server; without it the pages
-are served from the JAR. If the dev server stops (a reboot, a crash), the
-module's pages fail to load until the command is run again; `up` without
-`--module` goes back to the pages built into the JAR.
+Node.js is needed on the host for the dev server; without it the pages are
+served from the JAR. If the dev server stops (a reboot, a crash), the module's
+pages fail to load until the command is run again; `up` without `--module` goes
+back to the pages built into the JAR.
 
 #### The Instances can be accessed at
 
