@@ -26,6 +26,7 @@ import { applyPlugin } from "jspdf-autotable";
 import ExcelJS from "exceljs";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import SearchableSelect from "../common/SearchableSelect";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import ShipmentNavigation from "./ShipmentNavigation";
@@ -409,18 +410,17 @@ const ShipmentReport = () => {
           />
         </Column>
         <Column lg={3} md={4} sm={4}>
-          <Dropdown
+          <SearchableSelect
             id="report-facility-filter"
-            titleText={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "shipment.filter.referenceLab",
             })}
-            label={intl.formatMessage({ id: "label.select" })}
-            items={facilities}
-            itemToString={(item) => (item ? item.text : "")}
-            selectedItem={facilities.find((f) => f.id === filterFacility)}
-            onChange={({ selectedItem }) =>
-              setFilterFacility(selectedItem?.id || "")
-            }
+            placeholder={intl.formatMessage({ id: "label.all" })}
+            options={facilities
+              .filter((facility) => facility.id !== "")
+              .map((facility) => ({ id: facility.id, value: facility.text }))}
+            value={filterFacility}
+            onChange={setFilterFacility}
           />
         </Column>
         <Column lg={3} md={4} sm={4}>

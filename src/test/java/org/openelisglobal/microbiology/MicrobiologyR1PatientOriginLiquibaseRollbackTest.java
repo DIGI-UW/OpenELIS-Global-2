@@ -18,7 +18,7 @@ import org.testcontainers.utility.MountableFile;
 public class MicrobiologyR1PatientOriginLiquibaseRollbackTest {
 
     @Test
-    public void patientOriginReferenceRollsBackAndReappliesOnStandaloneDatabase() throws Exception {
+    public void patientOriginSchemaRollsBackAndReappliesWithoutSeedingConcepts() throws Exception {
         try (PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:14.4")) {
             postgres.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
                     "/docker-entrypoint-initdb.d");
@@ -36,8 +36,8 @@ public class MicrobiologyR1PatientOriginLiquibaseRollbackTest {
 
                 Liquibase fullChangelog = new Liquibase("liquibase/base-changelog.xml", resources, database);
                 fullChangelog.update(new Contexts("test"));
-                assertEquals(6, rowCount(connection, "micro_patient_origin"));
-                assertEquals(6, distinctGeneratedIdCount(connection));
+                assertEquals(1, tableCount(connection, "micro_patient_origin"));
+                assertEquals(0, rowCount(connection, "micro_patient_origin"));
                 assertEquals(1, tableCount(connection, "micro_patient_origin_default"));
 
                 Liquibase originChangelog = new Liquibase(
@@ -47,8 +47,8 @@ public class MicrobiologyR1PatientOriginLiquibaseRollbackTest {
                 assertEquals(0, tableCount(connection, "micro_patient_origin_default"));
 
                 originChangelog.update(new Contexts("test"));
-                assertEquals(6, rowCount(connection, "micro_patient_origin"));
-                assertEquals(6, distinctGeneratedIdCount(connection));
+                assertEquals(1, tableCount(connection, "micro_patient_origin"));
+                assertEquals(0, rowCount(connection, "micro_patient_origin"));
             }
         }
     }
@@ -73,13 +73,4 @@ public class MicrobiologyR1PatientOriginLiquibaseRollbackTest {
         }
     }
 
-    private int distinctGeneratedIdCount(Connection connection) throws Exception {
-        try (PreparedStatement statement = connection
-                .prepareStatement("SELECT count(DISTINCT id) FROM clinlims.micro_patient_origin "
-                        + "WHERE id IS NOT NULL AND length(id) = 36");
-                ResultSet result = statement.executeQuery()) {
-            result.next();
-            return result.getInt(1);
-        }
-    }
 }

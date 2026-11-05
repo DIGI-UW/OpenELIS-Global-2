@@ -6,7 +6,7 @@ envEnvironmentalConditions,Environmental conditions at time of collection (tempe
 envLocationRegionId,Address hierarchy region ID for collection location,Region,Region
 envLocationDistrictId,Address hierarchy district ID for collection location,District,District
 envLocationVillageId,Address hierarchy village/town ID for collection location,Village/Town,Village/Ville
-envSamplingSiteId,Organization ID of the sampling site,Sampling Site ID,ID du site d'echantillonnage
+envSamplingSiteId,Identifier of the sampling site,Sampling Site ID,ID du site d'echantillonnage
 envSamplingSiteName,Name of the sampling site,Sampling Site Name,Nom du site d'echantillonnage
 envSiteType,Type of sampling site,Site Type,Type de site
 envSiteSubtype,Subtype of sampling site,Site Subtype,Sous-type de site
@@ -15,3 +15,9 @@ envRegulatoryReference,Regulatory reference for the collection,Regulatory Refere
 envCollectionMethod,Method used for sample collection,Collection Method,Methode de collecte
 envContactPerson,Contact person at sampling site,Contact Person,Personne de contact
 envContactPhone,Contact phone for sampling site,Contact Phone,Telephone de contact
+envWaterTemp,Water temperature at collection,Water temperature,
+envAmbientTemp,Ambient temperature at collection,Ambient temperature,
+envWeather,Weather at collection,Weather,
+envPreservationMethod,Sample preservation method,Preservation method,
+envFieldNotes,Environmental collection notes,Field notes,
+envComplianceStandards,Selected environmental compliance standards,Compliance standards,

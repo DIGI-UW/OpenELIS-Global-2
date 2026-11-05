@@ -51,6 +51,9 @@ import {
   statusTagType,
 } from "./batchWorkplanUtils";
 
+/** A lot whose QC is not current is due for a run now, not at a later time. */
+const QC_DUE_NOW = ["FAILED", "VIOLATION", "OVERDUE", "NOT_RUN"];
+
 const POLL_INTERVAL_MS = 1000;
 const POLL_TIMEOUT_MS = 30000;
 
@@ -72,11 +75,20 @@ export default function BatchTile({
   const active = batch.status === "ACTIVE";
   const qc = batch.qc;
   const latestReleasedAt = (batch.releases || [])[0]?.releasedAt;
+  const latestOverrideReason = (batch.releases || []).find(
+    (release) =>
+      release.releasedAt === latestReleasedAt && release.overrideReason,
+  )?.overrideReason;
   const latestNce = (batch.releases || []).find(
     (release) => release.releasedAt === latestReleasedAt && release.nceNumber,
   );
 
-  const [options, setOptions] = useState(null);
+  const testKey = (batch.items || []).map((item) => item.testId).join(",");
+  const [loadedOptions, setLoadedOptions] = useState(null);
+  const options =
+    loadedOptions && loadedOptions.testKey === testKey
+      ? loadedOptions.body
+      : null;
   const [reagentId, setReagentId] = useState(batch.reagentId || "");
   const [lotId, setLotId] = useState(batch.reagentLotId || "");
   const [instrumentId, setInstrumentId] = useState(batch.instrumentId || "");
@@ -98,14 +110,16 @@ export default function BatchTile({
       getFromOpenElisServer(
         `${BATCH_ENDPOINT}/batches/${batch.id}/setup-options`,
         (body) =>
-          setOptions(
-            body && Array.isArray(body.reagents)
-              ? body
-              : { reagents: [], instruments: [] },
-          ),
+          setLoadedOptions({
+            testKey,
+            body:
+              body && Array.isArray(body.reagents)
+                ? body
+                : { reagents: [], instruments: [] },
+          }),
       );
     }
-  }, [expanded, draft, options, batch.id]);
+  }, [expanded, draft, options, batch.id, testKey]);
 
   useEffect(() => () => clearTimeout(pollTimer.current), []);
 
@@ -221,11 +235,11 @@ export default function BatchTile({
     pollQc(Date.now());
   };
 
-  const generate = (withOverride) => {
+  const generate = (withOverride, reason) => {
     setBusy(true);
     postToOpenElisServerFullResponse(
       `${BATCH_ENDPOINT}/batches/${batch.id}/generate`,
-      JSON.stringify({ override: withOverride }),
+      JSON.stringify({ override: withOverride, reason: reason || null }),
       async (response) => {
         setBusy(false);
         if (response?.ok) {
@@ -369,6 +383,17 @@ export default function BatchTile({
                 />
               </Tag>
             </Link>
+          )}
+          {latestOverrideReason && (
+            <span
+              className="batch-workplan__muted"
+              data-testid={`batch-${batch.id}-override-reason`}
+            >
+              <FormattedMessage
+                id="workplan.batch.overrideReason"
+                values={{ reason: latestOverrideReason }}
+              />
+            </span>
           )}
           <OverflowMenu
             size="sm"
@@ -780,7 +805,11 @@ export default function BatchTile({
                         <TableCell>
                           {lot.nextDueAt
                             ? formatDateTime(intl, lot.nextDueAt)
-                            : ""}
+                            : lot.qcRequired &&
+                              QC_DUE_NOW.includes(lot.status) &&
+                              intl.formatMessage({
+                                id: "workplan.batch.qc.dueNow",
+                              })}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -934,7 +963,7 @@ export default function BatchTile({
         qc={override}
         canOverride={canOverride}
         busy={busy}
-        onProceed={() => generate(true)}
+        onProceed={(reason) => generate(true, reason)}
         onClose={() => setOverride(null)}
       />
     </div>

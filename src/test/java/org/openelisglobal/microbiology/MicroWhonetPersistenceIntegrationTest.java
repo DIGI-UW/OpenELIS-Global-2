@@ -80,16 +80,20 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     @PersistenceContext
     private EntityManager entityManager;
 
+    private String scenarioActor;
+
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        scenarioActor = fixtures.createScenarioActor();
         fixtures.ensureRequiredWorkflowStatuses();
+        fixtures.ensureCultureAtmosphere();
     }
 
     @Test
     public void serviceCreatedFinalCaseIsSelectedAndExportAuditRoundTrips() throws Exception {
-        String performedBy = fixtures.defaultUserId();
+        String performedBy = scenarioActor;
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "M4";
         request.scenarioKey = "integration-m4-" + UUID.randomUUID();
@@ -111,26 +115,24 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Reference organism (integration)",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
                 "MALDI_TOF", new BigDecimal("99.5"), performedBy);
+        fixtures.prepareAstCase(caseDAO.get(scenario.caseId).orElseThrow(), performedBy);
         MicroAstRun run = astService.startRun(isolate.getId(), scenario.astPanelId, scenario.activeBreakpointStandardId,
                 performedBy);
         astService.getPanelAntibiotics(scenario.astPanelId).forEach(ordered -> astService.recordReading(run.getId(),
                 ordered.getAntibioticId(), MicroAstMethod.MIC, new BigDecimal("4"), performedBy));
         astService.reviewRun(run.getId(), performedBy);
+        fixtures.prepareFinalCase(caseDAO.get(scenario.caseId).orElseThrow(), performedBy);
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
 
-        // V1 retirement left the workflow_type column readable only for this
-        // export selection, with no application writer left: stamp the stored
-        // V1 value directly to stand in for a legacy bacteriology row.
-        entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
-                .setParameter("id", released.getId()).executeUpdate();
         entityManager.flush();
         entityManager.refresh(released);
 
         assertTrue(released.getClosedAt().after(new Timestamp(collectionDate.getTime() + 1_000)));
-        assertEquals(List.of(released), caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,
+        assertEquals(List.of(released), caseDAO.getFinalizedByCollectionDateRange(collectionDate,
                 new Timestamp(collectionDate.getTime() + 1_000)));
-        assertFalse(caseDAO.getFinalizedBacteriologyByCollectionDateRange(
-                new Timestamp(collectionDate.getTime() - 1_000), collectionDate).contains(released));
+        assertFalse(caseDAO
+                .getFinalizedByCollectionDateRange(new Timestamp(collectionDate.getTime() - 1_000), collectionDate)
+                .contains(released));
 
         LocalDate exportDate = collectionDate.toLocalDateTime().toLocalDate();
         MicroWhonetExportQueryForm exportQuery = new MicroWhonetExportQueryForm();
@@ -170,7 +172,7 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
 
     @Test
     public void independentWhonetScenariosCreateDistinctSchemaValidSampleTypes() {
-        String performedBy = fixtures.defaultUserId();
+        String performedBy = scenarioActor;
         MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
         request.scenario = "M4";
         request.scenarioKey = "integration-m4-first-" + UUID.randomUUID();

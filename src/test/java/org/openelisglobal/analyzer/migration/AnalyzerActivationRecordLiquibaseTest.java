@@ -28,6 +28,18 @@ public class AnalyzerActivationRecordLiquibaseTest {
     }
 
     @Test
+    public void setupReceptionMigrationPreservesHistoryOnRollback() throws Exception {
+        assertTrue(attributes(elements(parse(BASE_CHANGELOG), "include"), "file")
+                .contains("144-analyzer-setup-reception.xml"));
+        Document migration = parse(VERSION_ROOT.resolve("144-analyzer-setup-reception.xml"));
+        assertTrue(elements(migration, "changeSet").iterator().next().getTextContent().contains("'SETUP'"));
+        String rollback = elements(migration, "rollback").iterator().next().getTextContent();
+        assertTrue(rollback.contains("NOT VALID"));
+        assertFalse(rollback.toUpperCase().contains("DELETE FROM"));
+        assertFalse(rollback.toUpperCase().contains("DROP TABLE"));
+    }
+
+    @Test
     public void migrationStoresOneBridgeReferenceAndRetainsAcknowledgementHistory() throws Exception {
         Document migration = parse(MIGRATION);
         Element table = elements(migration, "createTable").stream()

@@ -565,6 +565,34 @@ const AnalyzerTypeManagement = () => {
             />
           )}
 
+          {catalog?.bridgeConfigured === false && (
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              data-testid="analyzer-types-bridge-not-configured"
+              title={intl.formatMessage({
+                id: "analyzer.bridgePairing.error.notConfigured",
+              })}
+            />
+          )}
+
+          {catalog?.bridgeConfigured !== false &&
+            catalog?.bridgePaired === false && (
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                data-testid="analyzer-types-bridge-not-paired"
+                title={intl.formatMessage({
+                  id: "analyzer.bridgePairing.unpaired.title",
+                })}
+                subtitle={intl.formatMessage({
+                  id: "analyzerType.bridgeNotPaired.subtitle",
+                })}
+              />
+            )}
+
           {catalog?.issues?.length > 0 && (
             <div className="analyzer-type-page__catalog-issues">
               <InlineNotification
@@ -625,18 +653,38 @@ const AnalyzerTypeManagement = () => {
                         {carbonRows.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={headers.length}>
-                              <InlineNotification
-                                className="analyzer-type-page__empty"
-                                kind="info"
-                                lowContrast
-                                hideCloseButton
-                                title={intl.formatMessage({
-                                  id: "analyzerType.empty.title",
-                                })}
-                                subtitle={intl.formatMessage({
-                                  id: "analyzerType.empty.subtitle",
-                                })}
-                              />
+                              {(catalog?.types || []).length === 0 ? (
+                                <InlineNotification
+                                  className="analyzer-type-page__empty"
+                                  kind="info"
+                                  lowContrast
+                                  hideCloseButton
+                                  title={intl.formatMessage({
+                                    id: "analyzerType.none.title",
+                                  })}
+                                  subtitle={
+                                    catalog?.bridgeConfigured === false ||
+                                    catalog?.bridgePaired === false
+                                      ? undefined
+                                      : intl.formatMessage({
+                                          id: "analyzerType.none.subtitle",
+                                        })
+                                  }
+                                />
+                              ) : (
+                                <InlineNotification
+                                  className="analyzer-type-page__empty"
+                                  kind="info"
+                                  lowContrast
+                                  hideCloseButton
+                                  title={intl.formatMessage({
+                                    id: "analyzerType.empty.title",
+                                  })}
+                                  subtitle={intl.formatMessage({
+                                    id: "analyzerType.empty.subtitle",
+                                  })}
+                                />
+                              )}
                             </TableCell>
                           </TableRow>
                         ) : (

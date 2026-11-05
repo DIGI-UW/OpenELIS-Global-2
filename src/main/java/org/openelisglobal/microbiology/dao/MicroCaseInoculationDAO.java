@@ -8,5 +8,9 @@ public interface MicroCaseInoculationDAO extends BaseDAO<MicroCaseInoculation, S
 
     List<MicroCaseInoculation> getByCaseId(String caseId);
 
+    List<MicroCaseInoculation> getRows(String caseId);
+
+    List<org.openelisglobal.sampleitem.valueholder.SampleItem> getSources(String caseId);
+
     List<MicroCaseInoculation> getByContainerIdentifier(String containerIdentifier);
 }
