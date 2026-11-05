@@ -39,7 +39,7 @@ scripts/dev-stack up --setup light    # database, webapp, frontend and proxy onl
 ```
 
 The light setup leaves out the FHIR server, the Analyzer Bridge and the analyzer
-simulator. Add `--module=<module source folder>` to build and run a module; see
+simulator. Add `--module <module source folder>` to build and run a module; see
 the README's "Running a module from its source".
 
 Use the URL printed by `up`. Retrieve it later with `scripts/dev-stack url`.
