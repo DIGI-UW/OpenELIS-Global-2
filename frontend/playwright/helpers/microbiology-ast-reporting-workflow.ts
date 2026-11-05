@@ -3,7 +3,11 @@ import type { Locator, Page, TestInfo } from "@playwright/test";
 import { seedMicrobiologyAstReporting } from "./seed-microbiology-data";
 import { readMicrobiologyPatientReport } from "./microbiology-patient-report";
 import { LONG_TIMEOUT } from "./timeouts";
-import { openMicrobiologyCaseScope } from "./microbiology-ui";
+import {
+  caseBarButton,
+  openMicrobiologyCaseScope,
+  releaseFinalReport,
+} from "./microbiology-ui";
 
 export async function startAstRun(
   page: Page,
@@ -79,9 +83,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   );
   await enterAndValidateAstRun(page, firstRun, "4");
   await openMicrobiologyCaseScope(page, "REPORT");
-  await page
-    .getByRole("button", { name: "Release partial report", exact: true })
-    .click();
+  await caseBarButton(page, "Release partial report").click();
   await expect(
     page.getByLabel("Report version", { exact: true }).locator("option"),
   ).toHaveCount(2, { timeout: LONG_TIMEOUT });
@@ -117,9 +119,7 @@ export async function runMicrobiologyAstReportingWorkflow(
   await expect(
     reportTable.getByRole("cell", { name: "Susceptible", exact: true }),
   ).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Release partial report", exact: true })
-    .click();
+  await caseBarButton(page, "Release partial report").click();
   await checkpoint?.(
     3,
     "Select the repeat for one drug while retaining the other drug result",
@@ -137,9 +137,7 @@ export async function runMicrobiologyAstReportingWorkflow(
     "Verify that the earlier issued report remains unchanged",
   );
   await versions.selectOption("");
-  await page
-    .getByRole("button", { name: "Release final report", exact: true })
-    .click();
+  await releaseFinalReport(page);
   await expect(versions.locator("option")).toHaveCount(4, {
     timeout: LONG_TIMEOUT,
   });

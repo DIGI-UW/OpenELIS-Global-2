@@ -1,5 +1,7 @@
 import {
+  caseBarButton,
   openMicrobiologyCaseScope,
+  releaseFinalReport,
   selectCultureMedium,
 } from "../../../helpers/microbiology-ui";
 import { test, expect } from "../../../helpers/test-base";
@@ -42,9 +44,7 @@ test("records no growth without publishing, then releases one final negative rep
     .first();
   await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
   await openMicrobiologyCaseScope(page, "REPORT");
-  await expect(
-    page.getByRole("button", { name: "Release final report", exact: true }),
-  ).toBeDisabled();
+  await expect(caseBarButton(page, /^Release final report/)).toBeDisabled();
   await openMicrobiologyCaseScope(page, "CULTURE");
   await row
     .getByRole("button", { name: "Record outcome", exact: true })
@@ -58,12 +58,7 @@ test("records no growth without publishing, then releases one final negative rep
   await expect(page.getByText(/UAT-NO-GROWTH-01: No growth/)).toBeVisible();
   const versions = page.getByLabel("Report version", { exact: true });
   await expect(versions.locator("option")).toHaveCount(1);
-  const release = page.getByRole("button", {
-    name: "Release final report",
-    exact: true,
-  });
-  await expect(release).toBeEnabled({ timeout: LONG_TIMEOUT });
-  await release.click();
+  await releaseFinalReport(page);
   await expect(versions.locator("option")).toHaveCount(2, {
     timeout: LONG_TIMEOUT,
   });

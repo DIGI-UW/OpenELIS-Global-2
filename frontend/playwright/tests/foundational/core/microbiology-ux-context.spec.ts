@@ -4,6 +4,7 @@ import { seedMicrobiologyMissingContext } from "../../../helpers/seed-microbiolo
 import {
   openMicrobiologyCaseInfo,
   openMicrobiologyCaseScope,
+  releaseFinalReport,
   selectCultureMedium,
 } from "../../../helpers/microbiology-ui";
 import { readMicrobiologyPatientReport } from "../../../helpers/microbiology-patient-report";
@@ -110,12 +111,7 @@ test("completes missing clinical context through release blockers, preserves row
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(culture.getByText("No growth", { exact: true })).toBeVisible();
   await openMicrobiologyCaseScope(page, "REPORT");
-  const release = page.getByRole("button", {
-    name: "Release final report",
-    exact: true,
-  });
-  await expect(release).toBeEnabled({ timeout: LONG_TIMEOUT });
-  await release.click();
+  await releaseFinalReport(page);
   await expect(
     page.getByText("Final case is read-only", { exact: true }),
   ).toBeVisible();

@@ -32,6 +32,25 @@ export const expectMicrobiologyCaseScopeOpen = async (
     },
   );
 
+export const caseBarButton = (page: Page, name: string | RegExp) =>
+  page
+    .getByLabel("Case summary", { exact: true })
+    .getByRole(
+      "button",
+      typeof name === "string" ? { name, exact: true } : { name },
+    );
+
+export const releaseFinalReport = async (page: Page) => {
+  const release = caseBarButton(page, "Release final report");
+  await expect(release).toBeEnabled({ timeout: LONG_TIMEOUT });
+  await release.click();
+  const confirm = page.getByRole("dialog", { name: "Release final report?" });
+  await confirm
+    .getByRole("button", { name: "Release final", exact: true })
+    .click();
+  await expect(confirm).toHaveCount(0, { timeout: LONG_TIMEOUT });
+};
+
 export const openMicrobiologyCaseInfo = async (page: Page) => {
   const heading = page.getByRole("button", { name: "Case info", exact: true });
   await expect(heading).toBeVisible({ timeout: LONG_TIMEOUT });
