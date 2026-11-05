@@ -1295,5 +1295,28 @@ class DevStackLocalCertificateTest(unittest.TestCase):
         self.assertNotIn("TRUST_STORES", environment)
 
 
+
+class DevStackDiskTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def warnings_for(self, free):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        usage = SimpleNamespace(total=0, used=0, free=free)
+        with (
+            patch.object(self.dev_stack.shutil, "disk_usage", return_value=usage),
+            contextlib.redirect_stderr(io.StringIO()) as warnings,
+        ):
+            self.dev_stack.warn_on_low_disk(context)
+        return warnings.getvalue()
+
+    def test_a_nearly_full_disk_is_named_before_the_build(self):
+        self.assertIn("0.5 GB free", self.warnings_for(512 * 1024**2))
+
+    def test_enough_space_says_nothing(self):
+        self.assertEqual(self.warnings_for(20 * 1024**3), "")
+
+
 if __name__ == "__main__":
     unittest.main()
