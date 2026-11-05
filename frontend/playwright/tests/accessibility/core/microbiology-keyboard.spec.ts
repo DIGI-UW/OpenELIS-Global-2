@@ -344,7 +344,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.press("Enter");
       await expect(
         page.getByTestId("microbiology-release-state"),
-      ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
+      ).toContainText("Partial report released", { timeout: LONG_TIMEOUT });
       await attachScreenshot(page, testInfo, "keyboard-preliminary-release");
     });
 
