@@ -207,6 +207,44 @@ describe("CatalogImport", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("a preview lists what a file takes away", async () => {
+    postToOpenElisServerFormDataJsonResponse.mockImplementation(
+      (url, formData, callback) =>
+        callback({
+          importRunId: "run-1",
+          unresolvedCount: 0,
+          files: [
+            {
+              domain: "tests",
+              fileName: "tests-cphl.csv",
+              created: 0,
+              updated: 0,
+              skipped: 1,
+              rows: [
+                {
+                  lineNumber: 0,
+                  outcome: "REMOVED",
+                  reason:
+                    "Escherichia coli removed from group Enterobacterales",
+                },
+              ],
+              error: null,
+            },
+          ],
+        }),
+    );
+    renderPage();
+    await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+    await drop([csv("tests-cphl.csv")]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    await screen.findByTestId("catalog-import-plan");
+    expect(
+      screen.getByText("Escherichia coli removed from group Enterobacterales"),
+    ).toBeInTheDocument();
+  });
+
   /** OGC-1466: a preview is about the files as typed; a type change asks for a new one. */
   test("changing a file's catalog area after a preview turns Apply off", async () => {
     applyAnswers({});

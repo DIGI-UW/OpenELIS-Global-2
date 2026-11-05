@@ -52,6 +52,7 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
 
     @Override
     protected void load(List<CsvRow> rows, RowTransactionRunner transaction, CsvLoadSummary summary, String fileName) {
+        List<String> removals = new ArrayList<>();
         List<LoadedRow<String>> outcomes = transaction.run(() -> {
             List<String> errors = new ArrayList<>();
             List<MembershipRow> memberships = new ArrayList<>();
@@ -79,8 +80,9 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                 for (String group : groupNames) {
                     if (wanted.contains(group)) {
                         changed |= organism.getLabGroups().add(group);
-                    } else {
-                        changed |= organism.getLabGroups().remove(group);
+                    } else if (organism.getLabGroups().remove(group)) {
+                        removals.add(organism.getDisplayName() + " removed from group " + group);
+                        changed = true;
                     }
                 }
                 if (changed) {
@@ -126,6 +128,7 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
         for (int i = 0; i < outcomes.size(); i++) {
             summary.record(outcomes.get(i), getClass().getSimpleName(), rows.get(i).lineNumber());
         }
+        removals.forEach(removal -> summary.removed(getClass().getSimpleName(), removal));
     }
 
     private MicroOrganism organism(CsvRow row) {

@@ -22,6 +22,8 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroBreakpointConfigurationHandler breakpointsHandler;
     @Autowired
+    private MicroOrganismGroupConfigurationHandler groupsHandler;
+    @Autowired
     private org.openelisglobal.configuration.service.ConfigurationInitializationService initialization;
     private org.openelisglobal.configuration.service.CatalogImportService catalog;
     @Autowired
@@ -894,6 +896,10 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertFalse(reloadOrganismGroups(false).hasErrors());
         assertEquals(java.util.List.of(species), labGroups(klebsiella));
         assertEquals(java.util.List.of(nonEscppm), labGroups(coli));
+        assertEquals(java.util.List.of(klebsiella.getDisplayName() + " removed from group " + nonEscppm),
+                groupsHandler.getLastSummary().getRows().stream().filter(
+                        row -> row.outcome() == org.openelisglobal.configuration.service.CsvLoadSummary.Outcome.REMOVED)
+                        .map(row -> row.reason()).toList());
     }
 
     @Test
