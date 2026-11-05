@@ -1455,4 +1455,17 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         reidentify(staphylococcus.getId());
         assertEquals(List.of(), assignments.getAssignments(isolate));
     }
+
+    @Test
+    public void runsAndAssignmentsNameTheirPanelVersion() {
+        start(isolate);
+        em.flush();
+        em.clear();
+        var shown = workspace.get(c.getId(), writer).isolates.stream().filter(i -> i.id().equals(isolate)).findFirst()
+                .orElseThrow();
+        String expected = reference.panel().getName() + " v" + reference.panel().getVersionNumber();
+        assertEquals(List.of(expected),
+                shown.assignments().stream().map(MicroAstWorkspaceForm.Assignment::label).toList());
+        assertEquals(expected, shown.runs().getFirst().panelLabel);
+    }
 }

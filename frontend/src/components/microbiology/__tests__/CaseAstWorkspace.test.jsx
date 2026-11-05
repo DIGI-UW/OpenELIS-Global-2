@@ -802,6 +802,15 @@ it("a reading request does not carry the isolate's panel", async () => {
   expect(service.astAction.mock.calls[0][1]).not.toHaveProperty("panelId");
 });
 
+it("names the panel version each run used", async () => {
+  const data = workspace();
+  data.isolates[0].runs[0].panelLabel = "Enterobacterales v3";
+  show(data);
+  expect(
+    await screen.findByText(`${t("panel")}: Enterobacterales v3`),
+  ).toBeInTheDocument();
+});
+
 it("explains a resolution the server rejects as invalid", async () => {
   const service = show(discordantRifampicin());
   service.resolveDst = vi.fn().mockRejectedValue({

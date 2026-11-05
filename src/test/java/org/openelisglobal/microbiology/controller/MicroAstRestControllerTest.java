@@ -223,6 +223,8 @@ public class MicroAstRestControllerTest {
         antibiotic.setDisplayName("Ampicillin");
         when(antibiotics.get(org.mockito.ArgumentMatchers.anyString())).thenReturn(java.util.Optional.of(antibiotic));
         org.springframework.test.util.ReflectionTestUtils.setField(responses, "antibiotics", antibiotics);
+        org.springframework.test.util.ReflectionTestUtils.setField(responses, "panels",
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroAstPanelDAO.class));
         return new MicroAstRestController(service, responses);
     }
 

@@ -365,6 +365,11 @@ export default function CaseAstWorkspace({
                   open
                 >
                   <Stack gap={4}>
+                    {run.panelLabel && (
+                      <p>
+                        {t("panel")}: {run.panelLabel}
+                      </p>
+                    )}
                     <p>
                       {t("clinicalContext")}:{" "}
                       {t(
