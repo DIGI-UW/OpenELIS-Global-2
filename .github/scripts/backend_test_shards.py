@@ -27,7 +27,7 @@ SUREFIRE_DEFAULT_INCLUDE = re.compile(r"^(Test.*|.*Test|.*Tests|.*TestCase)\.jav
 PACKAGE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 CREATES_CONTAINER = re.compile(r"new\s+(PostgreSQLContainer|GenericContainer)\b")
 ISOLATED_MARKER = re.compile(r"^\s*@(org\.openelisglobal\.)?IsolatedDatabase\b", re.MULTILINE)
-TEST_ANNOTATION = re.compile(r"@(org\.junit\.)?Test\b")
+TEST_ANNOTATION = re.compile(r"@((org\.junit\.)?Test|ArchTest)\b")
 ABSTRACT_CLASS = re.compile(r"\babstract\s+class\b")
 
 

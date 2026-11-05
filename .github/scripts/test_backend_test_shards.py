@@ -90,11 +90,13 @@ class BackendTestShardsTest(unittest.TestCase):
                             text="package org.openelisglobal.a;\npublic abstract class BaseTest {\n  @Test public void x() {}\n}\n")
         self.repository.add("org.openelisglobal.a.EmptyTest", text="package org.openelisglobal.a;\npublic class EmptyTest {}\n")
         self.repository.add("org.openelisglobal.a.RealTest")
+        self.repository.add("org.openelisglobal.a.RulesTest",
+                            text="package org.openelisglobal.a;\npublic class RulesTest {\n  @ArchTest static final ArchRule rule = null;\n}\n")
 
         runnable = {test_class.name: test_class.runnable for test_class in shards.discover(self.directory.name)}
 
         self.assertEqual(runnable, {"org.openelisglobal.a.BaseTest": False, "org.openelisglobal.a.EmptyTest": False,
-                                    "org.openelisglobal.a.RealTest": True})
+                                    "org.openelisglobal.a.RealTest": True, "org.openelisglobal.a.RulesTest": True})
 
     def test_contiguous_ranges_keep_every_shared_class_exactly_once_and_isolated_apart(self):
         names = ["org.openelisglobal.a.ATest", "org.openelisglobal.l.LTest", "org.openelisglobal.m.MTest",

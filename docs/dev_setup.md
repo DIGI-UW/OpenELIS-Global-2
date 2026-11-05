@@ -164,18 +164,19 @@ which result gates a run:
 - `required` (current): the shards and `Backend shard report` decide. The single
   full run (`Build + Test`) runs on a pull request only when it carries the
   `ci:full-backend` label, and the report then lists every test whose outcome
-  differs.
+  differs. The label is read when a run starts: add it, then push.
 - `shadow`: `Build + Test` decides; the shards run beside it for comparison.
 - `off`: the single full run only.
 
 Classes that start their own PostgreSQL carry `@IsolatedDatabase` and run in
 `Build + Test (isolated databases)`, three JVMs at a time. A test class that
 creates a `PostgreSQLContainer` without the annotation fails `Detect Changes`.
-`Backend / Nightly order check` runs the whole suite in one JVM every night, in
-alphabetical order (which publishes the coverage badge and report) and in
-reverse order; a test that fails only in reverse order depends on another class
-and should seed its own data. Locally, `mvn test` and `mvn clean install` still
-run every test in one JVM, as before.
+On develop pushes the `Coverage` job merges the shards' JaCoCo data and
+publishes the coverage badge, as before. `Backend / Nightly order check` runs
+the whole suite in one JVM every night, in alphabetical and in reverse order; a
+test that fails only in reverse order depends on another class and should seed
+its own data. Locally, `mvn test` and `mvn clean install` still run every test
+in one JVM, as before.
 
 Run one shard locally:
 

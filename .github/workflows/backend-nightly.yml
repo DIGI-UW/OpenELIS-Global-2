@@ -2,10 +2,10 @@ name: Backend / Nightly order check
 
 # Pull requests and develop pushes run the backend tests as shards
 # (backend.yml). Every night this runs the whole suite in one JVM on develop,
-# twice: in the usual alphabetical order, which also publishes the coverage
-# badge and report, and in reverse order. The integration tests share one
-# database per JVM and most fixtures commit, so a test that fails only in
-# reverse order depends on another class and should seed what it needs itself.
+# twice: in the usual alphabetical order, as the reference, and in reverse
+# order. The integration tests share one database per JVM and most fixtures
+# commit, so a test that fails only in reverse order depends on another class
+# and should seed what it needs itself.
 # Neither run gates anything.
 
 on:
@@ -25,8 +25,6 @@ jobs:
     name: Full suite (${{ matrix.order }})
     if: github.event_name == 'workflow_dispatch' || github.repository == 'DIGI-UW/OpenELIS-Global-2'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -41,7 +39,7 @@ jobs:
         uses: ./.github/actions/backend-maven-setup
 
       - name: Run every backend test class
-        run: mvn -B clean package -Dspotless.check.skip=true -Dsurefire.runOrder=${{ matrix.order }}
+        run: mvn -B clean test -Dspotless.check.skip=true -Dsurefire.runOrder=${{ matrix.order }}
 
       - name: Summarize
         if: always()
@@ -55,21 +53,3 @@ jobs:
           path: target/surefire-reports/
           if-no-files-found: warn
 
-      - name: Generate JaCoCo Badge
-        if: matrix.order == 'alphabetical'
-        uses: cicirello/jacoco-badge-generator@v2
-        with:
-          jacoco-csv-file: target/site/jacoco/jacoco.csv
-          badges-directory: target/html/badges
-
-      - name: Fix permissions
-        if: matrix.order == 'alphabetical'
-        run: |
-          sudo chown -R "$(whoami)":"$(whoami)" target/html
-          sudo chmod -R 755 target/html
-
-      - name: Publish coverage report to GitHub Pages
-        if: matrix.order == 'alphabetical'
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: target/html/

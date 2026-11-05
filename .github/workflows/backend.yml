@@ -70,8 +70,8 @@ jobs:
   # carries the ci:full-backend label; "shadow" keeps the single full run as the
   # gate and runs the shards beside it for comparison; "off" keeps the single
   # full run only. In "shadow" and "required" the @IsolatedDatabase classes run
-  # in their own job. Coverage comes from the nightly full run
-  # (backend-nightly.yml).
+  # in their own job. On develop pushes the Coverage job merges the shards'
+  # JaCoCo data and publishes the badge.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -260,6 +260,14 @@ jobs:
           path: target/surefire-reports/
           if-no-files-found: warn
 
+      - name: Upload coverage data
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-jacoco-isolated
+          path: target/jacoco.exec
+          if-no-files-found: warn
+
   # Each shard is a contiguous alphabetical range of the shared-database
   # classes, run in today's order on a fresh database. In shadow mode a shard
   # failure is reported but does not fail its job, so contributors read the
@@ -294,6 +302,14 @@ jobs:
         with:
           name: backend-test-reports-shard-${{ matrix.shard }}
           path: target/surefire-reports/
+          if-no-files-found: warn
+
+      - name: Upload coverage data
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-jacoco-shard-${{ matrix.shard }}
+          path: target/jacoco.exec
           if-no-files-found: warn
 
   # One summary for all shards: totals, failures, skipped tests with reasons,
@@ -334,6 +350,51 @@ jobs:
           if [[ "$FULL" == "true" ]]; then args+=(--baseline reports/baseline); fi
           if [[ "$REQUIRED" == "true" ]]; then args+=(--strict); fi
           python3 .github/scripts/backend_test_report.py "${args[@]}"
+
+  # Develop pushes publish the coverage badge from the shards' merged JaCoCo
+  # data, as the single run did before. Nothing waits for this job.
+  backend-coverage:
+    name: Coverage
+    needs: [changes, backend-isolated, backend-shard]
+    if: always() && github.event_name == 'push' && needs.changes.outputs.shards == 'true' && needs.backend-shard.result == 'success' && needs.backend-isolated.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Maven and build local dependencies
+        uses: ./.github/actions/backend-maven-setup
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v7
+        with:
+          pattern: backend-jacoco-*
+          path: coverage
+
+      - name: Merge the coverage data and build the report
+        run: |
+          mvn -B compile -Dspotless.check.skip=true
+          mvn -B dependency:get -Dartifact=org.jacoco:org.jacoco.cli:0.8.12:jar:nodeps -Dtransitive=false
+          java -jar ~/.m2/repository/org/jacoco/org.jacoco.cli/0.8.12/org.jacoco.cli-0.8.12-nodeps.jar merge coverage/*/jacoco.exec --destfile target/jacoco.exec
+          mvn -B jacoco:report
+
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: target/site/jacoco/jacoco.csv
+          badges-directory: target/html/badges
+
+      - name: Fix permissions
+        run: |
+          sudo chown -R "$(whoami)":"$(whoami)" target/html
+          sudo chmod -R 755 target/html  # Read-write for owner, read for others
+
+      - name: Publish coverage report to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: target/html/
 
   # The WAR, the dependency scan and the SBOM, without waiting for the tests.
   backend-package:
@@ -418,7 +479,7 @@ jobs:
           PACKAGE_RESULT: ${{ needs.backend-package.result }}
         run: |
           if [[ "$CHANGES_RESULT" != "success" ]]; then
-            echo "Change detection failed: $CHANGES_RESULT"
+            echo "Change detection failed: $CHANGES_RESULT. Read the Detect Changes log; the test planner names any test class that starts its own container without @IsolatedDatabase."
             exit 1
           fi
           if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" || "$ANALYZER_RESULT" != "success" ]]; then
