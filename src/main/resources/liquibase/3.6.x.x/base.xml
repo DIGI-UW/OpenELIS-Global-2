@@ -46,6 +46,8 @@
   <include relativeToChangelogFile="true" file="025-panel-domain-from-members.xml"/>
   <!-- OGC-1200: runs; analyzer values and accepted results name their run -->
   <include relativeToChangelogFile="true" file="026-result-run.xml"/>
+  <!-- OGC-1579: module system state table (numbered 030 to leave room for develop's next changesets) -->
+  <include relativeToChangelogFile="true" file="030-module-state.xml"/>
 
   <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
   <!-- M8 consumes the case structure and site routing above, including on fresh installs. -->

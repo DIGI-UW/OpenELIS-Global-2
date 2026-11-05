@@ -115,8 +115,18 @@ public class RoleModulePermittedNamesTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void permissionKeysCoverEveryPrefixButNotUnprefixedModules() {
-        assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.eqa", "dashboards.view.management"),
-                roleModuleService.getPermittedModuleNames(List.of("Results")));
+        assertEquals(Set.of("qa.view.overview", "qa.view.qi", "qa.view.eqa", "dashboards.view.management",
+                "mod.example-workflow.view"), roleModuleService.getPermittedModuleNames(List.of("Results")));
+    }
+
+    @Test
+    public void modulePermissionKeysBecomePermittedNames() {
+        Set<String> permissions = roleModuleService.getPermittedModuleNames(List.of("Results"),
+                Constants.MODULE_PERMISSION_PREFIX);
+
+        assertEquals(Set.of("mod.example-workflow.view"), permissions);
+        assertTrue(roleModuleService.getPermittedModuleNames(List.of("Validation"), Constants.MODULE_PERMISSION_PREFIX)
+                .isEmpty());
     }
 
     @Test
