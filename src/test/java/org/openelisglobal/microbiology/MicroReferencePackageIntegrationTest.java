@@ -416,11 +416,12 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     public void mostSpecificDefaultWinsAcrossPanelFilesWhateverTheirOrder() throws Exception {
         var fixture = new ReferencePackageFixture("2099.52", "ACROSS");
         load(fixture);
-        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String genusName = "Across" + suffix();
+        var organism = organism(genusName + " species");
         String header = "panelName,antibioticWhonetCode,defaultFor\n";
-        String species = header + "Synthetic species panel ACROSS," + fixture.antibiotic
-                + ",Synthetic organism ACROSS\n";
-        String genus = header + "Synthetic genus panel ACROSS," + fixture.antibiotic + ",Synthetic\n";
+        String species = header + "Synthetic species panel ACROSS," + fixture.antibiotic + ","
+                + organism.getDisplayName() + "\n";
+        String genus = header + "Synthetic genus panel ACROSS," + fixture.antibiotic + "," + genusName + "\n";
         for (var files : java.util.List.of(java.util.List.of(species, genus), java.util.List.of(genus, species))) {
             writePanels("a-panels.csv", files.get(0));
             writePanels("b-panels.csv", files.get(1));
@@ -432,19 +433,40 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void panelsThatClaimAnOrganismEquallySpecificallyFailTheLoad() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.58", "TIE");
+        load(fixture);
+        var organism = organism("Tie organism " + suffix());
+        String first = "Tie group A " + suffix();
+        String second = "Tie group B " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic first panel TIE," + fixture.antibiotic + ","
+                + first + "\nSynthetic second panel TIE," + fixture.antibiotic + "," + second + "\n");
+
+        String error = reloadPanels(true).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Lines 2 and 3:"));
+        assertTrue(error, error.contains("Synthetic first panel TIE") && error.contains("Synthetic second panel TIE"));
+        assertTrue(error, error.contains(first) && error.contains(second) && error.contains(organism.getDisplayName()));
+        assertNull(panels.findCurrentByNameIgnoreCase("Synthetic first panel TIE"));
+    }
+
+    @Test
     public void panelFileRefusesADefaultWhoseProtocolDiffersFromTheOrganisms() throws Exception {
         var fixture = new ReferencePackageFixture("2099.53", "PROTOCOL");
         load(fixture);
-        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var organism = organism("Protocol organism " + suffix());
         organism.setSusceptibilityProtocol("TB");
         organisms.update(organism);
         writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic general panel PROTOCOL," + fixture.antibiotic
-                + ",Synthetic organism PROTOCOL\n");
+                + "," + organism.getDisplayName() + "\n");
 
         String error = reloadPanels(true).files().get(0).errorMessage();
 
         assertTrue(error, error.contains("Line 2:"));
-        assertTrue(error, error.contains("Synthetic organism PROTOCOL") && error.contains("TB"));
+        assertTrue(error, error.contains(organism.getDisplayName()) && error.contains("TB"));
         assertNull(organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
     }
 

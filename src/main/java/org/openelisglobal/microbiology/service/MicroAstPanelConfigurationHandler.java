@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
 import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
@@ -29,7 +30,8 @@ import org.springframework.stereotype.Component;
  * {@code defaultFor} lists, separated by semicolons, the organisms the panel is
  * the default for: a species name, a genus, or a laboratory organism group from
  * the organism groups file. When several panels, in any panel file, claim an
- * organism, the most specific entry wins (species, then genus, then group).
+ * organism, the most specific entry wins (species, then genus, then group); two
+ * equally specific entries from different panels fail the load.
  */
 @Component
 public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler {
@@ -125,8 +127,7 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         Set<String> matched = new HashSet<>();
         List<String> errors = new ArrayList<>();
         for (var organism : organisms.getActiveOrganisms()) {
-            MicroAstPanel best = null;
-            String bestEntry = null;
+            Map<MicroAstPanel, String> bestEntries = new LinkedHashMap<>();
             int bestRank = 0;
             for (var panel : claimants) {
                 for (String entry : entries(panel)) {
@@ -136,14 +137,27 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                     }
                     if (rank > bestRank) {
                         bestRank = rank;
-                        best = panel;
-                        bestEntry = entry;
+                        bestEntries.clear();
+                    }
+                    if (rank > 0 && rank == bestRank) {
+                        bestEntries.putIfAbsent(panel, entry);
                     }
                 }
             }
-            if (best == null) {
+            if (bestEntries.isEmpty()) {
                 continue;
             }
+            var tied = new ArrayList<>(bestEntries.entrySet());
+            if (tied.size() > 1) {
+                var a = tied.get(0);
+                var b = tied.get(1);
+                errors.add(line(lines, a.getKey(), b.getKey()) + "panels \"" + a.getKey().getName() + "\" (\""
+                        + a.getValue() + "\") and \"" + b.getKey().getName() + "\" (\"" + b.getValue() + "\") claim "
+                        + organism.getDisplayName() + " equally specifically");
+                continue;
+            }
+            MicroAstPanel best = tied.get(0).getKey();
+            String bestEntry = tied.get(0).getValue();
             // Identification assigns the default to every organism except NTM, and
             // refuses a panel whose protocol differs from the organism's.
             if (!"NTM".equals(organism.getSusceptibilityProtocol())
@@ -182,8 +196,11 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         return List.of(panel.getDefaultFor().split("\\s*;\\s*"));
     }
 
-    private static String line(Map<String, Integer> lines, MicroAstPanel panel) {
-        return lines.containsKey(panel.getId()) ? "Line " + lines.get(panel.getId()) + ": " : "";
+    private static String line(Map<String, Integer> lines, MicroAstPanel... panels) {
+        List<String> numbers = Stream.of(panels).map(panel -> lines.get(panel.getId())).filter(Objects::nonNull)
+                .sorted().map(String::valueOf).toList();
+        return numbers.isEmpty() ? ""
+                : (numbers.size() == 1 ? "Line " : "Lines ") + String.join(" and ", numbers) + ": ";
     }
 
     /**
