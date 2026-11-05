@@ -98,6 +98,9 @@ public class MicroEnvironmentalMigrationLiquibaseRollbackTest {
                         "SELECT string_agg(id||':'||coalesce(program_id::text,'-')||':'||lab_unit_id, ',' ORDER BY id) FROM clinlims.micro_case WHERE id LIKE 'legacy-8879%'"));
                 assertEquals("3", scalar(c,
                         "SELECT count(*) FROM clinlims.micro_case_activity WHERE activity_type='MIGRATION_REVIEW' AND case_id LIKE 'legacy-8879%' AND structured_data LIKE '%LEGACY_ASSIGNMENT%'"));
+                assertEquals("Legacy case mapped to a laboratory unit with no Program; administrator review required",
+                        scalar(c,
+                                "SELECT string_agg(DISTINCT note, '|') FROM clinlims.micro_case_activity WHERE activity_type='MIGRATION_REVIEW' AND case_id LIKE 'legacy-8879%' AND structured_data LIKE '%LEGACY_ASSIGNMENT%'"));
                 assertEquals("12345678-1234-1234-1234-123456789012", scalar(c,
                         "SELECT questionnaire_response_uuid::text FROM clinlims.program_sample WHERE id=887981"));
                 assertEquals("887981", scalar(c, "SELECT test_section_id FROM clinlims.program WHERE id=887981"));
@@ -142,6 +145,9 @@ public class MicroEnvironmentalMigrationLiquibaseRollbackTest {
                         .update(contexts);
                 assertEquals("887984",
                         scalar(c, "SELECT program_id FROM clinlims.micro_case WHERE id='legacy-887991'"));
+                assertEquals("Legacy case mapped to a laboratory unit and Program; administrator review required",
+                        scalar(c,
+                                "SELECT note FROM clinlims.micro_case_activity WHERE activity_type='MIGRATION_REVIEW' AND case_id='legacy-887991'"));
             }
         }
     }
