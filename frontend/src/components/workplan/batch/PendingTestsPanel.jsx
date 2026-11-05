@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Checkbox,
@@ -19,8 +19,12 @@ import { Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import CustomDatePicker from "../../common/CustomDatePicker";
 import { ConfigurationContext } from "../../layout/Layout";
-import { convertAlphaNumLabNumForDisplay } from "../../utils/Utils";
 import {
+  convertAlphaNumLabNumForDisplay,
+  getFromOpenElisServer,
+} from "../../utils/Utils";
+import {
+  BATCH_ENDPOINT,
   MAX_BATCH_NAME_LENGTH,
   displayDateToIso,
   priorityTagType,
@@ -37,14 +41,15 @@ const COLUMNS = [
   { key: "sampleType", label: "workplan.batch.column.sampleType" },
 ];
 
-const distinctOptions = (tests, idKey, nameKey) => {
-  const byId = new Map();
-  tests.forEach((test) => {
-    if (test[idKey] && !byId.has(test[idKey])) {
-      byId.set(test[idKey], { id: test[idKey], name: test[nameKey] || "" });
-    }
-  });
-  return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+const SEARCH_DELAY_MS = 300;
+
+const EMPTY_PAGE = {
+  items: [],
+  total: 0,
+  tests: [],
+  panels: [],
+  units: [],
+  priorities: [],
 };
 
 const nextSort = (current, key) => {
@@ -53,13 +58,20 @@ const nextSort = (current, key) => {
   return { key: null, direction: "NONE" };
 };
 
+/** Carbon repeats the current selection when a filter's options refresh. */
+const sameSelection = (next, current) =>
+  next.length === current.length &&
+  next.every((item, index) => item.id === current[index].id);
+
 /**
  * Pending Tests (OGC-427 FR-WP-002..007, FR-BA-001/002): every pending test the
  * user may work, filtered by test, panel, lab unit, priority and order date,
- * searchable and sortable, and grouped into a batch from the selection.
+ * searchable and sortable, and grouped into a batch from the selection. The
+ * server pages, filters, searches and sorts (OGC-1588), so the whole pending
+ * pool is reachable rather than the 500 oldest tests.
  */
 export default function PendingTestsPanel({
-  tests,
+  refreshToken,
   loading,
   canCreate,
   onCreateBatch,
@@ -73,6 +85,7 @@ export default function PendingTestsPanel({
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [testFilter, setTestFilter] = useState([]);
   const [panelFilter, setPanelFilter] = useState([]);
   const [unitFilter, setUnitFilter] = useState([]);
@@ -84,102 +97,97 @@ export default function PendingTestsPanel({
   const [pageSize, setPageSize] = useState(20);
   const [batchName, setBatchName] = useState("");
   const [targetBatchId, setTargetBatchId] = useState("");
+  const [pageData, setPageData] = useState(EMPTY_PAGE);
+  const [fetching, setFetching] = useState(false);
+  const latestRequest = useRef(0);
 
-  const testOptions = useMemo(
-    () => distinctOptions(tests, "testId", "testName"),
-    [tests],
-  );
-  const panelOptions = useMemo(
-    () => distinctOptions(tests, "panelId", "panelName"),
-    [tests],
-  );
-  const unitOptions = useMemo(
-    () => distinctOptions(tests, "testSectionId", "testSectionName"),
-    [tests],
-  );
-  const priorityOptions = useMemo(
-    () =>
-      Array.from(new Set(tests.map((test) => test.priority).filter(Boolean)))
-        .sort()
-        .map((priority) => ({
-          id: priority,
-          name: intl.formatMessage({ id: `sample.priority.${priority}` }),
-        })),
-    [tests, intl],
-  );
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const term = search.trim();
+      if (term === searchTerm) return;
+      setSearchTerm(term);
+      setPage(1);
+    }, SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [search, searchTerm]);
 
   const fromIso = displayDateToIso(fromDate, dateLocale);
   const toIso = displayDateToIso(toDate, dateLocale);
 
-  const filtered = useMemo(() => {
-    const ids = (items) => new Set(items.map((item) => item.id));
-    const tests_ = ids(testFilter);
-    const panels = ids(panelFilter);
-    const units = ids(unitFilter);
-    const priorities = ids(priorityFilter);
-    const needle = search.trim().toLowerCase();
-    const rows = tests.filter((test) => {
-      if (tests_.size && !tests_.has(test.testId)) return false;
-      if (panels.size && !panels.has(test.panelId)) return false;
-      if (units.size && !units.has(test.testSectionId)) return false;
-      if (priorities.size && !priorities.has(test.priority)) return false;
-      if (fromIso && (!test.orderDate || test.orderDate < fromIso))
-        return false;
-      if (toIso && (!test.orderDate || test.orderDate > toIso)) return false;
-      if (needle) {
-        const haystack = [
-          test.accessionNumber,
-          test.patientName,
-          test.testName,
-          test.panelName,
-          test.testSectionName,
-          test.sampleType,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(needle)) return false;
-      }
-      return true;
-    });
+  useEffect(() => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("pageSize", String(pageSize));
+    if (searchTerm) params.set("search", searchTerm);
+    testFilter.forEach((item) => params.append("testId", item.id));
+    panelFilter.forEach((item) => params.append("panelId", item.id));
+    unitFilter.forEach((item) => params.append("testSectionId", item.id));
+    priorityFilter.forEach((item) => params.append("priority", item.id));
+    if (fromIso) params.set("fromDate", fromIso);
+    if (toIso) params.set("toDate", toIso);
     if (sort.key) {
-      const factor = sort.direction === "DESC" ? -1 : 1;
-      rows.sort(
-        (a, b) =>
-          factor * String(a[sort.key] || "").localeCompare(b[sort.key] || ""),
-      );
+      params.set("sort", sort.key);
+      params.set("direction", sort.direction);
     }
-    return rows;
+    const timer = setTimeout(() => {
+      const request = latestRequest.current + 1;
+      latestRequest.current = request;
+      setFetching(true);
+      getFromOpenElisServer(
+        `${BATCH_ENDPOINT}/pending-tests/page?${params.toString()}`,
+        (res) => {
+          // An answer to a query the user has since changed is dropped.
+          if (request !== latestRequest.current) return;
+          setFetching(false);
+          setPageData(
+            res && Array.isArray(res.items)
+              ? { ...EMPTY_PAGE, ...res }
+              : EMPTY_PAGE,
+          );
+        },
+      );
+    }, 0);
+    return () => clearTimeout(timer);
   }, [
-    tests,
+    page,
+    pageSize,
+    searchTerm,
     testFilter,
     panelFilter,
     unitFilter,
     priorityFilter,
     fromIso,
     toIso,
-    search,
     sort,
+    refreshToken,
   ]);
 
-  const paged = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize],
+  // A refresh follows a batch being created, extended or cleared; tests chosen
+  // before it may now sit in a batch, so the selection starts again.
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [refreshToken]);
+
+  const testOptions = pageData.tests;
+  const panelOptions = pageData.panels;
+  const unitOptions = pageData.units;
+  const priorityOptions = useMemo(
+    () =>
+      pageData.priorities.map((priority) => ({
+        id: priority,
+        name: intl.formatMessage({ id: `sample.priority.${priority}` }),
+      })),
+    [pageData.priorities, intl],
   );
+
+  const paged = pageData.items;
 
   // A list that shrinks under the current page (a filter, a created batch)
   // would otherwise leave the viewer on a page past the end.
   useEffect(() => {
-    const lastPage = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const lastPage = Math.max(1, Math.ceil(pageData.total / pageSize));
     if (page > lastPage) setPage(lastPage);
-  }, [filtered.length, pageSize, page]);
-
-  // Rows that left the list (batched by this user or someone else) leave the
-  // selection too, so the count on the button is what would be batched.
-  useEffect(() => {
-    const present = new Set(tests.map((test) => test.analysisId));
-    setSelectedIds((current) => current.filter((id) => present.has(id)));
-  }, [tests]);
+  }, [pageData.total, pageSize, page]);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const pageSelected =
@@ -229,6 +237,8 @@ export default function PendingTestsPanel({
     setFromDate("");
     setToDate("");
     setSearch("");
+    setSearchTerm("");
+    setPage(1);
   };
 
   const multiSelect = (id, labelId, items, selected, setSelected) => (
@@ -240,7 +250,9 @@ export default function PendingTestsPanel({
       selectedItems={selected}
       itemToString={(item) => item?.name || ""}
       onChange={({ selectedItems }) => {
-        setSelected(selectedItems || []);
+        const next = selectedItems || [];
+        if (sameSelection(next, selected)) return;
+        setSelected(next);
         setPage(1);
       }}
       size="sm"
@@ -306,10 +318,7 @@ export default function PendingTestsPanel({
             id: "workplan.batch.search.placeholder",
           })}
           value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
+          onChange={(event) => setSearch(event.target.value)}
         />
         <Button kind="ghost" size="sm" onClick={clearFilters}>
           <FormattedMessage id="workplan.batch.filter.clear" />
@@ -324,6 +333,9 @@ export default function PendingTestsPanel({
             labelText={intl.formatMessage({ id: "workplan.batch.name" })}
             placeholder={intl.formatMessage({
               id: "workplan.batch.name.placeholder",
+            })}
+            helperText={intl.formatMessage({
+              id: "workplan.batch.name.oneUnit",
             })}
             value={batchName}
             invalid={nameTooLong}
@@ -407,9 +419,10 @@ export default function PendingTestsPanel({
                   sort.key === column.key ? sort.direction : "NONE"
                 }
                 isSortHeader={sort.key === column.key}
-                onClick={() =>
-                  setSort((current) => nextSort(current, column.key))
-                }
+                onClick={() => {
+                  setSort((current) => nextSort(current, column.key));
+                  setPage(1);
+                }}
               >
                 {intl.formatMessage({ id: column.label })}
               </TableHeader>
@@ -459,7 +472,7 @@ export default function PendingTestsPanel({
               </TableCell>
             </TableRow>
           ))}
-          {paged.length === 0 && (
+          {paged.length === 0 && !fetching && (
             <TableRow>
               <TableCell colSpan={COLUMNS.length + 2}>
                 <FormattedMessage id="workplan.batch.pending.empty" />
@@ -477,7 +490,7 @@ export default function PendingTestsPanel({
         page={page}
         pageSize={pageSize}
         pageSizes={[10, 20, 50, 100]}
-        totalItems={filtered.length}
+        totalItems={pageData.total}
         forwardText={intl.formatMessage({ id: "pagination.forward" })}
         backwardText={intl.formatMessage({ id: "pagination.backward" })}
         itemsPerPageText={intl.formatMessage({

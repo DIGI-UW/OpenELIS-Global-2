@@ -44,7 +44,7 @@ import SampleKindTag from "../SampleKindTag";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
-import { dilutionApplies, computeReportedValue } from "./dilution";
+import { dilutionApplies, computeDilutedValue } from "./dilution";
 import {
   SectionLayout,
   isSectionOpen,
@@ -248,19 +248,14 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
     row.analyzerId ||
     "";
 
-  const reported = computeReportedValue(
+  const reported = computeDilutedValue(
     dilutionDraft.measuredValue,
     dilutionDraft.factor,
-    row.significantDigits,
   );
 
   const applyDilution = (draft: DilutionDraft) => {
     onDilutionDraftChange(draft);
-    const computed = computeReportedValue(
-      draft.measuredValue,
-      draft.factor,
-      row.significantDigits,
-    );
+    const computed = computeDilutedValue(draft.measuredValue, draft.factor);
     if (computed !== null) {
       onValueChange("resultValue", computed);
     }
@@ -281,7 +276,12 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const toggleSection = (sectionId: string, open: boolean) =>
     onSectionLayoutChange(rememberSectionChoice(sectionId, open));
 
-  const flag = resultFlagFor(row);
+  const flag = resultFlagFor({
+    ...row,
+    resultValue: editable
+      ? row.resultValue
+      : (row.rawResultValue ?? row.resultValue),
+  });
 
   return (
     <div className="unifiedExpandedPanel" data-testid={`panel-${rowKey}`}>

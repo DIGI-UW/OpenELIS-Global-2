@@ -19,7 +19,14 @@ import {
   Link as CarbonLink,
   Loading,
   Modal,
+  Pagination,
   Tag,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
 } from "@carbon/react";
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
 import { parsePath } from "history";
@@ -48,6 +55,89 @@ import {
 import { includesComboBoxText } from "../comboBoxSearch";
 import { analyzerErrorText } from "../analyzerErrors";
 import "./AnalyzerTypeMappingEditor.scss";
+
+const ReceivedValuesTable = ({ values, label }) => {
+  const intl = useIntl();
+  const [page, setPage] = useState(1);
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(values.length / 10)),
+  );
+  return (
+    <section>
+      <h3>
+        <FormattedMessage id="analyzerType.mappingEditor.received.heading" />
+      </h3>
+      <Table
+        size="sm"
+        aria-label={intl.formatMessage(
+          { id: "analyzerType.mappingEditor.received.label" },
+          { code: label },
+        )}
+      >
+        <TableHead>
+          <TableRow>
+            {["raw", "kind", "value", "unit"].map((field) => (
+              <TableHeader key={field}>
+                <FormattedMessage
+                  id={`analyzerType.mappingEditor.received.${field}`}
+                />
+              </TableHeader>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {values
+            .slice((currentPage - 1) * 10, currentPage * 10)
+            .map((value, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  <code>{value.rawValue}</code>
+                </TableCell>
+                <TableCell>
+                  <FormattedMessage
+                    id={`analyzerType.mappingEditor.received.kind.${value.kind}`}
+                  />
+                </TableCell>
+                <TableCell>
+                  <code>{value.value}</code>
+                </TableCell>
+                <TableCell>{value.unit}</TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+      <Pagination
+        page={currentPage}
+        pageSize={10}
+        pageSizes={[10]}
+        totalItems={values.length}
+        onChange={({ page }) => setPage(page)}
+        itemRangeText={(min, max, total) =>
+          intl.formatMessage(
+            { id: "pagination.item-range" },
+            { min, max, total },
+          )
+        }
+        itemText={(min, max) =>
+          intl.formatMessage({ id: "pagination.item" }, { min, max })
+        }
+        pageRangeText={(_page, total) =>
+          intl.formatMessage({ id: "pagination.page-range" }, { total })
+        }
+        pageText={(page) =>
+          intl.formatMessage({ id: "pagination.page" }, { page })
+        }
+        pageSelectLabelText={() =>
+          intl.formatMessage({ id: "pagination.page-number" })
+        }
+        backwardText={intl.formatMessage({ id: "pagination.previous" })}
+        forwardText={intl.formatMessage({ id: "pagination.next" })}
+        itemsPerPageText={intl.formatMessage({ id: "pagination.itemsPerPage" })}
+      />
+    </section>
+  );
+};
 
 const LOINC_SYSTEM = "http://loinc.org";
 
@@ -1078,6 +1168,11 @@ const AnalyzerTypeMappingEditor = ({
               ),
         )
       : undefined;
+    const targetComponent = components.find((component) =>
+      answerComponent ? component.id === answerComponent : component.primary,
+    );
+    const numericAnswerTarget =
+      !missingTarget(test) && targetComponent?.resultType === "N";
     const key = recordKey(test);
     const label = recordLabel(test);
     const planRow = adopting ? adoptionRows.get(key) : null;
@@ -1290,6 +1385,9 @@ const AnalyzerTypeMappingEditor = ({
             />
           </div>
 
+          {(test.receivedValues || []).length > 0 && (
+            <ReceivedValuesTable values={test.receivedValues} label={label} />
+          )}
           {test.results.length > 0 && test.mappingState !== "EXCLUDED" && (
             <div className="analyzer-type-mapping__results">
               <h3>
@@ -1309,7 +1407,36 @@ const AnalyzerTypeMappingEditor = ({
                     id: "analyzerType.mappingEditor.results.testFirst",
                   })}
                 />
-              ) : resultOptions === undefined ? (
+              ) : numericAnswerTarget ? (
+                <div className="analyzer-type-mapping__catalog-action">
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.received.numericMismatch",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.received.numericCorrection",
+                    })}
+                  />
+                  <CarbonLink
+                    as={Link}
+                    to={`/analyzers/types?q=${encodeURIComponent(mapping?.displayName || "")}`}
+                  >
+                    <FormattedMessage id="analyzerType.mappingEditor.received.reviewType" />
+                  </CarbonLink>
+                  {!readOnly && (
+                    <CarbonLink
+                      as={Link}
+                      to={`/analyzers?setup=connect&analyzerId=${encodeURIComponent(analyzerId)}&profile=${encodeURIComponent(mapping.profileId)}&revision=${mapping.profileRevision}`}
+                    >
+                      <FormattedMessage id="analyzerType.mappingEditor.received.reviewConnection" />
+                    </CarbonLink>
+                  )}
+                </div>
+              ) : resultOptions === undefined ||
+                componentsByTest[test.testId] === undefined ? (
                 <Loading
                   small
                   withOverlay={false}

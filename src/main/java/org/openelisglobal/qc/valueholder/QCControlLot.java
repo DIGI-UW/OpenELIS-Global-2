@@ -1,5 +1,6 @@
 package org.openelisglobal.qc.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
@@ -47,6 +48,18 @@ public class QCControlLot extends BaseObject<String> {
     @Column(name = "test_id", nullable = false)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String testId;
+
+    @Transient
+    private String testName;
+
+    @JsonProperty("testName")
+    public String getTestName() {
+        return testName;
+    }
+
+    public void setTestName(String testName) {
+        this.testName = testName;
+    }
 
     // Nullable since OGC-1147: a bench control lot for a manual method has no
     // analyzer to point at. qc-024 dropped the NOT NULL; the Bean Validation

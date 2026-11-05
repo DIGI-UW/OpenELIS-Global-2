@@ -49,15 +49,12 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
 
     @GetMapping("/{caseId}")
     public ResponseEntity<MicroCaseDetailForm> getCaseDetail(@PathVariable String caseId, HttpServletRequest request) {
-        if (!accessService.canAccessCase(caseId, authenticatedUserId(request),
-                userModuleService.isUserAdmin(request))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        authenticatedUserId(request);
         MicroCaseDetailForm detail = caseService.getCaseDetail(caseId);
         if (detail == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        return ResponseEntity.ok(detail);
+        return visibleDetail(detail, request);
     }
 
     @GetMapping
@@ -69,7 +66,8 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
         }
         List<MicroCaseLookupForm> rows = new ArrayList<>();
         for (MicroCase microCase : caseService.getSiblingCases(sampleItemId)) {
-            rows.add(toLookupForm(microCase));
+            if (accessService.canAccessCase(microCase.getId(), authenticatedUserId(request), false))
+                rows.add(toLookupForm(microCase));
         }
         return ResponseEntity.ok(rows);
     }
@@ -84,14 +82,20 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
             stateService.advanceStage(caseId, nextStage, authenticatedUserId(httpRequest), request.note,
                     lotSelections(request.lotSelections));
         }
-        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+        return visibleDetail(caseService.getCaseDetail(caseId), httpRequest);
     }
 
     @PutMapping("/{caseId}/order-detail")
     public ResponseEntity<MicroCaseDetailForm> saveOrderDetail(@PathVariable String caseId,
             @RequestBody MicroCaseOrderDetailRequestForm request, HttpServletRequest httpRequest) {
         orderDetailService.saveOrderDetail(caseId, request, authenticatedUserId(httpRequest));
-        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+        return visibleDetail(caseService.getCaseDetail(caseId), httpRequest);
+    }
+
+    private ResponseEntity<MicroCaseDetailForm> visibleDetail(MicroCaseDetailForm detail, HttpServletRequest request) {
+        if (detail != null)
+            detail.readOnlyAccess = !accessService.canAccessCase(detail.id, authenticatedUserId(request), false);
+        return ResponseEntity.ok(detail);
     }
 
     private MicroCaseLookupForm toLookupForm(MicroCase microCase) {

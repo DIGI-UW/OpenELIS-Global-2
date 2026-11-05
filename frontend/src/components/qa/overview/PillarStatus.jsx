@@ -37,19 +37,22 @@ const PillarChip = ({ titleKey, status, text, loading, onClick }) => (
 
 // Exported so InspectorReadiness Q1 derives the same status as the QC chip.
 export const qcPillar = (intl, summary) => {
-  if (!summary) return { status: null, text: "—" };
+  if (!summary) return { status: null, text: "—", hasData: false };
   const {
     compliantInstruments,
     warningInstruments,
     nonCompliantInstruments,
     totalInstruments,
   } = summary.qc;
-  // Zero instruments means "no QC data" (unconfigured lab or a swallowed
-  // backend failure) — never a healthy green.
-  if (totalInstruments === 0) {
+  // Inventory includes NOT_CONFIGURED instruments. Their presence alone is
+  // not QC evidence, and partial coverage must not produce a healthy green.
+  const assessedInstruments =
+    compliantInstruments + warningInstruments + nonCompliantInstruments;
+  if (totalInstruments === 0 || assessedInstruments === 0) {
     return {
       status: null,
       text: intl.formatMessage({ id: "qa.overview.pillar.qc.noData" }),
+      hasData: false,
     };
   }
   const status =
@@ -57,9 +60,12 @@ export const qcPillar = (intl, summary) => {
       ? "red"
       : warningInstruments > 0
         ? "amber"
-        : "green";
+        : compliantInstruments === totalInstruments
+          ? "green"
+          : null;
   return {
     status,
+    hasData: true,
     text: intl.formatMessage(
       { id: "qa.overview.pillar.qc.text" },
       { inControl: compliantInstruments, total: totalInstruments },

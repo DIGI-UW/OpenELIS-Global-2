@@ -68,19 +68,48 @@ We welcome community contributions to help improve OpenELIS Global!
 
 ### For Offline Installation Using the OpenELIS Global2 Installer
 
-Download the OpenELIS Global Installer for each Release from the
-[Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
+Prepackaged offline installers are published with the
+[openelis-docker releases](https://github.com/DIGI-UW/openelis-docker/releases),
+not with the releases of this repository. An openelis-docker release carries the
+version number of the OpenELIS Global release it packages (for example `3.2.3.0`
+or `3.3.0`), and its notes name the Analyzer Bridge version shipped with it.
 
-Supported versions, branches, and the versioning policy are described in
-[RELEASES.md](RELEASES.md).
+1. Choose the OpenELIS Global release to install. The supported release lines,
+   branches and the versioning policy are described in
+   [RELEASES.md](RELEASES.md).
+2. Open the openelis-docker release with the same version number and download
+   `OpenELIS-Global_<version>_docker_installer.tar.gz` from its assets.
+3. Follow the
+   [offline installation steps](https://github.com/DIGI-UW/openelis-docker#offline-installation)
+   that come with the package: `run.sh` for a first installation, `upgrade.sh`
+   for an existing one. The
+   [Offline install of OpenELIS Global](https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1711636518/Offline+install+of+OpenELIS+Global)
+   wiki page walks a lab server through the same steps.
 
-see full
-[installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
-for Offline Installation
+The packages are built and published by the openelis-docker release workflow, so
+there is nothing to build or package locally.
 
 ### For running OpenELIS Global2 in Docker with default Settings out of the Box
 
 see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
+
+### For running a light OpenELIS Global2 without the FHIR server and the Analyzer Bridge
+
+The FHIR server and the Analyzer Bridge are only needed for exchanges with other
+systems: analyzers, electronic orders from an EMR or a consolidated server,
+referrals to and results from other laboratories, EQA exchange, sample shipments
+and the client registry. Every lab workflow (patients, orders, sample
+preparation and labels, results, validation, reports, non-conformities, storage,
+administration) runs from the OpenELIS database alone, and questionnaires are
+kept in the database when there is no FHIR store.
+
+With openelis-docker, remove the `#` in front of the `COMPOSE_FILE` line in its
+`.env` and run `docker compose up -d`; see its
+[light installation](https://github.com/DIGI-UW/openelis-docker#light-installation)
+section. In any other deployment, leave `org.openelisglobal.fhirstore.uri` empty
+in `common.properties` (or set the webapp's `ORG_OPENELISGLOBAL_FHIRSTORE_URI`
+environment variable to an empty value, which overrides the file), leave
+`ANALYZER_BRIDGE_URL` empty, and do not start the two services.
 
 ### For Running OpenELIS Global2 from Source Code
 

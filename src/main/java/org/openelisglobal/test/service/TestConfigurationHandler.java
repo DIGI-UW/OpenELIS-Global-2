@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
@@ -75,10 +76,13 @@ import org.springframework.transaction.PlatformTransactionManager;
  * {@code notifyResults}; {@code localCode} (at most 10 characters);
  * {@code reportingName} (the name printed on reports); {@code domain}
  * (CLINICAL, ENVIRONMENTAL, ...; defaults to the lab unit's); {@code amr}
- * (antimicrobial resistance test, Y/N); {@code localization:xx} display names,
- * falling back to {@code testName} for the fallback locale. A lab unit or
- * sample type the row names but the catalog does not know is looked up among
- * the remembered aliases and otherwise queued for a decision (OGC-1194).
+ * (antimicrobial resistance test, Y/N); {@code opensMicrobiologyCase} (Y/N),
+ * {@code microbiologyCaseRole} (CULTURE, DIRECT or CASE),
+ * {@code collectedInSets} (Y/N, requires a case-opening CULTURE test);
+ * {@code localization:xx} display names, falling back to {@code testName} for
+ * the fallback locale. A lab unit or sample type the row names but the catalog
+ * does not know is looked up among the remembered aliases and otherwise queued
+ * for a decision (OGC-1194).
  */
 @Component
 public class TestConfigurationHandler implements DomainConfigurationHandler {
@@ -133,7 +137,8 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
     private record Columns(int testName, int testSection, int sampleType, int loinc, int isActive, int isOrderable,
             int sortOrder, int unitOfMeasure, int isReportable, int notifyResults, int localCode, int reportingName,
-            int domain, int amr, Map<String, Integer> localization) {
+            int domain, int amr, int opensMicrobiologyCase, int microbiologyCaseRole, int collectedInSets,
+            Map<String, Integer> localization) {
     }
 
     @Override
@@ -184,7 +189,8 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                 findColumnIndex(headers, "isReportable"), findColumnIndex(headers, "notifyResults"),
                 findColumnIndex(headers, "localCode"), findColumnIndex(headers, "reportingName"),
                 findColumnIndex(headers, "domain"), findColumnIndex(headers, "amr"),
-                detectLocalizationColumns(headers));
+                findColumnIndex(headers, "opensMicrobiologyCase"), findColumnIndex(headers, "microbiologyCaseRole"),
+                findColumnIndex(headers, "collectedInSets"), detectLocalizationColumns(headers));
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
         RowTransactionRunner rowTransaction = new RowTransactionRunner(transactionManager, dryRun);
@@ -427,6 +433,10 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             test.setAntimicrobialResistance(parseFlag(amr, false));
         }
 
+        applyMicrobiologyRouting(test, getValueOrEmpty(values, columns.opensMicrobiologyCase()),
+                getValueOrEmpty(values, columns.microbiologyCaseRole()),
+                getValueOrEmpty(values, columns.collectedInSets()));
+
         applyTranslations(test, values, testName, columns.localization());
         String reportingName = getValueOrEmpty(values, columns.reportingName());
         if (!reportingName.isEmpty() && test.getLocalizedReportingName() != null
@@ -437,6 +447,35 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
         test.setSysUserId(SYS_USER_ID);
         testService.update(test);
+    }
+
+    /**
+     * Blank cells preserve the lab's existing routing, including on catalog reload.
+     */
+    static void applyMicrobiologyRouting(Test test, String opensCaseValue, String roleValue, String setsValue) {
+        boolean opensCase = routingFlag(opensCaseValue, test.isOpensMicrobiologyCase());
+        boolean sets = routingFlag(setsValue, test.isCollectedInSets());
+        String role = roleValue.isEmpty() ? test.getMicrobiologyCaseRole() : roleValue.toUpperCase(Locale.ROOT);
+        if (!List.of("CULTURE", "DIRECT", "CASE").contains(role)) {
+            throw new IllegalArgumentException("microbiologyCaseRole must be CULTURE, DIRECT or CASE");
+        }
+        if (sets && (!opensCase || !"CULTURE".equals(role))) {
+            throw new IllegalArgumentException(
+                    "collectedInSets requires opensMicrobiologyCase=Y and microbiologyCaseRole=CULTURE");
+        }
+        test.setOpensMicrobiologyCase(opensCase);
+        test.setMicrobiologyCaseRole(role);
+        test.setCollectedInSets(sets);
+    }
+
+    private static boolean routingFlag(String value, boolean existing) {
+        if (value.isEmpty())
+            return existing;
+        if (List.of("Y", "TRUE").contains(value.toUpperCase(Locale.ROOT)))
+            return true;
+        if (List.of("N", "FALSE").contains(value.toUpperCase(Locale.ROOT)))
+            return false;
+        throw new IllegalArgumentException("Microbiology routing flags must be Y/N or true/false");
     }
 
     private void applyTranslations(Test test, String[] values, String testName,

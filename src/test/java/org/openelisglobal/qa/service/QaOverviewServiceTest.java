@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.junit.Assume;
@@ -19,6 +20,8 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.qa.dto.QaOverviewSummary;
 import org.openelisglobal.qa.dto.QaOverviewSummary.ActivityItem;
+import org.openelisglobal.qc.dto.InstrumentQCStatus;
+import org.openelisglobal.qc.service.QCDashboardService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,9 @@ public class QaOverviewServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private QaOverviewService qaOverviewService;
+
+    @Autowired
+    private QCDashboardService dashboardService;
 
     @Autowired
     private DataSource dataSource;
@@ -130,11 +136,18 @@ public class QaOverviewServiceTest extends BaseWebContextSensitiveTest {
     public void getSummary_instrumentRollupIsInternallyConsistent() {
         QaOverviewSummary summary = qaOverviewService.getSummary();
 
-        // Per-instrument compliance truth is QCDashboardServiceTest's concern;
-        // here we only require the rollup to add up and see the unresolved
-        // rejection instruments from the dataset.
-        assertEquals(summary.qc.totalInstruments,
-                summary.qc.compliantInstruments + summary.qc.warningInstruments + summary.qc.nonCompliantInstruments);
+        List<InstrumentQCStatus> instruments = dashboardService.getAllInstrumentComplianceStatus();
+        assertEquals(Set.of("100", "200", "300", "400", "500", "600"),
+                instruments.stream().map(InstrumentQCStatus::getInstrumentId).collect(Collectors.toSet()));
+        assertEquals(6, summary.qc.totalInstruments);
+        assertEquals("NOT_CONFIGURED", instruments.stream().filter(item -> "300".equals(item.getInstrumentId()))
+                .findFirst().orElseThrow().getComplianceColor());
+        // Active instruments without QC remain in the inventory, but must not
+        // count as compliant. Historical results can also fall outside the window.
+        long notConfigured = instruments.stream().filter(item -> "NOT_CONFIGURED".equals(item.getComplianceColor()))
+                .count();
+        assertEquals(summary.qc.totalInstruments, summary.qc.compliantInstruments + summary.qc.warningInstruments
+                + summary.qc.nonCompliantInstruments + notConfigured);
         assertTrue(summary.qc.nonCompliantInstruments >= 1);
     }
 
