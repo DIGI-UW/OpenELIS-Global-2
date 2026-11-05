@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
 import org.openelisglobal.configuration.service.CatalogReferenceResolver;
@@ -149,11 +150,11 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
             }
             var tied = new ArrayList<>(bestEntries.entrySet());
             if (tied.size() > 1) {
-                var a = tied.get(0);
-                var b = tied.get(1);
-                errors.add(line(lines, a.getKey(), b.getKey()) + "panels \"" + a.getKey().getName() + "\" (\""
-                        + a.getValue() + "\") and \"" + b.getKey().getName() + "\" (\"" + b.getValue() + "\") claim "
-                        + organism.getDisplayName() + " equally specifically");
+                errors.add(line(lines, bestEntries.keySet().toArray(MicroAstPanel[]::new)) + organism.getDisplayName()
+                        + " is claimed equally specifically by " + tied
+                                .stream().map(claim -> "\"" + claim.getKey().getName() + "\" (\"" + claim.getValue()
+                                        + "\", " + source(lines, claim.getKey()) + ")")
+                                .collect(Collectors.joining(", ")));
                 continue;
             }
             MicroAstPanel best = tied.get(0).getKey();
@@ -194,6 +195,10 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
 
     private static List<String> entries(MicroAstPanel panel) {
         return List.of(panel.getDefaultFor().split("\\s*;\\s*"));
+    }
+
+    private static String source(Map<String, Integer> lines, MicroAstPanel panel) {
+        return lines.containsKey(panel.getId()) ? "line " + lines.get(panel.getId()) : panel.getDefaultForFile();
     }
 
     private static String line(Map<String, Integer> lines, MicroAstPanel... panels) {

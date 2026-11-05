@@ -516,17 +516,24 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         var organism = organism("Tie organism " + suffix());
         String first = "Tie group A " + suffix();
         String second = "Tie group B " + suffix();
+        String third = "Tie group C " + suffix();
         writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
-                + ",,," + second + "\n");
+                + ",,," + second + "\n" + organism.getDisplayName() + ",,," + third + "\n");
         assertFalse(reloadOrganismGroups(false).hasErrors());
+        writePanels("other-panels.csv", "panelName,antibioticWhonetCode,defaultFor\nSynthetic third panel TIE,"
+                + fixture.antibiotic + "," + third + "\n");
+        assertFalse(reloadPanels(false).hasErrors());
         writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic first panel TIE," + fixture.antibiotic + ","
                 + first + "\nSynthetic second panel TIE," + fixture.antibiotic + "," + second + "\n");
 
-        String error = reloadPanels(true).files().get(0).errorMessage();
+        String error = reloadPanels(false).files().stream().filter(file -> "panels.csv".equals(file.fileName()))
+                .findFirst().orElseThrow().errorMessage();
 
-        assertTrue(error, error.contains("Lines 2 and 3:"));
-        assertTrue(error, error.contains("Synthetic first panel TIE") && error.contains("Synthetic second panel TIE"));
-        assertTrue(error, error.contains(first) && error.contains(second) && error.contains(organism.getDisplayName()));
+        assertTrue(error, error.startsWith("Lines 2 and 3:"));
+        assertTrue(error, error.contains("\"Synthetic first panel TIE\" (\"" + first + "\", line 2)"));
+        assertTrue(error, error.contains("\"Synthetic second panel TIE\" (\"" + second + "\", line 3)"));
+        assertTrue(error, error.contains("\"Synthetic third panel TIE\" (\"" + third + "\", other-panels.csv)"));
+        assertTrue(error, error.contains(organism.getDisplayName()));
         assertNull(panels.findCurrentByNameIgnoreCase("Synthetic first panel TIE"));
     }
 
