@@ -65,6 +65,10 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                 try {
                     MicroOrganism organism = organism(row);
                     String group = required(row, "group");
+                    if (group.length() > 100) {
+                        throw new IllegalArgumentException(
+                                "Line " + row.lineNumber() + ": group is longer than 100 characters");
+                    }
                     groupNames.add(group);
                     linesByOrganismAndGroup.computeIfAbsent(organism.getId(), ignored -> new HashMap<>()).put(group,
                             row.lineNumber());

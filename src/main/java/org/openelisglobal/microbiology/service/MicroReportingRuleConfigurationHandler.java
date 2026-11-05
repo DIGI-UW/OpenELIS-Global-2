@@ -69,8 +69,8 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             for (CsvRow row : rows) {
                 try {
                     results.add(loadRow(row, ruleLines));
-                } catch (RuntimeException e) {
-                    errors.add(CsvLoadSummary.reason(e));
+                } catch (IllegalArgumentException e) {
+                    errors.add(rowError(row.lineNumber(), e));
                     flushUnresolvedReferences(fileName, row.lineNumber());
                 }
             }

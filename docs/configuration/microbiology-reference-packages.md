@@ -32,18 +32,18 @@ groups the file does not name are left alone. The file is applied whole or not
 at all and a failed load lists every bad row. A load fails, naming the rows,
 when it would put an organism in two groups whose reporting rules for the same
 antibiotic, indication and sample types disagree. Laboratory groups drive
-reporting rules, always-resistant rules and AST panel defaults; breakpoints still
-use the reference package's organism group.
+reporting rules, always-resistant rules and AST panel defaults; breakpoints
+still use the reference package's organism group.
 
-AST panel files carry one row per panel drug,
-`panelName,antibioticWhonetCode`, with optional `susceptibilityProtocol`,
-`diskContent` and `defaultFor`. `defaultFor` lists, separated by semicolons, the
-species, genera or laboratory groups the panel is the default for. Across every
-panel file the most specific entry wins (species, then genus, then group). Two
-panels that claim an organism equally specifically fail the load, and so does a
-default whose protocol differs from the organism's. A changed panel is published
-as a new version, except that a panel edited on the AST panels page since the
-file last applied it keeps the laboratory's version.
+AST panel files carry one row per panel drug, `panelName,antibioticWhonetCode`,
+with optional `susceptibilityProtocol`, `diskContent` and `defaultFor`.
+`defaultFor` lists, separated by semicolons, the species, genera or laboratory
+groups the panel is the default for. Across every panel file the most specific
+entry wins (species, then genus, then group). Two panels that claim an organism
+equally specifically fail the load, and so does a default whose protocol differs
+from the organism's. A changed panel is published as a new version, except that
+a panel edited on the AST panels page since the file last applied it keeps the
+laboratory's version.
 
 Breakpoint files use the existing administrator CSV importer:
 
@@ -84,11 +84,12 @@ both groups fail the load and name both rows.
 
 Each row upserts the rule whose antibiotic, organism or group, sample types and
 indication match, and saves it active unless `active: NO`. A reporting rule file
-is applied whole or not at all: a bad row rolls back every row before it. A
-failed load lists every bad row with its line number. A reload of an unchanged
-file writes no revision history. Rules absent from the file are left alone, and
-the AST rules page exports the same format, so an export re-imports without
-changes. An antibiotic that no rule matches is reported.
+is applied whole or not at all: a bad row rolls back the whole file. A failed
+load lists every bad row with its line number; a database error fails the file
+at once. A reload of an unchanged file writes no revision history. Rules absent
+from the file are left alone, and the AST rules page exports the same format, so
+an export re-imports without changes. An antibiotic that no rule matches is
+reported.
 
 QC range files carry one expected range per row:
 `qc_strain,agent,method,disk_content,guideline,version,low,high`. `agent` is a

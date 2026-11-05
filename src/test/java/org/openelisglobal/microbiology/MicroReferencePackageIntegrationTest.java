@@ -436,6 +436,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
             assertTrue(error, error.contains("Line 3: unknown sample type " + sampleType));
             assertTrue(error, error.contains("Line 4: unknown antibiotic NO_SUCH_AGENT"));
             assertTrue(error, error.contains("Line 5: unknown organism No such organism"));
+            assertFalse(error, error.contains("Line 2:"));
         }
         assertTrue(rulesFor(antibioticId).isEmpty());
         assertEquals(Integer.valueOf(3), unresolvedReferences.getOpen().stream()
@@ -1294,6 +1295,32 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         unresolvedReferences.resolve(agentItem.getId(), "ALIAS", antibiotic.getId(), "1");
         var reloaded = reloadReportingRules(true);
         assertFalse(reloaded.toString(), reloaded.hasErrors());
+    }
+
+    @Test
+    public void serviceErrorsCarryTheirLineAndADatabaseErrorFailsTheFileAtOnce() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.64", "ROWERR");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
+                + ",Synthetic,REPORT,,,,," + "x".repeat(1001) + ",ALWAYS,,\n");
+        String rulesError = reloadReportingRules(false).files().get(0).errorMessage();
+        assertTrue(rulesError, rulesError.contains("Line 2: REPORTING_RULE_NOTE_TOO_LONG"));
+
+        writePanels("panelName,antibioticWhonetCode\nSynthetic duplicate panel," + fixture.antibiotic
+                + "\nSynthetic duplicate panel," + fixture.antibiotic + "\n");
+        String duplicate = reloadPanels(true).files().get(0).errorMessage();
+        assertTrue(duplicate, duplicate.contains("Line 2: Duplicate antibiotic"));
+
+        writePanels("panelName,antibioticWhonetCode\n" + "P".repeat(300) + "," + fixture.antibiotic
+                + "\nSynthetic panel after a database error," + fixture.antibiotic + "\n");
+        String database = reloadPanels(true).files().get(0).errorMessage();
+        assertTrue(database, database.contains("too long"));
+        assertFalse(database, database.contains("current transaction is aborted"));
+
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + "G".repeat(101) + "\n");
+        String group = reloadOrganismGroups(false).files().get(0).errorMessage();
+        assertTrue(group, group.contains("Line 2: group is longer than 100 characters"));
     }
 
     @Test

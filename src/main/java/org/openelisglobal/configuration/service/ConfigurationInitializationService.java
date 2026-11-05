@@ -337,7 +337,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                         "Successfully loaded " + domainName + " configuration: " + fileName);
             } catch (Exception e) {
                 LogEvent.logError("Failed to load " + domainName + " configuration from file: " + fileName, e);
-                fileResults.add(ConfigurationReloadFileResult.error(domainName, fileName, e.getMessage()));
+                fileResults.add(ConfigurationReloadFileResult.error(domainName, fileName, CsvLoadSummary.reason(e)));
             }
         }
 
