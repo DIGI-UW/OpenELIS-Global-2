@@ -135,8 +135,10 @@ once for your administrator password to trust the local certificates, so run it
 in an interactive terminal. Open the address that `url` prints and log in as
 `admin` / `adminADMIN!`.
 
-To skip mkcert entirely, use a self-signed certificate; the browser then shows a
-certificate warning to click through:
+A certificate problem never stops `up`: if mkcert cannot be installed, trusted
+or run on a machine, `up` warns and finishes with a self-signed certificate, and
+the browser then shows a certificate warning to click through. To skip mkcert
+entirely, use the self-signed certificate from the start:
 
 ```bash
 DEV_STACK_TLS=self-signed scripts/dev-stack up   # or add DEV_STACK_TLS=self-signed to .env

@@ -352,6 +352,35 @@ class DevStackContractTest(unittest.TestCase):
                 self.dev_stack.local_https_step(environment, "a step", unittest.mock.Mock(side_effect=error))
             self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
 
+    def test_a_failed_https_check_on_local_ca_warns_instead_of_stopping(self):
+        environment = {"DEV_STACK_TLS": "local-ca"}
+        with (
+            patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:1"}),
+            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")),
+            contextlib.redirect_stderr(io.StringIO()) as warnings,
+        ):
+            self.dev_stack.verify_tls(self.dev_stack.make_context(REPO_ROOT), environment)
+
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+        self.assertIn("verifying the trusted certificate", warnings.getvalue())
+
+    def test_a_failed_https_check_on_a_public_domain_still_stops(self):
+        with (
+            patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://lab.example.org"}),
+            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")),
+            self.assertRaisesRegex(RuntimeError, "HTTPS verification failed"),
+        ):
+            self.dev_stack.verify_tls(self.dev_stack.make_context(REPO_ROOT), {"DEV_STACK_TLS": "letsencrypt"})
+
+    def test_local_ca_on_a_domain_falls_back_too(self):
+        environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "lab.example.org"}
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.dev_stack.local_https_step(
+                environment, "trusting", self.dev_stack.ensure_local_tls_trust,
+                self.dev_stack.make_context(REPO_ROOT), environment,
+            )
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+
     def test_a_working_step_and_other_tls_modes_are_left_alone(self):
         step = unittest.mock.Mock()
         working = {"DEV_STACK_TLS": "local-ca"}
@@ -384,23 +413,26 @@ class DevStackContractTest(unittest.TestCase):
             self.assertFalse(any("rootCA" in part for command in commands for part in command))
             self.assertEqual(0o600, (context.repo_root / ".dev-stack/tls/localhost-key.pem").stat().st_mode & 0o777)
 
-    def test_trusted_tls_fails_closed_on_certificate_errors(self):
+    def test_trusted_tls_check_verifies_and_falls_back_on_certificate_errors(self):
         context = self.dev_stack.make_context(REPO_ROOT)
-        with patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:12345"}), patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")) as run:
-            with self.assertRaisesRegex(RuntimeError, "HTTPS verification failed"):
-                self.dev_stack.verify_tls(context, {"DEV_STACK_TLS": "local-ca"})
+        environment = {"DEV_STACK_TLS": "local-ca"}
+        with patch.object(self.dev_stack, "endpoint_environment", return_value={"BASE_URL": "https://localhost:12345"}), patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(60, "curl")) as run, contextlib.redirect_stderr(io.StringIO()):
+            self.dev_stack.verify_tls(context, environment)
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
         command = run.call_args.args[0]
         self.assertNotIn("--insecure", command)
         self.assertNotIn("-k", command)
         self.assertNotIn("--retry-all-errors", command)
         self.assertEqual("https://localhost:12345/", command[-1])
 
-    def test_local_ca_refuses_public_domain(self):
+    def test_local_ca_on_a_public_domain_falls_back_to_self_signed(self):
         context = self.dev_stack.make_context(REPO_ROOT)
-        with patch.object(self.dev_stack, "run") as run:
-            with self.assertRaisesRegex(ValueError, "loopback"):
-                self.dev_stack.configure_tls(context, {"LETSENCRYPT_DOMAIN": "example.org", "DEV_STACK_TLS": "local-ca"})
+        environment = {"LETSENCRYPT_DOMAIN": "example.org", "DEV_STACK_TLS": "local-ca"}
+        with patch.object(self.dev_stack, "run") as run, contextlib.redirect_stderr(io.StringIO()) as warnings:
+            self.dev_stack.configure_tls(context, environment)
         run.assert_not_called()
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+        self.assertIn("loopback", warnings.getvalue())
 
     def test_domain_uses_public_standard_ingress_and_letsencrypt(self):
         context = self.dev_stack.make_context(REPO_ROOT)
