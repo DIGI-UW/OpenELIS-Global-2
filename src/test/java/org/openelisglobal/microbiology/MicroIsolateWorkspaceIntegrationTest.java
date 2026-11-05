@@ -95,6 +95,10 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private org.openelisglobal.referral.dao.ReferralDAO referrals;
     @Autowired
+    private MicroCaseResultService results;
+    @Autowired
+    private MicroCaseAnalysisDAO caseAnalyses;
+    @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
     private org.openelisglobal.role.service.RoleService roles;
@@ -1129,6 +1133,54 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         referral.setSubcontract(null);
         assertEquals(legacy, reload().referrals.get(0).sentAt());
 
+    }
+
+    @Test
+    public void aSpecimenReferralNeverTakesTheCultureAnalysisOfTheSameTest() {
+        var request = minimalReferralRequest();
+        allowOnSource(request.testId);
+        var cultureTest = new MicroCaseAddTestsForm();
+        cultureTest.sampleItemId = source.getId();
+        cultureTest.placement = "CULTURE";
+        cultureTest.cultureId = culture("GROWTH").getId();
+        cultureTest.testIds = List.of(request.testId);
+        String cultureAnalysis = results.addTests(c.getId(), cultureTest, writer).getFirst().analysisId;
+
+        request.sampleItemId = source.getId();
+        workspace.refer(c.getId(), request, writer);
+
+        var referred = referrals.getWorkspaceReferrals(List.of(source.getId())).getFirst().getAnalysis();
+        assertNotEquals(cultureAnalysis, referred.getId());
+        assertNull(caseAnalyses.getByCaseAndAnalysis(c.getId(), referred.getId()).getCultureId());
+    }
+
+    @Test
+    public void anOfferedDescendantAliquotCanBeReferred() {
+        var request = minimalReferralRequest();
+        allowOnSource(request.testId);
+        var aliquot = new SampleItem();
+        aliquot.setSample(source.getSample());
+        aliquot.setParentSampleItem(source);
+        aliquot.setTypeOfSample(source.getTypeOfSample());
+        aliquot.setSortOrder("2");
+        aliquot.setStatusId(source.getStatusId());
+        aliquot.setSysUserId(writer);
+        sampleItems.insert(aliquot);
+        assertTrue(workspace.options(c.getId()).sources.stream().anyMatch(s -> aliquot.getId().equals(s.id())));
+
+        request.sampleItemId = aliquot.getId();
+        workspace.refer(c.getId(), request, writer);
+
+        assertEquals(aliquot.getId(), referrals.getWorkspaceReferrals(List.of(aliquot.getId())).getFirst().getAnalysis()
+                .getSampleItem().getId());
+    }
+
+    private void allowOnSource(String testId) {
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(source.getTypeOfSampleId());
+        mapping.setTestId(testId);
+        mapping.setSysUserId(writer);
+        sampleTests.insert(mapping);
     }
 
     private MicroIsolateWorkspaceRequestForm minimalReferralRequest() {
