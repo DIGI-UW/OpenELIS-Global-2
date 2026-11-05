@@ -1443,4 +1443,16 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         em.flush();
         assertFalse(readiness.getReadiness(onlyInternal.getId()).blockers.contains("REPORTABLE_WORK_REQUIRED"));
     }
+
+    @Test
+    public void reidentifyingOutOfThePanelsGroupRetiresItsAssignment() {
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales", null);
+        reidentify(klebsiella.getId());
+        assertEquals(List.of(reference.panel().getId()),
+                assignments.getAssignments(isolate).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+
+        var staphylococcus = fixtures.createOrganism("Staphylococcus " + UUID.randomUUID(), "Staphylococci", null);
+        reidentify(staphylococcus.getId());
+        assertEquals(List.of(), assignments.getAssignments(isolate));
+    }
 }
