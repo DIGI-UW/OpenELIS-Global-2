@@ -8,7 +8,6 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
-import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseResourceAccessService;
 import org.openelisglobal.microbiology.service.MicroCaseWriteAccessGuard;
 import org.springframework.security.access.AccessDeniedException;
@@ -58,8 +57,6 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
             caseId = childCase;
         if (caseId == null)
             for (Object arg : args) {
-                if (arg instanceof MicroIsolateRequestForm f)
-                    caseId = f.caseId;
                 if (arg instanceof MicroAstRunRequestForm f)
                     caseId = resources.resolveCaseId("isolateId", f.isolateId);
             }
@@ -74,12 +71,6 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
         PreAuthorize rule = method.getAnnotation(PreAuthorize.class);
         String role = rule != null && SUPERVISOR_ACCESS.equals(rule.value()) ? Constants.ROLE_VALIDATION
                 : Constants.ROLE_RESULTS;
-        for (Object arg : args) {
-            if (arg instanceof MicroIsolateRequestForm form
-                    && "CONFIRMED".equalsIgnoreCase(form.identificationStatus)) {
-                role = Constants.ROLE_VALIDATION;
-            }
-        }
         resources.requireAccess(caseId, actor, role, read);
         if (!read)
             request.setAttribute(MicroCaseWriteAccessGuard.REQUEST_SCOPE,
