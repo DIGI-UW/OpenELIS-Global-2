@@ -194,7 +194,9 @@ export function filterTriaged(triaged, filter) {
 /** OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane only. */
 export function clearRows(triaged) {
   return (triaged || [])
-    .filter((item) => item.lane === LANE_CLEAR)
+    .filter(
+      (item) => item.lane === LANE_CLEAR && !item.row.selfValidationBlocked,
+    )
     .map((item) => item.row);
 }
 

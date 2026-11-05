@@ -35,6 +35,7 @@ import {
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import WithdrawModal from "./WithdrawModal";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import SearchableSelect from "../common/SearchableSelect";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -241,25 +242,18 @@ const EQAParticipantsPage = () => {
           style={{ color: "#00695c", marginBottom: "0.5rem" }}
         />
         <div style={{ flex: 1, maxWidth: "400px" }}>
-          <Select
+          <SearchableSelect
             id="program-selector"
             labelText={intl.formatMessage({
               id: "eqa.enrollment.selectProgram",
             })}
+            placeholder={intl.formatMessage({
+              id: "eqa.enrollment.selectProgram",
+            })}
+            options={programs.map((p) => ({ id: String(p.id), value: p.name }))}
             value={selectedProgramId}
-            onChange={(e) => setSelectedProgramId(e.target.value)}
-            data-testid="program-selector"
-          >
-            <SelectItem
-              value=""
-              text={intl.formatMessage({
-                id: "eqa.enrollment.selectProgram",
-              })}
-            />
-            {programs.map((p) => (
-              <SelectItem key={p.id} value={String(p.id)} text={p.name} />
-            ))}
-          </Select>
+            onChange={setSelectedProgramId}
+          />
         </div>
       </div>
 

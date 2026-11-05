@@ -66,7 +66,7 @@ const InspectorReadiness = () => {
   };
 
   const qc = summary ? summary.qc : null;
-  const q1Status = qcPillar(intl, summary).status;
+  const q1 = qcPillar(intl, summary);
   const critical = nceList ? countCriticalPending(nceList) : null;
 
   return (
@@ -81,9 +81,9 @@ const InspectorReadiness = () => {
             <AnswerRow
               titleKey="qa.overview.inspector.q1"
               loading={summaryLoading}
-              status={q1Status}
+              status={q1.status}
               answer={
-                qc && qc.totalInstruments > 0
+                q1.hasData
                   ? intl.formatMessage(
                       { id: "qa.overview.inspector.q1.answer" },
                       {

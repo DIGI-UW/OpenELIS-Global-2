@@ -120,7 +120,7 @@ public class RuleEnginesOnComponentResultsIntegrationTest extends BaseWebContext
                 .addNewTestsToDBForCalculatedTests(List.of(resultSetFor(ctResult)), userId));
 
         assertEquals(1, added.size());
-        assertEquals("40.0", rsvCtValue(added.get(0).getId()));
+        assertEquals("40", rsvCtValue(added.get(0).getId()));
         assertTrue(jdbc.queryForObject("SELECT result_calculated FROM clinlims.analysis WHERE id = ?::numeric",
                 Boolean.class, added.get(0).getId()));
     }

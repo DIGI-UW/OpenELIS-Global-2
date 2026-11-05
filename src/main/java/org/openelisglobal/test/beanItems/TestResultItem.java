@@ -17,6 +17,7 @@ package org.openelisglobal.test.beanItems;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
@@ -38,6 +39,7 @@ import org.openelisglobal.result.action.util.ResultItem;
 import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
+import org.openelisglobal.resultrun.form.WaitingRun;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
@@ -150,7 +152,7 @@ public class TestResultItem implements ResultItem, Serializable {
      */
     private String criticalRange = "";
 
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     private String expandedUncertainty;
 
@@ -393,6 +395,7 @@ public class TestResultItem implements ResultItem, Serializable {
     private String sampleType;
     private boolean failedValidation = false;
     private boolean nonconforming = false;
+    private WaitingRun waitingRun;
     private String testSortOrder = null;
     private boolean isReflexGroup = false;
     private int reflexParentGroup = 0;
@@ -1233,6 +1236,19 @@ public class TestResultItem implements ResultItem, Serializable {
         return nonconforming;
     }
 
+    /**
+     * OGC-1200 FR-D3: the run an analyzer value for this pending test is waiting
+     * in. Set by the server when the worklist loads; never read from a request.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public WaitingRun getWaitingRun() {
+        return waitingRun;
+    }
+
+    public void setWaitingRun(WaitingRun waitingRun) {
+        this.waitingRun = waitingRun;
+    }
+
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
     }
@@ -1357,12 +1373,12 @@ public class TestResultItem implements ResultItem, Serializable {
         this.normalRange = normalRange;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public String getExpandedUncertainty() {

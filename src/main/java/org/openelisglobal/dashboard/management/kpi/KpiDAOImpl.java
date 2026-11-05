@@ -15,6 +15,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class KpiDAOImpl implements KpiDAO {
 
+    // Nearest-rank percentiles, as on the TAT report.
+    private static final String FIGURES = "percentile_disc(0.5) WITHIN GROUP (ORDER BY hours) AS median,"
+            + " percentile_disc(0.9) WITHIN GROUP (ORDER BY hours) AS p90, count(hours) AS validated,"
+            + " count(*) FILTER (WHERE hours <= :target) AS on_time";
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -54,29 +59,29 @@ public class KpiDAOImpl implements KpiDAO {
     @Override
     public Map<String, TatFigures> tatByPeriod(LocalDate from, LocalDate to, String interval, BigDecimal targetHours) {
         Map<String, TatFigures> figures = new HashMap<>();
-        for (Object row : tatQuery("SELECT bucket, percentile_disc(0.5) WITHIN GROUP (ORDER BY hours) AS median,"
-                + " count(hours) AS validated, count(*) FILTER (WHERE hours <= :target) AS on_time FROM (SELECT date_trunc(:unit, received) AS bucket, hours"
-                + " FROM tat) b GROUP BY GROUPING SETS ((bucket), ())", from, to, targetHours)
+        for (Object row : tatQuery("SELECT bucket, " + FIGURES + " FROM (SELECT date_trunc(:unit, received) AS bucket,"
+                + " hours FROM tat) b GROUP BY GROUPING SETS ((bucket), ())", from, to, targetHours)
                 .setParameter("unit", QiReportSupport.truncUnit(interval)).getResultList()) {
             Object[] cols = (Object[]) row;
-            figures.put(cols[0] == null ? ALL_PERIODS : QiReportSupport.periodKey(cols[0], interval), new TatFigures(
-                    (BigDecimal) cols[1], ((Number) cols[2]).longValue(), ((Number) cols[3]).longValue()));
+            figures.put(cols[0] == null ? ALL_PERIODS : QiReportSupport.periodKey(cols[0], interval), figures(cols));
         }
         return figures;
     }
 
     @Override
-    public Map<String, long[]> countOnTimeBySection(LocalDate from, LocalDate to, BigDecimal targetHours) {
-        Map<String, long[]> counts = new HashMap<>();
-        for (Object row : tatQuery(
-                "SELECT section, count(hours) AS validated, count(*) FILTER (WHERE hours <= :target) AS on_time FROM tat"
-                        + " GROUP BY section HAVING count(hours) > 0",
+    public Map<String, TatFigures> tatBySection(LocalDate from, LocalDate to, BigDecimal targetHours) {
+        Map<String, TatFigures> figures = new HashMap<>();
+        for (Object row : tatQuery("SELECT section, " + FIGURES + " FROM tat GROUP BY section HAVING count(hours) > 0",
                 from, to, targetHours).getResultList()) {
             Object[] cols = (Object[]) row;
-            counts.put(cols[0] == null ? null : String.valueOf(((Number) cols[0]).longValue()),
-                    new long[] { ((Number) cols[1]).longValue(), ((Number) cols[2]).longValue() });
+            figures.put(cols[0] == null ? null : String.valueOf(((Number) cols[0]).longValue()), figures(cols));
         }
-        return counts;
+        return figures;
+    }
+
+    private static TatFigures figures(Object[] cols) {
+        return new TatFigures((BigDecimal) cols[1], (BigDecimal) cols[2], ((Number) cols[3]).longValue(),
+                ((Number) cols[4]).longValue());
     }
 
     // The TAT report's rows and receipt-to-validation hours: whole milliseconds,

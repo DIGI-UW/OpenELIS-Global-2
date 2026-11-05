@@ -24,8 +24,10 @@ import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicrobiologyUatScenarioService;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
+import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
@@ -68,7 +70,10 @@ public class AntibiogramServiceIntegrationTest extends BaseWebContextSensitiveTe
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/role.xml");
         fixtures.ensureRequiredWorkflowStatuses();
+        fixtures.ensureCultureAtmosphere();
         user = fixtures.defaultUserId();
     }
 
@@ -79,6 +84,7 @@ public class AntibiogramServiceIntegrationTest extends BaseWebContextSensitiveTe
         request.scenario = "M4";
         request.scenarioKey = "antibiogram-" + UUID.randomUUID();
         MicrobiologyUatScenarioForm scenario = uatScenarioService.provision(request, user);
+        entityManager.find(MicroAstPanel.class, scenario.astPanelId).setOrganismGroup(null);
         MicroCaseOrderDetailRequestForm purpose = new MicroCaseOrderDetailRequestForm();
         purpose.culturePurpose = "CLINICAL_DIAGNOSTIC";
         orderDetailService.saveOrderDetail(scenario.caseId, purpose, user);
@@ -104,11 +110,9 @@ public class AntibiogramServiceIntegrationTest extends BaseWebContextSensitiveTe
             }
         }
         astService.reviewRun(run.getId(), user);
+        astService.selectReportableRun(run.getId(), user);
+        fixtures.prepareFinalCase(entityManager.find(MicroCase.class, scenario.caseId), user);
         reportReleaseService.releaseFinal(scenario.caseId, user);
-        // workflow_type has no application writer; the WHONET selection still filters
-        // on it.
-        entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
-                .setParameter("id", scenario.caseId).executeUpdate();
         entityManager.flush();
         entityManager.clear();
         return scenario;
