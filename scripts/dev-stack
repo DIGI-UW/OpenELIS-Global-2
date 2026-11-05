@@ -824,6 +824,23 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     return endpoints
 
 
+LOW_DISK_BYTES = 5 * 1024**3
+
+
+def warn_on_low_disk(context: StackContext) -> None:
+    """Name a nearly full disk before the build: Maven, npm and Docker then fail with errors
+    (npm's "no space left on device" inside a quiet Maven build) that do not say why."""
+    free = shutil.disk_usage(context.repo_root).free
+    if free < LOW_DISK_BYTES:
+        print(
+            f"Warning: only {free / 1024**3:.1f} GB free on the disk of {context.repo_root}. "
+            "The build, npm and Docker can fail with 'no space left on device'. Free space first, "
+            "for example: docker image prune, removing unused images (docker images), npm cache clean --force.",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def local_https_step(environment: dict[str, str], description: str, step, *arguments) -> None:
     """Run one local-HTTPS step; when it fails, finish this run with a self-signed certificate.
 
@@ -1180,6 +1197,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         run(compose_command(context, "config"), cwd=context.project_dir, environment=environment)
     elif args.command == "up":
         modules = read_module_checkouts(args.module)
+        warn_on_low_disk(context)
         ensure_local_env(context)
         environment = build_environment(context)
         local_https_step(environment, "installing mkcert", ensure_mkcert, environment)
