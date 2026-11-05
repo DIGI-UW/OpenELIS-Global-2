@@ -75,6 +75,7 @@ import {
 } from "./domainIntl";
 import { usePresence } from "./usePresence";
 import ExpandedPanel, {
+  AnalysisNote,
   DilutionDraft,
   IdValue,
   NoteDraft,
@@ -189,6 +190,7 @@ interface SaveResponse {
   rawResultValue?: string;
   reflex?: string[];
   calculated?: string[];
+  analysisNotes?: AnalysisNote[];
 }
 
 /**
@@ -908,7 +910,11 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   }, []);
 
   const handleSaveResponse = useCallback(
-    (target: WorklistRow, response: SaveResponse | undefined) => {
+    (
+      target: WorklistRow,
+      response: SaveResponse | undefined,
+      savedInterpretation?: string,
+    ) => {
       const key = worklistRowKey(target);
       if (response && response.status === 409 && response.waitingRun) {
         // OGC-1200 FR-D3: an analyzer value reached a run after the worklist
@@ -1012,6 +1018,26 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
             (!row.testResultComponentId || worklistRowKey(row) === key)
           ) {
             updated.analysisStatusId = response.analysisStatusId;
+          }
+          if (response.analysisNotes) {
+            updated.analysisNotes = response.analysisNotes;
+          } else if (
+            savedInterpretation &&
+            savedInterpretation.trim() &&
+            worklistRowKey(row) === key
+          ) {
+            const existing = updated.analysisNotes || [];
+            updated.analysisNotes = [
+              ...existing,
+              {
+                text: savedInterpretation.trim(),
+                subject: "Interpretation",
+                noteType: "E",
+                testResultComponentId: row.testResultComponentId as
+                  | string
+                  | undefined,
+              },
+            ];
           }
           if (worklistRowKey(row) === key) {
             if (response.resultId && !updated.resultId) {
@@ -1185,7 +1211,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
             });
             return;
           }
-          handleSaveResponse(row, response);
+          handleSaveResponse(row, response, interpretation);
           if (!requestFailed(response)) {
             setNoteDrafts((current) => {
               const next = { ...current };

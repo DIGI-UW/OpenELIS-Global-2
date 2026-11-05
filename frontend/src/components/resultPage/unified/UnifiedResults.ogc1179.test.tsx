@@ -268,6 +268,53 @@ describe("OGC-1179 — unified Results worklist", () => {
   });
 
   /**
+   * Issue #4899: The interpretation field must not clear after a successful save.
+   */
+  it("keeps the interpretation in the field after a successful save", async () => {
+    await renderPage([
+      worklistRow({ testId: "1", testResultComponentId: "c-n2" }),
+    ]);
+
+    utilsMock.postToOpenElisServerJsonResponse.mockImplementation(
+      (_url: string, _body: string, callback: any) =>
+        callback({
+          analysisStatusId: "15",
+          analysisLastupdated: "1700000009999",
+          resultId: "71",
+          resultValue: "34",
+          rawResultValue: "34",
+          analysisNotes: [
+            {
+              text: "Clinically normal range.",
+              subject: "Interpretation",
+              noteType: "E",
+              testResultComponentId: "c-n2",
+            },
+          ],
+        }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit/i }));
+    fireEvent.change(resultField(), { target: { value: "34" } });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Expand row/i })[0]);
+    const interpHeader = screen.getByText("Interpretation");
+    fireEvent.click(interpHeader);
+
+    const interpField = screen.getByLabelText(
+      "Interpretation (free text)",
+    ) as HTMLTextAreaElement;
+    fireEvent.change(interpField, {
+      target: { value: "Clinically normal range." },
+    });
+    expect(interpField.value).toBe("Clinically normal range.");
+
+    fireEvent.click(screen.getByTestId("save-button"));
+
+    expect(interpField.value).toBe("Clinically normal range.");
+  });
+
+  /**
    * #1 — a row saved and edited again, with no reload between, still edits what
    * is stored.
    *
