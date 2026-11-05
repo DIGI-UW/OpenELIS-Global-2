@@ -155,17 +155,17 @@ GitHub results. Neither a failed lane nor a check that did not run is a pass.
 
 The backend integration tests share one PostgreSQL per JVM and run in
 alphabetical order, because many fixtures commit and later classes see their
-rows. Pull requests can also run them as shards: contiguous alphabetical ranges
-of the same classes, each on a fresh database. The `mode` line in
-`.github/ci/backend-test-shards.json` decides which result gates a pull request:
+rows. Pull requests run them as four shards in parallel: contiguous alphabetical
+ranges of the same classes, each on a fresh database, about 20 minutes instead
+of one hour. The `mode` line in `.github/ci/backend-test-shards.json` decides
+which result gates a pull request:
 
-- `shadow` (current): `Build + Test` (the single full run) decides. Four
-  `Backend shard` jobs run the same classes beside it, and
-  `Backend shard report` lists every test whose outcome differs.
-- `required`: the shards and the report decide. The single full run still runs
-  when a pull request changes test infrastructure (base test classes, fixtures,
-  test persistence, `pom.xml`, the shard setup) or carries the `ci:full-backend`
-  label.
+- `required` (current): the shards and `Backend shard report` decide. The single
+  full run (`Build + Test`) still runs when a pull request changes test
+  infrastructure (base test classes, fixtures, test persistence, `pom.xml`, the
+  shard setup) or carries the `ci:full-backend` label, and the report then lists
+  every test whose outcome differs.
+- `shadow`: `Build + Test` decides; the shards run beside it for comparison.
 - `off`: the single full run only.
 
 Classes that start their own PostgreSQL carry `@IsolatedDatabase` and run in
