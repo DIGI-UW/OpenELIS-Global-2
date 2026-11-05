@@ -644,6 +644,56 @@ describe("microbiology reference administration", () => {
     expect(setQuery).toHaveBeenCalledWith({ edit: "activate" });
   });
 
+  it("marks an inactive rule and names an any-organism rule", async () => {
+    getBreakpointStandard.mockResolvedValue({
+      id: "std-1",
+      authority: "CLSI",
+      version: "SYNTH-2026",
+      lifecycleStatus: "LOADED",
+      ruleCount: 2,
+    });
+    getBreakpointRules.mockResolvedValue({
+      rows: [
+        {
+          id: "rule-1",
+          organismName: "Escherichia coli",
+          antibioticName: "Ciprofloxacin",
+          antibioticCode: "CIP",
+          method: "MIC",
+          susceptibleValue: 1,
+          resistantValue: 4,
+          seeded: true,
+          active: true,
+        },
+        {
+          id: "rule-2",
+          antibioticName: "Gentamicin",
+          antibioticCode: "GEN",
+          method: "MIC",
+          susceptibleValue: 2,
+          resistantValue: 8,
+          seeded: true,
+          active: false,
+        },
+      ],
+      total: 2,
+    });
+
+    renderPage(
+      <BreakpointPage
+        standardId="std-1"
+        basePath="/MasterListsPage"
+        query={query}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    const anyOrganism = (await screen.findByText("Any organism")).closest("tr");
+    expect(within(anyOrganism).getByText("Inactive")).toBeInTheDocument();
+    const coli = screen.getByText("Escherichia coli").closest("tr");
+    expect(within(coli).queryByText("Inactive")).not.toBeInTheDocument();
+  });
+
   it("clears an applied import preview when Cancel closes the modal", async () => {
     const user = userEvent.setup();
     const csv = "publisher,version\nCLSI,SYNTH-UAT";
