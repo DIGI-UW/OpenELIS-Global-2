@@ -1166,5 +1166,42 @@ class DevStackMkcertTest(unittest.TestCase):
         self.assertEqual(path[0], str(self.dev_stack.TOOLS_DIR))
 
 
+
+class DevStackCleanBuildTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def build(self, root, commit):
+        (root / "target").mkdir(exist_ok=True)
+        (root / "target" / "OpenELIS-Global.war").write_bytes(b"war")
+        context = self.dev_stack.StackContext(root, "p", root, ())
+        maven = []
+
+        def fake_run(command, **_):
+            if command[:2] == ["git", "rev-parse"]:
+                return SimpleNamespace(stdout=commit + "\n")
+            if "mvn" in command and "-f" not in command:
+                maven.append(command)
+            return SimpleNamespace(stdout="")
+
+        with patch.object(self.dev_stack, "run", side_effect=fake_run), contextlib.redirect_stdout(io.StringIO()):
+            self.dev_stack.build_application(context, {})
+        return maven[0]
+
+    def test_first_build_and_a_changed_commit_start_from_clean_and_the_same_commit_does_not(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+
+            first = self.build(root, "aaa")
+            again = self.build(root, "aaa")
+            switched = self.build(root, "bbb")
+
+        self.assertIn("clean", first)
+        self.assertNotIn("clean", again)
+        self.assertIn("package", again)
+        self.assertIn("clean", switched)
+
+
 if __name__ == "__main__":
     unittest.main()
