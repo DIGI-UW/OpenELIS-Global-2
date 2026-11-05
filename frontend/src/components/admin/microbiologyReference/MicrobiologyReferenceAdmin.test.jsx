@@ -453,6 +453,40 @@ describe("microbiology reference administration", () => {
     ).toBeInTheDocument();
   });
 
+  it("filters the panel antibiotic picker by what is typed", async () => {
+    const panel = {
+      id: "panel-v1",
+      logicalKey: "panel-logical-key",
+      name: "Gram negative panel",
+      versionNumber: 1,
+      current: true,
+      active: true,
+      antibiotics: [],
+    };
+    getReferencePage.mockResolvedValue({ rows: [panel], total: 1 });
+    getReferenceOptions.mockResolvedValue([
+      { id: "gen", label: "Gentamicin", code: "GEN" },
+      { id: "amk", label: "Amikacin", code: "AMK" },
+    ]);
+    getAstPanel.mockResolvedValue(panel);
+
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: panel.id }} setQuery={vi.fn()} />,
+    );
+
+    fireEvent.change(
+      await screen.findByRole("combobox", { name: "Antibiotic" }),
+      { target: { value: "genta" } },
+    );
+
+    expect(
+      await screen.findByRole("option", { name: "Gentamicin (GEN)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Amikacin (AMK)" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("edits panel antibiotics without a tier or report behavior", async () => {
     const user = userEvent.setup();
     const panel = {

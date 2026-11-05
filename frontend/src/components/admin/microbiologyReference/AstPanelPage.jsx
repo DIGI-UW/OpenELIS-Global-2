@@ -36,8 +36,12 @@ import {
   getReferencePage,
   publishAstPanel,
 } from "./api";
+import { filterByTypedLabel } from "../../order/comboFilter";
 import { buildReferenceRequestQuery } from "./queryState";
 import useModalFocusReturn from "./useModalFocusReturn";
+
+const antibioticLabel = (item) =>
+  item ? `${item.displayName} (${item.whonetCode})` : "";
 
 const emptyPanel = {
   name: "",
@@ -464,9 +468,10 @@ const AstPanelPage = ({ query, setQuery }) => {
                   items={antibiotics}
                   selectedItem={selectedAntibiotic}
                   disabled={readOnly}
-                  itemToString={(item) =>
-                    item ? `${item.displayName} (${item.whonetCode})` : ""
-                  }
+                  itemToString={antibioticLabel}
+                  shouldFilterItem={filterByTypedLabel(
+                    antibioticLabel(selectedAntibiotic),
+                  )}
                   onChange={({ selectedItem }) =>
                     setSelectedAntibiotic(selectedItem)
                   }
