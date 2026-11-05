@@ -11,4 +11,13 @@
 <dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="default_for"/>
 </rollback>
 </changeSet>
+<changeSet id="159-amr-v3-panel-configuration-content" author="openelis">
+<comment>Keep the panel content a configuration file last applied, so a package update can tell a local edit from its own.</comment>
+<addColumn schemaName="clinlims" tableName="micro_ast_panel">
+<column name="configuration_content" type="TEXT"/>
+</addColumn>
+<rollback>
+<dropColumn schemaName="clinlims" tableName="micro_ast_panel" columnName="configuration_content"/>
+</rollback>
+</changeSet>
 </databaseChangeLog>

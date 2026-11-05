@@ -246,14 +246,38 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
             throw new IllegalArgumentException(String.join("; ", errors));
         }
 
+        String wanted = content(form);
         MicroAstPanel current = panels.findCurrentByNameIgnoreCase(form.name);
         if (current == null) {
-            return LoadedRow.created(admin.createPanel(form, SYS_USER_ID).id);
+            return LoadedRow.created(applied(admin.createPanel(form, SYS_USER_ID).id, wanted));
         }
-        if (sameContent(admin.getAstPanel(current.getId()), form)) {
+        MicroAstPanelAdminForm existing = admin.getAstPanel(current.getId());
+        if (sameContent(existing, form)) {
+            applied(current.getId(), wanted);
             return LoadedRow.skipped("Panel unchanged");
         }
-        return LoadedRow.updated(admin.publishPanelVersion(current.getId(), form, SYS_USER_ID).id);
+        if (current.getConfigurationContent() != null && !current.getConfigurationContent().equals(content(existing))) {
+            return LoadedRow.skipped("Panel edited locally; package version not applied");
+        }
+        return LoadedRow.updated(applied(admin.publishPanelVersion(current.getId(), form, SYS_USER_ID).id, wanted));
+    }
+
+    private String applied(String panelId, String content) {
+        MicroAstPanel panel = panels.get(panelId).orElseThrow();
+        if (!content.equals(panel.getConfigurationContent())) {
+            panel.setConfigurationContent(content);
+            panels.update(panel);
+        }
+        return panelId;
+    }
+
+    private static String content(MicroAstPanelAdminForm form) {
+        StringBuilder content = new StringBuilder(Objects.toString(form.susceptibilityProtocol, "")).append('|')
+                .append(Objects.toString(form.organismGroup, ""));
+        for (var drug : form.antibiotics) {
+            content.append('|').append(drug.antibioticId).append(':').append(Objects.toString(drug.diskContent, ""));
+        }
+        return content.toString();
     }
 
     private static boolean sameContent(MicroAstPanelAdminForm existing, MicroAstPanelAdminForm wanted) {
