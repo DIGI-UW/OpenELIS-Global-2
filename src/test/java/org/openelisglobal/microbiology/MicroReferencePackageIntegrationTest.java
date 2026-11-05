@@ -937,6 +937,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertFalse(loaded.toString(), loaded.hasErrors());
         assertEquals(java.util.List.of(nonEscppm, species), labGroups(klebsiella));
         assertEquals(java.util.List.of(nonEscppm), labGroups(coli));
+        assertEquals(nonEscppm + "; " + species, referenceAdmin.getOrganism(klebsiella.getId()).labGroups);
         var offered = referenceAdmin.getOptions("lab-organism-groups").stream().map(option -> option.label).toList();
         assertTrue(offered.toString(), offered.containsAll(java.util.List.of(species, nonEscppm)));
 
