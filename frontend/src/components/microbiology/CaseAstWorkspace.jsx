@@ -752,8 +752,7 @@ export default function CaseAstWorkspace({
               {drug.evidence.map((item) => (
                 <p key={`${item.source}-${item.sourceId}`}>
                   {t(`source.${item.source}`)}:{" "}
-                  {t(`interpretation.${item.interpretation}`)} ·{" "}
-                  {t(item.validated ? "validated" : "pending")}
+                  {t(`interpretation.${item.interpretation}`)}
                 </p>
               ))}
               {drug.resolutionReason && (

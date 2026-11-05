@@ -96,6 +96,13 @@ public class MicroDstServiceTest {
     }
 
     @Test
+    public void fingerprintHashesEachEvidenceSourceIdAndInterpretationInOrder() {
+        assertEquals("a293eafdbba65712c5ea3028f5c05e7b9e9b1e0ecbd12af9d52adf79b2475e92",
+                MicroDstService.fingerprint(List.of(new MicroDstForm.Evidence("MOLECULAR", "m1", "RESISTANT"),
+                        new MicroDstForm.Evidence("PHENOTYPIC", "p1", "SUSCEPTIBLE"))));
+    }
+
+    @Test
     public void exactDrugConflictNeedsReasonAndBecomesUnresolvedWhenEvidenceChanges() {
         var first = service.evaluate("c");
         assertTrue(first.unresolvedDiscordance);
