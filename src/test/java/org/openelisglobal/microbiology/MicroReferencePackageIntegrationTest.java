@@ -1338,6 +1338,26 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void previewAloneListsUnknownOrganismsAndAntibioticsForADecision() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.65", "PREVIEWOA");
+        load(fixture);
+        String organismName = "Preview organism " + suffix();
+        String agentCode = "PREVIEW_" + suffix().toUpperCase(java.util.Locale.ROOT);
+        String csv = RULES_HEADER + "SPECIES," + organismName + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,,,,,\n" + "ANY,,ANY," + agentCode + ",Synthetic,REPORT,,,,,,,,\n";
+        var file = new org.springframework.mock.web.MockMultipartFile("files", "preview-rules.csv", "text/csv",
+                csv.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        var plan = catalog.preview(java.util.List.of(file), java.util.List.of("microbiology-reporting-rules"), "1");
+
+        assertNotNull(plan.files().get(0).error());
+        var open = unresolvedReferences.getOpen().stream().map(r -> r.getReferenceType() + ":" + r.getReferenceValue())
+                .toList();
+        assertTrue(open.toString(), open.contains("ORGANISM:" + organismName));
+        assertTrue(open.toString(), open.contains("ANTIBIOTIC:" + agentCode));
+    }
+
+    @Test
     public void unknownSampleTypeInARuleFileIsListedForADecision() throws Exception {
         var fixture = new ReferencePackageFixture("2099.15", "UNKNOWNST");
         load(fixture);
