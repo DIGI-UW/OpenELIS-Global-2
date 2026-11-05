@@ -9,6 +9,7 @@ import org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm;
 import org.openelisglobal.microbiology.form.MicroReportingRuleSettingsForm;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroReportingRuleService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +33,12 @@ public class MicroReportingRuleRestController extends MicrobiologyRestController
     @PostMapping
     public MicroReportingRuleForm save(@RequestBody MicroReportingRuleForm form, HttpServletRequest request) {
         return service.toForm(service.save(form, authenticatedUserId(request)));
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    public ResponseEntity<String> export() {
+        return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=\"reporting-rules.csv\"")
+                .body(service.exportCsv());
     }
 
     @PostMapping("/preview")
