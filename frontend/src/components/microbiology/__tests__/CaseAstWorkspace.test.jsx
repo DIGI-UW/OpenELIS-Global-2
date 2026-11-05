@@ -877,6 +877,30 @@ it("names the panel version each run used", async () => {
   ).toBeInTheDocument();
 });
 
+it("a cancelled run's report ticks cannot be changed", async () => {
+  const data = ticks();
+  data.isolates[0].runs[0].status = "CANCELLED";
+  show(data);
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeDisabled();
+});
+
+it("explains a report tick refused because the run closed meanwhile", async () => {
+  const service = show(ticks());
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_RUN_NOT_EDITABLE" },
+  });
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  );
+  expect(
+    await screen.findByText(
+      "This run is cancelled, invalidated, or needs repeating, so it can no longer be changed. Reload the case to see its current state.",
+    ),
+  ).toBeInTheDocument();
+});
+
 it("explains a resolution the server rejects as invalid", async () => {
   const service = show(discordantRifampicin());
   service.resolveDst = vi.fn().mockRejectedValue({
