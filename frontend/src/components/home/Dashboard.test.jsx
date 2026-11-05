@@ -42,6 +42,12 @@ const openDashboard = () =>
     </IntlProvider>,
   );
 
+test("the loading spinner uses the translated, correctly spelled description", () => {
+  openDashboard();
+  expect(screen.getByText("Loading Dashboard...")).toBeInTheDocument();
+  expect(screen.queryByText("Loading Dasboard...")).not.toBeInTheDocument();
+});
+
 test("failed metrics show a recoverable error instead of crashing or showing zero counts", () => {
   openDashboard();
   act(() => requests[0].callback(undefined));
@@ -49,7 +55,7 @@ test("failed metrics show a recoverable error instead of crashing or showing zer
     "Dashboard counts could not be loaded.",
   );
   expect(screen.queryByText("In Progress")).not.toBeInTheDocument();
-  expect(screen.queryByText("Loading Dasboard...")).not.toBeInTheDocument();
+  expect(screen.queryByText("Loading Dashboard...")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Retry", exact: true }));
   expect(requests).toHaveLength(2);
   act(() => requests[1].callback({ ordersInProgress: 127 }));

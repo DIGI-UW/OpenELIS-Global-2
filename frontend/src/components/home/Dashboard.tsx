@@ -550,7 +550,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   return (
     <>
-      {loading && <Loading description="Loading Dasboard..." />}
+      {loading && (
+        <Loading
+          description={intl.formatMessage({ id: "dashboard.loading" })}
+        />
+      )}
       {notificationVisible === true ? <AlertDialog /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
