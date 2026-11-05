@@ -113,8 +113,8 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         }
         String organismId = trimToNull(request.organismId);
         String organismGroup = trimToNull(request.organismGroup);
-        if ((organismId == null) == (organismGroup == null)) {
-            throw new IllegalArgumentException("Specify exactly one organism or organism group");
+        if (organismId != null && organismGroup != null) {
+            throw new IllegalArgumentException("Specify an organism or an organism group, not both");
         }
         if (organismId != null && organismDAO.get(organismId).isEmpty()) {
             throw new IllegalArgumentException("Organism not found: " + organismId);

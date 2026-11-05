@@ -522,6 +522,33 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void anyOrganismCorrectionCanBeCreatedAndEdited() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.57", "ANYORG");
+        load(fixture);
+        String local = fixture.edition + "-LOCAL";
+        var applied = importer.apply(
+                importer.preview(fixture.files.get("breakpoints.csv").replace(fixture.edition, local)).previewToken,
+                "1");
+        assertTrue(applied.errors.toString(), applied.errors.isEmpty());
+        String standardId = standards.findByAuthorityAndVersion("EUCAST", local).orElseThrow().getId();
+        var form = new MicroBreakpointRuleAdminForm();
+        form.antibioticId = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow().getId();
+        form.method = "MIC";
+        form.breakpointType = "MIC";
+        form.susceptibleValue = new BigDecimal("2");
+        form.resistantValue = new BigDecimal("8");
+        form.units = "mg/L";
+
+        var created = administration.saveRule(standardId, null, form, "1");
+        form.susceptibleValue = new BigDecimal("1");
+        var edited = administration.saveRule(standardId, created.id, form, "1");
+
+        assertNull(edited.organismId);
+        assertNull(edited.organismGroup);
+        assertEquals(0, new BigDecimal("1").compareTo(edited.susceptibleValue));
+    }
+
+    @Test
     public void managedEditionCannotBeEditedThroughAdministration() throws Exception {
         var fixture = new ReferencePackageFixture("2099.1", "EDIT");
         load(fixture);

@@ -44,7 +44,6 @@ const BreakpointRuleForm = ({
   const intl = useIntl();
   const [draft, setDraft] = useState(() => ({ ...EMPTY_RULE, ...value }));
 
-  const hasContext = Boolean(draft.organismId) !== Boolean(draft.organismGroup);
   const hasThreshold = useMemo(
     () =>
       [
@@ -56,7 +55,6 @@ const BreakpointRuleForm = ({
     [draft],
   );
   const valid =
-    hasContext &&
     Boolean(draft.antibioticId) &&
     Boolean(draft.method) &&
     Boolean(draft.breakpointType) &&
@@ -100,7 +98,12 @@ const BreakpointRuleForm = ({
               }))
             }
           >
-            <SelectItem value="" text="" />
+            <SelectItem
+              value=""
+              text={intl.formatMessage({
+                id: "microbiology.admin.astRules.anyOrganism",
+              })}
+            />
             {organisms.map((item) => (
               <SelectItem
                 key={item.id}
