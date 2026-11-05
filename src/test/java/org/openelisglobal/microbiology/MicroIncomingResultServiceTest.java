@@ -90,6 +90,8 @@ public class MicroIncomingResultServiceTest {
         tube.setId("tube");
         a.setSampleItem(tube);
         when(links.getAnalyses("case")).thenReturn(List.of(a));
+        when(links.getByCaseAndAnalysis("case", "analysis"))
+                .thenReturn(new org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis());
         var f = service.receive("case", "tube", "12", "ANALYZER", "source-run", "3", payload, true, "1");
         assertEquals("PLACED", f.state);
         assertEquals("analysis", f.placementTarget);
