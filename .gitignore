@@ -165,6 +165,7 @@ volume/nce-attachments/
 /.dev-stack/tls/
 /.dev-stack/images.json
 /.dev-stack/setup
+/.dev-stack/war-commit
 # Module dev servers started by scripts/dev-stack up --module
 /.dev-stack/modules/
 # Installed module JARs (volume/modules/README.md stays)
