@@ -824,6 +824,28 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     return endpoints
 
 
+def local_https_step(environment: dict[str, str], description: str, step, *arguments) -> None:
+    """Run one local-HTTPS step; when it fails, finish this run with a self-signed certificate.
+
+    Local HTTPS is a convenience, so a machine where mkcert cannot be installed, trusted or
+    run still gets a working stack instead of a stopped up.
+    """
+    if environment["DEV_STACK_TLS"].lower() != "local-ca":
+        return
+    try:
+        step(*arguments)
+    except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
+        print(
+            f"Warning: trusted local HTTPS is not available ({description} failed: {error}). "
+            "Continuing with a self-signed certificate for this run; the browser will show a "
+            "certificate warning. Fix the cause and rerun up for trusted HTTPS, or set "
+            "DEV_STACK_TLS=self-signed in .env to skip this step.",
+            file=sys.stderr,
+            flush=True,
+        )
+        environment["DEV_STACK_TLS"] = "self-signed"
+
+
 def ensure_mkcert(environment: dict[str, str]) -> None:
     """Install mkcert when local HTTPS needs it: with Homebrew if present, else the official binary."""
     if environment["DEV_STACK_TLS"].lower() != "local-ca" or shutil.which("mkcert", path=environment.get("PATH")):
@@ -921,7 +943,7 @@ def configure_tls(context: StackContext, environment: dict[str, str]) -> None:
     if tls_mode == "self-signed":
         return
     if tls_mode == "local-ca":
-        configure_local_tls(context, environment)
+        local_https_step(environment, "creating the local certificate", configure_local_tls, context, environment)
         return
     if tls_mode != "letsencrypt":
         raise ValueError("DEV_STACK_TLS must be local-ca, self-signed or letsencrypt")
@@ -1153,9 +1175,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         modules = read_module_checkouts(args.module)
         ensure_local_env(context)
         environment = build_environment(context)
-        ensure_mkcert(environment)
+        local_https_step(environment, "installing mkcert", ensure_mkcert, environment)
         doctor(context, environment)
-        ensure_local_tls_trust(context, environment)
+        local_https_step(
+            environment, "trusting the local certificate authority", ensure_local_tls_trust, context, environment
+        )
         changed_submodules = ensure_submodules(context, environment)
         bootstrap_analyzer_harness(context, environment, skip_submodules=True)
         backend_was_running = service_is_running(
