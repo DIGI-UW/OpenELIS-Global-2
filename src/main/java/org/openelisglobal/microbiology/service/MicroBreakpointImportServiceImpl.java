@@ -147,11 +147,12 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
                 ruleDAO.evict(existingHash.get());
                 continue;
             }
-            Optional<MicroBreakpointRule> existingRule = row.clinicalContext == null
+            Optional<MicroBreakpointRule> existingRule = row.clinicalContext == null && row.diskContent == null
                     ? ruleDAO.findByNaturalKey(standard.getId(), row.organismId, row.organismGroup, row.antibioticId,
                             row.method, row.specimenTypeId, row.breakpointType)
                     : ruleDAO.findByContextualNaturalKey(standard.getId(), row.organismId, row.organismGroup,
-                            row.antibioticId, row.method, row.specimenTypeId, row.breakpointType, row.clinicalContext);
+                            row.antibioticId, row.method, row.specimenTypeId, row.breakpointType, row.clinicalContext,
+                            row.diskContent);
             if (existingRule.isPresent() && existingRule.get().isLocallyCustomized()) {
                 preview.errors.add(error(row.rowNumber,
                         "A locally customized breakpoint exists for this organism, antibiotic, and method",
@@ -461,7 +462,8 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
     private String naturalKey(ImportRow row) {
         return String.join("|", row.authority, row.version, nullToEmpty(row.organismId), nullToEmpty(row.organismGroup),
                 row.antibioticId, row.method, nullToEmpty(row.specimenTypeId), row.breakpointType)
-                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext);
+                + (row.clinicalContext == null ? "" : "|context=" + row.clinicalContext)
+                + (row.diskContent == null ? "" : "|disk=" + row.diskContent);
     }
 
     private String hash(String value) {
