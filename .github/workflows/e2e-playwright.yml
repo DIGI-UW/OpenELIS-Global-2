@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - develop
-      - modula
       - main
       - "release/**"
       - fix/madagascar-accession-results-file-e2e
@@ -15,10 +14,7 @@ on:
       - spec/782-*
       - feat/782-*
   push:
-    # A push to modula builds and tests like develop so that "Publish images"
-    # can retag the tested images with the branch name; only develop deploys
-    # to the testing VM.
-    branches: [develop, modula]
+    branches: [develop]
   release:
     types: [published]
   workflow_dispatch:

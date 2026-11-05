@@ -1,69 +1,186 @@
 # Modules: extending OpenELIS without a core pull request
 
-A module is one JAR, dropped into `/var/lib/openelis-global/modules`, that
-OpenELIS discovers at start-up. It describes itself in a manifest,
-`META-INF/openelis-module.json`, and can bring its own database tables, Spring
-services, REST endpoints, permissions, navigation entries and pages. It reuses
-the core's services and components instead of copying them.
+A module is one JAR that OpenELIS discovers at start-up. It can bring its own
+database tables, Spring services, REST endpoints, permissions, menu entries,
+pages and dashboard cards, and it reuses the core's services and UI components
+instead of copying them. A site installs it by copying the JAR into a folder and
+restarting the webapp.
 
-This page is the reference for module authors. The architecture and its
-reasoning are in
+**Example module:**
+[DIGI-UW/openelis-module-specimen-followup](https://github.com/DIGI-UW/openelis-module-specimen-followup),
+the Specimen Follow-up & Action Tracker. Every feature on this page is used
+there, and the code samples below are taken from it. Start a new module by
+copying it.
+
+The architecture and its reasoning are in
 [specs/plans/module-system-architecture.md](../specs/plans/module-system-architecture.md);
 the decisions are in [ADR 0001](adr/0001-module-system.md).
 
-## Two shapes of module
+## Contents
 
-| `kind`     | What it may declare                                                                                                                                               | Compiles against                                                           |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `provider` | Implementations of extension points, beans, configuration, permissions. No entities, no changelog, no controllers, no menu, no frontend.                          | `openelis-spi`, `openelis-module-api`                                      |
-| `module`   | Everything: beans, REST controllers under `/rest/modules/<id>/`, extensions, JPA entities, a Liquibase changelog, permissions, menu entries, a prebuilt frontend. | `openelis-spi`, `openelis-module-api`, `openelis-core` (the WAR's classes) |
+1. [Quick start: run the example module](#1-quick-start-run-the-example-module)
+2. [What a module can contribute](#2-what-a-module-can-contribute)
+3. [Create a module step by step](#3-create-a-module-step-by-step)
+4. [Extension slots](#4-extension-slots)
+5. [Configuration, events and backend extension points](#5-configuration-events-and-backend-extension-points)
+6. [Develop on the dev stack](#6-develop-on-the-dev-stack)
+7. [Test, build and CI](#7-test-build-and-ci)
+8. [Deploy and operate](#8-deploy-and-operate)
+9. [Reference](#9-reference)
+10. [Troubleshooting](#10-troubleshooting)
 
-## The three contracts
+## 1. Quick start: run the example module
 
-All three are built from this repository and installed into the local Maven
-repository by `mvn -f module-contracts/pom.xml install` (the build hooks run it
-before the WAR, like `dataexport`). A module declares them in `provided` scope;
-none of them is ever packaged inside a module JAR.
+Check out the core and the example module next to each other, then start the dev
+stack **from the core checkout** with the module's folder:
 
-| Artifact                                              | Contents                                                                                                                                           | Version                                                  |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `org.openelisglobal:openelis-spi`                     | `ExtensionPoint` and the extension points (`report` today) with their value types; the events the core publishes to modules (`SampleCreatedEvent`) | Its own semver; `requires.spi` in the manifest           |
-| `org.openelisglobal:openelis-module-api`              | `OpenElisModule` (lifecycle), `ModuleContext`, `ModuleDescriptor`, the manifest model, the manifest JSON schema, `ModuleAuditedEntity`             | Its own semver; `requires.coreApi`                       |
-| `org.openelisglobal:openelisglobal:<version>:classes` | The application's own classes (services, DAOs, value holders), attached from the WAR build                                                         | The application version; `requires.openelis` (mandatory) |
-
-A provider references only the first two, so it keeps loading on every core
-release that ships the same SPI major. A full module that injects core services
-takes on the application's release cadence and declares the lowest version it
-was built and tested against in `requires.openelis`.
-
-```xml
-<dependency>
-  <groupId>org.openelisglobal</groupId>
-  <artifactId>openelis-module-api</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
-  <scope>provided</scope>
-</dependency>
-<dependency>
-  <groupId>org.openelisglobal</groupId>
-  <artifactId>openelisglobal</artifactId>
-  <version>3.4.0-SNAPSHOT</version>
-  <classifier>classes</classifier>
-  <scope>provided</scope>
-</dependency>
+```bash
+git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
+git clone https://github.com/DIGI-UW/openelis-module-specimen-followup.git
+cd OpenELIS-Global-2
+bash scripts/setup-workspace.sh                      # once per clone
+scripts/dev-stack up --setup light --module ../openelis-module-specimen-followup
+scripts/dev-stack url                                # open this address
 ```
 
-The `classes` artifact carries the WAR's dependencies transitively, so Spring,
-Hibernate, Jackson and the rest arrive in `provided` scope at the versions the
-core really ships. Anything a module adds in `compile` scope is a module-only
-library and is packaged under `lib/` inside the JAR.
+Log in as `admin` / `adminADMIN!`. You now see:
 
-## The manifest
+| Where                    | What the module added                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| Home dashboard           | An "Open follow-ups" card (an [extension slot](#4-extension-slots) contribution)     |
+| Menu, Order              | Specimen Follow-up, with Create Follow-up and View Follow-ups                        |
+| `/m/specimen-followup/…` | The module's pages, loaded from its own Vite dev server with hot reload              |
+| Admin, Modules           | The module, its version and its state (`STARTED`)                                    |
+| Role Management          | Two new permissions, `mod.specimen-followup.view` and `mod.specimen-followup.manage` |
 
-`META-INF/openelis-module.json` is validated against the schema shipped in
-`openelis-module-api` (`META-INF/openelis-module.schema.json`) and then against
-the rules below. A manifest with any problem makes the module `INVALID`; the
-problems are logged and shown by the registry, and the core starts without the
-module.
+Edit a file under the module's `frontend/src` and the browser updates at once.
+After a Java, Liquibase or manifest change, run the same `up --module` command
+again: it rebuilds the JAR and restarts the webapp. See
+[Develop on the dev stack](#6-develop-on-the-dev-stack) for every command.
+
+## 2. What a module can contribute
+
+There are two kinds of module, set by `kind` in the manifest:
+
+| `kind`     | May declare                                                                                                                  | Compiles against                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `module`   | Everything below                                                                                                             | `openelis-spi`, `openelis-module-api`, core classes |
+| `provider` | Backend extension points, beans, configuration and permissions only: no tables, entities, controllers, menu entries or pages | `openelis-spi`, `openelis-module-api`               |
+
+What a full module can add, where it is declared, and where the example does it:
+
+| Contribution                           | Declared in the manifest          | Code in the module                                  | In the example module                                    |
+| -------------------------------------- | --------------------------------- | --------------------------------------------------- | -------------------------------------------------------- |
+| Database tables                        | `backend.liquibase`               | `liquibase/base.xml` and changelog files            | `src/main/resources/liquibase/`                          |
+| JPA entities                           | `backend.entities`                | `@Entity` classes, usually `ModuleAuditedEntity`    | `domain/FollowUp.java`                                   |
+| Services                               | `backend.basePackages`            | `@Service` classes that inject core services        | `service/FollowUpService.java`, `CoreLookupService.java` |
+| REST API                               | `backend.basePackages`            | `@RestController` under `/rest/modules/<id>/`       | `web/FollowUpRestController.java`                        |
+| Start-up logic                         | `backend.activator`               | A class implementing `OpenElisModule`               | `SpecimenFollowUpModule.java`                            |
+| Permissions                            | `permissions[]`                   | `@PreAuthorize("hasAuthority('mod.<id>.<key>')")`   | `view`, `manage`                                         |
+| Menu entries                           | `menu[]`                          | Nothing                                             | Order, Specimen Follow-up                                |
+| Pages                                  | `frontend.routes[]`               | React components exposed by the module's Vite build | `frontend/src/pages/`                                    |
+| Dashboard cards and other slot content | `frontend.slots[]`                | React components exposed by the Vite build          | `frontend/src/slots/FollowUpDashboardCard.jsx`           |
+| Translations                           | `frontend.messages`               | `messages/<locale>.json` with `mod.<id>.*` keys     | `frontend/public/messages/en.json`                       |
+| Settings                               | `configuration.properties[]`      | `ModuleContext.configuration()`, `useModuleConfig`  | `defaultDueDays`                                         |
+| Reports                                | `backend.extensions[]` (`report`) | A `ReportProvider`                                  | Not used                                                 |
+| Reactions to core events               | Nothing                           | `@EventListener` on an `openelis-spi` event         | Not used                                                 |
+
+A module never changes a core table, a core page or a core bean. It references
+core data by id, reads it through core services, and adds UI only through its
+own pages, its menu entries and the [extension slots](#4-extension-slots) the
+core offers.
+
+## 3. Create a module step by step
+
+### Step 1: copy the example and choose an id
+
+Copy the example repository and pick a module **id**: lower case, starting with
+a letter, letters, digits and hyphens, 3 to 41 characters, for example
+`lab-notes`. Every namespace the module owns derives from it. Replace
+`specimen-followup` (and `specimen_followup`, `followup`) in these places:
+
+| Place                                                | Example value for `lab-notes`                          |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| Manifest `id`                                        | `lab-notes`                                            |
+| Java package                                         | `org.openelisglobal.module.labnotes`                   |
+| `pom.xml` `module.id` and `artifactId`               | `lab-notes`, `openelis-module-lab-notes`               |
+| `frontend/vite.config.js` `MODULE_ID`, `REMOTE_NAME` | `lab-notes`, `lab_notes`                               |
+| `frontend/src/…Api.js` `MODULE_ID`                   | `lab-notes`                                            |
+| Message keys                                         | `mod.lab-notes.*`                                      |
+| Liquibase folder, changeset ids and author           | `liquibase/lab-notes/`, `lab-notes-001-…`, `lab-notes` |
+| Table names                                          | `mod_lab_notes_*`                                      |
+| REST prefix                                          | `/rest/modules/lab-notes/`                             |
+| Page routes                                          | `/m/lab-notes/…`                                       |
+| Menu element ids                                     | `menu_mod_lab_notes`, `menu_mod_lab_notes_*`           |
+| Permissions in code                                  | `mod.lab-notes.view`, `mod.lab-notes.manage`           |
+
+The core refuses a module that breaks one of these namespaces; see
+[Namespace rules](#namespace-rules).
+
+### Step 2: the Maven project
+
+The module depends on three artifacts from the core, all in `provided` scope;
+none is ever packaged inside the module JAR:
+
+| Artifact                                              | Contents                                                                                                       | Manifest requirement |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `org.openelisglobal:openelis-module-api`              | `OpenElisModule`, `ModuleContext`, `ModuleConfiguration`, `ModuleAuditedEntity`, the manifest model and schema | `requires.coreApi`   |
+| `org.openelisglobal:openelis-spi`                     | Extension points (`ReportProvider`) and core events (`SampleCreatedEvent`)                                     | `requires.spi`       |
+| `org.openelisglobal:openelisglobal:<version>:classes` | The application's own classes (services, DAOs, value holders), attached from the WAR build                     | `requires.openelis`  |
+
+```xml
+<properties>
+  <maven.compiler.release>21</maven.compiler.release>
+  <openelis.version>3.4.0-SNAPSHOT</openelis.version>
+  <openelis.module-api.version>1.0.0-SNAPSHOT</openelis.module-api.version>
+  <openelis.spi.version>1.0.0-SNAPSHOT</openelis.spi.version>
+  <module.id>lab-notes</module.id>
+</properties>
+
+<dependencies>
+  <dependency>
+    <groupId>org.openelisglobal</groupId>
+    <artifactId>openelis-module-api</artifactId>
+    <version>${openelis.module-api.version}</version>
+    <scope>provided</scope>
+  </dependency>
+  <dependency>
+    <groupId>org.openelisglobal</groupId>
+    <artifactId>openelis-spi</artifactId>
+    <version>${openelis.spi.version}</version>
+    <scope>provided</scope>
+  </dependency>
+  <dependency>
+    <groupId>org.openelisglobal</groupId>
+    <artifactId>openelisglobal</artifactId>
+    <version>${openelis.version}</version>
+    <classifier>classes</classifier>
+    <scope>provided</scope>
+  </dependency>
+  <dependency>
+    <groupId>org.openelisglobal</groupId>
+    <artifactId>openelis-module-test</artifactId>
+    <version>${openelis.module-api.version}</version>
+    <scope>test</scope>
+  </dependency>
+</dependencies>
+```
+
+The `classes` artifact brings the WAR's own dependencies in `provided` scope, so
+Spring, Hibernate and Jackson arrive at the versions the core really ships. A
+library the module adds in `compile` scope is module-only: the example's
+`maven-dependency-plugin` copies it to `lib/` inside the JAR.
+
+The example's `pom.xml` also runs the frontend build through
+`frontend-maven-plugin` (`npm ci`, `npm run build`, and `npm test` in the test
+phase; `-DskipFrontend=true` skips it), and names the JAR
+`<module.id>-<version>.jar`. Copy those parts as they are.
+
+### Step 3: the manifest
+
+`src/main/resources/META-INF/openelis-module.json` describes the module. This is
+the example's manifest; every field is explained in the
+[manifest reference](#manifest-reference).
 
 ```json
 {
@@ -72,6 +189,11 @@ module.
   "kind": "module",
   "name": "Specimen Follow-up & Action Tracker",
   "version": "1.0.0",
+  "description": "Tracks follow-up actions on existing patients' specimens.",
+  "vendor": {
+    "name": "OpenELIS Global",
+    "url": "https://github.com/DIGI-UW/openelis-module-specimen-followup"
+  },
   "requires": {
     "openelis": ">=3.4.0",
     "coreApi": "^1.0",
@@ -86,18 +208,29 @@ module.
   "permissions": [
     {
       "key": "view",
-      "description": "Open the follow-up pages",
-      "defaultRoles": ["Results"]
+      "description": "Open the specimen follow-up pages and read follow-ups",
+      "defaultRoles": ["Results", "Reception", "Validation"]
     },
-    { "key": "manage", "description": "Create, update and delete follow-ups" }
+    {
+      "key": "manage",
+      "description": "Create, update and delete specimen follow-ups",
+      "defaultRoles": ["Results", "Reception"]
+    }
   ],
   "menu": [
     {
       "elementId": "menu_mod_specimen_followup",
       "parent": "menu_sample",
       "displayKey": "mod.specimen-followup.menu.title",
+      "presentationOrder": 95,
+      "permission": "view"
+    },
+    {
+      "elementId": "menu_mod_specimen_followup_list",
+      "parent": "menu_mod_specimen_followup",
+      "displayKey": "mod.specimen-followup.menu.list",
       "actionURL": "/m/specimen-followup/followups",
-      "presentationOrder": 90,
+      "presentationOrder": 2,
       "permission": "view"
     }
   ],
@@ -109,300 +242,896 @@ module.
         "path": "/m/specimen-followup/followups",
         "expose": "./FollowUpListPage",
         "permission": "view"
+      },
+      {
+        "path": "/m/specimen-followup/followups/:followUpId",
+        "expose": "./FollowUpDetailPage",
+        "permission": "view"
+      }
+    ],
+    "slots": [
+      {
+        "slot": "home.dashboard.cards",
+        "expose": "./FollowUpDashboardCard",
+        "permission": "view",
+        "order": 10
+      }
+    ]
+  },
+  "configuration": {
+    "properties": [
+      {
+        "key": "defaultDueDays",
+        "type": "integer",
+        "default": 3,
+        "description": "Days from today proposed as the due date of a new follow-up",
+        "exposeToFrontend": true
       }
     ]
   }
 }
 ```
 
-### Rules the registry enforces
+### Step 4: the activator
 
-Every namespace the module owns derives from `id` (lower-case, starts with a
-letter, letters, digits and hyphens, 3 to 41 characters). With `<id_>` meaning
-the id with hyphens replaced by underscores:
-
-| Namespace        | Rule                                                                                                                                                                                                                                                                                                                                                                                      |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Permission keys  | `mod.<id>.<key>`; the manifest declares `<key>` only                                                                                                                                                                                                                                                                                                                                      |
-| Message keys     | `mod.<id>.*`; a menu `displayKey` must use this prefix                                                                                                                                                                                                                                                                                                                                    |
-| Menu element ids | `menu_mod_<id_>` or `menu_mod_<id_>_*`                                                                                                                                                                                                                                                                                                                                                    |
-| REST paths       | `/rest/modules/<id>/**`; a controller mapped elsewhere fails the module                                                                                                                                                                                                                                                                                                                   |
-| Report ids       | unique across modules and never the id of a report the core ships; a module cannot take over a built-in report                                                                                                                                                                                                                                                                            |
-| Routes           | `/m/<id>/**` only; every route names a permission or a role                                                                                                                                                                                                                                                                                                                               |
-| Tables           | `mod_<id_>_*` in the `clinlims` schema; changeset ids start with `<id>-` with author `<id>`; the manifest names one master changelog under `liquibase/` (`liquibase/base.xml`) that includes the module's changelog files in order, as the core's `base.xml` files do; a changelog path is part of every changeset's identity, so a file that has run on a site is never moved or renamed |
-| Java packages    | `backend.basePackages`, the activator, the entities and the extension classes under `org.openelisglobal.module.<name>`; `api`, `manifest`, `runtime`, `web` and `testkit` belong to the core and are refused                                                                                                                                                                              |
-
-Other rules:
-
-- `requires.openelis` is mandatory and must carry a lower bound (`>=3.4.0`,
-  `^3.4`, `>=3.4.0 <4`). The running version is compared with its pre-release
-  label dropped, so `3.4.0-SNAPSHOT` satisfies `>=3.4.0`.
-- `requires.spi` is mandatory when `backend.extensions` is declared;
-  `requires.frontendContract` when `frontend` is declared.
-- A provider may not declare `entities`, `liquibase`, `menu` or `frontend`, and
-  must declare at least one extension.
-- A menu entry's `permission`, a route's `permission` and a slot's `permission`
-  must be one of the module's own declared keys.
-- A configuration property's `default` must match its `type` (`string`,
-  `integer`, `boolean`, `url`).
-
-Ranges use npm syntax (`>=`, `<`, `^`, `~`, `||`), parsed by semver4j on the
-server and `semver` in the browser.
-
-## Lifecycle
-
-The class named in `backend.activator` implements `OpenElisModule`:
+The class named in `backend.activator` implements `OpenElisModule`. All four
+methods are optional:
 
 ```java
 public class SpecimenFollowUpModule implements OpenElisModule {
+
+    static final String DEFAULT_DUE_DAYS = "defaultDueDays";
+
     @Override
     public void validate(ModuleContext context) {
-        context.configuration().requireInteger("dueDays", 1, 365);
+        // Throws ModuleValidationException, which refuses the start, when the setting is out of range.
+        context.configuration().requireInteger(DEFAULT_DUE_DAYS, 0, 365);
     }
 
     @Override
     public void onStart(ModuleContext context) {
-        context.log().info("started");
+        context.log().info("started " + context.descriptor().version());
+    }
+
+    @Override
+    public void onUpgrade(ModuleContext context, String fromVersion, String toVersion) {
+        context.log().info("upgraded from " + fromVersion + " to " + toVersion);
     }
 }
 ```
 
-`validate` runs after the module's Spring context is refreshed and may throw
-`ModuleValidationException` to refuse to start; `onStart` runs once everything
-is registered; `onUpgrade(context, from, to)` runs after the migrations when the
-JAR's version differs from the recorded one; `onStop` runs at shutdown.
-`ModuleContext` gives the module its descriptor, its typed configuration
-(`modules.<id>.<key>` properties), any core service by type, a JDBC template on
-the core datasource, a private data directory, a way to run start-up writes as
-the system user, and a logger.
+| Method                         | Runs                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `validate(context)`            | After the module's Spring context is ready; throw `ModuleValidationException` to refuse the start |
+| `onStart(context)`             | Once everything is registered; must return within `modules.startTimeoutSeconds` (60)              |
+| `onUpgrade(context, from, to)` | After the migrations, when the JAR's version differs from the installed one                       |
+| `onStop(context)`              | At shutdown                                                                                       |
 
-## Build layout
+`ModuleContext` gives the module its descriptor, its configuration, any core
+service by type, a JDBC template on the core datasource, a private data
+directory and a logger; see [ModuleContext](#modulecontext).
 
+### Step 5: tables, entities and repositories
+
+**Liquibase.** The manifest names one master changelog, `liquibase/base.xml`,
+which includes the module's changelog files in order, the way the core's
+`base.xml` files do:
+
+```xml
+<databaseChangeLog ...>
+  <include relativeToChangelogFile="true" file="specimen-followup/changelog.xml"/>
+  <include relativeToChangelogFile="true" file="specimen-followup/002-follow-up-indexes.xml"/>
+</databaseChangeLog>
 ```
-my-module/
-├── pom.xml                                   provided: openelis-module-api, openelis-spi, openelisglobal:classes
-├── src/main/resources/META-INF/openelis-module.json
-├── src/main/resources/liquibase/base.xml      includes the changelog files below, in order
-├── src/main/resources/liquibase/my-module/001-tables.xml
-├── src/main/java/org/openelisglobal/module/<name>/...  activator, entities, services, controllers
-├── frontend/                                 the pages, built into src/main/resources/META-INF/resources/modules/<id>/
-└── src/test/java/...                         tests
+
+```xml
+<changeSet id="specimen-followup-001-follow-up-table" author="specimen-followup">
+  <preConditions onFail="MARK_RAN">
+    <not><tableExists schemaName="clinlims" tableName="mod_specimen_followup_record"/></not>
+  </preConditions>
+  <createSequence schemaName="clinlims" sequenceName="mod_specimen_followup_record_seq"/>
+  <createTable schemaName="clinlims" tableName="mod_specimen_followup_record">
+    <column name="id" type="BIGINT"><constraints primaryKey="true" nullable="false"/></column>
+    <column name="patient_id" type="VARCHAR(20)"><constraints nullable="false"/></column>
+    <!-- the four audit columns ModuleAuditedEntity maps -->
+    <column name="created_by_user_id" type="INTEGER"/>
+    <column name="created_at" type="TIMESTAMP" defaultValueComputed="now()"><constraints nullable="false"/></column>
+    <column name="sys_user_id" type="INTEGER"/>
+    <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()"><constraints nullable="false"/></column>
+  </createTable>
+</changeSet>
 ```
 
-## Testing a module
+Rules the core enforces before running anything:
 
-`org.openelisglobal:openelis-module-test` (built from `module-test/` after the
-application, `mvn -f module-test/pom.xml install`) is a JUnit 4 base class a
-module extends in its test sources:
+- Every changeset id starts with `<id>-`, and its author is the module id.
+- Tables live in the `clinlims` schema and start with `mod_<id_>_` (hyphens
+  become underscores).
+- To change the schema, add a new changelog file and include it last in
+  `base.xml`. Never move or rename a file that has run on a site: its path is
+  part of every changeset's identity.
+
+**Entities.** Extend `ModuleAuditedEntity` to get the core's audit columns
+(`created_by_user_id`, `created_at`, `sys_user_id`, `lastupdated`); the
+timestamps are set automatically, the service sets the user ids:
 
 ```java
-public class MyModuleContractTest extends ModuleContractTest {
+@Entity
+@Table(name = "mod_specimen_followup_record", schema = "clinlims")
+public class FollowUp extends ModuleAuditedEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "mod_specimen_followup_record_seq")
+    @SequenceGenerator(name = "mod_specimen_followup_record_seq", schema = "clinlims",
+            sequenceName = "mod_specimen_followup_record_seq", allocationSize = 1)
+    private Long id;
+
+    @Column(name = "patient_id", nullable = false)
+    private String patientId;   // a core patient, referenced by id
+    ...
 }
 ```
 
-It checks, at the module's build time and with the core's own validator, the
-contract the core enforces when it loads the JAR: the manifest is valid and its
-kind matches its declarations; every declared class exists and plays its role
-(activator, entities, extension points); the changelog exists and its changesets
-carry the module id as prefix and author; every REST controller under the base
-packages maps under `/rest/modules/<id>/` and every handler is guarded by
-`@PreAuthorize`; the frontend bundle ships its entry and its English messages
-use only `mod.<id>.` keys (`-DskipFrontend=true` skips the bundle checks in a
-backend-only build). `manifest()` returns the validated manifest for the
-module's own assertions.
+List every entity class in `backend.entities`; they join the core persistence
+unit (same session factory, transactions and schema).
 
-Service and controller logic is tested the usual way, with the core services
-mocked; the runtime itself is covered by the core's module tests.
+**Repositories.** Inject the core's `EntityManager`:
 
-## How the runtime loads a module
+```java
+@Repository
+public class FollowUpRepository {
 
-1. **Discovery.** At start-up the registry lists `*.jar` in
-   `/var/lib/openelis-global/modules` (a `<jar>.disabled` marker skips a JAR),
-   reads each manifest, computes its SHA-256 and validates it. Two JARs with one
-   id stop start-up naming both files.
-2. **Switches and compatibility.** `modules.disabled` (comma-separated ids) and
-   `modules.<id>.enabled=false` mark a module `DISABLED`. A module whose
-   `requires.openelis`, `requires.coreApi` or `requires.spi` the running
-   versions do not satisfy, a missing or wrong-version dependency, a conflict or
-   a dependency cycle mark it `INCOMPATIBLE`. Skipped modules are reported by
-   `GET /rest/module-registry` and in the log, and the core starts.
-3. **Class loading.** Each remaining module gets one parent-first class loader
-   over its JAR and its extracted `lib/*.jar` (cached under
-   `modules-cache/<id>/<sha256>/`). A class the core ships always resolves to
-   the core's copy; a bundled library the core also ships is reported as
-   shadowed. Modules named in `requires.modules` are visible, searched after the
-   core. The activator, the entities and the extensions must load from the
-   module and implement their contracts, or the module is `INVALID`.
-4. **Migrations.** After the core changelog and before the entity manager
-   factory, each `VALIDATED` module's master changelog (`backend.liquibase`,
-   `liquibase/base.xml` with its includes) runs through the Liquibase API, read
-   from the module JAR alone. Every changeset id must start with `<id>-` and
-   carry the module id as author (refused before anything runs). The installed
-   version is recorded in `clinlims.module_state`; a JAR older than the recorded
-   version is refused unless `modules.<id>.allowDowngrade=true`. A failing
-   changeset stops start-up naming the module, as a failing core changeset does.
-5. **Entities.** The declared entity classes join the core persistence unit
-   (same session factory, transactions and `clinlims` schema).
-6. **Child context.** Once the root context is refreshed, each `MIGRATED` module
-   gets its own Spring context whose parent is the core's: the module's
-   `basePackages` are scanned, the activator and the extensions become beans,
-   `@Transactional` joins the core transaction manager and `@PreAuthorize` is
-   enforced. A module injects any core service; the core never sees module
-   beans, so a module `@Primary` bean cannot replace a core bean.
-7. **Contributions.** Declared extensions are registered with the extension
-   registry (the report factory consults it first). Every `@RestController` of
-   the module is registered into the core request mapping; a mapping outside
-   `/rest/modules/<id>/` fails the module. Permission keys become
-   `system_module` rows named `mod.<id>.<key>` (first install also grants the
-   `defaultRoles`), menu entries join the menu tree in memory (Menu Management
-   refuses to edit them; who sees one is decided by its permission in Role
-   Management), and a menu entry with an `actionURL` and a `permission` gets a
-   `system_module_url` row so the menu hides it from users who lack the key.
-8. **Start.** `validate` then `onStart` run with the module's class loader as
-   context loader; `onStart` must return within `modules.startTimeoutSeconds`
-   (60). The module is `STARTED`; `module_state` records the start.
+    @PersistenceContext
+    private EntityManager entityManager;
 
-Any failure after validation (migration, context refresh, a controller outside
-the prefix, `validate`, `onStart`) stops the application with the module named
-and the two ways to recover: the `<jar>.disabled` marker file or
-`modules.<id>.enabled=false`, then a restart.
+    public FollowUp save(FollowUp followUp) {
+        if (followUp.getId() == null) {
+            entityManager.persist(followUp);
+            return followUp;
+        }
+        return entityManager.merge(followUp);
+    }
+}
+```
 
-### Events
+### Step 6: services that use the core
 
-Spring events never flow from the core context into a module's. The core
-publishes `openelis-spi` events (`SampleCreatedEvent` when an order with its
-samples is saved) and the runtime forwards them into every started module,
-inside the publishing transaction, where ordinary `@EventListener` and
-`@TransactionalEventListener` methods receive them. A module's own events do
-reach the core's listeners; its lifecycle events (`ContextRefreshedEvent`) do
-not, so core start-up listeners run once.
+Classes under `backend.basePackages` are scanned into the module's own Spring
+context, whose parent is the core's. Inject any core service through the
+constructor; `@Transactional` joins the core transaction manager:
 
-### Configuration
+```java
+@Service
+@Transactional(readOnly = true)
+public class CoreLookupService {
 
-Module settings are `modules.<id>.<key>` properties in the application's
-property sources (the mounted properties directory, `/run/secrets`, the
-environment), typed and defaulted by the manifest's `configuration.properties`;
-`ModuleContext.configuration()` reads them. Properties marked `exposeToFrontend`
-are served by `GET /rest/module-registry/{id}/config`.
+    private final PatientService patientService;
+    private final SampleService sampleService;
 
-### Operations
+    public CoreLookupService(PatientService patientService, SampleService sampleService) {
+        this.patientService = patientService;
+        this.sampleService = sampleService;
+    }
+}
+```
 
-| Operation   | Steps                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Install     | Copy the JAR into the mounted modules directory (`volume/modules` in this repository's compose files, `configs/modules` in `openelis-docker`), restart the webapp.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Upgrade     | Replace the JAR (never two versions of one id), restart; migrations and `onUpgrade` run.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Disable     | Create `<jar>.disabled` next to the JAR, or set `modules.<id>.enabled=false`, restart.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| Remove      | Delete the JAR, restart. Tables and permission rows stay (the data belongs to the site); menu entries and routes vanish.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Strict mode | Put a `modules.lock` in the modules directory with one `id@version sha256` line per allowed JAR; unlisted or changed JARs are `INVALID`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Inspect     | `GET /rest/module-registry` (any user) lists every module with its state and reason; `GET /rest/module-registry/{id}` (administrators) adds the JAR, digest, libraries and warnings.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| State table | `clinlims.module_state` keeps the last outcome per module id: MIGRATED, STARTED or FAILED from a start, DISABLED, INVALID or INCOMPATIBLE when discovery set the module aside.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Dev images  | While the module system lives on the `modula` branch, every push to it publishes the dev images (`openelis-global-2-dev`, `openelis-global-2-frontend-dev`) and, once its E2E build passes, the release images (`openelis-global-2`, `-frontend`, `-proxy`, `-fhir`, `-database`, `-analyzer-bridge`, `-analyzer-mock`), all with the `modula` tag; the testing deployment stays bound to `develop`. An [openelis-docker](https://github.com/DIGI-UW/openelis-docker) deployment tries the branch by changing the webapp and frontend image tags in its `docker-compose.yml` from `develop` to `modula`; dev images are tested from the source tree with the dev stack. The published dev image carries the release Tomcat configuration (TLS on 8443, the application under `/api/OpenELIS-Global`). |
+The core never sees module beans, so a module cannot replace a core bean, even
+with `@Primary`.
 
-## The frontend: the shell, module pages and the core surface
+### Step 7: the REST API
 
-The React application is a Module Federation host (`@module-federation/vite`)
-and, under the name `openelis_core`, a remote of its own. After login it reads
-`GET /rest/module-registry`, keeps the started modules whose
-`requires.frontendContract` accepts the shell's contract version (`1.0.0`),
-registers each one's remote entry
-(`/api/OpenELIS-Global/modules/<id>/remoteEntry.js`, served from the module JAR)
-and merges each one's message file for the active locale into the translations.
-Module pages render under `/m/<id>/...` behind the same `SecureRoute` gate as
-core pages, each inside its own error boundary: a module that fails to load
-shows a notice with a retry where its page would be and the rest of the
-application is unaffected. Administrators see every module, its state and reason
-under Admin, Modules.
+Every controller maps under `/rest/modules/<id>/`, and every handler carries a
+`@PreAuthorize` on one of the module's permissions. A controller mapped anywhere
+else fails the module.
 
-A module's frontend is a Vite build with the same plugin, exposing one component
-per route and per slot contribution, sharing the shell's singletons and
-importing the core surface:
+```java
+@RestController
+@RequestMapping("/rest/modules/specimen-followup")
+public class FollowUpRestController {
 
-| Import                     | What it gives a module                                                                                                                                                                                                                                                                                                              |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `openelis_core/components` | `SearchPatientForm`, `PatientHeader`, `CustomDatePicker`, `CustomTimePicker`, `CustomLabNumberInput`, `CustomSelect`, `CustomTextInput`, `CustomCheckBox`, `AutoComplete`, `PageBreadCrumb`, `ConfirmPopup`, `AlertDialog`, `NotificationKinds`, `Spinner`, `PageTitle`, `RequiredMarker`, `RouteErrorBoundary`, `ServerPageArrows` |
-| `openelis_core/api`        | `getFromOpenElisServer`, `fetchFromOpenElisServer`, `postToOpenElisServer`, `postToOpenElisServerJsonResponse`, `putToOpenElisServer`, `putToOpenElisServerJsonResponse`, `deleteFromOpenElisServer`, `hasRole`, `hasPermission`, `serverQuery`, `useServerData`, `config`                                                          |
-| `openelis_core/hooks`      | `useInAppNavigation`, `useUrlFilters`, `useActiveLocales`, `useDomains`                                                                                                                                                                                                                                                             |
-| `openelis_core/contexts`   | `UserSessionDetailsContext`, `ConfigurationContext`, `NotificationContext`                                                                                                                                                                                                                                                          |
-| `openelis_core/sdk`        | `useSession`, `usePermission`, `useRole`, `useConfigurationProperties`, `useNotifications`, `useOpenElisApi`, `useModuleConfig`, `useModule`, `ExtensionSlot`, `ModuleErrorBoundary`, `FRONTEND_CONTRACT_VERSION`                                                                                                                   |
+    static final String VIEW = "hasAuthority('mod.specimen-followup.view')";
+    static final String MANAGE = "hasAuthority('mod.specimen-followup.manage')";
 
-Everything in that table renders or runs the shell's own instance: a module
-never bundles a copy of React, the router, react-intl, Carbon, the query client
-or the core components. The shell's shared singletons are `react`, `react-dom`,
-`react-router-dom`, `react-intl`, `@carbon/react`, `@carbon/icons-react` and
-`@tanstack/react-query` (`frontend/module-federation.config.js`); a module
-declares the same list as shared in its own Vite configuration:
+    @PostMapping(value = "/followups", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(MANAGE)
+    public ResponseEntity<FollowUpView> create(@RequestBody FollowUpRequest request,
+            HttpServletRequest httpRequest) {
+        FollowUpView created = followUpService.create(request, getSysUserId(httpRequest));
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
 
-```ts
-// module: frontend/vite.config.ts
+    /** The signed-in user's id as the core keeps it for the request or the session. */
+    static String getSysUserId(HttpServletRequest request) {
+        UserSessionData data = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
+        if (data == null) {
+            HttpSession session = request.getSession(false);
+            if (session != null) {
+                data = (UserSessionData) session.getAttribute(IActionConstants.USER_SESSION_DATA);
+            }
+        }
+        return data == null ? null : String.valueOf(data.getSystemUserId());
+    }
+}
+```
+
+The browser reaches it at `/api/OpenELIS-Global/rest/modules/<id>/…`; the
+frontend client adds that base path for you.
+
+### Step 8: permissions and menu entries
+
+**Permissions.** The manifest declares the bare key; the core names it
+`mod.<id>.<key>`:
+
+| In the manifest | In `@PreAuthorize`, `usePermission` and Role Management |
+| --------------- | ------------------------------------------------------- |
+| `"key": "view"` | `mod.specimen-followup.view`                            |
+
+On first install, the core grants each permission to its `defaultRoles`; Global
+Administrator always holds every module permission. Sites change the grants in
+Role Management afterwards.
+
+**Menu entries.** Each entry needs an `elementId` (`menu_mod_<id_>` or
+`menu_mod_<id_>_*`), a `parent`, and a `displayKey` from the module's messages:
+
+- `parent` is the `elementId` of an existing core menu entry, such as
+  `menu_sample` (Order), or of an earlier entry of the same module. The core
+  menu's element ids are listed by `GET /api/OpenELIS-Global/rest/menu`.
+- `actionURL` is one of the module's page routes (`/m/<id>/…`); leave it out for
+  a folder that only holds children.
+- `permission` hides the entry from users without that permission.
+- `presentationOrder` places it among its siblings (default 100).
+
+Module menu entries live in memory: Menu Configuration shows them locked, and
+who sees one is decided by its permission in Role Management.
+
+### Step 9: pages
+
+A module's frontend is a Vite build with `@module-federation/vite`. It exposes
+one React component per page and per slot contribution, imports the core's
+components through the `openelis_core` remote, and shares the shell's React,
+router, react-intl, Carbon and query client instead of bundling copies.
+
+**`frontend/vite.config.js`** (from the example):
+
+```js
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
 import { federation } from "@module-federation/vite";
 
-export default defineConfig({
+const MODULE_ID = "specimen-followup";
+const REMOTE_NAME = "specimen_followup"; // the id with hyphens replaced
+
+// import: false, because the shell always provides these.
+export const SHARED_SINGLETONS = {
+  react: { singleton: true, requiredVersion: "^17.0.0", import: false },
+  "react-dom": { singleton: true, requiredVersion: "^17.0.0", import: false },
+  "react-router-dom": {
+    singleton: true,
+    requiredVersion: "^5.2.0",
+    import: false,
+  },
+  "react-intl": { singleton: true, requiredVersion: "^5.20.0", import: false },
+  "@carbon/react": {
+    singleton: true,
+    requiredVersion: "^1.15.0",
+    import: false,
+  },
+  "@carbon/icons-react": {
+    singleton: true,
+    requiredVersion: "^11.17.0",
+    import: false,
+  },
+  "@tanstack/react-query": {
+    singleton: true,
+    requiredVersion: "^4.44.0",
+    import: false,
+  },
+};
+
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     federation({
-      name: "specimen_followup", // the module id with hyphens replaced
+      name: REMOTE_NAME,
       filename: "remoteEntry.js",
       exposes: {
         "./FollowUpListPage": "./src/pages/FollowUpListPage.jsx",
+        "./FollowUpDetailPage": "./src/pages/FollowUpDetailPage.jsx",
+        "./FollowUpDashboardCard": "./src/slots/FollowUpDashboardCard.jsx",
       },
       remotes: {
         openelis_core: {
           type: "module",
           name: "openelis_core",
-          entry: "/remoteEntry.js", // the shell's entry, same origin
+          entry: "/remoteEntry.js",
         },
       },
-      shared: {
-        react: { singleton: true, requiredVersion: "^17.0.0" },
-        "react-dom": { singleton: true, requiredVersion: "^17.0.0" },
-        "react-router-dom": { singleton: true, requiredVersion: "^5.2.0" },
-        "react-intl": { singleton: true, requiredVersion: "^5.20.0" },
-        "@carbon/react": { singleton: true, requiredVersion: "^1.15.0" },
-        "@carbon/icons-react": { singleton: true, requiredVersion: "^11.17.0" },
-        "@tanstack/react-query": {
-          singleton: true,
-          requiredVersion: "^4.44.0",
-        },
-      },
+      shared: SHARED_SINGLETONS,
+      dts: false,
     }),
   ],
   build: {
-    outDir:
-      "../src/main/resources/META-INF/resources/modules/specimen-followup",
+    // Straight into the Maven output, so the JAR carries the bundle.
+    outDir: `../target/classes/META-INF/resources/modules/${MODULE_ID}`,
+    emptyOutDir: true,
+    target: "es2020",
   },
-});
+  server: {
+    port: 5174,
+    strictPort: true,
+    cors: true,
+    origin: "http://localhost:5174",
+  },
+}));
 ```
 
-Messages live in `messages/<locale>.json` inside the same asset directory, keyed
-`mod.<id>.*`. The backend reads every bundle from the JAR once and sends them
-with the registry (`modules[].messages`, keyed by locale, the module's own keys
-only), so the shell has a module's labels before it renders its menu entries and
-pages; it picks the exact locale, then the base language, then English, and a
-menu entry whose key has no message stays hidden rather than show the key.
-Additions to the exposed surface are frontend-contract minors; removals, prop
-changes and a shared singleton's major (React 18 will be one) are majors,
-declared by the shell and checked against each module's
-`requires.frontendContract` before its bundle is loaded.
+**Routes.** Each `frontend.routes[]` entry maps a path under `/m/<id>/` to an
+exposed component and names a `permission` (or a `role`): there are no anonymous
+module pages. A path may carry parameters, read with `useParams()`:
 
-In development, `scripts/dev-stack up --module <module checkout>` builds the
-module, installs its JAR and serves its pages from the module's own Vite dev
-server with hot reload (see the README's "Running a module from its source").
-Outside the dev stack, `localStorage["oe.module-override.<id>"]` may point a
-module's remote entry at that dev server instead.
+```json
+{
+  "path": "/m/specimen-followup/followups/:followUpId",
+  "expose": "./FollowUpDetailPage",
+  "permission": "view"
+}
+```
 
-### Extension slots
+**A page component:**
 
-The core renders `home.dashboard.cards` on the home dashboard (context
-`{ user }`) and `patient.header.actions` in the patient header (context
-`{ patientId }`); `ExtensionSlot.SLOTS` lists them. There is no feature flag for
-the shell: without a started module it makes one registry request after login
-and renders exactly as before.
+```jsx
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { FormattedMessage } from "react-intl";
+import { PageBreadCrumb } from "openelis_core/components";
+import { useOpenElisApi, usePermission } from "openelis_core/sdk";
 
-A core page may render `<ExtensionSlot name="..." context={{ ... }} />`; every
-started module that declares a contribution to that slot in its manifest
-(`frontend.slots[]`) renders there in order, each in its own error boundary. The
-catalogue starts with `home.dashboard.cards` (`{ user }`) and
-`patient.header.actions` (`{ patientId }`), both experimental.
+export default function FollowUpDetailPage() {
+  const { followUpId } = useParams();
+  const api = useOpenElisApi();
+  const canManage = usePermission("mod.specimen-followup.manage");
+  const [followUp, setFollowUp] = useState(null);
 
-The packaging steps and the module template are described in the next section as
-that phase lands.
+  useEffect(() => {
+    api
+      .get(`/rest/modules/specimen-followup/followups/${followUpId}`)
+      .then(setFollowUp);
+  }, [api, followUpId]);
+
+  return (
+    <>
+      <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
+      <h2>
+        <FormattedMessage id="mod.specimen-followup.detail.title" />
+      </h2>
+      {canManage && <button>…</button>}
+    </>
+  );
+}
+```
+
+Pages get no module id from the shell; keep it in a constant, as the example's
+`followUpApi.js` does (`export const MODULE_ID = "specimen-followup"`).
+
+**Calling the backend.** `useOpenElisApi()` returns `{ get, post, put, del }`.
+It adds the base path, the session cookie, the locale and the CSRF token:
+
+| Call                     | Resolves with                                           |
+| ------------------------ | ------------------------------------------------------- |
+| `get(endpoint, signal?)` | The parsed body; rejects on a non-2xx answer            |
+| `post(endpoint, body)`   | The parsed body; a refused request carries `statusCode` |
+| `put(endpoint, body)`    | The parsed body; a refused request carries `statusCode` |
+| `del(endpoint)`          | The HTTP status                                         |
+
+**Messages.** Put the translations in `frontend/public/messages/<locale>.json`
+(at least `en.json`); every key starts with `mod.<id>.`:
+
+```json
+{
+  "mod.specimen-followup.menu.title": "Specimen Follow-up",
+  "mod.specimen-followup.card.title": "Open follow-ups"
+}
+```
+
+The backend sends each module's messages with the module registry, so menu
+labels exist before the pages load. The shell picks the exact locale, then the
+base language, then English; a menu entry whose key has no message stays hidden
+rather than show the key. Add new English keys only; other languages follow the
+core's translation process.
+
+**The core surface.** Import core components, API helpers, hooks and contexts
+from `openelis_core/*`; the full list is in the
+[frontend reference](#frontend-reference). Everything there runs the shell's own
+instance, so module pages look and behave like core pages.
+
+## 4. Extension slots
+
+An extension slot is a place in a **core** page where modules may add UI. The
+core page renders `<ExtensionSlot name="…" context={…} />`; every started module
+that declares a contribution to that slot renders there. This is the only way a
+module adds UI inside a core page.
+
+### The slot catalogue
+
+| Slot                     | Where it renders                                                                                                                                                                                                  | Props your component receives        | Rendered when                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------- |
+| `home.dashboard.cards`   | Home dashboard, after the core tiles (`frontend/src/components/home/Dashboard.tsx`)                                                                                                                               | `user` (the session details), `slot` | No dashboard tile is selected |
+| `patient.header.actions` | Patient header, before the patient id tags (`frontend/src/components/common/PatientHeader.jsx`), used by order modify, the pathology, cytology and IHC cases, program cases, the results viewer and patient merge | `patientId` (a string), `slot`       | The header shows a patient    |
+
+The catalogue is exported as `SLOTS` from
+`frontend/src/modules/ExtensionSlot.jsx`. Both slots are experimental: their
+props may still change in a frontend contract minor.
+
+### Contribute to a slot
+
+1. Write the component. It receives the slot's context keys as props, plus
+   `slot` (the slot name). This is the example's dashboard card:
+
+   ```jsx
+   import React, { useEffect, useState } from "react";
+   import { ClickableTile } from "@carbon/react";
+   import { useHistory } from "react-router-dom";
+   import { useIntl } from "react-intl";
+   import { useOpenElisApi } from "openelis_core/sdk";
+   import { ROUTES, endpoints } from "../followUpApi";
+
+   export default function FollowUpDashboardCard() {
+     const intl = useIntl();
+     const history = useHistory();
+     const api = useOpenElisApi();
+     const [open, setOpen] = useState(null);
+
+     useEffect(() => {
+       let cancelled = false;
+       api
+         .get(endpoints.followUps({ status: "OPEN", page: 0, size: 1 }))
+         .then((page) => !cancelled && setOpen(page?.total ?? 0))
+         .catch(() => !cancelled && setOpen(0));
+       return () => {
+         cancelled = true;
+       };
+     }, [api]);
+
+     return (
+       <ClickableTile
+         className="dashboard-tile"
+         onClick={() => history.push(`${ROUTES.list}?status=OPEN`)}
+       >
+         <h5 className="dashboard-tile__title">
+           {intl.formatMessage({ id: "mod.specimen-followup.card.title" })}
+         </h5>
+         <p className="dashboard-tile__value">{open === null ? "…" : open}</p>
+       </ClickableTile>
+     );
+   }
+   ```
+
+   A `patient.header.actions` contribution reads the patient from its props:
+
+   ```jsx
+   import React from "react";
+   import { Button } from "@carbon/react";
+   import { useHistory } from "react-router-dom";
+
+   export default function NewFollowUpAction({ patientId }) {
+     const history = useHistory();
+     return (
+       <Button
+         size="sm"
+         kind="ghost"
+         onClick={() =>
+           history.push(`/m/specimen-followup/create?patientId=${patientId}`)
+         }
+       >
+         New follow-up
+       </Button>
+     );
+   }
+   ```
+
+2. Expose it in `vite.config.js`:
+
+   ```js
+   exposes: { "./FollowUpDashboardCard": "./src/slots/FollowUpDashboardCard.jsx" }
+   ```
+
+3. Declare it in the manifest's `frontend.slots`:
+
+   ```json
+   "slots": [
+     { "slot": "home.dashboard.cards", "expose": "./FollowUpDashboardCard", "permission": "view", "order": 10 }
+   ]
+   ```
+
+### How the shell renders contributions
+
+| Rule          | Behaviour                                                                                                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which modules | Only `STARTED` modules whose `requires.frontendContract` accepts the shell's contract (`1.0.0`)                                                                                              |
+| Order         | Ascending `order` across all modules (default 100)                                                                                                                                           |
+| Permission    | With a `permission`, only users holding `mod.<id>.<permission>` see the contribution. The manifest names a key the module declared; it is checked at install                                 |
+| Failure       | Each contribution renders in its own error boundary. One that fails to load or throws renders **nothing** (no notice in a slot) and the page carries on; the error is in the browser console |
+| Loading       | No spinner; the contribution appears when its code has loaded (three attempts with back-off)                                                                                                 |
+| Slot name     | **Not checked**: a misspelled `slot` is accepted at install and simply renders nowhere. Copy the name from the catalogue                                                                     |
+
+### Add a new slot to the core
+
+A new slot is a core pull request:
+
+1. Render `<ExtensionSlot name="area.place" context={{ … }} />` from
+   `frontend/src/modules/ExtensionSlot.jsx` at the place in the core page. Pass
+   only plain values (ids, strings), never core component state.
+2. Add the slot and its context to `SLOTS` in the same file, and to the
+   catalogue above.
+3. A new slot is a frontend contract minor; changing or removing a slot's props
+   is a major.
+
+## 5. Configuration, events and backend extension points
+
+### Configuration
+
+Declare settings in `configuration.properties` with a `type` (`string`,
+`integer`, `boolean`, `url`) and a `default` matching it. A site overrides one
+with the property `modules.<id>.<key>` in any of the application's property
+sources: the mounted properties directory, `/run/secrets` or the environment.
+
+```json
+"configuration": {
+  "properties": [
+    { "key": "defaultDueDays", "type": "integer", "default": 3, "exposeToFrontend": true }
+  ]
+}
+```
+
+| Read it from | How                                                                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend      | `context.configuration().requireInteger("defaultDueDays", 0, 365)`, `getString`, `getBoolean`, `get`; see [ModuleConfiguration](#moduleconfiguration) |
+| Frontend     | `useModuleConfig("specimen-followup").defaultDueDays`; only `exposeToFrontend` properties, and **always as strings** (`"3"`)                          |
+
+### Core events
+
+The core publishes `openelis-spi` events into every started module, inside the
+publishing transaction. Today there is one: `SampleCreatedEvent`, when an order
+with its samples is saved.
+
+```java
+@Component
+public class NewSampleListener {
+
+    @EventListener
+    public void onSampleCreated(SampleCreatedEvent event) {
+        // event.getSampleId(), event.getAccessionNumber(), event.getPatientId() (null without a patient),
+        // event.getCreatedAt()
+    }
+}
+```
+
+A listener runs inside the order's transaction: an exception thrown here reaches
+the code that saved the order. Use `@TransactionalEventListener` for work that
+should run after the commit. Core Spring events (`ContextRefreshedEvent` and
+others) never reach a module.
+
+### Backend extension points
+
+A provider, or a full module, can implement an `openelis-spi` extension point
+and declare it in `backend.extensions`. Today there is one point, `report`:
+
+```java
+public class TurnaroundReport implements ReportProvider {
+
+    @Override
+    public Set<String> reportIds() {
+        return Set.of("labNotesTurnaround");
+    }
+
+    @Override
+    public ReportOutput run(ReportRequest request) throws ReportException {
+        byte[] pdf = render(request.getParameter("from"), request.getParameter("to"), request.getLocale());
+        return ReportOutput.pdf(pdf, "turnaround.pdf");
+    }
+}
+```
+
+```json
+"requires": { "openelis": ">=3.4.0", "coreApi": "^1.0", "spi": "^1.0" },
+"backend": {
+  "extensions": [{ "spi": "report", "class": "org.openelisglobal.module.labnotes.TurnaroundReport", "order": 100 }]
+}
+```
+
+Report ids are unique across modules and may never be the id of a report the
+core ships. `run` executes inside the core's transaction and must not open its
+own.
+
+## 6. Develop on the dev stack
+
+Run every command from the **core checkout**. `--module` takes the module's
+source folder (any folder with a `pom.xml` and the manifest); repeat it for
+several modules.
+
+| Task                                                | Command or action                                                                       |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Start the stack with the module                     | `scripts/dev-stack up --module ../my-module`                                            |
+| Start it without FHIR, the Bridge and the simulator | `scripts/dev-stack up --setup light --module ../my-module`                              |
+| Print the address to open                           | `scripts/dev-stack url`                                                                 |
+| Change a page or a slot component                   | Save the file; the browser updates (the module's Vite dev server serves the pages)      |
+| Change Java code, Liquibase files or the manifest   | Run the same `up --module …` command again; it rebuilds the JAR and restarts the webapp |
+| Follow the webapp log                               | `scripts/dev-stack logs -f oe.openelis.org` (the module logs as `[module:<id>]`)        |
+| Read the module dev server log                      | `.dev-stack/modules/<id>-vite.log` in the core checkout                                 |
+| Serve the pages built into the JAR instead          | `scripts/dev-stack up` without `--module`; the JAR stays installed                      |
+| Remove the module                                   | Delete `volume/modules/<id>.jar` in the core checkout and run `scripts/dev-stack up`    |
+| Stop everything                                     | `scripts/dev-stack down`                                                                |
+
+What `up --module` does, every run:
+
+1. Builds the core with `mvn clean install`, which installs the artifacts the
+   module compiles against, and the module test kit.
+2. Builds the module JAR (`mvn package`, pages included) and installs it as
+   `volume/modules/<id>.jar`, replacing any other copy of the module.
+3. Starts the module's Vite dev server (`npm run dev`) and routes the shell's
+   request for the module's pages to it.
+4. Restarts the webapp, which migrates the module's tables and starts it.
+
+Outside the dev stack,
+`localStorage["oe.module-override.<id>"] = "http://localhost:5174/remoteEntry.js"`
+points a development shell at a module's dev server.
+
+## 7. Test, build and CI
+
+**Contract test.** Extend `ModuleContractTest` from
+`org.openelisglobal:openelis-module-test`. It runs the core's own checks at
+build time, so a mistake fails your build instead of the site's start-up:
+
+```java
+public class SpecimenFollowUpContractTest extends ModuleContractTest {
+
+    @Test
+    public void declaresItsPagesAndMenu() {
+        assertEquals("specimen-followup", manifest().getId());
+    }
+}
+```
+
+| Inherited check                                       | Fails when                                                                                                          |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `manifestIsValidForTheCore`                           | The manifest breaks the schema or a namespace rule                                                                  |
+| `declaredClassesExistAndPlayTheirRole`                | The activator, an entity or an extension class is missing or wrong                                                  |
+| `changelogExistsAndItsChangeSetsBelongToTheModule`    | A changelog file is missing, or a changeset id or author is not the module's                                        |
+| `everyControllerMapsUnderTheModulePrefixAndIsGuarded` | A controller maps outside `/rest/modules/<id>/` or a handler lacks `@PreAuthorize`                                  |
+| `frontendBundleShipsItsEntryAndOwnsItsMessageKeys`    | The bundle has no remote entry, or an English key lacks the `mod.<id>.` prefix (skipped with `-DskipFrontend=true`) |
+
+Test services and controllers the usual way, with the core services mocked; the
+example has `FollowUpServiceTest`, `CoreLookupServiceTest` and a MockMvc
+`FollowUpRestControllerTest`.
+
+**Build.**
+
+```bash
+mvn verify                      # backend tests, frontend build and tests, the JAR
+mvn verify -DskipFrontend=true  # backend only
+```
+
+The JAR, `target/<id>-<version>.jar`, carries the manifest, the classes, the
+changelogs, the prebuilt pages and any module-only libraries. Outside the dev
+stack, install the core artifacts once per core commit, from the core checkout:
+
+```bash
+mvn -q -f dataexport/pom.xml install -DskipTests -Dmaven.test.skip=true
+mvn -q -f module-contracts/pom.xml install -DskipTests
+mvn -q install -DskipTests -Dmaven.test.skip=true
+mvn -q -f module-test/pom.xml install -DskipTests
+```
+
+**CI.** The example's `.github/workflows/ci.yml` checks out the core named by
+the `CORE_REPOSITORY` and `CORE_REF` repository variables, installs the core
+artifacts (cached per core commit), runs `mvn -B verify` and uploads the JAR as
+a build artifact. Copy it as it is.
+
+## 8. Deploy and operate
+
+Install a module on a site by copying its JAR into the modules directory and
+restarting the webapp:
+
+| Deployment                  | Modules directory                  | Restart                                  |
+| --------------------------- | ---------------------------------- | ---------------------------------------- |
+| openelis-docker             | `configs/modules/`                 | `docker compose restart oe.openelis.org` |
+| This repository's compose   | `volume/modules/`                  | `docker compose restart oe.openelis.org` |
+| Inside the webapp container | `/var/lib/openelis-global/modules` | Restart the container                    |
+
+Then check the webapp log for `[module:<id>] STARTED`, open Admin, Modules, and
+grant the module's permissions in Role Management.
+
+| Operation   | Steps                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Upgrade     | Replace the JAR (never two versions of one module side by side) and restart; new changesets and `onUpgrade` run                                                                              |
+| Downgrade   | Refused by default; set `modules.<id>.allowDowngrade=true` to allow it                                                                                                                       |
+| Disable     | Create `<jar>.disabled` next to the JAR, or set `modules.<id>.enabled=false` (or list the id in `modules.disabled`), and restart                                                             |
+| Remove      | Delete the JAR and restart. Tables and permission rows stay (the data belongs to the site); menu entries and pages disappear                                                                 |
+| Strict mode | Put a `modules.lock` in the modules directory with one `id@version sha256` line per allowed JAR; any other JAR is `INVALID`                                                                  |
+| Inspect     | Admin, Modules; `GET /rest/module-registry` (every user) lists modules with state and reason; `GET /rest/module-registry/{id}` (administrators) adds the JAR, digest, libraries and warnings |
+
+## 9. Reference
+
+### Manifest reference
+
+Top level (`schemaVersion`, `id`, `kind`, `name`, `version`, `requires` are
+required):
+
+| Field           | Type and rule                                     |
+| --------------- | ------------------------------------------------- |
+| `schemaVersion` | `1`                                               |
+| `id`            | `^[a-z][a-z0-9-]{2,40}$`                          |
+| `kind`          | `module` or `provider`                            |
+| `name`          | 1 to 120 characters                               |
+| `version`       | Semantic version, such as `1.0.0` or `1.1.0-rc.1` |
+| `description`   | Text                                              |
+| `vendor`        | `{ name, url, contact }`                          |
+| `conflicts`     | Ids of modules that cannot run alongside this one |
+
+`requires`:
+
+| Field              | Rule                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `openelis`         | Mandatory range with a lower bound (`>=3.4.0`, `^3.4`); `3.4.0-SNAPSHOT` satisfies `>=3.4.0` |
+| `coreApi`          | Range of `openelis-module-api`, such as `^1.0`                                               |
+| `spi`              | Range of `openelis-spi`; mandatory with `backend.extensions`                                 |
+| `frontendContract` | Range of the shell's contract; mandatory with `frontend`                                     |
+| `modules`          | `[{ id, version }]`: other modules this one needs; their classes are visible to this one     |
+
+Ranges use npm syntax (`>=`, `<`, `^`, `~`, `||`).
+
+`backend`:
+
+| Field          | Rule                                                                        |
+| -------------- | --------------------------------------------------------------------------- |
+| `basePackages` | Packages scanned for Spring beans, under `org.openelisglobal.module.<name>` |
+| `activator`    | Class implementing `OpenElisModule`                                         |
+| `entities`     | JPA entity classes                                                          |
+| `liquibase`    | Master changelog under `liquibase/`, normally `liquibase/base.xml`          |
+| `extensions`   | `[{ spi, class, order }]`; `spi` is `report` today; `order` defaults to 100 |
+
+`permissions[]`: `key` (required, `^[a-z][a-zA-Z0-9.-]*$`, unique),
+`description`, `defaultRoles`.
+
+`menu[]`: `elementId`, `parent`, `displayKey` (required), `toolTipKey`,
+`actionURL` (under `/m/<id>/`), `presentationOrder` (default 100), `icon`,
+`permission` (a declared key).
+
+`frontend`:
+
+| Field      | Rule                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| `entry`    | Relative path of the remote entry, default `remoteEntry.js`                                                  |
+| `messages` | Path pattern containing `{locale}`, default `messages/{locale}.json`                                         |
+| `routes[]` | `path` (under `/m/<id>/`, unique), `expose` (`./Name`), `exact` (default `true`), and `permission` or `role` |
+| `slots[]`  | `slot` (a catalogue name), `expose` (`./Name`), `order` (default 100), `permission` (a declared key)         |
+
+`configuration.properties[]`: `key` (required), `type` (`string`, `integer`,
+`boolean`, `url`; default `string`), `default` (must match the type; a `url`
+starts with `http://` or `https://`), `description`, `exposeToFrontend`.
+
+No other fields are accepted anywhere in the manifest.
+
+### Namespace rules
+
+With `<id_>` meaning the id with hyphens replaced by underscores:
+
+| Namespace        | Rule                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Permission keys  | `mod.<id>.<key>`; the manifest declares `<key>` only                                                                        |
+| Message keys     | `mod.<id>.*`; a menu `displayKey` must use this prefix                                                                      |
+| Menu element ids | `menu_mod_<id_>` or `menu_mod_<id_>_*`                                                                                      |
+| REST paths       | `/rest/modules/<id>/**`; a controller mapped elsewhere fails the module                                                     |
+| Page routes      | `/m/<id>/**`; every route names a permission or a role                                                                      |
+| Tables           | `mod_<id_>_*` in `clinlims`; changeset ids start with `<id>-` and the author is `<id>`                                      |
+| Java packages    | Under `org.openelisglobal.module.<name>`; the segments `api`, `manifest`, `runtime`, `web` and `testkit` belong to the core |
+| Report ids       | Unique across modules and never a report the core ships                                                                     |
+
+### ModuleContext
+
+| Method                               | Returns                                                                                         |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `descriptor()`                       | `ModuleDescriptor`: `id()`, `name()`, `version()`, `kind()`, `state()`, `jarPath()`, `sha256()` |
+| `configuration()`                    | The module's settings, see below                                                                |
+| `coreService(Class<T> type)`         | A core bean by type                                                                             |
+| `jdbc()`                             | `NamedParameterJdbcTemplate` on the core datasource                                             |
+| `dataDirectory()`                    | `/var/lib/openelis-global/modules-data/<id>`                                                    |
+| `runAsSystem(Runnable)`              | Runs start-up writes as the system user                                                         |
+| `withModuleClassLoader(Callable<T>)` | Runs code with the module's class loader as context loader                                      |
+| `log()`                              | `info`, `warn`, `error`; lines carry `[module:<id>]`                                            |
+
+### ModuleConfiguration
+
+| Method                               | Behaviour                                                        |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| `get(key)`                           | `Optional<String>`                                               |
+| `getString(key, fallback)`           | The value or the fallback                                        |
+| `getInteger(key)`, `getBoolean(key)` | `Optional`; a malformed value throws `ModuleValidationException` |
+| `require(key)`                       | The value; throws when missing                                   |
+| `requireInteger(key, min, max)`      | The value; throws when missing or out of range                   |
+| `asMap()`                            | Every setting                                                    |
+
+### Frontend reference
+
+| Import                     | Gives a module                                                                                                                                                                                                                                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `openelis_core/components` | `SearchPatientForm`, `PatientHeader`, `CustomDatePicker`, `CustomTimePicker`, `CustomLabNumberInput`, `CustomSelect`, `CustomTextInput`, `CustomCheckBox`, `AutoComplete`, `PageBreadCrumb`, `ConfirmPopup`, `AlertDialog`, `NotificationKinds`, `Spinner`, `PageTitle`, `RequiredMarker`, `RouteErrorBoundary`, `ServerPageArrows` |
+| `openelis_core/api`        | `getFromOpenElisServer`, `fetchFromOpenElisServer`, `postToOpenElisServer`, `postToOpenElisServerJsonResponse`, `putToOpenElisServer`, `putToOpenElisServerJsonResponse`, `deleteFromOpenElisServer`, `hasRole`, `hasPermission`, `serverQuery`, `useServerData`, `config`                                                          |
+| `openelis_core/hooks`      | `useInAppNavigation`, `useUrlFilters`, `useActiveLocales`, `useDomains`                                                                                                                                                                                                                                                             |
+| `openelis_core/contexts`   | `UserSessionDetailsContext`, `ConfigurationContext`, `NotificationContext`                                                                                                                                                                                                                                                          |
+| `openelis_core/sdk`        | The hooks below, `ExtensionSlot`, `ModuleErrorBoundary`, `FRONTEND_CONTRACT_VERSION`                                                                                                                                                                                                                                                |
+
+| `openelis_core/sdk` hook       | Returns                                                                                                                          |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `useSession()`                 | `{ userSessionDetails, errorLoadingSessionDetails, isCheckingLogin, logout, refresh }`                                           |
+| `usePermission(key)`           | `true` when the user holds the full key, such as `mod.specimen-followup.manage`                                                  |
+| `useRole(role)`                | `true` when the user has the role                                                                                                |
+| `useConfigurationProperties()` | The core's configuration properties (site date format and others)                                                                |
+| `useNotifications()`           | `{ addNotification, removeNotification, notifications, setNotificationVisible, … }`; kinds `info`, `error`, `success`, `warning` |
+| `useOpenElisApi()`             | `{ get, post, put, del }`, see [Step 9](#step-9-pages)                                                                           |
+| `useModuleConfig(moduleId)`    | The module's `exposeToFrontend` settings, as strings                                                                             |
+| `useModule(moduleId)`          | The module's registry entry, or `undefined`                                                                                      |
+
+The shell shares `react`, `react-dom`, `react-router-dom`, `react-intl`,
+`@carbon/react`, `@carbon/icons-react` and `@tanstack/react-query`
+(`frontend/module-federation.config.js`). The frontend contract version is
+`1.0.0`: additions to this surface are minors; removals, prop changes and a
+shared library's major version (React 18 will be one) are majors.
+
+### How the runtime loads a module
+
+1. **Discovery.** At start-up the registry lists `*.jar` in
+   `/var/lib/openelis-global/modules` (skipping a JAR with a `<jar>.disabled`
+   marker), reads each manifest, computes its SHA-256 and validates it. Two JARs
+   with one id stop start-up, naming both files.
+2. **Switches and compatibility.** `modules.disabled` and
+   `modules.<id>.enabled=false` mark a module `DISABLED`. A module whose
+   `requires` the running versions do not satisfy, or with a missing dependency,
+   a conflict or a dependency cycle, is `INCOMPATIBLE`. Skipped modules are
+   reported and the core starts.
+3. **Class loading.** Each module gets one parent-first class loader over its
+   JAR and its extracted `lib/*.jar` (cached under
+   `modules-cache/<id>/<sha256>/`). A class the core ships always resolves to
+   the core's copy; a bundled library the core also ships is reported as
+   shadowed.
+4. **Migrations.** After the core changelog, each module's master changelog runs
+   from the module JAR. The installed version is recorded in
+   `clinlims.module_state`. A failing changeset stops start-up, naming the
+   module.
+5. **Entities.** The declared entities join the core persistence unit.
+6. **Spring context.** Each module gets its own context whose parent is the
+   core's; `basePackages` are scanned and `@Transactional` and `@PreAuthorize`
+   apply.
+7. **Contributions.** Extensions are registered, controllers join the core
+   request mapping, permissions become `system_module` rows (first install
+   grants `defaultRoles`), menu entries join the menu in memory.
+8. **Start.** `validate`, then `onStart`. The module is `STARTED`.
+
+Any failure after validation stops the application with the module named and the
+two ways out: the `<jar>.disabled` marker or `modules.<id>.enabled=false`, then
+a restart.
+
+| State          | Meaning                                                                          |
+| -------------- | -------------------------------------------------------------------------------- |
+| `STARTED`      | Running                                                                          |
+| `MIGRATED`     | Tables migrated; the start did not complete                                      |
+| `DISABLED`     | Switched off by a marker file or a setting; the core runs without it             |
+| `INVALID`      | The manifest or the JAR breaks a rule; the reason is in the registry and the log |
+| `INCOMPATIBLE` | Its `requires` do not match this core, or a dependency is missing or conflicting |
+| `FAILED`       | Failed after validation; the core stopped (see above)                            |
+
+## 10. Troubleshooting
+
+| Symptom                                        | Cause and fix                                                                                                                                   |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Admin, Modules shows `INVALID`                 | The reason names the broken rule (namespace, schema, missing class). Run the module's contract test; it reports the same problems at build time |
+| Admin, Modules shows `INCOMPATIBLE`            | `requires.openelis`, `coreApi`, `spi` or `frontendContract` does not match this core; rebuild against it or widen the range                     |
+| The webapp stops at start-up naming the module | A changeset, `validate` or `onStart` failed; the log has the cause. Add `<jar>.disabled` next to the JAR to start without it                    |
+| The menu entry does not show                   | The user lacks the entry's permission, or its `displayKey` has no English message                                                               |
+| The page shows "Module unavailable"            | The remote entry did not load: the dev server stopped (rerun `up --module`), or the JAR has no pages (build without `-DskipFrontend`)           |
+| A slot contribution does not show              | The `slot` name is misspelled (not checked), the user lacks its permission, or it failed (see the browser console)                              |
+| A REST call answers 403                        | The user's role does not hold the handler's permission; grant it in Role Management                                                             |
+| A REST call answers 404                        | The controller is not under `backend.basePackages`, or the path lacks `/rest/modules/<id>/`                                                     |
+| The log refuses a changeset of the module      | Every changeset id must start with `<id>-` and its author must be `<id>`                                                                        |
+| `mvn` cannot find `openelisglobal:classes`     | The core artifacts are not installed; run `scripts/dev-stack up --module …` or the four install commands in [Build](#7-test-build-and-ci)       |

@@ -187,15 +187,15 @@ the root of this repository to keep them:
 
 | Setting                     | Default                       | What it does                                                                                                                                                                                     |
 | --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DEV_STACK_IMAGE_TAG`       | `develop`                     | Tag of the published development images `up` pulls, for example `DEV_STACK_IMAGE_TAG=modula`. `up --skip-build` keeps the images of the last `up` instead.                                       |
+| `DEV_STACK_IMAGE_TAG`       | `develop`                     | Tag of the published development images `up` pulls, for example a release such as `DEV_STACK_IMAGE_TAG=3.4.0`. `up --skip-build` keeps the images of the last `up` instead.                      |
 | `DEV_STACK_IMAGE_NAMESPACE` | `itechuw`                     | Docker Hub namespace of those images.                                                                                                                                                            |
 | `DEV_STACK_TLS`             | `local-ca` on localhost       | HTTPS mode: `local-ca` (trusted local certificates, needs mkcert), `self-signed` (no mkcert, the browser warns), or `letsencrypt` (a public domain).                                             |
 | `DEV_STACK_HTTPS_PORT`      | a free port, picked by Docker | Port the stack answers HTTPS on. Set `443` to open it at `https://localhost`; it must be free, so only one stack at a time can use it. `scripts/dev-stack url` always prints the address in use. |
 | `DEV_STACK_HTTP_PORT`       | a free port, picked by Docker | Port for plain HTTP, which redirects to HTTPS. Set `80` together with `DEV_STACK_HTTPS_PORT=443`.                                                                                                |
 | `LETSENCRYPT_DOMAIN`        | `localhost`                   | Domain the stack answers on; see [the development guide](docs/dev_setup.md) for domain setups.                                                                                                   |
 
-For example, for one run: `DEV_STACK_IMAGE_TAG=modula scripts/dev-stack up`, or
-to keep it, add the line `DEV_STACK_IMAGE_TAG=modula` to `.env`. To open the
+For example, for one run: `DEV_STACK_IMAGE_TAG=3.4.0 scripts/dev-stack up`, or
+to keep it, add the line `DEV_STACK_IMAGE_TAG=3.4.0` to `.env`. To open the
 stack at `https://localhost`, add these two lines to `.env`:
 
 ```bash

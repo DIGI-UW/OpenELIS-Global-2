@@ -6,9 +6,9 @@ permissions:
 
 on:
   push:
-    branches: [develop, modula]
+    branches: [develop]
   pull_request_target:
-    branches: [develop, modula]
+    branches: [develop]
 
 # Keep each PR's conflict check independent of activity on other PRs. Let
 # running checks finish, and queue subsequent checks for the same PR instead
