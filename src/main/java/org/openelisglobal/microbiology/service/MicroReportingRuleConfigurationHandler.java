@@ -58,20 +58,22 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
 
     @Override
     protected void load(List<CsvRow> rows, RowTransactionRunner transaction, CsvLoadSummary summary, String fileName) {
-        int[] currentLine = { 0 };
-        List<LoadedRow<String>> outcomes;
-        try {
-            outcomes = transaction.run(() -> {
-                List<LoadedRow<String>> results = new ArrayList<>();
-                for (CsvRow row : rows) {
-                    currentLine[0] = row.lineNumber();
+        List<LoadedRow<String>> outcomes = transaction.run(() -> {
+            List<LoadedRow<String>> results = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+            for (CsvRow row : rows) {
+                try {
                     results.add(loadRow(row));
+                } catch (RuntimeException e) {
+                    errors.add(CsvLoadSummary.reason(e));
+                    flushUnresolvedReferences(fileName, row.lineNumber());
                 }
-                return results;
-            });
-        } finally {
-            flushUnresolvedReferences(fileName, currentLine[0]);
-        }
+            }
+            if (!errors.isEmpty()) {
+                throw new IllegalArgumentException(String.join("; ", errors));
+            }
+            return results;
+        });
         for (int i = 0; i < outcomes.size(); i++) {
             summary.record(outcomes.get(i), getClass().getSimpleName(), rows.get(i).lineNumber());
         }
