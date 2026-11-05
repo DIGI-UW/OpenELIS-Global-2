@@ -721,6 +721,89 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertTrue(compared > 0);
     }
 
+    private static final java.util.Map<String, String> PNG_DEFAULT_PANELS = java.util.Map.of("Escherichia coli",
+            "AST-GN rods", "Klebsiella pneumoniae", "AST-GN rods", "Enterobacter cloacae", "AST-GN rods",
+            "Serratia marcescens", "AST-GN rods", "Proteus mirabilis", "AST-GN rods", "Shigella sonnei",
+            "AST-Salm+Shig", "Acinetobacter baumannii", "AST - Acinetobacter", "Pseudomonas aeruginosa",
+            "AST - Pseudomonas", "Streptococcus anginosus", "AST - Viridans Strep", "Staphylococcus epidermidis",
+            "AST-Staph other");
+    private static final String CLSI = "pkg--amr-reference-clsi--2026.2--";
+    private static final String EUCAST = "pkg--amr-reference-eucast--2026.2--";
+
+    @Test
+    public void pngDefaultPanelsWithBothEditionsInTheConfiguredLoadOrder() throws Exception {
+        copyPngFiles("microbiology-organisms", CLSI + "organisms.csv", EUCAST + "organisms.csv");
+        copyPngFiles("microbiology-antimicrobials", CLSI + "antimicrobials.csv", EUCAST + "antimicrobials.csv");
+        var packages = reload(true);
+        assertFalse(packages.toString(), packages.hasErrors());
+
+        assertEquals(java.util.List.of(), pngDefaultPanelMismatches());
+        assertNull("A package group alone claims no default panel",
+                organisms.findByDisplayNameIgnoreCase("Citrobacter freundii").orElseThrow().getDefaultAstPanelId());
+    }
+
+    @Test
+    public void pngDefaultPanelsWhenEucastLoadsFirst() throws Exception {
+        copyPngFiles("microbiology-organisms", EUCAST + "organisms.csv");
+        copyPngFiles("microbiology-antimicrobials", CLSI + "antimicrobials.csv", EUCAST + "antimicrobials.csv");
+        var eucast = reload(true);
+        assertFalse(eucast.toString(), eucast.hasErrors());
+        copyPngFiles("microbiology-organisms", CLSI + "organisms.csv");
+        var clsi = reload(true);
+        assertFalse(clsi.toString(), clsi.hasErrors());
+
+        assertEquals(java.util.List.of(), pngDefaultPanelMismatches());
+    }
+
+    @Test
+    public void panelFileRejectsADefaultThatMatchesNoOrganism() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.35", "NODEFAULT");
+        load(fixture);
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nUnclaimed panel," + fixture.antibiotic
+                + ",Synthetic organism NODEFAULT;No such organism group\n");
+
+        var result = reloadPanels(true);
+
+        assertTrue(result.hasErrors());
+        assertTrue(result.toString(), result.toString().contains("No such organism group"));
+        assertFalse(result.toString(), result.toString().contains("Synthetic organism NODEFAULT"));
+        assertNull(panels.findCurrentByNameIgnoreCase("Unclaimed panel"));
+    }
+
+    private java.util.List<String> pngDefaultPanelMismatches() throws Exception {
+        copyPngFiles("microbiology-organism-groups", "png-organism-groups.csv");
+        var groups = reloadOrganismGroups(true);
+        assertFalse(groups.toString(), groups.hasErrors());
+        copyPngFiles("microbiology-ast-panels", "png-ast-panels.csv");
+        var load = reloadPanels(true);
+        var mismatches = new java.util.ArrayList<String>();
+        if (load.hasErrors()) {
+            mismatches.add("panel file errors: " + load);
+        }
+        PNG_DEFAULT_PANELS.forEach((name, panelName) -> {
+            var organism = organisms.findByDisplayNameIgnoreCase(name).orElseThrow();
+            var expected = panels.findCurrentByNameIgnoreCase(panelName);
+            String actual = organism.getDefaultAstPanelId();
+            if (expected == null || !expected.getId().equals(actual)) {
+                mismatches.add(name + " (group " + organism.getOrganismGroup() + ") gets "
+                        + (actual == null ? "no default panel"
+                                : panels.get(actual).map(MicroAstPanel::getName).orElse(actual))
+                        + ", PNG expects " + panelName);
+            }
+        });
+        java.util.Collections.sort(mismatches);
+        return mismatches;
+    }
+
+    private void copyPngFiles(String domain, String... names) throws Exception {
+        Path directory = configurationFiles.getRoot().toPath().resolve(domain);
+        Files.createDirectories(directory);
+        for (String name : names) {
+            Files.copy(Path.of(getClass().getResource("/testdata/microbiology/png-panel-defaults/" + name).toURI()),
+                    directory.resolve(name), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
     private MicroBreakpointStandard standard(ReferencePackageFixture fixture) {
         return standards.findByAuthorityAndVersion("EUCAST", fixture.edition).orElseThrow();
     }

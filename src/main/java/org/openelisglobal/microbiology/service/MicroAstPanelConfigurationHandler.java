@@ -2,10 +2,12 @@ package org.openelisglobal.microbiology.service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
@@ -17,15 +19,16 @@ import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Component;
 
 /**
  * A laboratory's AST panels: one row per panel drug, grouped by panel name. A
  * changed panel is published as a new version; an unchanged one is left alone.
  * {@code defaultFor} lists, separated by semicolons, the organisms the panel is
- * the default for: a species name, a genus, or an organism group. When several
- * panels claim an organism, the most specific entry wins (species, then genus,
- * then group).
+ * the default for: a species name, a genus, or a laboratory organism group from
+ * the organism groups file. When several panels claim an organism, the most
+ * specific entry wins (species, then genus, then group).
  */
 @Component
 public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler {
@@ -98,19 +101,41 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
     }
 
     private int assignDefaults(Map<String, List<String>> claimsByPanel) {
-        int changed = 0;
-        for (var organism : organisms.getActiveOrganisms()) {
+        List<MicroOrganism> active = organisms.getActiveOrganisms();
+        Map<String, String> bestByOrganismId = new LinkedHashMap<>();
+        Set<String> matched = new LinkedHashSet<>();
+        for (var organism : active) {
             String best = null;
             int bestRank = 0;
             for (var claim : claimsByPanel.entrySet()) {
                 for (String entry : claim.getValue()) {
-                    int rank = specificity(entry, organism.getDisplayName(), organism.getOrganismGroup());
+                    int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
+                    if (rank > 0) {
+                        matched.add(entry);
+                    }
                     if (rank > bestRank) {
                         bestRank = rank;
                         best = claim.getKey();
                     }
                 }
             }
+            bestByOrganismId.put(organism.getId(), best);
+        }
+        List<String> errors = new ArrayList<>();
+        for (var claim : claimsByPanel.entrySet()) {
+            String panelName = panels.get(claim.getKey()).map(MicroAstPanel::getName).orElse(claim.getKey());
+            for (String entry : claim.getValue()) {
+                if (!matched.contains(entry)) {
+                    errors.add("Panel \"" + panelName + "\": defaultFor \"" + entry + "\" matches no organism");
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+        int changed = 0;
+        for (var organism : active) {
+            String best = bestByOrganismId.get(organism.getId());
             if (best != null && !best.equals(organism.getDefaultAstPanelId())) {
                 organism.setDefaultAstPanelId(best);
                 organism.setLastUpdatedBy(SYS_USER_ID);
@@ -122,10 +147,10 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
     }
 
     /**
-     * 3 for the species itself, 2 for its genus, 1 for its organism group, 0
-     * otherwise.
+     * 3 for the species itself, 2 for its genus, 1 for one of its laboratory
+     * groups, 0 otherwise.
      */
-    static int specificity(String entry, String organismName, String organismGroup) {
+    static int specificity(String entry, String organismName, Set<String> labGroups) {
         if (entry.isBlank() || organismName == null) {
             return 0;
         }
@@ -136,7 +161,7 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         if (name.toLowerCase(Locale.ROOT).startsWith(entry.toLowerCase(Locale.ROOT) + " ")) {
             return 2;
         }
-        return organismGroup != null && organismGroup.equalsIgnoreCase(entry) ? 1 : 0;
+        return labGroups.stream().anyMatch(entry::equalsIgnoreCase) ? 1 : 0;
     }
 
     private LoadedRow<String> loadPanel(List<CsvRow> rows) {
