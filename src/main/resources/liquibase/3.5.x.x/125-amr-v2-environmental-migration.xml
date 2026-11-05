@@ -94,7 +94,9 @@ END $$;
         <sql splitStatements="true"><![CDATA[
 INSERT INTO clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by,note,structured_data)
 SELECT md5('M8-assignment-'||c.id),c.id,'MIGRATION_REVIEW',now(),NULL,
-       'Legacy case mapped to a laboratory unit and Program; administrator review required',
+       CASE WHEN m.program_id IS NULL
+            THEN 'Legacy case mapped to a laboratory unit with no Program; administrator review required'
+            ELSE 'Legacy case mapped to a laboratory unit and Program; administrator review required' END,
        json_build_object('reason','LEGACY_ASSIGNMENT','workflow',m.workflow_type,'labUnitId',m.lab_unit_id,
             'programId',m.program_id,'previousLabUnitId',c.lab_unit_id,'previousProgramId',c.program_id)::text
 FROM clinlims.micro_case c JOIN amr_case_map m ON m.id=c.id
