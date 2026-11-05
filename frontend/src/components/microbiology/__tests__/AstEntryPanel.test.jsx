@@ -26,7 +26,6 @@ const inProgressRun = {
     {
       antibioticId: "abx-1",
       displayOrder: 1,
-      tier: 1,
       reportBehavior: "ALWAYS",
     },
   ],
@@ -665,7 +664,6 @@ describe("AstEntryPanel", () => {
         {
           antibioticId: "abx-2",
           displayOrder: 2,
-          tier: 1,
           reportBehavior: "ALWAYS",
         },
       ],

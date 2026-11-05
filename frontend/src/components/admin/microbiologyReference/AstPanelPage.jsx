@@ -173,8 +173,6 @@ const AstPanelPage = ({ query, setQuery }) => {
           antibioticId: selectedAntibiotic.id,
           antibioticName: selectedAntibiotic.displayName,
           whonetCode: selectedAntibiotic.whonetCode,
-          tier: 1,
-          reportBehavior: "ALWAYS",
         },
       ],
     });
@@ -492,55 +490,6 @@ const AstPanelPage = ({ query, setQuery }) => {
                       <strong>{row.antibioticName}</strong>
                       <div>{row.whonetCode}</div>
                     </div>
-                    <Select
-                      id={`microbiology-tier-${row.antibioticId}`}
-                      labelText={intl.formatMessage({
-                        id: "microbiology.admin.astPanels.tier",
-                      })}
-                      value={row.tier}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        updateRow(index, { tier: Number(event.target.value) })
-                      }
-                    >
-                      {[1, 2, 3].map((tier) => (
-                        <SelectItem
-                          key={tier}
-                          value={tier}
-                          text={String(tier)}
-                        />
-                      ))}
-                    </Select>
-                    <Select
-                      id={`microbiology-report-${row.antibioticId}`}
-                      labelText={intl.formatMessage({
-                        id: "microbiology.admin.astPanels.reportBehavior",
-                      })}
-                      value={row.reportBehavior}
-                      disabled={readOnly}
-                      onChange={(event) =>
-                        updateRow(index, { reportBehavior: event.target.value })
-                      }
-                    >
-                      <SelectItem
-                        value="ALWAYS"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.astPanels.behavior.always",
-                        })}
-                      />
-                      <SelectItem
-                        value="CASCADE"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.astPanels.behavior.cascade",
-                        })}
-                      />
-                      <SelectItem
-                        value="SUPPRESS_UNLESS_RESISTANT"
-                        text={intl.formatMessage({
-                          id: "microbiology.admin.astPanels.behavior.resistant",
-                        })}
-                      />
-                    </Select>
                     <TextInput
                       id={`microbiology-disk-${row.antibioticId}`}
                       labelText={intl.formatMessage({
