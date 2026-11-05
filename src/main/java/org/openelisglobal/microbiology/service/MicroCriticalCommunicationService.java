@@ -6,14 +6,9 @@ import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunicationTar
 
 public interface MicroCriticalCommunicationService {
 
-    MicroCriticalCommunication logCommunication(String caseId, String recipient, String message, boolean followUpNeeded,
-            String performedBy);
-
     MicroCriticalCommunication logCommunication(String caseId, MicroCriticalCommunicationTargetType targetType,
-            String targetId, String recipient, String recipientContact, String communicationMethod, String message,
-            boolean followUpNeeded, String performedBy);
-
-    MicroCriticalCommunication acknowledge(String communicationId, String performedBy);
+            String targetId, String recipient, String recipientContact, String communicationMethod, String outcome,
+            String message, boolean followUpNeeded, String performedBy);
 
     MicroCriticalCommunication close(String communicationId, String resolutionNote, String performedBy);
 

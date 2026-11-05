@@ -43,14 +43,7 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
             @RequestBody MicroCriticalCommunicationRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(communicationService.logCommunication(caseId, targetType(request.targetType),
                 request.targetId, request.recipient, request.recipientContact, request.communicationMethod,
-                request.message, request.followUpNeeded, authenticatedUserId(httpRequest))));
-    }
-
-    @PutMapping("/critical-communications/{communicationId}/acknowledge")
-    public ResponseEntity<MicroCriticalCommunicationForm> acknowledge(@PathVariable String communicationId,
-            @RequestBody MicroCriticalCommunicationRequestForm request, HttpServletRequest httpRequest) {
-        return ResponseEntity
-                .ok(toForm(communicationService.acknowledge(communicationId, authenticatedUserId(httpRequest))));
+                request.outcome, request.message, request.followUpNeeded, authenticatedUserId(httpRequest))));
     }
 
     @PutMapping("/critical-communications/{communicationId}/close")
@@ -76,6 +69,7 @@ public class MicroCriticalCommunicationRestController extends MicrobiologyRestCo
         form.recipient = communication.getRecipient();
         form.recipientContact = communication.getRecipientContact();
         form.communicationMethod = communication.getCommunicationMethod();
+        form.outcome = communication.getOutcome();
         form.message = communication.getMessage();
         form.communicatedAt = communication.getCommunicatedAt();
         form.communicatedBy = communication.getCommunicatedBy();

@@ -196,6 +196,12 @@ test.describe("microbiology worklist and critical communication", () => {
       .getByLabel("Recipient", { exact: true })
       .fill("Provider on call");
     await criticalCommunication
+      .getByLabel("Call outcome")
+      .selectOption({ label: "Unable to reach" });
+    await expect(
+      criticalCommunication.getByLabel("Follow-up needed"),
+    ).toBeChecked();
+    await criticalCommunication
       .getByLabel("Message")
       .fill("Positive blood culture called to provider");
     await criticalCommunication
@@ -225,10 +231,17 @@ test.describe("microbiology worklist and critical communication", () => {
       "Critical communication",
       "critical-communication",
     );
-    await page.getByRole("button", { name: "Acknowledge" }).click();
+    await expect(page.getByRole("button", { name: "Acknowledge" })).toHaveCount(
+      0,
+    );
+    await page.getByRole("button", { name: "Resolve follow-up" }).click();
+    await page
+      .getByLabel("Resolution note")
+      .fill("Reached the ward on the second call");
+    await page.getByRole("button", { name: "Resolve follow-up" }).click();
     await expect(
       page.getByTestId("microbiology-critical-status"),
-    ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
+    ).toContainText("Closed", { timeout: LONG_TIMEOUT });
     await openCaseSection(page, "Isolates", "isolates");
     await expect(
       page.getByRole("heading", { name: "Isolates", exact: true }),
