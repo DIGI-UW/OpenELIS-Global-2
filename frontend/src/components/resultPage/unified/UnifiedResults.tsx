@@ -86,6 +86,7 @@ import { NceDisposition, dispositionRequests } from "./nceDisposition";
 import { SectionLayout, loadSectionLayout } from "./sectionLayout";
 import { FlagChip, accentClass } from "./flags";
 import { resultFlagFor } from "./resultFlagFor";
+import { mergeInterpretationNote } from "./interpretationNote";
 import Avatar from "./Avatar";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -1187,6 +1188,27 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
           }
           handleSaveResponse(row, response);
           if (!requestFailed(response)) {
+            // #4899: the save response carries no notes, so this row's
+            // analysisNotes would still lack the interpretation just saved,
+            // and the draft is deleted below - merge it in here first, or
+            // the field falls back to blank until the next reload.
+            if (interpretation && interpretation.trim()) {
+              const savedInterpretation = interpretation.trim();
+              setRows((current) =>
+                current.map((savedRow) =>
+                  worklistRowKey(savedRow) === key
+                    ? {
+                        ...savedRow,
+                        analysisNotes: mergeInterpretationNote(
+                          savedRow.analysisNotes,
+                          savedInterpretation,
+                          savedRow.testResultComponentId,
+                        ),
+                      }
+                    : savedRow,
+                ),
+              );
+            }
             setNoteDrafts((current) => {
               const next = { ...current };
               delete next[key];
