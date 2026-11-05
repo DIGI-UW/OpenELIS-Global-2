@@ -75,6 +75,7 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.result.service.ResultInventoryService;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
@@ -1123,7 +1124,12 @@ public class ResultsLoadUtility {
         }
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
-        testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
+        testItem.setMultiSelectResultValues(component == null ? analysisService.getJSONMultiSelectResults(analysis)
+                : ResultServiceImpl.getJSONStringForMultiSelect(resultService.getResultsByAnalysis(analysis).stream()
+                        .filter(r -> r.getTestResult() == null || r.getTestResult().getComponentId() == null
+                                ? component.getIsPrimary()
+                                : component.getId().equals(r.getTestResult().getComponentId()))
+                        .collect(Collectors.toList())));
         testItem.setAnalysisStatusId(component == null ? analysisService.getStatusId(analysis)
                 : componentStatusId(analysisService.getStatusId(analysis), result));
         // Display type selection:
