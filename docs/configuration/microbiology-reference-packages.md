@@ -114,7 +114,9 @@ activation and existing IDs. Retain historical editions referenced by results.
 An explicit rule with empty thresholds is valid: it yields “No breakpoint” and
 prevents matching from falling through to a broader numeric rule. Intermediate
 intervals must not overlap susceptible or resistant ranges. Imported notes are
-part of the rule content and edition identity.
+part of the rule content and edition identity. A zone rule needs `disk_content`,
+and a zone reading matches only a rule for the same disk content; otherwise it
+has no breakpoint.
 
 CLSI MIC interpretation rounds observations up to the conventional dilution
 ladder used by AMR for R; the original measured value stays on the reading.

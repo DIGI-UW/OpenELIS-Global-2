@@ -135,14 +135,15 @@ public class MicroBreakpointAdminServiceTest {
         MicroAntibiotic antibiotic = new MicroAntibiotic();
         antibiotic.setId("cip");
         when(antibioticDAO.get("cip")).thenReturn(Optional.of(antibiotic));
-        when(ruleDAO.findByNaturalKey("standard", null, "Enterobacterales", "cip", "DISK_DIFFUSION", null,
-                "ZONE")).thenReturn(Optional.empty());
+        when(ruleDAO.findByContextualNaturalKey("standard", null, "Enterobacterales", "cip", "DISK_DIFFUSION", null,
+                "ZONE", null, "30ug")).thenReturn(Optional.empty());
         org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm request =
                 new org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm();
         request.organismGroup = "Enterobacterales";
         request.antibioticId = "cip";
         request.method = MicroAstTechnique.DISK_DIFFUSION.name();
         request.breakpointType = "ZONE";
+        request.diskContent = "30ug";
         request.susceptibleValue = new java.math.BigDecimal("20");
 
         service.saveRule("standard", null, request, "42");

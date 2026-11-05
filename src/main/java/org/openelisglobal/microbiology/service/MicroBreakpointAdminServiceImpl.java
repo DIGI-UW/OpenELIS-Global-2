@@ -142,12 +142,22 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if (ruleId != null && !standardId.equals(rule.getStandardId())) {
             throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
         }
+        String diskContent = trimToNull(request.diskContent);
+        if ("ZONE".equals(breakpointType) && diskContent == null) {
+            throw new IllegalArgumentException("Disk content is required for zone breakpoints");
+        }
+        if (!"ZONE".equals(breakpointType) && diskContent != null) {
+            throw new IllegalArgumentException("Disk content applies only to zone breakpoints");
+        }
+        if (diskContent != null && diskContent.length() > 40) {
+            throw new IllegalArgumentException("Disk content is longer than 40 characters");
+        }
         Optional<org.openelisglobal.microbiology.valueholder.MicroBreakpointRule> duplicate = clinicalContext == null
-                && rule.getDiskContent() == null
+                && diskContent == null
                         ? ruleDAO.findByNaturalKey(standardId, organismId, organismGroup, antibioticId, method,
                                 specimenTypeId, breakpointType)
                         : ruleDAO.findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId,
-                                method, specimenTypeId, breakpointType, clinicalContext, rule.getDiskContent());
+                                method, specimenTypeId, breakpointType, clinicalContext, diskContent);
         if (duplicate.isPresent() && !duplicate.get().getId().equals(ruleId)) {
             throw new MicroReferenceConflictException("A breakpoint rule already exists for this context");
         }
@@ -158,6 +168,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         rule.setMethod(method);
         rule.setSpecimenTypeId(specimenTypeId);
         rule.setClinicalContext(clinicalContext);
+        rule.setDiskContent(diskContent);
         rule.setBreakpointType(breakpointType);
         rule.setSusceptibleValue(request.susceptibleValue);
         rule.setIntermediateLowerValue(request.intermediateLowerValue);
@@ -305,6 +316,7 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         form.method = rule.getMethod();
         form.specimenTypeId = rule.getSpecimenTypeId();
         form.clinicalContext = rule.getClinicalContext();
+        form.diskContent = rule.getDiskContent();
         form.breakpointType = rule.getBreakpointType();
         form.susceptibleValue = rule.getSusceptibleValue();
         form.intermediateLowerValue = rule.getIntermediateLowerValue();

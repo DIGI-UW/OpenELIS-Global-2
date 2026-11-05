@@ -278,6 +278,9 @@ public class MicroBreakpointImportServiceImpl implements MicroBreakpointImportSe
         if (row.diskContent != null && !"ZONE".equals(row.method)) {
             throw new IllegalArgumentException("Disk content applies only to zone breakpoints");
         }
+        if (row.diskContent == null && "ZONE".equals(row.method)) {
+            throw new IllegalArgumentException("Disk content is required for zone breakpoints");
+        }
         if (row.diskContent != null && row.diskContent.length() > 40) {
             throw new IllegalArgumentException("Disk content is longer than 40 characters");
         }

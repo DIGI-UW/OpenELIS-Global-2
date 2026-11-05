@@ -36,7 +36,7 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
                 .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.standardId = :standardId"
                         + " and r.antibioticId = :antibioticId and r.breakpointType = :breakpointType"
                         + " and (r.clinicalContext is null or r.clinicalContext = :clinicalContext)"
-                        + " and (r.diskContent is null or r.diskContent = :diskContent)"
+                        + " and (r.diskContent = :diskContent or (r.diskContent is null and r.breakpointType <> 'ZONE'))"
                         + " and (r.method is null or r.method = :method)"
                         + " and (r.specimenTypeId is null or r.specimenTypeId = :specimenTypeId)"
                         + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
