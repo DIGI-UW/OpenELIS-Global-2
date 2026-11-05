@@ -2,6 +2,10 @@ package org.openelisglobal.configuration.service;
 
 import java.util.List;
 import org.openelisglobal.configuration.valueholder.UnresolvedReference;
+import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
+import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
+import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
+import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.test.service.LegacyTestVariantFinder;
 import org.openelisglobal.test.service.LegacyTestVariantFinder.LegacyTestVariant;
 import org.openelisglobal.test.service.TestSectionService;
@@ -47,6 +51,12 @@ public class CatalogReferenceResolver {
 
     @Autowired
     private ReferenceAliasService aliasService;
+
+    @Autowired
+    private MicroOrganismDAO organismDAO;
+
+    @Autowired
+    private MicroAntibioticDAO antibioticDAO;
 
     /**
      * The one active test whose catalogue name is {@code name}, on the row's
@@ -175,6 +185,34 @@ public class CatalogReferenceResolver {
         return unit;
     }
 
+    public MicroOrganism resolveOrganism(String name, String context) {
+        MicroOrganism organism = organismDAO.findByDisplayNameIgnoreCase(name).orElse(null);
+        if (organism == null) {
+            String aliased = aliasService.resolve(UnresolvedReference.TYPE_ORGANISM, name);
+            if (aliased != null) {
+                organism = organismDAO.get(aliased).orElse(null);
+            }
+        }
+        if (organism == null) {
+            ImportRunContext.addPending(UnresolvedReference.TYPE_ORGANISM, name, context);
+        }
+        return organism;
+    }
+
+    public MicroAntibiotic resolveAntibiotic(String whonetCode, String context) {
+        MicroAntibiotic antibiotic = antibioticDAO.findByWhonetCodeIgnoreCase(whonetCode).orElse(null);
+        if (antibiotic == null) {
+            String aliased = aliasService.resolve(UnresolvedReference.TYPE_ANTIBIOTIC, whonetCode);
+            if (aliased != null) {
+                antibiotic = antibioticDAO.get(aliased).orElse(null);
+            }
+        }
+        if (antibiotic == null) {
+            ImportRunContext.addPending(UnresolvedReference.TYPE_ANTIBIOTIC, whonetCode, context);
+        }
+        return antibiotic;
+    }
+
     /** A test's result component by code; blank means the primary component. */
     public TestResultComponent resolveComponent(String testId, String code, String context) {
         List<TestResultComponent> components = componentService.getActiveComponentsByTestId(testId);
@@ -217,6 +255,14 @@ public class CatalogReferenceResolver {
         case UnresolvedReference.TYPE_UNIT_OF_MEASURE -> {
             UnitOfMeasure unit = resolveUnitOfMeasure(name, null);
             return unit == null ? null : unit.getId();
+        }
+        case UnresolvedReference.TYPE_ORGANISM -> {
+            MicroOrganism organism = resolveOrganism(name, null);
+            return organism == null ? null : organism.getId();
+        }
+        case UnresolvedReference.TYPE_ANTIBIOTIC -> {
+            MicroAntibiotic antibiotic = resolveAntibiotic(name, null);
+            return antibiotic == null ? null : antibiotic.getId();
         }
         default -> {
             return null;

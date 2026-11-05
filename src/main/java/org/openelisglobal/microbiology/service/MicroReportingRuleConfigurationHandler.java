@@ -109,8 +109,10 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         String organismId = organism == null ? null : organism.getId();
         Set<String> sampleTypeIds = sampleTypeIds(row);
         String code = required(row, "agent");
-        MicroAntibiotic antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code).orElseThrow(
-                () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code));
+        MicroAntibiotic antibiotic = resolver.resolveAntibiotic(code, getDomainName());
+        if (antibiotic == null) {
+            throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code);
+        }
         String behavior = reportBehavior(row);
         String note = row.isBlank("comment") ? null : row.get("comment");
         String noteWhen = note == null ? null : noteWhen(row);
@@ -219,8 +221,11 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
                     "Line " + row.lineNumber() + ": unknown organism " + row.get("organism")));
         }
         String name = required(row, "organism");
-        return organisms.findByDisplayNameIgnoreCase(name).orElseThrow(
-                () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown organism " + name));
+        MicroOrganism organism = resolver.resolveOrganism(name, getDomainName());
+        if (organism == null) {
+            throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown organism " + name);
+        }
+        return organism;
     }
 
     private Set<String> sampleTypeIds(CsvRow row) {

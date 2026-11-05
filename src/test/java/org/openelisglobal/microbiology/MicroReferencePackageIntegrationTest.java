@@ -1094,6 +1094,31 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void unknownOrganismAndAntibioticInARuleFileAreListedForADecisionAndAnAliasLoadsThem() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.55", "UNKNOWNOA");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow();
+        String organismName = "Organism alias " + suffix();
+        String agentCode = "AGENT_" + suffix().toUpperCase(java.util.Locale.ROOT);
+        writeReportingRules(RULES_HEADER + "SPECIES," + organismName + ",ANY," + fixture.antibiotic
+                + ",Synthetic,DONT_REPORT,,,,,,,,\n" + "ANY,,ANY," + agentCode + ",Synthetic,REPORT,,,,,,,,\n");
+        assertTrue(reloadReportingRules(false).hasErrors());
+
+        var open = unresolvedReferences.getOpen();
+        var organismItem = open.stream().filter(r -> organismName.equals(r.getReferenceValue())).findFirst()
+                .orElseThrow();
+        var agentItem = open.stream().filter(r -> agentCode.equals(r.getReferenceValue())).findFirst().orElseThrow();
+        assertEquals("ORGANISM", organismItem.getReferenceType());
+        assertEquals("ANTIBIOTIC", agentItem.getReferenceType());
+
+        unresolvedReferences.resolve(organismItem.getId(), "ALIAS", organism.getId(), "1");
+        unresolvedReferences.resolve(agentItem.getId(), "ALIAS", antibiotic.getId(), "1");
+        var reloaded = reloadReportingRules(true);
+        assertFalse(reloaded.toString(), reloaded.hasErrors());
+    }
+
+    @Test
     public void unknownSampleTypeInARuleFileIsListedForADecision() throws Exception {
         var fixture = new ReferencePackageFixture("2099.15", "UNKNOWNST");
         load(fixture);

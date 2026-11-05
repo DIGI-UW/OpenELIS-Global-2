@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
@@ -24,15 +25,17 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
     private final MicroReportingRuleService reportingRules;
     private final MicroGroupRuleConflictFinder conflicts;
     private final MicroAstPanelConfigurationHandler panelDefaults;
+    private final CatalogReferenceResolver resolver;
 
     public MicroOrganismGroupConfigurationHandler(MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics,
             MicroReportingRuleService reportingRules, MicroGroupRuleConflictFinder conflicts,
-            MicroAstPanelConfigurationHandler panelDefaults) {
+            MicroAstPanelConfigurationHandler panelDefaults, CatalogReferenceResolver resolver) {
         this.organisms = organisms;
         this.antibiotics = antibiotics;
         this.reportingRules = reportingRules;
         this.conflicts = conflicts;
         this.panelDefaults = panelDefaults;
+        this.resolver = resolver;
     }
 
     @Override
@@ -68,6 +71,7 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                     memberships.add(new MembershipRow(organism, !organism.getLabGroups().contains(group)));
                 } catch (RuntimeException e) {
                     errors.add(CsvLoadSummary.reason(e));
+                    flushUnresolvedReferences(fileName, row.lineNumber());
                 }
             }
             if (!errors.isEmpty()) {
@@ -139,8 +143,11 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
                     "Line " + row.lineNumber() + ": unknown organism " + row.get("organism")));
         }
         String name = required(row, "organism");
-        return organisms.findByDisplayNameIgnoreCase(name).orElseThrow(
-                () -> new IllegalArgumentException("Line " + row.lineNumber() + ": unknown organism " + name));
+        MicroOrganism organism = resolver.resolveOrganism(name, getDomainName());
+        if (organism == null) {
+            throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown organism " + name);
+        }
+        return organism;
     }
 
     private static String required(CsvRow row, String column) {
