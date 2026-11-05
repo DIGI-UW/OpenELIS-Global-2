@@ -38,18 +38,26 @@ public class CalculationExpressionTest {
 
     @Test
     public void precedenceParenthesesAndUnaryOperators() {
-        assertEquals("14.0", calculate(n("2"), math("+"), n("3"), math("*"), n("4")));
-        assertEquals("20.0", calculate(math("("), n("2"), math("+"), n("3"), math(")"), math("*"), n("4")));
+        assertEquals("14", calculate(n("2"), math("+"), n("3"), math("*"), n("4")));
+        assertEquals("20", calculate(math("("), n("2"), math("+"), n("3"), math(")"), math("*"), n("4")));
         assertEquals("-1.5", calculate(math("-"), n("3"), math("/"), n("2")));
-        assertEquals("3.0", calculate(math("+"), n("3")));
+        assertEquals("3", calculate(math("+"), n("3")));
         assertEquals("0.5", calculate(n("1"), math("/"), n("2")));
     }
 
     @Test
     public void decimalsAndExponentsKeepFloatingPointArithmetic() {
         assertEquals("0.30000000000000004", calculate(n("0.1"), math("+"), n("0.2")));
-        assertEquals("5.0", calculate(n("1e1"), math("*"), n(".5")));
-        assertEquals("-2.0", calculate(n("-5"), math("+"), n("3")));
+        assertEquals("5", calculate(n("1e1"), math("*"), n(".5")));
+        assertEquals("-2", calculate(n("-5"), math("+"), n("3")));
+    }
+
+    @Test
+    public void wholeNumbersAreStoredWithoutAFractionOrExponent() {
+        assertEquals("100", calculate(n("50"), math("*"), n("2")));
+        assertEquals("20000000", calculate(n("1e7"), math("*"), n("2")));
+        assertEquals("0", calculate(n("0"), math("*"), n("-1")));
+        assertEquals("2.5", calculate(n("2.50"), math("+"), n("0")));
     }
 
     @Test
@@ -62,9 +70,9 @@ public class CalculationExpressionTest {
 
     @Test
     public void measuredResultsAndAgeAreNumericOperands() {
-        assertEquals("9.0", calculate(result(), math("*"), n("2")));
+        assertEquals("9", calculate(result(), math("*"), n("2")));
         Operation age = op(Operation.OperationType.PATIENT_ATTRIBUTE, "AGE");
-        assertEquals("40.0", CalculationExpression.compile(List.of(age, math("*"), n("2")))
+        assertEquals("40", CalculationExpression.compile(List.of(age, math("*"), n("2")))
                 .evaluate(o -> new CalculationExpression.Operand(20)));
         rejected(op(Operation.OperationType.PATIENT_ATTRIBUTE, "WEIGHT"));
     }

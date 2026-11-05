@@ -1,5 +1,6 @@
 package org.openelisglobal.testcalculated.service;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,11 +185,16 @@ public final class CalculationExpression {
         };
     }
 
+    /**
+     * A numeric result is the plain decimal without an exponent or trailing zeros,
+     * so a whole number is stored as {@code 40} rather than {@code 40.0}. A Boolean
+     * result is {@code true} or {@code false}.
+     */
     public String evaluate(Function<Operation, Operand> resolver) {
         Map<Operation, Operand> values = new HashMap<>();
         Object value = evaluate(root, operation -> values.computeIfAbsent(operation, resolver));
-        if (value instanceof Double)
-            finite((Double) value);
+        if (value instanceof Double number)
+            return BigDecimal.valueOf(finite(number)).stripTrailingZeros().toPlainString();
         return value.toString();
     }
 
