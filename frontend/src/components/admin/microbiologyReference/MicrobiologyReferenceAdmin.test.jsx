@@ -728,6 +728,18 @@ describe("microbiology reference administration", () => {
           active: true,
         },
         {
+          id: "rule-3",
+          organismName: "Klebsiella pneumoniae",
+          antibioticName: "Ciprofloxacin",
+          antibioticCode: "CIP",
+          method: "ZONE",
+          diskContent: "5ug",
+          susceptibleValue: 25,
+          resistantValue: 21,
+          seeded: true,
+          active: true,
+        },
+        {
           id: "rule-2",
           antibioticName: "Gentamicin",
           antibioticCode: "GEN",
@@ -754,6 +766,12 @@ describe("microbiology reference administration", () => {
     expect(within(anyOrganism).getByText("Inactive")).toBeInTheDocument();
     const coli = screen.getByText("Escherichia coli").closest("tr");
     expect(within(coli).queryByText("Inactive")).not.toBeInTheDocument();
+    expect(screen.getByText("Disk content")).toBeInTheDocument();
+    expect(
+      within(screen.getByText("Klebsiella pneumoniae").closest("tr")).getByText(
+        "5ug",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("clears an applied import preview when Cancel closes the modal", async () => {
