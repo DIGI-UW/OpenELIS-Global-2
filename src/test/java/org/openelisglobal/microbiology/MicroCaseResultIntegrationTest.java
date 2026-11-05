@@ -494,7 +494,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         replacement.components.get(0).value = "56";
         var queued = incoming.receiveReviewed(microCase.getId(), microCase.getSampleItemId(),
                 analysis.getTest().getId(), "ANALYZER", "reviewed-late-result", "56", replacement, analysis.getId(),
-                actor, analyzer());
+                actor, analyzer(), null);
         assertEquals("NEEDS_AMENDMENT", queued.state);
         assertEquals("12",
                 workspace.getTests(microCase.getId(), actor).getFirst().components.getFirst().getResultValue());
@@ -758,6 +758,24 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(2, stored.size());
         assertEquals(List.of("Writer M3"), signatures.getResultSignaturesByResults(stored).stream()
                 .map(org.openelisglobal.result.valueholder.ResultSignature::getNonUserName).toList());
+    }
+
+    @Test
+    public void acceptedAnalyzerResultKeepsTheInstrumentsCompletionTime() {
+        var stagedRows = stageAnalyzerRows(null);
+        var completed = Timestamp.from(Instant.now().minus(2, java.time.temporal.ChronoUnit.DAYS)
+                .truncatedTo(java.time.temporal.ChronoUnit.MINUTES));
+        stagedRows.forEach(row -> {
+            row.setCompleteDate(completed);
+            em.merge(row);
+        });
+        em.flush();
+        var decisions = decisionsFor(stagedRows);
+        decisions.forEach(item -> item.setIsAccepted(true));
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        em.clear();
+        assertEquals(completed.getTime(), analyses.get(analysis.getId()).getCompletedDate().getTime());
     }
 
     @Test

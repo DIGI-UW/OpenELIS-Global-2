@@ -15,7 +15,7 @@ public interface MicroIncomingResultService {
 
     MicroIncomingForm receiveReviewed(String caseId, String sampleItemId, String testId, String source,
             String sourceKey, String raw, MicroCaseResultRequestForm result, String analysisId, String actor,
-            String analyzerId);
+            String analyzerId, java.sql.Timestamp completedAt);
 
     MicroIncomingForm fail(String caseId, String id, String reason, String actor);
 

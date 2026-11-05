@@ -66,24 +66,26 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
     @Transactional
     public MicroIncomingForm receive(String caseId, String sampleItemId, String testId, String source, String key,
             String raw, MicroCaseResultRequestForm result, boolean exactPlacement, String actor, String analyzerId) {
-        return receive(caseId, sampleItemId, testId, source, key, raw, result, exactPlacement, actor, analyzerId, null);
+        return receive(caseId, sampleItemId, testId, source, key, raw, result, exactPlacement, actor, analyzerId, null,
+                null);
     }
 
     @Transactional
     public MicroIncomingForm receiveReviewed(String caseId, String sampleItemId, String testId, String source,
             String key, String raw, MicroCaseResultRequestForm result, String analysisId, String actor,
-            String analyzerId) {
+            String analyzerId, Timestamp completedAt) {
         var c = cases.getForUpdate(caseId);
         if (c == null)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         if (!access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS))
             throw new AccessDeniedException("Case lab unit Results rights required");
-        return receive(caseId, sampleItemId, testId, source, key, raw, result, false, actor, analyzerId, analysisId);
+        return receive(caseId, sampleItemId, testId, source, key, raw, result, false, actor, analyzerId, analysisId,
+                completedAt);
     }
 
     private MicroIncomingForm receive(String caseId, String sampleItemId, String testId, String source, String key,
             String raw, MicroCaseResultRequestForm result, boolean exactPlacement, String actor, String analyzerId,
-            String reviewedAnalysisId) {
+            String reviewedAnalysisId, Timestamp completedAt) {
         if (!List.of("ANALYZER", "REFERRAL").contains(source) || key == null || key.isBlank() || key.length() > 500
                 || result == null || result.components == null || result.components.isEmpty()
                 || tests.get(testId) == null)
@@ -108,6 +110,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         stored.note = result.note;
         stored.components = result.components;
         stored.analyzerId = "ANALYZER".equals(source) ? analyzerId : null;
+        stored.completedAt = completedAt;
         item.setStructuredResult(encode(stored));
         item.setReceivedAt(Timestamp.from(Instant.now()));
         item.setState("WAITING");
@@ -126,7 +129,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
             var selected = matches.stream().filter(a -> reviewedAnalysisId.equals(a.getId())).findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_INCOMING_AMBIGUOUS"));
             if ("WAITING".equals(item.getState())) {
-                var analysis = retainAnalyzer(selected, stored.analyzerId, actor);
+                var analysis = retainAnalyzer(selected, stored, actor);
                 result.version = MicroCaseResultServiceImpl.version(analysis,
                         links.getByCaseAndAnalysis(caseId, reviewedAnalysisId));
                 results.saveResults(caseId, reviewedAnalysisId, result, actor, null);
@@ -135,7 +138,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         }
         // Unreviewed delivery can only attach an exact, unambiguous first result.
         else if (exactPlacement && "WAITING".equals(item.getState()) && matches.size() == 1) {
-            retainAnalyzer(matches.get(0), stored.analyzerId, actor);
+            retainAnalyzer(matches.get(0), stored, actor);
             results.receiveResult(caseId, matches.get(0).getId(), result, actor);
             markPlaced(item, matches.get(0).getId(), actor);
         }
@@ -225,7 +228,7 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
                         });
             }
         }
-        var analysis = retainAnalyzer(candidates.get(0), payload.analyzerId, actor);
+        var analysis = retainAnalyzer(candidates.get(0), payload, actor);
         payload.version = MicroCaseResultServiceImpl.version(analysis, links.getByCaseAndAnalysis(target, analysisId));
         results.saveResults(target, analysisId, payload, actor, http);
         item.setMicroCase(cases.get(target).orElseThrow());
@@ -298,13 +301,17 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
     private static class StoredResult extends MicroCaseResultRequestForm {
         public String analyzerId;
         public String reviewedAnalysisId;
+        public Timestamp completedAt;
     }
 
     private org.openelisglobal.analysis.valueholder.Analysis retainAnalyzer(
-            org.openelisglobal.analysis.valueholder.Analysis analysis, String analyzerId, String actor) {
-        if (analyzerId == null)
+            org.openelisglobal.analysis.valueholder.Analysis analysis, StoredResult stored, String actor) {
+        if (stored.analyzerId == null && stored.completedAt == null)
             return analysis;
-        analysis.setAnalyzerId(analyzerId);
+        if (stored.analyzerId != null)
+            analysis.setAnalyzerId(stored.analyzerId);
+        if (stored.completedAt != null)
+            analysis.setCompletedDate(stored.completedAt);
         analysis.setSysUserId(actor);
         return analyses.update(analysis);
     }
