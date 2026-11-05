@@ -195,6 +195,80 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void zoneReadingNeverMatchesARuleWithoutDiskContent() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.60", "NODISK");
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var zone = new MicroBreakpointRule();
+        zone.setStandardId(standard.getId());
+        zone.setOrganismId(organism.getId());
+        zone.setAntibioticId(antibiotic.getId());
+        zone.setMethod("ZONE");
+        zone.setBreakpointType("ZONE");
+        zone.setSusceptibleValue(new BigDecimal("20"));
+        zone.setResistantValue(new BigDecimal("17"));
+        zone.setUnits("mm");
+        zone.setIsActive("Y");
+        zone.setLastUpdatedBy("1");
+        rules.insert(zone);
+
+        assertNull(rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null,
+                "ZONE", null, "30ug"));
+        assertNull(
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "ZONE", null, "ZONE"));
+        assertNotNull("MIC readings are unaffected",
+                rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC"));
+    }
+
+    @Test
+    public void zoneRowWithoutDiskContentIsRejected() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.61", "ZONENODISK");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        fixture.files.put("breakpoints.csv",
+                lines.get(0) + "\n" + lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,20,,,17,mm,") + "\n");
+        writeFiles(fixture);
+
+        String error = reload(true).files().stream().filter(file -> "microbiology-breakpoints".equals(file.domain()))
+                .findFirst().orElseThrow().errorMessage();
+
+        assertTrue(error, error != null && error.contains("Disk content is required for zone breakpoints"));
+    }
+
+    @Test
+    public void zoneCorrectionNeedsDiskContentAndMatchesOnlyThatDisk() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.62", "ZONEDISK");
+        load(fixture);
+        String local = fixture.edition + "-LOCAL";
+        importer.apply(
+                importer.preview(fixture.files.get("breakpoints.csv").replace(fixture.edition, local)).previewToken,
+                "1");
+        String standardId = standards.findByAuthorityAndVersion("EUCAST", local).orElseThrow().getId();
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+        var form = new MicroBreakpointRuleAdminForm();
+        form.organismId = organism.getId();
+        form.antibioticId = antibiotic.getId();
+        form.method = "DISK_DIFFUSION";
+        form.breakpointType = "ZONE";
+        form.susceptibleValue = new BigDecimal("20");
+        form.resistantValue = new BigDecimal("17");
+        form.units = "mm";
+
+        assertEquals("Disk content is required for zone breakpoints",
+                assertThrows(IllegalArgumentException.class, () -> administration.saveRule(standardId, null, form, "1"))
+                        .getMessage());
+        form.diskContent = "30ug";
+        assertEquals("30ug", administration.saveRule(standardId, null, form, "1").diskContent);
+
+        assertNotNull(rules.findContextualRule(standardId, organism.getId(), null, antibiotic.getId(), "DISK_DIFFUSION",
+                null, "ZONE", null, "30ug"));
+        assertNull(rules.findContextualRule(standardId, organism.getId(), null, antibiotic.getId(), "DISK_DIFFUSION",
+                null, "ZONE", null, "10ug"));
+    }
+
+    @Test
     public void micRuleWithDiskContentIsRejected() throws Exception {
         var fixture = new ReferencePackageFixture("2099.7", "MICDISK");
         var lines = fixture.files.get("breakpoints.csv").lines().toList();
