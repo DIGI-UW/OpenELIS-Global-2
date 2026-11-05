@@ -779,6 +779,54 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void aDeliveryMatchingOnlyACultureOrderWaitsInIncoming() {
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        em.flush();
+        var received = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "culture-order-only", "12", delivery(), true, actor);
+        assertEquals("WAITING", received.state);
+        assertEquals(List.of("WAITING"),
+                incomingItems.forCase(microCase.getId()).stream().map(MicroIncomingItem::getState).toList());
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
+    @Test
+    public void aDeliveryMatchingACultureOrderAndAnAdditionalAnalysisLandsOnTheAdditional() {
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        var additional = fixtures.createAnalysis(analysis.getSampleItem(), analysis.getTest());
+        additional.setStatusId(statuses.getStatusID(AnalysisStatus.NotStarted));
+        em.merge(additional);
+        var additionalLink = new MicroCaseAnalysis();
+        additionalLink.setCaseId(microCase.getId());
+        additionalLink.setAnalysisId(additional.getId());
+        additionalLink.setPlacement("ADDITIONAL");
+        links.insert(additionalLink);
+        em.flush();
+        var received = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "culture-order-and-additional", "12", delivery(), true, actor);
+        assertEquals("PLACED", received.state);
+        assertEquals(additional.getId(), received.placementTarget);
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+        assertEquals(2, results.getResultsByAnalysis(analyses.get(additional.getId())).size());
+    }
+
+    private MicroCaseResultRequestForm delivery() {
+        var p = new MicroCaseResultRequestForm();
+        p.components = new ArrayList<>();
+        for (var component : components.getActiveComponentsByTestId(analysis.getTest().getId())) {
+            var c = new MicroCaseResultRequestForm.ResultComponent();
+            c.componentId = component.getId();
+            c.value = component.getIsPrimary() ? "12" : "34";
+            p.components.add(c);
+        }
+        return p;
+    }
+
+    @Test
     public void wholeNumberPrecisionDoesNotConstrainScientificMantissa() {
         var submission = payload();
         submission.components.get(0).value = "1.555e7";
