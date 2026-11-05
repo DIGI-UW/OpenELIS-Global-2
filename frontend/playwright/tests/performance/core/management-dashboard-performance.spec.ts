@@ -152,10 +152,6 @@ test.describe("Management Overview performance at about 5,000 samples over 30 da
   test("the KPI strip paints within 2.5 seconds and the TAT endpoints answer within a second", async ({
     page,
   }, testInfo) => {
-    test.fail(
-      true,
-      "The TAT query loads each sample's ordering site in its own query and slows quadratically",
-    );
     test.setTimeout(30 * 60_000);
     const volume = await seed(page);
     const probe = await paintKpiStrip(page);
