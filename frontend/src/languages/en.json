@@ -14203,8 +14203,6 @@
   "microbiology.m6.manual": "Manual interpretation",
   "microbiology.m6.breakpoint": "Breakpoint standard",
   "microbiology.m6.history": "Reading and interpretation history",
-  "microbiology.m6.validated": "Validated",
-  "microbiology.m6.pending": "Awaiting validation",
   "microbiology.m6.resolution": "Supervisor resolution",
   "microbiology.m6.save": "Save",
   "microbiology.m6.cancel": "Cancel",

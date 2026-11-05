@@ -720,13 +720,11 @@ const discordantRifampicin = () => {
             source: "MOLECULAR",
             sourceId: "m1",
             interpretation: "RESISTANT",
-            validated: true,
           },
           {
             source: "PHENOTYPIC",
             sourceId: "p1",
             interpretation: "SUSCEPTIBLE",
-            validated: true,
           },
         ],
       },
