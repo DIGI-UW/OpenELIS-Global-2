@@ -1,9 +1,14 @@
 package org.openelisglobal.microbiology.valueholder;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
 
@@ -31,6 +36,11 @@ public class MicroOrganism extends BaseObject<String> {
 
     @Column(name = "organism_group", length = 100)
     private String organismGroup;
+
+    @ElementCollection
+    @CollectionTable(name = "micro_organism_group", schema = "clinlims", joinColumns = @JoinColumn(name = "organism_id"))
+    @Column(name = "group_name", length = 100)
+    private Set<String> labGroups = new HashSet<>();
 
     @Column(name = "gram_stain", length = 20)
     private String gramStain;
@@ -123,6 +133,14 @@ public class MicroOrganism extends BaseObject<String> {
 
     public void setOrganismGroup(String organismGroup) {
         this.organismGroup = organismGroup;
+    }
+
+    public Set<String> getLabGroups() {
+        return labGroups;
+    }
+
+    public void setLabGroups(Set<String> labGroups) {
+        this.labGroups = labGroups;
     }
 
     public String getGramStain() {

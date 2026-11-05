@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.daoimpl;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -30,17 +31,17 @@ public class MicroInterpretationRuleDAOImpl extends BaseDAOImpl<MicroInterpretat
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<MicroInterpretationRule> findBest(String antibioticId, String organismId, String organismGroup) {
+    public Optional<MicroInterpretationRule> findBest(String antibioticId, String organismId,
+            Set<String> organismGroups) {
         Query<MicroInterpretationRule> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroInterpretationRule r where r.active = true and r.antibioticId = :antibioticId"
-                        + " and (r.organismId = :organismId or r.organismGroup = :organismGroup)",
+                "from MicroInterpretationRule r where r.active = true and r.antibioticId = :antibioticId",
                 MicroInterpretationRule.class);
         query.setParameter("antibioticId", antibioticId);
-        query.setParameter("organismId", organismId);
-        query.setParameter("organismGroup", organismGroup);
         Comparator<MicroInterpretationRule> best = Comparator.comparingInt(
                 (MicroInterpretationRule r) -> r.getOrganismId() != null && r.getOrganismId().equals(organismId) ? 0
-                        : 1);
-        return query.list().stream().min(best);
+                        : r.getOrganismGroup() != null && organismGroups.contains(r.getOrganismGroup()) ? 1 : 2)
+                .thenComparing(MicroInterpretationRule::getId);
+        return query.list().stream().filter(r -> r.getOrganismId() != null && r.getOrganismId().equals(organismId)
+                || r.getOrganismGroup() != null && organismGroups.contains(r.getOrganismGroup())).min(best);
     }
 }

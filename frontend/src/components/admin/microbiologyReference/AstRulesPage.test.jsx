@@ -51,7 +51,10 @@ const options = {
     { id: "amk", label: "Amikacin" },
   ],
   organisms: [{ id: "ab", label: "Acinetobacter baumannii" }],
-  "organism-groups": [{ id: "Enterobacterales", label: "Enterobacterales" }],
+  "organism-groups": [{ id: "Package group", label: "Package group" }],
+  "lab-organism-groups": [
+    { id: "Enterobacterales", label: "Enterobacterales" },
+  ],
   "specimen-types": [{ id: "7", label: "Blood" }],
 };
 const show = () =>
@@ -99,6 +102,19 @@ it("lists rules grouped by organism with their report default", async () => {
   expect(within(table).getByText("Ceftriaxone")).toBeInTheDocument();
   expect(within(table).getByText("Don't report")).toBeInTheDocument();
   expect(within(table).getByText("Any sample type")).toBeInTheDocument();
+});
+
+it("offers the laboratory's organism groups, not the reference package's", async () => {
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const rule = await screen.findByRole("dialog");
+  const groups = await within(rule).findByLabelText("Organism group");
+  expect(
+    within(groups).getByRole("option", { name: "Enterobacterales" }),
+  ).toBeInTheDocument();
+  expect(
+    within(groups).queryByRole("option", { name: "Package group" }),
+  ).not.toBeInTheDocument();
 });
 
 it("adds a rule and reloads the table", async () => {

@@ -292,6 +292,9 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
                     .filter(group -> group != null && !group.isBlank()).distinct().sorted(String.CASE_INSENSITIVE_ORDER)
                     .map(group -> option(group, group, null)).toList();
         }
+        if ("lab-organism-groups".equals(resource)) {
+            return organismDAO.getLabGroupNames().stream().map(group -> option(group, group, null)).toList();
+        }
         if ("antibiotics".equals(resource)) {
             return antibioticDAO.getActiveAntibiotics().stream().map(
                     antibiotic -> option(antibiotic.getId(), antibiotic.getDisplayName(), antibiotic.getWhonetCode()))

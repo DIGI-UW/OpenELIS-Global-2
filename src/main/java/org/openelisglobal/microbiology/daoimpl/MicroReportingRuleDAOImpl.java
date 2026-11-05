@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.daoimpl;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -30,25 +31,24 @@ public class MicroReportingRuleDAOImpl extends BaseDAOImpl<MicroReportingRule, S
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<MicroReportingRule> findBest(String antibioticId, String organismId, String organismGroup,
+    public Optional<MicroReportingRule> findBest(String antibioticId, String organismId, Set<String> organismGroups,
             String sampleTypeId, String clinicalContext) {
         Query<MicroReportingRule> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroReportingRule r where r.active = true and r.antibioticId = :antibioticId"
-                        + " and (r.organismId = :organismId or r.organismGroup = :organismGroup"
-                        + " or (r.organismId is null and r.organismGroup is null))"
                         + " and (r.clinicalContext is null or r.clinicalContext = :clinicalContext)",
                 MicroReportingRule.class);
         query.setParameter("antibioticId", antibioticId);
-        query.setParameter("organismId", organismId);
-        query.setParameter("organismGroup", organismGroup);
         query.setParameter("clinicalContext", clinicalContext);
         Comparator<MicroReportingRule> best = Comparator
                 .comparingInt(
                         (MicroReportingRule r) -> r.getOrganismId() != null && r.getOrganismId().equals(organismId) ? 0
-                                : r.getOrganismGroup() != null && r.getOrganismGroup().equals(organismGroup) ? 1 : 2)
+                                : r.getOrganismGroup() != null && organismGroups.contains(r.getOrganismGroup()) ? 1 : 2)
                 .thenComparingInt(r -> r.getSampleTypeIds().isEmpty() ? 1 : 0)
                 .thenComparingInt(r -> r.getClinicalContext() == null ? 1 : 0).thenComparing(MicroReportingRule::getId);
         return query.list().stream()
+                .filter(r -> r.getOrganismId() != null && r.getOrganismId().equals(organismId)
+                        || r.getOrganismGroup() != null && organismGroups.contains(r.getOrganismGroup())
+                        || r.getOrganismId() == null && r.getOrganismGroup() == null)
                 .filter(r -> r.getSampleTypeIds().isEmpty() || r.getSampleTypeIds().contains(sampleTypeId)).min(best);
     }
 }
