@@ -27,6 +27,8 @@ public class UnresolvedReference extends BaseObject<String> {
     public static final String TYPE_UNIT_OF_MEASURE = "UNIT_OF_MEASURE";
     public static final String TYPE_RESULT_COMPONENT = "RESULT_COMPONENT";
     public static final String TYPE_DICTIONARY = "DICTIONARY";
+    public static final String TYPE_ORGANISM = "ORGANISM";
+    public static final String TYPE_ANTIBIOTIC = "ANTIBIOTIC";
 
     public static final String STATUS_OPEN = "OPEN";
     public static final String STATUS_RESOLVED = "RESOLVED";

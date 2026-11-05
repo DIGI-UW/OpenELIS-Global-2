@@ -10,11 +10,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
+import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.LoadedRow;
 import org.openelisglobal.configuration.service.RowTransactionRunner;
-import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
@@ -35,15 +35,15 @@ import org.springframework.stereotype.Component;
 public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler {
     private final MicrobiologyReferenceAdminService admin;
     private final MicroAstPanelDAO panels;
-    private final MicroAntibioticDAO antibiotics;
     private final MicroOrganismDAO organisms;
+    private final CatalogReferenceResolver resolver;
 
     public MicroAstPanelConfigurationHandler(MicrobiologyReferenceAdminService admin, MicroAstPanelDAO panels,
-            MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms) {
+            MicroOrganismDAO organisms, CatalogReferenceResolver resolver) {
         this.admin = admin;
         this.panels = panels;
-        this.antibiotics = antibiotics;
         this.organisms = organisms;
+        this.resolver = resolver;
     }
 
     @Override
@@ -213,9 +213,10 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         for (CsvRow row : rows) {
             try {
                 String code = required(row, "antibioticWhonetCode");
-                var antibiotic = antibiotics.findByWhonetCodeIgnoreCase(code)
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "Line " + row.lineNumber() + ": unknown antibiotic " + code));
+                var antibiotic = resolver.resolveAntibiotic(code, getDomainName());
+                if (antibiotic == null) {
+                    throw new IllegalArgumentException("Line " + row.lineNumber() + ": unknown antibiotic " + code);
+                }
                 MicroAstPanelAntibioticAdminForm drug = new MicroAstPanelAntibioticAdminForm();
                 drug.antibioticId = antibiotic.getId();
                 drug.diskContent = blankToNull(row.get("diskContent"));

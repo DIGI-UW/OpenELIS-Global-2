@@ -10,6 +10,8 @@ import org.openelisglobal.configuration.service.CatalogImportService;
 import org.openelisglobal.configuration.service.CatalogImportService.ImportPlan;
 import org.openelisglobal.configuration.service.UnresolvedReferenceService;
 import org.openelisglobal.configuration.valueholder.UnresolvedReference;
+import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
+import org.openelisglobal.microbiology.service.MicrobiologyReferenceAdminService;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -70,6 +72,9 @@ public class CatalogImportRestController {
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
 
+    @Autowired
+    private MicrobiologyReferenceAdminService microbiologyReferenceAdminService;
+
     @GetMapping(value = "/import/domains", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<String> getDomains() {
         return importService.getImportableDomains();
@@ -120,6 +125,16 @@ public class CatalogImportRestController {
         case UnresolvedReference.TYPE_UNIT_OF_MEASURE -> {
             for (UnitOfMeasure unit : unitOfMeasureService.getAll()) {
                 candidates.add(new Candidate(unit.getId(), unit.getUnitOfMeasureName()));
+            }
+        }
+        case UnresolvedReference.TYPE_ORGANISM -> {
+            for (MicroReferenceOptionForm organism : microbiologyReferenceAdminService.getOptions("organisms")) {
+                candidates.add(new Candidate(organism.id, organism.label));
+            }
+        }
+        case UnresolvedReference.TYPE_ANTIBIOTIC -> {
+            for (MicroReferenceOptionForm antibiotic : microbiologyReferenceAdminService.getOptions("antibiotics")) {
+                candidates.add(new Candidate(antibiotic.id, antibiotic.label + " (" + antibiotic.code + ")"));
             }
         }
         default -> {
