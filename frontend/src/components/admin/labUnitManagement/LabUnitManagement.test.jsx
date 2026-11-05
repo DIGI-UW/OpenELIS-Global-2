@@ -578,6 +578,33 @@ describe("LabUnitManagement deactivation into another unit (OGC-1459)", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("lab-unit-stale-save")).toBeNull();
   });
+
+  test("a refused save shows the server's reason", async () => {
+    putToOpenElisServerFullResponse.mockImplementation((url, body, cb) =>
+      cb({
+        status: 422,
+        json: () =>
+          Promise.resolve({
+            success: false,
+            message: "Select an active, orderable test in this lab unit",
+          }),
+      }),
+    );
+    renderPage("/MasterListsPage/LabUnitManagement/10/basic-info");
+    const description = await waitFor(() => {
+      const el = document.getElementById("lu-description");
+      expect(el).not.toBeNull();
+      return el;
+    });
+    fireEvent.change(description, { target: { value: "Changed here" } });
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(
+        /Select an active, orderable test in this lab unit/,
+      ),
+    ).toBeInTheDocument();
+  });
 });
 
 test("saves the lab's tracked-media requirement and configured Gram stain test", async () => {

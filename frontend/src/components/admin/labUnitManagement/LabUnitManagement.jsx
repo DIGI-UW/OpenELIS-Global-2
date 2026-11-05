@@ -568,7 +568,7 @@ function LabUnitManagement({ intl }) {
               const refusal = new Error(
                 status === 409 && !isStaleConflict(status, body)
                   ? intl.formatMessage({ id: "error.labUnit.name.duplicate" })
-                  : `Update failed (HTTP ${status})`,
+                  : body?.message || `Update failed (HTTP ${status})`,
               );
               refusal.stale = isStaleConflict(status, body);
               reject(refusal);
