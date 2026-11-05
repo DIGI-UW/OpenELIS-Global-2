@@ -890,13 +890,16 @@ def configure_local_tls(context: StackContext, environment: dict[str, str]) -> N
     directory = context.repo_root / ".dev-stack" / "tls"
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     certificate, key = directory / "localhost.pem", directory / "localhost-key.pem"
+    # TRUST_STORES=system, as for -install: with JAVA_HOME set, mkcert otherwise checks
+    # the Java trust store and stops when that JDK has no lib/security/cacerts
+    # (Homebrew's openjdk prefix, for one).
     run(
         [
             "mkcert", "-cert-file", str(certificate), "-key-file", str(key),
             "localhost", "127.0.0.1", "::1",
         ],
         cwd=context.repo_root,
-        environment=environment,
+        environment={**environment, "TRUST_STORES": "system"},
     )
     key.chmod(0o600)
     # Only the leaf certificate/key enter this worktree's proxy. The CA key

@@ -1199,5 +1199,36 @@ class DevStackCleanBuildTest(unittest.TestCase):
         self.assertEqual(for_modules[for_modules.index("clean") + 1], "install")
 
 
+
+class DevStackLocalCertificateTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def test_the_certificate_is_made_for_the_system_store_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            context = self.dev_stack.StackContext(root, "p", root, ())
+            environment = {"LETSENCRYPT_DOMAIN": "localhost", "JAVA_HOME": "/opt/homebrew/opt/openjdk@21"}
+            calls = []
+
+            def fake_run(command, **options):
+                calls.append((command, options))
+                if command[0] == "mkcert":
+                    (root / ".dev-stack" / "tls" / "localhost-key.pem").write_text("key", encoding="utf-8")
+                return SimpleNamespace(stdout="")
+
+            with (
+                patch.object(self.dev_stack, "run", side_effect=fake_run),
+                patch.object(self.dev_stack, "reload_proxy"),
+            ):
+                self.dev_stack.configure_local_tls(context, environment)
+
+        command, options = next(call for call in calls if call[0][0] == "mkcert")
+        self.assertIn("-cert-file", command)
+        self.assertEqual(options["environment"]["TRUST_STORES"], "system")
+        self.assertNotIn("TRUST_STORES", environment)
+
+
 if __name__ == "__main__":
     unittest.main()
