@@ -27,6 +27,7 @@ const CollectTestPickerSection = ({
   setSamples,
   isReadOnly,
   titleId = "collect.addTests.title",
+  titleValues,
   helperId = "collect.addTests.helper",
   excludedTestIds = [],
   excludedTestIdsBySample = {},
@@ -139,7 +140,11 @@ const CollectTestPickerSection = ({
   return (
     <Tile className="order-section">
       <h4 className="section-title">
-        <FormattedMessage id={titleId} defaultMessage="Add Tests or Panels" />
+        <FormattedMessage
+          id={titleId}
+          values={titleValues}
+          defaultMessage="Add Tests or Panels"
+        />
       </h4>
       <p className="helper-text">
         <FormattedMessage
