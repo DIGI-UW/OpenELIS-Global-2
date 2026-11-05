@@ -16,11 +16,12 @@ import org.openelisglobal.common.log.LogEvent;
 public final class CsvLoadSummary {
 
     public enum Outcome {
-        CREATED, UPDATED, SKIPPED
+        CREATED, UPDATED, SKIPPED, REMOVED
     }
 
     /**
      * One data row's fate: its line number, outcome and, when skipped, the reason.
+     * A removal has no row: line 0, and the reason says what was removed.
      */
     public record RowOutcome(int lineNumber, Outcome outcome, String reason) {
     }
@@ -56,6 +57,11 @@ public final class CsvLoadSummary {
         rows.add(new RowOutcome(lineNumber, Outcome.SKIPPED, reason));
         LogEvent.logWarn(loggingClass, "processConfiguration",
                 "Skipping line " + lineNumber + " in " + fileName + ": " + reason);
+    }
+
+    public void removed(String loggingClass, String reason) {
+        rows.add(new RowOutcome(0, Outcome.REMOVED, reason));
+        LogEvent.logInfo(loggingClass, "processConfiguration", "Removed by " + fileName + ": " + reason);
     }
 
     public String getDomain() {

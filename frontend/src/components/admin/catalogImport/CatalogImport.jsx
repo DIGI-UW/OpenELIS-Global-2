@@ -412,13 +412,20 @@ const CatalogImport = () => {
                 {(plan.files || [])
                   .flatMap((file) =>
                     (file.rows || [])
-                      .filter((row) => row.outcome === "SKIPPED")
+                      .filter((row) =>
+                        ["SKIPPED", "REMOVED"].includes(row.outcome),
+                      )
                       .map((row) => ({ file: file.fileName, ...row })),
                   )
                   .map((row) => (
-                    <div key={`${row.file}-${row.lineNumber}`}>
-                      <Tag type="red" size="sm">
-                        {row.file}:{row.lineNumber}
+                    <div key={`${row.file}-${row.lineNumber}-${row.reason}`}>
+                      <Tag
+                        type={row.outcome === "REMOVED" ? "cool-gray" : "red"}
+                        size="sm"
+                      >
+                        {row.lineNumber
+                          ? `${row.file}:${row.lineNumber}`
+                          : row.file}
                       </Tag>
                       {row.reason}
                     </div>
