@@ -13,11 +13,17 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 WORKDIR /build/dataexport/
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
+    mvn dependency:go-offline
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn clean install -DskipTests
 
-
+##
+# Build the module contracts (openelis-spi, openelis-module-api), which the WAR depends on
+#
+COPY ./module-contracts /build/module-contracts
+WORKDIR /build/module-contracts
+RUN --mount=type=cache,target=/root/.m2,sharing=locked \
+    mvn clean install -DskipTests
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
@@ -125,6 +131,12 @@ RUN chown tomcat_admin:tomcat /healthcheck.sh; \
 ADD install/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
     chmod 770 /docker-entrypoint.sh;
+
+# The same Tomcat configuration as the release image (TLS on 8443 from the
+# mounted keystore, the application under /api/OpenELIS-Global), so a published
+# development image runs wherever the release image runs. The local launcher
+# mounts its own copy over it.
+COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml
 USER root
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
