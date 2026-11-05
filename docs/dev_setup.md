@@ -151,6 +151,42 @@ it does not publish images or manage GitHub checkpoints. GitHub-only
 publication, artifact uploads and checkpoint reporting still require their
 GitHub results. Neither a failed lane nor a check that did not run is a pass.
 
+## Backend tests in CI
+
+The backend integration tests share one PostgreSQL per JVM and run in
+alphabetical order, because many fixtures commit and later classes see their
+rows. Pull requests can also run them as shards: contiguous alphabetical ranges
+of the same classes, each on a fresh database. The `mode` line in
+`.github/ci/backend-test-shards.json` decides which result gates a pull request:
+
+- `shadow` (current): `Build + Test` (the single full run) decides. Four
+  `Backend shard` jobs run the same classes beside it, and
+  `Backend shard report` lists every test whose outcome differs.
+- `required`: the shards and the report decide. The single full run still runs
+  when a pull request changes test infrastructure (base test classes, fixtures,
+  test persistence, `pom.xml`, the shard setup) or carries the `ci:full-backend`
+  label.
+- `off`: the single full run only.
+
+Classes that start their own PostgreSQL carry `@IsolatedDatabase` and run in
+`Build + Test (isolated databases)`, three JVMs at a time. A test class that
+creates a `PostgreSQLContainer` without the annotation fails `Detect Changes`.
+Develop pushes and releases always run the single full run, with coverage.
+`Backend / Nightly order check` runs the whole suite every night in alphabetical
+and in reverse order; a test that fails only in reverse order depends on another
+class and should seed its own data.
+
+Run one shard locally:
+
+```bash
+python3 .github/scripts/backend_test_shards.py check
+python3 .github/scripts/backend_test_shards.py includes --shard 2 --output /tmp/shard-2.txt
+scripts/run-java21 mvn test -Dsurefire.includesFile=/tmp/shard-2.txt
+```
+
+To rebalance, move a boundary in the same file, using the per-shard minutes in
+the shard report.
+
 ## Native builds
 
 Java, Maven and Node can also run directly on the host. The development launcher
