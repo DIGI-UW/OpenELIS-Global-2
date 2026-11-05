@@ -23,6 +23,7 @@ export const REFERENCE_DEFINITIONS = {
       { key: "displayName", label: "microbiology.admin.field.name" },
       { key: "whonetCode", label: "microbiology.admin.field.whonetCode" },
       { key: "organismGroup", label: "microbiology.admin.field.group" },
+      { key: "labGroups", label: "microbiology.admin.field.labGroups" },
       {
         key: "initialSignificance",
         label: "microbiology.admin.field.significance",

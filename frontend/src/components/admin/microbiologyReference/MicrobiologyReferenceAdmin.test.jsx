@@ -141,6 +141,7 @@ describe("microbiology reference administration", () => {
           displayName: "Escherichia coli",
           whonetCode: "eco",
           organismGroup: "Enterobacterales",
+          labGroups: "Enterobacterales non-ESCPPM; UTI agents",
           initialSignificance: "USUALLY",
           active: true,
         },
@@ -157,6 +158,10 @@ describe("microbiology reference administration", () => {
     );
 
     expect(await screen.findByText("Escherichia coli")).toBeInTheDocument();
+    expect(screen.getByText("Laboratory groups")).toBeInTheDocument();
+    expect(
+      screen.getByText("Enterobacterales non-ESCPPM; UTI agents"),
+    ).toBeInTheDocument();
     fireEvent.change(
       screen.getByPlaceholderText(messages["microbiology.admin.search"]),
       { target: { value: "coli" } },
