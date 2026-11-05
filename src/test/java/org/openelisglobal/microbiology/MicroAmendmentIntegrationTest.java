@@ -27,6 +27,7 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures.ReferenceData;
+import org.openelisglobal.microbiology.service.MicroAstPanelAssignmentService;
 import org.openelisglobal.microbiology.service.MicroAstReportChoiceService;
 import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
@@ -73,6 +74,9 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
 
     @Autowired
     private AnalyteService analyteService;
@@ -241,6 +245,27 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
 
         assertEquals(List.of("REVIEWED", "REVIEWED"), statuses(fixture.isolateId()));
         assertEquals(released, reportableByRun(fixture.isolateId()));
+    }
+
+    @Test
+    public void cancellingAnAmendmentGivesTheOriginalOrganismItsPanelBack() {
+        FinalCase fixture = createFinalCase();
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
+                "Staphylococci", null);
+        isolateService.updateIdentification(fixture.isolateId(), staphylococcus.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of(), activePanels(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+    }
+
+    private List<String> activePanels(String isolateId) {
+        return panelAssignments.getAssignments(isolateId).stream().map(a -> a.getPanelId()).toList();
     }
 
     private Map<String, Boolean> reportableByRun(String isolateId) {

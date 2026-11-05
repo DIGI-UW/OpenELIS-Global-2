@@ -162,7 +162,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         if (!java.util.Objects.equals(previous.getOrganismId(), isolate.getOrganismId())) {
             astService.reapplyRulesForIsolate(isolate.getId(), performedBy);
         }
-        panelAssignments.assignDefault(updated, performedBy);
+        panelAssignments.followIdentification(updated, performedBy);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,
                 identificationActivityNote(isolate, previous, reason),
                 "{\"isolateId\":\"" + isolate.getId() + "\",\"identificationEventId\":\"" + event.getId() + "\"}");
