@@ -78,6 +78,10 @@ function IsolateAction({
       values,
     );
   const isolate = action.isolate;
+  const methods =
+    isolate?.method && !options.methods.some((m) => m.value === isolate.method)
+      ? [...options.methods, { id: isolate.method, value: isolate.method }]
+      : options.methods;
   const [draft, setDraft] = useState(() => ({
     cultureId: action.cultureId || "",
     gramStain: "",
@@ -86,7 +90,7 @@ function IsolateAction({
     organismId: isolate?.organismId || "",
     identificationStatus: isolate?.status === "FINAL" ? "FINAL" : "PRELIMINARY",
     identificationMethod:
-      options.methods.find((m) => m.value === isolate?.method)?.id || "",
+      methods.find((m) => m.value === isolate?.method)?.id || "",
     confidence: isolate?.confidence ?? "",
     identifiedAt: localTime(),
     reason: "",
@@ -247,7 +251,7 @@ function IsolateAction({
         {isIdentification && (
           <>
             {combo("organismId", options.organisms)}
-            {select("identificationMethod", options.methods)}
+            {select("identificationMethod", methods)}
             {select(
               "identificationStatus",
               ["PRELIMINARY", "FINAL"].map((id) => ({ id, value: t(id) })),
