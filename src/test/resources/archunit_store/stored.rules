@@ -1,0 +1,4 @@
+#
+#Tue Nov 03 16:27:13 EAT 2026
+a\ feature's\ DAOs\ are\ used\ only\ inside\ that\ feature;\ other\ features\ use\ its\ services=78500c66-0137-46d4-9364-cc4f7a63e9df
+controllers\ talk\ to\ services,\ never\ to\ DAOs=b442b7c8-48bb-4638-9656-3184eb1c04e8

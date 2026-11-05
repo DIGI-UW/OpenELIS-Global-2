@@ -13,9 +13,11 @@ import org.jasypt.util.text.AES256TextEncryptor;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.security.GeneralTextEncryptor;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+@IsolatedDatabase
 public class EncryptedSecretsUpgradeTest {
     @Rule
     public TemporaryFolder files = new TemporaryFolder();
