@@ -778,8 +778,12 @@ export default function CaseAstWorkspace({
         <Modal
           open
           modalHeading={t(`action.${draft.label || draft.action}`)}
-          primaryButtonText={t("save")}
-          secondaryButtonText={t("cancel")}
+          primaryButtonText={t(
+            draft.action === "cancel" ? "action.cancel" : "save",
+          )}
+          secondaryButtonText={t(
+            draft.action === "cancel" ? "keepRun" : "cancel",
+          )}
           primaryButtonDisabled={
             busy ||
             invalid ||
