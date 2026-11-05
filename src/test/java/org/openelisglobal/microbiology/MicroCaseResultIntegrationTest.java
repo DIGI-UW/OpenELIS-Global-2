@@ -78,6 +78,8 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     @Autowired
     private MicroIncomingItemDAO incomingItems;
     @Autowired
+    private org.openelisglobal.result.service.ResultSignatureService signatures;
+    @Autowired
     private org.openelisglobal.analyzerresults.service.AnalyzerResultsService analyzerStaging;
     @Autowired
     private org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService analyzerAcceptance;
@@ -746,6 +748,16 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             p.components.add(c);
         }
         return p;
+    }
+
+    @Test
+    public void theTechnicianSignatureNamesTheUser() {
+        workspace.saveResults(microCase.getId(), analysis.getId(), payload(), actor, request(actor));
+        em.flush();
+        var stored = results.getResultsByAnalysis(analysis);
+        assertEquals(2, stored.size());
+        assertEquals(List.of("Writer M3"), signatures.getResultSignaturesByResults(stored).stream()
+                .map(org.openelisglobal.result.valueholder.ResultSignature::getNonUserName).toList());
     }
 
     @Test

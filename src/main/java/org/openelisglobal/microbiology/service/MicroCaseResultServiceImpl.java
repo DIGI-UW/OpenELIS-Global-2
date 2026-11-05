@@ -337,6 +337,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         rows.forEach(row -> byComponent.put(row.getTestResultComponentId(), row));
         Set<String> supplied = new HashSet<>();
         List<TestResultItem> changed = new ArrayList<>();
+        var user = users.get(actor);
+        String technician = user == null ? actor : user.getFirstName() + " " + user.getLastName();
         for (var input : request.components) {
             if (input == null || !supplied.add(input.componentId) || !byComponent.containsKey(input.componentId))
                 bad("MICROBIOLOGY_COMPONENT_MISMATCH");
@@ -349,7 +351,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             row.setInvalidResultConfirmed(input.invalidResultConfirmed);
             row.setModified(true);
             row.setReadOnly(false);
-            row.setTechnician(actor);
+            row.setTechnician(technician);
             changed.add(row);
         }
         if (changed.stream().noneMatch(ResultUtil::areResults))
