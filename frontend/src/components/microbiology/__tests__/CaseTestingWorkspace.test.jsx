@@ -295,6 +295,33 @@ describe("case testing workspace", () => {
       screen.getByRole("textbox", { name: "Result for Rifampicin" }),
     ).toHaveValue("34");
   });
+  test("extra decimals warn and the full value is saved", async () => {
+    const api = service();
+    show(api);
+    await openEditor();
+    enter("MTB", "12.345");
+    enter("Rifampicin", "34");
+    expect(
+      await screen.findByText(/full entered value is retained/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save results" }));
+    await waitFor(() =>
+      expect(api.saveResults).toHaveBeenCalledWith(
+        "case-1",
+        "20",
+        expect.objectContaining({
+          components: [
+            expect.objectContaining({
+              componentId: "primary",
+              value: "12.345",
+            }),
+            expect.objectContaining({ componentId: "rif", value: "34" }),
+          ],
+        }),
+      ),
+    );
+    await screen.findByText("Awaiting validation");
+  });
   test("out-of-unit readers cannot edit, validate, add tests, or append notes", async () => {
     const api = service();
     api.getTests.mockResolvedValue([
