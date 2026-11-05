@@ -76,6 +76,9 @@ public class Result extends EnumValueItemImpl {
      */
     private java.sql.Timestamp validatedDate;
 
+    /** OGC-1200 FR-A2: the run this result was produced in, when it has one. */
+    private Long runId;
+
     public Result() {
         super();
         analysis = new ValueHolder();
@@ -300,6 +303,14 @@ public class Result extends EnumValueItemImpl {
 
     public java.sql.Timestamp getValidatedDate() {
         return validatedDate;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
     }
 
     public void setValidatedDate(java.sql.Timestamp validatedDate) {

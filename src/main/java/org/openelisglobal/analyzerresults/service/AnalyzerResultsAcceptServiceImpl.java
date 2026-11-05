@@ -288,6 +288,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setComponentId(staged.getComponentId());
         item.setIsControl(staged.getIsControl());
         item.setAnalyzerId(staged.getAnalyzerId());
+        item.setRunId(staged.getRunId());
         item.setCompleteDate(staged.getCompleteDateForDisplay());
         item.setTestResultType(staged.getResultType());
         item.setTestName(staged.getTestName());
@@ -1133,6 +1134,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         if (result == null) {
             result = createNewResult(resultItem, patient, sysUserId);
         }
+        result.setRunId(resultItem.getRunId());
 
         return result;
     }

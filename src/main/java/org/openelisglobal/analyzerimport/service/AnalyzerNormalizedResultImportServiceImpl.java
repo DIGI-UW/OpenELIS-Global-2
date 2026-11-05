@@ -32,6 +32,8 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.resultrun.service.ResultRunService;
+import org.openelisglobal.resultrun.valueholder.ResultRun;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.springframework.stereotype.Service;
@@ -52,13 +54,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final FhirContext fhirContext;
     private final AnalyzerDeliveryReceiptDAO receiptDAO;
     private final AnalyzerResultPlacementService placementService;
+    private final ResultRunService resultRunService;
 
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
             AnalyzerMappingService mappingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
             AnalyzerMappingConfirmationService confirmationService, AnalyzerMappingCatalogService mappingCatalogService,
-            AnalyzerResultPlacementService placementService) {
+            AnalyzerResultPlacementService placementService, ResultRunService resultRunService) {
         this.analyzerService = analyzerService;
         this.mappingService = mappingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -69,6 +72,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         this.confirmationService = confirmationService;
         this.mappingCatalogService = mappingCatalogService;
         this.placementService = placementService;
+        this.resultRunService = resultRunService;
     }
 
     @Override
@@ -96,6 +100,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         }
 
         List<AnalyzerResults> staged = mapResults(contract, analyzer);
+        Optional<ResultRun> run = resultRunService.openAnalyzerRun(analyzer, contract.bridgeConnectionId(),
+                contract.messageId(), staged);
         if (!staged.isEmpty()) {
             analyzerResultsService.insertAnalyzerResults(staged, effectiveActor);
         }
@@ -114,7 +120,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         receipt.setAcceptedBy(effectiveActor);
         receipt.setAcceptedAt(new Timestamp(System.currentTimeMillis()));
         receipt.setBundleJson(fhirContext.newJsonParser().encodeResourceToString(bundle));
-        receiptDAO.insert(receipt);
+        String receiptId = receiptDAO.insert(receipt);
+        run.ifPresent(opened -> resultRunService.attachReceipt(opened.getId(), receiptId));
         return new AnalyzerNormalizedResultImportSummary(receipt.getId(), analyzer.getId(), staged.size(), held,
                 controlsProcessed);
     }
@@ -182,12 +189,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             if (wholeRecord && mapped.size() > 1) {
                 List<AnalyzerResults> others = mapped.stream().filter(row -> row != recovered).toList();
                 others.forEach(row -> {
+                    row.setRunId(held.getRunId());
                     row.setInstrumentPatientId(held.getInstrumentPatientId());
                     row.setInstrumentPatientName(held.getInstrumentPatientName());
                     row.setInstrumentSampleFlags(held.getInstrumentSampleFlags());
                     row.setArrivalReading(held.getArrivalReading());
                 });
                 analyzerResultsService.insertAnalyzerResults(others, effectiveActor);
+                resultRunService.addRows(held.getRunId(), others.size());
                 processControls(others, analyzer, effectiveActor);
                 recoveredCount += (int) others.stream().filter(row -> !row.isReadOnly()).count();
             }
@@ -205,6 +214,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             recovered.setArrivalReading(held.getArrivalReading());
             recovered.setLastupdated(held.getLastupdated());
             recovered.setSysUserId(effectiveActor);
+            recovered.setRunId(held.getRunId());
             analyzerResultsService.update(recovered);
             if (!recovered.isReadOnly()) {
                 recoveredCount++;
