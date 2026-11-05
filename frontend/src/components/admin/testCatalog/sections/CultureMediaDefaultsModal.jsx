@@ -52,7 +52,12 @@ export default function CultureMediaDefaultsModal({
   const save = () => {
     setSaving(true);
     setError(false);
-    const body = { ...draft, cultureDefaultsChanged: true };
+    const body = {
+      usageType: draft.usageType,
+      quantityPerTest: draft.quantityPerTest,
+      quantityUnit: draft.quantityUnit,
+      cultureDefaultsChanged: true,
+    };
     [
       "cultureDuration",
       "cultureTemperature",
@@ -60,7 +65,7 @@ export default function CultureMediaDefaultsModal({
       "cultureLoopVolume",
     ].forEach((key) => {
       body[key] =
-        body[key] === "" || body[key] == null ? null : Number(body[key]);
+        draft[key] === "" || draft[key] == null ? null : Number(draft[key]);
     });
     body.cultureDurationUnit =
       body.cultureDuration == null

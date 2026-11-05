@@ -114,3 +114,58 @@ test("selects and clears specimen-specific media defaults through Carbon control
     JSON.parse(putToOpenElisServer.mock.calls[1][1]).sampleTypeId,
   ).toBeNull();
 });
+
+test("sends only the fields the server's reagent link request accepts", () => {
+  const requestFields = [
+    "cultureDefaultsChanged",
+    "reagentId",
+    "usageType",
+    "quantityPerTest",
+    "quantityUnit",
+    "sampleTypeId",
+    "cultureDurationUnit",
+    "cultureAtmosphereId",
+    "cultureDuration",
+    "cultureCheckIntervalHours",
+    "cultureLoopVolume",
+    "cultureTemperature",
+  ];
+  getFromOpenElisServer.mockImplementation(() => {});
+  putToOpenElisServer.mockClear();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CultureMediaDefaultsModal
+        testId="12"
+        link={{
+          id: "15",
+          reagentId: 10,
+          reagentName: "Blood agar",
+          manufacturer: "Acme",
+          microbiologyMedium: true,
+          usageType: "PRIMARY",
+          quantityPerTest: 1,
+          quantityUnit: "mL",
+          cultureDuration: 48,
+          cultureDurationUnit: "HOURS",
+          currentStock: 20,
+          lowStockThreshold: 5,
+        }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+  expect(
+    Object.keys(body).filter((key) => !requestFields.includes(key)),
+  ).toEqual([]);
+  expect(body).toEqual(
+    expect.objectContaining({
+      usageType: "PRIMARY",
+      quantityPerTest: 1,
+      quantityUnit: "mL",
+      cultureDuration: 48,
+    }),
+  );
+});
