@@ -1,8 +1,4 @@
-export const includesComboBoxText = ({ item, itemToString, inputValue }) => {
-  const query = (inputValue || "").trim().toLowerCase();
-  if (!query) {
-    return true;
-  }
+import { matchesSearch } from "../common/searchText";
 
-  return (itemToString?.(item) || "").toLowerCase().includes(query);
-};
+export const includesComboBoxText = ({ item, itemToString, inputValue }) =>
+  matchesSearch(itemToString?.(item), inputValue);

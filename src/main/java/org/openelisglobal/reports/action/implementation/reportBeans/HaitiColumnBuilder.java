@@ -64,7 +64,7 @@ public class HaitiColumnBuilder extends CSVColumnBuilder {
     public void makeSQL() {
         // Switch date column according to selected DateType: PK
         String dateColumn = "s.entered_date ";
-        switch (dateType) {
+        switch (dateType == null ? DateType.ORDER_DATE : dateType) {
         case ORDER_DATE:
             dateColumn = "s.entered_date ";
             break;
@@ -72,7 +72,7 @@ public class HaitiColumnBuilder extends CSVColumnBuilder {
             dateColumn = "a.released_date ";
             break;
         case PRINT_DATE:
-            dateColumn = "dt.report_generation_time ";
+            dateColumn = LAST_PRINT_DATE;
         default:
             break;
         }

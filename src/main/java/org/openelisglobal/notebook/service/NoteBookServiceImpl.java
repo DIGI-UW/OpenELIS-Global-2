@@ -325,7 +325,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             List<Result> results = resultService.getResultsByAnalysis(analysis);
             for (Result result : results) {
                 ResultDisplayBean resultDisplayBean = new ResultDisplayBean();
-                resultDisplayBean.setResult(resultService.getResultValue(result, true));
+                resultDisplayBean.setResult(resultService.formatResultForDisplay(result, true));
                 resultDisplayBean.setTest(analysis.getTest().getLocalizedName());
                 resultDisplayBean.setDateCreated(DateUtil.convertTimestampToStringDate(result.getLastupdated()));
                 resultsDisplayBeans.add(resultDisplayBean);

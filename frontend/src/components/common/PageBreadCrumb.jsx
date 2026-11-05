@@ -33,10 +33,12 @@ const PageBreadCrumb = ({ breadcrumbs }) => {
       <Column lg={16} md={8} sm={4}>
         <Breadcrumb>
           {breadcrumbs.map((breadcrumb, index) => {
-            const label = intl.formatMessage({
-              id: breadcrumb.label,
-              defaultMessage: breadcrumb.label,
-            });
+            const label =
+              breadcrumb.text ??
+              intl.formatMessage({
+                id: breadcrumb.label,
+                defaultMessage: breadcrumb.label,
+              });
             const isCurrent =
               breadcrumb.isCurrentPage === true ||
               (defaultsLastAsCurrent && index === lastIndex);

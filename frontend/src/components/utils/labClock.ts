@@ -52,6 +52,7 @@ const wallClockAt = (instant: number): Date => {
     part.hour,
     part.minute,
     part.second,
+    new Date(instant).getMilliseconds(),
   );
 };
 
@@ -154,4 +155,19 @@ export const daysFromLabToday = (value: string, today = labNow()): number => {
       Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
     (24 * 60 * 60 * 1000)
   );
+};
+
+/** Zone used to label persisted instants in laboratory workflows. */
+export const labTimeZone = (): string =>
+  labFields?.resolvedOptions().timeZone ||
+  Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/** A datetime-local field on the laboratory clock, retaining milliseconds. */
+export const labDateTimeInput = (
+  value: string | number | Date = Date.now() + skewMs,
+): string => {
+  const instant = new Date(value).getTime();
+  const date = labFields ? wallClockAt(instant) : new Date(instant);
+  const pad = (n: number, width = 2) => String(n).padStart(width, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(new Date(instant).getMilliseconds(), 3)}`;
 };

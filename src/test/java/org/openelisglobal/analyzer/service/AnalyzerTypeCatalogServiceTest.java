@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -47,14 +50,108 @@ public class AnalyzerTypeCatalogServiceTest {
 
     private AnalyzerTypeCatalogService service;
 
+    @Test
+    public void catalogReadsLocalTestsOnceForManyConfirmedAnalyzersAndRefreshesOnNextRequest() throws Exception {
+        var confirmations = mock(org.openelisglobal.analyzer.dao.AnalyzerMappingConfirmationDAO.class);
+        var realConfirmationService = new AnalyzerMappingConfirmationServiceImpl(confirmations,
+                mock(org.openelisglobal.audittrail.dao.AuditTrailService.class),
+                mock(org.openelisglobal.systemuser.service.SystemUserService.class), mappingCatalogService);
+        service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
+                new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService,
+                realConfirmationService, mappingService);
+        var analyzers = new java.util.ArrayList<Analyzer>();
+        for (int i = 0; i < 30; i++) {
+            Analyzer analyzer = analyzer("catalog-" + i, "Catalog bench " + i, 3, 1);
+            AnalyzerMapping mapping = analyzer.getMapping();
+            mapping.setId("mapping-" + i);
+            mapping.setAnalyzer(analyzer);
+            mapping.setMappingFingerprint("sha256:" + "a".repeat(64));
+            mapping.setProfileFingerprint("sha256:" + "b".repeat(64));
+            var row = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest();
+            row.setId(new org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK(mapping.getId(), "WBC"));
+            row.setMappingState(org.openelisglobal.analyzer.valueholder.AnalyzerMappingState.BOUND);
+            row.setTestId("100");
+            var snapshot = new AnalyzerMappingSnapshot(mapping, List.of(row), List.of());
+            var confirmation = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
+            confirmation.setMapping(mapping);
+            confirmation.setProfileId(mapping.getProfileId());
+            confirmation.setMappingFingerprint(mapping.getMappingFingerprint());
+            confirmation.setConfirmedBy("17");
+            confirmation.setConfirmedAt(java.sql.Timestamp.from(java.time.Instant.parse("2026-11-01T12:00:00Z")));
+            confirmation.setAuditEventId("audit-" + i);
+            confirmation.setConfirmedRowsJson("[{\"sourceRowKey\":\"WBC\",\"rawValue\":null,\"subIdentity\":\"\"}]");
+            confirmation.setExcludedRowsJson("[]");
+            when(confirmations.findByMappingId(mapping.getId())).thenReturn(Optional.of(confirmation));
+            when(mappingService.findById(mapping.getId())).thenReturn(Optional.of(snapshot));
+            analyzers.add(analyzer);
+        }
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(analyzers);
+        when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
+
+        var first = service.getCatalog().types().get(0);
+        assertEquals(30, first.affectedAnalyzers().size());
+        assertTrue(first.affectedAnalyzers().stream()
+                .allMatch(AnalyzerTypeCatalogView.AffectedAnalyzer::mappingConfirmed));
+        verify(mappingCatalogService, times(1)).searchActiveTests(null);
+
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
+        var refreshed = service.getCatalog().types().get(0);
+        assertTrue(refreshed.affectedAnalyzers().stream()
+                .noneMatch(AnalyzerTypeCatalogView.AffectedAnalyzer::mappingConfirmed));
+        assertEquals(0, refreshed.testMappings().mapped());
+        verify(mappingCatalogService, times(2)).searchActiveTests(null);
+    }
+
     @Before
     public void setUp() {
+        org.mockito.Mockito.lenient().when(bridgeCatalogService.isConfigured()).thenReturn(true);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest("100")));
         when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(answers());
         when(testResultService.getActiveTestResultsByTest("100")).thenReturn(List.of(numericResult()));
         service = new AnalyzerTypeCatalogServiceImpl(bridgeCatalogService, mappingDAO,
                 new AnalyzerMappingDefaults(mappingCatalogService, testResultService), mappingCatalogService,
                 confirmationService, mappingService);
+    }
+
+    /**
+     * OGC-1594: with no Bridge address there are no types to offer, and the page
+     * says so; it used to answer 502 as if the Bridge had failed.
+     */
+    @Test
+    public void withoutABridgeAddressTheCatalogIsEmptyAndSaysSo() {
+        when(bridgeCatalogService.isConfigured()).thenReturn(false);
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        assertEquals(false, result.bridgeConfigured());
+        assertEquals(0, result.summary().total());
+        assertEquals(List.of(), result.types());
+        org.mockito.Mockito.verify(bridgeCatalogService, org.mockito.Mockito.never()).getCatalog();
+    }
+
+    /**
+     * A Bridge that is not paired holds the types but cannot be asked for them
+     * yet: the catalog is empty and says it is not paired, where it answered 502.
+     */
+    @Test
+    public void withAnUnpairedBridgeTheCatalogIsEmptyAndSaysSo() {
+        when(bridgeCatalogService.getCatalog()).thenThrow(BridgeProfileCatalogException
+                .notPaired(new BridgeHttpClient.BridgeNotPairedException()));
+
+        AnalyzerTypeCatalogView result = service.getCatalog();
+
+        assertEquals(true, result.bridgeConfigured());
+        assertEquals(false, result.bridgePaired());
+        assertEquals(0, result.summary().total());
+        assertEquals(List.of(), result.types());
+    }
+
+    @Test
+    public void anUnreachableBridgeStillFailsTheCatalog() {
+        when(bridgeCatalogService.getCatalog())
+                .thenThrow(new BridgeProfileCatalogException("Bridge profile catalog request failed"));
+
+        org.junit.Assert.assertThrows(BridgeProfileCatalogException.class, () -> service.getCatalog());
     }
 
     @Test
@@ -67,6 +164,8 @@ public class AnalyzerTypeCatalogServiceTest {
 
         AnalyzerTypeCatalogView result = service.getCatalog();
 
+        assertEquals(true, result.bridgeConfigured());
+        assertEquals(true, result.bridgePaired());
         assertEquals("1.0", result.schemaVersion());
         assertEquals(2, result.summary().total());
         assertEquals(1, result.summary().inUse());
@@ -296,8 +395,8 @@ public class AnalyzerTypeCatalogServiceTest {
         when(mappingService.findById("mapping-501")).thenReturn(Optional.of(current));
         when(mappingService.findById("mapping-502")).thenReturn(Optional.of(stale));
         var approval = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation();
-        when(confirmationService.assessCurrent(current)).thenReturn(AnalyzerMappingVerificationAssessment.current(approval));
-        when(confirmationService.assessCurrent(stale)).thenReturn(new AnalyzerMappingVerificationAssessment(false, approval));
+        when(confirmationService.assessCurrent(org.mockito.ArgumentMatchers.eq(current), org.mockito.ArgumentMatchers.any(AnalyzerMappingCatalogState.class))).thenReturn(AnalyzerMappingVerificationAssessment.current(approval));
+        when(confirmationService.assessCurrent(org.mockito.ArgumentMatchers.eq(stale), org.mockito.ArgumentMatchers.any(AnalyzerMappingCatalogState.class))).thenReturn(new AnalyzerMappingVerificationAssessment(false, approval));
 
         AnalyzerTypeCatalogView.TypeSummary type = service.getCatalog().types().get(0);
 

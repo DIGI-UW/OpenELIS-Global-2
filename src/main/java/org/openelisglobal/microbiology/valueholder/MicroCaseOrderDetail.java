@@ -34,7 +34,7 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
     @Column(name = "patient_origin", length = 255)
     private String patientOrigin;
 
-    @Column(name = "culture_purpose", length = 32)
+    @jakarta.persistence.Transient
     private String culturePurpose;
 
     @Column(name = "admission_date")

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+ <changeSet id="026-result-run-table" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <tableExists schemaName="clinlims" tableName="result_run"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200: a run is the unit results are produced and reviewed in (one analyzer message, one workplan batch, one manual save). A run outlives the analyzer, lab unit or receipt it names.</comment>
+  <createSequence schemaName="clinlims" sequenceName="result_run_seq" startValue="1" incrementBy="1"/>
+  <createTable schemaName="clinlims" tableName="result_run">
+   <column name="id" type="BIGINT">
+    <constraints primaryKey="true" nullable="false" primaryKeyName="pk_result_run"/>
+   </column>
+   <column name="source" type="VARCHAR(20)">
+    <constraints nullable="false"/>
+   </column>
+   <column name="state" type="VARCHAR(12)" defaultValue="OPEN">
+    <constraints nullable="false"/>
+   </column>
+   <column name="analyzer_id" type="numeric(10)"/>
+   <column name="test_section_id" type="numeric(10)"/>
+   <column name="delivery_receipt_id" type="VARCHAR(36)"/>
+   <column name="source_connection_id" type="VARCHAR(255)"/>
+   <column name="source_message_id" type="VARCHAR(255)"/>
+   <column name="operator_name" type="VARCHAR(255)"/>
+   <column name="row_count" type="INTEGER" defaultValueNumeric="0">
+    <constraints nullable="false"/>
+   </column>
+   <column name="opened_at" type="TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="last_activity_at" type="TIMESTAMP">
+    <constraints nullable="false"/>
+   </column>
+   <column name="completed_at" type="TIMESTAMP"/>
+   <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+  </createTable>
+  <addForeignKeyConstraint constraintName="fk_result_run_analyzer" baseTableSchemaName="clinlims"
+   baseTableName="result_run" baseColumnNames="analyzer_id" referencedTableSchemaName="clinlims"
+   referencedTableName="analyzer" referencedColumnNames="id" onDelete="SET NULL"/>
+  <addForeignKeyConstraint constraintName="fk_result_run_test_section" baseTableSchemaName="clinlims"
+   baseTableName="result_run" baseColumnNames="test_section_id" referencedTableSchemaName="clinlims"
+   referencedTableName="test_section" referencedColumnNames="id" onDelete="SET NULL"/>
+  <addForeignKeyConstraint constraintName="fk_result_run_delivery_receipt" baseTableSchemaName="clinlims"
+   baseTableName="result_run" baseColumnNames="delivery_receipt_id" referencedTableSchemaName="clinlims"
+   referencedTableName="analyzer_delivery_receipt" referencedColumnNames="id" onDelete="SET NULL"/>
+  <sql>
+   ALTER TABLE clinlims.result_run ADD CONSTRAINT result_run_source_chk CHECK (source IN ('ANALYZER', 'WORKPLAN', 'RESULT_ENTRY'));
+   ALTER TABLE clinlims.result_run ADD CONSTRAINT result_run_state_chk CHECK (state IN ('OPEN', 'HELD', 'COMPLETE', 'SUPERSEDED'));
+   CREATE UNIQUE INDEX uq_result_run_analyzer_message ON clinlims.result_run (source_connection_id, source_message_id)
+    WHERE source = 'ANALYZER' AND source_message_id IS NOT NULL;
+   CREATE INDEX idx_result_run_state ON clinlims.result_run (state);
+  </sql>
+  <rollback>
+   <dropTable schemaName="clinlims" tableName="result_run"/>
+   <dropSequence schemaName="clinlims" sequenceName="result_run_seq"/>
+  </rollback>
+ </changeSet>
+
+ <changeSet id="026-result-run-references" author="openelisglobal">
+  <preConditions onFail="MARK_RAN">
+   <not>
+    <columnExists schemaName="clinlims" tableName="analyzer_results" columnName="run_id"/>
+   </not>
+  </preConditions>
+  <comment>OGC-1200: a staged analyzer value and an accepted result name the run they came from</comment>
+  <addColumn schemaName="clinlims" tableName="analyzer_results">
+   <column name="run_id" type="BIGINT">
+    <constraints foreignKeyName="fk_analyzer_results_run" referencedTableSchemaName="clinlims" referencedTableName="result_run" referencedColumnNames="id"/>
+   </column>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="result">
+   <column name="run_id" type="BIGINT">
+    <constraints foreignKeyName="fk_result_run" referencedTableSchemaName="clinlims" referencedTableName="result_run" referencedColumnNames="id"/>
+   </column>
+  </addColumn>
+  <createIndex schemaName="clinlims" tableName="analyzer_results" indexName="idx_analyzer_results_run_id">
+   <column name="run_id"/>
+  </createIndex>
+  <createIndex schemaName="clinlims" tableName="result" indexName="idx_result_run_id">
+   <column name="run_id"/>
+  </createIndex>
+  <rollback>
+   <dropColumn schemaName="clinlims" tableName="result" columnName="run_id"/>
+   <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="run_id"/>
+  </rollback>
+ </changeSet>
+
+ <changeSet id="026-result-run-staged-backfill" author="openelisglobal">
+  <comment>OGC-1200: analyzer values already waiting for review at upgrade get the run of the message they arrived in</comment>
+  <sql>
+   INSERT INTO clinlims.result_run (id, source, state, analyzer_id, delivery_receipt_id, source_connection_id,
+     source_message_id, operator_name, row_count, opened_at, last_activity_at, last_updated)
+   SELECT nextval('clinlims.result_run_seq'), 'ANALYZER', 'OPEN', g.analyzer_id, rc.id, g.source_connection_id,
+     g.source_message_id, g.operator_name, g.row_count, COALESCE(rc.accepted_at, g.opened), g.last_activity, now()
+   FROM (SELECT ar.analyzer_id, ar.source_connection_id, ar.source_message_id,
+           MAX(ar.instrument_operator) AS operator_name, COUNT(*) AS row_count,
+           MIN(COALESCE(ar.last_updated, now())) AS opened, MAX(COALESCE(ar.last_updated, now())) AS last_activity
+         FROM clinlims.analyzer_results ar
+         WHERE ar.run_id IS NULL
+         GROUP BY ar.analyzer_id, ar.source_connection_id, ar.source_message_id) g
+   LEFT JOIN clinlims.analyzer_delivery_receipt rc
+     ON rc.connection_id = g.source_connection_id AND rc.message_id = g.source_message_id;
+   UPDATE clinlims.analyzer_results ar SET run_id = r.id
+   FROM clinlims.result_run r
+   WHERE ar.run_id IS NULL AND r.source = 'ANALYZER'
+     AND r.analyzer_id IS NOT DISTINCT FROM ar.analyzer_id
+     AND r.source_connection_id IS NOT DISTINCT FROM ar.source_connection_id
+     AND r.source_message_id IS NOT DISTINCT FROM ar.source_message_id;
+  </sql>
+  <rollback>
+   <sql>UPDATE clinlims.analyzer_results SET run_id = NULL; DELETE FROM clinlims.result_run WHERE source = 'ANALYZER';</sql>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>

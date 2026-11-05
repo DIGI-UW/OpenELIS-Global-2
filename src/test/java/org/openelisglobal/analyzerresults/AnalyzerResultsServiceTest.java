@@ -65,6 +65,25 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void setupCapturesRemainAvailableButDoNotCountAsAttention() {
+        AnalyzerResults captured = analyzerResultsService.get("1004");
+        captured.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE);
+        analyzerResultsService.update(captured);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(Map.of(), analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("2001")));
+        assertEquals("POSITIVE", analyzerResultsService.get("1004").getRawResultValue());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_SETUP_CAPTURE,
+                analyzerResultsService.get("1004").getImportIssueReason());
+    }
+
+    @Test
+    public void unresolvedRoutineResultsStillCountAsAttention() {
+        assertEquals(Map.of("2001", 1L), analyzerResultsService.countHeldResultsByAnalyzerIds(List.of("2001", "2002")));
+    }
+
+    @Test
     public void readAnalyzerResults_ShouldReturnAnalyzerResults_UsingAnId() {
         AnalyzerResults analyzerResults = analyzerResultsService.readAnalyzerResults("1002");
         assertNotNull(analyzerResults);

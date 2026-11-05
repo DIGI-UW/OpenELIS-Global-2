@@ -25,6 +25,7 @@ import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import NceFileAttachment from "./NceFileAttachment";
 import "./InlineNceForm.css";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const SEVERITIES = [
   {
@@ -383,28 +384,19 @@ const InlineNceForm = ({
             invalidText={errors.dateOfEvent}
           />
         </DatePicker>
-        <Select
+        <SearchableSelect
           id="inline-nce-reporting-unit"
-          {...requiredProps()}
-          labelText={
-            <>
-              {intl.formatMessage({
-                id: "nce.field.reportingUnit",
-                defaultMessage: "Reporting Unit",
-              })}
-              <RequiredMarker />
-            </>
-          }
+          required
+          labelText={intl.formatMessage({
+            id: "nce.field.reportingUnit",
+            defaultMessage: "Reporting Unit",
+          })}
+          options={reportingUnits}
           value={nceForm.reportingUnit}
-          onChange={(e) => handleFormChange("reportingUnit", e.target.value)}
+          onChange={(id) => handleFormChange("reportingUnit", id)}
           invalid={!!errors.reportingUnit}
           invalidText={errors.reportingUnit}
-        >
-          <SelectItem value="" text="" />
-          {reportingUnits.map((option) => (
-            <SelectItem key={option.id} value={option.id} text={option.value} />
-          ))}
-        </Select>
+        />
       </div>
 
       {/* Section 2: Classification */}
