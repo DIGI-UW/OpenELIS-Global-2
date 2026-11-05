@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -312,23 +313,55 @@ class DevStackContractTest(unittest.TestCase):
                 self.dev_stack.ensure_local_tls_trust(context, {"DEV_STACK_TLS": tls})
             run.assert_not_called()
 
-    def test_up_stops_before_build_when_trust_setup_fails(self):
+    def test_up_continues_with_self_signed_when_trust_setup_fails(self):
         environment = {"DEV_STACK_TLS": "local-ca", "LETSENCRYPT_DOMAIN": "localhost"}
         with (
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "build_environment", return_value=environment),
             patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "doctor"),
-            patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "mkcert")),
-            patch.object(self.dev_stack, "ensure_submodules") as submodules,
+            patch.object(
+                self.dev_stack, "ensure_local_tls_trust", side_effect=RuntimeError("administrator prompt not completed")
+            ),
+            patch.object(self.dev_stack, "ensure_submodules", return_value=()),
+            patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
+            patch.object(self.dev_stack, "service_is_running", return_value=False),
+            patch.object(self.dev_stack, "heal_war_mount"),
             patch.object(self.dev_stack, "build_application") as build,
+            patch.object(self.dev_stack, "pull_images"),
+            patch.object(self.dev_stack, "record_images"),
+            patch.object(self.dev_stack, "record_setup"),
             patch.object(self.dev_stack, "start_services") as start,
+            patch.object(self.dev_stack, "reload_proxy"),
+            patch.object(self.dev_stack, "configure_local_tls") as local_certificate,
+            patch.object(self.dev_stack, "print_endpoints"),
+            contextlib.redirect_stderr(io.StringIO()) as warnings,
         ):
-            with self.assertRaisesRegex(RuntimeError, "interactive terminal"):
-                self.dev_stack.main(["up"])
-        submodules.assert_not_called()
-        build.assert_not_called()
-        start.assert_not_called()
+            self.dev_stack.main(["up", "--no-wait", "--no-scenarios"])
+
+        build.assert_called_once()
+        start.assert_called_once()
+        local_certificate.assert_not_called()
+        self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+        self.assertIn("self-signed certificate for this run", warnings.getvalue())
+
+    def test_each_local_https_step_falls_back_to_self_signed(self):
+        for error in (RuntimeError("no brew"), subprocess.CalledProcessError(1, "mkcert"), OSError("disk")):
+            environment = {"DEV_STACK_TLS": "local-ca"}
+            with self.subTest(error=type(error).__name__), contextlib.redirect_stderr(io.StringIO()):
+                self.dev_stack.local_https_step(environment, "a step", unittest.mock.Mock(side_effect=error))
+            self.assertEqual(environment["DEV_STACK_TLS"], "self-signed")
+
+    def test_a_working_step_and_other_tls_modes_are_left_alone(self):
+        step = unittest.mock.Mock()
+        working = {"DEV_STACK_TLS": "local-ca"}
+        self.dev_stack.local_https_step(working, "a step", step, "argument")
+        step.assert_called_once_with("argument")
+        self.assertEqual(working["DEV_STACK_TLS"], "local-ca")
+
+        skipped = unittest.mock.Mock()
+        self.dev_stack.local_https_step({"DEV_STACK_TLS": "letsencrypt"}, "a step", skipped)
+        skipped.assert_not_called()
 
     def test_local_tls_covers_loopback_and_never_copies_or_installs_ca(self):
         with tempfile.TemporaryDirectory() as temporary:
