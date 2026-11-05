@@ -828,6 +828,29 @@ it("explains a run that can no longer be cancelled", async () => {
   expect(await within(modal).findByText(message)).toBeInTheDocument();
 });
 
+it("a reading request does not carry the isolate's panel", async () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].assignments = [
+    { id: "as", panelId: "p1", label: "Panel v2", provenance: "MANUAL" },
+  ];
+  const service = show(data);
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: t("action.reading") }))[0],
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("raw")), {
+    target: { value: "4" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() => expect(service.astAction).toHaveBeenCalledTimes(1));
+  expect(service.astAction.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ action: "reading", runId: "run" }),
+  );
+  expect(service.astAction.mock.calls[0][1]).not.toHaveProperty("panelId");
+});
+
 it("explains a resolution the server rejects as invalid", async () => {
   const service = show(discordantRifampicin());
   service.resolveDst = vi.fn().mockRejectedValue({
