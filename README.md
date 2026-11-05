@@ -148,18 +148,18 @@ Every command has the form `scripts/dev-stack <command> [options]`. The command
 names are literal words: `url` is the command that prints the address, not a
 placeholder for one.
 
-| Command                                  | What it does                                                                                              |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `scripts/dev-stack up [options]`         | Builds the backend WAR from this checkout and starts the stack. See [Options of `up`](#options-of-up).    |
-| `scripts/dev-stack url`                  | Prints the address of the running stack, for example `https://localhost:55095`.                           |
-| `scripts/dev-stack env`                  | Prints every address of the stack (application, backend, database port and more) as shell `export` lines. |
-| `scripts/dev-stack status`               | Lists the stack's containers and its addresses.                                                           |
-| `scripts/dev-stack logs [services] [-f]` | Shows container logs; `-f` follows them. Example: `scripts/dev-stack logs -f oe.openelis.org`.            |
-| `scripts/dev-stack down`                 | Stops and removes the stack's containers and module dev servers. The data is kept.                        |
-| `scripts/dev-stack down --volumes --yes` | Same, and also deletes the stack's data (database and other volumes). Both flags are required.            |
-| `scripts/dev-stack doctor`               | Checks the prerequisites without starting anything.                                                       |
-| `scripts/dev-stack config`               | Prints the stack's merged Docker Compose configuration.                                                   |
-| `scripts/dev-stack playwright [args]`    | Runs the Playwright tests against this stack; `args` go to Playwright.                                    |
+| Command                                  | What it does                                                                                                                     |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/dev-stack up [options]`         | Builds a fresh backend WAR from this checkout (`mvn clean package`) and starts the stack. See [Options of `up`](#options-of-up). |
+| `scripts/dev-stack url`                  | Prints the address of the running stack, for example `https://localhost:55095`.                                                  |
+| `scripts/dev-stack env`                  | Prints every address of the stack (application, backend, database port and more) as shell `export` lines.                        |
+| `scripts/dev-stack status`               | Lists the stack's containers and its addresses.                                                                                  |
+| `scripts/dev-stack logs [services] [-f]` | Shows container logs; `-f` follows them. Example: `scripts/dev-stack logs -f oe.openelis.org`.                                   |
+| `scripts/dev-stack down`                 | Stops and removes the stack's containers and module dev servers. The data is kept.                                               |
+| `scripts/dev-stack down --volumes --yes` | Same, and also deletes the stack's data (database and other volumes). Both flags are required.                                   |
+| `scripts/dev-stack doctor`               | Checks the prerequisites without starting anything.                                                                              |
+| `scripts/dev-stack config`               | Prints the stack's merged Docker Compose configuration.                                                                          |
+| `scripts/dev-stack playwright [args]`    | Runs the Playwright tests against this stack; `args` go to Playwright.                                                           |
 
 #### Options of `up`
 

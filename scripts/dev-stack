@@ -370,23 +370,19 @@ def build_application(
         cwd=context.repo_root,
         environment=environment,
     )
-    commit = output(["git", "rev-parse", "HEAD"], cwd=context.repo_root, environment=environment)
-    record = war_commit_record(context)
-    built_from = record.read_text(encoding="utf-8").strip() if record.is_file() else None
-    goals = ["install" if install_for_modules else "package"]
-    if built_from != commit:
-        print("The checkout changed since the last build; building from clean (mvn clean)", flush=True)
-        goals.insert(0, "clean")
+    # Always from clean: Maven never deletes a class whose source is gone, so an incremental
+    # build after a branch switch or a deleted file would ship stale classes in the WAR.
     run(
-        [str(java), "mvn", "-q", *goals, "-DskipTests", "-Dmaven.test.skip=true"],
+        [
+            str(java), "mvn", "-q", "clean", "install" if install_for_modules else "package",
+            "-DskipTests", "-Dmaven.test.skip=true",
+        ],
         cwd=context.repo_root,
         environment=environment,
     )
     war = context.repo_root / "target" / "OpenELIS-Global.war"
     if not war.is_file():
         raise RuntimeError(f"Build did not produce {war}")
-    record.parent.mkdir(parents=True, exist_ok=True)
-    record.write_text(commit + "\n", encoding="utf-8")
     if install_for_modules:
         module_test = context.repo_root / "module-test" / "pom.xml"
         run(
@@ -394,12 +390,6 @@ def build_application(
             cwd=context.repo_root,
             environment=environment,
         )
-
-
-def war_commit_record(context: StackContext) -> Path:
-    """The commit target/ was last built from: a build on another commit starts from mvn clean,
-    so classes whose sources only exist on the old commit never reach the WAR."""
-    return context.repo_root / ".dev-stack" / "war-commit"
 
 
 def read_module_checkout(path_text: str) -> ModuleCheckout:
