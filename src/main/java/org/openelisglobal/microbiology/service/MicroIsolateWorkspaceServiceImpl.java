@@ -356,7 +356,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         body.testIds = List.of(testId);
         results.addTests(caseId, body, actor);
         return analyses.getAnalyses(caseId).stream()
-                .filter(a -> a.getSampleItem().getId().equals(sampleItemId) && a.getTest().getId().equals(testId))
+                .filter(a -> a.getSampleItem().getId().equals(sampleItemId) && a.getTest().getId().equals(testId)
+                        && analyses.getByCaseAndAnalysis(caseId, a.getId()).getCultureId() == null)
                 .findFirst().orElseThrow(() -> new IllegalStateException("Isolate analysis missing"));
     }
 
