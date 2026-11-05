@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import shlex
 import shutil
@@ -51,6 +52,12 @@ DEFAULT_MODULE_DEV_PORT = 5174
 
 
 LOCAL_DOMAINS = {"localhost", "127.0.0.1", "::1"}
+
+# Where up installs mkcert when the machine has no Homebrew; shared by every checkout.
+TOOLS_DIR = Path.home() / ".cache" / "openelis-dev-stack" / "bin"
+MKCERT_DOWNLOAD = "https://dl.filippo.io/mkcert/latest?for={system}/{arch}"
+MKCERT_SYSTEMS = {"Darwin": "darwin", "Linux": "linux"}
+MKCERT_ARCHITECTURES = {"x86_64": "amd64", "amd64": "amd64", "arm64": "arm64", "aarch64": "arm64"}
 
 # Application images: (compose service, image variable in the harness compose
 # files, published repository, image name when built with `up --build`).
@@ -134,6 +141,7 @@ def is_local_domain(domain: str) -> bool:
 def build_environment(context: StackContext) -> dict[str, str]:
     uat_scenarios_enabled = os.environ.get("OE_UAT_SCENARIOS_ENABLED", "true")
     environment = os.environ.copy()
+    environment["PATH"] = os.pathsep.join(filter(None, (str(TOOLS_DIR), environment.get("PATH"))))
     for key, value in read_dotenv(context.repo_root / ".env").items():
         environment.setdefault(key, value)
     environment["DEV_STACK_PROJECT"] = context.project
@@ -814,6 +822,42 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
     return endpoints
 
 
+def ensure_mkcert(environment: dict[str, str]) -> None:
+    """Install mkcert when local HTTPS needs it: with Homebrew if present, else the official binary."""
+    if environment["DEV_STACK_TLS"].lower() != "local-ca" or shutil.which("mkcert", path=environment.get("PATH")):
+        return
+    if shutil.which("brew", path=environment.get("PATH")):
+        print("mkcert is missing; installing it with Homebrew (brew install mkcert)", flush=True)
+        run(["brew", "install", "mkcert"], cwd=Path.home(), environment=environment)
+    else:
+        system = MKCERT_SYSTEMS.get(platform.system())
+        arch = MKCERT_ARCHITECTURES.get(platform.machine().lower())
+        if not system or not arch:
+            raise RuntimeError(
+                f"mkcert is missing and cannot be installed automatically on {platform.system()} "
+                f"{platform.machine()}. Install it (https://github.com/FiloSottile/mkcert#installation) "
+                "and rerun scripts/dev-stack up, or run with DEV_STACK_TLS=self-signed."
+            )
+        url = MKCERT_DOWNLOAD.format(system=system, arch=arch)
+        target = TOOLS_DIR / "mkcert"
+        print(f"mkcert is missing; downloading it from {url} to {target}", flush=True)
+        TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+        download = target.with_name("mkcert.download")
+        try:
+            with urlopen(url, timeout=120) as response, download.open("wb") as file:
+                shutil.copyfileobj(response, file)
+        except (URLError, OSError) as error:
+            download.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Could not download mkcert from {url}: {error}. Install it "
+                "(https://github.com/FiloSottile/mkcert#installation) or run with DEV_STACK_TLS=self-signed."
+            ) from None
+        download.chmod(0o755)
+        download.replace(target)
+    if not shutil.which("mkcert", path=environment.get("PATH")):
+        raise RuntimeError("mkcert was installed but is not on the PATH; open a new terminal and rerun scripts/dev-stack up")
+
+
 def ensure_local_tls_trust(context: StackContext, environment: dict[str, str]) -> None:
     if environment["DEV_STACK_TLS"].lower() != "local-ca":
         return
@@ -1005,8 +1049,9 @@ def cleanup_analyzer_networks(context: StackContext, environment: dict[str, str]
 def doctor(context: StackContext, environment: dict[str, str]) -> None:
     if environment["DEV_STACK_TLS"].lower() == "local-ca" and not shutil.which("mkcert", path=environment.get("PATH")):
         raise RuntimeError(
-            "Missing local HTTPS prerequisite: mkcert (macOS: brew install mkcert). "
-            "Then rerun scripts/dev-stack up; it handles the one-time system trust setup. "
+            "Missing local HTTPS prerequisite: mkcert. scripts/dev-stack up installs it "
+            "(Homebrew, or a download into ~/.cache/openelis-dev-stack/bin) and handles the "
+            "one-time system trust setup; or install it yourself (macOS: brew install mkcert). "
             "See docs/dev_setup.md for other platforms."
         )
     for command in ("git", "docker", "mvn", "bash", "curl", "envsubst"):
@@ -1103,6 +1148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         modules = read_module_checkouts(args.module)
         ensure_local_env(context)
         environment = build_environment(context)
+        ensure_mkcert(environment)
         doctor(context, environment)
         ensure_local_tls_trust(context, environment)
         changed_submodules = ensure_submodules(context, environment)
