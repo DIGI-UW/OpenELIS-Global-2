@@ -470,6 +470,61 @@ test("changing source preserves an explicitly tracked lot on the same optional m
   );
 });
 
+test("ticking lot not tracked clears the chosen lot", async () => {
+  const service = api([]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    media: [{ ...options.media[0], trackLots: false }],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  fireEvent.click(screen.getByLabelText("Lot not tracked"));
+  change("Medium lot", "20");
+  fireEvent.click(screen.getByLabelText("Lot not tracked"));
+  change("Bottle or plate identifier", "P-UNTRACKED");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ notTracked: true, lotId: null }),
+    ),
+  );
+});
+
+test("changing to a source without a medium link drops the previous source's defaults", async () => {
+  const service = api([]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { sampleItemId: "s2", sampleTypeId: "type2", label: "SPEC-2" },
+    ],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.duration"]),
+  ).toHaveValue(48);
+  change(messages["microbiology.culture.sourceSampleItemId"], "s2");
+  for (const key of ["duration", "checkIntervalHours", "loopVolume"])
+    expect(
+      screen.getByLabelText(messages[`microbiology.culture.${key}`]),
+    ).toHaveValue(null);
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+  ).toHaveValue("");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.atmosphereId"]),
+  ).toHaveValue("air");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.temperature"]),
+  ).toHaveValue(35);
+});
+
 it("preserves received-isolate provenance while allowing a real subculture", async () => {
   const service = api([
     {

@@ -50,7 +50,6 @@ const mediaLink = (options, sourceId, mediumId) => {
 };
 const applyMediumDefaults = (previous, selected, link, requireTrackedMedia) => {
   const sameMedium = String(previous.mediumItemId) === String(selected?.id);
-  const retained = sameMedium ? previous : {};
   const trackingRequired = selected?.trackLots || requireTrackedMedia;
   return {
     ...previous,
@@ -61,18 +60,12 @@ const applyMediumDefaults = (previous, selected, link, requireTrackedMedia) => {
       : sameMedium
         ? previous.notTracked
         : true,
-    atmosphereId:
-      link?.atmosphereId ||
-      selected?.atmosphereId ||
-      retained.atmosphereId ||
-      "",
-    temperature:
-      link?.temperature ?? selected?.temperature ?? retained.temperature ?? "",
-    duration: link?.duration ?? retained.duration ?? "",
-    durationUnit: link?.durationUnit || retained.durationUnit || "",
-    checkIntervalHours:
-      link?.checkIntervalHours ?? retained.checkIntervalHours ?? "",
-    loopVolume: link?.loopVolume ?? retained.loopVolume ?? "",
+    atmosphereId: link?.atmosphereId || selected?.atmosphereId || "",
+    temperature: link?.temperature ?? selected?.temperature ?? "",
+    duration: link?.duration ?? "",
+    durationUnit: link?.durationUnit || "",
+    checkIntervalHours: link?.checkIntervalHours ?? "",
+    loopVolume: link?.loopVolume ?? "",
   };
 };
 
@@ -319,7 +312,13 @@ function CultureActionForm({
               labelText={t("notTracked")}
               checked={!!draft.notTracked}
               disabled={tracked}
-              onChange={(_, { checked }) => change("notTracked", checked)}
+              onChange={(_, { checked }) =>
+                setDraft((previous) => ({
+                  ...previous,
+                  notTracked: checked,
+                  lotId: "",
+                }))
+              }
             />
             {!draft.notTracked && select("lotId", medium?.lots || [])}
             {select("atmosphereId", options.atmospheres)}
