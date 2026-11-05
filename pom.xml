@@ -22,7 +22,12 @@
         <log4j.version>2.25.5</log4j.version>
         <springframework.version>6.2.19</springframework.version>
         <springsecurity.version>6.5.11</springsecurity.version>
+        <!-- Module system contracts (module-contracts/), each released on its
+            own cadence -->
+        <openelis-spi.version>1.0.0-SNAPSHOT</openelis-spi.version>
+        <openelis-module-api.version>1.0.0-SNAPSHOT</openelis-module-api.version>
         <testContainersVersion>1.19.8</testContainersVersion>
+        <surefire.runOrder>alphabetical</surefire.runOrder>
     </properties>
 
     <dependencyManagement>
@@ -106,6 +111,18 @@
             <groupId>org.itech</groupId>
             <artifactId>dataexport-core</artifactId>
             <version>0.0.0.9</version>
+        </dependency>
+        <!-- Module system contracts, built from module-contracts/ before the WAR
+            (like dataexport) -->
+        <dependency>
+            <groupId>org.openelisglobal</groupId>
+            <artifactId>openelis-spi</artifactId>
+            <version>${openelis-spi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openelisglobal</groupId>
+            <artifactId>openelis-module-api</artifactId>
+            <version>${openelis-module-api.version}</version>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
@@ -625,10 +642,24 @@
             <version>2.9.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- Module manifest validation (JSON schema) and semver ranges; compile
+            scope since the module registry validates manifests at start-up -->
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
             <version>1.5.6</version>
+        </dependency>
+        <dependency>
+            <groupId>org.semver4j</groupId>
+            <artifactId>semver4j</artifactId>
+            <version>5.6.0</version>
+        </dependency>
+        <!-- Core feature boundaries (CoreBoundariesArchitectureTest), frozen baseline
+            in src/test/resources/archunit_store -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit4</artifactId>
+            <version>1.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -893,6 +924,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.3.1</version>
+                <configuration>
+                    <!-- openelis-core for modules: the WAR's classes as openelisglobal-<version>-classes.jar -->
+                    <attachClasses>true</attachClasses>
+                    <classesClassifier>classes</classesClassifier>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -1064,6 +1100,16 @@
                     </formats>
                     <!-- define a language-specific format -->
                     <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                            <include>module-contracts/**/src/**/*.java</include>
+                            <include>module-test/**/src/**/*.java</include>
+                            <include>modules/**/src/**/*.java</include>
+                        </includes>
+                        <excludes>
+                            <exclude>**/target/**</exclude>
+                        </excludes>
                         <importOrder />
                         <!-- standard import order -->
 
@@ -1086,8 +1132,8 @@
                         does not roll back, so results depend on class order. Surefire's default
                         "filesystem" order differs per runner VM, which made the same commit pass
                         on one runner and fail on another. Alphabetical is deterministic and stable
-                        as classes are added. -->
-                    <runOrder>alphabetical</runOrder>
+                        as classes are added. The nightly order check overrides it with -Dsurefire.runOrder=reversealphabetical. -->
+                    <runOrder>${surefire.runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

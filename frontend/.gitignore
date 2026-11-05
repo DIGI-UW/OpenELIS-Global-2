@@ -47,3 +47,6 @@ current_failures.txt
 # translations themselves live in volume/translation.
 /public/translation/
 /evidence-videos/
+
+# Module Federation type-generation cache
+.mf/
