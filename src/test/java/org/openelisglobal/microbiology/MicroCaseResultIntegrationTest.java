@@ -697,14 +697,33 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void rejectsExcessMantissaPrecisionEvenWithPositiveExponent() {
+    public void extraDecimalsAreSavedAsEnteredAndRoundOnlyForDisplay() {
         configurePrecision(2);
         var submission = payload();
-        submission.components.get(0).value = "1.555e7";
-        assertEquals("MICROBIOLOGY_INVALID_PRECISION", assertThrows(IllegalArgumentException.class,
-                () -> workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)))
+        submission.components.get(0).value = "1.2345";
+        assertEquals("TechnicalAcceptance", workspace
+                .saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)).get(0).status);
+        var saved = results.getResultsByAnalysis(analysis).stream().filter(r -> "1.2345".equals(r.getEnteredValue()))
+                .findFirst().orElseThrow();
+        assertEquals("1.23", results.formatSimpleResultForDisplay(saved));
+        var notANumber = payload();
+        notANumber.components.get(0).value = "1.2.3";
+        assertEquals("MICROBIOLOGY_INVALID_RESULT", assertThrows(IllegalArgumentException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), notANumber, actor, request(actor)))
                 .getMessage());
-        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
+    @Test
+    public void anAnalyzerValueWithExtraDecimalsIsPlacedAsSent() {
+        configurePrecision(2);
+        var delivery = payload();
+        delivery.version = null;
+        delivery.components.get(0).value = "<1.234";
+        var received = incoming.receive(microCase.getId(), microCase.getSampleItemId(), analysis.getTest().getId(),
+                "ANALYZER", "extra-decimals", "<1.234", delivery, true, actor);
+        assertEquals("PLACED", received.state);
+        assertEquals(Set.of("<1.234/<1.234", "34/34"), results.getResultsByAnalysis(analysis).stream()
+                .map(r -> r.getValue() + "/" + r.getEnteredValue()).collect(java.util.stream.Collectors.toSet()));
     }
 
     @Test
