@@ -26,10 +26,7 @@ public class MicroAntimicrobialConfigurationHandler extends AbstractCatalogCsvHa
 
     protected void load(List<CsvRow> rows, RowTransactionRunner transaction, CsvLoadSummary summary, String fileName) {
         // A failed catalog remains retryable instead of being checksummed as loaded.
-        var outcomes = transaction.run(() -> {
-            concepts.validateIdentities(rows);
-            return rows.stream().map(concepts::loadAntibiotic).toList();
-        });
+        var outcomes = transaction.run(() -> concepts.loadAll(rows, concepts::loadAntibiotic));
         for (int i = 0; i < rows.size(); i++) {
             summary.record(outcomes.get(i), getClass().getSimpleName(), rows.get(i).lineNumber());
         }
