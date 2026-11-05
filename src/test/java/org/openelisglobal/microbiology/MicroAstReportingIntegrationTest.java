@@ -1418,4 +1418,29 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
             org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm result, String antibioticId) {
         return result.rows.stream().filter(r -> antibioticId.equals(r.antibioticId)).findFirst().orElseThrow();
     }
+
+    @Test
+    public void aCaseWhoseOnlyAnalysisIsNotReportableHasNothingToReport() {
+        var source = fixtures.createSampleWithSampleItem("M6");
+        var onlyInternal = new MicroCase();
+        onlyInternal.setSampleId(source.getSample().getId());
+        onlyInternal.setSampleItemId(source.getId());
+        onlyInternal.setLabUnitId(c.getLabUnitId());
+        onlyInternal.setCreatedBy(writer);
+        cases.insert(onlyInternal);
+        var analysis = fixtures.createAnalysis(source, fixtures.createCatalogTest());
+        var link = new MicroCaseAnalysis();
+        link.setCaseId(onlyInternal.getId());
+        link.setAnalysisId(analysis.getId());
+        link.setPlacement("INITIAL");
+        link.setCaseRole(MicroCaseRole.DIRECT);
+        em.persist(link);
+        em.find(org.openelisglobal.analysis.valueholder.Analysis.class, analysis.getId()).setIsReportable("N");
+        em.flush();
+        assertTrue(readiness.getReadiness(onlyInternal.getId()).blockers.contains("REPORTABLE_WORK_REQUIRED"));
+
+        em.find(org.openelisglobal.analysis.valueholder.Analysis.class, analysis.getId()).setIsReportable("Y");
+        em.flush();
+        assertFalse(readiness.getReadiness(onlyInternal.getId()).blockers.contains("REPORTABLE_WORK_REQUIRED"));
+    }
 }

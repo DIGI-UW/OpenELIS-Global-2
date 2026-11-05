@@ -76,7 +76,10 @@ public class MicroCaseReadinessServiceImpl implements MicroCaseReadinessService 
         if (pendingCultureSetup
                 || cultureRows.stream().anyMatch(row -> row.getOutcome() == null || row.getOutcomeAt() == null))
             addBlocker(readiness, "CULTURE_OUTCOME_REQUIRED");
-        if (caseAnalyses.isEmpty() && cultureRows.isEmpty() && isolates.isEmpty())
+        boolean reportableAnalysis = caseAnalyses.stream()
+                .anyMatch(analysis -> links.getByCaseAndAnalysis(caseId, analysis.getId()).getCancelledAt() == null
+                        && !analysis.getTest().isInLabOnly() && !"N".equals(analysis.getIsReportable()));
+        if (!reportableAnalysis && cultureRows.isEmpty() && isolates.isEmpty())
             addBlocker(readiness, "REPORTABLE_WORK_REQUIRED");
         for (var analysis : caseAnalyses) {
             var link = links.getByCaseAndAnalysis(caseId, analysis.getId());
