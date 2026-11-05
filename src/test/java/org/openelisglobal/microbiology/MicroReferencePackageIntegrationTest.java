@@ -173,6 +173,28 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void organismAndAntimicrobialFilesListEveryBadRowAndSaveNothing() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.56", "BADROWS");
+        fixture.files.put("organisms.csv", "source,code,displayName,whonetCode,gramStain\nAMR," + fixture.organism
+                + ",Synthetic organism BADROWS,,GRAM_NEGATIVE\nAMR,BADROWS_A,,,\nAMR,BADROWS_B,,,\n");
+        fixture.files.put("antimicrobials.csv",
+                "source,code,displayName,whonetCode,antibioticClass\nAMR," + fixture.antibiotic
+                        + ",Synthetic agent BADROWS," + fixture.antibiotic
+                        + ",Test class\nAMR,BADROWS_C,,BADROWS_C,\nAMR,BADROWS_D,,BADROWS_D,\n");
+        writeFiles(fixture);
+
+        var files = reload(true).files();
+
+        for (String domain : java.util.List.of("microbiology-organisms", "microbiology-antimicrobials")) {
+            String error = files.stream().filter(file -> domain.equals(file.domain())).findFirst().orElseThrow()
+                    .errorMessage();
+            assertTrue(domain + ": " + error, error != null && error.contains("Line 3:") && error.contains("Line 4:"));
+        }
+        assertTrue(organisms.findByReference("AMR", fixture.organism).isEmpty());
+        assertTrue(antibiotics.findByReference("AMR", fixture.antibiotic).isEmpty());
+    }
+
+    @Test
     public void micRuleWithDiskContentIsRejected() throws Exception {
         var fixture = new ReferencePackageFixture("2099.7", "MICDISK");
         var lines = fixture.files.get("breakpoints.csv").lines().toList();
