@@ -169,6 +169,10 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "source_connection_id", length = 255)
     private String sourceConnectionId;
 
+    /** OGC-1200: the run of the message this value arrived in. */
+    @Column(name = "run_id")
+    private Long runId;
+
     @Column(name = "source_profile_id", length = 128)
     private String sourceProfileId;
 
@@ -299,6 +303,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setInstrumentNote(String instrumentNote) {
         this.instrumentNote = instrumentNote;
+    }
+
+    public Long getRunId() {
+        return runId;
+    }
+
+    public void setRunId(Long runId) {
+        this.runId = runId;
     }
 
     public String getSourceMessageId() {

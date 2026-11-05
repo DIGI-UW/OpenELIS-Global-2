@@ -43,6 +43,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -78,12 +79,15 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private Analyzer analyzer;
     private AnalyzerMapping revision;
 
+    @Mock
+    private ResultRunService resultRunService;
+
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
                 testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
-                mappingCatalogService, placementService);
+                mappingCatalogService, placementService, resultRunService);
         org.mockito.Mockito.doAnswer(call -> {
             List<AnalyzerResults> rows = call.getArgument(0);
             for (int i = 0; i < rows.size(); i++) {

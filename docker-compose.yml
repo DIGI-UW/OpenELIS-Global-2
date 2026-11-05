@@ -89,6 +89,9 @@ services:
             - ./configuration:/var/lib/openelis-global/configuration
             - reporting-data:/var/lib/openelis-global/reporting
             - ./volume/translation:/var/lib/openelis-global/translation:ro
+            # Installed modules: one JAR each, read at start-up (docs/modules.md)
+            - ./volume/modules:/var/lib/openelis-global/modules:ro
+            - modules-data:/var/lib/openelis-global/modules-data
         secrets:
             - source: initial-admin-password
             - source: common.properties
@@ -189,3 +192,4 @@ volumes:
   certs-vol:
   keys-vol:
   reporting-data:
+  modules-data:
