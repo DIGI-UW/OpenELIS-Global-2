@@ -714,6 +714,20 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void aComponentWithNoDecimalPlacesSetAcceptsAnyDecimals() {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        configured.forEach(c -> c.setReportingDecimalPlaces(null));
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, null, actor);
+        em.flush();
+        var submission = payload();
+        submission.components.get(0).value = "1.234567";
+        workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor));
+        var saved = results.getResultsByAnalysis(analysis).stream().filter(r -> "1.234567".equals(r.getEnteredValue()))
+                .findFirst().orElseThrow();
+        assertEquals("1.234567", results.formatSimpleResultForDisplay(saved));
+    }
+
+    @Test
     public void anAnalyzerValueWithExtraDecimalsIsPlacedAsSent() {
         configurePrecision(2);
         var delivery = payload();
