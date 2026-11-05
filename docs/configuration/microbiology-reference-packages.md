@@ -32,8 +32,18 @@ groups the file does not name are left alone. The file is applied whole or not
 at all and a failed load lists every bad row. A load fails, naming the rows,
 when it would put an organism in two groups whose reporting rules for the same
 antibiotic, indication and sample types disagree. Laboratory groups drive
-reporting rules and always-resistant rules; breakpoints and AST panel defaults
-still use the reference package's organism group.
+reporting rules, always-resistant rules and AST panel defaults; breakpoints still
+use the reference package's organism group.
+
+AST panel files carry one row per panel drug,
+`panelName,antibioticWhonetCode`, with optional `susceptibilityProtocol`,
+`diskContent` and `defaultFor`. `defaultFor` lists, separated by semicolons, the
+species, genera or laboratory groups the panel is the default for. Across every
+panel file the most specific entry wins (species, then genus, then group). Two
+panels that claim an organism equally specifically fail the load, and so does a
+default whose protocol differs from the organism's. A changed panel is published
+as a new version, except that a panel edited on the AST panels page since the
+file last applied it keeps the laboratory's version.
 
 Breakpoint files use the existing administrator CSV importer:
 

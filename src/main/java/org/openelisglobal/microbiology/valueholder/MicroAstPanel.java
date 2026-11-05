@@ -165,6 +165,17 @@ public class MicroAstPanel extends BaseObject<String> {
         this.defaultFor = defaultFor;
     }
 
+    @Column(name = "configuration_content")
+    private String configurationContent;
+
+    public String getConfigurationContent() {
+        return configurationContent;
+    }
+
+    public void setConfigurationContent(String configurationContent) {
+        this.configurationContent = configurationContent;
+    }
+
     public String getDefaultForFile() {
         return defaultForFile;
     }

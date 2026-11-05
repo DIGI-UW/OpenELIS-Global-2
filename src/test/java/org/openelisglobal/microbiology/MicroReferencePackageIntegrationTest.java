@@ -24,6 +24,8 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroOrganismGroupConfigurationHandler groupsHandler;
     @Autowired
+    private MicroAstPanelConfigurationHandler panelsHandler;
+    @Autowired
     private org.openelisglobal.configuration.service.ConfigurationInitializationService initialization;
     private org.openelisglobal.configuration.service.CatalogImportService catalog;
     @Autowired
@@ -542,6 +544,36 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertTrue(error, error.contains("Line 2:"));
         assertTrue(error, error.contains(organism.getDisplayName()) && error.contains("TB"));
         assertNull(organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+    }
+
+    @Test
+    public void packageUpdateLeavesALocallyEditedPanelAlone() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.63", "LOCALEDIT");
+        load(fixture);
+        String header = "panelName,antibioticWhonetCode,diskContent\n";
+        writePanels(header + "Synthetic edited panel," + fixture.antibiotic + ",30ug\n" + "Synthetic untouched panel,"
+                + fixture.antibiotic + ",30ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var edited = panels.findCurrentByNameIgnoreCase("Synthetic edited panel");
+        var form = referenceAdmin.getAstPanel(edited.getId());
+        form.antibiotics.get(0).diskContent = "10ug";
+        String local = referenceAdmin.publishPanelVersion(edited.getId(), form, "1").id;
+        var legacy = panels.findCurrentByNameIgnoreCase("Synthetic untouched panel");
+        jdbcTemplate.update("UPDATE clinlims.micro_ast_panel SET configuration_content = NULL WHERE id = ?",
+                legacy.getId());
+
+        writePanels(header + "Synthetic edited panel," + fixture.antibiotic + ",5ug\n" + "Synthetic untouched panel,"
+                + fixture.antibiotic + ",5ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+
+        assertEquals(local, panels.findCurrentByNameIgnoreCase("Synthetic edited panel").getId());
+        assertEquals("10ug", panelAntibiotics.getByPanelId(local).get(0).getDiskContent());
+        assertTrue(panelsHandler.getLastSummary().getRows().stream()
+                .anyMatch(row -> "Panel edited locally; package version not applied".equals(row.reason())));
+        var updated = panels.findCurrentByNameIgnoreCase("Synthetic untouched panel");
+        assertNotEquals("A panel loaded before this rule still takes the package version", legacy.getId(),
+                updated.getId());
+        assertEquals("5ug", panelAntibiotics.getByPanelId(updated.getId()).get(0).getDiskContent());
     }
 
     @Test
