@@ -254,6 +254,41 @@ it("requires a reason and valid confidence before submitting a versioned reident
   );
 });
 
+it("reidentifies with the stored method when the lab's method list lacks it", async () => {
+  const service = api([
+    {
+      ...isolate,
+      organismId: "o1",
+      status: "FINAL",
+      method: "MALDI_TOF",
+      canIdentify: false,
+      canReidentify: true,
+    },
+  ]);
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const fields = within(screen.getByRole("dialog"));
+  expect(
+    fields.getByLabelText(
+      messages["microbiology.isolate.identificationMethod"],
+    ),
+  ).toHaveValue("MALDI_TOF");
+  fireEvent.change(fields.getByLabelText("Re-identification reason"), {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  fireEvent.click(fields.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.isolateAction).toHaveBeenCalledWith(
+      "c1",
+      "i1",
+      "reidentify",
+      expect.objectContaining({ identificationMethod: "MALDI_TOF" }),
+    ),
+  );
+});
+
 it("offers real growth cultures but excludes the automatic received-isolate row", async () => {
   const service = api();
   const received = {
