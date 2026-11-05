@@ -38,6 +38,12 @@ LUCENE="/var/lib/lucene_index"
 BRANDING="/var/lib/openelis-global/branding"
 CONFIGURATION="/var/lib/openelis-global/configuration"
 REPORTING="/var/lib/openelis-global/reporting"
+# Module system: JARs are read from MODULES (usually a read-only mount); the
+# runtime writes extracted module libraries to MODULES_CACHE and module data to
+# MODULES_DATA.
+MODULES="/var/lib/openelis-global/modules"
+MODULES_CACHE="/var/lib/openelis-global/modules-cache"
+MODULES_DATA="/var/lib/openelis-global/modules-data"
 
 # Create dirs if missing (safe even if mounted)
 mkdir -p \
@@ -46,7 +52,10 @@ mkdir -p \
   "$LUCENE" \
   "$BRANDING" \
   "$CONFIGURATION" \
-  "$REPORTING"
+  "$REPORTING" \
+  "$MODULES" \
+  "$MODULES_CACHE" \
+  "$MODULES_DATA"
 
 # Fix ownership → UID 8443 (tomcat_admin)
 chown -R 8443:tomcat "$OE_LOGS" || true
@@ -54,6 +63,8 @@ chown -R 8443:tomcat "$TOMCAT_LOGS" || true
 chown -R 8443:tomcat "$LUCENE" || true
 chown -R 8443:tomcat "$BRANDING" || true
 chown -R 8443:tomcat "$REPORTING" || true
+chown -R 8443:tomcat "$MODULES_CACHE" || true
+chown -R 8443:tomcat "$MODULES_DATA" || true
 
 # Fix permissions
 chmod -R 770 "$OE_LOGS" || true
@@ -61,6 +72,8 @@ chmod -R 770 "$TOMCAT_LOGS" || true
 chmod -R 770 "$LUCENE" || true
 chmod -R 770 "$BRANDING" || true
 chmod -R 770 "$REPORTING" || true
+chmod -R 770 "$MODULES_CACHE" || true
+chmod -R 770 "$MODULES_DATA" || true
 
 # The configuration tree is usually a bind mount of the deployment's git
 # checkout, and the Import Catalog page writes into it. Grant the tomcat group

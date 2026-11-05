@@ -165,6 +165,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerBridgePairing</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
+        <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>
 
         <!-- Dictionary entities (migrated from HBM to JPA annotations) -->
