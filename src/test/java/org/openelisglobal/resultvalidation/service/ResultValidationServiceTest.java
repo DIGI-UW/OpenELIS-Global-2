@@ -102,7 +102,7 @@ public class ResultValidationServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", updatedResult1.getAnalyte().getId());
         assertEquals("N", updatedResult1.getResultType());
         assertEquals("Y", updatedResult1.getIsReportable());
-        assertEquals(1, updatedResult1.getSignificantDigits());
+        assertEquals(1, updatedResult1.getReportingDecimalPlaces());
 
         Sample updatedSample = sampleService.get("1");
         assertEquals("Sample should be promoted to Finished", statusService.getStatusID(OrderStatus.Finished),
@@ -155,7 +155,7 @@ public class ResultValidationServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", unchangedResult1.getAnalyte().getId());
         assertEquals("N", unchangedResult1.getResultType());
         assertEquals("Y", unchangedResult1.getIsReportable());
-        assertEquals(1, unchangedResult1.getSignificantDigits());
+        assertEquals(1, unchangedResult1.getReportingDecimalPlaces());
     }
 
     @Test
@@ -192,7 +192,7 @@ public class ResultValidationServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", untouchedResult1.getAnalyte().getId());
         assertEquals("N", untouchedResult1.getResultType());
         assertEquals("Y", untouchedResult1.getIsReportable());
-        assertEquals(1, untouchedResult1.getSignificantDigits());
+        assertEquals(1, untouchedResult1.getReportingDecimalPlaces());
 
         Analysis untouchedAnalysis2 = analysisService.get("2");
         assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), untouchedAnalysis2.getStatusId());
@@ -338,7 +338,7 @@ public class ResultValidationServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("1", updatedResult1.getAnalyte().getId());
         assertEquals("N", updatedResult1.getResultType());
         assertEquals("Y", updatedResult1.getIsReportable());
-        assertEquals(1, updatedResult1.getSignificantDigits());
+        assertEquals(1, updatedResult1.getReportingDecimalPlaces());
 
         Sample updatedSample = sampleService.get("1");
         assertEquals(statusService.getStatusID(OrderStatus.Finished), updatedSample.getStatusId());

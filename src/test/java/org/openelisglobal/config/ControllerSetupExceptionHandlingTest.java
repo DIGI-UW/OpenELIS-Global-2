@@ -11,6 +11,8 @@ import org.openelisglobal.coldstorage.controller.FreezerMonitoringExceptionHandl
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.program.service.InvalidClinicalAttachmentException;
 import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.springframework.context.support.StaticMessageSource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * The status contract of the app-wide advice.
@@ -62,6 +65,11 @@ public class ControllerSetupExceptionHandlingTest {
         @GetMapping("/invalid")
         public String invalid() {
             throw new LIMSRuntimeException("that name is already taken");
+        }
+
+        @GetMapping("/refused")
+        public String refused() {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "paging.currentPage must name a loaded page");
         }
     }
 
@@ -109,6 +117,25 @@ public class ControllerSetupExceptionHandlingTest {
     public void readableBody_isNotRefused() throws Exception {
         mockMvc.perform(post("/priority").contentType(MediaType.APPLICATION_JSON).content("{\"priority\":\"ROUTINE\"}"))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * The site's message source answers an unknown code with the code itself, so a
+     * problem detail resolved through it carried "problemDetail.*" codes instead of
+     * the reason the server gave.
+     */
+    @Test
+    public void responseStatusException_keepsItsReasonUnderTheSitesMessageSource() throws Exception {
+        StaticMessageSource siteMessages = new StaticMessageSource();
+        siteMessages.setUseCodeAsDefaultMessage(true);
+        ControllerSetup advice = new ControllerSetup();
+        advice.setMessageSource(siteMessages);
+        MockMvc withSiteMessages = MockMvcBuilders.standaloneSetup(new ThrowingController()).setControllerAdvice(advice)
+                .build();
+
+        withSiteMessages.perform(get("/refused")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("paging.currentPage must name a loaded page"))
+                .andExpect(jsonPath("$.title").value("Bad Request"));
     }
 
     @Test

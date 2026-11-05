@@ -73,11 +73,15 @@ test.describe("Server unreachable while a page loads (OGC-1442)", () => {
     await expect(
       page.getByRole("button", { name: "Generate Lab Number" }),
     ).toBeVisible({ timeout: NAV_TIMEOUT });
-    await expect
-      .poll(() => page.locator("select#sampleType-0 option").count(), {
-        timeout: NAV_TIMEOUT,
-      })
-      .toBeGreaterThan(1);
+    const sampleType = page.locator("#sampleType-0");
+    await expect(sampleType).toBeEnabled({ timeout: NAV_TIMEOUT });
+    await sampleType.click();
+    await expect(
+      page
+        .locator(`[id="${await sampleType.getAttribute("aria-controls")}"]`)
+        .getByRole("option")
+        .first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
   });
 
   test("a 401 from the session check is an answer: straight to login, no notice", async ({

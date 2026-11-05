@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.validator.GenericValidator;
@@ -49,6 +50,8 @@ import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
+import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -109,6 +112,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private ResultRunService resultRunService;
 
     @Autowired(required = false)
     private org.openelisglobal.notifications.service.HeaderNotificationService headerNotificationService;
@@ -311,6 +316,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        Optional<WaitingRun> waiting = resultRunService.waitingFor(analysis);
+        if (waiting.isPresent()) {
+            body.put("error", MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+            body.put("waitingRun", waiting.get());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+        }
+
         // A test carrying a live referral is not referred again, and the bench has to
         // be told rather than have the refer-out quietly dropped from the save.
         if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
@@ -443,7 +455,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
                     body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
-                    body.put("resultValue", resultService.getResultValue(r, false));
+                    body.put("resultValue", resultService.formatResultForDisplay(r, false));
                 });
         return ResponseEntity.ok(body);
     }

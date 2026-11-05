@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MicroAstPanelAdminForm {
+    public String susceptibilityProtocol = "GENERAL";
     public String id;
     public String logicalKey;
     public Integer versionNumber;

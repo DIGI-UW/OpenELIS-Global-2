@@ -1,0 +1,14 @@
+category,dictEntry,isActive,sortOrder
+Culture atmosphere,Aerobic,Y,1
+Culture atmosphere,Anaerobic,Y,2
+Culture atmosphere,CO2,Y,3
+Culture atmosphere,Microaerophilic,Y,4
+Culture reading,Growth observed,Y,1
+Culture reading,No growth observed,Y,2
+Culture reading,Contamination observed,Y,3
+Culture quantity,Scant,Y,1
+Culture quantity,Moderate,Y,2
+Culture quantity,Heavy,Y,3
+Extend incubation reason,Awaiting growth,Y,1
+Extend incubation reason,Repeat observation,Y,2
+Extend incubation reason,Other,Y,3

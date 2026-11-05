@@ -9,6 +9,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.Arrays;
@@ -161,6 +162,26 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
         assertNotNull(response);
         assertTrue(response.getStatus() != 404);
+    }
+
+    /**
+     * OGC-1574: a stored result qualified by a comparator reads back as a quantity
+     * carrying that comparator and the bare value.
+     */
+    @Test
+    public void readObservation_keepsTheComparatorOfAQualifiedResult() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        for (String comparator : new String[] { "<", "<=", ">", ">=" }) {
+            jdbc.update("UPDATE clinlims.result SET value = ? WHERE fhir_uuid = CAST(? AS uuid)", comparator + "99.00",
+                    RESULT_WITH_PROVIDER_UUID);
+
+            MockHttpServletResponse read = serve(buildFhirRequest("GET", "/Observation/" + RESULT_WITH_PROVIDER_UUID));
+
+            assertEquals(read.getContentAsString(), 200, read.getStatus());
+            JsonNode quantity = objectMapper.readTree(read.getContentAsString()).get("valueQuantity");
+            assertEquals(comparator, quantity.get("comparator").asText());
+            assertEquals(0, new BigDecimal("99.00").compareTo(quantity.get("value").decimalValue()));
+        }
     }
 
     private MockHttpServletResponse serve(MockHttpServletRequest request) throws Exception {
