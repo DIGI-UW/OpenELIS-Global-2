@@ -86,8 +86,8 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                         claimLines.put(current.getId(), panelRows.get(0).lineNumber());
                         claim(current, claims, fileName);
                     }
-                } catch (RuntimeException e) {
-                    errors.add(CsvLoadSummary.reason(e));
+                } catch (IllegalArgumentException e) {
+                    errors.add(rowError(panelRows.get(0).lineNumber(), e));
                 } finally {
                     flushUnresolvedReferences(fileName, panelRows.get(0).lineNumber());
                 }
