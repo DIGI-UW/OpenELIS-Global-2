@@ -72,10 +72,11 @@ public class MicroAstWorkspaceService {
                         }
                     }).map(p -> new MicroAstWorkspaceForm.Option(p.getId(), p.getName() + " v" + p.getVersionNumber()))
                             .toList();
-                    var assigned = assignments.getAssignments(i.getId()).stream()
-                            .map(a -> new MicroAstWorkspaceForm.Assignment(a.getId(), a.getPanelId(),
-                                    panels.get(a.getPanelId()).orElseThrow().getName(), a.getProvenance()))
-                            .toList();
+                    var assigned = assignments.getAssignments(i.getId()).stream().map(a -> {
+                        var panel = panels.get(a.getPanelId()).orElseThrow();
+                        return new MicroAstWorkspaceForm.Assignment(a.getId(), a.getPanelId(),
+                                panel.getName() + " v" + panel.getVersionNumber(), a.getProvenance());
+                    }).toList();
                     var selected = choices.getChoices(i.getId()).stream().map(
                             choice -> new MicroAstWorkspaceForm.Choice(choice.getAntibioticId(), choice.getReadingId()))
                             .toList();
