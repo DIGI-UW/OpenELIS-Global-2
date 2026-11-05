@@ -37,7 +37,9 @@ Spring context** whose parent is the core root context. The React application
 becomes an **application shell** that reads `/rest/module-registry`, registers
 module routes behind the existing `SecureRoute` gate and lazy-loads module
 bundles from the same origin. Inside the core, ArchUnit rules with a frozen
-baseline keep feature boundaries from eroding.
+baseline (`CoreBoundariesArchitectureTest`) describe the feature boundaries; the
+test is skipped (`@Ignore`) until the team decides to enforce it (OGC-1582),
+since existing code already breaks the rules.
 
 Models considered and set aside (design section 7): convention-only classpath
 scanning (no identity, no compatibility, no migrations), module-first class

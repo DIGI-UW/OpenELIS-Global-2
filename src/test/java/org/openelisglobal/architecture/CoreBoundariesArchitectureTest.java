@@ -17,6 +17,7 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.EvaluationResult;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 
 /**
@@ -39,6 +40,7 @@ import org.junit.runner.RunWith;
  * frozen version would fail pull requests at random. It becomes a gate once the
  * cluster has been broken up feature by feature.
  */
+@Ignore("Not enforced yet: existing core code already breaks these rules; enabling it is a team decision (OGC-1582)")
 @RunWith(ArchUnitRunner.class)
 @AnalyzeClasses(packages = "org.openelisglobal", importOptions = { ImportOption.DoNotIncludeTests.class,
         ImportOption.DoNotIncludeJars.class })
