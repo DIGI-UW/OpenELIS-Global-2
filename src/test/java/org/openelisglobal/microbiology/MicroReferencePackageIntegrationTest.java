@@ -678,6 +678,20 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void activatingAnActiveEditionAgainRecordsNoSecondEvent() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.66", "REACTIVATE");
+        load(fixture);
+        String standardId = standard(fixture).getId();
+
+        administration.activate(standardId, java.sql.Date.valueOf("2099-01-01"), "1");
+        administration.activate(standardId, java.sql.Date.valueOf("2099-01-01"), "1");
+
+        assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT count(*)::int FROM clinlims.micro_breakpoint_activation_event WHERE standard_id = ? AND action = 'ACTIVATED'",
+                Integer.class, standardId));
+    }
+
+    @Test
     public void managedEditionCannotBeEditedThroughAdministration() throws Exception {
         var fixture = new ReferencePackageFixture("2099.1", "EDIT");
         load(fixture);

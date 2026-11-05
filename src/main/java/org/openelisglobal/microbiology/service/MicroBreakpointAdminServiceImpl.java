@@ -218,6 +218,9 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         if ("ARCHIVED".equals(requested.getLifecycleStatus())) {
             throw new MicroReferenceConflictException("Archived breakpoint standards cannot be activated");
         }
+        if ("ACTIVE".equals(requested.getLifecycleStatus()) && "Y".equals(requested.getIsActive())) {
+            return;
+        }
 
         List<MicroBreakpointStandard> activeStandards = standardDAO.getActiveForAuthority(requested.getAuthority());
         for (MicroBreakpointStandard active : activeStandards) {
