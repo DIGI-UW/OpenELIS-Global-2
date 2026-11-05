@@ -317,6 +317,7 @@ class DevStackContractTest(unittest.TestCase):
         with (
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "build_environment", return_value=environment),
+            patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "run", side_effect=subprocess.CalledProcessError(1, "mkcert")),
             patch.object(self.dev_stack, "ensure_submodules") as submodules,
@@ -634,6 +635,7 @@ class DevStackContractTest(unittest.TestCase):
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "ensure_submodules"),
             patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
             patch.object(self.dev_stack, "service_is_running", return_value=True),
@@ -820,6 +822,7 @@ class DevStackPublishedImagesTest(unittest.TestCase):
             patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_tls_trust"),
             patch.object(self.dev_stack, "ensure_local_env"),
+            patch.object(self.dev_stack, "ensure_mkcert"),
             patch.object(self.dev_stack, "ensure_submodules", return_value=("tools/analyzer-mock-server",)),
             patch.object(self.dev_stack, "bootstrap_analyzer_harness"),
             patch.object(self.dev_stack, "service_is_running", return_value=False),
@@ -1087,6 +1090,80 @@ class DevStackSetupTest(unittest.TestCase):
             context = self.dev_stack.StackContext(root, "p", root, (), "light")
             self.dev_stack.record_setup(context)
             self.assertEqual(self.dev_stack.recorded_setup(root), "light")
+
+
+
+class DevStackMkcertTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.tools = pathlib.Path(self.temp.name) / "bin"
+        self.bin = pathlib.Path(self.temp.name) / "path"
+        self.bin.mkdir()
+        self.environment = {"DEV_STACK_TLS": "local-ca", "PATH": os.pathsep.join((str(self.tools), str(self.bin)))}
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def tool(self, name):
+        path = self.bin / name
+        path.write_text("#!/bin/sh\n", encoding="utf-8")
+        path.chmod(0o755)
+
+    def test_an_installed_mkcert_is_left_alone(self):
+        self.tool("mkcert")
+        with patch.object(self.dev_stack, "run") as run, patch.object(self.dev_stack, "urlopen") as download:
+            self.dev_stack.ensure_mkcert(self.environment)
+        run.assert_not_called()
+        download.assert_not_called()
+
+    def test_other_tls_modes_need_no_mkcert(self):
+        with patch.object(self.dev_stack, "run") as run, patch.object(self.dev_stack, "urlopen") as download:
+            self.dev_stack.ensure_mkcert({**self.environment, "DEV_STACK_TLS": "self-signed"})
+        run.assert_not_called()
+        download.assert_not_called()
+
+    def test_homebrew_installs_it_when_present(self):
+        self.tool("brew")
+
+        def install(command, **_):
+            self.assertEqual(command, ["brew", "install", "mkcert"])
+            self.tool("mkcert")
+
+        with patch.object(self.dev_stack, "run", side_effect=install) as run, contextlib.redirect_stdout(io.StringIO()):
+            self.dev_stack.ensure_mkcert(self.environment)
+        run.assert_called_once()
+
+    def test_without_homebrew_the_binary_is_downloaded_for_this_machine(self):
+        with (
+            patch.object(self.dev_stack, "TOOLS_DIR", self.tools),
+            patch.object(self.dev_stack.platform, "system", return_value="Linux"),
+            patch.object(self.dev_stack.platform, "machine", return_value="x86_64"),
+            patch.object(self.dev_stack, "urlopen", return_value=io.BytesIO(b"#!/bin/sh\n")) as download,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.dev_stack.ensure_mkcert(self.environment)
+
+        self.assertIn("for=linux/amd64", download.call_args.args[0])
+        self.assertTrue(os.access(self.tools / "mkcert", os.X_OK))
+
+    def test_an_unsupported_machine_gets_the_manual_ways_out(self):
+        with (
+            patch.object(self.dev_stack, "TOOLS_DIR", self.tools),
+            patch.object(self.dev_stack.platform, "system", return_value="Windows"),
+            self.assertRaisesRegex(RuntimeError, "DEV_STACK_TLS=self-signed"),
+        ):
+            self.dev_stack.ensure_mkcert(self.environment)
+
+    def test_the_tools_folder_is_on_the_stack_path(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+
+        path = self.dev_stack.build_environment(context)["PATH"].split(os.pathsep)
+
+        self.assertEqual(path[0], str(self.dev_stack.TOOLS_DIR))
 
 
 if __name__ == "__main__":

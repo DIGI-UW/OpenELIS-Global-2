@@ -18,11 +18,12 @@ routing, but it is not a production deployment or proof that CI passes.
 ## Work on source
 
 Install Git, Python, a working Docker CLI with Compose, Java 21, Maven, curl,
-gettext (`envsubst`), and [mkcert](https://github.com/FiloSottile/mkcert). On
-macOS, install mkcert with `brew install mkcert`; other platforms should follow
-its installation instructions. Frontend build tools run inside Docker; install a
-supported Node version when running browser tests or frontend tools on the host.
-The package lockfiles and Dockerfiles own dependency versions.
+gettext (`envsubst`). [mkcert](https://github.com/FiloSottile/mkcert) is needed
+for trusted local HTTPS; `scripts/dev-stack up` installs it when it is missing
+(with Homebrew when present, otherwise the official binary into
+`~/.cache/openelis-dev-stack/bin`). Frontend build tools run inside Docker;
+install a supported Node version when running browser tests or frontend tools on
+the host. The package lockfiles and Dockerfiles own dependency versions.
 
 Once per clone or worktree:
 

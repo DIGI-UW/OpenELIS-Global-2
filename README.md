@@ -115,8 +115,9 @@ environment variable to an empty value, which overrides the file), leave
 
 Run every `scripts/dev-stack` command **from the root of this repository (the
 OpenELIS core checkout)**. Install the
-[development prerequisites](docs/dev_setup.md#work-on-source) first, including
-mkcert. Each clone or worktree gets its own containers, ports and data.
+[development prerequisites](docs/dev_setup.md#work-on-source) first; `up`
+installs mkcert itself when it is missing. Each clone or worktree gets its own
+containers, ports and data.
 
 #### Quick start
 
@@ -126,9 +127,20 @@ scripts/dev-stack up              # build the backend and start the stack
 scripts/dev-stack url             # print the address to open in the browser
 ```
 
-On the first start on a machine, `up` sets up trusted local HTTPS and may ask
-for administrator authentication. Open the address that `url` prints and log in
-as `admin` / `adminADMIN!`.
+`up` sets up trusted local HTTPS itself. If mkcert is missing (it is not
+installed by default on macOS or Linux), `up` installs it: with Homebrew when
+the machine has it, otherwise by downloading the official mkcert binary into
+`~/.cache/openelis-dev-stack/bin`. On the first start on a machine it then asks
+once for your administrator password to trust the local certificates, so run it
+in an interactive terminal. Open the address that `url` prints and log in as
+`admin` / `adminADMIN!`.
+
+To skip mkcert entirely, use a self-signed certificate; the browser then shows a
+certificate warning to click through:
+
+```bash
+DEV_STACK_TLS=self-signed scripts/dev-stack up   # or add DEV_STACK_TLS=self-signed to .env
+```
 
 #### Commands
 
