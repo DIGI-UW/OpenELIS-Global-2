@@ -7,6 +7,8 @@ import subprocess
 import tempfile
 import unittest
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -195,6 +197,27 @@ class InstallKeysTest(unittest.TestCase):
         self.adopt_legacy()
         self.assertEqual(cert.read_bytes(), self.proxy.read_bytes())
         self.assertEqual(key.read_bytes(), self.proxy_key.read_bytes())
+
+    def test_a_proxy_identity_linked_to_lets_encrypt_is_kept_across_restarts(self):
+        self.upgrade()
+        live = self.root / "letsencrypt/live/lab.example"
+        live.mkdir(parents=True)
+        cert, key = self.certificate("/CN=lab.example", "issued")
+        shutil.move(cert, live / "fullchain.pem")
+        shutil.move(key, live / "privkey.pem")
+        for path, target in ((self.proxy, "fullchain.pem"), (self.proxy_key, "privkey.pem")):
+            path.unlink()
+            path.symlink_to(live / target)
+        self.upgrade()
+        self.assertEqual(live / "fullchain.pem", self.proxy.readlink())
+        self.assertEqual(live / "privkey.pem", self.proxy_key.readlink())
+        shutil.rmtree(self.root / "letsencrypt")
+        self.assertIn("Incomplete proxy identity", self.assert_refused_unchanged())
+
+    def test_the_initializer_sees_the_certificates_the_proxy_links_to(self):
+        overlay = yaml.safe_load((ROOT / "projects/analyzer-harness/docker-compose.letsencrypt.yml").read_text())
+        mount = next(v for v in overlay["services"]["proxy"]["volumes"] if v.endswith(":/etc/letsencrypt:ro"))
+        self.assertIn(mount, overlay["services"]["certs"]["volumes"])
 
     def check_rotated_site_key(self, missing_truststore=False):
         self.upgrade()
