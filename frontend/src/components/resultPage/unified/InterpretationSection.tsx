@@ -131,7 +131,8 @@ const InterpretationSection: React.FC<InterpretationSectionProps> = ({
               .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
               .map((bucket) => {
                 const applied =
-                  draft !== null && draft.trim() === (bucket.text || "").trim();
+                  Boolean(text.trim()) &&
+                  text.trim() === (bucket.text || "").trim();
                 const matches = bucketMatches(bucket.valueMatch, resultValue);
                 return (
                   <button
