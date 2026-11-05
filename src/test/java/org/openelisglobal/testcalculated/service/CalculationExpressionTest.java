@@ -2,9 +2,11 @@ package org.openelisglobal.testcalculated.service;
 
 import static org.junit.Assert.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
+import org.openelisglobal.common.util.BoundedDecimal;
 import org.openelisglobal.testcalculated.valueholder.Operation;
 
 public class CalculationExpressionTest {
@@ -58,6 +60,18 @@ public class CalculationExpressionTest {
         assertEquals("20000000", calculate(n("1e7"), math("*"), n("2")));
         assertEquals("0", calculate(n("0"), math("*"), n("-1")));
         assertEquals("2.5", calculate(n("2.50"), math("+"), n("0")));
+    }
+
+    @Test
+    public void resultsWhosePlainDigitsExceedTheBoundedGrammarKeepAShortExponent() {
+        assertEquals("1E20", calculate(n("1e20"), math("*"), n("1")));
+        assertEquals("0.000125", calculate(n("0.000125"), math("*"), n("1")));
+        String tiny = calculate(n("1"), math("/"), n("30000000"));
+        assertTrue(tiny, tiny.contains("E-8"));
+        assertTrue(tiny, BoundedDecimal.isBoundedDecimal(tiny));
+        assertEquals(0, new BigDecimal(tiny).compareTo(BigDecimal.valueOf(1.0 / 30000000)));
+        String negative = calculate(n("0"), math("-"), n("1"), math("/"), n("30000000"));
+        assertTrue(negative, negative.startsWith("-") && BoundedDecimal.isBoundedDecimal(negative));
     }
 
     @Test

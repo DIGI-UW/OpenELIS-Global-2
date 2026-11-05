@@ -186,16 +186,27 @@ public final class CalculationExpression {
     }
 
     /**
-     * A numeric result is the plain decimal without an exponent or trailing zeros,
-     * so a whole number is stored as {@code 40} rather than {@code 40.0}. A Boolean
-     * result is {@code true} or {@code false}.
+     * A numeric result is the plain decimal without trailing zeros, so a whole
+     * number is stored as {@code 40} rather than {@code 40.0}. When its plain
+     * digits would not fit the bounded-decimal grammar that later calculations read
+     * operands with, the result keeps a short exponent instead, as
+     * {@code 3.3333333333333335E-8}. A Boolean result is {@code true} or
+     * {@code false}.
      */
     public String evaluate(Function<Operation, Operand> resolver) {
         Map<Operation, Operand> values = new HashMap<>();
         Object value = evaluate(root, operation -> values.computeIfAbsent(operation, resolver));
         if (value instanceof Double number)
-            return BigDecimal.valueOf(finite(number)).stripTrailingZeros().toPlainString();
+            return render(BigDecimal.valueOf(finite(number)).stripTrailingZeros());
         return value.toString();
+    }
+
+    private static String render(BigDecimal value) {
+        String plain = value.toPlainString();
+        if (BoundedDecimal.isBoundedDecimal(plain))
+            return plain;
+        int exponent = value.precision() - value.scale() - 1;
+        return value.movePointLeft(exponent).toPlainString() + "E" + exponent;
     }
 
     private Object evaluate(SpelNode node, Function<Operation, Operand> resolver) {
