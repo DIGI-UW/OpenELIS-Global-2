@@ -113,7 +113,7 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         load(fixture);
         assertEquals(2, rules.countByStandardId(standard.getId()));
         assertEquals(indicated.getId(), rules.findByContextualNaturalKey(standard.getId(), organism.getId(), null,
-                antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS").orElseThrow().getId());
+                antibiotic.getId(), "MIC", null, "MIC", "NON_MENINGITIS", null).orElseThrow().getId());
     }
 
     @Test
@@ -140,6 +140,34 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         assertNull("MIC rules ignore disk content",
                 rules.findBestRule(standard.getId(), organism.getId(), null, antibiotic.getId(), "MIC", null, "MIC")
                         .getDiskContent());
+    }
+
+    @Test
+    public void twoDiskStrengthsInOneEditionLoadAsSeparateRules() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.51", "DISKS");
+        var lines = fixture.files.get("breakpoints.csv").lines().toList();
+        String zone = lines.get(1).replace(",MIC,,MIC,1,,,4,mg/L,", ",ZONE,,ZONE,20,,,17,mm,");
+        fixture.files.put("breakpoints.csv", lines.get(0) + ",disk_content\n" + zone + ",30ug\n"
+                + zone.replace(",20,,,17,", ",15,,,12,") + ",10ug\n");
+        load(fixture);
+        load(fixture);
+        var standard = standard(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibiotic = antibiotics.findByReference("AMR", fixture.antibiotic).orElseThrow();
+
+        assertEquals(2, rules.countByStandardId(standard.getId()));
+        assertEquals(MicroAstInterpretation.RESISTANT,
+                interpreter
+                        .interpret(
+                                rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(),
+                                        "ZONE", null, "ZONE", null, "30ug"),
+                                MicroAstMethod.ZONE, new BigDecimal("16")));
+        assertEquals(MicroAstInterpretation.SUSCEPTIBLE,
+                interpreter
+                        .interpret(
+                                rules.findContextualRule(standard.getId(), organism.getId(), null, antibiotic.getId(),
+                                        "ZONE", null, "ZONE", null, "10ug"),
+                                MicroAstMethod.ZONE, new BigDecimal("16")));
     }
 
     @Test

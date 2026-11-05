@@ -135,20 +135,21 @@ public class MicroBreakpointAdminServiceImpl implements MicroBreakpointAdminServ
         }
         String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
         String specimenTypeId = trimToNull(request.specimenTypeId);
-        Optional<org.openelisglobal.microbiology.valueholder.MicroBreakpointRule> duplicate = clinicalContext == null
-                ? ruleDAO.findByNaturalKey(standardId, organismId, organismGroup, antibioticId, method, specimenTypeId,
-                        breakpointType)
-                : ruleDAO.findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId, method,
-                        specimenTypeId, breakpointType, clinicalContext);
-        if (duplicate.isPresent() && !duplicate.get().getId().equals(ruleId)) {
-            throw new MicroReferenceConflictException("A breakpoint rule already exists for this context");
-        }
         org.openelisglobal.microbiology.valueholder.MicroBreakpointRule rule = ruleId == null
                 ? new org.openelisglobal.microbiology.valueholder.MicroBreakpointRule()
                 : ruleDAO.get(ruleId)
                         .orElseThrow(() -> new IllegalArgumentException("Breakpoint rule not found: " + ruleId));
         if (ruleId != null && !standardId.equals(rule.getStandardId())) {
             throw new IllegalArgumentException("Breakpoint rule does not belong to this standard");
+        }
+        Optional<org.openelisglobal.microbiology.valueholder.MicroBreakpointRule> duplicate = clinicalContext == null
+                && rule.getDiskContent() == null
+                        ? ruleDAO.findByNaturalKey(standardId, organismId, organismGroup, antibioticId, method,
+                                specimenTypeId, breakpointType)
+                        : ruleDAO.findByContextualNaturalKey(standardId, organismId, organismGroup, antibioticId,
+                                method, specimenTypeId, breakpointType, clinicalContext, rule.getDiskContent());
+        if (duplicate.isPresent() && !duplicate.get().getId().equals(ruleId)) {
+            throw new MicroReferenceConflictException("A breakpoint rule already exists for this context");
         }
         rule.setStandardId(standardId);
         rule.setOrganismId(organismId);
