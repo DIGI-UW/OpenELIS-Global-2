@@ -1,4 +1,7 @@
-import { selectCultureMedium } from "../../../helpers/microbiology-ui";
+import {
+  openMicrobiologyCaseScope,
+  selectCultureMedium,
+} from "../../../helpers/microbiology-ui";
 import { expect, test } from "../../../helpers/test-base";
 import { seedMicrobiologyCultureWorkspace } from "../../../helpers/seed-microbiology-data";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -20,9 +23,7 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
   await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
     waitUntil: "domcontentloaded",
   });
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await page
     .getByRole("button", { name: "Inoculate culture", exact: true })
     .click();
@@ -120,9 +121,7 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     timeout: LONG_TIMEOUT,
   });
   await page.reload();
-  await page
-    .getByLabel("Testing section", { exact: true })
-    .selectOption("CULTURE");
+  await openMicrobiologyCaseScope(page, "CULTURE");
   await expect(
     page
       .getByTestId(`culture-row-${parentId}`)

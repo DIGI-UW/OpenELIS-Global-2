@@ -380,15 +380,24 @@ export default function CaseTestingWorkspace({
       document.getElementById("case-information")?.focus();
     }
   }, [routedScope, scanRow, scanSearch]);
+  const landingJump = useRef(
+    !scanTarget &&
+      (scanParams.has("scope") ||
+        scanParams.has("grain") ||
+        sectionScopes[scanParams.get("section")])
+      ? { scope: routedScope }
+      : null,
+  );
   const handledJump = useRef(null);
   useEffect(() => {
-    if (!jump || handledJump.current === jump || placement !== jump.scope)
+    const target = jump || landingJump.current;
+    if (!target || handledJump.current === target || placement !== target.scope)
       return;
-    handledJump.current = jump;
+    handledJump.current = target;
     const heading = document.querySelector(
-      jump.scope === "HISTORY"
+      target.scope === "HISTORY"
         ? "#case-history button"
-        : `#case-scope-${jump.scope} button`,
+        : `#case-scope-${target.scope} button`,
     );
     heading?.scrollIntoView?.({ block: "center" });
     heading?.focus({ preventScroll: true });
@@ -728,40 +737,6 @@ export default function CaseTestingWorkspace({
   return (
     <Stack gap={5}>
       <h2>{t("microbiology.testing.title")}</h2>
-      <Select
-        id="case-testing-scope"
-        labelText={t("microbiology.testing.scope")}
-        value={placement}
-        onChange={(e) => {
-          setPlacement(e.target.value);
-          onScopeChange?.(e.target.value);
-          setEditor(null);
-        }}
-      >
-        <SelectItem value="" text={t("microbiology.culture.choose")} />
-        <SelectItem value="INITIAL" text={t("microbiology.testing.initial")} />
-        <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
-        <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
-        <SelectItem value="AST" text={t("microbiology.m6.ast")} />
-        <SelectItem value="INCOMING" text={t("microbiology.incoming.title")} />
-        <SelectItem value="HISTORY" text={t("microbiology.case.timeline")} />
-        <SelectItem value="REPORT" text={t("microbiology.m6.report")} />
-        <SelectItem
-          value="AMENDMENT"
-          text={t("microbiology.amendment.title")}
-        />
-        <SelectItem value="CRITICAL" text={t("microbiology.critical.title")} />
-        {detail.canWrite && (
-          <SelectItem
-            value="NONCONFORMANCE"
-            text={t("microbiology.nce.sectionTitle")}
-          />
-        )}
-        <SelectItem
-          value="ADDITIONAL"
-          text={t("microbiology.testing.additional")}
-        />
-      </Select>
       {loading && <InlineLoading description={t("common.loading")} />}
       {error && (
         <InlineNotification

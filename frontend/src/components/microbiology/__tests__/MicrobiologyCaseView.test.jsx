@@ -164,12 +164,7 @@ describe("canonical case workspace", () => {
         }),
       ),
     );
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "INITIAL" },
-    });
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "REPORT" },
-    });
+    fireEvent.click(document.querySelector("#case-scope-REPORT button"));
     await waitFor(() =>
       expect(
         screen.queryByRole("link", { name: /Patient origin/ }),
@@ -222,9 +217,7 @@ describe("canonical case workspace", () => {
       stage: "FINAL_RELEASED",
     });
     expect(await screen.findByLabelText("Patient origin")).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Testing section"), {
-      target: { value: "AMENDMENT" },
-    });
+    fireEvent.click(document.querySelector("#case-scope-AMENDMENT button"));
     fireEvent.change(
       screen.getByLabelText(messages["microbiology.amendment.reason"]),
       { target: { value: "Correct identification" } },
@@ -246,8 +239,10 @@ describe("canonical case workspace", () => {
   });
   test("keeps the culture section and lab filter when entering from the bench", async () => {
     const { history } = setup("?grain=bench&labUnitId=10&q=M9&scope=CULTURE");
-    expect(await screen.findByLabelText("Testing section")).toHaveValue(
-      "CULTURE",
+    await waitFor(() =>
+      expect(
+        document.querySelector("#case-scope-CULTURE button"),
+      ).toHaveAttribute("aria-expanded", "true"),
     );
     fireEvent.click(
       screen.getByRole("link", { name: "Microbiology worklist" }),
@@ -276,4 +271,37 @@ describe("canonical case workspace", () => {
       scroll.mockRestore();
     },
   );
+  test("arriving from the cultures worklist brings the culture section into view", async () => {
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    setup("?grain=cultures");
+    const heading = await waitFor(() => {
+      const button = document.querySelector("#case-scope-CULTURE button");
+      expect(button).toHaveAttribute("aria-expanded", "true");
+      return button;
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(scroll.mock.contexts).toContain(heading);
+    scroll.mockRestore();
+  });
+  test("placing incoming results brings the incoming section into view", async () => {
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    setup("", { incoming: [{ id: "pending", state: "WAITING" }] });
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: messages["microbiology.incoming.open"],
+      }),
+    );
+    const heading = await screen.findByRole("button", {
+      name: "Incoming results",
+      expanded: true,
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(scroll.mock.contexts).toContain(heading);
+    scroll.mockRestore();
+  });
+  test("sections open from their own headings, with no separate section picker", async () => {
+    setup();
+    await screen.findAllByRole("button", { name: "Culture" });
+    expect(screen.queryByLabelText("Testing section")).not.toBeInTheDocument();
+  });
 });
