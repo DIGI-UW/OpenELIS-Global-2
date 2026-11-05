@@ -827,14 +827,14 @@ def endpoint_environment(context: StackContext, environment: dict[str, str]) -> 
 def local_https_step(environment: dict[str, str], description: str, step, *arguments) -> None:
     """Run one local-HTTPS step; when it fails, finish this run with a self-signed certificate.
 
-    Local HTTPS is a convenience, so a machine where mkcert cannot be installed, trusted or
-    run still gets a working stack instead of a stopped up.
+    Local HTTPS is a convenience: no certificate problem may stop a local up, so a machine
+    where mkcert cannot be installed, trusted, run or verified still gets a working stack.
     """
     if environment["DEV_STACK_TLS"].lower() != "local-ca":
         return
     try:
         step(*arguments)
-    except (RuntimeError, subprocess.CalledProcessError, OSError) as error:
+    except (RuntimeError, ValueError, subprocess.CalledProcessError, OSError) as error:
         print(
             f"Warning: trusted local HTTPS is not available ({description} failed: {error}). "
             "Continuing with a self-signed certificate for this run; the browser will show a "
@@ -844,6 +844,10 @@ def local_https_step(environment: dict[str, str], description: str, step, *argum
             flush=True,
         )
         environment["DEV_STACK_TLS"] = "self-signed"
+
+
+def raise_error(error: BaseException) -> None:
+    raise error
 
 
 def ensure_mkcert(environment: dict[str, str]) -> None:
@@ -990,6 +994,9 @@ def verify_tls(context: StackContext, environment: dict[str, str]) -> None:
                 environment=environment,
             )
         except subprocess.CalledProcessError as error:
+            if environment["DEV_STACK_TLS"].lower() == "local-ca":
+                local_https_step(environment, "verifying the trusted certificate", raise_error, error)
+                return
             raise RuntimeError(
                 "HTTPS verification failed after certificate setup. Check the "
                 "reported curl error and docs/dev_setup.md before retrying up."
