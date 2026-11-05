@@ -62,6 +62,8 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     private MicroBreakpointImportService importer;
     @Autowired
     private MicrobiologyConfigurationService configuration;
+    @Autowired
+    private MicrobiologyReferenceAdminService referenceAdmin;
 
     @Before
     public void seedAdoptableConcept() throws Exception {
@@ -174,6 +176,8 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         load(fixture);
         var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
         var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,,Synthetic rule group\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
         writeReportingRules(RULES_HEADER + "SPECIES," + organism.getDisplayName() + ",ANY," + fixture.antibiotic
                 + ",Synthetic,DONT_REPORT,,,,YES,Consider meropenem,WHEN_R,,\n" + "GROUP,Synthetic rule group,ANY,"
                 + fixture.antibiotic + ",Synthetic,CASCADE,ANY_R,CRO;GEN,,,,,,\n");
@@ -721,6 +725,121 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         return standards.findByAuthorityAndVersion("EUCAST", fixture.edition).orElseThrow();
     }
 
+    @Test
+    public void organismGroupFileGivesAnOrganismSeveralGroupsAndAReloadDropsARemovedMembership() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.30", "GROUPS");
+        load(fixture);
+        var klebsiella = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var coli = organism("E. coli " + suffix());
+        String species = "Klebsiella spp. " + suffix();
+        String nonEscppm = "Enterobacterales non-ESCPPM " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + klebsiella.getDisplayName() + ",,," + species + "\n" + ",AMR,"
+                + fixture.organism + "," + nonEscppm + "\n" + coli.getDisplayName() + ",,," + nonEscppm + "\n");
+        var loaded = reloadOrganismGroups(false);
+        assertFalse(loaded.toString(), loaded.hasErrors());
+        assertEquals(java.util.List.of(nonEscppm, species), labGroups(klebsiella));
+        assertEquals(java.util.List.of(nonEscppm), labGroups(coli));
+        var offered = referenceAdmin.getOptions("lab-organism-groups").stream().map(option -> option.label).toList();
+        assertTrue(offered.toString(), offered.containsAll(java.util.List.of(species, nonEscppm)));
+
+        writeOrganismGroups(GROUPS_HEADER + klebsiella.getDisplayName() + ",,," + species + "\n" + coli.getDisplayName()
+                + ",,," + nonEscppm + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        assertEquals(java.util.List.of(species), labGroups(klebsiella));
+        assertEquals(java.util.List.of(nonEscppm), labGroups(coli));
+    }
+
+    @Test
+    public void organismGroupFileListsEveryUnknownOrganismWithItsLineAndSavesNothing() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.31", "GROUPBAD");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String group = "Group " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + group + "\n" + "No such organism A,,,"
+                + group + "\n" + "No such organism B,AMR,NO-SUCH-CODE," + group + "\n");
+
+        String error = reloadOrganismGroups(false).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 3: unknown organism No such organism A"));
+        assertTrue(error, error.contains("Line 4: unknown organism No such organism B"));
+        assertTrue(labGroups(organism).isEmpty());
+    }
+
+    @Test
+    public void reportingRuleFileNamingAnUnknownGroupListsItWithTheOtherBadRowsAndSavesNothing() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.32", "GROUPRULE");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        String group = "Group " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + group + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writeReportingRules(
+                RULES_HEADER + "GROUP," + group + ",ANY," + fixture.antibiotic + ",Synthetic,DONT_REPORT,,,,,,,,\n"
+                        + "GROUP,No such group,ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n"
+                        + "SPECIES,No such organism,ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+
+        String error = reloadReportingRules(false).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 3: unknown organism group No such group"));
+        assertTrue(error, error.contains("Line 4: unknown organism No such organism"));
+        assertTrue(rulesFor(antibioticId).isEmpty());
+    }
+
+    @Test
+    public void groupRulesThatDisagreeForAnOrganismInBothGroupsFailTheRulesFileAndNameBothRows() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.33", "GROUPTIE");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var antibioticId = antibiotics.findByWhonetCodeIgnoreCase(fixture.antibiotic).orElseThrow().getId();
+        String first = "Group A " + suffix();
+        String second = "Group B " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writeReportingRules(
+                RULES_HEADER + "GROUP," + first + ",ANY," + fixture.antibiotic + ",Synthetic,DONT_REPORT,,,,,,,,\n"
+                        + "GROUP," + second + ",ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+
+        String error = reloadReportingRules(false).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Lines 2 and 3:"));
+        assertTrue(error, error.contains(first) && error.contains(second));
+        assertTrue(rulesFor(antibioticId).isEmpty());
+
+        writeReportingRules(
+                RULES_HEADER + "GROUP," + first + ",ANY," + fixture.antibiotic + ",Synthetic,DONT_REPORT,,,,,,,,\n"
+                        + "GROUP," + second + ",ANY," + fixture.antibiotic + ",Synthetic,DONT_REPORT,,,,,,,,\n");
+        assertFalse(reloadReportingRules(false).hasErrors());
+        assertEquals(2, rulesFor(antibioticId).size());
+    }
+
+    @Test
+    public void groupFileThatPutsAnOrganismUnderTwoDisagreeingRulesFailsAndNamesBothGroups() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.34", "GROUPTIE2");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        var other = organism("Other organism " + suffix());
+        String first = "Group A " + suffix();
+        String second = "Group B " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + other.getDisplayName()
+                + ",,," + second + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writeReportingRules(
+                RULES_HEADER + "GROUP," + first + ",ANY," + fixture.antibiotic + ",Synthetic,DONT_REPORT,,,,,,,,\n"
+                        + "GROUP," + second + ",ANY," + fixture.antibiotic + ",Synthetic,REPORT,,,,,,,,\n");
+        assertFalse(reloadReportingRules(false).hasErrors());
+
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n" + other.getDisplayName() + ",,," + second + "\n");
+        String error = reloadOrganismGroups(false).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 3:"));
+        assertTrue(error, error.contains(organism.getDisplayName()));
+        assertTrue(error, error.contains(first) && error.contains(second) && error.contains(fixture.antibiotic));
+        assertEquals(java.util.List.of(first), labGroups(organism));
+    }
+
     private void load(ReferencePackageFixture fixture) throws Exception {
         writeFiles(fixture);
         var result = reload(true);
@@ -873,5 +992,37 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     private org.openelisglobal.configuration.service.ConfigurationReloadResult reloadReportingRules(boolean force) {
         return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
                 java.util.Set.of("microbiology-reporting-rules"), force));
+    }
+
+    private static final String GROUPS_HEADER = "organism,organism_source,organism_code,group\n";
+
+    private void writeOrganismGroups(String csv) throws Exception {
+        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-organism-groups")
+                .resolve("organism-groups.csv");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, csv);
+    }
+
+    private org.openelisglobal.configuration.service.ConfigurationReloadResult reloadOrganismGroups(boolean force) {
+        return initialization.reload(new org.openelisglobal.configuration.service.ConfigurationReloadOptions(
+                java.util.Set.of("microbiology-organism-groups"), force));
+    }
+
+    private java.util.List<String> labGroups(MicroOrganism organism) {
+        return jdbcTemplate.queryForList(
+                "SELECT group_name FROM clinlims.micro_organism_group WHERE organism_id = ? ORDER BY group_name",
+                String.class, organism.getId());
+    }
+
+    private MicroOrganism organism(String displayName) {
+        var organism = new MicroOrganism();
+        organism.setDisplayName(displayName);
+        organism.setWhonetCode("X" + suffix());
+        organisms.insert(organism);
+        return organism;
+    }
+
+    private static String suffix() {
+        return java.util.UUID.randomUUID().toString().substring(0, 8);
     }
 }
