@@ -56,6 +56,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroAstService ast;
     @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerService analyzers;
+    @Autowired
     private MicroIsolateService isolateService;
     @Autowired
     private MicroAstPanelAssignmentService assignments;
@@ -1464,6 +1466,29 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals("AST_RUN_NOT_EDITABLE", assertThrows(MicroAstConflictException.class,
                 () -> ast.setReported(run.getId(), drugB, !before, validator)).getMessage());
         assertEquals(before, agent(run, drugB).isReported());
+    }
+
+    @Test
+    public void aCancelledAnalyzerRunRefusesLateInstrumentResults() {
+        var vitek = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        vitek.ensureFhirUuid();
+        vitek.setName("VITEK " + UUID.randomUUID());
+        vitek.setStatus(org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus.SETUP);
+        vitek.setSysUserId("1");
+        String analyzerId = analyzers.insert(vitek);
+        var run = ast.startRun(new MicroAstRunSetupCommand(isolate, null, reference.standard().getId(), null,
+                MicroAstTechnique.VITEK_2, List.of(), null, true, analyzerId, "card-1"), writer);
+        cancel(run);
+        var late = new MicroAstAnalyzerResultBatch(run.getId(), "late-event", analyzerId, "card-1", null, null, null,
+                null, List.of(), null, true, null, null, List.of(),
+                List.of(new MicroAstAnalyzerReading(drugB, new BigDecimal("4"), "mg/L", null, null)));
+        assertEquals("AST_RUN_NOT_AWAITING_ANALYZER_RESULTS",
+                assertThrows(MicroAstConflictException.class, () -> ast.applyAnalyzerResults(late, writer))
+                        .getMessage());
+        em.flush();
+        em.clear();
+        assertEquals("CANCELLED", runs.get(run.getId()).orElseThrow().getStatus());
+        assertEquals(List.of(), ast.getReadingsForRun(run.getId()));
     }
 
     @Test
