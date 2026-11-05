@@ -712,4 +712,5 @@
   <include file="154-amr-v3-critical-outcome.xml" relativeToChangelogFile="true"/>
   <include file="155-amr-v3-panel-report-cleanup.xml" relativeToChangelogFile="true"/>
   <include file="156-amr-v3-organism-groups.xml" relativeToChangelogFile="true"/>
+  <include file="159-amr-v3-panel-default-claims.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
