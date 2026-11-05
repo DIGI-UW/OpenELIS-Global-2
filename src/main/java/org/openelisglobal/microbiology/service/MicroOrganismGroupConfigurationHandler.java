@@ -23,13 +23,16 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
     private final MicroAntibioticDAO antibiotics;
     private final MicroReportingRuleService reportingRules;
     private final MicroGroupRuleConflictFinder conflicts;
+    private final MicroAstPanelConfigurationHandler panelDefaults;
 
     public MicroOrganismGroupConfigurationHandler(MicroOrganismDAO organisms, MicroAntibioticDAO antibiotics,
-            MicroReportingRuleService reportingRules, MicroGroupRuleConflictFinder conflicts) {
+            MicroReportingRuleService reportingRules, MicroGroupRuleConflictFinder conflicts,
+            MicroAstPanelConfigurationHandler panelDefaults) {
         this.organisms = organisms;
         this.antibiotics = antibiotics;
         this.reportingRules = reportingRules;
         this.conflicts = conflicts;
+        this.panelDefaults = panelDefaults;
     }
 
     @Override
@@ -111,6 +114,7 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
             if (!conflictErrors.isEmpty()) {
                 throw new IllegalArgumentException(String.join("; ", conflictErrors));
             }
+            panelDefaults.assignDefaults(Map.of());
 
             List<LoadedRow<String>> results = new ArrayList<>();
             for (MembershipRow membership : memberships) {
