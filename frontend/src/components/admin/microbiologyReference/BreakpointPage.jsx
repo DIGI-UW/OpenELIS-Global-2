@@ -220,6 +220,12 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
         header: intl.formatMessage({ id: "microbiology.admin.field.method" }),
       },
       {
+        key: "diskContent",
+        header: intl.formatMessage({
+          id: "microbiology.admin.astPanels.diskContent",
+        }),
+      },
+      {
         key: "susceptible",
         header: intl.formatMessage({
           id: "microbiology.admin.breakpoints.susceptible",
@@ -389,6 +395,7 @@ const BreakpointPage = ({ standardId, basePath, query, setQuery }) => {
       intl.formatMessage({ id: "microbiology.admin.astRules.anyOrganism" }),
     antibiotic: `${rule.antibioticName || ""} (${rule.antibioticCode || ""})`,
     method: rule.method,
+    diskContent: rule.diskContent || "—",
     susceptible: rule.susceptibleValue ?? "—",
     intermediate:
       rule.intermediateLowerValue == null && rule.intermediateUpperValue == null
