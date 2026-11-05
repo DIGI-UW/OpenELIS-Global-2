@@ -1234,6 +1234,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         return true;
     }
 
+    private static Set<String> labGroups(MicroOrganism organism) {
+        return Set.copyOf(organism.getLabGroups());
+    }
+
     private java.util.Optional<MicroReportingRule> findReportingRule(MicroAstRun run, String antibioticId) {
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId()).orElse(null);
         if (isolate == null || isolate.getOrganismId() == null) {
@@ -1249,8 +1253,8 @@ public class MicroAstServiceImpl implements MicroAstService {
             SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
             sampleTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
         }
-        return reportingRuleDAO.findBest(antibioticId, isolate.getOrganismId(), organism.getOrganismGroup(),
-                sampleTypeId, run.getClinicalContext());
+        return reportingRuleDAO.findBest(antibioticId, isolate.getOrganismId(), labGroups(organism), sampleTypeId,
+                run.getClinicalContext());
     }
 
     @Override
@@ -1259,7 +1263,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroOrganism organism = java.util.Optional.ofNullable(trimToNull(request.organismId)).flatMap(organismDAO::get)
                 .orElseThrow(() -> new IllegalArgumentException("REPORTING_RULE_PREVIEW_ORGANISM_REQUIRED"));
         String organismId = organism.getId();
-        String organismGroup = organism.getOrganismGroup();
+        Set<String> organismGroups = labGroups(organism);
         String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
         String sampleTypeId = trimToNull(request.sampleTypeId);
         String defaultPanelId = defaultPanelId(organism);
@@ -1278,14 +1282,14 @@ public class MicroAstServiceImpl implements MicroAstService {
                     .orElse(antibioticId);
             row.measured = reading.interpretation;
             row.interpretation = reading.interpretation;
-            interpretationRuleDAO.findBest(antibioticId, organismId, organismGroup)
+            interpretationRuleDAO.findBest(antibioticId, organismId, organismGroups)
                     .filter(rule -> rule.getInterpretation() != null
                             && !rule.getInterpretation().equals(reading.interpretation))
                     .ifPresent(rule -> {
                         row.interpretation = rule.getInterpretation();
                         row.expertRule = expertRuleReason(organism, antibioticId, row.antibioticName);
                     });
-            var reportingRule = reportingRuleDAO.findBest(antibioticId, organismId, organismGroup, sampleTypeId,
+            var reportingRule = reportingRuleDAO.findBest(antibioticId, organismId, organismGroups, sampleTypeId,
                     clinicalContext);
             if (reportingRule.isPresent()) {
                 MicroReportingRule rule = reportingRule.get();
@@ -1311,7 +1315,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             return;
         }
         MicroInterpretationRule rule = interpretationRuleDAO
-                .findBest(reading.getAntibioticId(), isolate.getOrganismId(), organism.getOrganismGroup()).orElse(null);
+                .findBest(reading.getAntibioticId(), isolate.getOrganismId(), labGroups(organism)).orElse(null);
         if (rule == null || rule.getInterpretation() == null
                 || rule.getInterpretation().equals(reading.getInterpretation())) {
             return;

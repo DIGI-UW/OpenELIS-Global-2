@@ -1134,6 +1134,53 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void anOrganismInTwoLabGroupsGetsTheRulesOfBoth() {
+        groupOrganism("Klebsiella spp.");
+        groupOrganism("Enterobacterales non-ESCPPM");
+        var cascade = cascadeFor("Enterobacterales non-ESCPPM");
+        alwaysResistantOn(reference.antibiotic().getId(), "Klebsiella spp.");
+
+        var result = previewFor(reference.organism().getId());
+
+        assertEquals(cascade.getId(), row(result, drugB).reportRuleId);
+        assertEquals("CASCADE", row(result, drugB).reportBehavior);
+        assertEquals("RESISTANT", row(result, reference.antibiotic().getId()).interpretation);
+    }
+
+    @Test
+    public void anOrganismOnlyInTheSharedGroupDoesNotGetTheOtherGroupsAlwaysResistantRule() {
+        groupOrganism("Klebsiella spp.");
+        groupOrganism("Enterobacterales non-ESCPPM");
+        var coli = new MicroOrganism();
+        coli.setDisplayName("Escherichia coli " + UUID.randomUUID().toString().substring(0, 8));
+        coli.setWhonetCode("E" + UUID.randomUUID().toString().substring(0, 7));
+        coli.getLabGroups().add("Enterobacterales non-ESCPPM");
+        organisms.insert(coli);
+        var cascade = cascadeFor("Enterobacterales non-ESCPPM");
+        alwaysResistantOn(reference.antibiotic().getId(), "Klebsiella spp.");
+
+        var result = previewFor(coli.getId());
+
+        assertEquals(cascade.getId(), row(result, drugB).reportRuleId);
+        assertEquals("SUSCEPTIBLE", row(result, reference.antibiotic().getId()).interpretation);
+        assertNull(row(result, reference.antibiotic().getId()).expertRule);
+    }
+
+    @Test
+    public void aRuleForThePackagesOrganismGroupAloneNoLongerApplies() {
+        reference.organism().setOrganismGroup("Enterobacterales");
+        organisms.update(reference.organism());
+        em.flush();
+        reportingRule(null, "Enterobacterales", List.of(), "DONT_REPORT");
+        alwaysResistant(null, "Enterobacterales");
+
+        assertTrue(agent(start(isolate), drugB).isReported());
+        var result = previewFor(reference.organism().getId());
+        assertNull(row(result, drugB).reportRuleId);
+        assertEquals("SUSCEPTIBLE", row(result, drugB).interpretation);
+    }
+
+    @Test
     public void interpretationRuleTargetsAnOrganismOrAGroup() {
         assertThrows(IllegalArgumentException.class, () -> alwaysResistant(null, null));
         assertThrows(IllegalArgumentException.class,
@@ -1334,8 +1381,41 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     private void groupOrganism(String group) {
-        reference.organism().setOrganismGroup(group);
+        reference.organism().getLabGroups().add(group);
         organisms.update(reference.organism());
         em.flush();
+    }
+
+    private MicroInterpretationRule alwaysResistantOn(String antibioticId, String organismGroup) {
+        var form = new org.openelisglobal.microbiology.form.MicroInterpretationRuleForm();
+        form.antibioticId = antibioticId;
+        form.organismGroup = organismGroup;
+        form.interpretation = "RESISTANT";
+        form.source = "EUCAST expected phenotypes";
+        var saved = interpretationRules.save(form, writer);
+        em.flush();
+        return saved;
+    }
+
+    private MicroReportingRule cascadeFor(String organismGroup) {
+        var form = reportingRuleForm(null, organismGroup, List.of(), "CASCADE");
+        form.cascadeCondition = "ANY_R CRO";
+        var saved = reportingRules.save(form, writer);
+        em.flush();
+        return saved;
+    }
+
+    private org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm previewFor(String organismId) {
+        var request = new org.openelisglobal.microbiology.form.MicroReportingRulePreviewForm();
+        request.organismId = organismId;
+        request.sampleTypeId = sampleTypeId;
+        request.readings = List.of(previewReading(drugB, "SUSCEPTIBLE"),
+                previewReading(reference.antibiotic().getId(), "SUSCEPTIBLE"));
+        return ast.previewReportingRules(request);
+    }
+
+    private org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm.Row row(
+            org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm result, String antibioticId) {
+        return result.rows.stream().filter(r -> antibioticId.equals(r.antibioticId)).findFirst().orElseThrow();
     }
 }

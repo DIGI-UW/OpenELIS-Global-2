@@ -28,6 +28,15 @@ public class MicroOrganismDAOImpl extends BaseDAOImpl<MicroOrganism, String> imp
 
     @Override
     @Transactional(readOnly = true)
+    public List<String> getLabGroupNames() {
+        List<String> groups = entityManager.unwrap(Session.class)
+                .createQuery("select distinct g from MicroOrganism o join o.labGroups g", String.class).list();
+        groups.sort(String.CASE_INSENSITIVE_ORDER);
+        return groups;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroOrganism> getByIds(List<String> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();

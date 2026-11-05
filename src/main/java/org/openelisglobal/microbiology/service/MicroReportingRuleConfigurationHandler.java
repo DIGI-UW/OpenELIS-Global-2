@@ -1,9 +1,11 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
@@ -30,15 +32,17 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
     private final MicroOrganismDAO organisms;
     private final MicroAntibioticDAO antibiotics;
     private final CatalogReferenceResolver resolver;
+    private final MicroGroupRuleConflictFinder conflicts;
 
     public MicroReportingRuleConfigurationHandler(MicroReportingRuleService reportingRules,
             MicroInterpretationRuleService interpretationRules, MicroOrganismDAO organisms,
-            MicroAntibioticDAO antibiotics, CatalogReferenceResolver resolver) {
+            MicroAntibioticDAO antibiotics, CatalogReferenceResolver resolver, MicroGroupRuleConflictFinder conflicts) {
         this.reportingRules = reportingRules;
         this.interpretationRules = interpretationRules;
         this.organisms = organisms;
         this.antibiotics = antibiotics;
         this.resolver = resolver;
+        this.conflicts = conflicts;
     }
 
     @Override
@@ -61,9 +65,10 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         List<LoadedRow<String>> outcomes = transaction.run(() -> {
             List<LoadedRow<String>> results = new ArrayList<>();
             List<String> errors = new ArrayList<>();
+            Map<String, Integer> ruleLines = new HashMap<>();
             for (CsvRow row : rows) {
                 try {
-                    results.add(loadRow(row));
+                    results.add(loadRow(row, ruleLines));
                 } catch (RuntimeException e) {
                     errors.add(CsvLoadSummary.reason(e));
                     flushUnresolvedReferences(fileName, row.lineNumber());
@@ -72,6 +77,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             if (!errors.isEmpty()) {
                 throw new IllegalArgumentException(String.join("; ", errors));
             }
+            checkGroupRuleConflicts(ruleLines);
             return results;
         });
         for (int i = 0; i < outcomes.size(); i++) {
@@ -79,7 +85,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         }
     }
 
-    private LoadedRow<String> loadRow(CsvRow row) {
+    private LoadedRow<String> loadRow(CsvRow row, Map<String, Integer> ruleLines) {
         if ("(isolate)".equalsIgnoreCase(row.get("agent"))) {
             return LoadedRow.skipped("Isolate-level notes are not supported");
         }
@@ -88,7 +94,13 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         String organismGroup = null;
         switch (level) {
         case "SPECIES" -> organism = species(row);
-        case "GROUP" -> organismGroup = required(row, "organism");
+        case "GROUP" -> {
+            organismGroup = required(row, "organism");
+            if (!organisms.getLabGroupNames().contains(organismGroup)) {
+                throw new IllegalArgumentException(
+                        "Line " + row.lineNumber() + ": unknown organism group " + organismGroup);
+            }
+        }
         case "ANY" -> {
         }
         default -> throw new IllegalArgumentException("Line " + row.lineNumber()
@@ -138,6 +150,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             created |= existing == null;
             changed |= existing != null && !unchanged;
             id = unchanged ? existing.id : reportingRules.save(form, SYS_USER_ID).getId();
+            ruleLines.put(id, row.lineNumber());
         }
         if (alwaysResistant) {
             MicroInterpretationRuleForm existing = existingInterpretationRule(antibiotic.getId(), organismId,
@@ -160,6 +173,42 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
             return LoadedRow.created(id);
         }
         return changed ? LoadedRow.updated(id) : LoadedRow.skipped("Rule unchanged");
+    }
+
+    private void checkGroupRuleConflicts(Map<String, Integer> ruleLines) {
+        Map<String, Set<String>> groupsByOrganismId = new HashMap<>();
+        for (MicroOrganism organism : organisms.getAll()) {
+            groupsByOrganismId.put(organism.getId(), Set.copyOf(organism.getLabGroups()));
+        }
+        List<String> errors = new ArrayList<>();
+        for (MicroGroupRuleConflictFinder.Conflict conflict : conflicts.find(groupsByOrganismId,
+                reportingRules.getRules())) {
+            Integer firstLine = ruleLines.get(conflict.first().id);
+            Integer secondLine = ruleLines.get(conflict.second().id);
+            if (firstLine == null && secondLine == null) {
+                continue;
+            }
+            String organismName = organisms.get(conflict.organismId()).map(MicroOrganism::getDisplayName).orElse("");
+            String agentCode = antibiotics.get(conflict.first().antibioticId).map(MicroAntibiotic::getWhonetCode)
+                    .orElse("");
+            if (firstLine != null && secondLine != null) {
+                boolean firstIsX = firstLine < secondLine;
+                MicroReportingRuleForm x = firstIsX ? conflict.first() : conflict.second();
+                MicroReportingRuleForm y = firstIsX ? conflict.second() : conflict.first();
+                errors.add("Lines " + Math.min(firstLine, secondLine) + " and " + Math.max(firstLine, secondLine)
+                        + ": rules for groups " + x.organismGroup + " and " + y.organismGroup + " disagree for "
+                        + organismName + " on " + agentCode);
+            } else {
+                MicroReportingRuleForm fromFile = firstLine != null ? conflict.first() : conflict.second();
+                MicroReportingRuleForm existing = firstLine != null ? conflict.second() : conflict.first();
+                errors.add("Line " + (firstLine != null ? firstLine : secondLine) + ": rule for group "
+                        + fromFile.organismGroup + " disagrees with the existing rule for group "
+                        + existing.organismGroup + " for " + organismName + " on " + agentCode);
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
     }
 
     private MicroOrganism species(CsvRow row) {
