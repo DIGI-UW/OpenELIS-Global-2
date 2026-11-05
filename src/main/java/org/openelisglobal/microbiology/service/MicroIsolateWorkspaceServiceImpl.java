@@ -221,10 +221,10 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
             if (identified(i) != "reidentify".equals(action))
                 bad("IDENTIFICATION_ACTION");
             requireVersion(i, r.version);
-            var method = methods.findById(r.identificationMethod);
-            if (method == null || !"Y".equals(method.getIsActive()))
-                bad("METHOD");
-            text(method.getMethodName(), 80, true);
+            String method = Objects.equals(r.identificationMethod, i.getIdentificationMethod())
+                    ? i.getIdentificationMethod()
+                    : activeMethodName(r.identificationMethod);
+            text(method, 80, true);
             text(r.reason, 2000, "reidentify".equals(action));
             if (r.identificationStatus == null || !List.of("PRELIMINARY", "FINAL").contains(r.identificationStatus))
                 bad("STATUS");
@@ -241,7 +241,7 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
             identification.updateIdentification(isolateId, r.organismId, null, parseSignificance(r.significance),
                     "FINAL".equals(r.identificationStatus) ? MicroIsolateIdentificationStatus.CONFIRMED
                             : MicroIsolateIdentificationStatus.PRELIMINARY,
-                    method.getMethodName(), r.confidence, r.reason, r.identifiedAt, actor);
+                    method, r.confidence, r.reason, r.identifiedAt, actor);
         }
         case "sample-item" -> ensureSampleItem(c, i, r.sampleTypeId, r.purpose, actor);
         case "received-origin" -> {
@@ -517,6 +517,13 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
     private static void text(String value, int max, boolean required) {
         if ((required && trim(value) == null) || (value != null && value.length() > max))
             bad("TEXT");
+    }
+
+    private String activeMethodName(String methodId) {
+        var method = methods.findById(methodId);
+        if (method == null || !"Y".equals(method.getIsActive()))
+            bad("METHOD");
+        return method.getMethodName();
     }
 
     private static void bad(String code) {

@@ -356,6 +356,25 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void reidentifyingKeepsAStoredMethodMissingFromTheMethodList() {
+        String id = pick();
+        workspace.act(c.getId(), id, "identify", identification(id, organismA), writer);
+        em.flush();
+        isolates.get(id).orElseThrow().setIdentificationMethod("MALDI_TOF");
+        em.flush();
+        var unknown = identification(id, organismB);
+        unknown.identificationMethod = "999999999";
+        assertEquals("MICROBIOLOGY_ISOLATE_METHOD", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), id, "reidentify", unknown, validator)).getMessage());
+        var kept = identification(id, organismB);
+        kept.identificationMethod = "MALDI_TOF";
+        workspace.act(c.getId(), id, "reidentify", kept, validator);
+        var i = reload().isolates.getFirst();
+        assertEquals(organismB, i.organismId());
+        assertEquals("MALDI_TOF", i.method());
+    }
+
+    @Test
     public void rejectsStaleIdentificationWithoutAppendingHistory() {
         String id = pick();
         var stale = identification(id, organismB);
