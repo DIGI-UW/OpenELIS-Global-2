@@ -151,6 +151,44 @@ it does not publish images or manage GitHub checkpoints. GitHub-only
 publication, artifact uploads and checkpoint reporting still require their
 GitHub results. Neither a failed lane nor a check that did not run is a pass.
 
+## Backend tests in CI
+
+The backend integration tests share one PostgreSQL per JVM and run in
+alphabetical order, because many fixtures commit and later classes see their
+rows. CI (pull requests, develop pushes and releases) runs them as four shards
+in parallel: contiguous alphabetical ranges of the same classes, each on a fresh
+database, about 20 minutes instead of one hour. Every test class runs in exactly
+one shard. The `mode` line in `.github/ci/backend-test-shards.json` decides
+which result gates a run:
+
+- `required` (current): the shards and `Backend shard report` decide. The single
+  full run (`Build + Test`) runs on a pull request only when it carries the
+  `ci:full-backend` label, and the report then lists every test whose outcome
+  differs. The label is read when a run starts: add it, then push.
+- `shadow`: `Build + Test` decides; the shards run beside it for comparison.
+- `off`: the single full run only.
+
+Classes that start their own PostgreSQL carry `@IsolatedDatabase` and run in
+`Build + Test (isolated databases)`, three JVMs at a time. A test class that
+creates a `PostgreSQLContainer` without the annotation fails `Detect Changes`.
+On develop pushes the `Coverage` job merges the shards' JaCoCo data and
+publishes the coverage badge, as before. `Backend / Nightly order check` runs
+the whole suite in one JVM every night, in alphabetical and in reverse order; a
+test that fails only in reverse order depends on another class and should seed
+its own data. Locally, `mvn test` and `mvn clean install` still run every test
+in one JVM, as before.
+
+Run one shard locally:
+
+```bash
+python3 .github/scripts/backend_test_shards.py check
+python3 .github/scripts/backend_test_shards.py includes --shard 2 --output /tmp/shard-2.txt
+scripts/run-java21 mvn test -Dsurefire.includesFile=/tmp/shard-2.txt
+```
+
+To rebalance, move a boundary in the same file, using the per-shard minutes in
+the shard report.
+
 ## Native builds
 
 Java, Maven and Node can also run directly on the host. The development launcher

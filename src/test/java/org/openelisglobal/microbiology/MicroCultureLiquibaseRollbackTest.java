@@ -9,10 +9,12 @@ import liquibase.database.*;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 /** Real upgrade and rollback against retained inoculation history. */
+@IsolatedDatabase
 public class MicroCultureLiquibaseRollbackTest {
     @Test
     public void upgradesStoredInoculationsAndReversesOnlyM4Structure() throws Exception {
