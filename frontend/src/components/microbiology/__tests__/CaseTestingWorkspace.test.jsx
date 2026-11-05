@@ -736,6 +736,42 @@ test("cancelling an AST run refreshes the case timeline", async () => {
   );
 });
 
+test("cancelling an amendment refreshes the case timeline", async () => {
+  const api = service();
+  api.getCaseAmendments = vi.fn().mockResolvedValue([]);
+  api.getCaseReportVersions = vi.fn().mockResolvedValue([]);
+  api.cancelCaseAmendment = vi.fn().mockResolvedValue({});
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={{
+          ...detail,
+          canAmend: true,
+          finalReleaseState: "AMENDMENT_IN_PROGRESS",
+        }}
+        service={api}
+        scanSearch="?scope=AMENDMENT"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.change(
+    await screen.findByLabelText(
+      messages["microbiology.amendment.cancelReason"],
+    ),
+    { target: { value: "Withdraw the correction" } },
+  );
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(messages["microbiology.amendment.cancel"]),
+    }),
+  );
+  await waitFor(() => expect(api.cancelCaseAmendment).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
 test("consumes a critical communication target after saving and unlocks the next entry", async () => {
   const api = service();
   api.getCriticalCommunications = vi.fn().mockResolvedValue([]);

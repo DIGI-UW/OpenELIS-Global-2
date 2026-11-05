@@ -783,7 +783,7 @@ export default function CaseTestingWorkspace({
                     finalReleaseState={detail.finalReleaseState}
                     service={service}
                     canAmend={detail.canAmend}
-                    onCaseUpdated={onCaseChanged}
+                    onCaseUpdated={refreshTesting}
                   />
                 )}
                 {placement === "CRITICAL" && (
@@ -866,7 +866,7 @@ export default function CaseTestingWorkspace({
                   <CaseReportWorkspace
                     detail={detail}
                     service={service}
-                    onChanged={onCaseChanged}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {placement === "CULTURE" && (
