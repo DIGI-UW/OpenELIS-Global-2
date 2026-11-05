@@ -4,6 +4,14 @@ import { HeaderGlobalAction, HeaderPanel } from "@carbon/react";
 import { Close, Help } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 
+// Default when the kill-switch property is absent (FRS AC 12). "false" (any
+// casing) restores the legacy out-of-app manual URL; anything else, including
+// a missing property, routes the Manual button through the in-app viewer.
+const parseUseInAppManual = (raw) => {
+  if (raw === undefined || raw === null || raw === "") return true;
+  return String(raw).toLowerCase() !== "false";
+};
+
 const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
   const intl = useIntl();
   const [helpUrls, setHelpUrls] = useState({
@@ -11,6 +19,7 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
     tutorials: "",
     "release-notes": "",
   });
+  const [useInAppManual, setUseInAppManual] = useState(true);
   const [error, setError] = useState(null);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -41,6 +50,11 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
         "release-notes":
           properties["org.openelisglobal.help.release-notes.url"] || "",
       });
+      setUseInAppManual(
+        parseUseInAppManual(
+          properties["org.openelisglobal.help.manual.useInApp"],
+        ),
+      );
     });
 
     return () => {
@@ -72,8 +86,15 @@ const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
     };
   }, [helpOpen, handlePanelToggle]);
 
-  // Opens the help URL in a new window and then closes the help panel
+  // Opens the help URL in a new window and then closes the help panel.
+  // "manual" is routed through the in-app viewer at /help unless the operator
+  // has set org.openelisglobal.help.manual.useInApp=false (FRS AC 12).
   const openHelp = (type) => {
+    if (type === "manual" && useInAppManual) {
+      window.open("/help", "_blank");
+      handlePanelToggle("");
+      return;
+    }
     const url = helpUrls[type];
     if (url) {
       window.open(url, "_blank");
