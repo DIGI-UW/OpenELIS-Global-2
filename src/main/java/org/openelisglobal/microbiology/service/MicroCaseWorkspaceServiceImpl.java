@@ -109,7 +109,8 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         } catch (MicroCaseLockedException locked) {
             mutable = false;
         }
-        f.canWrite = mutable && access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_RESULTS);
+        f.canLogCritical = access.hasLabUnitRole(userId, c.getLabUnitId(), Constants.ROLE_RESULTS);
+        f.canWrite = mutable && f.canLogCritical;
         f.finalReleaseState = c.getFinalReleaseState();
         f.amendmentOpen = "AMENDMENT_IN_PROGRESS".equals(c.getFinalReleaseState());
         f.canAmend = c.getStatus() == MicroCaseStatus.ACTIVE

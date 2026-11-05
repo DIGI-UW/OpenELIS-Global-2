@@ -467,6 +467,18 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
+    public void aLockedCaseStillLetsResultsUsersLogCriticalCalls() {
+        own.setStage("FINAL_RELEASED");
+        cases.update(own);
+        grantRole(Constants.ROLE_VALIDATION, source.getId());
+        assertFalse(workspace.get(own.getId(), viewer).canLogCritical);
+        grant(source.getId());
+        var shell = workspace.get(own.getId(), viewer);
+        assertFalse(shell.canWrite);
+        assertTrue(shell.canLogCritical);
+    }
+
+    @Test
     public void finalCaseCannotTransfer() {
         grant(source.getId(), destination.getId());
         own.setStage("FINAL_RELEASED");

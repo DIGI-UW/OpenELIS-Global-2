@@ -19,6 +19,7 @@ const detail = {
   id: "case-1",
   canWrite: true,
   canValidate: true,
+  canLogCritical: true,
   samples: [
     {
       sampleItemId: "sample-1",
@@ -770,6 +771,23 @@ test("cancelling an amendment refreshes the case timeline", async () => {
   await waitFor(() =>
     expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
   );
+});
+
+test("a locked case still lets results users log a critical call", async () => {
+  const api = service();
+  api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={{ ...detail, canWrite: false, canLogCritical: true }}
+        service={api}
+        scanSearch="?scope=CRITICAL"
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("button", { name: "Log communication" }),
+  ).toBeInTheDocument();
 });
 
 test("consumes a critical communication target after saving and unlocks the next entry", async () => {
