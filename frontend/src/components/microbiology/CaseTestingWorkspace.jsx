@@ -385,7 +385,11 @@ export default function CaseTestingWorkspace({
     if (!jump || handledJump.current === jump || placement !== jump.scope)
       return;
     handledJump.current = jump;
-    const heading = document.querySelector(`#case-scope-${jump.scope} button`);
+    const heading = document.querySelector(
+      jump.scope === "HISTORY"
+        ? "#case-history button"
+        : `#case-scope-${jump.scope} button`,
+    );
     heading?.scrollIntoView?.({ block: "center" });
     heading?.focus({ preventScroll: true });
   }, [jump, placement]);
