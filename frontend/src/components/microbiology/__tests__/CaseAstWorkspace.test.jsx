@@ -717,15 +717,14 @@ it("cancels a run started by mistake with a recorded reason", async () => {
     await screen.findByRole("button", { name: t("action.cancel") }),
   );
   const modal = screen.getByRole("dialog");
-  const save = within(modal).getByRole("button", {
-    name: t("save"),
-    exact: true,
+  const cancelRun = within(modal).getByRole("button", {
+    name: t("action.cancel"),
   });
-  expect(save).toBeDisabled();
+  expect(cancelRun).toBeDisabled();
   fireEvent.change(within(modal).getByLabelText(t("reason")), {
     target: { value: "Started on the wrong isolate" },
   });
-  fireEvent.click(save);
+  fireEvent.click(cancelRun);
   await waitFor(() =>
     expect(service.astAction).toHaveBeenCalledWith(
       "c1",
@@ -755,11 +754,29 @@ it("explains a run that can no longer be cancelled", async () => {
     target: { value: "Started on the wrong isolate" },
   });
   fireEvent.click(
-    within(modal).getByRole("button", { name: t("save"), exact: true }),
+    within(modal).getByRole("button", { name: t("action.cancel") }),
   );
   const message = messages["microbiology.m6.error.AST_RUN_CANNOT_BE_CANCELLED"];
   expect(message).toBeDefined();
   expect(await within(modal).findByText(message)).toBeInTheDocument();
+});
+
+it("the cancel-run dialog keeps the run unless Cancel run is chosen", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  expect(
+    within(modal).queryByRole("button", { name: t("save"), exact: true }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(within(modal).getByRole("button", { name: t("keepRun") }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(service.astAction).not.toHaveBeenCalled();
 });
 
 it("a reading request does not carry the isolate's panel", async () => {

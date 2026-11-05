@@ -727,8 +727,7 @@ test("cancelling an AST run refreshes the case timeline", async () => {
   const fetched = api.getTimeline.mock.calls.length;
   fireEvent.click(
     within(modal).getByRole("button", {
-      name: messages["microbiology.m6.save"],
-      exact: true,
+      name: messages["microbiology.m6.action.cancel"],
     }),
   );
   await waitFor(() => expect(api.astAction).toHaveBeenCalledTimes(1));
