@@ -706,6 +706,49 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void reSavingSelectionsKeepsEachComponentsOptionsToItself() {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        Map<String, List<org.openelisglobal.testresult.valueholder.TestResult>> options = new HashMap<>();
+        for (var component : configured) {
+            component.setResultType("M");
+            var option = new org.openelisglobal.testresult.valueholder.TestResult();
+            option.setTestResultType("M");
+            option.setValue("M3 option " + component.getCode());
+            option.setSortOrder("1");
+            option.setIsActive(true);
+            options.put(component.getCode(), List.of(option));
+        }
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, options, actor);
+        em.flush();
+        var loaded = workspace.getTests(microCase.getId(), actor).get(0);
+        var first = selections(loaded, row -> "{\"1\":\"" + row.getDictionaryResults().get(0).getId() + "\"}");
+        workspace.saveResults(microCase.getId(), analysis.getId(), first, actor, request(actor));
+        em.flush();
+        var reloaded = workspace.getTests(microCase.getId(), actor).get(0);
+        for (var row : reloaded.components)
+            assertEquals("{\"1\":\"" + row.getDictionaryResults().get(0).getId() + "\"}",
+                    row.getMultiSelectResultValues());
+        var resave = selections(reloaded, row -> row.getMultiSelectResultValues());
+        assertEquals("TechnicalAcceptance", workspace
+                .saveResults(microCase.getId(), analysis.getId(), resave, actor, request(actor)).get(0).status);
+    }
+
+    private MicroCaseResultRequestForm selections(MicroCaseTestForm loaded,
+            java.util.function.Function<org.openelisglobal.test.beanItems.TestResultItem, String> values) {
+        var p = new MicroCaseResultRequestForm();
+        p.version = loaded.version;
+        p.components = new ArrayList<>();
+        for (var row : loaded.components) {
+            var c = new MicroCaseResultRequestForm.ResultComponent();
+            c.componentId = row.getTestResultComponentId();
+            c.value = "";
+            c.multiSelectResultValues = values.apply(row);
+            p.components.add(c);
+        }
+        return p;
+    }
+
+    @Test
     public void wholeNumberPrecisionDoesNotConstrainScientificMantissa() {
         var submission = payload();
         submission.components.get(0).value = "1.555e7";
