@@ -161,10 +161,9 @@ of one hour. The `mode` line in `.github/ci/backend-test-shards.json` decides
 which result gates a pull request:
 
 - `required` (current): the shards and `Backend shard report` decide. The single
-  full run (`Build + Test`) still runs when a pull request changes test
-  infrastructure (base test classes, fixtures, test persistence, `pom.xml`, the
-  shard setup) or carries the `ci:full-backend` label, and the report then lists
-  every test whose outcome differs.
+  full run (`Build + Test`) runs on a pull request only when it carries the
+  `ci:full-backend` label, and the report then lists every test whose outcome
+  differs.
 - `shadow`: `Build + Test` decides; the shards run beside it for comparison.
 - `off`: the single full run only.
 

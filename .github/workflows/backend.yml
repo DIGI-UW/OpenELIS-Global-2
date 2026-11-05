@@ -69,8 +69,8 @@ jobs:
   # Its "mode" decides who gates the pull request: "off" keeps the single full
   # run only, "shadow" keeps the single full run as the gate and runs the
   # shards beside it for comparison, "required" makes the shards the gate and
-  # runs the single full run only for test-infrastructure changes or when the
-  # pull request carries the ci:full-backend label. In "shadow" and "required"
+  # runs the single full run only when the pull request carries the
+  # ci:full-backend label. In "shadow" and "required"
   # the @IsolatedDatabase classes run in their own job.
   changes:
     name: Detect Changes
@@ -147,24 +147,10 @@ jobs:
               - '.github/workflows/backend.yml'
               - '.github/scripts/backend_test_*.py'
               - '.github/scripts/publish-checkpoints*.cjs'
-            test_infra:
-              - 'pom.xml'
-              - 'src/test/java/org/openelisglobal/Base*.java'
-              - 'src/test/java/org/openelisglobal/AppTestConfig.java'
-              - 'src/test/java/org/openelisglobal/IsolatedDatabase.java'
-              - 'src/test/resources/common.properties'
-              - 'src/test/resources/persistence/**'
-              - 'src/test/resources/postgre-db-init/**'
-              - 'src/test/resources/testdata/**'
-              - '.github/ci/backend-test-shards.json'
-              - '.github/actions/backend-maven-setup/**'
-              - '.github/workflows/backend.yml'
-              - '.github/scripts/backend_test_*.py'
       - name: Plan the backend tests
         id: plan
         env:
           EVENT: ${{ github.event_name }}
-          TEST_INFRA: ${{ steps.filter.outputs.test_infra }}
           FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full-backend') }}
         run: |
           full=true; scope=all; isolated=false; shards=false; required=false; matrix='["none"]'
@@ -177,7 +163,7 @@ jobs:
             fi
             if [[ "$mode" == "required" ]]; then
               required=true
-              if [[ "$TEST_INFRA" != "true" && "$FULL_LABEL" != "true" ]]; then
+              if [[ "$FULL_LABEL" != "true" ]]; then
                 full=false
               fi
             fi
