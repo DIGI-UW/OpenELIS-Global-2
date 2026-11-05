@@ -122,8 +122,10 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
             if ("FAILED".equals(item.getState()))
                 item.setFailureReason("TERMINAL_CASE_LOCKED");
         }
-        var matches = links.getAnalyses(caseId).stream().filter(
-                a -> testId.equals(a.getTest().getId()) && Objects.equals(sampleItemId, a.getSampleItem().getId()))
+        var matches = links.getAnalyses(caseId).stream()
+                .filter(a -> testId.equals(a.getTest().getId())
+                        && Objects.equals(sampleItemId, a.getSampleItem().getId())
+                        && !links.getByCaseAndAnalysis(caseId, a.getId()).isCultureOrder())
                 .toList();
         if (reviewedAnalysisId != null) {
             var selected = matches.stream().filter(a -> reviewedAnalysisId.equals(a.getId())).findFirst()
@@ -208,7 +210,8 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
         var candidates = links.getAnalyses(target).stream()
                 .filter(a -> item.getTestId().equals(a.getTest().getId())
                         && request.sampleItemId.equals(a.getSampleItem().getId())
-                        && (reviewedAnalysisId == null || reviewedAnalysisId.equals(a.getId())))
+                        && (reviewedAnalysisId == null || reviewedAnalysisId.equals(a.getId()))
+                        && !links.getByCaseAndAnalysis(target, a.getId()).isCultureOrder())
                 .toList();
         if (candidates.size() != 1)
             throw new IllegalArgumentException("MICROBIOLOGY_INCOMING_AMBIGUOUS");
