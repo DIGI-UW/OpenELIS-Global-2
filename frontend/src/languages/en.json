@@ -14708,5 +14708,6 @@
   "microbiology.astQc.fail": "Fail",
   "microbiology.astQc.rangeMissing": "Load a QC range for every antibiotic before recording this control.",
   "microbiology.astQc.saveError": "The control could not be recorded.",
-  "microbiology.m6.keepRun": "Keep run"
+  "microbiology.m6.keepRun": "Keep run",
+  "microbiology.m6.error.AST_RUN_NOT_EDITABLE": "This run is cancelled, invalidated, or needs repeating, so it can no longer be changed. Reload the case to see its current state."
 }

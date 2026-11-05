@@ -1457,6 +1457,16 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void aCancelledRunsAgentsCannotBeTickedForTheReport() {
+        var run = start(isolate);
+        cancel(run);
+        boolean before = agent(run, drugB).isReported();
+        assertEquals("AST_RUN_NOT_EDITABLE", assertThrows(MicroAstConflictException.class,
+                () -> ast.setReported(run.getId(), drugB, !before, validator)).getMessage());
+        assertEquals(before, agent(run, drugB).isReported());
+    }
+
+    @Test
     public void runsAndAssignmentsNameTheirPanelVersion() {
         start(isolate);
         em.flush();
@@ -1467,5 +1477,15 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(List.of(expected),
                 shown.assignments().stream().map(MicroAstWorkspaceForm.Assignment::label).toList());
         assertEquals(expected, shown.runs().getFirst().panelLabel);
+    }
+
+    private void cancel(MicroAstRun run) {
+        var cancel = new MicroAstWorkspaceForm.Action();
+        cancel.isolateId = isolate;
+        cancel.runId = run.getId();
+        cancel.action = "cancel";
+        cancel.reason = "Started on the wrong isolate";
+        workspace.act(c.getId(), cancel, writer, false);
+        em.flush();
     }
 }

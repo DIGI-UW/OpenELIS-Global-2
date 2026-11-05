@@ -750,6 +750,8 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRunAntibiotic setReported(String runId, String antibioticId, boolean reported, String performedBy) {
         MicroAstRun run = requireRun(runId);
+        if (Set.of("INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus()))
+            throw new MicroAstConflictException("AST_RUN_NOT_EDITABLE");
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         authorization.requireWrite(isolate.getCaseId(), performedBy,

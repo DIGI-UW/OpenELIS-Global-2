@@ -576,7 +576,13 @@ export default function CaseAstWorkspace({
                                         hideLabel
                                         checked={!!agent.reported}
                                         disabled={
-                                          !(canEnter || canValidate) || busy
+                                          !(canEnter || canValidate) ||
+                                          busy ||
+                                          [
+                                            "INVALIDATED",
+                                            "CANCELLED",
+                                            "RERUN_REQUIRED",
+                                          ].includes(run.status)
                                         }
                                         onChange={(_, { checked }) =>
                                           reportAction({
