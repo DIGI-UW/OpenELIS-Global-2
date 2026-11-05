@@ -247,6 +247,8 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         published.setLogicalKey(current.getLogicalKey());
         published.setVersionNumber(current.getVersionNumber() + 1);
         published.setSupersedesPanelId(current.getId());
+        published.setDefaultFor(current.getDefaultFor());
+        published.setDefaultForFile(current.getDefaultForFile());
         applyPanel(published, request, actorId);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);

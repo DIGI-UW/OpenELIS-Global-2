@@ -389,6 +389,42 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void mostSpecificDefaultWinsAcrossPanelFilesWhateverTheirOrder() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.52", "ACROSS");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        String header = "panelName,antibioticWhonetCode,defaultFor\n";
+        String species = header + "Synthetic species panel ACROSS," + fixture.antibiotic
+                + ",Synthetic organism ACROSS\n";
+        String genus = header + "Synthetic genus panel ACROSS," + fixture.antibiotic + ",Synthetic\n";
+        for (var files : java.util.List.of(java.util.List.of(species, genus), java.util.List.of(genus, species))) {
+            writePanels("a-panels.csv", files.get(0));
+            writePanels("b-panels.csv", files.get(1));
+            var result = reloadPanels(true);
+            assertFalse(result.toString(), result.hasErrors());
+            assertEquals(panels.findCurrentByNameIgnoreCase("Synthetic species panel ACROSS").getId(),
+                    organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+        }
+    }
+
+    @Test
+    public void panelFileRefusesADefaultWhoseProtocolDiffersFromTheOrganisms() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.53", "PROTOCOL");
+        load(fixture);
+        var organism = organisms.findByReference("AMR", fixture.organism).orElseThrow();
+        organism.setSusceptibilityProtocol("TB");
+        organisms.update(organism);
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic general panel PROTOCOL," + fixture.antibiotic
+                + ",Synthetic organism PROTOCOL\n");
+
+        String error = reloadPanels(true).files().get(0).errorMessage();
+
+        assertTrue(error, error.contains("Line 2:"));
+        assertTrue(error, error.contains("Synthetic organism PROTOCOL") && error.contains("TB"));
+        assertNull(organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+    }
+
+    @Test
     public void panelFileWithTierAndReportBehaviorColumnsStillLoads() throws Exception {
         var fixture = new ReferencePackageFixture("2099.19", "PANELCOL");
         load(fixture);
@@ -992,7 +1028,11 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     private void writePanels(String csv) throws Exception {
-        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-ast-panels").resolve("panels.csv");
+        writePanels("panels.csv", csv);
+    }
+
+    private void writePanels(String fileName, String csv) throws Exception {
+        Path target = configurationFiles.getRoot().toPath().resolve("microbiology-ast-panels").resolve(fileName);
         Files.createDirectories(target.getParent());
         Files.writeString(target, csv);
     }

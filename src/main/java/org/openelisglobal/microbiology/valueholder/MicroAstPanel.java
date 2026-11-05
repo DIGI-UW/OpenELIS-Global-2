@@ -150,4 +150,26 @@ public class MicroAstPanel extends BaseObject<String> {
     public void setSusceptibilityProtocol(String value) {
         susceptibilityProtocol = value;
     }
+
+    @Column(name = "default_for")
+    private String defaultFor;
+
+    @Column(name = "default_for_file", length = 255)
+    private String defaultForFile;
+
+    public String getDefaultFor() {
+        return defaultFor;
+    }
+
+    public void setDefaultFor(String defaultFor) {
+        this.defaultFor = defaultFor;
+    }
+
+    public String getDefaultForFile() {
+        return defaultForFile;
+    }
+
+    public void setDefaultForFile(String defaultForFile) {
+        this.defaultForFile = defaultForFile;
+    }
 }
