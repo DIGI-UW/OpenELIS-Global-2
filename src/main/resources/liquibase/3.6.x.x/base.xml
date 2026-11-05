@@ -46,6 +46,8 @@
   <include relativeToChangelogFile="true" file="025-panel-domain-from-members.xml"/>
   <!-- OGC-1200: runs; analyzer values and accepted results name their run -->
   <include relativeToChangelogFile="true" file="026-result-run.xml"/>
+  <!-- OGC-1579: module system state table (numbered 030 to leave room for develop's next changesets) -->
+  <include relativeToChangelogFile="true" file="030-module-state.xml"/>
 
   <!-- Read-only FHIR interface: explicit resource-type reader permissions -->
   <include relativeToChangelogFile="true" file="027-fhir-read-permissions.xml"/>
