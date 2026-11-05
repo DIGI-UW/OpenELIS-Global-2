@@ -757,15 +757,65 @@ props may still change in a frontend contract minor.
 
 ### Add a new slot to the core
 
-A new slot is a core pull request:
+A slot is a contract between the core and every module, so it is added by a core
+pull request. The `home.dashboard.cards` slot is the model.
 
-1. Render `<ExtensionSlot name="area.place" context={{ … }} />` from
-   `frontend/src/modules/ExtensionSlot.jsx` at the place in the core page. Pass
-   only plain values (ids, strings), never core component state.
-2. Add the slot and its context to `SLOTS` in the same file, and to the
-   catalogue above.
-3. A new slot is a frontend contract minor; changing or removing a slot's props
-   is a major.
+**Step 1: render the slot in the core page.** The dashboard does it in
+`frontend/src/components/home/Dashboard.tsx`:
+
+```jsx
+import ExtensionSlot from "../../modules/ExtensionSlot";
+
+<ExtensionSlot
+  name="home.dashboard.cards"
+  context={{ user: userSessionDetails }}
+/>;
+```
+
+A new slot, for example a toolbar on the results page:
+
+```jsx
+<ExtensionSlot
+  name="results.toolbar.actions"
+  context={{ accessionNumber, testSectionId }}
+/>
+```
+
+| Prop      | Rule                                                                                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`    | `area.place`, unique; modules write exactly this in their manifest                                                                                            |
+| `context` | Each key becomes a prop of every contribution. Pass plain values (ids, strings, numbers), never component state or callbacks: the props are a public contract |
+| `wrapper` | Optional component that wraps the contributions, for example a grid or a button set                                                                           |
+
+The slot renders nothing when no module contributes, so the page looks exactly
+as before on a site without modules.
+
+**Step 2: add it to the catalogue.** Add the slot and its props to `SLOTS` in
+`frontend/src/modules/ExtensionSlot.jsx`, and a row to
+[the slot catalogue](#the-slot-catalogue) on this page:
+
+```js
+export const SLOTS = {
+  "home.dashboard.cards": "{ user }",
+  "patient.header.actions": "{ patientId }",
+  "results.toolbar.actions": "{ accessionNumber, testSectionId }",
+};
+```
+
+**Step 3: test it.** In `frontend/src/modules/ExtensionSlot.test.jsx` or the
+page's own test, check that a contribution renders with the slot's props and
+that the page is unchanged without contributions.
+
+**Step 4: version it.** A new slot is a frontend contract minor: existing
+modules keep loading. Changing or removing a slot's props is a major, after
+which modules declare the new `requires.frontendContract`.
+
+Modules then contribute as described in
+[Contribute to a slot](#contribute-to-a-slot), naming the new slot:
+
+```json
+"slots": [{ "slot": "results.toolbar.actions", "expose": "./MyAction", "permission": "view" }]
+```
 
 ## 5. Configuration, events and backend extension points
 
@@ -843,6 +893,86 @@ public class TurnaroundReport implements ReportProvider {
 Report ids are unique across modules and may never be the id of a report the
 core ships. `run` executes inside the core's transaction and must not open its
 own.
+
+### Add a new backend extension point
+
+A backend extension point is a hook where module code takes part in core logic,
+such as producing a report. Like a slot, it is added by a core pull request;
+`report` is the model.
+
+**Step 1: define the interface in `openelis-spi`.** Put it, with its own value
+types, in a new package under
+`module-contracts/openelis-spi/src/main/java/org/openelisglobal/spi/`, and
+export the package in that artifact's `module-info.java`:
+
+```java
+package org.openelisglobal.spi.label;
+
+public interface LabelProvider extends ExtensionPoint {
+    Set<String> labelTypes();
+
+    LabelOutput render(LabelRequest request) throws LabelException;
+}
+```
+
+```java
+module org.openelisglobal.spi {
+    exports org.openelisglobal.spi;
+    exports org.openelisglobal.spi.event;
+    exports org.openelisglobal.spi.report;
+    exports org.openelisglobal.spi.label;
+}
+```
+
+Keep it narrow: every method and value type becomes a public contract. Use plain
+value types, never core entities or services.
+
+**Step 2: register it in the core.**
+
+| File                                                                      | Change                                                                          |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `src/main/java/org/openelisglobal/module/runtime/ExtensionPoints.java`    | `register(new Definition("label", LabelProvider.class, Cardinality.MULTIPLE));` |
+| `src/main/java/org/openelisglobal/module/manifest/ManifestValidator.java` | Add `"label"` to `KNOWN_EXTENSION_POINTS`, so manifests may declare it          |
+
+`Cardinality.MULTIPLE` lets every installed module contribute (ordered by each
+declaration's `order`). `Cardinality.SINGLE` allows one active provider: when
+several modules provide it, the site chooses with
+`spi.label.provider=<module id>`, and the core refuses to start until it does.
+
+**Step 3: consult it where the core does the work.** Ask the module registry for
+the providers at the seam in core code. The report factory is the model
+(`ReportImplementationFactory.moduleReportCreator`):
+
+```java
+ModuleRegistry registry = SpringContext.getBean(ModuleRegistry.class);
+
+// MULTIPLE: every provider, in order
+List<LabelProvider> providers = registry.extensions().providers(LabelProvider.class);
+
+// SINGLE: the one the site selected (spi.label.provider), if any
+Optional<LabelProvider> provider = registry.extensions()
+        .activeProvider(LabelProvider.class, Optional.ofNullable(selectedModuleId));
+```
+
+Decide and document at the seam whether the core's own behaviour or the module's
+wins, and whether the provider runs inside the caller's transaction (`report`
+providers do, and must not open their own).
+
+**Step 4: version and document it.** A new extension point is an `openelis-spi`
+minor version: bump it in `module-contracts`, and add the point to
+[Backend extension points](#backend-extension-points) on this page with an
+example. Modules then implement it and declare it:
+
+```json
+"requires": { "openelis": ">=3.4.0", "spi": "^1.1" },
+"backend": {
+  "extensions": [{ "spi": "label", "class": "org.openelisglobal.module.mylabels.MyLabels" }]
+}
+```
+
+**Slot or extension point?** Use a slot when modules should add UI to a core
+screen, and a backend extension point when they should change or extend what the
+core computes or produces.
 
 ## 6. Develop on the dev stack
 
