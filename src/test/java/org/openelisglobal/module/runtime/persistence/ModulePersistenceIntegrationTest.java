@@ -16,6 +16,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.module.api.ModuleState;
 import org.openelisglobal.module.runtime.ContractVersions;
 import org.openelisglobal.module.runtime.ModuleDiscovery;
@@ -37,6 +38,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * records the install, the module's entity joins a persistence unit through the
  * registrar and {@code hibernate.classLoaders}, and a downgrade is refused.
  */
+@IsolatedDatabase
 public class ModulePersistenceIntegrationTest {
 
     private static PostgreSQLContainer<?> postgres;

@@ -27,6 +27,7 @@
         <openelis-spi.version>1.0.0-SNAPSHOT</openelis-spi.version>
         <openelis-module-api.version>1.0.0-SNAPSHOT</openelis-module-api.version>
         <testContainersVersion>1.19.8</testContainersVersion>
+        <surefire.runOrder>alphabetical</surefire.runOrder>
     </properties>
 
     <dependencyManagement>
@@ -1131,8 +1132,8 @@
                         does not roll back, so results depend on class order. Surefire's default
                         "filesystem" order differs per runner VM, which made the same commit pass
                         on one runner and fail on another. Alphabetical is deterministic and stable
-                        as classes are added. -->
-                    <runOrder>alphabetical</runOrder>
+                        as classes are added. The nightly order check overrides it with -Dsurefire.runOrder=reversealphabetical. -->
+                    <runOrder>${surefire.runOrder}</runOrder>
                 </configuration>
             </plugin>
             <plugin>

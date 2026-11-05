@@ -1,0 +1,10 @@
+{
+  "about": "Backend test shards for pull requests. mode: off = single full run only; shadow = single full run decides, shards run beside it and are compared; required = shards decide, the single full run only for test-infrastructure changes or the ci:full-backend label. Each boundary is the first class of the next shard in alphabetical order. Isolated classes (@IsolatedDatabase) run in their own shard with isolatedForks JVMs. Rebalance from the per-shard minutes in the Backend shard report.",
+  "mode": "shadow",
+  "isolatedForks": 3,
+  "boundaries": [
+    "org.openelisglobal.fhir.LocationSearchFacadeTest",
+    "org.openelisglobal.qc.service.BenchQCResultServiceIntegrationTest",
+    "org.openelisglobal.resultvalidation.AccessionValidationReviewPanelTest"
+  ]
+}
