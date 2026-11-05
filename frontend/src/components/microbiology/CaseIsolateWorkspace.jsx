@@ -399,7 +399,14 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setError(failure.response?.status === 409 ? "conflict" : "saveError");
+      const code = failure.response?.message;
+      setError(
+        failure.response?.status === 409
+          ? "conflict"
+          : intl.messages[`microbiology.isolateWorkspace.${code}`]
+            ? code
+            : "saveError",
+      );
     } finally {
       if (mounted.current) setSaving(false);
     }
