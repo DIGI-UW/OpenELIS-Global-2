@@ -99,6 +99,8 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroCaseAnalysisDAO caseAnalyses;
     @Autowired
+    private org.openelisglobal.dataexchange.fhir.service.FhirTransformService fhir;
+    @Autowired
     private org.openelisglobal.systemuser.service.SystemUserService users;
     @Autowired
     private org.openelisglobal.role.service.RoleService roles;
@@ -1173,6 +1175,41 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
 
         assertEquals(aliquot.getId(), referrals.getWorkspaceReferrals(List.of(aliquot.getId())).getFirst().getAnalysis()
                 .getSampleItem().getId());
+    }
+
+    @Test
+    public void publishingATestOnAnIsolatePublishesTheIsolateSpecimen() throws Exception {
+        var request = minimalReferralRequest();
+        String isolateId = pick();
+        workspace.act(c.getId(), isolateId, "test", request, writer);
+        var specimen = sampleItems.get(reload().isolates.getFirst().sampleItemId());
+        String analysisId = caseAnalyses.getAnalyses(c.getId()).stream()
+                .filter(a -> a.getSampleItem().getId().equals(specimen.getId())).findFirst().orElseThrow().getId();
+
+        var published = new ArrayList<org.hl7.fhir.r4.model.Resource>();
+        var target = (org.openelisglobal.dataexchange.fhir.service.FhirTransformServiceImpl) org.springframework.test.util.AopTestUtils
+                .getUltimateTargetObject(fhir);
+        var store = org.springframework.test.util.ReflectionTestUtils.getField(target, "fhirPersistanceService");
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "fhirPersistanceService",
+                new org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl() {
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public org.hl7.fhir.r4.model.Bundle createUpdateFhirResourcesInFhirStore(
+                            FhirOperations operations) {
+                        published.addAll(
+                                ((Map<String, org.hl7.fhir.r4.model.Resource>) org.springframework.test.util.ReflectionTestUtils
+                                        .getField(operations, "updateResources")).values());
+                        return new org.hl7.fhir.r4.model.Bundle();
+                    }
+                });
+        try {
+            target.transformAnalysisByIds(List.of(analysisId));
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(target, "fhirPersistanceService", store);
+        }
+
+        assertTrue(published.stream().anyMatch(r -> r instanceof org.hl7.fhir.r4.model.Specimen
+                && specimen.getFhirUuidAsString().equals(r.getIdElement().getIdPart())));
     }
 
     private void allowOnSource(String testId) {
