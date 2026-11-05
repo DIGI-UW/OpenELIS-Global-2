@@ -24,6 +24,7 @@ ISOLATED = "isolated"
 MODES = ("off", "shadow", "required")
 
 SUREFIRE_DEFAULT_INCLUDE = re.compile(r"^(Test.*|.*Test|.*Tests|.*TestCase)\.java$")
+PACKAGE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 CREATES_CONTAINER = re.compile(r"new\s+(PostgreSQLContainer|GenericContainer)\b")
 ISOLATED_MARKER = re.compile(r"^\s*@(org\.openelisglobal\.)?IsolatedDatabase\b", re.MULTILINE)
 TEST_ANNOTATION = re.compile(r"@(org\.junit\.)?Test\b")
@@ -45,12 +46,16 @@ def discover(repo):
     for source in root.rglob("*.java"):
         if not SUREFIRE_DEFAULT_INCLUDE.match(source.name):
             continue
-        relative = source.relative_to(root).as_posix()
         text = source.read_text(encoding="utf-8", errors="replace")
+        package = PACKAGE.search(text)
+        if package:
+            name = f"{package.group(1)}.{source.stem}"
+        else:
+            name = source.relative_to(root).as_posix()[: -len(".java")].replace("/", ".")
         classes.append(
             TestClass(
-                name=relative[: -len(".java")].replace("/", "."),
-                path=relative,
+                name=name,
+                path=name.replace(".", "/") + ".java",
                 isolated=bool(ISOLATED_MARKER.search(text)),
                 creates_container=bool(CREATES_CONTAINER.search(text)),
                 runnable=bool(TEST_ANNOTATION.search(text)) and not ABSTRACT_CLASS.search(text),

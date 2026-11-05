@@ -75,9 +75,20 @@ class BackendTestShardsTest(unittest.TestCase):
         self.assertEqual(names, ["org.openelisglobal.a.ATests", "org.openelisglobal.a.TestA",
                                  "org.openelisglobal.b.BTest", "org.openelisglobal.c.CTestCase"])
 
+    def test_class_name_and_pattern_follow_the_package_not_the_directory_case(self):
+        path = self.repository.add("org.openelisglobal.testreflex.TestReflexServiceTest",
+                                   text="package org.openelisglobal.testReflex;\npublic class TestReflexServiceTest {\n  @Test public void x() {}\n}\n")
+
+        [test_class] = shards.discover(self.directory.name)
+
+        self.assertEqual(path.parent.name, "testreflex")
+        self.assertEqual(test_class.name, "org.openelisglobal.testReflex.TestReflexServiceTest")
+        self.assertEqual(test_class.path, "org/openelisglobal/testReflex/TestReflexServiceTest.java")
+
     def test_abstract_classes_and_classes_without_tests_are_not_runnable(self):
-        self.repository.add("org.openelisglobal.a.BaseTest", text="package a;\npublic abstract class BaseTest {\n  @Test public void x() {}\n}\n")
-        self.repository.add("org.openelisglobal.a.EmptyTest", text="package a;\npublic class EmptyTest {}\n")
+        self.repository.add("org.openelisglobal.a.BaseTest",
+                            text="package org.openelisglobal.a;\npublic abstract class BaseTest {\n  @Test public void x() {}\n}\n")
+        self.repository.add("org.openelisglobal.a.EmptyTest", text="package org.openelisglobal.a;\npublic class EmptyTest {}\n")
         self.repository.add("org.openelisglobal.a.RealTest")
 
         runnable = {test_class.name: test_class.runnable for test_class in shards.discover(self.directory.name)}
