@@ -19,4 +19,17 @@ describe("includesComboBoxText", () => {
       }),
     ).toBe(true);
   });
+
+  test("ignores accents in the item and in what is typed", () => {
+    const matches = (inputValue) =>
+      includesComboBoxText({
+        item: { name: "Résistance à la rifampicine" },
+        itemToString: (item) => item.name,
+        inputValue,
+      });
+
+    expect(matches("resistance a la")).toBe(true);
+    expect(matches("RÉSIST")).toBe(true);
+    expect(matches("isoniazide")).toBe(false);
+  });
 });

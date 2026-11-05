@@ -4,6 +4,7 @@ import {
   RBC_TEST,
   SERUM,
   WHOLE_BLOOD,
+  labUnitNameOf,
   labUnitOf,
   openServerPageHolding,
   orderTests,
@@ -14,6 +15,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * Validation by Routine opens a lab unit's queue of results awaiting
@@ -63,15 +65,13 @@ test.describe("Result validation by routine and by range", () => {
         page,
         (url) => new URL(url).searchParams.get("testSectionId") === unitId,
       );
-      await unit.selectOption(unitId);
+      await chooseCarbonOption(unit, await labUnitNameOf(page, unitId));
       await openServerPageHolding(page, await loaded, accession);
     };
 
     await test.step("Hematology's queue holds the hematology result only", async () => {
       await page.goto("/ResultValidation", { waitUntil: "domcontentloaded" });
-      await expect(
-        unit.locator(`option[value="${hematologyUnit}"]`),
-      ).toBeAttached({ timeout: NAV_TIMEOUT });
+      await expect(unit).toBeEnabled({ timeout: NAV_TIMEOUT });
       await openUnit(hematologyUnit, hematologyOrder);
       await expect(queued(page, hematologyOrder)).toBeVisible({
         timeout: UI_TIMEOUT,

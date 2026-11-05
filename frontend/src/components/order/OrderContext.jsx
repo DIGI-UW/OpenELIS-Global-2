@@ -1503,6 +1503,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             providersList: response.sampleOrderItems?.providersList || [],
             testLocationCodeList:
               response.sampleOrderItems?.testLocationCodeList || [],
+            otherTestLocationCodeId:
+              response.sampleOrderItems?.otherTestLocationCodeId || "",
             priorityList: response.sampleOrderItems?.priorityList || [],
             programList: response.sampleOrderItems?.programList || [],
           },
@@ -1555,6 +1557,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             providersList: response.sampleOrderItems?.providersList || [],
             testLocationCodeList:
               response.sampleOrderItems?.testLocationCodeList || [],
+            otherTestLocationCodeId:
+              response.sampleOrderItems?.otherTestLocationCodeId || "",
             priorityList: response.sampleOrderItems?.priorityList || [],
             programList: response.sampleOrderItems?.programList || [],
           },

@@ -3,6 +3,8 @@ package org.openelisglobal.shipment;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.Timestamp;
 import java.util.List;
@@ -64,6 +66,26 @@ public class UnassignedSampleItemServiceTest extends BaseWebContextSensitiveTest
         // Each sample item must carry the id of its referral's linked organization
         assertEquals("1", item1.getDestinationFacilityId());
         assertEquals("2", item2.getDestinationFacilityId());
+    }
+
+    /**
+     * OGC-1515: the shipment dashboard's facility filter on unassigned samples
+     * asked for a list the server did not offer and kept showing every sample.
+     */
+    @Test
+    public void getUnassignedByDestinationFacility_listsOnlyTheSampleItemsReferredThere() {
+        assertEquals(List.of("12345"), unassignedSampleItemService.getUnassignedByDestinationFacility("1").stream()
+                .map(SampleItemDTO::getAccessionNumber).toList());
+        assertEquals(List.of("13333"), unassignedSampleItemService.getUnassignedByDestinationFacility("2").stream()
+                .map(SampleItemDTO::getAccessionNumber).toList());
+        assertEquals(List.of(), unassignedSampleItemService.getUnassignedByDestinationFacility("999"));
+    }
+
+    @Test
+    public void theUnassignedItemsOfAFacilityAreServedByTheRouteTheDashboardCalls() throws Exception {
+        performGet("/rest/unassigned-sample/items/by-facility/2").andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].accessionNumber").value("13333"))
+                .andExpect(jsonPath("$[0].destinationFacilityId").value("2"));
     }
 
     @Test

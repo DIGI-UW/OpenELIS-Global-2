@@ -34,9 +34,11 @@ test.describe("Result Entry — worklist entry point", () => {
     await expect(
       main.getByRole("heading", { name: /result/i }).first(),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(main.getByLabel(/lab unit/i)).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(main.getByRole("combobox", { name: /lab unit/i })).toBeVisible(
+      {
+        timeout: LONG_TIMEOUT,
+      },
+    );
     await expect(
       main.getByRole("button", { name: /^load results$/i }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });

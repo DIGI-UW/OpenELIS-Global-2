@@ -38,6 +38,32 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @TestPropertySource("classpath:common.properties")
 public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMockMvcTest {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private AnalyzerActivationService activationService;
+
+    @Test
+    public void anonymousRequestCannotStartSetupReception() throws Exception {
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/setup-reception").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void globalAdministratorCanReachSetupReceptionThroughSecurityFilters() throws Exception {
+        org.openelisglobal.login.valueholder.UserSessionData actor = new org.openelisglobal.login.valueholder.UserSessionData();
+        actor.setSytemUserId(7);
+        when(activationService.startSetupReception(org.mockito.ArgumentMatchers.eq("77"),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new org.openelisglobal.analyzer.service.AnalyzerSetupReceptionResult("77",
+                        org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus.VALIDATION, true, List.of()));
+        mockMvc.perform(
+                post("/rest/analyzer/analyzers/77/setup-reception").with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))
+                        .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+        org.mockito.Mockito.verify(activationService).startSetupReception(org.mockito.ArgumentMatchers.eq("77"),
+                org.mockito.ArgumentMatchers.any());
+    }
+
     @Test
     public void unrelatedAuthenticatedRoleCannotOpenAnalyzerSetup() throws Exception {
         mockMvc.perform(get("/rest/analyzer/analyzers").with(user("results").roles("RESULTS"))
@@ -47,6 +73,15 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
     @Test
     public void unrelatedAuthenticatedRoleCannotProbeAnalyzerConnection() throws Exception {
         mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection").with(user("results").roles("RESULTS"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void setupReceptionIsRestrictedToGlobalAdministrators() throws Exception {
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/setup-reception")
+                .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/setup-reception").with(user("results").roles("RESULTS"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
     }
 

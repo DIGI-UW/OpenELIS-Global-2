@@ -37,6 +37,8 @@ public class AnalyzerResultsPlacementIntegrationTest extends BaseWebContextSensi
     @Autowired
     private AnalyzerFailedRunService failedRunService;
     @Autowired
+    private AnalyzerResultsService analyzerResultsService;
+    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private IStatusService statusService;
@@ -101,6 +103,39 @@ public class AnalyzerResultsPlacementIntegrationTest extends BaseWebContextSensi
 
         assertEquals("the one analysis holds the new result", "2", resultOnTube(tube));
         assertEquals("a replaced result is a corrected one", "2", revisionOnTube(tube));
+    }
+
+    /**
+     * OGC-1200 FR-A2, FR-E5: an accepted value's result names the run it came in,
+     * and an analyzer run whose last value has been worked is complete.
+     */
+    @Test
+    public void anAcceptedValueNamesItsRunAndTheEmptiedRunCompletes() {
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'OPEN', ?, 2, NOW(), NOW())", run, ANALYZER);
+        String first = stage(ACCESSION, ACCESSION, "7");
+        String second = stage(ACCESSION + "-9", "PLACE1B0009", "8");
+        jdbc.update("UPDATE clinlims.analyzer_results SET run_id = ? WHERE id IN (?::numeric, ?::numeric)", run, first,
+                second);
+
+        accept(first, "7");
+
+        assertEquals("the result names its run", Long.valueOf(run),
+                jdbc.queryForObject("SELECT r.run_id FROM clinlims.result r JOIN clinlims.analysis a"
+                        + " ON a.id = r.analysis_id WHERE a.sampitem_id = ?", Long.class, onlyTube()));
+        assertEquals("a value is still waiting, so the run stays open", "OPEN",
+                jdbc.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, run));
+
+        analyzerResultsService.delete(second, "1");
+        entityManager.flush();
+
+        assertEquals("its last value gone, the run is complete", "COMPLETE",
+                jdbc.queryForObject("SELECT state FROM clinlims.result_run WHERE id = ?", String.class, run));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result_run WHERE id = ? AND completed_at IS NOT NULL",
+                        Integer.class, run));
     }
 
     @Test
