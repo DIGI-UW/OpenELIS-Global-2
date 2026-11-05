@@ -35,6 +35,8 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
     private org.openelisglobal.microbiology.dao.MicroReportVersionDAO versions;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO analyses;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroAstPanelAssignmentService panelAssignments;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseAmendmentDAO amendmentDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -123,6 +125,9 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
             isolate.setCancelledAt(cancelledAt);
             isolateDAO.update(isolate);
         }
+        for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId))
+            if (isolate.getCancelledAt() == null)
+                panelAssignments.followIdentification(isolate, performedBy);
         var baseline = versions.getLatestByCaseId(caseId);
         if (baseline != null && baseline.getStructuredContent() != null) {
             var report = patientReports.decode(baseline.getStructuredContent());

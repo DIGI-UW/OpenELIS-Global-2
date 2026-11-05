@@ -47,6 +47,19 @@ public class MicroAstPanelAssignmentService {
     }
 
     @Transactional
+    public void followIdentification(MicroIsolate isolate, String actor) {
+        var organism = isolate.getOrganismId() == null ? null : organisms.get(isolate.getOrganismId()).orElse(null);
+        for (var assignment : getAssignments(isolate.getId())) {
+            var panel = panels.get(assignment.getPanelId()).orElse(null);
+            if (organism == null || panel == null || !fits(organism, panel)) {
+                assignment.setRetiredAt(MicroCaseServiceImpl.now());
+                assignments.update(assignment);
+            }
+        }
+        assignDefault(isolate, actor);
+    }
+
+    @Transactional
     public MicroAstPanelAssignment assign(String isolateId, String panelId, String actor) {
         var isolate = isolates.get(isolateId).orElseThrow();
         authorization.requireWrite(isolate.getCaseId(), actor, Constants.ROLE_RESULTS);
@@ -63,10 +76,14 @@ public class MicroAstPanelAssignmentService {
     public static void requireCompatible(MicroOrganism organism, MicroAstPanel panel) {
         if (panel.getPublishedAt() == null || !"Y".equals(panel.getIsActive()) || !"Y".equals(panel.getIsCurrent()))
             throw new IllegalArgumentException("AST_PANEL_NOT_PUBLISHED");
-        if (!Objects.equals(organism.getSusceptibilityProtocol(), panel.getSusceptibilityProtocol())
-                || (panel.getOrganismGroup() != null && !panel.getOrganismGroup().isBlank()
-                        && !Objects.equals(organism.getOrganismGroup(), panel.getOrganismGroup())))
+        if (!fits(organism, panel))
             throw new IllegalArgumentException("AST_PANEL_ORGANISM_MISMATCH");
+    }
+
+    private static boolean fits(MicroOrganism organism, MicroAstPanel panel) {
+        return Objects.equals(organism.getSusceptibilityProtocol(), panel.getSusceptibilityProtocol())
+                && (panel.getOrganismGroup() == null || panel.getOrganismGroup().isBlank()
+                        || Objects.equals(organism.getOrganismGroup(), panel.getOrganismGroup()));
     }
 
     private MicroAstPanelAssignment insert(String isolateId, MicroAstPanel panel, String provenance, String actor) {
