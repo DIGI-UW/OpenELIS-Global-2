@@ -220,7 +220,7 @@ export default function CaseAstWorkspace({
     setBusy(true);
     setError(false);
     try {
-      const { adjustPanel, label, ...request } = draft;
+      const { adjustPanel, label, panelId, ...request } = draft;
       if (draft.action === "resolve") {
         const { antibioticId, evidenceFingerprint, interpretation, reason } =
           draft;
@@ -237,6 +237,9 @@ export default function CaseAstWorkspace({
             detail.id,
             {
               ...request,
+              ...(["start", "assign"].includes(draft.action)
+                ? { panelId }
+                : {}),
               lotSelections: Object.values(selectedLots),
               rawValue:
                 draft.action === "reading" ? Number(draft.rawValue) : null,
