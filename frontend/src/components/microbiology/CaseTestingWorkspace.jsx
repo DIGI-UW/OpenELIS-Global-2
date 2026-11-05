@@ -813,7 +813,7 @@ export default function CaseTestingWorkspace({
                         : ""
                     }
                     service={service}
-                    isReadOnly={!detail.canWrite}
+                    isReadOnly={!detail.canLogCritical}
                     onCaseUpdated={onCaseChanged}
                   />
                 )}
