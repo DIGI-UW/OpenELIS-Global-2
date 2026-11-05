@@ -107,6 +107,8 @@ services:
         # checksum files. The container manages its own /var/lib/.../configuration.
         - ./volume/branding:/var/lib/openelis-global/branding
         - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+        # Installed modules (CI mounts the example module here once it is built)
+        - ./volume/modules:/var/lib/openelis-global/modules:ro
     secrets:
         - source: common.properties
     healthcheck:

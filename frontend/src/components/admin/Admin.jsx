@@ -63,6 +63,7 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import ModulesAdminPage from "../../modules/ModulesAdminPage";
 import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
 import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
@@ -374,6 +375,7 @@ function Admin() {
         path={`${path}/SampleAcceptanceChecklist`}
         component={SampleAcceptanceChecklistSetup}
       />
+      <Route path={`${path}/modules`} component={ModulesAdminPage} />
       <Route
         path={path}
         exact

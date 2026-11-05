@@ -61,6 +61,8 @@ services:
       - configuration-data:/var/lib/openelis-global/configuration
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
       - ../../volume/translation:/var/lib/openelis-global/translation:ro
+      # Module JARs for local development: drop a module into volume/modules and restart the webapp
+      - ../../volume/modules:/var/lib/openelis-global/modules:ro
     secrets:
       - source: datasource.password
       - source: common.properties
