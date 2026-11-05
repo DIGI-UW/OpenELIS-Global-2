@@ -897,6 +897,30 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void organismGroupReloadMovesTheDefaultPanelWithTheGroups() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.54", "REGROUP");
+        load(fixture);
+        var organism = organism("Regroup organism " + suffix());
+        var other = organism("Regroup organism " + suffix());
+        String first = "Regroup first " + suffix();
+        String second = "Regroup second " + suffix();
+        writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + first + "\n" + other.getDisplayName()
+                + ",,," + second + "\n");
+        assertFalse(reloadOrganismGroups(false).hasErrors());
+        writePanels("panelName,antibioticWhonetCode,defaultFor\nSynthetic first panel REGROUP," + fixture.antibiotic
+                + "," + first + "\nSynthetic second panel REGROUP," + fixture.antibiotic + "," + second + "\n");
+        assertFalse(reloadPanels(false).hasErrors());
+
+        writeOrganismGroups(GROUPS_HEADER + other.getDisplayName() + ",,," + first + "\n" + organism.getDisplayName()
+                + ",,," + second + "\n");
+        var result = reloadOrganismGroups(false);
+
+        assertFalse(result.toString(), result.hasErrors());
+        assertEquals(panels.findCurrentByNameIgnoreCase("Synthetic second panel REGROUP").getId(),
+                organisms.get(organism.getId()).orElseThrow().getDefaultAstPanelId());
+    }
+
+    @Test
     public void organismGroupFileListsEveryUnknownOrganismWithItsLineAndSavesNothing() throws Exception {
         var fixture = new ReferencePackageFixture("2099.31", "GROUPBAD");
         load(fixture);
