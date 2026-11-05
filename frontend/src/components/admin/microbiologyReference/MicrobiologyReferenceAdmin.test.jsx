@@ -159,6 +159,8 @@ describe("microbiology reference administration", () => {
 
     expect(await screen.findByText("Escherichia coli")).toBeInTheDocument();
     expect(screen.getByText("Laboratory groups")).toBeInTheDocument();
+    expect(screen.getByText("Usually significant")).toBeInTheDocument();
+    expect(screen.queryByText("USUALLY")).not.toBeInTheDocument();
     expect(
       screen.getByText("Enterobacterales non-ESCPPM; UTI agents"),
     ).toBeInTheDocument();
@@ -173,6 +175,27 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setQuery).toHaveBeenLastCalledWith({ edit: "new" });
+  });
+
+  it("marks the organism fields the server requires", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+
+    renderPage(
+      <ReferenceDataPage
+        definition={REFERENCE_DEFINITIONS.organisms}
+        query={{ ...query, edit: "new" }}
+        setQuery={vi.fn()}
+      />,
+    );
+
+    for (const name of ["WHONET code", "Initial significance"]) {
+      const label = (await screen.findAllByText(name)).find((node) =>
+        node.closest("label"),
+      );
+      expect(
+        label.closest("label").querySelector(".requiredlabel"),
+      ).not.toBeNull();
+    }
   });
 
   it("returns focus to the exact reference command when the editor closes", async () => {

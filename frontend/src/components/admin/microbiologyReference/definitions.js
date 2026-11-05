@@ -68,6 +68,7 @@ export const REFERENCE_DEFINITIONS = {
         key: "initialSignificance",
         label: "microbiology.admin.field.significance",
         type: "select",
+        required: true,
         options: [
           option("USUALLY", "microbiology.admin.significance.usually"),
           option("POSSIBLE", "microbiology.admin.significance.possible"),
