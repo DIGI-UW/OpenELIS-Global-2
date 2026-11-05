@@ -12,7 +12,21 @@ const renderSummary = (props, localeMessages = messages) =>
     </IntlProvider>,
   );
 
+vi.mock("./MicrobiologyTime", () => ({ labTimeZone: () => "UTC" }));
 describe("CultureSetSummary", () => {
+  it("keeps collection time in the lab zone when the browser uses another zone", () => {
+    renderSummary({
+      specimens: [
+        {
+          id: 1,
+          collectedInSets: true,
+          cultureSetNumber: 1,
+          collectionDate: "2026-10-23T16:00:00Z",
+        },
+      ],
+    });
+    expect(screen.getByText(/4:00 PM/)).toBeVisible();
+  });
   it("counts sets and bottles as two separately pluralized phrases", () => {
     renderSummary({
       specimens: [

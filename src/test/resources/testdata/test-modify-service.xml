@@ -116,8 +116,8 @@
         test_result_type="N" hl7_value="NM" lastupdated="2023-11-01 00:00:00" />
 
     <test_result id="1" test_id="1" tst_rslt_type="N"
-        value="7.5" significant_digits="2" sort_order="1" is_active="true"
-        is_quantifiable="false" is_normal="true"
+        value="7.5" reporting_decimal_places="2" sort_order="1"
+        is_active="true" is_quantifiable="false" is_normal="true"
         lastupdated="2025-01-01 00:00:00" />
 
     <result_limits id="1" test_id="1" test_result_type_id="1"

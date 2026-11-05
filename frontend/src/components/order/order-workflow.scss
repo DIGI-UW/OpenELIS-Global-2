@@ -963,6 +963,29 @@
 
 /* Sample & Test Section */
 
+.micro-sample-callout {
+  margin-top: 1rem;
+  max-inline-size: none;
+}
+
+.micro-sample-note__line {
+  display: block;
+}
+
+.micro-sample-note__results {
+  margin-top: 0.5rem;
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+}
+
+.micro-sample-note__site {
+  display: block;
+}
+
+.micro-test-tag {
+  margin-inline-start: 0.5rem;
+}
+
 .sample-card {
   margin-bottom: 1.5rem;
   padding: 1rem;

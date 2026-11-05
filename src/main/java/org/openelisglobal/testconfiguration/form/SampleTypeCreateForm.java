@@ -127,4 +127,14 @@ public class SampleTypeCreateForm extends BaseForm {
     public void setActive(Boolean active) {
         this.active = active;
     }
+
+    private Boolean microbiologyIsolate;
+
+    public Boolean getMicrobiologyIsolate() {
+        return microbiologyIsolate;
+    }
+
+    public void setMicrobiologyIsolate(Boolean value) {
+        microbiologyIsolate = value;
+    }
 }

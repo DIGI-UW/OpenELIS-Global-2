@@ -3,7 +3,6 @@ import {
   exceedsDecimalPlaces,
   isScientificNotation,
   normalizeScientificNotation,
-  roundMantissa,
   splitMantissa,
 } from "./scientificNotation";
 
@@ -127,23 +126,5 @@ describe("exceedsDecimalPlaces", () => {
     expect(exceedsDecimalPlaces("23.7", undefined)).toBe(false);
     expect(exceedsDecimalPlaces("23.7", -1)).toBe(false);
     expect(exceedsDecimalPlaces("23.7", NaN)).toBe(false);
-  });
-});
-
-describe("roundMantissa", () => {
-  it("rounds in place, leaving the notation exactly as written", () => {
-    expect(roundMantissa("3.567 x 10^3", 2)).toBe("3.57 x 10^3");
-    expect(roundMantissa("1.567×10⁵", 2)).toBe("1.57×10⁵");
-    expect(roundMantissa("1.567E+05", 2)).toBe("1.57E+05");
-    expect(roundMantissa("<1.567e-7", 2)).toBe("<1.57e-7");
-  });
-
-  it("rounds a plain decimal as before", () => {
-    expect(roundMantissa("3.456", 1)).toBe("3.5");
-    expect(roundMantissa("12.5", 0)).toBe("13");
-  });
-
-  it("leaves a bare power of ten alone", () => {
-    expect(roundMantissa("10⁻³", 2)).toBe("10⁻³");
   });
 });

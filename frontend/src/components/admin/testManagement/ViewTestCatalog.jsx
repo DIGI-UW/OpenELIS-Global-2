@@ -161,9 +161,9 @@ const TestCatalog = () => {
       description: <FormattedMessage id="description.uom" />,
     },
     {
-      id: "significantDigits",
-      field: intl.formatMessage({ id: "field.significantDigits" }),
-      description: <FormattedMessage id="description.significantDigits" />,
+      id: "reportingDecimalPlaces",
+      field: intl.formatMessage({ id: "field.reportingDecimalPlaces" }),
+      description: <FormattedMessage id="description.reportingDecimalPlaces" />,
     },
     {
       id: "selectValues",
@@ -256,9 +256,9 @@ const TestCatalog = () => {
         value: item.uom,
       },
       item.resultType == "N" && {
-        id: `${item.id}-significantDigits`,
-        field: intl.formatMessage({ id: "field.significantDigits" }),
-        value: item.significantDigits,
+        id: `${item.id}-reportingDecimalPlaces`,
+        field: intl.formatMessage({ id: "field.reportingDecimalPlaces" }),
+        value: item.reportingDecimalPlaces,
       },
       item.loinc && {
         id: `${item.id}-loinc`,

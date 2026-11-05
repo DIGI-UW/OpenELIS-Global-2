@@ -43,6 +43,7 @@ import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.reports.action.implementation.ExportStudyProjectByDate;
 import org.openelisglobal.reports.action.implementation.ExportTrendsByDate;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.role.service.RoleService;
@@ -185,6 +186,16 @@ public class DisplayListController extends BaseRestController {
         }
 
         return projects;
+    }
+
+    /** The studies the general export by date can write (CIStudyExport). */
+    @GetMapping(value = "studyprojects", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getStudyExportProjects() {
+        List<IdValuePair> projectList = new ArrayList<>();
+        new ExportStudyProjectByDate().getProjectList()
+                .forEach(project -> projectList.add(new IdValuePair(project.getId(), project.getProjectName())));
+        return projectList;
     }
 
     @GetMapping(value = "trendsprojects", produces = MediaType.APPLICATION_JSON_VALUE)

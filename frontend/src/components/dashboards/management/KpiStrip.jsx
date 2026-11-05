@@ -34,6 +34,7 @@ const TILES = [
   {
     key: "medianTat",
     labelKey: "label.mgmt.kpi.medianTat",
+    tooltipKey: "label.mgmt.kpi.medianTat.tooltip",
     primary: (v) => formatTat(v),
     delta: (v, prior) =>
       v != null && prior != null
@@ -80,6 +81,7 @@ const KpiStrip = ({ scope }) => {
             key={tile.key}
             testId={`mgmt-kpi-${tile.key}`}
             titleKey={tile.labelKey}
+            tooltipKey={tile.tooltipKey}
             accent={tone === "gray" ? "blue" : tone}
             loading={!query.data}
             primary={tile.primary(kpi?.value, intl)}
@@ -87,7 +89,9 @@ const KpiStrip = ({ scope }) => {
             targetLine={
               delta
                 ? intl.formatMessage({ id: "label.mgmt.kpi.vsPrior" })
-                : null
+                : kpi?.value != null
+                  ? intl.formatMessage({ id: "label.mgmt.kpi.noPrior" })
+                  : null
             }
             thresholdLine={
               thresholds

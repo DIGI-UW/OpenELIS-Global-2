@@ -1,3 +1,5 @@
+import { labTimeZone } from "./MicrobiologyTime";
+import { searchCases } from "./CaseWorkspaceService";
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Download,
@@ -19,6 +21,7 @@ import {
   OverflowMenuItem,
   Pagination,
   Select,
+  MultiSelect,
   SelectItem,
   Stack,
   Switch,
@@ -238,10 +241,11 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
     location.search,
     referenceNow,
   );
-  const canonicalWorklistUrl = getMicrobiologyWorklistUrl(
-    filters,
-    referenceNow,
-  );
+  const scopeFiltersReset =
+    new URLSearchParams(location.search).get("scopeFiltersReset") === "true";
+  const canonicalWorklistUrl =
+    getMicrobiologyWorklistUrl(filters, referenceNow) +
+    (scopeFiltersReset ? "&scopeFiltersReset=true" : "");
   const isAstGrain = filters.grain === "ast";
   const canExportWhonet = [
     Roles.GLOBAL_ADMIN,
@@ -273,6 +277,18 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   });
   const [hasLoaded, setHasLoaded] = useState(false);
   const [refreshGeneration, setRefreshGeneration] = useState(0);
+  const [labUnits, setLabUnits] = useState([]);
+  useEffect(() => {
+    let live = true;
+    searchCases("pageSize=1")
+      .then((data) => {
+        if (live) setLabUnits(data.labUnits || []);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const { current: worklist, previousRows, newPositiveRowIds } = worklistState;
@@ -393,6 +409,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   };
 
   const hasFilters = Boolean(
+    filters.labUnitIds.length > 0 ||
     filters.status ||
     filters.stage ||
     filters.urgency ||
@@ -565,6 +582,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                     day: "2-digit",
                     hour: "2-digit",
                     minute: "2-digit",
+                    timeZone: labTimeZone(),
                   })
                 : intl.formatMessage({
                     id: "microbiology.worklist.notStarted",
@@ -702,13 +720,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
         />
         <header className="microbiology-worklist__header">
           <div>
-            <p className="microbiology-worklist__eyebrow">
-              {intl.formatMessage({ id: "microbiology.worklist.sharedQueue" })}
-            </p>
             <h1>{intl.formatMessage({ id: "microbiology.worklist.title" })}</h1>
-            <p>
-              {intl.formatMessage({ id: "microbiology.worklist.subtitle" })}
-            </p>
           </div>
           <div className="microbiology-worklist__refresh-controls">
             {lastUpdatedAt !== null && (
@@ -739,6 +751,15 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
             </Tag>
           </div>
         </header>
+        {scopeFiltersReset && (
+          <InlineNotification
+            kind="info"
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "microbiology.worklist.scopeFiltersReset",
+            })}
+          />
+        )}
         <div className="microbiology-worklist__grain-control">
           <ContentSwitcher
             selectedIndex={isAstGrain ? 1 : 0}
@@ -749,7 +770,6 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 status: "",
                 stage: "",
                 due: "",
-                q: "",
               })
             }
           >
@@ -766,6 +786,43 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
               })}
             />
           </ContentSwitcher>
+          <Stack orientation="horizontal" gap={3}>
+            {[
+              { grain: "cases", label: "microbiology.worklist.caseSearch" },
+              { grain: "bench", label: "microbiology.worklist.benchActions" },
+            ].map(({ grain, label }) => (
+              <Button
+                key={label}
+                size="sm"
+                kind="tertiary"
+                onClick={() => {
+                  const next = new URLSearchParams(location.search);
+                  const keys = [
+                    "from",
+                    "to",
+                    "status",
+                    "stage",
+                    "due",
+                    "specimen",
+                    "organism",
+                    "origin",
+                    "significance",
+                  ];
+                  if (keys.some((key) => next.has(key)))
+                    next.set("scopeFiltersReset", "true");
+                  keys.concat("page").forEach((key) => next.delete(key));
+                  if (grain) next.set("grain", grain);
+                  else next.delete("grain");
+                  history.push({
+                    pathname: location.pathname,
+                    search: next.toString(),
+                  });
+                }}
+              >
+                {intl.formatMessage({ id: label })}
+              </Button>
+            ))}
+          </Stack>
         </div>
         {hasLoadError && (
           <InlineNotification
@@ -785,16 +842,14 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
         >
           <div className="microbiology-worklist__section-heading">
             <div>
-              <h2 id="microbiology-worklist-summary-heading">
+              <h2
+                id="microbiology-worklist-summary-heading"
+                className="cds--visually-hidden"
+              >
                 {intl.formatMessage({
                   id: "microbiology.worklist.summary.title",
                 })}
               </h2>
-              <p>
-                {intl.formatMessage({
-                  id: "microbiology.worklist.summary.hint",
-                })}
-              </p>
             </div>
           </div>
           <div className="microbiology-worklist__summary-grid">
@@ -895,13 +950,15 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 </p>
               </div>
             </div>
-            <MicrobiologySurveillanceFilters
-              state={filters}
-              filterOptions={worklist.filterOptions}
-              onChange={(changes) => updateFilters(changes)}
-              now={referenceNow}
-              idPrefix="microbiology-worklist-surveillance"
-            />
+            <>
+              <MicrobiologySurveillanceFilters
+                state={filters}
+                filterOptions={worklist.filterOptions}
+                onChange={(changes) => updateFilters(changes)}
+                now={referenceNow}
+                idPrefix="microbiology-worklist-surveillance"
+              />
+            </>
           </section>
         )}
         <section
@@ -919,7 +976,10 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
               disabled={!hasFilters}
               onClick={() =>
                 history.push(
-                  getMicrobiologyWorklistUrl({ grain: filters.grain }),
+                  getMicrobiologyWorklistUrl(
+                    { grain: filters.grain },
+                    referenceNow,
+                  ),
                 )
               }
             >
@@ -927,6 +987,22 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
             </Button>
           </div>
           <div className="microbiology-worklist__filter-grid">
+            <MultiSelect
+              id="ast-lab-unit"
+              titleText={intl.formatMessage({
+                id: "microbiology.case.labUnit",
+              })}
+              label={intl.formatMessage({ id: "microbiology.case.allUnits" })}
+              items={labUnits}
+              itemToString={(u) => u?.value || ""}
+              selectedItems={(filters.labUnitIds || []).map(
+                (id) => labUnits.find((u) => u.id === id) || { id, value: id },
+              )}
+              onChange={({ selectedItems }) =>
+                updateFilters({ labUnitIds: selectedItems.map((u) => u.id) })
+              }
+            />
+
             {!isAstGrain && (
               <Select
                 id="microbiology-worklist-stage-filter"
@@ -1396,6 +1472,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                                                     day: "2-digit",
                                                     hour: "2-digit",
                                                     minute: "2-digit",
+                                                    timeZone: labTimeZone(),
                                                   },
                                                 )}
                                               </span>
@@ -1439,7 +1516,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                                                   isAstGrain &&
                                                   row.astStatus === "REVIEWED"
                                                     ? "microbiology.worklist.viewReviewedAst"
-                                                    : "microbiology.worklist.openCase",
+                                                    : "common.openCase",
                                               })}
                                               onClick={() =>
                                                 history.push(caseUrl)
@@ -1639,6 +1716,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                               day: "2-digit",
                               hour: "2-digit",
                               minute: "2-digit",
+                              timeZone: labTimeZone(),
                             })}
                           </span>
                         </div>

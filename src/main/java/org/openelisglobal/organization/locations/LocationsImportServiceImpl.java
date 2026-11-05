@@ -442,7 +442,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             rows.add(new PlanRow(fileName, lineNumber, outcome, "level " + levelText, null, name, null, reason,
                     List.of(), List.of(), null, false, null));
         }
-        return new Plan(null, null, null, counts, rows, List.of(), 0, List.of(), List.of());
+        List<String> ignoredColumns = new ArrayList<>();
+        for (int i = 0; i < headers.length; i++) {
+            String header = headers[i] == null ? "" : headers[i].trim();
+            if (i != levelIndex && i != nameIndex && !header.isEmpty()) {
+                ignoredColumns.add(header);
+            }
+        }
+        return new Plan(null, null, null, counts, rows, List.of(), 0, List.of(), ignoredColumns);
     }
 
     private Plan previewValues(InputStream in, String fileName) throws IOException {

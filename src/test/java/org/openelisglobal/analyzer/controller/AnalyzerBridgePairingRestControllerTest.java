@@ -44,7 +44,7 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
         org.mockito.Mockito.reset(pairing);
         when(pairing.getStatus()).thenReturn(new AnalyzerBridgePairingService.Status("https://bridge:8443", true,
                 "ab".repeat(32), "cd".repeat(32), Instant.parse("2026-10-08T12:00:00Z"), false,
-                AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE));
+                AnalyzerBridgePairingService.PinCheck.OTHER_CERTIFICATE, true));
     }
 
     @Test

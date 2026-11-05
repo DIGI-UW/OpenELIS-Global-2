@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+ <changeSet id="142-amr-clinical-context" author="openelis">
+  <addColumn schemaName="clinlims" tableName="micro_ast_run">
+   <column name="clinical_context" type="varchar(40)"/>
+  </addColumn>
+  <addColumn schemaName="clinlims" tableName="micro_breakpoint_rule">
+   <column name="clinical_context" type="varchar(40)"/>
+  </addColumn>
+  <rollback>
+   <sql splitStatements="false"><![CDATA[
+    DO $$ BEGIN
+     IF EXISTS (SELECT 1 FROM clinlims.micro_ast_run WHERE clinical_context IS NOT NULL)
+        OR EXISTS (SELECT 1 FROM clinlims.micro_breakpoint_rule WHERE clinical_context IS NOT NULL) THEN
+      RAISE EXCEPTION 'Cannot discard clinical indication from existing AST evidence or breakpoint rules';
+     END IF;
+    END $$;
+   ]]></sql>
+   <dropColumn schemaName="clinlims" tableName="micro_breakpoint_rule" columnName="clinical_context"/>
+   <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="clinical_context"/>
+  </rollback>
+ </changeSet>
+</databaseChangeLog>
