@@ -74,7 +74,8 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
         executeDataSetWithStateManagement("testdata/component-selections.xml");
         jdbcTemplate.update("INSERT INTO clinlims.status_of_sample (id, description, code, status_type, name,"
                 + " is_active, lastupdated) VALUES (9406, 'Finalized', '6', 'ANALYSIS', 'Finalized', 'Y', NOW()),"
-                + " (9407, 'Testing finished', '3', 'ORDER', 'Testing finished', 'Y', NOW())");
+                + " (9407, 'Testing finished', '3', 'ORDER', 'Testing finished', 'Y', NOW()),"
+                + " (9408, 'Testing Started', '96', 'ORDER', 'Testing Started', 'Y', NOW())");
         statusService.refreshCache();
         authenticateAs("testUser");
         userService.saveUserLabUnitRoles(systemUserService.get("1"), Map.of("AllLabUnits", Set.of("9400")), "1");
@@ -113,6 +114,21 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
         assertEquals(List.of("9301", "9302", "9303"), jdbcTemplate.queryForList(
                 "SELECT value FROM clinlims.result WHERE analysis_id = 100 ORDER BY value", String.class));
         assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("100").getStatusId());
+    }
+
+    @Test
+    public void savingAPartOnResultsEntryEchoesOnlyThatPartsSelections() throws Exception {
+        String testDate = org.openelisglobal.common.util.DateUtil.formatDateAsText(new java.util.Date()) + " 09:15";
+        String body = "{\"testResult\":{\"analysisId\":\"100\",\"accessionNumber\":\"" + ACCESSION
+                + "\",\"resultId\":\"101\",\"testId\":\"1\",\"testResultComponentId\":\"vms-size\","
+                + "\"resultType\":\"M\",\"multiSelectResultValues\":\"{\\\"1\\\":\\\"9302,9304\\\"}\","
+                + "\"testDate\":\"" + testDate + "\",\"isModified\":true,\"valid\":true,\"reportable\":true,"
+                + "\"analysisLastupdated\":\"" + analysisService.get("100").getLastupdated().getTime()
+                + "\",\"note\":\"\"}}";
+
+        mockMvc.perform(post("/rest/results-entry/analysis/100/result").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultValue").value("VMS Large,VMS Small"));
     }
 
     private org.springframework.test.web.servlet.ResultActions release(String resultId) throws Exception {
