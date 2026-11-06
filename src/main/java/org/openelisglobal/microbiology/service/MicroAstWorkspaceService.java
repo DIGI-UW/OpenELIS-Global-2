@@ -81,7 +81,9 @@ public class MicroAstWorkspaceService {
                             choice -> new MicroAstWorkspaceForm.Choice(choice.getAntibioticId(), choice.getReadingId()))
                             .toList();
                     return new MicroAstWorkspaceForm.Isolate(i.getId(), i.getIsolateLabel(), o.getDisplayName(),
-                            o.getSusceptibilityProtocol(), catalog, assigned, responses.runs(i.getId()), selected);
+                            o.getSusceptibilityProtocol(),
+                            "NTM".equals(o.getSusceptibilityProtocol()) ? null : o.getDefaultAstPanelId(), catalog,
+                            assigned, responses.runs(i.getId()), selected);
                 }).toList();
         form.dst = dst.evaluate(caseId);
         return form;

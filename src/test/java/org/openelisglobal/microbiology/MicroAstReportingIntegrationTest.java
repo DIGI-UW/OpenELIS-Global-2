@@ -1513,6 +1513,20 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
                 assignments.getAssignments(isolate).stream().map(MicroAstPanelAssignment::getPanelId).toList());
     }
 
+    @Test
+    public void theWorkspaceNamesTheOrganismsCurrentDefaultPanel() {
+        var current = panel("Enterobacterales");
+        reference.organism().setDefaultAstPanelId(current.getId());
+        organisms.update(reference.organism());
+        em.flush();
+        em.clear();
+        var shown = workspace.get(c.getId(), writer).isolates.stream().filter(i -> i.id().equals(isolate)).findFirst()
+                .orElseThrow();
+        assertEquals(current.getId(), shown.defaultPanelId());
+        assertEquals(List.of(reference.panel().getId()),
+                shown.assignments().stream().map(MicroAstWorkspaceForm.Assignment::panelId).toList());
+    }
+
     private MicroAstPanel panel(String organismGroup) {
         var p = new MicroAstPanel();
         p.setName("Panel " + UUID.randomUUID());
