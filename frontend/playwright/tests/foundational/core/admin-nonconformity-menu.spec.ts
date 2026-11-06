@@ -87,6 +87,11 @@ test("the Non-Conformity menu can be switched off and back on with its entries",
 }, testInfo) => {
   // Four full application loads, each behind the session check.
   testInfo.setTimeout(90_000);
+  const consoleErrors: string[] = [];
+  page.on("pageerror", (error) => consoleErrors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
   const original = await (await page.request.get(SETTINGS)).json();
   const active = page.locator("#menu_nonconformity_checkbox");
   // Carbon hides the checkbox input; the label is the clickable surface.
@@ -133,4 +138,5 @@ test("the Non-Conformity menu can be switched off and back on with its entries",
   } finally {
     await apiPost(page, "/rest/menu/menu_nonconformity", original);
   }
+  expect(consoleErrors).toEqual([]);
 });
