@@ -395,7 +395,6 @@ jobs:
       DEPLOY_USER: ${{ vars.TESTING_VM_USER || 'ubuntu' }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
       SITE_PATH: ${{ vars.TESTING_SITE_PATH || '/home/ubuntu/openelis-testing' }}
-      REMOTE_RUN: /tmp/openelis-deploy-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout the application's deployment files
         uses: actions/checkout@v7
@@ -453,6 +452,10 @@ jobs:
           ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
       - name: Deploy published images and require readiness
         run: |
+          set -euo pipefail
+          REMOTE_RUN="$(ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" 'umask 077; mktemp -d /tmp/openelis-deploy.XXXXXXXXXX')"
+          [[ "$REMOTE_RUN" =~ ^/tmp/openelis-deploy\.[A-Za-z0-9]{10}$ ]]
+          echo "REMOTE_RUN=$REMOTE_RUN" >> "$GITHUB_ENV"
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $REMOTE_RUN/diagnostics"
           scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json deploy-bundle.tgz .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"
           set -o pipefail
@@ -461,7 +464,7 @@ jobs:
         if: always()
         run: |
           mkdir -p diagnostics
-          if [ -f ~/.ssh/id_deploy ]; then
+          if [ -f ~/.ssh/id_deploy ] && [[ "${REMOTE_RUN:-}" =~ ^/tmp/openelis-deploy\.[A-Za-z0-9]{10}$ ]]; then
             scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" -r "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/diagnostics/." diagnostics/ || true
           fi
           if [ -f deployment.log ]; then cp deployment.log diagnostics/; fi
@@ -473,6 +476,13 @@ jobs:
           path: diagnostics/
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Remove the deployment working directory
+        if: always()
+        run: |
+          if [ -f ~/.ssh/id_deploy ] && [[ "${REMOTE_RUN:-}" =~ ^/tmp/openelis-deploy\.[A-Za-z0-9]{10}$ ]]; then
+            ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "rm -rf -- '$REMOTE_RUN'"
+          fi
 
   deployment-summary:
     name: Explain deployment outcome

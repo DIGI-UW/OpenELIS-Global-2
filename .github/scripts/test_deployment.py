@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import os
 import secrets
 from pathlib import Path
 import shutil
@@ -11,7 +12,7 @@ import unittest
 from unittest.mock import patch
 import yaml
 
-import test_readiness
+from test_deployment_tls import HttpsServer
 
 spec = importlib.util.spec_from_file_location("deployment", Path(__file__).with_name("deploy-published-testing.py"))
 deployment = importlib.util.module_from_spec(spec)
@@ -53,7 +54,7 @@ class DeploymentTest(unittest.TestCase):
         self.request = {"manifest": {"appSha": self.sha, "appBranch": "develop", "images": {
             service: "itechuw/" + repository + "@sha256:" + "b" * 64 for service, repository in deployment.SERVICES.items()}},
             "deploy_path": str(self.root), "run_id": "36125008939-1",
-            "readiness": {"url": "http://127.0.0.1:1/health", "timeout": 0.02, "interval": 0.01}}
+            "readiness": {"url": "https://localhost:1/health", "timeout": 0.02, "interval": 0.01}}
         self.wrong_image = False
         self.initializer_state = {"Running": False, "Status": "exited", "ExitCode": 0}
         self.initializer_image = "sha256:actual"
@@ -62,9 +63,12 @@ class DeploymentTest(unittest.TestCase):
         self.commands = []
         self.port_owner = deployment.PROJECT
         self.delivery = []
+        self.seed_environment = None
 
     def command(self, args, _cwd, capture=False, **_kwargs):
         self.commands.append(args)
+        if args[:1] == ["env"]:
+            self.seed_environment = _kwargs.get("env")
         if args[:2] == ["git", "ls-remote"]:
             return self.branch_head + "\trefs/heads/develop\n"
         if args[:2] == ["docker", "ps"]:
@@ -95,10 +99,13 @@ class DeploymentTest(unittest.TestCase):
             deployment.deploy(self.request, self.diagnostics, self.bundle)
 
     def ready_health(self):
-        test_readiness.ReadinessTest.setUpClass()
-        self.addCleanup(test_readiness.ReadinessTest.tearDownClass)
-        test_readiness.ReadinessTest.server.response = (200, "application/json", b'{"status": "UP"}')
-        self.request["readiness"].update(url=test_readiness.ReadinessTest.url, timeout=1)
+        server = HttpsServer().__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        trust = patch.dict(os.environ, {"SSL_CERT_FILE": str(server.cert)})
+        trust.start()
+        self.addCleanup(trust.stop)
+        self.health_url = server.url
+        self.request["readiness"].update(url=server.url + "/health", timeout=1)
 
     def compose_calls(self, verb):
         return [args for args in self.commands if args[:2] == ["docker", "compose"] and verb in args]
@@ -161,6 +168,31 @@ class DeploymentTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 deployment.deploy(self.request, self.diagnostics, self.bundle)
             command.assert_not_called()
+
+    def test_unverified_deployment_is_rejected_before_any_state_changes(self):
+        for contract in ({"url": "http://localhost/health"}, {"insecure": True}):
+            with self.subTest(contract=contract), patch.object(deployment, "run") as command:
+                request = {**self.request, "readiness": {**self.request["readiness"], **contract}}
+                with self.assertRaisesRegex(ValueError, "verified HTTPS"):
+                    deployment.deploy(request, self.diagnostics, self.bundle)
+                command.assert_not_called()
+                self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
+
+    def test_seed_process_requires_verification_and_uses_the_same_trust(self):
+        self.ready_health()
+        with patch.dict(os.environ, {"DEV_STACK_TLS": "self-signed"}):
+            self.deploy()
+        self.assertEqual("verified", self.seed_environment["DEV_STACK_TLS"])
+        self.assertEqual(os.environ["SSL_CERT_FILE"], self.seed_environment["CURL_CA_BUNDLE"])
+
+    def test_deployment_lock_belongs_to_the_installation_state_directory(self):
+        request_path = self.root / "request.json"
+        request_path.write_text(json.dumps(self.request))
+        with patch.object(deployment.sys, "argv", ["deploy", str(request_path)]), \
+                patch.object(deployment, "deploy") as deploy:
+            self.assertEqual(0, deployment.main())
+        deploy.assert_called_once()
+        self.assertTrue((self.root / ".openelis-ci/deploy.lock").is_file())
 
     def test_old_build_cannot_overwrite_a_newer_deployment(self):
         self.branch_head = "c" * 40
@@ -379,13 +411,12 @@ class DeploymentTest(unittest.TestCase):
         self.deploy()
         release = self.root / "releases" / self.sha
         seed = next(args for args in self.commands if args[:1] == ["env"])
-        self.assertIn("BASE_URL=http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port), seed)
+        self.assertIn("BASE_URL=" + self.health_url, seed)
         self.assertIn("MOCK_URL=" + deployment.DEFAULT_MOCK_URL, seed)
         self.assertEqual(["bash", str(release / "projects/analyzer-harness/seed-analyzers.sh"),
                           "--ensure-connections", "--no-mock-network"], seed[-4:])
         self.assertLess(self.commands.index(self.compose_calls("up")[0]), self.commands.index(seed))
-        self.assertEqual([("http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port)
-                           + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],
+        self.assertEqual([(self.health_url + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],
                          self.delivery)
         target = json.loads(self.target.read_text())
         self.assertEqual(self.sha, target["appSha"])

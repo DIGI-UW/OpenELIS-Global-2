@@ -200,14 +200,22 @@ def smoke_accession(run_id):
     return "DEV019" + digits.zfill(14)[-14:]
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, url):
+        return None
+
+
 def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, auth_origin=None):
     headers = {"Content-Type": "application/json"}
-    if auth_origin is None or url.startswith(auth_origin + "/"):
+    if auth_origin is not None and url.startswith(auth_origin + "/"):
+        if urllib.parse.urlsplit(url).scheme != "https":
+            raise ValueError("Deployment credentials require verified HTTPS")
         token = base64.b64encode(f"{username}:{password}".encode()).decode()
         headers["Authorization"] = "Basic " + token
     request = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),
                                      headers=headers)
-    with urllib.request.urlopen(request, timeout=30, context=ssl._create_unverified_context()) as response:
+    opener = urllib.request.build_opener(NoRedirect(), urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+    with opener.open(request, timeout=30) as response:
         return json.load(response)
 
 
@@ -287,6 +295,8 @@ def deploy(request, diagnostics, bundle):
     spec.loader.exec_module(readiness)
     contract = request["readiness"]
     readiness.validate_contract(**contract)
+    if urllib.parse.urlsplit(contract["url"]).scheme != "https" or contract.get("insecure"):
+        raise ValueError("Testing deployment requires verified HTTPS")
     site_dir = pathlib.Path(request["deploy_path"]).resolve()
     if not (site_dir / ".env").is_file():
         raise ValueError("The server must have an existing configured .env")
@@ -342,9 +352,12 @@ def deploy(request, diagnostics, bundle):
         write_json(diagnostics / "readiness.json", report)
         if not report["ready"]:
             raise RuntimeError("Application did not become ready; inspect deployment diagnostics")
+        seed_environment = {**os.environ, **settings, "DEV_STACK_TLS": "verified"}
+        if os.environ.get("SSL_CERT_FILE"):
+            seed_environment["CURL_CA_BUNDLE"] = os.environ["SSL_CERT_FILE"]
         run(["env", "BASE_URL=" + origin, "MOCK_URL=" + mock_url,
              "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network"],
-            release, env={**os.environ, **settings})
+            release, env=seed_environment)
         authenticated_http = functools.partial(http_json, username=settings["TEST_USER"],
                                                password=settings["TEST_PASS"], auth_origin=origin)
         delivery = verify_analyzer_delivery(origin + "/api/OpenELIS-Global/rest", mock_url,
@@ -380,7 +393,12 @@ def main():
     diagnostics.mkdir(exist_ok=True)
     try:
         request = json.loads(args.request.read_text(encoding="utf-8"))
-        with open("/tmp/openelis-testing-deploy.lock", "w", encoding="utf-8") as lock:
+        site_dir = pathlib.Path(request["deploy_path"]).resolve()
+        if not (site_dir / ".env").is_file():
+            raise ValueError("The server must have an existing configured .env")
+        state_dir = site_dir / ".openelis-ci"
+        state_dir.mkdir(mode=0o700, exist_ok=True)
+        with (state_dir / "deploy.lock").open("a", encoding="utf-8") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             deploy(request, diagnostics, run_dir / "deploy-bundle.tgz")
     except Exception as error:
