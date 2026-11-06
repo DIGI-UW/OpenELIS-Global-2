@@ -805,6 +805,7 @@ it("explains a run that can no longer be cancelled", async () => {
   const message = messages["microbiology.m6.error.AST_RUN_CANNOT_BE_CANCELLED"];
   expect(message).toBeDefined();
   expect(await within(modal).findByText(message)).toBeInTheDocument();
+  expect(screen.getAllByText(message)).toHaveLength(1);
 });
 
 it("the cancel-run dialog keeps the run unless Cancel run is chosen", async () => {
