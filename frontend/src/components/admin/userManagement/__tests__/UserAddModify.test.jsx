@@ -193,6 +193,55 @@ describe("UserAddModify", () => {
       ).toBe(true);
     });
 
+    it("keeps the role checkboxes of rows copied with Apply controlled", async () => {
+      let grants = {};
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback(user("qa_target", grants));
+        if (url.startsWith("/rest/users"))
+          return callback([{ id: "9", value: "Source,Grace" }]);
+        return callback(undefined);
+      });
+      postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) => {
+        grants = { [HEMATOLOGY]: [VALIDATION] };
+        cb({ forward: "redirect:/UnifiedSystemUser" });
+      });
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      try {
+        renderAt("/MasterListsPage/userEdit?ID=5-5&startingRecNo=1");
+        await waitFor(() =>
+          expect(document.getElementById("login-name")).toHaveValue(
+            "qa_target",
+          ),
+        );
+
+        await userEvent.type(
+          document.getElementById("copy-permissions"),
+          "Source",
+        );
+        await userEvent.click(await screen.findByText("Source,Grace"));
+        await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+        await waitFor(() =>
+          expect(rowSelect(HEMATOLOGY)).toHaveValue(HEMATOLOGY),
+        );
+        expect(document.getElementById(`7-${HEMATOLOGY}`)).toBeChecked();
+        expect(document.getElementById(`4-${HEMATOLOGY}`)).not.toBeChecked();
+        // The re-read lists the copied rows one render before their grants;
+        // a checkbox given `checked={undefined}` there turns uncontrolled,
+        // then controlled.
+        expect(
+          consoleError.mock.calls.filter(([message]) =>
+            String(message).includes("uncontrolled input to be controlled"),
+          ),
+        ).toEqual([]);
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
     it("never adds an All Lab Units row from Add New Permission", async () => {
       renderExisting("qa_heme", { [HEMATOLOGY]: [VALIDATION] });
       await waitFor(() =>
