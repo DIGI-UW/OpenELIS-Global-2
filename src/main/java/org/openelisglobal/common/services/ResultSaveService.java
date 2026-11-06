@@ -90,19 +90,16 @@ public class ResultSaveService {
                     // (and leftovers deleted). A multi-component analysis also holds
                     // the other components' results — deleting those here orphans
                     // their rows mid-save and their own update then fails.
+                    RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+                    String componentId = serviceBean.getTestResultComponentId() != null
+                            ? serviceBean.getTestResultComponentId()
+                            : scope.primaryComponentId(serviceBean.getTestId());
                     List<Result> existingResults = new ArrayList<>();
                     for (Result existingResult : resultService.getResultsByAnalysis(analysis)) {
-                        if (!TypeOfTestResultServiceImpl.ResultType
-                                .isMultiSelectVariant(existingResult.getResultType())) {
-                            continue;
+                        if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(existingResult.getResultType())
+                                && java.util.Objects.equals(scope.componentIdOf(existingResult), componentId)) {
+                            existingResults.add(existingResult);
                         }
-                        String existingComponentId = existingResult.getTestResult() == null ? null
-                                : existingResult.getTestResult().getComponentId();
-                        if (serviceBean.getTestResultComponentId() != null && existingComponentId != null
-                                && !serviceBean.getTestResultComponentId().equals(existingComponentId)) {
-                            continue;
-                        }
-                        existingResults.add(existingResult);
                     }
                     for (Object key : jsonResult.keySet()) {
                         getResultsForMultiSelect(results, existingResults, serviceBean, (String) key,
