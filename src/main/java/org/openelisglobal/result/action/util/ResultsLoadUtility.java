@@ -1122,14 +1122,20 @@ public class ResultsLoadUtility {
         if (result != null && result.getId() != null) {
             testItem.setResultId(result.getId());
         }
-        testItem.setResultValue(getFormattedResultValue(result));
-        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
-        testItem.setMultiSelectResultValues(component == null ? analysisService.getJSONMultiSelectResults(analysis)
-                : ResultServiceImpl.getJSONStringForMultiSelect(resultService.getResultsByAnalysis(analysis).stream()
+        List<Result> componentResults = component == null ? null
+                : resultService.getResultsByAnalysis(analysis).stream()
                         .filter(r -> r.getTestResult() == null || r.getTestResult().getComponentId() == null
                                 ? component.getIsPrimary()
                                 : component.getId().equals(r.getTestResult().getComponentId()))
-                        .collect(Collectors.toList())));
+                        .collect(Collectors.toList());
+        testItem.setResultValue(componentResults != null && result != null
+                && TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
+                        ? selectionNames(componentResults)
+                        : getFormattedResultValue(result));
+        testItem.setRawResultValue(result == null ? "" : StringUtil.blankIfNull(result.getEnteredValue()));
+        testItem.setMultiSelectResultValues(
+                componentResults == null ? analysisService.getJSONMultiSelectResults(analysis)
+                        : ResultServiceImpl.getJSONStringForMultiSelect(componentResults));
         testItem.setAnalysisStatusId(component == null ? analysisService.getStatusId(analysis)
                 : componentStatusId(analysisService.getStatusId(analysis), result));
         // Display type selection:
@@ -1365,6 +1371,13 @@ public class ResultsLoadUtility {
     private String getFormattedResultValue(Result result) {
         ResultService resultResultService = SpringContext.getBean(ResultService.class);
         return result != null ? resultResultService.formatResultForDisplay(result, false) : "";
+    }
+
+    private String selectionNames(List<Result> results) {
+        return results.stream()
+                .filter(r -> TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(r.getResultType())
+                        && !GenericValidator.isBlankOrNull(r.getValue()))
+                .map(r -> dictionaryService.getDataForId(r.getValue()).getDictEntry()).collect(Collectors.joining(","));
     }
 
     private List<IdValuePair> getAnyDictionaryValues(Result result) {
