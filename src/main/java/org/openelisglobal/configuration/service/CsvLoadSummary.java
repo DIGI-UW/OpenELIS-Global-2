@@ -110,8 +110,7 @@ public final class CsvLoadSummary {
     /**
      * The deepest non-blank message in a cause chain, so a skipped row names the
      * database's own complaint ("value too long for type character varying(10)")
-     * rather than the wrapper's ("could not execute batch"), without PostgreSQL's
-     * "ERROR: " severity prefix.
+     * rather than the wrapper's ("could not execute batch").
      */
     public static String reason(Throwable failure) {
         String message = null;

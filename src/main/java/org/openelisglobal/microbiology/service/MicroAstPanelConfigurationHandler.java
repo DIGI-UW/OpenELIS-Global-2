@@ -130,7 +130,10 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         return panels.getAll().stream().filter(p -> "Y".equals(p.getIsCurrent())).toList();
     }
 
-    /** Every entry of a panel in {@code lines} (panel id to line) must match. */
+    /**
+     * Fails when a defaultFor entry of a panel in {@code lines} (panel id to file
+     * line) matches no active organism.
+     */
     public void assignDefaults(Map<String, Integer> lines) {
         List<MicroAstPanel> claimants = currentPanels().stream()
                 .filter(p -> "Y".equals(p.getIsActive()) && p.getDefaultFor() != null)
