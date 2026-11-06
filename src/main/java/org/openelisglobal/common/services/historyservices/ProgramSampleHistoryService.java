@@ -213,33 +213,21 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
         if (!changes.trim().startsWith("<")) {
             return;
         }
-        // blank values first inserted so there is a value to compare against
-        // otherwise the update value is discarded
-        changeMap.put(STATUS_ATTRIBUTE, "");
+        // Since May 2026 the writer records every changed attribute, a blank old value
+        // included, so only the tags present are read: a seeded blank would show an
+        // unchanged value as changed from nothing. Rows written before then have no
+        // tag for a first-time value, so such a change shows no line.
         simpleChange(changeMap, changes, STATUS_ATTRIBUTE);
-        changeMap.put(TECHNICIAN_ATTRIBUTE, "");
         simpleChange(changeMap, changes, TECHNICIAN_ATTRIBUTE);
-        changeMap.put(PATHOLOGIST_ATTRIBUTE, "");
         simpleChange(changeMap, changes, PATHOLOGIST_ATTRIBUTE);
-        changeMap.put(BLOCKS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, BLOCKS_ATTRIBUTE);
-        changeMap.put(BLOCKS_ATTRIBUTE, "");
-        simpleChange(changeMap, changes, BLOCKS_ATTRIBUTE);
-        changeMap.put(SLIDES_ATTRIBUTE, "");
         simpleChange(changeMap, changes, SLIDES_ATTRIBUTE);
-        changeMap.put(REQUESTS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, REQUESTS_ATTRIBUTE);
-        changeMap.put(TECHNIQUES_ATTRIBUTE, "");
         simpleChange(changeMap, changes, TECHNIQUES_ATTRIBUTE);
-        changeMap.put(CONCLUSIONS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, CONCLUSIONS_ATTRIBUTE);
-        changeMap.put(REPORTS_ATTRIBUTE, "");
         simpleChange(changeMap, changes, REPORTS_ATTRIBUTE);
-        changeMap.put(GROSS_EXAM_ATTRIBUTE, "");
         simpleChange(changeMap, changes, GROSS_EXAM_ATTRIBUTE);
-        changeMap.put(MICROSCOPY_EXAM_ATTRIBUTE, "");
         simpleChange(changeMap, changes, MICROSCOPY_EXAM_ATTRIBUTE);
-        changeMap.put(DECALCIFICATION_REQUIRED_ATTRIBUTE, "");
         simpleChange(changeMap, changes, DECALCIFICATION_REQUIRED_ATTRIBUTE);
     }
 
