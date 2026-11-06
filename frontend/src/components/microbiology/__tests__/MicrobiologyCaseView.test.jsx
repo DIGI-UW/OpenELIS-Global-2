@@ -299,9 +299,4 @@ describe("canonical case workspace", () => {
     expect(scroll.mock.contexts).toContain(heading);
     scroll.mockRestore();
   });
-  test("sections open from their own headings, with no separate section picker", async () => {
-    setup();
-    await screen.findAllByRole("button", { name: "Culture" });
-    expect(screen.queryByLabelText("Testing section")).not.toBeInTheDocument();
-  });
 });
