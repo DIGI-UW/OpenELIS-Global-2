@@ -14708,5 +14708,7 @@
   "microbiology.astQc.saveError": "The control could not be recorded.",
   "microbiology.m6.keepRun": "Keep run",
   "microbiology.m6.error.AST_RUN_NOT_EDITABLE": "This run is cancelled, invalidated, or needs repeating, so it can no longer be changed. Reload the case to see its current state.",
-  "microbiology.m6.error.AST_PANEL_ADJUSTMENT_REASON_REQUIRED": "Give a reason for using a panel other than the organism's default panel."
+  "microbiology.m6.error.AST_PANEL_ADJUSTMENT_REASON_REQUIRED": "Give a reason for using a panel other than the organism's default panel.",
+  "microbiology.m6.error.AST_PANEL_ALREADY_ACTIVE": "This isolate already has a run on this panel. Repeat or cancel that run instead of starting another.",
+  "microbiology.isolateWorkspace.REIDENTIFICATION_REASON_REQUIRED": "Give a reason for this identification. Re-identifying an isolate, or identifying one during an amendment, needs a reason."
 }

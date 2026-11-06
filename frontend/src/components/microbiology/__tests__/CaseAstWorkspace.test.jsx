@@ -733,11 +733,18 @@ it("starts from the organism's current default panel, not an older default assig
   expect(within(modal).getByLabelText(reason)).toBeInTheDocument();
 });
 
-it("explains a run refused for a missing panel adjustment reason", async () => {
+it.each([
+  [
+    "AST_PANEL_ADJUSTMENT_REASON_REQUIRED",
+    "Give a reason for using a panel other than the organism's default panel.",
+  ],
+  [
+    "AST_PANEL_ALREADY_ACTIVE",
+    "This isolate already has a run on this panel. Repeat or cancel that run instead of starting another.",
+  ],
+])("explains a run refused with %s", async (code, text) => {
   const service = show(defaultChanged());
-  service.astAction.mockRejectedValue({
-    response: { message: "AST_PANEL_ADJUSTMENT_REASON_REQUIRED" },
-  });
+  service.astAction.mockRejectedValue({ response: { message: code } });
   fireEvent.click(
     await screen.findByRole("button", { name: t("action.start") }),
   );
@@ -745,11 +752,7 @@ it("explains a run refused for a missing panel adjustment reason", async () => {
   fireEvent.click(
     within(modal).getByRole("button", { name: t("save"), exact: true }),
   );
-  expect(
-    await within(modal).findByText(
-      "Give a reason for using a panel other than the organism's default panel.",
-    ),
-  ).toBeInTheDocument();
+  expect(await within(modal).findByText(text)).toBeInTheDocument();
 });
 
 const discordantRifampicin = () => {

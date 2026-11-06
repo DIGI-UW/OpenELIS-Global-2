@@ -835,7 +835,7 @@ test("re-identifying from the Isolates section refreshes the case timeline", asy
     await screen.findByRole("button", { name: "Reidentify", exact: true }),
   );
   const dialog = screen.getByRole("dialog");
-  fireEvent.change(within(dialog).getByLabelText("Re-identification reason"), {
+  fireEvent.change(within(dialog).getByLabelText(/Re-identification reason/), {
     target: { value: "Corrected after confirmatory panel" },
   });
   const fetched = api.getTimeline.mock.calls.length;
