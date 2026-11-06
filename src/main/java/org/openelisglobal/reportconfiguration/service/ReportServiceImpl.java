@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -60,7 +61,7 @@ public class ReportServiceImpl extends AuditableBaseObjectServiceImpl<Report, St
                 report.setSortOrder(idOrder.indexOf(Integer.valueOf(form.getCurrentReport().getId())));
                 baseObjectDAO.update(report);
                 // If the report category has changed, update the menus.
-                if (categoryId != previousCategory) {
+                if (!Objects.equals(categoryId, previousCategory)) {
                     // new category
                     Menu menu = menuService.getMenuByElementId(reportCategory.getMenuElementId());
                     Menu reportMenu = menuService.getMenuByElementId(report.getMenuElementId());
