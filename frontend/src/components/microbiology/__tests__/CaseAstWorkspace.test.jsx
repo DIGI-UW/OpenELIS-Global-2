@@ -586,6 +586,7 @@ it.each([
 
 it("sends an explicitly chosen clinical indication on new runs", async () => {
   const data = workspace("IN_PROGRESS");
+  data.isolates[0].defaultPanelId = "panel";
   data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
   data.isolates[0].assignments = [
     { panelId: "panel", provenance: "ORGANISM_DEFAULT" },
@@ -636,6 +637,53 @@ it("asks for a panel adjustment reason only when the run does not use the organi
     { target: { value: "No default panel configured for this organism" } },
   );
   expect(save).toBeEnabled();
+});
+
+const defaultChanged = () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].defaultPanelId = "current";
+  data.isolates[0].panels = [
+    { id: "older", label: "Older default v1" },
+    { id: "current", label: "Current default v2" },
+  ];
+  data.isolates[0].assignments = [
+    { panelId: "older", provenance: "ORGANISM_DEFAULT" },
+  ];
+  return data;
+};
+
+it("starts from the organism's current default panel, not an older default assignment", async () => {
+  show(defaultChanged());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const reason = messages["microbiology.ast.panelAdjustmentReason"];
+  expect(within(modal).getByLabelText(t("panel"))).toHaveValue("current");
+  expect(within(modal).queryByLabelText(reason)).not.toBeInTheDocument();
+  fireEvent.change(within(modal).getByLabelText(t("panel")), {
+    target: { value: "older" },
+  });
+  expect(within(modal).getByLabelText(reason)).toBeInTheDocument();
+});
+
+it("explains a run refused for a missing panel adjustment reason", async () => {
+  const service = show(defaultChanged());
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_PANEL_ADJUSTMENT_REASON_REQUIRED" },
+  });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  expect(
+    await within(modal).findByText(
+      "Give a reason for using a panel other than the organism's default panel.",
+    ),
+  ).toBeInTheDocument();
 });
 
 const discordantRifampicin = () => {
