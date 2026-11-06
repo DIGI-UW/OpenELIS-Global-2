@@ -158,8 +158,13 @@ it.each([
     expect(location.href).toBe("/current-notebook");
     expect(screen.getByText("Unsaved notebook edits")).toBeInTheDocument();
     status = 200;
+    const loadsBeforeSave = utilsMock.getFromOpenElisServer.mock.calls.length;
     fireEvent.click(save);
     await waitFor(() => expect(location.href).toBe(destination));
+    // The redirect loads the saved notebook; requests started here would be cut off by it.
+    expect(utilsMock.getFromOpenElisServer.mock.calls.length).toBe(
+      loadsBeforeSave,
+    );
     expect(
       JSON.parse(utilsMock.postToOpenElisServerFullResponse.mock.calls[1][1])
         .comments,
