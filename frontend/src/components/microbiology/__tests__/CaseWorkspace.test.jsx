@@ -497,21 +497,24 @@ describe("case bar", () => {
     );
   });
 
-  test("marks the open section in the section links", async () => {
-    renderPage(
-      <CaseViewShell service={barService()} caseId="case-1" />,
-      "/Microbiology/cases/case-1?scope=CULTURE",
-    );
-    const nav = await screen.findByRole("navigation", {
-      name: "Jump to section",
-    });
-    expect(
-      within(nav).getByRole("button", { name: "Culture" }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(
-      within(nav).getByRole("button", { name: "AST / DST" }),
-    ).not.toHaveAttribute("aria-current");
-  });
+  test.each(["?scope=CULTURE", "?grain=cultures"])(
+    "marks the open section in the section links from %s",
+    async (search) => {
+      renderPage(
+        <CaseViewShell service={barService()} caseId="case-1" />,
+        `/Microbiology/cases/case-1${search}`,
+      );
+      const nav = await screen.findByRole("navigation", {
+        name: "Jump to section",
+      });
+      expect(
+        within(nav).getByRole("button", { name: "Culture" }),
+      ).toHaveAttribute("aria-current", "true");
+      expect(
+        within(nav).getByRole("button", { name: "AST / DST" }),
+      ).not.toHaveAttribute("aria-current");
+    },
+  );
 
   test("keeps the way back to the worklist on the case bar", async () => {
     renderPage(

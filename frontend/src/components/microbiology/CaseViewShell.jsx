@@ -51,6 +51,7 @@ import serviceDefault from "./CaseWorkspaceService";
 import {
   MICROBIOLOGY_CASE_PATH,
   MICROBIOLOGY_WORKLIST_PATH,
+  routedScope,
 } from "./MicrobiologyRoutes";
 
 export default function CaseViewShell({
@@ -225,7 +226,7 @@ export default function CaseViewShell({
         if (currentCase.current === id) setDetail(next);
       })
       .catch(() => setError(true));
-  const currentScope = new URLSearchParams(location.search).get("scope");
+  const currentScope = routedScope(location.search);
   const worklistLink = (
     <RouterLink
       to={`${MICROBIOLOGY_WORKLIST_PATH}${worklistSearch.toString() ? `?${worklistSearch}` : ""}`}
