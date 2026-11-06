@@ -1,4 +1,6 @@
 {
+  "barcode.label.error.batch.limit": "This print job has more than {max} labels. Print fewer labels at a time.",
+  "barcode.label.error.quantity.limit": "Each label quantity can be at most {max}.",
   "analyzer.mapping.error.profileUnavailable": "The analyzer profile could not be read. Retry confirmation when the Bridge is available.",
   "reporting.title": "Custom Data Export",
   "reporting.description": "Choose your report, reporting period and columns, then download a spreadsheet-ready CSV.",
