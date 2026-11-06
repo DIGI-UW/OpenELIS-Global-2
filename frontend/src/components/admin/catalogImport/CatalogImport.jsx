@@ -413,7 +413,9 @@ const CatalogImport = () => {
                   .flatMap((file) =>
                     (file.rows || [])
                       .filter((row) =>
-                        ["SKIPPED", "REMOVED", "WARNING"].includes(row.outcome),
+                        ["SKIPPED", "UNCHANGED", "REMOVED", "WARNING"].includes(
+                          row.outcome,
+                        ),
                       )
                       .map((row) => ({ file: file.fileName, ...row })),
                   )

@@ -600,6 +600,11 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
                 panelsHandler.getLastSummary().getRows().stream().filter(
                         row -> row.outcome() == org.openelisglobal.configuration.service.CsvLoadSummary.Outcome.WARNING)
                         .map(row -> row.lineNumber() + "|" + row.reason()).toList());
+
+        assertFalse(reloadPanels(true).hasErrors());
+        assertEquals(java.util.List.of("2|UNCHANGED|Panel unchanged", "3|UNCHANGED|Panel unchanged"),
+                panelsHandler.getLastSummary().getRows().stream()
+                        .map(row -> row.lineNumber() + "|" + row.outcome() + "|" + row.reason()).toList());
     }
 
     @Test

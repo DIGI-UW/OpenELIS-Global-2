@@ -16,7 +16,7 @@ import org.openelisglobal.common.log.LogEvent;
 public final class CsvLoadSummary {
 
     public enum Outcome {
-        CREATED, UPDATED, SKIPPED, REMOVED, WARNING
+        CREATED, UPDATED, SKIPPED, UNCHANGED, REMOVED, WARNING
     }
 
     /**
@@ -47,6 +47,10 @@ public final class CsvLoadSummary {
         case UPDATED -> {
             updated++;
             rows.add(new RowOutcome(lineNumber, Outcome.UPDATED, null));
+        }
+        case UNCHANGED -> {
+            skipped++;
+            rows.add(new RowOutcome(lineNumber, Outcome.UNCHANGED, row.reason()));
         }
         default -> skipped(loggingClass, lineNumber, row.reason());
         }

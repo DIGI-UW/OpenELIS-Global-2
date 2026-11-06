@@ -88,7 +88,7 @@ public class MicroQcRangeConfigurationHandler extends AbstractCatalogCsvHandler 
         Optional<MicroQcRange> existing = qcRanges.find(strain, antibiotic.getId(), method, diskContent,
                 standard.getId());
         if (!qcRanges.upsert(strain, antibiotic.getId(), method, diskContent, standard.getId(), low, high)) {
-            return LoadedRow.skipped("QC range unchanged");
+            return LoadedRow.unchanged("QC range unchanged");
         }
         String id = qcRanges.find(strain, antibiotic.getId(), method, diskContent, standard.getId())
                 .map(MicroQcRange::getId).orElse(null);

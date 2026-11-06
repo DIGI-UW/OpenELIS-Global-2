@@ -207,7 +207,7 @@ describe("CatalogImport", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("a preview lists what a file takes away and what it ignores", async () => {
+  test("a preview lists what a file takes away, ignores and leaves alone", async () => {
     postToOpenElisServerFormDataJsonResponse.mockImplementation(
       (url, formData, callback) =>
         callback({
@@ -232,6 +232,11 @@ describe("CatalogImport", () => {
                   outcome: "WARNING",
                   reason: "reportBehavior CASCADE is not read from panel files",
                 },
+                {
+                  lineNumber: 3,
+                  outcome: "UNCHANGED",
+                  reason: "Panel unchanged",
+                },
               ],
               error: null,
             },
@@ -251,6 +256,10 @@ describe("CatalogImport", () => {
     expect(
       screen.getByText("reportBehavior CASCADE is not read from panel files"),
     ).toBeInTheDocument();
+    expect(screen.getByText("Panel unchanged")).toBeInTheDocument();
+    expect(screen.getByText("tests-cphl.csv:3")).not.toHaveClass(
+      "cds--tag--red",
+    );
   });
 
   /** OGC-1466: a preview is about the files as typed; a type change asks for a new one. */

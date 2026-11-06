@@ -129,7 +129,7 @@ public class MicroOrganismGroupConfigurationHandler extends AbstractCatalogCsvHa
             List<LoadedRow<String>> results = new ArrayList<>();
             for (MembershipRow membership : memberships) {
                 results.add(membership.created() ? LoadedRow.created(membership.organism().getId())
-                        : LoadedRow.skipped("Membership unchanged"));
+                        : LoadedRow.unchanged("Membership unchanged"));
             }
             return results;
         });
