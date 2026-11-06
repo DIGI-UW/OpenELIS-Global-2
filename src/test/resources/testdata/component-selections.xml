@@ -54,6 +54,9 @@
     <dictionary id="9303" is_active="Y" dict_entry="VMS Blue"
         local_Abbrev="BLU" dictionary_category_id="9300" sort_order="3"
         lastUpdated="2025-01-01 12:00:00" />
+    <dictionary id="9304" is_active="Y" dict_entry="VMS Small"
+        local_Abbrev="SML" dictionary_category_id="9300" sort_order="4"
+        lastUpdated="2025-01-01 12:00:00" />
 
     <test_result_component id="vms-colour"
         test_id="1" last_updated="2025-01-01 12:00:00" code="COLOUR"
@@ -75,6 +78,10 @@
     <test_result id="3" test_id="1" result_group="1"
         component_id="vms-colour" tst_rslt_type="M" value="9303"
         lastupdated="2025-01-01 12:00:00" sort_order="3"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+    <test_result id="4" test_id="1" result_group="1"
+        component_id="vms-size" tst_rslt_type="M" value="9304"
+        lastupdated="2025-01-01 12:00:00" sort_order="4"
         is_quantifiable="false" is_active="true" is_normal="true" />
 
     <sample id="100" accession_number="VAL-MS-001" status_id="1"
