@@ -167,7 +167,8 @@ export default function CaseAstWorkspace({
       runId: run?.id,
       readingId: reading?.id,
       antibioticId: antibioticId || reading?.antibioticId,
-      panelId: isolate?.assignments?.[0]?.panelId || "",
+      panelId:
+        isolate?.defaultPanelId || isolate?.assignments?.[0]?.panelId || "",
       breakpointStandardId: data.defaultStandard?.configured
         ? data.defaultStandard.available
           ? data.defaultStandard.standardId
@@ -290,9 +291,7 @@ export default function CaseAstWorkspace({
   const activeIsolate = data?.isolates?.find((i) => i.id === draft?.isolateId);
   const panelChanged =
     draft?.action === "start" &&
-    (draft.adjustPanel ||
-      activeIsolate?.assignments?.find((a) => a.panelId === draft.panelId)
-        ?.provenance !== "ORGANISM_DEFAULT");
+    (draft.adjustPanel || draft.panelId !== activeIsolate?.defaultPanelId);
   const needsReason = draft && (reasons.includes(draft.action) || panelChanged);
   const invalid =
     draft &&

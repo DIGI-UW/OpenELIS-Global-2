@@ -18,8 +18,8 @@ public class MicroAstWorkspaceForm {
     public record Choice(String antibioticId, String readingId) {
     }
 
-    public record Isolate(String id, String label, String organism, String protocol, List<Option> panels,
-            List<Assignment> assignments, List<MicroAstRunForm> runs, List<Choice> choices) {
+    public record Isolate(String id, String label, String organism, String protocol, String defaultPanelId,
+            List<Option> panels, List<Assignment> assignments, List<MicroAstRunForm> runs, List<Choice> choices) {
     }
 
     public static class Action {
