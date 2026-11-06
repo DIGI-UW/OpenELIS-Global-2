@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    Patient name search compares lower(name) with lower(term), so it is case
+    insensitive but not accent insensitive: "tran" does not find "Trần" and
+    "nguyen thi be" does not find "Nguyễn Thị Bé". Names are now compared through
+    search_fold(), which removes accents with unaccent() and lowercases.
+
+    unaccent() is only STABLE, because its dictionary could change, so it cannot
+    appear in an index expression. search_fold() wraps it as IMMUTABLE, the usual
+    way to index unaccented text. Both the function and the dictionary are
+    schema-qualified, so the index keeps working where search_path is empty
+    (pg_restore, autovacuum). The extension's schema is looked up rather than
+    assumed, because installations differ in where it was created.
+    -->
+    <changeSet id="patient-search-fold-function" author="OGC">
+        <comment>Accent and case folding function for patient name search</comment>
+        <sql>create extension if not exists unaccent;</sql>
+        <sql splitStatements="false">
+            do $do$
+            declare
+                ext_schema text;
+            begin
+                select n.nspname into ext_schema
+                  from pg_extension e join pg_namespace n on n.oid = e.extnamespace
+                 where e.extname = 'unaccent';
+                execute format(
+                    'create or replace function clinlims.search_fold(text) returns text '
+                    'language sql immutable strict parallel safe as %L',
+                    format('select lower(%I.unaccent(%L::regdictionary, $1))',
+                           ext_schema, quote_ident(ext_schema) || '.unaccent'));
+            end
+            $do$;
+        </sql>
+        <rollback>
+            <sql>drop function if exists clinlims.search_fold(text);</sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+    The fuzzy name search now matches on search_fold(name), so the trigram indexes
+    move to that expression. The exact search still uses lower(name) without a
+    wildcard, which the existing B-tree indexes on lower(name) serve, so the old
+    trigram indexes on lower(name) would only cost writes.
+    -->
+    <changeSet id="patient-search-fold-indexes" author="OGC">
+        <comment>Trigram indexes on folded person names</comment>
+        <sql>
+            create index if not exists idx_person_last_name_fold_trgm
+                on clinlims.person using gin (clinlims.search_fold(last_name) gin_trgm_ops);
+        </sql>
+        <sql>
+            create index if not exists idx_person_first_name_fold_trgm
+                on clinlims.person using gin (clinlims.search_fold(first_name) gin_trgm_ops);
+        </sql>
+        <sql>drop index if exists clinlims.idx_person_last_name_trgm;</sql>
+        <sql>drop index if exists clinlims.idx_person_first_name_trgm;</sql>
+        <rollback>
+            <sql>
+                create index if not exists idx_person_last_name_trgm
+                    on clinlims.person using gin (lower(last_name) gin_trgm_ops);
+            </sql>
+            <sql>
+                create index if not exists idx_person_first_name_trgm
+                    on clinlims.person using gin (lower(first_name) gin_trgm_ops);
+            </sql>
+            <sql>drop index if exists clinlims.idx_person_last_name_fold_trgm;</sql>
+            <sql>drop index if exists clinlims.idx_person_first_name_fold_trgm;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

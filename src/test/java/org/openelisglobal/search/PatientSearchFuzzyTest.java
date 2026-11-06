@@ -267,6 +267,8 @@ public class PatientSearchFuzzyTest extends BaseWebContextSensitiveTest {
     public void search_byAccentedName_matchesWithAndWithoutTheAccent() {
         Assert.assertEquals(Arrays.asList(joseId), idsOf(searchByLastName("Muñoz")));
         Assert.assertEquals(Arrays.asList(joseId), idsOf(searchByLastName("muñoz")));
+        Assert.assertEquals(Arrays.asList(joseId), idsOf(searchByLastName("Munoz")));
+        Assert.assertEquals(Arrays.asList(joseId), idsOf(searchByLastName("MUNOZ")));
     }
 
     @Test
