@@ -76,6 +76,8 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     @Autowired
     private MicroIncomingResultService incoming;
     @Autowired
+    private MicroPatientReportService reports;
+    @Autowired
     private MicroIncomingItemDAO incomingItems;
     @Autowired
     private org.openelisglobal.result.service.ResultSignatureService signatures;
@@ -130,6 +132,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         outsider = user("Outside", fixtures.createLabUnit().getId(), Constants.ROLE_RESULTS);
         var test = fixtures.createCatalogTest();
         test.setTestSection(unit);
+        test.setIsReportable("Y");
         em.merge(test);
         components.saveSampleResults(test.getId(),
                 List.of(component("PRIMARY", "MTB", true), component("RIF", "Rifampicin", false)), null, null, actor);
@@ -766,6 +769,48 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         var resave = selections(reloaded, row -> row.getMultiSelectResultValues());
         assertEquals("TechnicalAcceptance", workspace
                 .saveResults(microCase.getId(), analysis.getId(), resave, actor, request(actor)).get(0).status);
+    }
+
+    @Test
+    public void eachSelectionComponentShowsItsOwnValuesTogether() {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        Map<String, List<org.openelisglobal.testresult.valueholder.TestResult>> options = new HashMap<>();
+        for (var component : configured) {
+            component.setResultType("M");
+            options.put(component.getCode(),
+                    component.getIsPrimary() ? List.of(selectionOption("M3 Red", "1"), selectionOption("M3 Blue", "2"))
+                            : List.of(selectionOption("M3 Large", "1")));
+        }
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, options, actor);
+        em.flush();
+        var loaded = workspace.getTests(microCase.getId(), actor).get(0);
+        workspace.saveResults(microCase.getId(), analysis.getId(),
+                selections(loaded, row -> "{\"1\":\"" + row.getDictionaryResults().get(0).getId() + "\"}"), actor,
+                request(actor));
+        em.flush();
+        var reloaded = workspace.getTests(microCase.getId(), actor).get(0);
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(),
+                selections(reloaded,
+                        row -> "{\"1\":\"" + row.getDictionaryResults().stream().map(o -> o.getId())
+                                .collect(java.util.stream.Collectors.joining(",")) + "\"}"),
+                actor, request(actor)).get(0);
+        em.flush();
+        assertEquals(Set.of("M3 Red,M3 Blue", "M3 Large"),
+                workspace.getTests(microCase.getId(), actor).get(0).components.stream().map(row -> row.getResultValue())
+                        .collect(java.util.stream.Collectors.toSet()));
+        workspace.validateResult(microCase.getId(), analysis.getId(), saved.version, validator);
+        em.flush();
+        assertEquals(List.of("MTB: M3 Red, M3 Blue", "Rifampicin: M3 Large"), reports.preview(microCase.getId()).initial
+                .get(0).values().stream().map(v -> v.component() + ": " + v.value()).toList());
+    }
+
+    private org.openelisglobal.testresult.valueholder.TestResult selectionOption(String value, String sortOrder) {
+        var option = new org.openelisglobal.testresult.valueholder.TestResult();
+        option.setTestResultType("M");
+        option.setValue(value);
+        option.setSortOrder(sortOrder);
+        option.setIsActive(true);
+        return option;
     }
 
     private MicroCaseResultRequestForm selections(MicroCaseTestForm loaded,
