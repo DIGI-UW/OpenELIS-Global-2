@@ -5,10 +5,8 @@ import java.util.Set;
 import org.hibernate.ObjectNotFoundException;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.test.service.TestService;
@@ -219,7 +217,6 @@ public class ResultCalculationServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertTrue(results.isEmpty());
     }
 
-    @Ignore("Blocked by missing 'select r' in getResultCalculationByTest HQL — https://github.com/DIGI-UW/OpenELIS-Global-2/issues/3748")
     @Test
     public void getResultCalculationByTest_test101_shouldReturnRc1WithRelationshipsLoaded() {
         List<ResultCalculation> results = resultCalculationService.getResultCalculationByTest(labTest("101"));
@@ -229,11 +226,6 @@ public class ResultCalculationServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("1", results.get(0).getPatient().getId());
         Assert.assertEquals(Integer.valueOf(1), results.get(0).getCalculation().getId());
         Assert.assertEquals("3001", results.get(0).getResult().getId());
-    }
-
-    @Test(expected = LIMSRuntimeException.class)
-    public void getResultCalculationByTest_throwsUntilIssue3748Fixed() {
-        resultCalculationService.getResultCalculationByTest(labTest("101"));
     }
 
     @Test
