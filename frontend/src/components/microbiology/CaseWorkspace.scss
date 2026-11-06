@@ -5,8 +5,14 @@
 .microbiology-case-workspace {
   min-width: 0;
 
-  [id] {
+  #case-information,
+  #case-history,
+  [id^="case-scope-"] {
     scroll-margin-top: 12rem;
+
+    @include breakpoint.breakpoint-down(md) {
+      scroll-margin-top: 0;
+    }
   }
 
   .cds--css-grid-column {
