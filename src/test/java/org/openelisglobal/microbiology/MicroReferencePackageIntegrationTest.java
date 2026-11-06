@@ -1342,7 +1342,8 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
         writePanels("panelName,antibioticWhonetCode\n" + "P".repeat(300) + "," + fixture.antibiotic
                 + "\nSynthetic panel after a database error," + fixture.antibiotic + "\n");
         String database = reloadPanels(true).files().get(0).errorMessage();
-        assertTrue(database, database.contains("too long"));
+        assertTrue(database, database.startsWith("Line 2: value too long for type character varying(255)"));
+        assertFalse(database, database.contains("ERROR:"));
         assertFalse(database, database.contains("current transaction is aborted"));
 
         writeOrganismGroups(GROUPS_HEADER + organism.getDisplayName() + ",,," + "G".repeat(101) + "\n");

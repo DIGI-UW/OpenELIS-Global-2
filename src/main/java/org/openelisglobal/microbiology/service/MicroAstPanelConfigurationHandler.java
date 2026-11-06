@@ -94,6 +94,12 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                     }
                 } catch (IllegalArgumentException e) {
                     errors.add(rowError(panelRows.get(0).lineNumber(), e));
+                } catch (RuntimeException e) {
+                    // Suppressed, not a cause: the file error reports the deepest cause's message.
+                    IllegalStateException failure = new IllegalStateException(
+                            rowError(panelRows.get(0).lineNumber(), e));
+                    failure.addSuppressed(e);
+                    throw failure;
                 } finally {
                     flushUnresolvedReferences(fileName, panelRows.get(0).lineNumber());
                 }
