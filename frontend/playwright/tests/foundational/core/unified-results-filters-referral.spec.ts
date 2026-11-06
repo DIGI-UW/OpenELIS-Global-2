@@ -6,6 +6,7 @@ import {
   SERUM,
   WHOLE_BLOOD,
   firstRealOption,
+  labUnitNameOf,
   labUnitOf,
   openServerPageHolding,
   orderTests,
@@ -17,6 +18,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * The unified Results worklist narrows what it shows by lab unit, by patient
@@ -61,10 +63,10 @@ async function chooseLabUnit(page: Page, unitId: string, accession: string) {
   const loaded = worklistLoad(page, (url) =>
     url.includes(`testSectionId=${unitId}`),
   );
-  await page
-    .getByRole("main")
-    .getByRole("combobox", { name: "Lab Unit" })
-    .selectOption(unitId);
+  await chooseCarbonOption(
+    page.getByRole("main").getByRole("combobox", { name: "Lab Unit" }),
+    await labUnitNameOf(page, unitId),
+  );
   await openServerPageHolding(page, await loaded, accession);
 }
 

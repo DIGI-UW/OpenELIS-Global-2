@@ -242,6 +242,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     public void persistData(SamplePatientUpdateData updateData, PatientManagementUpdate patientUpdate,
             PatientManagementInfo patientInfo, SamplePatientEntryForm form, HttpServletRequest request) {
 
+        if (form.getLabelPersistRequest() != null) {
+            orderLabelRequestService.validateQuantities(form.getLabelPersistRequest());
+        }
+
         boolean useInitialSampleCondition = FormFields.getInstance().useField(Field.InitialSampleCondition);
         boolean useSampleNature = FormFields.getInstance().useField(Field.SampleNature);
 

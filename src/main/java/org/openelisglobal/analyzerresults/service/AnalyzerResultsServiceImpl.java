@@ -20,6 +20,7 @@ import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -28,6 +29,7 @@ import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +51,9 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     private AnalysisService analysisService;
     @Autowired
     private ResultService resultService;
+    @Autowired
+    @Lazy
+    private ResultRunService resultRunService;
 
     AnalyzerResultsServiceImpl() {
         super(AnalyzerResults.class);
@@ -115,6 +120,18 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in AnalyzerResult insertAnalyzerResult()", e);
         }
+    }
+
+    /**
+     * Every way a value leaves staging (accepted, rejected, ignored, dismissed or
+     * remapped away) passes here, so the run it came in is told once.
+     */
+    @Override
+    @Transactional
+    public void delete(AnalyzerResults analyzerResult) {
+        Long runId = analyzerResult.getRunId();
+        super.delete(analyzerResult);
+        resultRunService.rowLeftStaging(runId);
     }
 
     @Override

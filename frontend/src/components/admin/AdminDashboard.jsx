@@ -18,6 +18,7 @@ import {
   TableOfContents,
   User,
   WarningAlt,
+  Plug,
 } from "@carbon/icons-react";
 
 const ADMIN_DASHBOARD_LINKS = [
@@ -90,6 +91,11 @@ const ADMIN_DASHBOARD_LINKS = [
     messageId: "analyzer.importIssues.events.title",
     path: "stuckAnalyzerEvents",
     icon: WarningAlt,
+  },
+  {
+    messageId: "modules.admin.title",
+    path: "modules",
+    icon: Plug,
   },
 ];
 

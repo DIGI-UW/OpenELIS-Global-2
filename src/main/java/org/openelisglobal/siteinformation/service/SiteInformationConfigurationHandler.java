@@ -59,6 +59,7 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
         int descriptionKeyIndex = findColumnIndex(headers, "descriptionKey");
         int groupIndex = findColumnIndex(headers, "group");
         int encryptedIndex = findColumnIndex(headers, "encrypted");
+        int createOnlyIndex = findColumnIndex(headers, "createOnly");
 
         String line;
         int lineNumber = 1;
@@ -70,7 +71,8 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
             }
             try {
                 processRow(parseCsvLine(line.trim()), nameIndex, valueIndex, domainNameIndex, valueTypeIndex, tagIndex,
-                        descriptionIndex, instructionKeyIndex, descriptionKeyIndex, groupIndex, encryptedIndex);
+                        descriptionIndex, instructionKeyIndex, descriptionKeyIndex, groupIndex, encryptedIndex,
+                        createOnlyIndex);
                 processedRows++;
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getSimpleName(), "processConfiguration",
@@ -84,7 +86,7 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
 
     private void processRow(String[] values, int nameIndex, int valueIndex, int domainNameIndex, int valueTypeIndex,
             int tagIndex, int descriptionIndex, int instructionKeyIndex, int descriptionKeyIndex, int groupIndex,
-            int encryptedIndex) {
+            int encryptedIndex, int createOnlyIndex) {
         String name = getValueOrEmpty(values, nameIndex);
         if (name.isEmpty()) {
             throw new IllegalArgumentException("site_information row is missing name");
@@ -92,6 +94,9 @@ public class SiteInformationConfigurationHandler implements DomainConfigurationH
 
         SiteInformation siteInformation = siteInformationService.getSiteInformationByName(name);
         boolean isNew = siteInformation == null;
+        if (!isNew && Boolean.parseBoolean(getValueOrEmpty(values, createOnlyIndex))) {
+            return;
+        }
         if (isNew) {
             siteInformation = new SiteInformation();
             siteInformation.setName(name);

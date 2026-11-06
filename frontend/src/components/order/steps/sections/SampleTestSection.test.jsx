@@ -476,3 +476,76 @@ describe("culture set assignments", () => {
     });
   });
 });
+
+describe("SampleTestSection sample notes", () => {
+  it("shows each sample card's own note under its tests", async () => {
+    mockPanelServer();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[
+            { index: 0, sampleTypeId: "ST1", tests: [], panels: [] },
+            { index: 1, sampleTypeId: "ST1", tests: [], panels: [] },
+          ]}
+          setSamples={vi.fn()}
+          orderData={{}}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+          renderSampleNote={(sampleIndex) => (
+            <span>Note for sample {sampleIndex + 1}</span>
+          )}
+        />
+      </IntlProvider>,
+    );
+
+    const cards = document.querySelectorAll(".sample-card");
+    await waitFor(() =>
+      expect(cards[0]).toHaveTextContent("Note for sample 1"),
+    );
+    expect(cards[1]).toHaveTextContent("Note for sample 2");
+    expect(cards[0]).not.toHaveTextContent("Note for sample 2");
+  });
+});
+
+describe("SampleTestSection microbiology tag", () => {
+  it("tags only the tests that open a microbiology case", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/user-sample-types")) {
+        cb([{ id: "ST1", value: "Sputum" }]);
+      } else if (url.startsWith("/rest/sample-type-tests")) {
+        cb({
+          tests: [
+            { id: "T1", name: "Culture", opensMicrobiologyCase: true },
+            { id: "T2", name: "Glucose", opensMicrobiologyCase: false },
+          ],
+          panels: [],
+        });
+      }
+    });
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[{ index: 0, sampleTypeId: "ST1", tests: [], panels: [] }]}
+          setSamples={vi.fn()}
+          orderData={{}}
+          setOrderData={vi.fn()}
+          isReadOnly={false}
+          workflowType="clinical"
+        />
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(document.getElementById("test-0-T1")).toBeTruthy(),
+    );
+    const culture = document.getElementById("test-0-T1");
+    const glucose = document.getElementById("test-0-T2");
+    expect(culture.closest(".cds--checkbox-wrapper")).toHaveTextContent(
+      "Microbiology case",
+    );
+    expect(glucose.closest(".cds--checkbox-wrapper")).not.toHaveTextContent(
+      "Microbiology case",
+    );
+  });
+});

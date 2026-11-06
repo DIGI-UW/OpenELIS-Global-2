@@ -127,50 +127,7 @@ test.describe.serial("OGC-1054 M3 guided analyzer setup", () => {
         await setup.selectProfile(profile.displayName, profile);
         await setup.fillName(name);
         await setup.selectLabUnit(profile.labUnit);
-        await setup.continueToVerify();
-
-        await expect(
-          page.getByRole("button", { name: "Edit Instrument" }),
-        ).toBeVisible();
-        const notConfirmed = page.getByText("Not confirmed", { exact: true });
-        const current = page.getByText("Current confirmation");
-        await expect(notConfirmed.or(current)).toBeVisible();
-        if (await notConfirmed.isVisible()) {
-          await demo.caption(
-            "Verify shows each code's default mapping to a local test. Nothing is used until the operator confirms.",
-          );
-          await demo.highlight(notConfirmed);
-          const confirm = page.getByRole("button", {
-            name: "Confirm mappings",
-          });
-          await expect(confirm).toBeEnabled();
-          await confirm.click();
-          await expect(page.getByText("Mappings confirmed")).toBeVisible();
-        }
-        await expect(page.getByText("Current", { exact: true })).toBeVisible();
-        await expect(current).toBeVisible();
-        await expect(
-          page.getByRole("button", { name: "Continue to Connect" }),
-        ).toBeEnabled();
-        await demo.caption(
-          "The mappings are confirmed. Continue to Connect opens.",
-        );
-        await demo.highlight(current);
-        const verifyUrl = page.url();
-        await capture(page, testInfo, `${shot}-verify`);
-
-        await page.reload({ waitUntil: "domcontentloaded" });
-        await expect(page).toHaveURL(verifyUrl);
-        await expect(
-          page.getByRole("button", { name: "Continue to Connect" }),
-        ).toBeEnabled();
         await setup.continueToConnect();
-        await expect(
-          page.getByRole("button", { name: "Edit Verify" }),
-        ).toBeVisible();
-        await expect(page).toHaveURL(
-          (url) => url.searchParams.get("setup") === "connect",
-        );
 
         await demo.caption(connectCaption);
         if ("senderId" in connection) {
@@ -221,13 +178,46 @@ test.describe.serial("OGC-1054 M3 guided analyzer setup", () => {
             }),
           ).toHaveValue(connection.directory);
         }
+        await setup.continueToVerify();
+
         await expect(
-          page.getByText("Analyzer is ready to activate"),
+          page.getByRole("button", { name: "Edit Instrument" }),
         ).toBeVisible();
+        const notConfirmed = page.getByText("Not confirmed", { exact: true });
+        const current = page.getByText("Current confirmation");
+        await expect(notConfirmed.or(current)).toBeVisible();
+        if (await notConfirmed.isVisible()) {
+          await demo.caption(
+            "Verify shows each code's default mapping to a local test. Nothing is used until the operator confirms.",
+          );
+          await demo.highlight(notConfirmed);
+          const confirm = page.getByRole("button", {
+            name: "Confirm mappings",
+          });
+          await expect(confirm).toBeEnabled();
+          await confirm.click();
+          await expect(page.getByText("Mappings confirmed")).toBeVisible();
+        }
+        await expect(page.getByText("Current", { exact: true })).toBeVisible();
+        await expect(current).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Finish and activate" }),
+        ).toBeEnabled();
         await demo.caption(
-          "Back in Connect, everything is ready. Finish and activate.",
+          "The mappings are confirmed. Routine activation is now available.",
         );
-        await demo.highlight(page.getByText("Analyzer is ready to activate"));
+        await demo.highlight(current);
+        const verifyUrl = page.url();
+        await capture(page, testInfo, `${shot}-verify`);
+
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await expect(page).toHaveURL(verifyUrl);
+        await expect(
+          page.getByRole("button", { name: "Finish and activate" }),
+        ).toBeEnabled();
+        await demo.caption(
+          "Connection settings and mappings are saved. Finish and activate.",
+        );
         await capture(page, testInfo, `${shot}-ready-to-activate`);
 
         await page.getByRole("button", { name: "Finish and activate" }).click();
@@ -283,7 +273,7 @@ test.describe.serial("OGC-1054 M3 guided analyzer setup", () => {
         await expect(analyzerRow).toBeVisible();
         await demo.verified(
           `${name} is active on ${profile.displayName}`,
-          "Its mappings were confirmed in Verify, then it was connected and activated.",
+          "Its connection was saved first, then its mappings were confirmed and it was activated.",
         );
       },
     );

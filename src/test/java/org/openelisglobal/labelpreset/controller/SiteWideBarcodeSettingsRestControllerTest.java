@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -22,6 +21,7 @@ import org.openelisglobal.siteinformation.valueholder.SiteInformationDomain;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for
@@ -31,6 +31,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * <p>
  * Real service + real DB; no @MockBean of code-under-test.
  */
+@Transactional
 public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSensitiveTest {
 
     private static final String BASE_URL = "/api/siteSettings/barcode";
@@ -42,91 +43,16 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
     @Autowired
     private SiteInformationDomainService siteInformationDomainService;
 
-    // ── DB-row state captured before each test ──────────────────────────────────
-    private String capturedAltAccessionPrefix;
-    private String capturedUseAltAccession;
-    private boolean capturedAltAccessionPrefixExisted;
-    private boolean capturedUseAltAccessionExisted;
-
-    // ── In-memory cache values captured before each test ────────────────────────
-    // loadDBValuesIntoConfiguration() only overlays keys that are present in the
-    // DB. If a row was absent at test-start and gets deleted during teardown the
-    // cache still holds the value written by the test. We therefore snapshot the
-    // effective cached value here and restore it explicitly after teardown.
-    private String capturedCachedAltAccessionPrefix;
-    private String capturedCachedUseAltAccession;
-
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        captureCurrentSettings();
-        resetSettingsToDefaults();
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/site-barcode-localization.xml");
+        ensureLabelsDomainAndBarcodeRows();
         ConfigurationProperties.loadDBValuesIntoConfiguration();
     }
 
-    @After
-    public void tearDown() throws Exception {
-        restoreCapturedSettings();
-    }
-
-    private void captureCurrentSettings() {
-        // Capture DB rows
-        SiteInformation prefixSi = siteInformationService.getSiteInformationByName("prePrintAltAccessionPrefix");
-        if (prefixSi != null) {
-            capturedAltAccessionPrefixExisted = true;
-            capturedAltAccessionPrefix = prefixSi.getValue();
-        } else {
-            capturedAltAccessionPrefixExisted = false;
-            capturedAltAccessionPrefix = null;
-        }
-
-        SiteInformation useAltSi = siteInformationService.getSiteInformationByName("prePrintUseAltAccession");
-        if (useAltSi != null) {
-            capturedUseAltAccessionExisted = true;
-            capturedUseAltAccession = useAltSi.getValue();
-        } else {
-            capturedUseAltAccessionExisted = false;
-            capturedUseAltAccession = null;
-        }
-
-        // Capture the effective in-memory cached values
-        ConfigurationProperties cfg = ConfigurationProperties.getInstance();
-        capturedCachedAltAccessionPrefix = cfg.getPropertyValue(Property.ALT_ACCESSION_PREFIX);
-        capturedCachedUseAltAccession = cfg.getPropertyValue(Property.USE_ALT_ACCESSION_PREFIX);
-    }
-
-    private void resetSettingsToDefaults() {
-        setSiteInfoRow("prePrintAltAccessionPrefix", "");
-        setSiteInfoRow("prePrintUseAltAccession", "false");
-    }
-
-    private void restoreCapturedSettings() {
-        // 1. Restore DB rows first
-        restoreDbRow("prePrintAltAccessionPrefix", capturedAltAccessionPrefixExisted, capturedAltAccessionPrefix);
-        restoreDbRow("prePrintUseAltAccession", capturedUseAltAccessionExisted, capturedUseAltAccession);
-
-        // 2. Reload DB → cache (covers the case where rows existed and were updated)
-        ConfigurationProperties.loadDBValuesIntoConfiguration();
-
-        // 3. Explicitly restore the cached values for properties whose DB rows were
-        // absent before the test. loadDBValuesIntoConfiguration() skips absent
-        // rows, so without this step a stale test value would remain in memory.
-        ConfigurationProperties cfg = ConfigurationProperties.getInstance();
-        cfg.setPropertyValue(Property.ALT_ACCESSION_PREFIX, capturedCachedAltAccessionPrefix);
-        cfg.setPropertyValue(Property.USE_ALT_ACCESSION_PREFIX, capturedCachedUseAltAccession);
-    }
-
-    private void restoreDbRow(String name, boolean existed, String originalValue) {
-        SiteInformation si = siteInformationService.getSiteInformationByName(name);
-        if (existed) {
-            setSiteInfoRow(name, originalValue);
-        } else if (si != null) {
-            siteInformationService.delete(si);
-        }
-    }
-
-    private void setSiteInfoRow(String name, String value) {
+    private void ensureLabelsDomainAndBarcodeRows() {
         SiteInformationDomain labelsDomain = siteInformationDomainService.getByName("labels");
         if (labelsDomain == null) {
             labelsDomain = new SiteInformationDomain();
@@ -134,15 +60,34 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
             labelsDomain.setDescription("Barcode/label configuration");
             siteInformationDomainService.insert(labelsDomain);
         }
+        ensureSiteInfoRow("prePrintAltAccessionPrefix", "", labelsDomain);
+        ensureSiteInfoRow("prePrintUseAltAccession", "false", labelsDomain);
+        // Saving settings reloads all configuration, including these localized values.
+        // Own their rows inside the test transaction instead of relying on suite seeds.
+        localizedSetting(Property.BANNER_TEXT, 993410L, labelsDomain);
+        localizedSetting(Property.BILLING_REFERENCE_NUMBER_LABEL, 993411L, labelsDomain);
+    }
+
+    private void localizedSetting(Property property, long id, SiteInformationDomain domain) {
+        ensureSiteInfoRow(property.getDBName(), Long.toString(id), domain);
+        SiteInformation row = siteInformationService.getSiteInformationByName(property.getDBName());
+        row.setValue(Long.toString(id));
+        row.setValueType("text");
+        row.setTag("localization");
+        row.setSysUserId(TEST_SYS_USER_ID);
+        siteInformationService.save(row);
+    }
+
+    private void ensureSiteInfoRow(String name, String defaultValue, SiteInformationDomain domain) {
         SiteInformation row = siteInformationService.getSiteInformationByName(name);
-        boolean isNew = (row == null);
+        boolean isNew = row == null;
         if (isNew) {
             row = new SiteInformation();
             row.setName(name);
             row.setValueType("text");
-            row.setDomain(labelsDomain);
+            row.setDomain(domain);
         }
-        row.setValue(value);
+        row.setValue(defaultValue);
         row.setSysUserId(TEST_SYS_USER_ID);
         siteInformationService.persistData(row, isNew);
     }

@@ -745,7 +745,7 @@ const Validation = (props) => {
                   style={{ whiteSpace: "nowrap" }}
                   data-testid={`validation-result-value-${row.id}`}
                 >
-                  {row.result}
+                  {row.displayResult ?? row.result}
                 </span>
                 <FlagChip flag={flag === "NORMAL" ? undefined : flag} />
               </div>
@@ -897,7 +897,7 @@ const Validation = (props) => {
                         : row.accessionNumber}
                     </td>
                     <td>{row.testName}</td>
-                    <td>{row.result}</td>
+                    <td>{row.displayResult ?? row.result}</td>
                     <td>{row.normalRange}</td>
                   </tr>
                 ))}
@@ -1215,7 +1215,7 @@ const Validation = (props) => {
                               : row.accessionNumber}
                           </td>
                           <td>{row.testName}</td>
-                          <td>{row.result}</td>
+                          <td>{row.displayResult ?? row.result}</td>
                           <td>{row.normalRange}</td>
                           <td>{row.resultDate}</td>
                           <td>

@@ -311,6 +311,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             form.setQcFailureList(validationUtility.findFailedQcForAccession(form.getAccessionNumber()));
         }
 
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(form.getResultList(), getSysUserId(request));
         return form;
     }
 
@@ -619,7 +621,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 List<Result> results = new ArrayList<>();
                 if (areResults(analysisItem)) {
-                    ResultsValidationUtility.keepStoredValueWhenUnchanged(analysisItem, analysis);
                     results = createResultFromAnalysisItem(analysisItem, analysis, analysis, noteUpdateList,
                             deletableList);
                     for (Result result : results) {
@@ -836,7 +837,6 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             return errorResponse(400, "modificationReasonRequired");
         }
         bindRowToAnalysis(item, analysis);
-        item.setStoredResult(item.getResult());
         item.setIsAccepted(false);
         item.setIsRejected(false);
         item.setNoteContext(NOTE_CONTEXT_MODIFICATION);
@@ -1087,6 +1087,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             List<AnalysisItem> group = serverRowsByAnalysis.get(entry.getKey());
             if (group == null) {
                 skipped.add(skipReason(entry.getKey(), "notFound"));
+                continue;
+            }
+            if (group.stream().anyMatch(AnalysisItem::isSelfValidationBlocked)) {
+                skipped.add(skipReason(entry.getKey(), "selfValidationBlocked"));
                 continue;
             }
             if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
@@ -1383,6 +1387,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<AnalysisItem> visible = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows,
                 Constants.ROLE_VALIDATION);
         markQcHolds(visible);
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(visible, getSysUserId(request));
         return visible;
     }
 

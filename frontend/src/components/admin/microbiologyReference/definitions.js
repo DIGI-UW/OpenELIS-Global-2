@@ -53,6 +53,15 @@ export const REFERENCE_DEFINITIONS = {
         label: "microbiology.admin.field.group",
         required: true,
       },
+      {
+        key: "susceptibilityProtocol",
+        label: "microbiology.m6.protocol",
+        type: "select",
+        defaultValue: "GENERAL",
+        options: ["GENERAL", "TB", "NTM"].map((value) =>
+          option(value, `microbiology.m6.protocol.${value}`),
+        ),
+      },
       { key: "gramStain", label: "microbiology.admin.field.gramStain" },
       {
         key: "initialSignificance",
@@ -109,6 +118,20 @@ export const REFERENCE_DEFINITIONS = {
         key: "antibioticClass",
         label: "microbiology.admin.field.class",
         required: true,
+      },
+      {
+        key: "resistanceRole",
+        label: "microbiology.m6.resistanceRole",
+        type: "select",
+        defaultValue: "NONE",
+        options: [
+          "NONE",
+          "RIFAMPICIN",
+          "ISONIAZID",
+          "OTHER_FIRST_LINE",
+          "FLUOROQUINOLONE",
+          "XDR_GROUP_A",
+        ].map((value) => option(value, `microbiology.m6.role.${value}`)),
       },
       {
         key: "route",

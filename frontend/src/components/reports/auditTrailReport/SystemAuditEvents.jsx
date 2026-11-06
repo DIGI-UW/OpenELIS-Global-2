@@ -25,6 +25,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import SearchableSelect from "../../common/SearchableSelect";
 import "../../Style.css";
 
 const PATIENT_ENTITY_NAME = "PATIENT";
@@ -98,12 +99,12 @@ const SystemAuditEvents = () => {
   useEffect(() => {
     getFromOpenElisServer("/rest/systemAuditEvents/entityTypes", (data) => {
       if (data) {
-        setEntityTypes([{ id: "", name: allLabel }, ...data]);
+        setEntityTypes(data.map((type) => ({ id: type.name, value: type.name })));
       }
     });
     getFromOpenElisServer("/rest/users", (data) => {
       if (data) {
-        setUsers([{ id: "", value: allLabel }, ...data]);
+        setUsers(data);
       }
     });
   }, []);
@@ -268,27 +269,20 @@ const SystemAuditEvents = () => {
           </DatePicker>
         </Column>
         <Column lg={4} md={4} sm={4}>
-          <Dropdown
+          <SearchableSelect
             id="entityType"
-            titleText={intl.formatMessage({
+            labelText={intl.formatMessage({
               id: "systemAudit.filter.entityType",
             })}
-            items={entityTypes}
-            itemToString={(item) => (item ? item.name : "")}
-            onChange={({ selectedItem }) => {
-              const newType = selectedItem
-                ? selectedItem.name === allLabel
-                  ? ""
-                  : selectedItem.name
-                : "";
+            placeholder={allLabel}
+            options={entityTypes}
+            value={selectedEntityType}
+            onChange={(newType) => {
               setSelectedEntityType(newType);
-              // Switching away from PATIENT clears the selected patient so the
-              // next query is unconstrained.
               if (newType !== PATIENT_ENTITY_NAME) {
                 setSelectedPatient(null);
               }
             }}
-            label={intl.formatMessage({ id: "systemAudit.filter.entityType" })}
           />
         </Column>
         <Column lg={4} md={4} sm={4}>
@@ -307,15 +301,13 @@ const SystemAuditEvents = () => {
       <br />
       <Grid fullWidth={true}>
         <Column lg={4} md={4} sm={4}>
-          <Dropdown
+          <SearchableSelect
             id="user"
-            titleText={intl.formatMessage({ id: "systemAudit.filter.user" })}
-            items={users}
-            itemToString={(item) => (item ? item.value : "")}
-            onChange={({ selectedItem }) =>
-              setSelectedUser(selectedItem ? selectedItem.id : "")
-            }
-            label={intl.formatMessage({ id: "systemAudit.filter.user" })}
+            labelText={intl.formatMessage({ id: "systemAudit.filter.user" })}
+            placeholder={allLabel}
+            options={users}
+            value={selectedUser}
+            onChange={setSelectedUser}
           />
         </Column>
         <Column lg={4} md={4} sm={4}>

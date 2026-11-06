@@ -690,4 +690,17 @@
   <!-- A held analyzer result keeps how its record read on arrival (spec point 13). -->
   <include relativeToChangelogFile="true" file="142-analyzer-result-arrival-reading.xml"/>
   <include relativeToChangelogFile="true" file="143-analyzer-mapping-source-definition.xml"/>
+  <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
+    <include file="122-amr-v2-isolates-referral.xml" relativeToChangelogFile="true"/>
+<include file="123-amr-v2-ast-reporting.xml" relativeToChangelogFile="true"/>
+    <include file="124-amr-v2-automation-bench-labels.xml" relativeToChangelogFile="true"/>
+  <include file="140-amr-reference-package.xml" relativeToChangelogFile="true"/>
+  <include file="141-amr-breakpoint-lookup-index.xml" relativeToChangelogFile="true"/>
+  <include file="142-amr-clinical-context.xml" relativeToChangelogFile="true"/>
+  <include file="143-amr-disk-content.xml" relativeToChangelogFile="true"/>
+  <include file="126-amr-organism-default-current-panel.xml" relativeToChangelogFile="true"/>
+  <include relativeToChangelogFile="true" file="144-analyzer-setup-reception.xml"/>
+  <include relativeToChangelogFile="true" file="145-optional-reporting-decimal-places.xml"/>
+  <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
+  <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
 </databaseChangeLog>

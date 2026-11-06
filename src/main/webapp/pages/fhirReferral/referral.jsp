@@ -1,3 +1,4 @@
+<%@ taglib prefix="enc" uri="/WEB-INF/taglib/output-encoding.tld" %>
 <%@ page language="java"
 	contentType="text/html; charset=UTF-8"
 	import="org.openelisglobal.common.action.IActionConstants, 
@@ -125,13 +126,13 @@ function prevPage() {
 
 function enterOrder(eOrderId, eOrderExternalId) {
 	var closeButton = document.createElement("button");
-	closeButton.setAttribute("onclick", "closeOrder('" + eOrderId + "')");
+    closeButton.addEventListener("click", function () { closeOrder(eOrderId); });
 	closeButton.setAttribute("id", "close_" + eOrderId);
 	closeButton.textContent = "<spring:message code="label.button.exit"/>"
 	
 	var iframe = document.createElement("iframe");
 	iframe.setAttribute("id", "iframe_" + eOrderId);
-	iframe.setAttribute("src", "SamplePatientEntry?attemptAutoSave=true&ID=" + eOrderExternalId);
+    iframe.setAttribute("src", "SamplePatientEntry?attemptAutoSave=true&ID=" + encodeURIComponent(eOrderExternalId));
 	iframe.style.width = "640px";
 	iframe.style.height = "480px";
 	var container = document.getElementById("iframecontainer_" + eOrderId);
@@ -288,7 +289,7 @@ jQuery(window).load(function(){
 </c:if>
 <c:if test="${not empty form.electronicOrders}">
 	<h2>
-		<spring:message code="eorder.results"/> ${startIndex + 1} -  ${endIndex} <spring:message code="eorder.of"/> ${total}
+        <spring:message code="eorder.results"/> ${enc:html(startIndex + 1)} -  ${enc:html(endIndex)} <spring:message code="eorder.of"/> ${enc:html(total)}
 		<button class="prevButton" onClick="prevPage(); return false;"><spring:message code="label.button.previous"/></button>
 		<button class="nextButton" onClick="nextPage(); return false;"><spring:message code="label.button.next"/></button>
 	</h2>
@@ -303,7 +304,8 @@ jQuery(window).load(function(){
 						<c:out value="${eOrder.externalId}"/>
 <%-- 						<c:if test=""> --%>
 							<input type="button" 
-								onclick="enterOrder(${eOrder.id}, '${eOrder.externalId}');" 
+                                data-order-id="${enc:attribute(eOrder.id)}" data-external-id="${enc:attribute(eOrder.externalId)}"
+                                onclick="enterOrder(this.dataset.orderId, this.dataset.externalId);"
 								value="<spring:message code="eorder.enterorder"/>" />
 <%-- 						</c:if> --%>
 						</span>
@@ -343,7 +345,7 @@ jQuery(window).load(function(){
 						</tr>
 						</table>
 						<b><spring:message code="eorder.status"/>: </b> <spring:message code="${eOrder.status.nameKey}"/><br>
-						<div class="iframe-holder" id="iframecontainer_${eOrder.id}">
+                        <div class="iframe-holder" id="iframecontainer_${enc:attribute(eOrder.id)}">
 						</div>
 					</div>
 					<hr>
@@ -353,7 +355,7 @@ jQuery(window).load(function(){
 		</tr>
 	</table>
 	<h2>
-		<spring:message code="eorder.results"/> ${startIndex + 1} -  ${endIndex} <spring:message code="eorder.of"/> ${total}
+        <spring:message code="eorder.results"/> ${enc:html(startIndex + 1)} -  ${enc:html(endIndex)} <spring:message code="eorder.of"/> ${enc:html(total)}
 		<button class="prevButton" onClick="prevPage(); return false;"><spring:message code="label.button.previous"/></button>
 		<button class="nextButton" onClick="nextPage(); return false;"><spring:message code="label.button.next"/></button>
 	</h2>

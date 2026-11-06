@@ -14,7 +14,7 @@ public class ReleasedNumericResultRecord {
     private String componentId;
     private String value;
     /** The decimal places the value is reported to; -1 when none were recorded. */
-    private int significantDigits = -1;
+    private int reportingDecimalPlaces = -1;
 
     public Long getSampleId() {
         return sampleId;
@@ -72,11 +72,11 @@ public class ReleasedNumericResultRecord {
         this.value = value;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 }
