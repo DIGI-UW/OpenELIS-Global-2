@@ -3,12 +3,15 @@ package org.openelisglobal.resultvalidation;
 import static org.junit.Assert.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -91,6 +94,15 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
     }
 
     @Test
+    public void validatingAPartValidatesAllOfItsSelections() throws Exception {
+        release("100").andExpect(jsonPath("$.outcome").value("accepted"));
+        assertEquals("only Size is left to validate", List.of("101"), queueResultIds());
+
+        release("101").andExpect(jsonPath("$.outcome").value("released"));
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("100").getStatusId());
+    }
+
+    @Test
     public void validatingAPartKeepsTheSelectionsOfAPrimaryWithNoComponentOnRecord() throws Exception {
         jdbcTemplate.update("UPDATE clinlims.test_result SET component_id = NULL WHERE id IN (1, 3)");
         entityManager.clear();
@@ -124,6 +136,15 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
                 .perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).session(session))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return new ObjectMapper().readTree(body).path("resultList");
+    }
+
+    private List<String> queueResultIds() throws Exception {
+        List<String> ids = new ArrayList<>();
+        for (JsonNode row : queue()) {
+            ids.add(row.path("resultId").asText());
+        }
+        Collections.sort(ids);
+        return ids;
     }
 
     private MockHttpSession validatorSession() {
