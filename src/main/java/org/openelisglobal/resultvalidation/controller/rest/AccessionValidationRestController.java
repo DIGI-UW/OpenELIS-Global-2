@@ -632,7 +632,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                     }
                 }
                 if (componentOnly) {
-                    markComponentValidated(analysisItem, results, resultUpdateList);
+                    markComponentValidated(analysis, analysisItem, results, resultUpdateList, deletableList);
                 }
             }
         }
@@ -701,18 +701,22 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         return false;
     }
 
-    private void markComponentValidated(AnalysisItem accepted, List<Result> saved, List<Result> resultUpdateList) {
+    private void markComponentValidated(Analysis analysis, AnalysisItem accepted, List<Result> saved,
+            List<Result> resultUpdateList, List<Result> deletableList) {
         java.sql.Timestamp now = new java.sql.Timestamp(System.currentTimeMillis());
-        for (Result result : saved) {
-            if (accepted.getResultId().equals(result.getId())) {
-                result.setValidatedDate(now);
-                return;
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        String componentId = scope.componentIdOf(resultService.get(accepted.getResultId()));
+        saved.forEach(result -> result.setValidatedDate(now));
+        for (Result stored : resultService.getResultsByAnalysis(analysis)) {
+            boolean handled = java.util.stream.Stream.concat(saved.stream(), deletableList.stream())
+                    .anyMatch(r -> stored.getId().equals(r.getId()));
+            if (!handled && componentId.equals(scope.componentIdOf(stored))) {
+                stored.setValidatedDate(now);
+                stored.setSysUserId(getSysUserId(request));
+                resultUpdateList.add(stored);
             }
         }
-        Result result = SpringContext.getBean(ResultService.class).get(accepted.getResultId());
-        result.setValidatedDate(now);
-        result.setSysUserId(getSysUserId(request));
-        resultUpdateList.add(result);
     }
 
     private void createNeededNotes(AnalysisItem analysisItem, Analysis analysis, List<Note> noteUpdateList) {
