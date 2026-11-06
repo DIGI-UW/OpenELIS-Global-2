@@ -585,15 +585,21 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void panelFileWithTierAndReportBehaviorColumnsStillLoads() throws Exception {
+    public void panelFileReportBehaviorLoadsWithAWarningPointingAtAstRules() throws Exception {
         var fixture = new ReferencePackageFixture("2099.19", "PANELCOL");
         load(fixture);
         writePanels("panelName,antibioticWhonetCode,tier,reportBehavior\nSynthetic column panel," + fixture.antibiotic
-                + ",4,CASCADE\n");
+                + ",4,CASCADE\nSynthetic always panel," + fixture.antibiotic + ",1,ALWAYS\n");
         var result = reloadPanels(false);
         assertFalse(result.toString(), result.hasErrors());
         var panel = panels.findCurrentByNameIgnoreCase("Synthetic column panel");
         assertEquals(1, panelAntibiotics.getByPanelId(panel.getId()).size());
+        assertEquals(
+                java.util.List.of("2|reportBehavior CASCADE is not read from panel files: set it as a rule on the"
+                        + " AST rules page"),
+                panelsHandler.getLastSummary().getRows().stream().filter(
+                        row -> row.outcome() == org.openelisglobal.configuration.service.CsvLoadSummary.Outcome.WARNING)
+                        .map(row -> row.lineNumber() + "|" + row.reason()).toList());
     }
 
     @Test

@@ -16,7 +16,7 @@ import org.openelisglobal.common.log.LogEvent;
 public final class CsvLoadSummary {
 
     public enum Outcome {
-        CREATED, UPDATED, SKIPPED, REMOVED
+        CREATED, UPDATED, SKIPPED, REMOVED, WARNING
     }
 
     /**
@@ -62,6 +62,12 @@ public final class CsvLoadSummary {
     public void removed(String loggingClass, String reason) {
         rows.add(new RowOutcome(0, Outcome.REMOVED, reason));
         LogEvent.logInfo(loggingClass, "processConfiguration", "Removed by " + fileName + ": " + reason);
+    }
+
+    public void warned(String loggingClass, int lineNumber, String reason) {
+        rows.add(new RowOutcome(lineNumber, Outcome.WARNING, reason));
+        LogEvent.logWarn(loggingClass, "processConfiguration",
+                "Line " + lineNumber + " in " + fileName + ": " + reason);
     }
 
     public String getDomain() {

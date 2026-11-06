@@ -79,6 +79,11 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                     LoadedRow<String> outcome = loadPanel(panelRows);
                     for (CsvRow row : panelRows) {
                         summary.record(outcome, getClass().getSimpleName(), row.lineNumber());
+                        String behavior = row.get("reportBehavior").toUpperCase(Locale.ROOT);
+                        if (!behavior.isEmpty() && !behavior.equals("ALWAYS")) {
+                            summary.warned(getClass().getSimpleName(), row.lineNumber(), "reportBehavior " + behavior
+                                    + " is not read from panel files: set it as a rule on the AST rules page");
+                        }
                     }
                     String claims = blankToNull(sameValue(panelRows, "defaultFor", ""));
                     if (claims != null) {
