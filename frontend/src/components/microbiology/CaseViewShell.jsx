@@ -86,7 +86,10 @@ export default function CaseViewShell({
     ].forEach((key) => next.delete(key));
     next.set("scope", scope);
     Object.entries(parameters).forEach(([key, value]) => next.set(key, value));
-    history.replace({ pathname: location.pathname, search: next.toString() });
+    history[parameters.action ? "push" : "replace"]({
+      pathname: location.pathname,
+      search: next.toString(),
+    });
   };
   const openSection = (scope, parameters) => {
     selectScope(scope, parameters);
