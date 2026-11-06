@@ -6,6 +6,9 @@ transaction bundles, including from administrators. Make clinical changes
 through the OpenELIS workflows and the dedicated, authenticated integration
 endpoints.
 
+Upgrading an existing installation: see
+[FHIR read access after upgrading](upgrades/fhir-read-access.md).
+
 ## Read permissions
 
 Authentication alone does not grant FHIR access. An administrator grants the
