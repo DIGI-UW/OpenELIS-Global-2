@@ -77,6 +77,7 @@ import org.openelisglobal.result.action.util.CriticalRangeFormat;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.service.ResultServiceImpl;
 import org.openelisglobal.result.service.ResultSignatureService;
 import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
@@ -546,6 +547,18 @@ public class ResultsValidationUtility {
      * can tell the values apart (the component is resolved via the result's
      * test_result row).
      */
+    // A result with no component belongs to the test's primary component.
+    private String componentIdOf(Result result) {
+        if (result == null) {
+            return null;
+        }
+        if (result.getTestResult() != null && result.getTestResult().getComponentId() != null) {
+            return result.getTestResult().getComponentId();
+        }
+        return testResultComponentService.getActiveComponentsByTestId(result.getAnalysis().getTest().getId()).stream()
+                .filter(c -> c.getIsPrimary()).map(c -> c.getId()).findFirst().orElse(null);
+    }
+
     protected String appendComponentLabel(String displayTestName, Result result, Test test) {
         if (result == null || result.getTestResult() == null || result.getTestResult().getComponentId() == null) {
             return displayTestName;
@@ -838,26 +851,27 @@ public class ResultsValidationUtility {
          * The issue with multiselect results is that each selection is one
          * ResultValidationItem but they all need to be condensed into one AnalysisItem
          * (whose multiSelectResultValues carries every selection as JSON). The
-         * condensing is scoped per analysis: other results of the same accession —
-         * other analyses, or other components of a multi-component analysis — must
-         * still get their own rows. Qualified results found among an analysis's
+         * condensing is scoped per analysis component: other results of the same
+         * accession — other analyses, or other components of a multi-component analysis
+         * — must still get their own rows. Qualified results found among a component's
          * multiselect selections are captured onto its condensed item.
          */
-        Map<String, AnalysisItem> condensedMultiSelectByAnalysis = new HashMap<>();
+        Map<String, AnalysisItem> condensedMultiSelectByComponent = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
-            String analysisId = testResultItem.getAnalysis().getId();
             boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
                     .isMultiSelectVariant(testResultItem.getResultType());
+            String componentKey = testResultItem.getAnalysis().getId() + "|"
+                    + componentIdOf(testResultItem.getResult());
 
-            if (!multiSelect || !condensedMultiSelectByAnalysis.containsKey(analysisId)) {
+            if (!multiSelect || !condensedMultiSelectByComponent.containsKey(componentKey)) {
                 AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
                 analysisResultList.add(convertedItem);
                 if (multiSelect) {
-                    condensedMultiSelectByAnalysis.put(analysisId, convertedItem);
+                    condensedMultiSelectByComponent.put(componentKey, convertedItem);
                 }
             }
 
-            AnalysisItem condensedItem = condensedMultiSelectByAnalysis.get(analysisId);
+            AnalysisItem condensedItem = multiSelect ? condensedMultiSelectByComponent.get(componentKey) : null;
             if (condensedItem != null && testResultItem.isHasQualifiedResult()) {
                 condensedItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
                 condensedItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
@@ -1144,8 +1158,11 @@ public class ResultsValidationUtility {
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                Analysis analysis = testResultItem.getAnalysis();
-                analysisResultItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
+                String componentId = componentIdOf(result);
+                analysisResultItem.setMultiSelectResultValues(ResultServiceImpl
+                        .getJSONStringForMultiSelect(resultService.getResultsByAnalysis(testResultItem.getAnalysis())
+                                .stream().filter(r -> java.util.Objects.equals(componentIdOf(r), componentId))
+                                .collect(Collectors.toList())));
             } else {
                 analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
                         : getFormattedResult(testResultItem));
