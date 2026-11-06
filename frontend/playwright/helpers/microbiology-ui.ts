@@ -12,13 +12,15 @@ const caseScopeHeading = (page: Page, scope: string) =>
       : `#case-scope-${scope} > .cds--accordion__heading`,
   );
 
-export const openMicrobiologyCaseScope = async (page: Page, scope: string) => {
-  const heading = caseScopeHeading(page, scope);
+const expandAccordion = async (heading: Locator) => {
   await expect(heading).toBeVisible({ timeout: LONG_TIMEOUT });
   if ((await heading.getAttribute("aria-expanded")) !== "true")
     await heading.click();
   await expect(heading).toHaveAttribute("aria-expanded", "true");
 };
+
+export const openMicrobiologyCaseScope = (page: Page, scope: string) =>
+  expandAccordion(caseScopeHeading(page, scope));
 
 export const expectMicrobiologyCaseScopeOpen = async (
   page: Page,
@@ -51,13 +53,8 @@ export const releaseFinalReport = async (page: Page) => {
   await expect(confirm).toHaveCount(0, { timeout: LONG_TIMEOUT });
 };
 
-export const openMicrobiologyCaseInfo = async (page: Page) => {
-  const heading = page.getByRole("button", { name: "Case info", exact: true });
-  await expect(heading).toBeVisible({ timeout: LONG_TIMEOUT });
-  if ((await heading.getAttribute("aria-expanded")) !== "true")
-    await heading.click();
-  await expect(heading).toHaveAttribute("aria-expanded", "true");
-};
+export const openMicrobiologyCaseInfo = (page: Page) =>
+  expandAccordion(page.getByRole("button", { name: "Case info", exact: true }));
 
 export const openMicrobiologyCaseSection = async (
   page: Page,
