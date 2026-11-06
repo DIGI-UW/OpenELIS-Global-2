@@ -88,7 +88,7 @@ public class LabelMakerServletTest {
 
     @Test
     public void validate_acceptsPositiveQuantity() {
-        Errors errors = servlet.validate("ACC-1", "", "order", "5", "false");
+        Errors errors = servlet.validate("ACC-1", "order", "5", "false");
 
         assertFalse(hasError(errors, "barcode.label.error.quantity.invalid"));
     }
@@ -98,21 +98,21 @@ public class LabelMakerServletTest {
         // Frontend NumberInput clamps to >= 0, but a tampered URL or scripted
         // caller can still hit the servlet directly. Reject rather than silently
         // emitting an empty PDF that the cap-prompt UI misinterprets.
-        Errors errors = servlet.validate("ACC-1", "", "order", "0", "false");
+        Errors errors = servlet.validate("ACC-1", "order", "0", "false");
 
         assertTrue(hasError(errors, "barcode.label.error.quantity.invalid"));
     }
 
     @Test
     public void validate_rejectsNegativeQuantity() {
-        Errors errors = servlet.validate("ACC-1", "", "order", "-3", "false");
+        Errors errors = servlet.validate("ACC-1", "order", "-3", "false");
 
         assertTrue(hasError(errors, "barcode.label.error.quantity.invalid"));
     }
 
     @Test
     public void validate_rejectsNonIntegerQuantity() {
-        Errors errors = servlet.validate("ACC-1", "", "order", "abc", "false");
+        Errors errors = servlet.validate("ACC-1", "order", "abc", "false");
 
         assertTrue(hasError(errors, "barcode.label.error.quantity.invalid"));
     }
@@ -123,7 +123,7 @@ public class LabelMakerServletTest {
         // PDF render loop in BarcodeLabelMaker. The cap is the only guard.
         // ConfigurationProperties is mocked to return null for this property,
         // so getMaxRequestQuantity() falls back to DEFAULT_MAX_REQUEST_QUANTITY.
-        Errors errors = servlet.validate("ACC-1", "", "order",
+        Errors errors = servlet.validate("ACC-1", "order",
                 Integer.toString(LabelMakerServlet.DEFAULT_MAX_REQUEST_QUANTITY + 1), "true");
 
         assertTrue(hasError(errors, "barcode.label.error.quantity.invalid"));
@@ -131,7 +131,7 @@ public class LabelMakerServletTest {
 
     @Test
     public void validate_acceptsQuantityAtCap() {
-        Errors errors = servlet.validate("ACC-1", "", "order",
+        Errors errors = servlet.validate("ACC-1", "order",
                 Integer.toString(LabelMakerServlet.DEFAULT_MAX_REQUEST_QUANTITY), "false");
 
         assertFalse(hasError(errors, "barcode.label.error.quantity.invalid"));
@@ -141,7 +141,7 @@ public class LabelMakerServletTest {
     public void validate_acceptsAllDispatcherBackedTypes() {
         for (String type : new String[] { "default", "order", "specimen", "blank", "blockOrder", "slideOrder",
                 "freezerOrder" }) {
-            Errors errors = servlet.validate("ACC-1", "", type, "1", "false");
+            Errors errors = servlet.validate("ACC-1", type, "1", "false");
 
             assertFalse("Expected " + type + " to be accepted", hasError(errors, "barcode.label.error.type.invalid"));
         }
@@ -152,7 +152,7 @@ public class LabelMakerServletTest {
         // BarcodeLabelMaker.generateLabels has no branch for these — accepting
         // them would silently produce empty PDFs misread as "max reached".
         for (String bareType : new String[] { "block", "slide", "freezer" }) {
-            Errors errors = servlet.validate("ACC-1", "", bareType, "1", "false");
+            Errors errors = servlet.validate("ACC-1", bareType, "1", "false");
 
             assertTrue("Expected " + bareType + " to be rejected",
                     hasError(errors, "barcode.label.error.type.invalid"));
@@ -161,7 +161,7 @@ public class LabelMakerServletTest {
 
     @Test
     public void validate_rejectsUnknownType() {
-        Errors errors = servlet.validate("ACC-1", "", "totallyUnknown", "1", "false");
+        Errors errors = servlet.validate("ACC-1", "totallyUnknown", "1", "false");
 
         assertTrue(hasError(errors, "barcode.label.error.type.invalid"));
     }
