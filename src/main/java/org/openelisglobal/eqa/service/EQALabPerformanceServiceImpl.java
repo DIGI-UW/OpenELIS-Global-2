@@ -242,12 +242,8 @@ public class EQALabPerformanceServiceImpl implements EQALabPerformanceService {
         return rows;
     }
 
-    /**
-     * The accredited tests with no live EQA enrollment — ISO 15189 §7.7.2's
-     * alternative-assessment candidates. Read from the accreditation module rather
-     * than recomputed here, so both pages answer the coverage question the same
-     * way.
-     */
+    // ISO 15189:2022 §7.3.7.3 candidates, read from the accreditation module so
+    // both pages agree.
     private List<Map<String, Object>> gaps(List<EqaCoverageView> accreditation) {
         Map<String, Map<String, Object>> byTest = new LinkedHashMap<>();
         for (EqaCoverageView body : accreditation) {
