@@ -711,7 +711,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         for (Result stored : resultService.getResultsByAnalysis(analysis)) {
             boolean handled = java.util.stream.Stream.concat(saved.stream(), deletableList.stream())
                     .anyMatch(r -> stored.getId().equals(r.getId()));
-            if (!handled && componentId.equals(scope.componentIdOf(stored))) {
+            if (!handled && java.util.Objects.equals(componentId, scope.componentIdOf(stored))) {
                 stored.setValidatedDate(now);
                 stored.setSysUserId(getSysUserId(request));
                 resultUpdateList.add(stored);
