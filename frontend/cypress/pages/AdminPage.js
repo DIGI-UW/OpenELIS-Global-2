@@ -1,7 +1,6 @@
 // This handles all pages of the admin
 import LabNumberManagementPage from "./LabNumberManagementPage";
 import MenuConfigPage from "./MenuConfigPage";
-import UserManagementPage from "./UserManagementPage";
 import ReflexTestsConfigPage from "./ReflexTestsConfigPage";
 import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 import NotifyUserPage from "./NotifyUserPage";
@@ -17,7 +16,6 @@ class AdminPage {
       globalMenuManagement: "[data-cy='globalMenuMgmnt']",
       barcodeConfig: "[data-cy='barcodeConfig']",
       programEntry: "[data-cy='programEntry']",
-      userManagement: "[data-cy='userMgmnt']",
       notifyUser: "[data-cy='notifyUser']",
       resultReportingConfig: "[data-cy='resultReportingConfiguration']",
       batchTest: "[data-cy='batchTestReassignment']",
@@ -63,20 +61,6 @@ class AdminPage {
     return new MenuConfigPage();
   }
 
-  goToNonConformConfigPage() {
-    this.ensureAdminShell();
-    cy.contains("span", "Menu Configuration")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    cy.get("[data-cy='nonConformMenuMgmnt']")
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-
-    return new MenuConfigPage();
-  }
-
   goToPatientConfigPage() {
     this.ensureAdminShell();
     cy.contains("span", "Menu Configuration")
@@ -117,14 +101,6 @@ class AdminPage {
       .click({ force: true });
 
     return new MenuConfigPage();
-  }
-
-  goToUserManagementPage() {
-    cy.get(this.selectors.userManagement)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new UserManagementPage();
   }
 
   goToReflexTestsManagement() {
