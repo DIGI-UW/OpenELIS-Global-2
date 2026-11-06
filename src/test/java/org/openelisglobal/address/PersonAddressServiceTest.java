@@ -97,4 +97,30 @@ public class PersonAddressServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("Tulla", address.getValue());
         Assert.assertEquals("V", address.getType());
     }
+
+    @Test
+    public void getAddressPartsByPersonId_withUnknownPersonId_shouldReturnEmptyList() throws Exception {
+        List<PersonAddress> result = pAddressService.getAddressPartsByPersonId("99999");
+
+        Assert.assertNotNull("Result must not be null for an unknown person ID", result);
+        Assert.assertTrue("Should return empty list for a person with no addresses", result.isEmpty());
+    }
+
+    @Test
+    public void getByPersonIdAndPartId_withNonExistentCombination_shouldReturnNull() throws Exception {
+        PersonAddress result = pAddressService.getByPersonIdAndPartId("99999", "99999");
+        Assert.assertNull("Should return null when the person/part combination does not exist", result);
+    }
+
+    @Test
+    public void updatePersonAddressType_shouldPersistNewType() throws Exception {
+        PersonAddress address = pAddressService.getByPersonIdAndPartId("1", "3");
+        Assert.assertNotNull("Precondition: address must exist", address);
+
+        address.setType("X");
+        pAddressService.save(address);
+
+        PersonAddress reloaded = pAddressService.getByPersonIdAndPartId("1", "3");
+        Assert.assertEquals("Updated type should be persisted", "X", reloaded.getType());
+    }
 }
