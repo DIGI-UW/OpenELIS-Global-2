@@ -701,4 +701,22 @@ describe("case bar", () => {
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  test("release stays available while the case refreshes", async () => {
+    const service = barService();
+    renderPage(<CaseViewShell service={service} caseId="case-1" />);
+    const bar = await screen.findByRole("region", { name: "Case summary" });
+    const partial = await within(bar).findByRole("button", {
+      name: "Release partial report",
+    });
+    await waitFor(() => expect(partial).toBeEnabled());
+    const loaded = await service.getCase.mock.results[0].value;
+    service.getCase.mockResolvedValue({ ...loaded });
+    service.getReadiness.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(partial);
+    await waitFor(() => expect(service.getReadiness).toHaveBeenCalledTimes(2));
+    expect(
+      within(bar).getByRole("button", { name: "Release partial report" }),
+    ).toBeEnabled();
+  });
 });
