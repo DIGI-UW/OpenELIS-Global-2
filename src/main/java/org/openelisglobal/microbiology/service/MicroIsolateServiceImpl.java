@@ -161,8 +161,9 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
             retireSusceptibility(updated, performedBy);
         if (!java.util.Objects.equals(previous.getOrganismId(), isolate.getOrganismId())) {
             astService.reapplyRulesForIsolate(isolate.getId(), performedBy);
-        }
-        panelAssignments.followIdentification(updated, performedBy);
+            panelAssignments.followIdentification(updated, performedBy);
+        } else if (panelAssignments.getAssignments(updated.getId()).isEmpty())
+            panelAssignments.assignDefault(updated, performedBy);
         recordActivity(isolate.getCaseId(), MicroCaseActivityType.ISOLATE_UPDATED, performedBy,
                 identificationActivityNote(isolate, previous, reason),
                 "{\"isolateId\":\"" + isolate.getId() + "\",\"identificationEventId\":\"" + event.getId() + "\"}");

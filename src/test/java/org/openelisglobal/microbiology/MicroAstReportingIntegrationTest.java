@@ -1272,8 +1272,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     private void reidentify(String organismId) {
-        isolateService.updateIdentification(isolate, organismId, null, MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                MicroIsolateIdentificationStatus.CONFIRMED, fixtures.createMethodId(), null, "Corrected identification",
+        reidentify(isolate, organismId);
+    }
+
+    private void reidentify(String isolateId, String organismId) {
+        isolateService.updateIdentification(isolateId, organismId, null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                fixtures.createMethodId(), null, "Corrected identification",
                 new Timestamp(System.currentTimeMillis() - 1000), validator);
         em.flush();
         em.clear();
@@ -1448,7 +1453,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
 
     @Test
     public void reidentifyingOutOfThePanelsGroupRetiresItsAssignment() {
-        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales", null);
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
         reidentify(klebsiella.getId());
         assertEquals(List.of(reference.panel().getId()),
                 assignments.getAssignments(isolate).stream().map(MicroAstPanelAssignment::getPanelId).toList());
@@ -1456,6 +1462,40 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         var staphylococcus = fixtures.createOrganism("Staphylococcus " + UUID.randomUUID(), "Staphylococci", null);
         reidentify(staphylococcus.getId());
         assertEquals(List.of(), assignments.getAssignments(isolate));
+    }
+
+    @Test
+    public void aDefaultAssignmentFollowsTheNewOrganismsDefaultEvenWithoutAPanelGroup() {
+        var groupless = panel(null);
+        var manual = panel(null);
+        reference.organism().setDefaultAstPanelId(groupless.getId());
+        organisms.update(reference.organism());
+        String id = isolate("ISO-G");
+        assignments.assign(id, manual.getId(), writer);
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        reidentify(id, klebsiella.getId());
+        assertEquals(Set.of(reference.panel().getId(), manual.getId()), assignments.getAssignments(id).stream()
+                .map(MicroAstPanelAssignment::getPanelId).collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @Test
+    public void reconfirmingTheSameOrganismLeavesItsPanelsAlone() {
+        reference.organism().setDefaultAstPanelId(panel("Enterobacterales").getId());
+        organisms.update(reference.organism());
+        reidentify(reference.organism().getId());
+        assertEquals(List.of(reference.panel().getId()),
+                assignments.getAssignments(isolate).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+    }
+
+    private MicroAstPanel panel(String organismGroup) {
+        var p = new MicroAstPanel();
+        p.setName("Panel " + UUID.randomUUID());
+        p.setOrganismGroup(organismGroup);
+        p.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        p.setPublishedBy(writer);
+        panels.insert(p);
+        return p;
     }
 
     @Test
