@@ -66,6 +66,21 @@ public class MicroAstPanelAssignmentService {
     }
 
     @Transactional
+    public void undoSince(String isolateId, java.sql.Timestamp since) {
+        for (var assignment : assignments.getByIsolateId(isolateId)) {
+            boolean assignedSince = !assignment.getAssignedAt().before(since);
+            if (assignment.getRetiredAt() == null && assignedSince) {
+                assignment.setRetiredAt(MicroCaseServiceImpl.now());
+                assignments.update(assignment);
+            } else if (assignment.getRetiredAt() != null && !assignment.getRetiredAt().before(since)
+                    && !assignedSince) {
+                assignment.setRetiredAt(null);
+                assignments.update(assignment);
+            }
+        }
+    }
+
+    @Transactional
     public MicroAstPanelAssignment assign(String isolateId, String panelId, String actor) {
         var isolate = isolates.get(isolateId).orElseThrow();
         authorization.requireWrite(isolate.getCaseId(), actor, Constants.ROLE_RESULTS);

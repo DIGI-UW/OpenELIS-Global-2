@@ -126,8 +126,7 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
             isolateDAO.update(isolate);
         }
         for (MicroIsolate isolate : isolateDAO.getByCaseId(caseId))
-            if (isolate.getCancelledAt() == null)
-                panelAssignments.followIdentification(isolate, performedBy);
+            panelAssignments.undoSince(isolate.getId(), amendment.getOpenedAt());
         var baseline = versions.getLatestByCaseId(caseId);
         if (baseline != null && baseline.getStructuredContent() != null) {
             var report = patientReports.decode(baseline.getStructuredContent());
