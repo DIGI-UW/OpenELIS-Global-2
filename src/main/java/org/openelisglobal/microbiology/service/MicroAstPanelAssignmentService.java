@@ -49,9 +49,15 @@ public class MicroAstPanelAssignmentService {
     @Transactional
     public void followIdentification(MicroIsolate isolate, String actor) {
         var organism = isolate.getOrganismId() == null ? null : organisms.get(isolate.getOrganismId()).orElse(null);
+        var defaultPanel = organism == null || organism.getDefaultAstPanelId() == null ? null
+                : panels.get(organism.getDefaultAstPanelId()).orElse(null);
         for (var assignment : getAssignments(isolate.getId())) {
             var panel = panels.get(assignment.getPanelId()).orElse(null);
-            if (organism == null || panel == null || !fits(organism, panel)) {
+            boolean keep = organism != null && panel != null
+                    && ("ORGANISM_DEFAULT".equals(assignment.getProvenance())
+                            ? defaultPanel != null && defaultPanel.getLogicalKey().equals(panel.getLogicalKey())
+                            : fits(organism, panel));
+            if (!keep) {
                 assignment.setRetiredAt(MicroCaseServiceImpl.now());
                 assignments.update(assignment);
             }
