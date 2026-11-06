@@ -82,15 +82,25 @@ async function openAttachments(page: Page, notebookId: number) {
   await page.getByRole("tab", { name: "Attachments" }).click();
 }
 
-/** Saves the open notebook and waits for the server's answer; callers assert on the screen. */
-async function saveNotebook(page: Page, notebookId: number) {
+/**
+ * Saves the open notebook and waits for the server's answer. A saved notebook
+ * reloads its page, so that load must finish before the test navigates again;
+ * a refused save stays on the page. Callers assert on the screen.
+ */
+async function saveNotebook(
+  page: Page,
+  notebookId: number,
+  outcome: "saved" | "refused",
+) {
   const answered = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/rest/notebook/update/${notebookId}`) &&
       response.request().method() === "POST",
   );
+  const reloaded = outcome === "saved" ? page.waitForEvent("load") : null;
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await answered;
+  await reloaded;
 }
 
 for (const file of [
@@ -113,7 +123,7 @@ for (const file of [
     );
     await openAttachments(page, notebookId);
     await page.locator('input[type="file"]').setInputFiles(file);
-    await saveNotebook(page, notebookId);
+    await saveNotebook(page, notebookId, "saved");
 
     await openAttachments(page, notebookId);
     const tile = page
@@ -165,7 +175,7 @@ test("an unsupported notebook attachment is refused and the saved notebook stays
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "gel.png", mimeType: "image/png", buffer: png });
-  await saveNotebook(page, notebookId);
+  await saveNotebook(page, notebookId, "saved");
 
   await openAttachments(page, notebookId);
   await page.locator('input[type="file"]').setInputFiles({
@@ -175,7 +185,7 @@ test("an unsupported notebook attachment is refused and the saved notebook stays
       '<svg xmlns="http://www.w3.org/2000/svg" onload="notAllowed()"/>',
     ),
   });
-  await saveNotebook(page, notebookId);
+  await saveNotebook(page, notebookId, "refused");
   await expect(page.getByText("Error While saving")).toBeVisible();
 
   await openAttachments(page, notebookId);
