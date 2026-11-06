@@ -433,6 +433,16 @@ describe("case actions", () => {
     });
   });
 
+  test("a case action adds a history entry, so Back returns to the case", async () => {
+    const history = caseActions();
+    const items = await openCaseActions();
+    const entries = history.length;
+    fireEvent.click(items[0]);
+    expect(history.length).toBe(entries + 1);
+    act(() => history.goBack());
+    expect(history.location.search).toBe("");
+  });
+
   test("Mark lost opens the nonconformity section in lost mode", async () => {
     const history = caseActions();
     const items = await openCaseActions();
