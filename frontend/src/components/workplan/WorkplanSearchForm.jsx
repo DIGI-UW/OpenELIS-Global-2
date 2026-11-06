@@ -15,7 +15,7 @@ export default function WorkplanSearchForm(props) {
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
 
-  let title = "";
+  let title;
   let urlToPost = "";
   const type = props.type;
   switch (type) {

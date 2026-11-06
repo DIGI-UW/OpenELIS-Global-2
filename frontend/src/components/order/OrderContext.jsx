@@ -754,7 +754,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
    * message plus one entry per rejected field.
    */
   const readSaveFailure = async (response) => {
-    let body = {};
+    let body;
     try {
       body = (await response.json()) || {};
     } catch (parseError) {
@@ -863,7 +863,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, []);
 
   const recordRangeNotApplied = useCallback(async (response, labNo) => {
-    let tests = [];
+    let tests;
     try {
       const body = await response.clone().json();
       tests = Array.isArray(body?.rangeNotAppliedTests)

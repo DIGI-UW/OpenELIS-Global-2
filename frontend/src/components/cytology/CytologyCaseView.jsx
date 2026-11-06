@@ -1107,7 +1107,7 @@ function CytologyCaseView() {
                                   r.resultType === "DICTIONARY",
                               );
                             var diagnosisResultMap = {};
-                            var newDiagnosisResultMaps = [];
+                            var newDiagnosisResultMaps;
                             diagnosisResultMap.category =
                               "EPITHELIAL_CELL_ABNORMALITY";
                             diagnosisResultMap.resultType = "DICTIONARY";
@@ -1295,7 +1295,7 @@ function CytologyCaseView() {
                                   r.resultType === "TEXT",
                               );
                             var diagnosisResultMap = {};
-                            var newDiagnosisResultMaps = [];
+                            var newDiagnosisResultMaps;
                             diagnosisResultMap.category =
                               "EPITHELIAL_CELL_ABNORMALITY";
                             diagnosisResultMap.resultType = "TEXT";
@@ -1360,7 +1360,7 @@ function CytologyCaseView() {
                                   "NON_NEOPLASTIC_CELLULAR_VARIATIONS",
                               );
                             var diagnosisResultMap = {};
-                            var newDiagnosisResultMaps = [];
+                            var newDiagnosisResultMaps;
                             diagnosisResultMap.category =
                               "NON_NEOPLASTIC_CELLULAR_VARIATIONS";
                             diagnosisResultMap.resultType = "DICTIONARY";
@@ -1464,7 +1464,7 @@ function CytologyCaseView() {
                                   r.category === "REACTIVE_CELLULAR_CHANGES",
                               );
                             var diagnosisResultMap = {};
-                            var newDiagnosisResultMaps = [];
+                            var newDiagnosisResultMaps;
                             diagnosisResultMap.category =
                               "REACTIVE_CELLULAR_CHANGES";
                             diagnosisResultMap.resultType = "DICTIONARY";
@@ -1565,7 +1565,7 @@ function CytologyCaseView() {
                                 (r) => r.category === "ORGANISMS",
                               );
                             var diagnosisResultMap = {};
-                            var newDiagnosisResultMaps = [];
+                            var newDiagnosisResultMaps;
                             diagnosisResultMap.category = "ORGANISMS";
                             diagnosisResultMap.resultType = "DICTIONARY";
                             diagnosisResultMap.results = changes.selectedItems;
@@ -1664,7 +1664,7 @@ function CytologyCaseView() {
                                 (r) => r.category === "OTHER",
                               );
                             var diagnosisResultMap = {};
-                            var newDiagnosisResultMaps = [];
+                            var newDiagnosisResultMaps;
                             diagnosisResultMap.category = "OTHER";
                             diagnosisResultMap.resultType = "DICTIONARY";
                             diagnosisResultMap.results = changes.selectedItems;

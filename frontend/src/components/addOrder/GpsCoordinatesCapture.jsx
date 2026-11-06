@@ -110,7 +110,7 @@ const GpsCoordinatesCapture = ({
     if (!isMounted.current) return;
 
     setGpsStatus("error");
-    let message = "";
+    let message;
 
     switch (error.code) {
       case error.PERMISSION_DENIED:
