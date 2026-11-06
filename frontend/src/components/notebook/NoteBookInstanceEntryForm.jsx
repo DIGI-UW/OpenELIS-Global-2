@@ -48,6 +48,7 @@ import {
   postToOpenElisServerFullResponse,
   postToOpenElisServer,
   toBase64,
+  labNumberForSearch,
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
@@ -749,7 +750,7 @@ const NoteBookInstanceEntryForm = () => {
     setResultsModalOpen(true);
 
     // Fetch results for this accession
-    const labNumber = accession.split("-")[0];
+    const labNumber = labNumberForSearch(accession);
     const searchEndPoint =
       "/rest/LogbookResults?" +
       "labNumber=" +
@@ -2568,7 +2569,7 @@ const NoteBookInstanceEntryForm = () => {
         resultsModalData.testResult.length > 0 ? (
           <UnifiedResults
             key={resultsModalAccession}
-            accessionNumber={resultsModalAccession.split("-")[0]}
+            accessionNumber={labNumberForSearch(resultsModalAccession)}
             embedded
           />
         ) : (
