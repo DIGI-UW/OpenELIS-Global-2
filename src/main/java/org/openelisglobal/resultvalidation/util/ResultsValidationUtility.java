@@ -547,18 +547,6 @@ public class ResultsValidationUtility {
      * can tell the values apart (the component is resolved via the result's
      * test_result row).
      */
-    // A result with no component belongs to the test's primary component.
-    private String componentIdOf(Result result) {
-        if (result == null) {
-            return null;
-        }
-        if (result.getTestResult() != null && result.getTestResult().getComponentId() != null) {
-            return result.getTestResult().getComponentId();
-        }
-        return testResultComponentService.getActiveComponentsByTestId(result.getAnalysis().getTest().getId()).stream()
-                .filter(c -> c.getIsPrimary()).map(c -> c.getId()).findFirst().orElse(null);
-    }
-
     protected String appendComponentLabel(String displayTestName, Result result, Test test) {
         if (result == null || result.getTestResult() == null || result.getTestResult().getComponentId() == null) {
             return displayTestName;
@@ -575,6 +563,22 @@ public class ResultsValidationUtility {
             }
         }
         return displayTestName;
+    }
+
+    // A result with no component belongs to the test's primary component.
+    private String componentIdOf(Result result, Map<String, String> primaryByTest) {
+        if (result == null) {
+            return null;
+        }
+        if (result.getTestResult() != null && result.getTestResult().getComponentId() != null) {
+            return result.getTestResult().getComponentId();
+        }
+        String testId = result.getAnalysis().getTest().getId();
+        if (!primaryByTest.containsKey(testId)) {
+            primaryByTest.put(testId, testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                    .filter(c -> c.getIsPrimary()).map(c -> c.getId()).findFirst().orElse(null));
+        }
+        return primaryByTest.get(testId);
     }
 
     /**
@@ -857,11 +861,14 @@ public class ResultsValidationUtility {
          * multiselect selections are captured onto its condensed item.
          */
         Map<String, AnalysisItem> condensedMultiSelectByComponent = new HashMap<>();
+        Map<String, String> primaryByTest = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
             boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
                     .isMultiSelectVariant(testResultItem.getResultType());
-            String componentKey = testResultItem.getAnalysis().getId() + "|"
-                    + componentIdOf(testResultItem.getResult());
+            String componentKey = multiSelect
+                    ? testResultItem.getAnalysis().getId() + "|"
+                            + componentIdOf(testResultItem.getResult(), primaryByTest)
+                    : null;
 
             if (!multiSelect || !condensedMultiSelectByComponent.containsKey(componentKey)) {
                 AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
@@ -1158,10 +1165,11 @@ public class ResultsValidationUtility {
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                String componentId = componentIdOf(result);
-                analysisResultItem.setMultiSelectResultValues(ResultServiceImpl
-                        .getJSONStringForMultiSelect(resultService.getResultsByAnalysis(testResultItem.getAnalysis())
-                                .stream().filter(r -> java.util.Objects.equals(componentIdOf(r), componentId))
+                Map<String, String> primaryByTest = new HashMap<>();
+                String componentId = componentIdOf(result, primaryByTest);
+                analysisResultItem.setMultiSelectResultValues(ResultServiceImpl.getJSONStringForMultiSelect(
+                        resultService.getResultsByAnalysis(testResultItem.getAnalysis()).stream()
+                                .filter(r -> java.util.Objects.equals(componentIdOf(r, primaryByTest), componentId))
                                 .collect(Collectors.toList())));
             } else {
                 analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
