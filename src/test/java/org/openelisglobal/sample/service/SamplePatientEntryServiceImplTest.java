@@ -107,7 +107,9 @@ public class SamplePatientEntryServiceImplTest {
         OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
         payload.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(1, 101));
         form.setLabelPersistRequest(payload);
-        org.mockito.Mockito.doThrow(new LabelQuantityRefusedException("error.labels.quantity.max", "Too many labels"))
+        org.mockito.Mockito
+                .doThrow(
+                        new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_LIMIT, "Too many labels"))
                 .when(labels).validateQuantities(payload);
         org.junit.Assert.assertThrows(LabelQuantityRefusedException.class,
                 () -> service.persistData(null, null, null, form, null));

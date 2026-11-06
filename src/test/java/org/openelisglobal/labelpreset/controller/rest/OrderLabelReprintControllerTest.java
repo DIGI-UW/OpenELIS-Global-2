@@ -165,9 +165,11 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
         jdbc.update("UPDATE order_label_request SET qty = 101 WHERE parent_sample_id = ?", Long.valueOf(sampleId));
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+                .andExpect(jsonPath("$.messageKey").value("barcode.label.error.quantity.limit"))
+                .andExpect(jsonPath("$.messageArgs.max").value(100));
         mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId)).andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+                .andExpect(jsonPath("$.messageKey").value("barcode.label.error.quantity.limit"))
+                .andExpect(jsonPath("$.messageArgs.max").value(100));
     }
 
     // ── OGC-1422: one PDF endpoint behind Print row / column / all ───────────

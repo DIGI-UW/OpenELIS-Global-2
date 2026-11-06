@@ -291,19 +291,23 @@ describe("resolveApiErrorMessage", () => {
       {
         error: "Print job exceeds the total limit of 1000 labels",
         messageKey: "barcode.label.error.batch.limit",
+        messageArgs: { max: 1000 },
       },
       "server.error.msg",
     );
     const singleRefusal = resolveApiErrorMessage(
       intl,
       {
-        error: "Label quantity exceeds the request safety limit",
-        messageKey: "error.labels.quantity.max",
+        error: "Label quantity exceeds the request safety limit of 100",
+        messageKey: "barcode.label.error.quantity.limit",
+        messageArgs: { max: 100 },
       },
       "server.error.msg",
     );
 
-    expect(totalRefusal).toBe(messages["barcode.label.error.batch.limit"]);
-    expect(singleRefusal).toBe(messages["error.labels.quantity.max"]);
+    expect(totalRefusal).toBe(
+      "This print job has more than 1000 labels. Print fewer labels at a time.",
+    );
+    expect(singleRefusal).toBe("Each label quantity can be at most 100.");
   });
 });

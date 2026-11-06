@@ -169,14 +169,16 @@ public class SamplePatientEntryRestControllerErrorPathTest {
         Map<String, Object> tooManyInTotal = SamplePatientEntryRestController.persistErrorBody("too many labels",
                 new LabelQuantityRefusedException(LabelQuantityRefusedException.JOB_TOO_LARGE, "too many labels"));
         Map<String, Object> tooManyOfOne = SamplePatientEntryRestController.persistErrorBody("over the limit",
-                new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_MAXIMUM, "over the limit"));
+                new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_LIMIT, "over the limit",
+                        Map.of("max", 100)));
         Map<String, Object> otherRejection = SamplePatientEntryRestController.persistErrorBody("bad date",
                 new IllegalArgumentException("bad date"));
         Map<String, Object> serverFault = SamplePatientEntryRestController.persistErrorBody("database down", null);
 
         assertEquals(LabelQuantityRefusedException.JOB_TOO_LARGE, tooManyInTotal.get("messageKey"));
         assertEquals("too many labels", tooManyInTotal.get("error"));
-        assertEquals(LabelQuantityRefusedException.ABOVE_MAXIMUM, tooManyOfOne.get("messageKey"));
+        assertEquals(LabelQuantityRefusedException.ABOVE_LIMIT, tooManyOfOne.get("messageKey"));
+        assertEquals(Map.of("max", 100), tooManyOfOne.get("messageArgs"));
         assertFalse(otherRejection.containsKey("messageKey"));
         assertEquals("bad date", otherRejection.get("error"));
         assertFalse(serverFault.containsKey("messageKey"));

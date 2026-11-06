@@ -98,13 +98,21 @@ public class LabelMakerServlet extends HttpServlet implements IActionConstants {
         } catch (LabelQuantityRefusedException | NumberFormatException e) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType("text/plain; charset=utf-8");
-            String messageKey = e instanceof LabelQuantityRefusedException
-                    && LabelQuantityRefusedException.JOB_TOO_LARGE
-                            .equals(((LabelQuantityRefusedException) e).getMessageKey())
-                                    ? LabelQuantityRefusedException.JOB_TOO_LARGE
-                                    : "barcode.label.error.quantity.invalid";
-            response.getWriter().println(MessageUtil.getMessage(messageKey));
+            response.getWriter().println(refusalMessage(e));
         }
+    }
+
+    /**
+     * The refusal in the user's language, naming the limit when one was exceeded.
+     */
+    private static String refusalMessage(RuntimeException e) {
+        if (e instanceof LabelQuantityRefusedException refusal
+                && (LabelQuantityRefusedException.JOB_TOO_LARGE.equals(refusal.getMessageKey())
+                        || LabelQuantityRefusedException.ABOVE_LIMIT.equals(refusal.getMessageKey()))) {
+            return MessageUtil.getMessage(refusal.getMessageKey(),
+                    new Object[] { refusal.getMessageArgs().get("max") });
+        }
+        return MessageUtil.getMessage("barcode.label.error.quantity.invalid");
     }
 
     private boolean printLegacyPathologyLabelTypeRequest(HttpServletRequest request, HttpServletResponse response)

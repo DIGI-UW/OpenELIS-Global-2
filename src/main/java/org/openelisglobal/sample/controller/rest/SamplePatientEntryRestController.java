@@ -1000,7 +1000,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      */
     static Map<String, Object> persistErrorBody(String message, IllegalArgumentException refusal) {
         if (refusal instanceof LabelQuantityRefusedException quantityRefusal) {
-            return Map.of("error", message, "messageKey", quantityRefusal.getMessageKey());
+            return Map.of("error", message, "messageKey", quantityRefusal.getMessageKey(), "messageArgs",
+                    quantityRefusal.getMessageArgs());
         }
         return Map.of("error", message);
     }

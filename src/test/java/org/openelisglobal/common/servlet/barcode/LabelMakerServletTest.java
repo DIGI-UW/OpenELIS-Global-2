@@ -18,6 +18,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.sample.service.SampleService;
@@ -26,6 +27,8 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -195,6 +198,26 @@ public class LabelMakerServletTest {
                 assertEquals(field + "=" + quantity, 400, response.getStatus());
             }
         }
+    }
+
+    @Test
+    public void doGet_aPrePrintQuantityAboveTheLimitNamesTheLimit() throws Exception {
+        StaticMessageSource messages = new StaticMessageSource();
+        messages.addMessage(LabelQuantityRefusedException.ABOVE_LIMIT, LocaleContextHolder.getLocale(),
+                "Each label quantity can be at most {0}.");
+        MessageUtil.setMessageSource(messages);
+        MockHttpServletRequest request = authenticatedRequest();
+        request.setParameter("prePrinting", "true");
+        request.setParameter("testIds", "1");
+        request.setParameter("numSetsOfLabels", "1");
+        request.setParameter("numOrderLabelsPerSet", "101");
+        request.setParameter("numSpecimenLabelsPerSet", "1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        servlet.doGet(request, response);
+
+        assertEquals(400, response.getStatus());
+        assertEquals("Each label quantity can be at most 100.", response.getContentAsString().trim());
     }
 
     @Test

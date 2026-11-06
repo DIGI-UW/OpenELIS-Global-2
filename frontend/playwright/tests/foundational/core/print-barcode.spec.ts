@@ -350,7 +350,9 @@ test.describe("Print Bar Code Labels", () => {
             .replace("quantity=2", `quantity=${max + 1}`),
       );
       expect(tooMany.status()).toBe(422);
-      expect(await tooMany.text()).toContain("error.labels.quantity.max");
+      expect(await tooMany.text()).toContain(
+        "barcode.label.error.quantity.limit",
+      );
     });
   });
 

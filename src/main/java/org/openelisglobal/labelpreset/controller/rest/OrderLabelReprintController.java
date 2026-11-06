@@ -128,8 +128,8 @@ public class OrderLabelReprintController {
             return pdfResponse(
                     orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope, quantity));
         } catch (LabelQuantityRefusedException e) {
-            return ResponseEntity.unprocessableEntity()
-                    .body(Map.of("messageKey", e.getMessageKey(), "message", e.getMessage()));
+            return ResponseEntity.unprocessableEntity().body(Map.of("messageKey", e.getMessageKey(), "message",
+                    e.getMessage(), "messageArgs", e.getMessageArgs()));
         }
     }
 
