@@ -14,13 +14,10 @@
         samp_id="201" collection_date="2023-11-15 10:00:00"
         lastupdated="2023-12-01 12:00:00" />
 
-    <type_of_test_result id="201" description="Numeric"
-        test_result_type="N" hl7_value="NM" lastupdated="2023-11-01 12:00:00" />
-    <type_of_test_result id="4" description="Alpha"
-        test_result_type="A" hl7_value="ST" lastupdated="2023-11-01 12:00:00" />
-    <type_of_test_result id="203"
-        description="Dictionary" test_result_type="D" hl7_value="CE"
-        lastupdated="2023-11-01 12:00:00" />
+    <!-- type_of_test_result is NOT declared here. The production Liquibase
+        seed (ensureReferenceSeedRows) guarantees: R=1, D=2, T=3, N=4, A=5, M=6,
+        C=7. Declaring this table in a fixture truncates it and corrupts downstream
+        tests whose result_limits rows FK to the canonical ids. -->
 
     <test id="7001" description="Blood Test" loinc="123456"
         reporting_description="Complete Blood Count" sticker_req_flag="Y"
@@ -44,20 +41,20 @@
         revision="1" status="A" analysis_type="Medical" />
 
     <result_limits id="1" test_id="7001"
-        test_result_type_id="201" min_age="0" max_age="18" gender="M"
+        test_result_type_id="4" min_age="0" max_age="18" gender="M"
         low_normal="4.0" high_normal="10.0" low_valid="2.0" high_valid="15.0"
         low_reporting_range="2.0" high_reporting_range="15.0"
         lastupdated="2025-06-01 10:00:00" normal_dictionary_id="301"
         always_validate="true" />
 
     <result_limits id="2" test_id="7002"
-        test_result_type_id="4" min_age="19" max_age="60" gender="F"
+        test_result_type_id="5" min_age="19" max_age="60" gender="F"
         low_normal="3.5" high_normal="9.5" low_valid="1.5" high_valid="12.0"
         low_reporting_range="1.5" high_reporting_range="12.0"
         lastupdated="2025-06-02 11:30:00" always_validate="false" />
 
     <result_limits id="3" test_id="7002"
-        test_result_type_id="203" min_age="0" max_age="99" gender="U"
+        test_result_type_id="2" min_age="0" max_age="99" gender="U"
         low_normal="2.0" high_normal="8.0" low_valid="1.0" high_valid="10.0"
         low_reporting_range="1.0" high_reporting_range="10.0"
         lastupdated="2025-06-03 09:15:00" always_validate="true" />
