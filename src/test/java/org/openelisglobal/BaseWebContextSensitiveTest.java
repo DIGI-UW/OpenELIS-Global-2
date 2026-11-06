@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.security.WithDaemonUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -306,6 +307,12 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         if (observationHistoryService != null) {
             observationHistoryService.refreshTypeIdCache();
         }
+        // PatientIdentityTypeMap is a process-level singleton that caches
+        // identity_type name→id mappings. If a fixture truncates
+        // patient_identity_type (directly or via CASCADE), the cache holds
+        // stale IDs whose rows no longer exist, causing FK violations on
+        // the next patient save (e.g. identity_type_id=59 not found).
+        PatientIdentityTypeMap.reset();
     }
 
     /**
