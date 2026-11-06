@@ -276,6 +276,17 @@ export default function AstRulesPage() {
     groupByKey.get(key).rules.push(rule);
   }
 
+  const named = {
+    antibioticId: options.antibiotics,
+    organismId: options.organisms,
+    sampleTypeIds: options.sampleTypes,
+  };
+  const historyValue = (key, value) => {
+    const label = (id) =>
+      named[key]?.find((item) => item.id === id)?.label ?? id;
+    return displayValue(Array.isArray(value) ? value.map(label) : label(value));
+  };
+
   const changes = (entry) => {
     const before = JSON.parse(entry.before || "{}");
     const after = JSON.parse(entry.after);
@@ -290,8 +301,8 @@ export default function AstRulesPage() {
           { id: "microbiology.admin.astRules.change" },
           {
             field: key,
-            before: displayValue(before[key]),
-            after: displayValue(after[key]),
+            before: historyValue(key, before[key]),
+            after: historyValue(key, after[key]),
           },
         ),
       }));
