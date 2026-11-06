@@ -146,12 +146,15 @@ export default function CaseViewShell({
       live = false;
     };
   }, [detail, service]);
+  const caseId = detail?.id;
+  useEffect(() => {
+    setReadiness(null);
+    setPartialReady(false);
+  }, [caseId]);
   useEffect(() => {
     let live = true;
     if (!detail || !service.getReadiness || !service.getReport)
       return undefined;
-    setReadiness(null);
-    setPartialReady(false);
     Promise.all([service.getReadiness(detail.id), service.getReport(detail.id)])
       .then(([value, report]) => {
         if (live) {
