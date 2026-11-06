@@ -371,10 +371,12 @@ test.describe("Microbiology keyboard-only workflow", () => {
         page.getByText("Amendment in progress", { exact: true }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
 
-      const releaseAmendment = page.getByRole("button", {
-        name: "Release amended report",
-        exact: true,
-      });
+      const releaseAmendment = page
+        .getByTestId("microbiology-amendment-card")
+        .getByRole("button", {
+          name: "Release amended report",
+          exact: true,
+        });
       await tabTo(page, releaseAmendment);
       await page.keyboard.press("Enter");
       await expect(
