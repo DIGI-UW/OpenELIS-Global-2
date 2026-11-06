@@ -933,13 +933,7 @@ export default function CaseTestingWorkspace({
                     service={service}
                     initialCultureId={pickCultureId}
                     onClosePick={() => setPickCultureId("")}
-                    onChanged={() => {
-                      service
-                        .getTests(detail.id)
-                        .then(setTests)
-                        .catch(() => setError(true));
-                      onCaseChanged?.();
-                    }}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {["INITIAL", "ADDITIONAL"].includes(placement) &&
