@@ -5,6 +5,7 @@ import {
   labTimeZone,
 } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -68,6 +69,7 @@ function IsolateAction({
   cultures,
   saving,
   error,
+  amendmentOpen,
   onSave,
   onClose,
 }) {
@@ -167,6 +169,9 @@ function IsolateAction({
     .filter((test) => test.sampleTypeIds.includes(specimenType))
     .map((test) => ({ id: test.id, value: test.name }));
   const isIdentification = ["identify", "reidentify"].includes(action.kind);
+  const reasonRequired =
+    ["reidentify", "acknowledge"].includes(action.kind) ||
+    (action.kind === "identify" && !!amendmentOpen);
   const valid =
     action.kind === "pick"
       ? !!draft.cultureId
@@ -178,7 +183,7 @@ function IsolateAction({
             (Number.isFinite(Number(draft.confidence)) &&
               Number(draft.confidence) >= 0 &&
               Number(draft.confidence) <= 100)) &&
-          (action.kind !== "reidentify" || !!draft.reason.trim())
+          (!reasonRequired || !!draft.reason.trim())
         : action.kind === "received-origin"
           ? !!draft.originalSpecimenTypeId &&
             !!draft.sendingOrganizationId &&
@@ -273,7 +278,13 @@ function IsolateAction({
         {["identify", "reidentify", "acknowledge"].includes(action.kind) && (
           <TextArea
             id="isolate-reason"
-            labelText={t("reason")}
+            labelText={
+              <>
+                {t("reason")}
+                <RequiredMarker required={reasonRequired} />
+              </>
+            }
+            {...requiredProps(reasonRequired)}
             maxLength={2000}
             value={draft.reason}
             onChange={(e) => set("reason", e.target.value)}
@@ -403,7 +414,14 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setError(failure.response?.status === 409 ? "conflict" : "saveError");
+      const code = failure.response?.message;
+      setError(
+        intl.messages[`microbiology.isolateWorkspace.${code}`]
+          ? code
+          : failure.response?.status === 409
+            ? "conflict"
+            : "saveError",
+      );
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -722,6 +740,7 @@ export default function CaseIsolateWorkspace({
               cultures={cultures}
               saving={saving}
               error={error}
+              amendmentOpen={detail.amendmentOpen}
               onSave={save}
               onClose={close}
             />
