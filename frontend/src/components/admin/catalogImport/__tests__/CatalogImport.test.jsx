@@ -207,7 +207,7 @@ describe("CatalogImport", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("a preview lists what a file takes away", async () => {
+  test("a preview lists what a file takes away and what it ignores", async () => {
     postToOpenElisServerFormDataJsonResponse.mockImplementation(
       (url, formData, callback) =>
         callback({
@@ -227,6 +227,11 @@ describe("CatalogImport", () => {
                   reason:
                     "Escherichia coli removed from group Enterobacterales",
                 },
+                {
+                  lineNumber: 2,
+                  outcome: "WARNING",
+                  reason: "reportBehavior CASCADE is not read from panel files",
+                },
               ],
               error: null,
             },
@@ -242,6 +247,9 @@ describe("CatalogImport", () => {
     await screen.findByTestId("catalog-import-plan");
     expect(
       screen.getByText("Escherichia coli removed from group Enterobacterales"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("reportBehavior CASCADE is not read from panel files"),
     ).toBeInTheDocument();
   });
 
