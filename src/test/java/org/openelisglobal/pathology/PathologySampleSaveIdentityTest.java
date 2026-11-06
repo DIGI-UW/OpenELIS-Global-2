@@ -14,11 +14,13 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.Test;
 import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 
 /**
@@ -291,6 +293,43 @@ public class PathologySampleSaveIdentityTest extends PathologyCaseTestSupport {
 
         assertTrue("an id no slide carries retires nothing",
                 pathologySampleService.deactivateSlide(424242, null, TECHNICIAN_ID).isEmpty());
+    }
+
+    /** A signed-out case's blocks and slides change only after a reopen. */
+    @Test
+    public void retiringOnACompletedCase_isRefused() {
+        saveBlocks(postedBlock(null, "Bench A"));
+        int blockId = idOfBlockDesignated("A1");
+        saveSlides(postedSlide(blockId));
+        int slideId = ((Number) slidesCutFrom(blockId).get(0).get("id")).intValue();
+        storeAt(PathologyStatus.COMPLETED);
+
+        LocalizedValidationException block = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.deactivateBlock(blockId, "reason", TECHNICIAN_ID));
+        LocalizedValidationException slide = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.deactivateSlide(slideId, "reason", TECHNICIAN_ID));
+
+        assertEquals("a signed-out case's block is not retired", "pathology.error.caseCompleted", block.getErrorCode());
+        assertEquals("nor its slide", "pathology.error.caseCompleted", slide.getErrorCode());
+        assertEquals("the block is still in use", Boolean.TRUE, blockRow(blockId).get("active"));
+        assertEquals("and so is the slide", Boolean.TRUE, slidesCutFrom(blockId).get(0).get("active"));
+    }
+
+    /**
+     * Retiring a row already retired is still answered as nothing to do on a
+     * signed-out case, since nothing would change.
+     */
+    @Test
+    public void retiringARetiredBlockOnACompletedCase_isStillANoOp() {
+        pathologySampleService.deactivateBlock(LEGACY_BLOCK_ID, "cassette cracked", TECHNICIAN_ID);
+        storeAt(PathologyStatus.COMPLETED);
+
+        Optional<PathologyBlock> again = pathologySampleService.deactivateBlock(LEGACY_BLOCK_ID, "second try",
+                TECHNICIAN_ID);
+
+        assertTrue("the retired block is answered rather than refused", again.isPresent());
+        assertEquals("and nothing is audited a second time", 1, historyService
+                .getHistoryByRefIdAndRefTableId(String.valueOf(LEGACY_BLOCK_ID), blockReferenceTableId).size());
     }
 
     @Test

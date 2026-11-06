@@ -22,6 +22,7 @@ import {
   tissueTypeItems,
   unsavedPosition,
 } from "../pathologyRows";
+import { rowActionLock } from "../pathologySections";
 import "../pathologyCaseView.scss";
 
 /**
@@ -40,9 +41,17 @@ const GrossingSection = ({
   decalcificationFlagFrozen,
   dirty,
   saving,
+  moving,
   onDeactivate,
 }) => {
   const intl = useIntl();
+  const deactivateLock = rowActionLock({
+    status: caseInfo.status,
+    dirty,
+    saving,
+    moving,
+    saveFirstKey: "pathology.locked.saveBeforeDeactivate",
+  });
   const [showDeactivated, setShowDeactivated] = useState(false);
 
   const blocks = caseInfo.blocks ?? [];
@@ -104,10 +113,11 @@ const GrossingSection = ({
             position={unsavedPosition(blocks, index)}
             readOnly={readOnly}
             showDeactivated={showDeactivated}
-            deactivateLocked={dirty || saving}
-            deactivateLockedReason={intl.formatMessage({
-              id: "pathology.locked.saveBeforeDeactivate",
-            })}
+            deactivateLocked={deactivateLock.disabled}
+            deactivateLockedReason={
+              deactivateLock.reasonKey &&
+              intl.formatMessage({ id: deactivateLock.reasonKey })
+            }
             stateBadge={cassetteStateBadge(block)}
             onRemove={() => removeRow(index)}
             onDeactivate={onDeactivate}

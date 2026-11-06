@@ -13,11 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.audittrail.valueholder.History;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 
 /**
  * Embedding turns a cassette into the block slides are cut from, and the row
@@ -30,6 +33,15 @@ import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
  * no recorded state embeds from cassette.
  */
 public class PathologySampleEmbeddingTest extends PathologyCaseTestSupport {
+
+    /**
+     * Cassettes are embedded once the case reaches Embedding, so each test starts
+     * there; how a case is sent there is pinned by the stage event tests.
+     */
+    @Before
+    public void standTheCaseAtEmbedding() {
+        storeAt(PathologyStatus.EMBEDDING);
+    }
 
     @Test
     public void embeddingACassette_turnsTheRowIntoABlockAndWritesOneRow() {
@@ -139,6 +151,57 @@ public class PathologySampleEmbeddingTest extends PathologyCaseTestSupport {
         assertEquals("a row with no recorded state had not been embedded, so it left the cassette state", "CASSETTE",
                 payload.get("from"));
         assertEquals("and is named by its legacy number", "11", payload.get("designation"));
+    }
+
+    // ---- the case's stage ----
+
+    /** Cassettes are embedded once the case reaches Embedding. */
+    @Test
+    public void embeddingBeforeTheStage_isRefused() {
+        storeAt(PathologyStatus.GROSSING);
+
+        LocalizedValidationException refusal = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.embedBlock(LEGACY_BLOCK_ID, TECHNICIAN_ID));
+
+        assertEquals("the refusal carries the message the screen translates", "pathology.error.embedBeforeStage",
+                refusal.getErrorCode());
+        assertNull("the cassette is not embedded", blockRow(LEGACY_BLOCK_ID).get("cassette_state"));
+    }
+
+    /** A signed-out case's blocks are what its report described. */
+    @Test
+    public void embeddingOnACompletedCase_isRefused() {
+        storeAt(PathologyStatus.COMPLETED);
+
+        LocalizedValidationException refusal = assertThrows(LocalizedValidationException.class,
+                () -> pathologySampleService.embedBlock(LEGACY_BLOCK_ID, TECHNICIAN_ID));
+
+        assertEquals("the refusal names the sign-out", "pathology.error.caseCompleted", refusal.getErrorCode());
+        assertNull("and the cassette is not embedded", blockRow(LEGACY_BLOCK_ID).get("cassette_state"));
+    }
+
+    /**
+     * The stage is asked only of a real change: a block embedded again is still
+     * answered as nothing to do, and a retired cassette is still refused as
+     * retired, whatever stage the case stands at.
+     */
+    @Test
+    public void aBlockOrARetiredCassette_isAnsweredAsBeforeWhateverTheStage() {
+        pathologySampleService.embedBlock(LEGACY_BLOCK_ID, TECHNICIAN_ID);
+        storeAt(PathologyStatus.COMPLETED);
+
+        assertTrue("a block embedded again on a signed-out case is still nothing to do",
+                pathologySampleService.embedBlock(LEGACY_BLOCK_ID, TECHNICIAN_ID).isPresent());
+        assertEquals("and writes no second entry", 1, embedAudit().size());
+
+        storeAt(PathologyStatus.EMBEDDING);
+        saveBlocks(postedBlock(null, "Bench 2"));
+        int cassetteId = idOf(blockDesignated("A1"));
+        pathologySampleService.deactivateBlock(cassetteId, "dropped", TECHNICIAN_ID);
+        storeAt(PathologyStatus.GROSSING);
+
+        assertThrows("a retired cassette is refused as retired, not as early", PathologyCaseRuleException.class,
+                () -> pathologySampleService.embedBlock(cassetteId, TECHNICIAN_ID));
     }
 
     // helpers

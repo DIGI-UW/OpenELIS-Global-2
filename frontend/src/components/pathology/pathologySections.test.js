@@ -18,6 +18,11 @@ import {
   embeddingStatement,
   stageApplies,
   decalcificationFlagFrozen,
+  advanceLabelKey,
+  advanceBlockedReason,
+  returnBlockedReason,
+  rowActionLock,
+  sectionIdOfStage,
 } from "./pathologySections";
 
 const intl = createIntl({ locale: "en", messages });
@@ -57,6 +62,27 @@ describe("isStageEnabled", () => {
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "true",
       }),
     ).toBe(true);
+  });
+
+  // The server trims the stored value and ignores its case when it picks the
+  // next and previous stage, so the sections read it the same way.
+  it.each([
+    ["false", false],
+    ["False", false],
+    ["FALSE", false],
+    [" FALSE ", false],
+    ["\tfalse\n", false],
+    ["true", true],
+    [" True ", true],
+    ["", true],
+    ["no", true],
+    ["falsey", true],
+  ])("reads a switch stored as %j as enabled: %s", (value, enabled) => {
+    expect(
+      isStageEnabled("COVERSLIPPING", {
+        PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: value,
+      }),
+    ).toBe(enabled);
   });
 
   it("enables an optional stage the served configuration says nothing about", () => {
@@ -1160,5 +1186,234 @@ describe("embeddingStatement", () => {
       ),
       title: undefined,
     });
+  });
+});
+
+describe("advanceLabelKey", () => {
+  it.each([
+    ["GROSSING", "pathology.action.beginGrossing"],
+    ["DECALCIFICATION", "pathology.action.sendForDecalc"],
+    ["PROCESSING", "pathology.action.sendForProcessing"],
+    ["EMBEDDING", "pathology.action.sendForEmbedding"],
+    ["MICROTOMY", "pathology.action.sendToMicrotomy"],
+    ["STAINING", "pathology.action.sendForStaining"],
+    ["COVERSLIPPING", "pathology.action.sendForCoverslip"],
+    ["READY_PATHOLOGIST", "pathology.action.sendToPathologist"],
+  ])("labels a move to %s with a key the bundle holds", (stageId, key) => {
+    expect(advanceLabelKey(stageId)).toBe(key);
+    expect(messages[key]).toBeTruthy();
+  });
+
+  it("labels nothing an advance never reaches", () => {
+    ["ACCESSIONED", "UNDER_REVIEW", "COMPLETED", "SOMETHING_NEW"].forEach(
+      (stageId) => expect(advanceLabelKey(stageId)).toBeNull(),
+    );
+  });
+});
+
+describe("advanceBlockedReason", () => {
+  const grossed = {
+    grossExam: "Skin ellipse",
+    blocks: [{ id: 1, designation: "A1", cassetteState: "CASSETTE" }],
+  };
+
+  it("says to wait while a save or a move is out, before unsaved work or any stage rule", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        {},
+        { storedStatus: "EMBEDDING", saving: true, dirty: true },
+      ),
+    ).toEqual({ key: "pathology.locked.requestInFlight" });
+    expect(
+      advanceBlockedReason(intl, grossed, {
+        storedStatus: "GROSSING",
+        moving: true,
+      }),
+    ).toEqual({ key: "pathology.locked.requestInFlight" });
+  });
+
+  it("says to save first while the form holds unsaved work, before any stage rule", () => {
+    expect(
+      advanceBlockedReason(intl, {}, { storedStatus: "GROSSING", dirty: true }),
+    ).toEqual({ key: "pathology.locked.saveBeforeTransition" });
+  });
+
+  it("holds grossing until the specimen is described and cut", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { ...grossed, grossExam: "  " },
+        { storedStatus: "GROSSING" },
+      ),
+    ).toEqual({ key: "pathology.locked.grossingIncomplete" });
+    expect(
+      advanceBlockedReason(
+        intl,
+        { ...grossed, blocks: [] },
+        { storedStatus: "GROSSING" },
+      ),
+    ).toEqual({ key: "pathology.locked.grossingIncomplete" });
+    expect(
+      advanceBlockedReason(intl, grossed, { storedStatus: "GROSSING" }),
+    ).toBe(null);
+  });
+
+  it("holds embedding until every cassette in use is a block, naming the outstanding ones", () => {
+    const blocks = [
+      { id: 1, designation: "A1", cassetteState: "BLOCK" },
+      { id: 2, designation: "A2", cassetteState: "CASSETTE" },
+      { id: 3, designation: "A3", cassetteState: "CASSETTE" },
+      { id: 4, designation: "A4", cassetteState: "CASSETTE", active: false },
+    ];
+
+    expect(
+      advanceBlockedReason(intl, { blocks }, { storedStatus: "EMBEDDING" }),
+    ).toEqual({
+      key: "pathology.locked.embeddingIncomplete",
+      values: {
+        outstanding: intl.formatMessage(
+          { id: "pathology.badge.outstanding" },
+          { designations: "A2, A3" },
+        ),
+      },
+    });
+    expect(
+      advanceBlockedReason(
+        intl,
+        {
+          blocks: blocks.map((block) => ({ ...block, cassetteState: "BLOCK" })),
+        },
+        { storedStatus: "EMBEDDING" },
+      ),
+    ).toBe(null);
+  });
+
+  // The rail's cap: a case with many cassettes must not stretch the bar.
+  it("names two outstanding cassettes and counts the rest, as the rail does", () => {
+    const blocks = ["A1", "A2", "A3", "A4"].map((designation, index) => ({
+      id: index + 1,
+      designation,
+      cassetteState: "CASSETTE",
+    }));
+
+    expect(
+      advanceBlockedReason(intl, { blocks }, { storedStatus: "EMBEDDING" })
+        .values,
+    ).toEqual({
+      outstanding: intl.formatMessage(
+        { id: "pathology.badge.outstandingMore" },
+        { designations: "A1, A2", count: 2 },
+      ),
+    });
+  });
+
+  it("holds embedding on a case with no cassette at all, naming the way out", () => {
+    expect(
+      advanceBlockedReason(intl, { blocks: [] }, { storedStatus: "EMBEDDING" }),
+    ).toEqual({ key: "pathology.locked.embeddingNoCassettes" });
+  });
+
+  it("judges each rule on the stored stage only", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { blocks: [] },
+        { storedStatus: "PROCESSING" },
+      ),
+    ).toBe(null);
+    expect(
+      advanceBlockedReason(
+        intl,
+        { grossExam: "" },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toBe(null);
+  });
+});
+
+describe("returnBlockedReason", () => {
+  it("says a signed-out case cannot be changed, before anything else", () => {
+    expect(
+      returnBlockedReason({
+        storedStatus: "COMPLETED",
+        previousStage: null,
+        dirty: true,
+      }),
+    ).toEqual({ key: "pathology.locked.caseCompleted" });
+  });
+
+  it("says there is nothing to return to before the first stage", () => {
+    expect(
+      returnBlockedReason({ storedStatus: "ACCESSIONED", previousStage: null }),
+    ).toEqual({ key: "pathology.locked.nothingToReturnTo" });
+  });
+
+  it("says to wait while a save or a move is out, and to save first while the form holds unsaved work", () => {
+    const clean = { storedStatus: "PROCESSING", previousStage: "GROSSING" };
+    expect(
+      returnBlockedReason({ ...clean, saving: true, dirty: true }),
+    ).toEqual({ key: "pathology.locked.requestInFlight" });
+    expect(returnBlockedReason({ ...clean, moving: true })).toEqual({
+      key: "pathology.locked.requestInFlight",
+    });
+    expect(returnBlockedReason({ ...clean, dirty: true })).toEqual({
+      key: "pathology.locked.saveBeforeTransition",
+    });
+  });
+
+  it("lets a clean case with an earlier stage be returned", () => {
+    expect(
+      returnBlockedReason({
+        storedStatus: "PROCESSING",
+        previousStage: "GROSSING",
+      }),
+    ).toBe(null);
+  });
+});
+
+describe("rowActionLock", () => {
+  const saveFirstKey = "pathology.locked.saveBeforeEmbed";
+
+  it.each([
+    ["a clean case standing still", {}, false, null],
+    [
+      "a signed-out case, before anything else",
+      { status: "COMPLETED", dirty: true, moving: true },
+      true,
+      "pathology.locked.caseCompleted",
+    ],
+    [
+      "a save in flight",
+      { saving: true, dirty: true },
+      true,
+      "pathology.locked.requestInFlight",
+    ],
+    [
+      "a move in flight",
+      { moving: true },
+      true,
+      "pathology.locked.requestInFlight",
+    ],
+    [
+      "an embed in flight",
+      { embedding: true },
+      true,
+      "pathology.locked.requestInFlight",
+    ],
+    ["unsaved work", { dirty: true }, true, saveFirstKey],
+  ])("locks a row action on %s", (_, state, disabled, reasonKey) => {
+    expect(
+      rowActionLock({ status: "EMBEDDING", ...state, saveFirstKey }),
+    ).toEqual({ disabled, reasonKey });
+  });
+});
+
+describe("sectionIdOfStage", () => {
+  it("finds the section each stage is worked in, and none for a stage this build does not know", () => {
+    expect(sectionIdOfStage("PROCESSING")).toBe("pathology-section-processing");
+    expect(sectionIdOfStage("UNDER_REVIEW")).toBe("pathology-section-review");
+    expect(sectionIdOfStage("COMPLETED")).toBe("pathology-section-reports");
+    expect(sectionIdOfStage("SOMETHING_NEW")).toBeNull();
   });
 });

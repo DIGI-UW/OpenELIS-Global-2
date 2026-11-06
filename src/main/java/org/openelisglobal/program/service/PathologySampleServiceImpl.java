@@ -6,12 +6,14 @@ import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -25,6 +27,7 @@ import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.IStatusService;
@@ -50,8 +53,10 @@ import org.openelisglobal.program.controller.pathology.PathologySampleForm.Patho
 import org.openelisglobal.program.dao.PathologyBlockDAO;
 import org.openelisglobal.program.dao.PathologySampleDAO;
 import org.openelisglobal.program.dao.PathologySlideDAO;
+import org.openelisglobal.program.dao.PathologyStageEventDAO;
 import org.openelisglobal.program.util.DesignationScheme;
 import org.openelisglobal.program.util.PathologyDesignations;
+import org.openelisglobal.program.util.PathologyStages;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.CassetteState;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
@@ -63,8 +68,10 @@ import org.openelisglobal.program.valueholder.pathology.PathologyRequest.Request
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
+import org.openelisglobal.program.valueholder.pathology.StageDirection;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -95,6 +102,15 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     private static final String SLIDE_REFERENCE_TABLE = "PATHOLOGY_SLIDE";
 
+    /**
+     * reference_tables row the case's own audit entries, stage moves among them,
+     * point at.
+     */
+    private static final String CASE_REFERENCE_TABLE = "PATHOLOGY_SAMPLE";
+
+    /** The lab unit a case's referral to immunohistochemistry is tested in. */
+    private static final String IMMUNOHISTOCHEMISTRY_SECTION = "Immunohistochemistry";
+
     /** Dictionary category a laboratory fills with the tissue types it cuts. */
     private static final String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
 
@@ -108,6 +124,9 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Autowired
     private PathologySlideDAO pathologySlideDAO;
+
+    @Autowired
+    private PathologyStageEventDAO pathologyStageEventDAO;
 
     @Autowired
     private HistoryService historyService;
@@ -267,8 +286,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     @Transactional
     @Override
     public void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form) {
-        // copying is so we get an object that is detached from hibernate
         PathologySample storedCase = get(pathologySampleId);
+        if (form.getRelease()) {
+            refuseReleaseOutsideReview(storedCase);
+        }
+        // copying is so we get an object that is detached from hibernate
         PathologySample pathologySample = copyPathologySample(storedCase);
         PathologySample storedState = auditedStateOf(storedCase);
         pathologySample.setSysUserId(form.getSystemUserId());
@@ -278,7 +300,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (!GenericValidator.isBlankOrNull(form.getAssignedTechnicianId())) {
             pathologySample.setTechnician(systemUserService.get(form.getAssignedTechnicianId()));
         }
-        pathologySample.setStatus(form.getStatus());
         DesignationScheme scheme = DesignationScheme.fromConfiguration();
         String accessionNumber = pathologySample.getSample() == null ? null
                 : pathologySample.getSample().getAccessionNumber();
@@ -291,10 +312,8 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (form.getDecalcificationRequired() != null && !pastDecalcification(storedCase)) {
             pathologySample.setDecalcificationRequired(form.getDecalcificationRequired());
         }
-        if (movesInto(PathologyStatus.DECALCIFICATION, storedCase, form)
-                || movesOnFrom(PathologyStatus.DECALCIFICATION, storedCase, form)) {
-            // A case that went through the stage must never read as not needing it.
-            pathologySample.setDecalcificationRequired(true);
+        if (form.getRunReference() != null) {
+            recordRunReference(storedCase, form.getRunReference(), pathologySample.getSysUserId());
         }
         pathologySample.setMicroscopyExam(form.getMicroscopyExam());
         pathologySample.getConclusions().removeAll(pathologySample.getConclusions());
@@ -318,6 +337,15 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
             form.getReports().stream().forEach(e -> e.setId(null));
         pathologySample.getReports().addAll(form.getReports());
         if (form.getRelease()) {
+            if (storedCase.getStatus() == PathologyStatus.COMPLETED) {
+                // Already at Completed, so there is no stage to enter; the release is
+                // still the sign-out.
+                recordMove(storedCase, PathologyStatus.COMPLETED, StageDirection.FORWARD, null,
+                        pathologySample.getSysUserId());
+            } else {
+                applyTransition(pathologySample, storedCase, PathologyStatus.COMPLETED, StageDirection.FORWARD, null,
+                        pathologySample.getSysUserId());
+            }
             validatePathologySample(pathologySample, form);
         }
         if (form.getReferToImmunoHistoChemistry()) {
@@ -339,9 +367,13 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     @Override
     public Optional<PathologyBlock> deactivateBlock(Integer blockId, String reason, String sysUserId) {
         Optional<PathologyBlock> found = pathologyBlockDAO.get(blockId);
-        if (found.isEmpty() || !found.get().isActive()) {
+        if (found.isEmpty()) {
             return found;
         }
+        if (!found.get().isActive()) {
+            return found;
+        }
+        refuseOnACompletedCase(baseObjectDAO.getCaseOfBlock(blockId));
 
         PathologyBlock block = found.get();
         block.setActive(false);
@@ -364,7 +396,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (found.isEmpty()) {
             return found;
         }
-
         PathologyBlock block = found.get();
         if (!block.isActive()) {
             throw new PathologyCaseRuleException("block " + blockId + " has been retired, so it cannot be embedded");
@@ -372,6 +403,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         if (block.getCassetteState() == CassetteState.BLOCK) {
             return found;
         }
+        refuseEmbeddingOutsideTheStage(baseObjectDAO.getCaseOfBlock(blockId));
 
         CassetteState from = block.getCassetteState() == null ? CassetteState.CASSETTE : block.getCassetteState();
         block.setCassetteState(CassetteState.BLOCK);
@@ -402,11 +434,384 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
 
     @Transactional
     @Override
+    public PathologyStageEvent advance(Integer pathologySampleId, PathologyStatus from, String sysUserId) {
+        PathologySample storedCase = get(pathologySampleId);
+        requireStoredStage(storedCase, from);
+        refuseOnACompletedCase(storedCase);
+        PathologyStatus next = nextStage(storedCase)
+                .orElseThrow(() -> new LocalizedValidationException("pathology.error.advanceBeyondBench",
+                        "the pathologist signs the case out from " + storedCase.getStatus()));
+        refuseAnUnfinishedStage(storedCase);
+        return move(storedCase, next, StageDirection.FORWARD, null, sysUserId);
+    }
+
+    @Transactional
+    @Override
+    public PathologyStageEvent returnToPreviousStage(Integer pathologySampleId, PathologyStatus from, String reason,
+            String sysUserId) {
+        PathologySample storedCase = get(pathologySampleId);
+        requireStoredStage(storedCase, from);
+        refuseOnACompletedCase(storedCase);
+        PathologyStatus previous = previousStage(storedCase)
+                .orElseThrow(() -> new LocalizedValidationException("pathology.error.nothingToReturnTo",
+                        "there is no earlier stage to return pathology case " + pathologySampleId + " to"));
+        String trimmedReason = StringUtils.trimToNull(reason);
+        if (trimmedReason == null) {
+            throw new LocalizedValidationException("pathology.error.returnReasonRequired",
+                    "a case is returned to an earlier stage only with a reason");
+        }
+        if (trimmedReason.length() > PathologyStageEvent.REASON_MAX_LENGTH) {
+            throw new LocalizedValidationException("pathology.error.reasonTooLong",
+                    "the reason can be at most " + PathologyStageEvent.REASON_MAX_LENGTH + " characters");
+        }
+        return move(storedCase, previous, StageDirection.RETURN, trimmedReason, sysUserId);
+    }
+
+    @Override
+    public Optional<PathologyStatus> nextStage(PathologySample pathologySample) {
+        return PathologyStages.next(pathologySample.getStatus(), deploymentEnabled(),
+                pathologySample.isDecalcificationRequired());
+    }
+
+    @Override
+    public Optional<PathologyStatus> previousStage(PathologySample pathologySample) {
+        return PathologyStages.previous(pathologySample.getStatus(), deploymentEnabled(),
+                pathologySample.isDecalcificationRequired());
+    }
+
+    @Transactional
+    @Override
+    public boolean isRunReferenceRecordable(PathologySample pathologySample) {
+        return recordableRunEntry(pathologySample).isPresent();
+    }
+
+    /**
+     * Moves a copy of the stored case and saves it through the audited update, so
+     * the case's own diff row, which the case history reads, records the stage
+     * change as well.
+     */
+    private PathologyStageEvent move(PathologySample storedCase, PathologyStatus to, StageDirection direction,
+            String reason, String sysUserId) {
+        PathologySample movedCase = copyPathologySample(storedCase);
+        PathologyStageEvent entered = applyTransition(movedCase, storedCase, to, direction, reason, sysUserId);
+        update(movedCase);
+        return entered;
+    }
+
+    @Transactional
+    @Override
+    public List<PathologyStageEvent> getStageEvents(Integer pathologySampleId) {
+        return pathologyStageEventDAO.getForCase(pathologySampleId);
+    }
+
+    /**
+     * Moves the case, already copied off the stored one, onto a stage: completes
+     * the entry onto the stage it leaves, records the entry onto the new one, and
+     * audits the move (a move onto Completed as the sign-out), all in the caller's
+     * transaction. Operator and times are the session user and the server clock
+     * (S-8.2). A case on file before stage events were recorded has no entry to
+     * complete, and none is invented.
+     *
+     * @return the event recording the entry onto {@code to}
+     */
+    private PathologyStageEvent applyTransition(PathologySample movedCase, PathologySample storedCase,
+            PathologyStatus to, StageDirection direction, String reason, String sysUserId) {
+        PathologyStatus stageFrom = storedCase.getStatus();
+        Timestamp now = new Timestamp(System.currentTimeMillis());
+        SystemUser operator = systemUserService.get(sysUserId);
+
+        pathologyStageEventDAO.getOpenEvent(storedCase.getId(), stageFrom).ifPresent(left -> {
+            left.setCompletedAt(now);
+            left.setCompletedBy(operator);
+            left.setSysUserId(sysUserId);
+            pathologyStageEventDAO.update(left);
+        });
+
+        PathologyStageEvent entered = new PathologyStageEvent();
+        entered.setPathologySampleId(storedCase.getId());
+        entered.setStage(to);
+        entered.setEnteredAt(now);
+        entered.setEnteredBy(operator);
+        entered.setDirection(direction);
+        entered.setReason(reason);
+        entered.setSysUserId(sysUserId);
+        pathologyStageEventDAO.insert(entered);
+
+        // A case that goes into decalcification, or on past it, has been through it,
+        // so it must never read as not needing it. A return keeps the bench's choice.
+        if (direction == StageDirection.FORWARD
+                && (to == PathologyStatus.DECALCIFICATION || stageFrom == PathologyStatus.DECALCIFICATION)) {
+            movedCase.setDecalcificationRequired(true);
+        }
+        movedCase.setStatus(to);
+        movedCase.setSysUserId(sysUserId);
+
+        recordMove(storedCase, to, direction, reason, sysUserId);
+        return entered;
+    }
+
+    /**
+     * Audits a move on the case, a move onto Completed as the sign-out (FR-17),
+     * naming the stage the case stood at.
+     */
+    private void recordMove(PathologySample storedCase, PathologyStatus to, StageDirection direction, String reason,
+            String sysUserId) {
+        PathologyStatus stageFrom = storedCase.getStatus();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (to == PathologyStatus.COMPLETED) {
+            payload.put("verb", PATHOLOGY_CASE_SIGNED_OUT);
+            payload.put("stageFrom", stageFrom.name());
+        } else {
+            payload.put("verb",
+                    direction == StageDirection.FORWARD ? PATHOLOGY_STAGE_ADVANCED : PATHOLOGY_STAGE_RETURNED);
+            payload.put("stageFrom", stageFrom.name());
+            payload.put("stageTo", to.name());
+            if (direction == StageDirection.RETURN) {
+                payload.put("reason", reason);
+            }
+        }
+        recordRowEvent(CASE_REFERENCE_TABLE, storedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+    }
+
+    /**
+     * The expected stage is what makes a transition safe to repeat: a page that
+     * still shows a stage the case has left cannot move it a second time.
+     */
+    private void requireStoredStage(PathologySample storedCase, PathologyStatus from) {
+        if (from == null) {
+            throw new LocalizedValidationException("pathology.error.fromRequired",
+                    "the request did not say which stage pathology case " + storedCase.getId() + " is at");
+        }
+        if (storedCase.getStatus() != from) {
+            throw new PathologyStageConflictException(storedCase.getId(), storedCase.getStatus(), from);
+        }
+    }
+
+    /**
+     * Grossing is finished once the specimen is described and at least one cassette
+     * is cut (FR-3.4); embedding once there is a cassette in use and every one is a
+     * block (FR-6.3). No other stage has a condition yet.
+     */
+    private void refuseAnUnfinishedStage(PathologySample storedCase) {
+        List<PathologyBlock> inUse = storedCase.getBlocks() == null ? List.of()
+                : storedCase.getBlocks().stream().filter(PathologyBlock::isActive)
+                        .sorted(Comparator.comparing(PathologyBlock::getId)).collect(Collectors.toList());
+        if (storedCase.getStatus() == PathologyStatus.GROSSING
+                && (StringUtils.isBlank(storedCase.getGrossExam()) || inUse.isEmpty())) {
+            throw new LocalizedValidationException("pathology.error.grossingIncomplete",
+                    "pathology case " + storedCase.getId()
+                            + " needs a macroscopic description and at least one cassette before it moves on");
+        }
+        if (storedCase.getStatus() == PathologyStatus.EMBEDDING) {
+            if (inUse.isEmpty()) {
+                throw new LocalizedValidationException("pathology.error.embeddingNoCassettes",
+                        "pathology case " + storedCase.getId() + " has no cassette in use to embed");
+            }
+            List<String> outstanding = inUse.stream().filter(block -> block.getCassetteState() != CassetteState.BLOCK)
+                    .map(PathologyBlock::displayIdentifier).collect(Collectors.toList());
+            if (!outstanding.isEmpty()) {
+                String designations = String.join(", ", outstanding);
+                throw new LocalizedValidationException("pathology.error.embeddingIncomplete",
+                        "pathology case " + storedCase.getId() + " has cassettes still to embed: " + designations,
+                        Map.of("designations", designations));
+            }
+        }
+    }
+
+    /**
+     * The pathologist signs a case out from the review queue (FR-2.4, S-8.3): from
+     * any bench stage a release would skip the stages and their preconditions, and
+     * a released case is not released again.
+     */
+    private void refuseReleaseOutsideReview(PathologySample storedCase) {
+        if (isReleasable(storedCase)) {
+            return;
+        }
+        refuseOnACompletedCase(storedCase);
+        throw new LocalizedValidationException("pathology.error.releaseBeforeReview",
+                "pathology case " + storedCase.getId() + " stands at " + storedCase.getStatus()
+                        + ", so it is not ready to be signed out");
+    }
+
+    /**
+     * A case in the pathologist's queue may be released. So may a case that stands
+     * at Completed but was never released: the stage control on the case view once
+     * set any stage, Completed included, without signing the case out, and such a
+     * case would otherwise stay unreleased for good.
+     *
+     * <p>
+     * A release leaves a sign-out entry in the case's audit trail, and a release
+     * from the queue also an entry onto Completed. A case released before either
+     * was written still has the released date the release stamps on its analyses.
+     * The order's status is no record: a new result on the order, an
+     * immunohistochemistry one for instance, sets it back to Started.
+     */
+    @Transactional
+    @Override
+    public boolean isReleasable(PathologySample pathologySample) {
+        if (pathologySample.getStatus() == null) {
+            return false;
+        }
+        switch (pathologySample.getStatus()) {
+        case READY_PATHOLOGIST:
+        case UNDER_REVIEW:
+            return true;
+        case COMPLETED:
+            return !hasBeenReleased(pathologySample);
+        default:
+            return false;
+        }
+    }
+
+    private boolean hasBeenReleased(PathologySample pathologySample) {
+        return hasEnteredCompletedForward(pathologySample) || hasSignOutEntry(pathologySample)
+                || hasReleasedAnalysis(pathologySample);
+    }
+
+    private boolean hasEnteredCompletedForward(PathologySample pathologySample) {
+        return pathologyStageEventDAO.getForCase(pathologySample.getId()).stream()
+                .anyMatch(event -> event.getStage() == PathologyStatus.COMPLETED
+                        && event.getDirection() == StageDirection.FORWARD);
+    }
+
+    private boolean hasSignOutEntry(PathologySample pathologySample) {
+        ReferenceTables referenceTable = referenceTablesService.getReferenceTableByName(CASE_REFERENCE_TABLE);
+        if (referenceTable == null) {
+            return false;
+        }
+        return historyService.getHistoryByRefIdAndRefTableId(pathologySample.getStringId(), referenceTable.getId())
+                .stream().anyMatch(history -> PATHOLOGY_CASE_SIGNED_OUT.equals(verbOf(history)));
+    }
+
+    /**
+     * The verb of a named event on the case. The case's own save diffs share its
+     * reference row and are XML, so they have none.
+     */
+    private static String verbOf(History history) {
+        if (history.getChanges() == null) {
+            return null;
+        }
+        String changes = new String(history.getChanges(), StandardCharsets.UTF_8).trim();
+        if (!changes.startsWith("{")) {
+            return null;
+        }
+        try {
+            return AUDIT_PAYLOAD_MAPPER.readTree(changes).path("verb").asText(null);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The case's own analyses are those on its order that were not referred on to
+     * immunohistochemistry; a release of the case stamps their released date.
+     */
+    private boolean hasReleasedAnalysis(PathologySample pathologySample) {
+        Sample sample = pathologySample.getSample();
+        if (sample == null || sample.getId() == null) {
+            return false;
+        }
+        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
+        return analyses != null && analyses.stream().filter(analysis -> !isReferredToImmunohistochemistry(analysis))
+                .anyMatch(analysis -> analysis.getReleasedDate() != null);
+    }
+
+    private static boolean isReferredToImmunohistochemistry(Analysis analysis) {
+        return analysis.getTestSection() != null
+                && IMMUNOHISTOCHEMISTRY_SECTION.equals(analysis.getTestSection().getTestSectionName());
+    }
+
+    /**
+     * Cassettes are embedded once the case reaches Embedding, and the objects of a
+     * signed-out case are what its report described.
+     */
+    private void refuseEmbeddingOutsideTheStage(PathologySample owningCase) {
+        if (owningCase != null && owningCase.getStatus() != null
+                && owningCase.getStatus().ordinal() < PathologyStatus.EMBEDDING.ordinal()) {
+            throw new LocalizedValidationException("pathology.error.embedBeforeStage",
+                    "pathology case " + owningCase.getId() + " stands at " + owningCase.getStatus()
+                            + ", so its cassettes are not embedded yet");
+        }
+        refuseOnACompletedCase(owningCase);
+    }
+
+    /** A signed-out case's blocks and slides change only after it is reopened. */
+    private void refuseOnACompletedCase(PathologySample owningCase) {
+        if (owningCase != null && owningCase.getStatus() == PathologyStatus.COMPLETED) {
+            throw caseCompleted();
+        }
+    }
+
+    private static LocalizedValidationException caseCompleted() {
+        return new LocalizedValidationException("pathology.error.caseCompleted",
+                "the case is signed out, so this can no longer be changed");
+    }
+
+    /**
+     * Whether this deployment visits a stage: a switch set to false takes it out,
+     * and a missing one leaves it in, as the case view reads them.
+     */
+    private static Predicate<PathologyStatus> deploymentEnabled() {
+        return stage -> PathologyStages.enablementProperty(stage)
+                .map(property -> !"false".equalsIgnoreCase(
+                        StringUtils.trim(ConfigurationProperties.getInstance().getPropertyValue(property))))
+                .orElse(true);
+    }
+
+    /**
+     * The processor run is free text on the case's Processing entry (FR-5.1),
+     * written once per entry and audited. A typo is put right by returning the case
+     * to Processing, which opens a new entry. Anything posted when no entry would
+     * take it is ignored, like the decalcification flag past its stage.
+     */
+    private void recordRunReference(PathologySample storedCase, String postedRunReference, String sysUserId) {
+        String runReference = StringUtils.trimToNull(postedRunReference);
+        Optional<PathologyStageEvent> entry = recordableRunEntry(storedCase);
+        if (runReference == null || entry.isEmpty()) {
+            return;
+        }
+        if (runReference.length() > PathologyStageEvent.RUN_REFERENCE_MAX_LENGTH) {
+            throw new LocalizedValidationException("pathology.error.runReferenceTooLong",
+                    "the processor run can be at most " + PathologyStageEvent.RUN_REFERENCE_MAX_LENGTH + " characters");
+        }
+        PathologyStageEvent processing = entry.get();
+        processing.setRunReference(runReference);
+        processing.setSysUserId(sysUserId);
+        pathologyStageEventDAO.update(processing);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("verb", PATHOLOGY_RUN_REFERENCE_RECORDED);
+        payload.put("stage", PathologyStatus.PROCESSING.name());
+        payload.put("runReference", runReference);
+        recordRowEvent(CASE_REFERENCE_TABLE, storedCase.getStringId(), IActionConstants.AUDIT_TRAIL_UPDATE, payload,
+                sysUserId);
+    }
+
+    /**
+     * The entry a processor run may still be written on: the open Processing entry
+     * of a case standing there, while it holds none. A case that reached Processing
+     * before entries were recorded has no entry, and none is invented.
+     */
+    private Optional<PathologyStageEvent> recordableRunEntry(PathologySample storedCase) {
+        if (storedCase.getStatus() != PathologyStatus.PROCESSING) {
+            return Optional.empty();
+        }
+        return pathologyStageEventDAO.getOpenEvent(storedCase.getId(), PathologyStatus.PROCESSING)
+                .filter(entry -> entry.getRunReference() == null);
+    }
+
+    @Transactional
+    @Override
     public Optional<PathologySlide> deactivateSlide(Integer slideId, String reason, String sysUserId) {
         Optional<PathologySlide> found = pathologySlideDAO.get(slideId);
-        if (found.isEmpty() || !found.get().isActive()) {
+        if (found.isEmpty()) {
             return found;
         }
+        if (!found.get().isActive()) {
+            return found;
+        }
+        refuseOnACompletedCase(baseObjectDAO.getCaseOfSlide(slideId));
 
         PathologySlide slide = found.get();
         slide.setActive(false);
@@ -530,23 +935,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     private static boolean pastDecalcification(PathologySample storedCase) {
         return storedCase.getStatus() != null
                 && storedCase.getStatus().ordinal() > PathologyStatus.DECALCIFICATION.ordinal();
-    }
-
-    /**
-     * Whether this save moves the case onto the stage from another one; a save of a
-     * case already standing there does not.
-     */
-    private static boolean movesInto(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
-        return form.getStatus() == stage && storedCase.getStatus() != stage;
-    }
-
-    /**
-     * Whether this save takes a case standing at the stage on to a later one, so
-     * the case has been through it; a move back to an earlier stage has not.
-     */
-    private static boolean movesOnFrom(PathologyStatus stage, PathologySample storedCase, PathologySampleForm form) {
-        return storedCase.getStatus() == stage && form.getStatus() != null
-                && form.getStatus().ordinal() > stage.ordinal();
     }
 
     /**
@@ -778,7 +1166,6 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
     }
 
     private void validatePathologySample(PathologySample pathologySample, PathologySampleForm form) {
-        pathologySample.setStatus(PathologyStatus.COMPLETED);
         Sample sample = pathologySample.getSample();
         Patient patient = sampleService.getPatient(sample);
         ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(form.getSystemUserId());
@@ -899,7 +1286,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
         analysis.setParentAnalysis(currentAnalysis);
         analysis.setSampleItem(currentAnalysis.getSampleItem());
-        TestSection testSection = testSectionService.getTestSectionByName("Immunohistochemistry");
+        TestSection testSection = testSectionService.getTestSectionByName(IMMUNOHISTOCHEMISTRY_SECTION);
         analysis.setTestSection(testSection);
         analysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
         analysis.setSysUserId(systemUserId);
