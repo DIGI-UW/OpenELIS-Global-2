@@ -40,11 +40,11 @@ public class MicroPanelReportCleanupLiquibaseRollbackTest {
                 assertFalse(column(connection, "micro_ast_panel_antibiotic", "report_behavior"));
                 assertFalse(column(connection, "micro_ast_run_antibiotic", "tier"));
                 execute(connection,
-                        "INSERT INTO clinlims.micro_antibiotic (id,display_name,whonet_code) VALUES ('drug-151','Drug 151','D151')");
+                        "INSERT INTO clinlims.micro_antibiotic (id,display_name,whonet_code) VALUES ('drug-155','Drug 155','D155')");
                 execute(connection,
-                        "INSERT INTO clinlims.micro_ast_panel (id,name,logical_key) VALUES ('panel-151','Panel 151','panel-151')");
+                        "INSERT INTO clinlims.micro_ast_panel (id,name,logical_key) VALUES ('panel-155','Panel 155','panel-155')");
                 execute(connection,
-                        "INSERT INTO clinlims.micro_ast_panel_antibiotic (id,panel_id,antibiotic_id) VALUES ('row-151','panel-151','drug-151')");
+                        "INSERT INTO clinlims.micro_ast_panel_antibiotic (id,panel_id,antibiotic_id) VALUES ('row-155','panel-155','drug-155')");
                 if (!connection.getAutoCommit())
                     connection.commit();
 
@@ -55,11 +55,11 @@ public class MicroPanelReportCleanupLiquibaseRollbackTest {
                 assertTrue(column(connection, "micro_ast_panel_antibiotic", "report_behavior"));
                 assertTrue(column(connection, "micro_ast_run_antibiotic", "tier"));
                 assertEquals("1|ALWAYS", scalar(connection,
-                        "SELECT tier || '|' || report_behavior FROM clinlims.micro_ast_panel_antibiotic WHERE id='row-151'"));
+                        "SELECT tier || '|' || report_behavior FROM clinlims.micro_ast_panel_antibiotic WHERE id='row-155'"));
                 assertEquals("2", scalar(connection,
                         "SELECT count(*) FROM pg_constraint WHERE conname IN ('micro_ast_panel_antibiotic_tier_chk','micro_ast_panel_antibiotic_report_chk')"));
                 assertThrows(java.sql.SQLException.class, () -> execute(connection,
-                        "UPDATE clinlims.micro_ast_panel_antibiotic SET tier = 4 WHERE id='row-151'"));
+                        "UPDATE clinlims.micro_ast_panel_antibiotic SET tier = 4 WHERE id='row-155'"));
                 if (!connection.getAutoCommit())
                     connection.rollback();
 
