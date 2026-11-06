@@ -19,7 +19,7 @@ jobs:
   # each cancelled one used to start this job and the summary below.
   setup:
     name: Setup Publish Context
-    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event != 'pull_request' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')))
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event_name == 'workflow_dispatch' || ((github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'release') && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,6 +32,15 @@ jobs:
       build_run_id: ${{ steps.context.outputs.build_run_id }}
       build_run_attempt: ${{ steps.context.outputs.build_run_attempt }}
     steps:
+      - name: Checkout trusted publication policy
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts
+            RELEASES.md
+          persist-credentials: false
+      - name: Test publication source policy
+        run: node --test .github/scripts/publish-source.test.cjs
       - name: Select the build to publish and deploy
         id: context
         uses: actions/github-script@v9
@@ -57,6 +66,9 @@ jobs:
               }
               core.info(`Deploy testing: using the existing build ${run.html_url}`);
             }
+            const publicationSource = require('./.github/scripts/publish-source.cjs');
+            const policy = require('node:fs').readFileSync('RELEASES.md', 'utf8');
+            await publicationSource({ github, ...context.repo, run, policy });
             const transfer = ['success', 'cancelled'].includes(run.conclusion) ? 'ghcr' : 'none';
             core.setOutput('event_name', run.event);
             core.setOutput('head_sha', run.head_sha);
@@ -116,6 +128,9 @@ jobs:
           - compose_image: openelisglobal-webapp.build
             dockerhub_suffix: backend
             compose_service: oe.openelis.org
+          - compose_image: certgen
+            dockerhub_suffix: certs
+            compose_service: certs
           - compose_image: frontend
             dockerhub_suffix: frontend
             compose_service: frontend.openelis.org
@@ -313,7 +328,7 @@ jobs:
           import json, os, pathlib
           parts = [json.loads(p.read_text()) for p in pathlib.Path('published-images').glob('*.json')]
           services = {'oe.openelis.org', 'db.openelis.org', 'fhir.openelis.org', 'frontend.openelis.org', 'proxy',
-                      'openelis-analyzer-bridge', 'astm-simulator'}
+                      'openelis-analyzer-bridge', 'astm-simulator', 'certs'}
           if len(parts) != len(services) or {p['service'] for p in parts} != services:
               raise SystemExit('Incomplete or duplicate image manifest')
           if any(p['appSha'] != os.environ['APP_SHA'] or p['appBranch'] != os.environ['APP_BRANCH'] for p in parts):
@@ -356,7 +371,6 @@ jobs:
             .github/scripts
             volume
             projects/analyzer-harness
-            scripts/certs
       - name: Build the deployment bundle
         run: |
           set -euo pipefail
@@ -368,7 +382,7 @@ jobs:
           mkdir -p "bundle/tools/openelis-analyzer-bridge/$(dirname "$profiles")"
           cp -R "bridge/$profiles" "bundle/tools/openelis-analyzer-bridge/$profiles"
           tar -czf deploy-bundle.tgz docker-compose.yml docker-compose.analyzers.yml volume \
-            projects/analyzer-harness/seed-analyzers.sh scripts/certs/ensure-install-keys.sh \
+            projects/analyzer-harness/seed-analyzers.sh \
             -C bundle tools
       - name: Validate deployment request
         env:

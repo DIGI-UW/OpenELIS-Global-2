@@ -21,16 +21,26 @@ services:
   certs:
     container_name: oe-certs
     restart: "no"
-    # The first compose file supplies the entrypoint and script mount: compose resolves
-    # relative paths from the first file's directory, which differs between stacks.
+    # Each stack selects the image containing the same OE2 initializer.
     environment:
       KEYSTORE_PW: ${SSL_KEYSTORE_PASSWORD:-kspass}
       TRUSTSTORE_PW: ${SSL_TRUSTSTORE_PASSWORD:-tspass}
     volumes:
-      - key_trust-store-volume:/etc/openelis-global
-      - keys-vol:/etc/ssl/private/
-      - certs-vol:/etc/ssl/certs/
-
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
+      - type: volume
+        source: keys-vol
+        target: /etc/ssl/private/
+        volume:
+          nocopy: true
+      - type: volume
+        source: certs-vol
+        target: /etc/ssl/certs/
+        volume:
+          nocopy: true
   db.openelis.org:
     container_name: openelisglobal-database
     ports:

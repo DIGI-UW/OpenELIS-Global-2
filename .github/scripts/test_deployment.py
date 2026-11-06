@@ -47,6 +47,9 @@ class DeploymentTest(unittest.TestCase):
             "deploy_path": str(self.root), "run_id": "36125008939-1",
             "readiness": {"url": "http://127.0.0.1:1/health", "timeout": 0.02, "interval": 0.01}}
         self.wrong_image = False
+        self.initializer_state = {"Running": False, "Status": "exited", "ExitCode": 0}
+        self.initializer_image = "sha256:actual"
+        self.runtime_running = True
         self.branch_head = self.sha
         self.commands = []
         self.port_owner = deployment.PROJECT
@@ -61,9 +64,13 @@ class DeploymentTest(unittest.TestCase):
         if args == ["docker", "inspect", "proxy-id"]:
             return json.dumps([{"Config": {"Labels": {"com.docker.compose.project": self.port_owner}}}])
         if "ps" in args:
+            if args[-1] == "certs":
+                return "certs-container" if "--all" in args else ""
             return "container-id"
         if args[:2] == ["docker", "inspect"]:
-            return json.dumps([{"State": {"Running": True}, "Image": "wrong" if self.wrong_image else "sha256:actual"}])
+            if args[-1] == "certs-container":
+                return json.dumps([{"State": self.initializer_state, "Image": self.initializer_image}])
+            return json.dumps([{"State": {"Running": self.runtime_running}, "Image": "wrong" if self.wrong_image else "sha256:actual"}])
         if args[:3] == ["docker", "image", "inspect"]:
             return json.dumps([{"Id": "sha256:actual"}])
         return ""
@@ -273,6 +280,33 @@ class DeploymentTest(unittest.TestCase):
     def test_wrong_running_image_cannot_publish_ready(self):
         self.wrong_image = True
         with self.assertRaisesRegex(ValueError, "does not match"):
+            self.deploy()
+        self.assertFalse(self.target.exists())
+
+    def test_completed_initializer_is_verified_without_requiring_it_to_keep_running(self):
+        self.ready_health()
+        self.deploy()
+        self.assertEqual("sha256:actual", json.loads(self.target.read_text())["images"]["certs"]["imageId"])
+
+    def test_failed_unfinished_or_running_initializer_cannot_publish_ready(self):
+        for state in [{"Running": False, "Status": "exited", "ExitCode": 1},
+                      {"Running": True, "Status": "running", "ExitCode": 0},
+                      {"Running": False, "Status": "created", "ExitCode": 0}]:
+            with self.subTest(state=state):
+                self.initializer_state = state
+                with self.assertRaisesRegex(ValueError, "initializer did not complete"):
+                    self.deploy()
+                self.assertFalse(self.target.exists())
+
+    def test_wrong_initializer_image_cannot_publish_ready(self):
+        self.initializer_image = "sha256:unexpected"
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            self.deploy()
+        self.assertFalse(self.target.exists())
+
+    def test_stopped_application_cannot_publish_ready(self):
+        self.runtime_running = False
+        with self.assertRaisesRegex(ValueError, "Expected running service"):
             self.deploy()
         self.assertFalse(self.target.exists())
 

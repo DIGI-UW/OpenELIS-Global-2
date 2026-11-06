@@ -5,20 +5,20 @@ are supported, and how the branches relate to them.
 
 ## Supported release lines
 
-| Line    | Status             | Latest tag | Notes                                                                                                                                |
-| ------- | ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 3.4     | In development     |            | `develop` is at 3.4.0-SNAPSHOT.                                                                                                      |
-| 3.3     | Releasing          |            | `main` holds 3.3.0; the tag and GitHub Release follow. The first release under Semantic Versioning.                                  |
-| 3.2.3.x | Supported          | 3.2.3.0    | Baseline release.                                                                                                                    |
-| 3.2.2.x | Supported (legacy) | 3.2.2.0    | For sites that cannot yet take the 3.2.3 analyzer framework. Support ends when those sites move up; the date will be announced here. |
-| ≤ 3.2.1 | Unsupported        | 3.2.1.11   | Upgrade to the current line.                                                                                                         |
+| Line    | Status              | Latest tag | Notes                                                                                                                                |
+| ------- | ------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 3.4     | In development      |            | `develop` is at 3.4.0-SNAPSHOT.                                                                                                      |
+| 3.3     | Supported (current) | 3.3.0      | `main` holds the current release. The first release under Semantic Versioning.                                                       |
+| 3.2.3.x | Supported           | 3.2.3.0    | Baseline release.                                                                                                                    |
+| 3.2.2.x | Supported (legacy)  | 3.2.2.0    | For sites that cannot yet take the 3.2.3 analyzer framework. Support ends when those sites move up; the date will be announced here. |
+| ≤ 3.2.1 | Unsupported         | 3.2.1.11   | Upgrade to the current line.                                                                                                         |
 
 ## Branches
 
 | Branch            | What it holds                                                                                                                                                         |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `develop`         | Integration branch and default branch. Development pull requests target it. Its version is the next release with a `-SNAPSHOT` suffix. Never deploy it to production. |
-| `main`            | The latest release. It changes only through a reviewed release pull request from a release branch. Each release is tagged on `main`.                                  |
+| `main`            | The latest release. It changes only through a reviewed release pull request from a release branch. Each current-line release is tagged on `main`.                     |
 | `release/<X.Y>.x` | One branch per release line, cut from `develop` before a release. It receives only fixes that are already merged to `develop`.                                        |
 | `3.2.2.x`         | The legacy 3.2.2 line, named before the `release/` convention.                                                                                                        |
 
@@ -84,8 +84,20 @@ file path is part of its identity.
    newest line first.
 3. For the current line, bump the patch version on its release branch and
    release it into `main` as in steps 3 and 4 above.
-4. For an older line, bump and tag the patch version on its release branch.
-   `main` does not change, because it always holds the newest release.
+4. For an older supported line, bump and tag the patch version on its
+   maintenance branch. `main` does not change, because it always holds the
+   newest release. Modern lines use `release/<X.Y>.x`; the four-part 3.2.3 line
+   uses `release/3.2.3.x`, and the existing legacy 3.2.2 branch remains
+   `3.2.2.x`. Establish the maintenance branch before preparing a patch if it
+   does not exist.
+
+The existing image publisher verifies that a release tag still identifies the
+exact tested commit and matches its application version. Current stable releases
+must be contained in `main`; older releases must belong to a line marked
+Supported in the table above and be contained in its maintenance branch. Release
+candidates remain on their release branches. These source checks supplement the
+required backend, frontend and end-to-end checkpoints; they do not replace
+branch review or authorize merging.
 
 ## Consuming a release
 
