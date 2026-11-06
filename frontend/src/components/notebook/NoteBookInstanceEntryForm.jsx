@@ -197,10 +197,7 @@ const NoteBookInstanceEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // The saved notebook, its comments and audit trail load on the new page.
       window.location.href = "/NoteBookInstanceEditForm/" + body.id;
     } else {
       addNotification({

@@ -215,10 +215,7 @@ const NoteBookEntryForm = () => {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      // Reload data to get comments with proper id and author from backend
-      getFromOpenElisServer("/rest/notebook/view/" + body.id, loadInitialData);
-      // Reload audit trail after save
-      loadAuditTrail(body.id);
+      // The saved notebook, its comments and audit trail load on the new page.
       window.location.href = "/NoteBookEntryForm/" + body.id;
     } else {
       addNotification({
@@ -1001,7 +998,10 @@ const NoteBookEntryForm = () => {
                   <Grid style={{ marginTop: "1rem" }}>
                     {noteBookData.files.map((file, index) => (
                       <Column key={index} lg={8} md={8} sm={12}>
-                        <Tile style={{ marginBottom: "1rem" }}>
+                        <Tile
+                          style={{ marginBottom: "1rem" }}
+                          data-testid="notebook-attachment"
+                        >
                           <p>{file.fileName}</p>
                           <NotebookAttachmentPreview size="sm" file={file} />
                           <Button
