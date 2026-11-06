@@ -617,6 +617,10 @@ describe("ValidationReviewPanel attachments (review only)", () => {
     expect(screen.queryByTestId("attachment-upload")).toBeNull();
     expect(screen.queryByText("Add attachment")).toBeNull();
     expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.queryByTestId("attachment-delete-9")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Delete attachment" }),
+    ).toBeNull();
   });
 });
 
