@@ -44,9 +44,9 @@ equally specifically fail the load, and so does a default whose protocol differs
 from the organism's. A changed panel is published as a new version, except that
 a panel edited on the AST panels page since the file last applied it keeps the
 laboratory's version. Panels no longer decide reporting: a `reportBehavior`
-column is ignored, with a warning for any value other than `ALWAYS`, and the
-upgrade turns each panel drug that was not `ALWAYS` into an inactive AST rule
-whose history names the panel.
+column is ignored, with a warning for any value other than `ALWAYS` on a panel
+the file creates or changes, and the upgrade turns each panel drug that was not
+`ALWAYS` into an inactive AST rule whose history names the panel.
 
 Breakpoint files use the existing administrator CSV importer:
 

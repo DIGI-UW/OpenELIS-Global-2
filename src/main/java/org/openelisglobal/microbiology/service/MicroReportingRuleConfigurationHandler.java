@@ -174,7 +174,7 @@ public class MicroReportingRuleConfigurationHandler extends AbstractCatalogCsvHa
         if (created) {
             return LoadedRow.created(id);
         }
-        return changed ? LoadedRow.updated(id) : LoadedRow.skipped("Rule unchanged");
+        return changed ? LoadedRow.updated(id) : LoadedRow.unchanged("Rule unchanged");
     }
 
     private void checkGroupRuleConflicts(Map<String, Integer> ruleLines) {

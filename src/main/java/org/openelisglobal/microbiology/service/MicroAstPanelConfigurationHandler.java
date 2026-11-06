@@ -80,7 +80,7 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                     for (CsvRow row : panelRows) {
                         summary.record(outcome, getClass().getSimpleName(), row.lineNumber());
                         String behavior = row.get("reportBehavior").toUpperCase(Locale.ROOT);
-                        if (!behavior.isEmpty() && !behavior.equals("ALWAYS")) {
+                        if (!outcome.isSkipped() && !behavior.isEmpty() && !behavior.equals("ALWAYS")) {
                             summary.warned(getClass().getSimpleName(), row.lineNumber(), "reportBehavior " + behavior
                                     + " is not read from panel files: set it as a rule on the AST rules page");
                         }
@@ -270,7 +270,7 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
         MicroAstPanelAdminForm existing = admin.getAstPanel(current.getId());
         if (sameContent(existing, form)) {
             applied(current.getId(), wanted);
-            return LoadedRow.skipped("Panel unchanged");
+            return LoadedRow.unchanged("Panel unchanged");
         }
         if (current.getConfigurationContent() != null && !current.getConfigurationContent().equals(content(existing))) {
             return LoadedRow.skipped("Panel edited locally; package version not applied");
