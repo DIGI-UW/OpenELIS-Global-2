@@ -58,4 +58,28 @@ describe("InterpretationSection on a select-list result", () => {
     expect(banner).not.toHaveTextContent("1958");
     expect(screen.getByTestId("bucket-1958")).not.toHaveTextContent("1958");
   });
+
+  it("marks bucket as applied when latestInterpretation matches and draft is null", async () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <InterpretationSection
+          testId="7"
+          resultValue="1958"
+          dictionaryOptions={[
+            { id: "1958", value: "1" },
+            { id: "1959", value: "2" },
+          ]}
+          latestInterpretation="Grade one"
+          draft={null}
+          onDraftChange={vi.fn()}
+          editable
+          openOverride={true}
+          onToggle={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    const bucketBtn = await screen.findByTestId("bucket-1958");
+    expect(bucketBtn).toHaveClass("unifiedBucket--applied");
+  });
 });
