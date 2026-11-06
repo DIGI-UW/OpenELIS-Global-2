@@ -145,7 +145,6 @@ function ParameterGroupAccordionItem({
 
   useEffect(() => {
     reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [standardId, group.id]);
 
   // Resolve real per-test sample types from the compliance test-catalog

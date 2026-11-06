@@ -286,7 +286,7 @@ const VectorLotDetail = ({
   // producing the "state update on unmounted component" warning. We capture
   // them via closure and only depend on the values that actually change
   // (vectorPoolId — lot == pool per FRS).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const load = useCallback(() => {
     if (!vectorPoolId) return;
     if (!mountedRef.current) return;

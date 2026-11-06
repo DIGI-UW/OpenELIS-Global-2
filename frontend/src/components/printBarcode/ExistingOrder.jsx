@@ -259,7 +259,7 @@ const ExistingOrder = () => {
             settings: configurationProperties,
           })
         : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [
       ready,
       accessionNumber,
@@ -288,7 +288,6 @@ const ExistingOrder = () => {
       });
       return next;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSignature]);
 
   const quantityFor = (row) =>

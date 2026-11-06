@@ -157,7 +157,7 @@ export const ControlLotChart = ({
         }
       },
     );
-  }, [analyzerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [analyzerId]);
 
   useEffect(() => {
     onLotChange?.(

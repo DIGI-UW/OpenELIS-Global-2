@@ -60,7 +60,6 @@ export default function LocationPickerInline({
   useEffect(() => {
     const cb = onChangeRef.current;
     if (cb) cb(state);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.selection, state.position]);
 
   const setLevel = (level, value) =>

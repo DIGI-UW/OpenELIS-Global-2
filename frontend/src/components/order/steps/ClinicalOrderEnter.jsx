@@ -105,7 +105,7 @@ const ClinicalOrderEnter = () => {
         noPatientReasonCode: "EQA",
       },
     }));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Seed workflowType into orderData on mount (or when editing an existing order
   // that already has a workflowType — keep it so it is not reset on re-render).
@@ -128,7 +128,7 @@ const ClinicalOrderEnter = () => {
         },
       }));
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync local lab number when context changes (e.g., order loaded from dashboard)
   useEffect(() => {

@@ -160,7 +160,7 @@ const VectorIdentificationWorklist = () => {
   // loadWorklist → re-fires the useEffect below → triggers setRows/setLoading
   // during unmount windows, producing "state update on unmounted component"
   // warnings. Capture via closure; depend on nothing.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const loadWorklist = useCallback((statusId) => {
     if (statusId === "decon") {
       setRows([]);

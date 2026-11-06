@@ -146,7 +146,6 @@ const TerminologySection = ({ testId }) => {
     setError(false);
     loadMappings();
     loadLoincIntegrity();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   // Edit an existing (or newly added) row in place.

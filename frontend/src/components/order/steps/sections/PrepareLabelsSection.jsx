@@ -246,7 +246,6 @@ const PrepareLabelsSection = ({
     };
     // The order id can arrive after the tubes (the step is opened by lab
     // number), and the saved rows are only readable once it has.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, orderId]);
 
   useEffect(() => {
@@ -255,7 +254,6 @@ const PrepareLabelsSection = ({
     }
     setLabelPersistRequest(seedPersistPayload(labelRequest));
     setQuantitiesPending(seededPendingRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [labelRequest]);
 
   useEffect(() => {
@@ -377,7 +375,7 @@ const PrepareLabelsSection = ({
         setPrinting(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [isDirty, quantitiesPending, onSaveBeforePrint, labNumber],
   );
 

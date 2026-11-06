@@ -112,7 +112,7 @@ const EqaAndNoPatientSection = ({
 
   useEffect(() => {
     loadCycles(isEqa ? enrollmentId : "");
-  }, [isEqa, enrollmentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isEqa, enrollmentId]);
 
   const updateOrder = (changes) =>
     setOrderData((prev) => ({

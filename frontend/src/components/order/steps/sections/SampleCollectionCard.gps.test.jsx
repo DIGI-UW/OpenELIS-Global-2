@@ -15,7 +15,7 @@ vi.mock("../../../addOrder/GpsCoordinatesCapture", () => ({
   default: ({ sampleXml, onChange }) => {
     useEffect(() => {
       onChange({ ...sampleXml });
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
     return (
       <button
         type="button"

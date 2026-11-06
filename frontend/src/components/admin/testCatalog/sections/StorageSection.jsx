@@ -168,7 +168,6 @@ const StorageSection = ({ testId, groupTestIds }) => {
       return;
     }
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, groupKey]);
 
   const update = (patch) => {

@@ -279,7 +279,6 @@ function QIConfigEditor({ indicator, onClose }) {
                     orientation="horizontal"
                     gap={5}
                     className="qi-config-row"
-                    // eslint-disable-next-line react/no-array-index-key
                     key={idx}
                   >
                     <Dropdown
