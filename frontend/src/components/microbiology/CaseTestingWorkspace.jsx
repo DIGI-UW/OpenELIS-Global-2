@@ -41,6 +41,7 @@ import ResultAlertModal, {
 import { FlagChip } from "../resultPage/unified/flags";
 import { normalizeScientificNotation } from "../resultPage/scientificNotation";
 import { getFromOpenElisServer } from "../utils/Utils";
+import { routedScope } from "./MicrobiologyRoutes";
 
 function valid(row) {
   if (!row.resultValue) return true;
@@ -349,43 +350,27 @@ export default function CaseTestingWorkspace({
   const [pickCultureId, setPickCultureId] = useState("");
   const [cultureSource, setCultureSource] = useState(null);
   const scanParams = new URLSearchParams(scanSearch);
-  const scanScope = scanParams.get("scope");
   const scanRow = scanParams.get("row") || scanParams.get("astRunId");
-  const sectionScopes = {
-    setup: "CULTURE",
-    timeline: "HISTORY",
-    isolates: "ISOLATES",
-    ast: "AST",
-    reports: "REPORT",
-    amendment: "AMENDMENT",
-    "critical-communication": "CRITICAL",
-    nonconformance: "NONCONFORMANCE",
-  };
-  const routedScope =
-    scanScope ||
-    sectionScopes[scanParams.get("section")] ||
-    { cultures: "CULTURE", ast: "AST" }[scanParams.get("grain")] ||
-    "INITIAL";
+  const routed = routedScope(scanSearch);
   const scanTarget = scanRow
-    ? `${routedScope === "CULTURE" ? "culture-row" : routedScope === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`
-    : routedScope === "AST" && scanParams.get("astIsolateId")
+    ? `${routed === "CULTURE" ? "culture-row" : routed === "ISOLATES" ? "isolate" : "ast-run"}-${scanRow}`
+    : routed === "AST" && scanParams.get("astIsolateId")
       ? `ast-isolate-${scanParams.get("astIsolateId")}`
       : null;
-  const [placement, setPlacement] = useState(routedScope);
+  const [placement, setPlacement] = useState(routed);
   useEffect(() => {
-    setPlacement(routedScope);
-    if (routedScope === "HISTORY")
-      document.getElementById("case-history")?.focus();
+    setPlacement(routed);
+    if (routed === "HISTORY") document.getElementById("case-history")?.focus();
     if (["case-info", "order-detail"].includes(scanParams.get("section"))) {
       document.getElementById("case-information")?.focus();
     }
-  }, [routedScope, scanRow, scanSearch]);
+  }, [routed, scanRow, scanSearch]);
   const landingJump = useRef(
     !scanTarget &&
       (scanParams.has("scope") ||
         scanParams.has("grain") ||
-        sectionScopes[scanParams.get("section")])
-      ? { scope: routedScope }
+        routed !== "INITIAL")
+      ? { scope: routed }
       : null,
   );
   const handledJump = useRef(null);
@@ -406,7 +391,7 @@ export default function CaseTestingWorkspace({
     heading?.focus({ preventScroll: true });
   }, [jump, placement]);
   useEffect(() => {
-    if (!scanTarget || placement !== routedScope) return undefined;
+    if (!scanTarget || placement !== routed) return undefined;
     const scroll = () => {
       const target = document.querySelector(
         `[data-testid="${CSS.escape(scanTarget)}"]`,
@@ -422,7 +407,7 @@ export default function CaseTestingWorkspace({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [scanTarget, routedScope, placement]);
+  }, [scanTarget, routed, placement]);
   const [auxiliaryIsolates, setAuxiliaryIsolates] = useState([]);
   useEffect(() => {
     if (
@@ -880,9 +865,7 @@ export default function CaseTestingWorkspace({
                     renderNotes={renderNotes}
                     detail={detail}
                     service={service}
-                    selectedId={
-                      (routedScope === "CULTURE" && scanRow) || cultureId
-                    }
+                    selectedId={(routed === "CULTURE" && scanRow) || cultureId}
                     renderTests={renderTests}
                     onPickIsolate={(row) => {
                       setPickCultureId(row.id);
