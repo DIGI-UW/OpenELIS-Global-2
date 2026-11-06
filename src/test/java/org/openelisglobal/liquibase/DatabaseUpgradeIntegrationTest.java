@@ -25,6 +25,7 @@ import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
@@ -32,6 +33,7 @@ import org.testcontainers.utility.MountableFile;
  * Exercises the full application changelog with data present before an upgrade.
  */
 @RunWith(Parameterized.class)
+@IsolatedDatabase
 public class DatabaseUpgradeIntegrationTest {
 
     private static final String ROOT = "database-upgrades/";

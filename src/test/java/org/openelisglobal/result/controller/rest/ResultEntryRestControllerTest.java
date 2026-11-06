@@ -254,6 +254,34 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(valueBefore, resultService.get("3").getValue());
     }
 
+    /**
+     * OGC-1200 FR-D3: a test whose analyzer value is waiting in an open run is
+     * resulted from that run; entering a value around it is refused and names the
+     * run. Once the run is complete, entry is the bench's again.
+     */
+    @Test
+    public void save_ofAPendingTestWhoseValueWaitsInAnOpenRun_isRefused409_namingTheRun() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'OPEN', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, run_id, raw_sub_identity, last_updated) VALUES (nextval('analyzer_results_seq'),"
+                + " 9201, '12345', 'Waiting', '91', false, 1, ?, '', NOW())", run);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run))
+                .andExpect(jsonPath("$.error").exists());
+        assertEquals("nothing was entered around the run", null, resultService.get("3").getValue());
+
+        jdbc.update("UPDATE clinlims.result_run SET state = 'COMPLETE' WHERE id = ?", run);
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        assertEquals("90.0", resultService.get("3").getValue());
+    }
+
     @Test
     public void save_whosePayloadNamesAnotherAnalysis_isRejected400() throws Exception {
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
