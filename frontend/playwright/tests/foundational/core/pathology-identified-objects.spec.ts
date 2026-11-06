@@ -3,17 +3,19 @@ import { test, expect } from "../../../helpers/test-base";
 import {
   createPathologyCase,
   discoverPathologyOrderTarget,
+  moveCaseToStage,
   SeededPathologyCase,
 } from "../../../helpers/seed-pathology-data";
 import {
+  advanceCase,
   cassetteRows,
   expandSection,
+  expectStageSwitchesOn,
   openCase,
   overlaps,
   rowNamed,
   saveDraft,
   sectionHeader,
-  setStage,
   slideRows,
   summaryRow,
 } from "../../../helpers/pathology-case-view";
@@ -46,6 +48,9 @@ import { UI_TIMEOUT } from "../../../helpers/timeouts";
  * Serial, and on one seeded case, because the walk is the point: the second
  * cassette's name depends on the first, the slide on a saved block, and the
  * printed labels on both.
+ *
+ * The slide is cut at Microtomy, so that stage must be tracked on the stack
+ * (its stage switch on, the shipped default); the spec checks that first.
  */
 
 let seeded: SeededPathologyCase;
@@ -125,6 +130,7 @@ test.describe
     });
     const page = await context.newPage();
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expectStageSwitchesOn(page, ["MICROTOMY"]);
     const target = await discoverPathologyOrderTarget(page);
     seeded = await createPathologyCase(page, target);
     await context.close();
@@ -134,7 +140,7 @@ test.describe
     page,
   }, testInfo) => {
     await openCase(page, seeded);
-    await setStage(page, "Grossing");
+    await advanceCase(page, { label: "Begin grossing" });
     await expandSection(page, "pathology-section-grossing");
 
     await test.step("no count input is offered anywhere", async () => {
@@ -338,8 +344,12 @@ test.describe
   test("a slide is cut from a named block, and only an active saved block is offered", async ({
     page,
   }, testInfo) => {
+    // The stages between are not what this spec is about, so the case is
+    // taken there through the move endpoints, which describe the specimen and
+    // embed its cassette on the way as the bench would, and opened again.
     await openCase(page, seeded);
-    await setStage(page, "Microtomy");
+    await moveCaseToStage(page, seeded, "MICROTOMY");
+    await openCase(page, seeded);
     await expandSection(page, "pathology-section-microtomy");
 
     const addSlide = page.getByRole("button", { name: "Add slide" });
@@ -453,8 +463,9 @@ test.describe
     await openCase(page, seeded);
     await expandSection(page, "pathology-section-grossing");
 
+    // A1 was embedded on the way to Microtomy, so it is a block now.
     const deactivate = page.getByRole("button", {
-      name: "Deactivate cassette A1",
+      name: "Deactivate block A1",
       exact: true,
     });
     await expect(deactivate).toBeEnabled();
