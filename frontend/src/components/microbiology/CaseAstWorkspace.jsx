@@ -316,7 +316,7 @@ export default function CaseAstWorkspace({
   return (
     <Stack gap={5}>
       <h3>{t("ast")}</h3>
-      {error && (
+      {error && !draft && (
         <InlineNotification kind="error" title={errorMessage} hideCloseButton />
       )}
       {data?.defaultStandard?.configured && !data.defaultStandard.available && (
