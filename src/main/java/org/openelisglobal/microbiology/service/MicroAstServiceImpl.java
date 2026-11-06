@@ -859,7 +859,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private boolean reapplyReportingRule(MicroAstRun run, MicroAstRunAntibiotic ordered) {
         String antibioticId = ordered.getAntibioticId();
         var rule = findReportingRule(run, antibioticId);
-        String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+        String reportBehavior = reportBehavior(rule);
         ordered.setReportBehavior(reportBehavior);
         ordered.setReportRuleId(rule.map(MicroReportingRule::getId).orElse(null));
         boolean changed = false;
@@ -1072,7 +1072,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private void snapshotOrderedAntibiotics(MicroAstRun run, List<OrderedAntibiotic> antibiotics) {
         for (OrderedAntibiotic source : antibiotics) {
             var rule = findReportingRule(run, source.antibioticId);
-            String reportBehavior = rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+            String reportBehavior = reportBehavior(rule);
             MicroAstRunAntibiotic ordered = new MicroAstRunAntibiotic();
             ordered.setAstRunId(run.getId());
             ordered.setAntibioticId(source.antibioticId);
@@ -1221,6 +1221,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         runAntibioticDAO.update(ordered);
     }
 
+    private static String reportBehavior(java.util.Optional<MicroReportingRule> rule) {
+        return rule.map(MicroReportingRule::getReportBehavior).orElse("ALWAYS");
+    }
+
     static boolean defaultReported(String reportBehavior, String interpretation) {
         if ("DONT_REPORT".equals(reportBehavior)) {
             return false;
@@ -1291,13 +1295,11 @@ public class MicroAstServiceImpl implements MicroAstService {
                     });
             var reportingRule = reportingRuleDAO.findBest(antibioticId, organismId, organismGroups, sampleTypeId,
                     clinicalContext);
+            row.reportBehavior = reportBehavior(reportingRule);
             if (reportingRule.isPresent()) {
                 MicroReportingRule rule = reportingRule.get();
-                row.reportBehavior = rule.getReportBehavior();
                 row.reportRuleId = rule.getId();
                 row.note = rule.noteFor(row.interpretation);
-            } else {
-                row.reportBehavior = "ALWAYS";
             }
             row.reported = defaultReported(row.reportBehavior, row.interpretation);
             result.rows.add(row);
