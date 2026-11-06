@@ -79,6 +79,12 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     private MicroAstPanelAssignmentService panelAssignments;
 
     @Autowired
+    private org.openelisglobal.microbiology.dao.MicroAstPanelDAO panelDAO;
+
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroOrganismDAO organismDAO;
+
+    @Autowired
     private AnalyteService analyteService;
 
     @Autowired
@@ -251,6 +257,31 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
     public void cancellingAnAmendmentGivesTheOriginalOrganismItsPanelBack() {
         FinalCase fixture = createFinalCase();
         assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+        amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
+        MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
+                "Staphylococci", null);
+        isolateService.updateIdentification(fixture.isolateId(), staphylococcus.getId(), null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED, "PCR",
+                new BigDecimal("100"), "Confirmatory identification corrected the organism", fixture.userId());
+        assertEquals(List.of(), activePanels(fixture.isolateId()));
+
+        amendmentService.cancelAmendment(fixture.caseId(), "Withdraw the correction", fixture.userId());
+
+        assertEquals(List.of(fixture.panelId()), activePanels(fixture.isolateId()));
+    }
+
+    @Test
+    public void cancellingAnAmendmentRestoresTheRetiredPanelNotTheCurrentDefault() {
+        FinalCase fixture = createFinalCase();
+        var currentDefault = new org.openelisglobal.microbiology.valueholder.MicroAstPanel();
+        currentDefault.setName("Current default " + UUID.randomUUID());
+        currentDefault.setOrganismGroup("Enterobacterales");
+        currentDefault.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        currentDefault.setPublishedBy(fixture.userId());
+        panelDAO.insert(currentDefault);
+        var organism = organismDAO.get(fixture.organismId()).orElseThrow();
+        organism.setDefaultAstPanelId(currentDefault.getId());
+        organismDAO.update(organism);
         amendmentService.openAmendment(fixture.caseId(), "Correct identification", fixture.userId());
         MicroOrganism staphylococcus = fixtures.createOrganism("Staphylococcus aureus " + UUID.randomUUID(),
                 "Staphylococci", null);
