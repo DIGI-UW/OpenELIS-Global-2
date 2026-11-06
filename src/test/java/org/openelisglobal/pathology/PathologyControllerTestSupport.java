@@ -14,7 +14,9 @@ import org.junit.function.ThrowingRunnable;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.program.controller.pathology.PathologyController;
+import org.openelisglobal.program.controller.pathology.PathologyStageRestController;
 import org.openelisglobal.program.service.ProgramSampleLabUnitScope;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -37,10 +39,13 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * the fixture's pathology case, so each test states only the rule it pins.
  *
  * <p>
- * Audit entries on blocks and slides survive the fixture reload, so they are
+ * Audit entries and stage events survive the fixture reload, so they are
  * cleared after each test.
  */
 abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTest {
+
+    /** The fixture's pathology case, standing at Grossing. */
+    protected static final int CASE_ID = 1;
 
     /**
      * The block the fixture seeds, which carries a legacy number and no state.
@@ -66,6 +71,12 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
         @Bean
         PathologyController pathologyController(ApplicationContext context) {
             return context.getParent().getAutowireCapableBeanFactory().createBean(PathologyController.class);
+        }
+
+        /** The stage moves, built the same way over the same services. */
+        @Bean
+        PathologyStageRestController pathologyStageRestController(ApplicationContext context) {
+            return context.getParent().getAutowireCapableBeanFactory().createBean(PathologyStageRestController.class);
         }
 
         /**
@@ -104,6 +115,7 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
     public void clearAuditAndSecurity() {
         jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table IN"
                 + " (SELECT id FROM clinlims.reference_tables WHERE name IN ('PATHOLOGY_BLOCK', 'PATHOLOGY_SLIDE'))");
+        PathologyCaseRows.clearStageHistory(jdbcTemplate, CASE_ID);
         if (securityContext != null) {
             securityContext.close();
         }
@@ -116,6 +128,15 @@ abstract class PathologyControllerTestSupport extends BaseWebContextSensitiveTes
         return mockMvc
                 .perform(post(endpoint).with(user("technician1")).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andReturn().getResponse();
+    }
+
+    /** See {@link PathologyCaseRows#storeAt}. */
+    protected void storeAt(PathologyStatus stage) {
+        PathologyCaseRows.storeAt(jdbcTemplate, CASE_ID, stage);
+    }
+
+    protected String storedStage() {
+        return PathologyCaseRows.storedStage(jdbcTemplate, CASE_ID);
     }
 
     protected Map<String, Object> bodyOf(MockHttpServletResponse response) throws Exception {

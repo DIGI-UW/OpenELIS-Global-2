@@ -206,6 +206,13 @@ public class ProgramSampleHistoryService extends AbstractHistoryService {
     }
 
     private void getObservablePathologyChanges(Map<String, String> changeMap, String changes) {
+        // The case's own diff rows are XML. Rows of named events (stage moves,
+        // sign-out) under the same reference table carry a JSON payload whose free
+        // text could hold a tag; read as a diff, they would blank every attribute.
+        // They leave the map empty, so the row is skipped.
+        if (!changes.trim().startsWith("<")) {
+            return;
+        }
         // blank values first inserted so there is a value to compare against
         // otherwise the update value is discarded
         changeMap.put(STATUS_ATTRIBUTE, "");

@@ -18,7 +18,6 @@ import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyCaseRuleException;
 import org.openelisglobal.program.service.PathologyDisplayService;
-import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -29,10 +28,11 @@ import org.springframework.beans.factory.annotation.Autowired;
  * The description column held 255 characters, so a full macroscopic description
  * could not be stored, and a cassette's tissue type was dropped on every save
  * because nothing validated it. These tests pin the description's length, the
- * decalcification flag, which a move onto that stage also sets and a save past
- * it no longer takes, a tissue type checked against the laboratory's own
- * dictionary category only when it changes, and one audit entry per cassette
- * cut.
+ * decalcification flag, which a save past that stage no longer takes, a tissue
+ * type checked against the laboratory's own dictionary category only when it
+ * changes, and one audit entry per cassette cut. How a move between stages sets
+ * the flag is pinned with the moves themselves, in
+ * {@link PathologySampleStageEventTest}.
  *
  * <p>
  * The tissue entries are seeded here rather than in a dataset, because naming
@@ -126,60 +126,6 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
         assertEquals("unticking the flag changes the case, so the save leaves one audit entry", 1, audit.size());
         assertTrue("which keeps the value the flag held before: " + changesOf(audit.get(0)),
                 changesOf(audit.get(0)).contains("<decalcificationRequired>true</decalcificationRequired>"));
-    }
-
-    @Test
-    public void movingACaseIntoDecalcification_flagsTheSpecimen() {
-        PathologySampleForm form = caseViewForm();
-        form.setStatus(PathologyStatus.DECALCIFICATION);
-        form.setDecalcificationRequired(false);
-
-        save(form);
-
-        assertTrue("a case sent to decalcification needs it, even when the box was left unticked, so it never"
-                + " reads as not required once it moves on", storedFlag());
-    }
-
-    @Test
-    public void aSaveAtDecalcification_respectsAnUntickedFlag() {
-        PathologySampleForm movedIn = caseViewForm();
-        movedIn.setStatus(PathologyStatus.DECALCIFICATION);
-        save(movedIn);
-        assertTrue("the move onto the stage flagged the specimen", storedFlag());
-
-        save(flagged(false));
-
-        assertFalse("a case already standing at the stage keeps whatever the bench posts, so a flag set in"
-                + " error can be cleared there", storedFlag());
-    }
-
-    @Test
-    public void movingACaseOnFromDecalcification_keepsItFlagged() {
-        PathologySampleForm movedIn = caseViewForm();
-        movedIn.setStatus(PathologyStatus.DECALCIFICATION);
-        save(movedIn);
-        save(flagged(false));
-
-        PathologySampleForm movedOn = flagged(false);
-        movedOn.setStatus(PathologyStatus.PROCESSING);
-        save(movedOn);
-
-        assertTrue("a case that leaves decalcification for a later stage went through it, so a flag cleared"
-                + " while it stood there does not make it read as not required afterwards", storedFlag());
-    }
-
-    @Test
-    public void movingACaseBackFromDecalcification_keepsAClearedFlag() {
-        PathologySampleForm movedIn = caseViewForm();
-        movedIn.setStatus(PathologyStatus.DECALCIFICATION);
-        save(movedIn);
-
-        PathologySampleForm movedBack = flagged(false);
-        movedBack.setStatus(PathologyStatus.GROSSING);
-        save(movedBack);
-
-        assertFalse("a case sent back to grossing never went through the stage, so the bench can clear a flag"
-                + " set in error", storedFlag());
     }
 
     @Test
@@ -330,21 +276,10 @@ public class PathologySampleGrossingTest extends PathologyCaseTestSupport {
 
     // helpers
 
-    private PathologySampleForm flagged(boolean decalcificationRequired) {
-        PathologySampleForm form = caseViewForm();
-        form.setDecalcificationRequired(decalcificationRequired);
-        return form;
-    }
-
     private void storeAtProcessing(boolean decalcificationRequired) {
         jdbcTemplate.update(
                 "UPDATE clinlims.pathology_sample SET status = 'PROCESSING', decalcification_required = ? WHERE id = ?",
                 decalcificationRequired, CASE_ID);
-    }
-
-    private boolean storedFlag() {
-        return jdbcTemplate.queryForObject(
-                "SELECT decalcification_required FROM clinlims.pathology_sample WHERE id = ?", Boolean.class, CASE_ID);
     }
 
     /** tissue_type_id is numeric(10), which JDBC answers as a BigDecimal. */
