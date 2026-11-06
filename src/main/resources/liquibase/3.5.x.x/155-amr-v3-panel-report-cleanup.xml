@@ -1,5 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="155-amr-v3-panel-report-carryover" author="openelis">
+<preConditions onFail="MARK_RAN"><columnExists schemaName="clinlims" tableName="micro_ast_panel_antibiotic" columnName="report_behavior"/></preConditions>
+<sql splitStatements="false"><![CDATA[
+WITH carried AS (
+ SELECT 'panel-upgrade-' || substr(md5(pa.antibiotic_id || '|' || pa.report_behavior || '|' || coalesce(o.id, '')), 1, 22) AS id,
+  pa.antibiotic_id, pa.report_behavior, o.id AS organism_id,
+  'Carried over on upgrade from AST ' || CASE WHEN count(DISTINCT p.id) > 1 THEN 'panels ' ELSE 'panel ' END
+  || string_agg(DISTINCT '"' || p.name || '"' || CASE WHEN pa.report_behavior = 'CASCADE' THEN ' (tier ' || pa.tier || ')' ELSE '' END, ', ')
+  || CASE WHEN pa.report_behavior = 'CASCADE' THEN '. Panel tiers are not cascade conditions: set the condition, then review before activating.'
+     ELSE '. Review before activating.' END AS origin
+ FROM clinlims.micro_ast_panel_antibiotic pa
+ JOIN clinlims.micro_ast_panel p ON p.id = pa.panel_id AND p.is_current = 'Y'
+ LEFT JOIN (clinlims.micro_organism o JOIN clinlims.micro_ast_panel d ON d.id = o.default_ast_panel_id) ON d.logical_key = p.logical_key
+ WHERE pa.report_behavior <> 'ALWAYS'
+ GROUP BY pa.antibiotic_id, pa.report_behavior, o.id
+), rules AS (
+ INSERT INTO clinlims.micro_reporting_rule (id, antibiotic_id, organism_id, report_behavior, add_automatically, active, last_updated)
+ SELECT id, antibiotic_id, organism_id, report_behavior, false, false, now() FROM carried
+)
+INSERT INTO clinlims.micro_reporting_rule_history (id, rule_id, revision, changed_at, changed_by, after_value, last_updated)
+SELECT md5(id)::uuid::text, id, 1, now(), (SELECT id::text FROM clinlims.system_user WHERE login_name = 'daemon'), json_build_object('antibioticId', antibiotic_id, 'organismId', organism_id,
+ 'organismGroup', null, 'sampleTypeIds', json_build_array(), 'clinicalContext', null, 'reportBehavior', report_behavior,
+ 'cascadeCondition', null, 'note', null, 'noteWhen', null, 'addAutomatically', false, 'active', false, 'origin', origin)::text, now()
+FROM carried
+]]></sql>
+<rollback>
+<sql>DELETE FROM clinlims.micro_reporting_rule_history WHERE rule_id LIKE 'panel-upgrade-%'</sql>
+<sql>DELETE FROM clinlims.micro_reporting_rule_sample_type WHERE rule_id LIKE 'panel-upgrade-%'</sql>
+<sql>DELETE FROM clinlims.micro_reporting_rule WHERE id LIKE 'panel-upgrade-%'</sql>
+</rollback>
+</changeSet>
 <changeSet id="155-amr-v3-panel-report-cleanup" author="openelis">
 <sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic DROP CONSTRAINT micro_ast_panel_antibiotic_tier_chk</sql>
 <sql>ALTER TABLE clinlims.micro_ast_panel_antibiotic DROP CONSTRAINT micro_ast_panel_antibiotic_report_chk</sql>
