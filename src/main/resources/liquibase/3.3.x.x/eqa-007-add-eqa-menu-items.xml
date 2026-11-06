@@ -100,6 +100,53 @@
   </changeSet>
 
   <!-- ============================================================ -->
+  <!-- 5a. Compat: insert EQA menu localization via new schema      -->
+  <!--     (upgrade path where 3.5.x.x already dropped english/    -->
+  <!--      french columns before EQA changesets were added)        -->
+  <!-- ============================================================ -->
+  <changeSet id="eqa-007-05-compat" author="eqa-module">
+    <preConditions onFail="MARK_RAN">
+      <and>
+        <sqlCheck expectedResult="0">
+          SELECT COUNT(*) FROM clinlims.localization WHERE description = 'banner.menu.eqa'
+        </sqlCheck>
+        <not>
+          <columnExists tableName="localization" columnName="english" schemaName="clinlims"/>
+        </not>
+      </and>
+    </preConditions>
+    <comment>Insert EQA menu localization via localization_value (upgrade path)</comment>
+    <sql splitStatements="false">
+      DO $$
+      DECLARE
+        loc_id NUMERIC;
+        rec RECORD;
+      BEGIN
+        FOR rec IN
+          SELECT * FROM (VALUES
+            ('banner.menu.eqa', 'EQA', 'EQE'),
+            ('banner.menu.eqa.tooltip', 'External Quality Assurance', 'Assurance qualité externe'),
+            ('banner.menu.alerts', 'Alerts', 'Alertes'),
+            ('banner.menu.alerts.tooltip', 'Alerts and quality assurance dashboard', 'Tableau de bord des alertes et assurance qualité'),
+            ('banner.menu.eqa.management', 'EQA Programs', 'Programmes EQE'),
+            ('banner.menu.eqa.management.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE'),
+            ('banner.menu.eqa.distribution', 'EQA Distributions', 'Distributions EQE'),
+            ('banner.menu.eqa.distribution.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE')
+          ) AS t(description, en_value, fr_value)
+        LOOP
+          SELECT nextval('localization_seq') INTO loc_id;
+          INSERT INTO clinlims.localization (id, description, lastupdated)
+            VALUES (loc_id, rec.description, CURRENT_TIMESTAMP);
+          INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+            VALUES (nextval('localization_value_seq'), loc_id, 'en', rec.en_value, CURRENT_TIMESTAMP);
+          INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+            VALUES (nextval('localization_value_seq'), loc_id, 'fr', rec.fr_value, CURRENT_TIMESTAMP);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+  <!-- ============================================================ -->
   <!-- 5. Localization: English + French for all menu items         -->
   <!-- ============================================================ -->
   <changeSet id="eqa-007-05" author="eqa-module">
