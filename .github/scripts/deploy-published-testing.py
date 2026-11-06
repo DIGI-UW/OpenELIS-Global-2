@@ -179,10 +179,19 @@ def site_settings(site_dir, release):
         environment = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
     except subprocess.CalledProcessError:
         environment = read_env_file(site_dir / ".env")
+    password_file = pathlib.Path(environment.get("OE_INITIAL_ADMIN_PASSWORD_FILE") or "./secrets/initial-admin-password")
+    if not password_file.is_absolute():
+        password_file = site_dir / password_file
+    password_file = password_file.resolve()
+    bootstrap_value = password_file.read_text(encoding="utf-8").strip() if password_file.is_file() else ""
+    if not bootstrap_value:
+        raise ValueError("Configure a nonempty, persistent OE_INITIAL_ADMIN_PASSWORD_FILE on the server")
     return {
         "TEST_USER": environment.get("TEST_USER") or environment.get("OE_ADMIN_USERNAME") or TEST_USER,
-        "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD") or TEST_PASS,
+        "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD")
+                     or bootstrap_value,
         "MOCK_URL": "http://127.0.0.1:" + (environment.get("ASTM_SIMULATOR_HTTP_PORT") or "8085"),
+        "OE_INITIAL_ADMIN_PASSWORD_FILE": str(password_file),
     }
 
 
@@ -298,7 +307,9 @@ def deploy(request, diagnostics, bundle):
         with tempfile.TemporaryDirectory(prefix="candidate-", dir=state_dir) as candidate_dir:
             candidate_override = pathlib.Path(candidate_dir) / override.name
             write_json(candidate_override, {"services": {service: {"image": image}
-                                                        for service, image in manifest["images"].items()}})
+                                                        for service, image in manifest["images"].items()},
+                                            "secrets": {"initial-admin-password": {
+                                                "file": settings["OE_INITIAL_ADMIN_PASSWORD_FILE"]}}})
             run(compose_command(site_dir, release, candidate_override) + ["pull"], site_dir)
             require_current_candidate(manifest["appSha"], site_dir)
             require_stack_owner(site_dir)

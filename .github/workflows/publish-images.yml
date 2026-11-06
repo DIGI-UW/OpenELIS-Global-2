@@ -265,11 +265,26 @@ jobs:
             ${{ format('sbom-{0}.spdx.json', matrix.dockerhub_suffix) }}
 
       - name: Retag and publish tested image to DockerHub
+        env:
+          EVENT_NAME: ${{ needs.setup.outputs.event_name }}
+          SOURCE_IMAGE: ${{ steps.source.outputs.ghcr_source }}
         run: |
           while IFS= read -r target_tag; do
             [ -z "$target_tag" ] && continue
             echo "Publishing $target_tag from ${{ steps.source.outputs.ghcr_source }}"
-            docker tag "${{ steps.source.outputs.ghcr_source }}" "$target_tag"
+            if [ "$EVENT_NAME" = release ]; then
+              if docker manifest inspect "$target_tag" > "$RUNNER_TEMP/existing-manifest.json" 2> "$RUNNER_TEMP/manifest-error"; then
+                docker pull "$target_tag"
+                test "$(docker image inspect --format '{{.Id}}' "$target_tag")" = "$(docker image inspect --format '{{.Id}}' "$SOURCE_IMAGE")" || {
+                  echo 'Published release image differs; create a new release' >&2; exit 1;
+                }
+                continue
+              elif ! grep -Eqi 'manifest unknown|no such manifest' "$RUNNER_TEMP/manifest-error"; then
+                cat "$RUNNER_TEMP/manifest-error" >&2
+                exit 1
+              fi
+            fi
+            docker tag "$SOURCE_IMAGE" "$target_tag"
             docker push "$target_tag"
           done <<< "${{ steps.tags.outputs.tags }}"
 
@@ -310,6 +325,9 @@ jobs:
     name: Assemble tested deployment manifest
     needs: [setup, publish-images]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     outputs:
       manifest: ${{ steps.manifest.outputs.manifest }}
     steps:
@@ -344,6 +362,22 @@ jobs:
         with:
           name: testing-deployment-manifest
           path: deployment-manifest.json
+      - name: Checkout trusted release asset publisher
+        if: needs.setup.outputs.event_name == 'release'
+        uses: actions/checkout@v7
+        with:
+          path: publication-policy
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Attach immutable release manifest
+        if: needs.setup.outputs.event_name == 'release'
+        uses: actions/github-script@v9
+        env:
+          IMAGE_MANIFEST: ${{ steps.manifest.outputs.manifest }}
+        with:
+          script: |
+            const publish = require('./publication-policy/.github/scripts/publish-release-manifest.cjs');
+            await publish({ github, ...context.repo, manifest: JSON.parse(process.env.IMAGE_MANIFEST) });
 
   deploy-testing:
     name: Deploy to testing VM

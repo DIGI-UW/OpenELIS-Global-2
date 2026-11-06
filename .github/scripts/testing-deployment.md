@@ -30,6 +30,12 @@ named volumes persist across releases. The site directory (`TESTING_SITE_PATH`,
 default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
 
 - `.env` (required): passed as the Compose env file.
+- `secrets/initial-admin-password` (required by default): the initial
+  application password, configured privately as for a normal installation. Set
+  `OE_INITIAL_ADMIN_PASSWORD_FILE` for a different file. Relative paths are
+  resolved against this persistent site directory; absolute paths stay absolute.
+  The deployment override passes the absolute filename to Compose. Password
+  bytes are never packaged into a release directory or deployment artifact.
 - `docker-compose.site.yml` (optional): applied after the release's files, for
   certificates, proxy configuration and other host-specific settings. Compose
   resolves its relative paths against the release, so use absolute paths.
@@ -75,11 +81,13 @@ namespace.
 The site's `.env` also configures the API account used by the Bridge, seeding,
 and delivery verification. Set `TEST_USER` and `TEST_PASS` to an existing
 OpenELIS account. If unset, `OE_ADMIN_USERNAME` and `OE_ADMIN_PASSWORD` are
-used, then the standard testing defaults. These settings do not change the
-account's password in OpenELIS. `ASTM_SIMULATOR_HTTP_PORT` (default `8085`) sets
-both the mock's loopback port and the delivery check's destination. The deployer
-uses Compose's environment parser for these values and passes credentials to the
-seed subprocess through its environment, not command arguments.
+used, then the configured initial administrator password file. On a populated
+database, configure the existing account's current credentials explicitly: the
+bootstrap file does not change its password. `ASTM_SIMULATOR_HTTP_PORT` (default
+`8085`) sets both the mock's loopback port and the delivery check's destination.
+The deployer uses Compose's environment parser for these values and passes
+credentials to the seed subprocess through its environment, not command
+arguments.
 
 Optional readiness variables are:
 

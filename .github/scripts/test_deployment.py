@@ -1,11 +1,15 @@
 import importlib.util
 import io
 import json
+import secrets
 from pathlib import Path
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
+import yaml
 
 import test_readiness
 
@@ -29,6 +33,10 @@ class DeploymentTest(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name).resolve()
         (self.root / ".env").write_text("SERVER_SECRET=keep-existing-value\n")
+        self.password_file = self.root / "secrets/initial-admin-password"
+        self.password_file.parent.mkdir()
+        self.bootstrap_value = secrets.token_urlsafe(24)
+        self.password_file.write_text(self.bootstrap_value + "\n")
         self.diagnostics = self.root / "diagnostics"
         self.diagnostics.mkdir()
         self.target = self.root / ".openelis-ci/target.json"
@@ -310,6 +318,62 @@ class DeploymentTest(unittest.TestCase):
             self.deploy()
         self.assertFalse(self.target.exists())
 
+    def test_missing_or_empty_bootstrap_secret_stops_before_image_pull(self):
+        for value in (None, "\n"):
+            with self.subTest(value=value):
+                if value is None:
+                    self.password_file.unlink()
+                else:
+                    self.password_file.write_text(value)
+                with self.assertRaisesRegex(ValueError, "persistent OE_INITIAL_ADMIN_PASSWORD_FILE"):
+                    self.deploy()
+                self.assertFalse(self.compose_calls("pull") or self.compose_calls("up"))
+                self.assertEqual("previous-ready", json.loads(self.target.read_text())["deploymentId"])
+
+    def test_bootstrap_secret_is_site_owned_and_absolute_across_release_changes(self):
+        self.ready_health()
+        for sha in (self.sha, "c" * 40):
+            self.sha = self.branch_head = sha
+            self.request["manifest"]["appSha"] = sha
+            self.deploy()
+            secret = json.loads(self.override.read_text())["secrets"]["initial-admin-password"]["file"]
+            self.assertEqual(str(self.password_file), secret)
+            self.assertFalse((self.root / "releases" / sha / "secrets").exists())
+            self.assertEqual(self.bootstrap_value + "\n", self.password_file.read_text())
+
+    def test_relative_and_absolute_password_settings_resolve_against_the_site(self):
+        custom = self.root / "private/admin-password"
+        custom.parent.mkdir()
+        custom_value = secrets.token_urlsafe(24)
+        custom.write_text(custom_value + "\n")
+        for value in ("./private/admin-password", str(custom)):
+            with self.subTest(value=value):
+                def environment(args, cwd, capture=False, **kwargs):
+                    if args[-2:] == ["config", "--environment"]:
+                        return "OE_INITIAL_ADMIN_PASSWORD_FILE=" + value + "\n"
+                    return self.command(args, cwd, capture, **kwargs)
+                with patch.object(deployment, "run", side_effect=environment):
+                    settings = deployment.site_settings(self.root, self.root / "releases" / self.sha)
+                self.assertEqual(str(custom), settings["OE_INITIAL_ADMIN_PASSWORD_FILE"])
+                self.assertEqual(custom_value, settings["TEST_PASS"])
+
+    @unittest.skipUnless(shutil.which("docker"), "Docker Compose is required to verify native secret resolution")
+    def test_native_compose_uses_the_persistent_secret_from_a_disposable_release(self):
+        self.ready_health()
+        self.deploy()
+        release = self.root / "releases" / self.sha
+        secret = yaml.safe_load((Path(__file__).resolve().parents[2] / "docker-compose.yml").read_text())["secrets"]["initial-admin-password"]
+        compose_file = release / "docker-compose.yml"
+        compose_file.write_text(json.dumps({"services": {"oe.openelis.org": {
+            "image": self.request["manifest"]["images"]["oe.openelis.org"], "secrets": ["initial-admin-password"]}},
+            "secrets": {"initial-admin-password": secret}}))
+        (release / "docker-compose.analyzers.yml").write_text("{}")
+        settings = deployment.site_settings(self.root, release)
+        self.assertEqual(str(self.password_file), settings["OE_INITIAL_ADMIN_PASSWORD_FILE"])
+        config = json.loads(subprocess.check_output(deployment.compose_command(self.root, release, self.override)
+                                                   + ["config", "--format", "json"], text=True))
+        self.assertEqual(str(self.password_file), config["secrets"]["initial-admin-password"]["file"])
+
     def test_ready_deployment_seeds_analyzers_then_proves_delivery(self):
         self.ready_health()
         self.deploy()
@@ -399,8 +463,9 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn("could not remove old release", (self.diagnostics / "prune-warnings.txt").read_text())
 
     def test_site_settings_read_the_env_file_when_compose_cannot_list_it(self):
+        configured_value = secrets.token_urlsafe(24)
         (self.root / ".env").write_text(
-            "# site settings\nexport TEST_USER=qa-admin\nTEST_PASS='qa pass'\nASTM_SIMULATOR_HTTP_PORT=\"9085\"\n")
+            f"# site settings\nexport TEST_USER=qa-admin\nTEST_PASS='{configured_value}'\nASTM_SIMULATOR_HTTP_PORT=\"9085\"\n")
 
         def old_compose(args, cwd, capture=False, **kwargs):
             if args[-2:] == ["config", "--environment"]:
@@ -410,7 +475,8 @@ class DeploymentTest(unittest.TestCase):
         with patch.object(deployment, "run", side_effect=old_compose):
             settings = deployment.site_settings(self.root, self.root / "releases" / self.sha)
 
-        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "qa pass", "MOCK_URL": "http://127.0.0.1:9085"},
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": configured_value, "MOCK_URL": "http://127.0.0.1:9085",
+                          "OE_INITIAL_ADMIN_PASSWORD_FILE": str(self.password_file)},
                          settings)
 
     def test_env_file_fallback_drops_trailing_comments_like_compose(self):
