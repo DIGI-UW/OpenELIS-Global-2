@@ -95,6 +95,8 @@ projects/*/volume/
 !src/main/resources/configuration/test-results/**
 !projects/analyzer-harness/dictionary/test-results/
 !projects/analyzer-harness/dictionary/test-results/**
+!volume/configuration/backend/test-results/
+!volume/configuration/backend/test-results/**
 # Note: frontend/playwright/ test sources are tracked (not ignored)
 *.pyc
 __pycache__/
