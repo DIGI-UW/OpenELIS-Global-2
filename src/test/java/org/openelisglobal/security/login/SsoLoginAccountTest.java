@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.annotation.PreDestroy;
 import java.util.List;
 import java.util.Map;
 import org.junit.After;
@@ -14,6 +15,7 @@ import org.junit.Test;
 import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -33,6 +35,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.Errors;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * A SAML or OAuth sign-in used to create an active account for any principal
@@ -42,11 +45,27 @@ import org.springframework.validation.Errors;
  */
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class, SsoLoginAccountTest.TestConfig.class })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@IsolatedDatabase
 public class SsoLoginAccountTest extends BaseWebContextSensitiveTest {
 
-    /** The test context leaves the security.login package unscanned. */
+    /**
+     * The test context leaves the security.login package unscanned. The context
+     * starts against its own freshly seeded database.
+     */
     @Configuration
     public static class TestConfig extends BaseTestConfig {
+        private final PostgreSQLContainer<?> database = new PostgreSQLContainer<>("postgres:14.4");
+
+        @Override
+        protected PostgreSQLContainer<?> databaseContainer() {
+            return database;
+        }
+
+        @PreDestroy
+        public void stopDatabase() {
+            database.stop();
+        }
+
         @Bean
         public CustomSSOAuthenticationSuccessHandler ssoSuccessHandler() {
             return new CustomSSOAuthenticationSuccessHandler();
