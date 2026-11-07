@@ -111,6 +111,16 @@ public class VectorDeconvolutionServiceImpl implements VectorDeconvolutionServic
         // belong to multiple pools across decon rounds (intake + first sub-pool +
         // sub-sub-pool, etc.).
         List<SampleItem> originalMembers = vectorPoolService.getMembersByPoolId(originalPool.getId());
+        // Every sub-pool takes at least one member, so the pool count is bounded by
+        // the members; the loops below run once per sub-pool.
+        if (request.getPoolCount() < 1 || request.getPoolCount() > originalMembers.size()) {
+            throw new IllegalArgumentException("poolCount must be between 1 and the pool's " + originalMembers.size()
+                    + " members, not " + request.getPoolCount());
+        }
+        if (request.getOrganismsPerPool() < 1
+                && (request.getMemberAssignments() == null || request.getMemberAssignments().isEmpty())) {
+            throw new IllegalArgumentException("organismsPerPool must be at least 1");
+        }
         int requested;
         if (request.getMemberAssignments() != null && !request.getMemberAssignments().isEmpty()) {
             requested = request.getMemberAssignments().size();

@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -80,6 +81,45 @@ public class MicroBreakpointImportServiceTest {
         assertFalse(preview.previewToken.isBlank());
         verify(standardDAO, org.mockito.Mockito.never()).insert(org.mockito.ArgumentMatchers.any());
         verify(ruleDAO, org.mockito.Mockito.never()).insert(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    public void aValueWithAnEnormousExponent_isARowError() {
+        String csv = CSV.substring(0, CSV.indexOf('\n') + 1)
+                + "CLSI,SYNTH-2026,Escherichia coli,CIP,MIC,,MIC,1E+500000000,2,3,4,ug/mL\n";
+
+        MicroBreakpointImportPreviewForm preview = service.preview(csv);
+
+        assertEquals(0, preview.validRows);
+        assertTrue(preview.errors.get(0).message, preview.errors.get(0).message.contains("Invalid decimal"));
+    }
+
+    @Test
+    public void anAppliedPreview_isGone() {
+        MicroBreakpointImportPreviewForm preview = service.preview(CSV);
+        service.apply(preview.previewToken, "42");
+
+        try {
+            service.apply(preview.previewToken, "42");
+            fail("the applied preview was still held");
+        } catch (IllegalArgumentException gone) {
+            assertTrue(gone.getMessage().contains("expired"));
+        }
+    }
+
+    @Test
+    public void theOldestPreviews_leaveWhenTheCapIsReached() {
+        String first = service.preview(CSV).previewToken;
+        for (int i = 0; i < MicroBreakpointImportServiceImpl.MAX_PREVIEWS; i++) {
+            service.preview(CSV);
+        }
+
+        try {
+            service.apply(first, "42");
+            fail("the oldest preview was still held past the cap");
+        } catch (IllegalArgumentException gone) {
+            assertTrue(gone.getMessage().contains("expired"));
+        }
     }
 
     @Test

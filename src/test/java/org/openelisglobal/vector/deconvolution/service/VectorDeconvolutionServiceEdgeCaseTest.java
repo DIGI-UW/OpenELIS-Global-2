@@ -61,6 +61,26 @@ public class VectorDeconvolutionServiceEdgeCaseTest extends BaseWebContextSensit
     }
 
     @Test
+    public void initiate_withMoreSubPoolsThanMembers_isRefusedBeforeCreatingAnything() {
+        int poolsBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.vector_pool", Integer.class);
+        DeconvolutionInitiateRequest request = new DeconvolutionInitiateRequest();
+        request.setVectorPoolId(INTAKE_POOL_ID_LONG);
+        request.setPoolCount(1_000_000);
+        request.setOrganismsPerPool(1);
+        request.setMemberAssignments(Map.of(700L, 1));
+
+        try {
+            deconvolutionService.initiate(request, SYS_USER_ID);
+            fail("a million sub-pools were accepted");
+        } catch (IllegalArgumentException refused) {
+            assertTrue(refused.getMessage(), refused.getMessage().contains("poolCount"));
+        }
+
+        assertEquals(poolsBefore,
+                (int) jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.vector_pool", Integer.class));
+    }
+
+    @Test
     public void initiate_withExplicitMemberAssignments_shouldDistributeMembersPerAssignment() {
         DeconvolutionInitiateRequest request = new DeconvolutionInitiateRequest();
         request.setVectorPoolId(INTAKE_POOL_ID_LONG);
