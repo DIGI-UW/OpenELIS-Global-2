@@ -6,6 +6,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveMessagesForLocale } from "../../../../languages";
 import messages from "../../../../languages/en.json";
 import {
   getFromOpenElisServer,
@@ -79,10 +80,13 @@ describe("UserAddModify", () => {
   let assign;
   let addNotification;
 
-  const renderAt = (path, client = createQueryClient()) =>
+  const renderAt = (path, client = createQueryClient(), locale = "en") =>
     render(
       <MemoryRouter initialEntries={[path]}>
-        <IntlProvider locale="en" messages={messages}>
+        <IntlProvider
+          locale={locale}
+          messages={resolveMessagesForLocale(locale).messages}
+        >
           <QueryClientProvider client={client}>
             <ConfigurationContext.Provider
               value={{
@@ -139,6 +143,23 @@ describe("UserAddModify", () => {
       value: { ...window.location, reload: vi.fn(), assign },
     });
   });
+
+  it.each(["en", "en-US", "en-GB", "en-PG", "en-LK"])(
+    "explains unfiltered CSV access in %s without stale administrator-only guidance",
+    async (locale) => {
+      renderAt("/MasterListsPage/userEdit", createQueryClient(), locale);
+      expect(
+        await screen.findByText(
+          /CSV exports without a lab unit filter require the Reports role for All Lab Units or the Global Administrator role/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          /CSV export only Availbale for Global Administrators/,
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("goes back to the user list without leaving the app", async () => {
     renderAt("/MasterListsPage/userManagement/5");
