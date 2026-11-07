@@ -20,6 +20,7 @@ import org.hl7.fhir.r4.model.StringType;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.BoundedDecimal;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
@@ -277,6 +278,9 @@ public class EQAFhirExchangeServiceImpl implements EQAFhirExchangeService {
 
     private static String reportedValueOf(Observation observation) {
         if (observation.hasValueQuantity() && observation.getValueQuantity().hasValue()) {
+            if (!BoundedDecimal.isBounded(observation.getValueQuantity().getValue())) {
+                throw new IllegalArgumentException("An EQA result must be a bounded decimal");
+            }
             return observation.getValueQuantity().getValue().toPlainString();
         }
         if (observation.hasValueStringType()) {

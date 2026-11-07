@@ -314,6 +314,22 @@ public class GenericSampleOrderServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void importSamplesFromFile_withAQuantityBeyondTheCap_refusesTheRowAndCreatesNothing() throws Exception {
+        int samplesBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample", Integer.class);
+        String csv = "SampleType,Collector,CollectionDate,SampleQuantity\n" + "Serum,Dr. Smith,11/01/2023,1000000000\n";
+        InputStream stream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
+
+        Map<String, Object> result = genericSampleOrderService.importSamplesFromFile(stream, "huge.csv", "text/csv",
+                TEST_SYS_USER_ID);
+
+        assertEquals(0, result.get("totalCreated"));
+        assertTrue(String.valueOf(result.get("errors")), String.valueOf(result.get("errors"))
+                .contains(String.valueOf(GenericSampleOrderServiceImpl.MAX_SAMPLES_PER_ROW)));
+        assertEquals(samplesBefore,
+                (int) jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample", Integer.class));
+    }
+
+    @Test
     public void importSamplesFromFile_withEmptyFile_returnsFalseSuccess() throws Exception {
         InputStream stream = new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
 

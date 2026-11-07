@@ -25,6 +25,12 @@ final class FuzzyNameMatch {
     private static final int MIN_FUZZY_LENGTH = 3;
 
     /**
+     * The swapped spellings grow with the term and each is matched by the index, so
+     * a term longer than any name is matched by substring only.
+     */
+    static final int MAX_FUZZY_LENGTH = 64;
+
+    /**
      * Similarity floor for the trigram match, set explicitly so behaviour does not
      * depend on the server's own setting. 0.2 was tried and rejected: it starts
      * matching names that merely share a two letter prefix - "john" scores 0.25
@@ -41,7 +47,11 @@ final class FuzzyNameMatch {
     }
 
     static boolean isFuzzyMatchable(String term) {
-        return term != null && normalize(term).length() >= MIN_FUZZY_LENGTH;
+        if (term == null) {
+            return false;
+        }
+        int length = normalize(term).length();
+        return length >= MIN_FUZZY_LENGTH && length <= MAX_FUZZY_LENGTH;
     }
 
     /** Every spelling of the term with one pair of neighbouring letters swapped. */
