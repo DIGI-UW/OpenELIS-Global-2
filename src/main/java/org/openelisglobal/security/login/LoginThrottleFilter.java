@@ -6,7 +6,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.openelisglobal.security.LoginAttemptTracker;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -15,7 +18,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 public class LoginThrottleFilter extends OncePerRequestFilter {
 
-    private static final String LOGIN_PATH = "/ValidateLogin";
+    /**
+     * The same decoded matching the form login filter uses, so an encoded path
+     * cannot slip past.
+     */
+    private static final RequestMatcher LOGIN_REQUEST = PathPatternRequestMatcher.withDefaults()
+            .matcher(HttpMethod.POST, "/ValidateLogin");
 
     private final LoginAttemptTracker tracker;
     private final AuthenticationFailureHandler failureHandler;
@@ -28,17 +36,12 @@ public class LoginThrottleFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        if (isLoginAttempt(request)
+        if (LOGIN_REQUEST.matches(request)
                 && tracker.isThrottled(request.getParameter("loginName"), LoginAttemptTracker.clientAddress(request))) {
             failureHandler.onAuthenticationFailure(request, response,
                     new LoginThrottledException(tracker.windowMinutes()));
             return;
         }
         chain.doFilter(request, response);
-    }
-
-    private static boolean isLoginAttempt(HttpServletRequest request) {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
-        return "POST".equalsIgnoreCase(request.getMethod()) && LOGIN_PATH.equals(path);
     }
 }

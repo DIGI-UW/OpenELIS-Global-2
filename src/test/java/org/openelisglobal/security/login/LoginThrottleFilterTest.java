@@ -1,10 +1,12 @@
 package org.openelisglobal.security.login;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import org.junit.Before;
@@ -78,6 +80,19 @@ public class LoginThrottleFilterTest extends SecuritySliceMockMvcTest {
 
         assertEquals(401, throttled.getResponse().getStatus());
         assertEquals("{\"error\":\"error.throttled\"}", throttled.getResponse().getContentAsString());
+    }
+
+    @Test
+    public void anEncodedLoginPath_isThrottledTheSame() throws Exception {
+        for (int i = 0; i < LIMIT; i++) {
+            login("admin", "wrong-password", false);
+        }
+
+        MvcResult throttled = mockMvc.perform(post(URI.create("/Validate%4Cogin")).param("loginName", "admin")
+                .param("password", "password").session(new MockHttpSession())).andReturn();
+
+        assertNotEquals("/", throttled.getResponse().getRedirectedUrl());
+        assertNull(throttled.getRequest().getSession().getAttribute("SPRING_SECURITY_CONTEXT"));
     }
 
     @Test
