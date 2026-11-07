@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 import org.apache.http.HttpStatus;
 import org.json.JSONObject;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -54,6 +55,13 @@ public class ChangePasswordLoginController extends BaseController {
         binder.setAllowedFields(ALLOWED_FIELDS);
     }
 
+    private boolean accountClosed(String loginName) {
+        return loginService.getMatch("loginName", loginName)
+                .map(login -> IActionConstants.YES.equals(login.getAccountLocked())
+                        || IActionConstants.YES.equals(login.getAccountDisabled()))
+                .orElse(false);
+    }
+
     @RequestMapping(value = "/ChangePasswordLogin", method = RequestMethod.GET)
     public ModelAndView showChangePasswordLogin(HttpServletRequest request) {
         ChangePasswordLoginForm form = new ChangePasswordLoginForm();
@@ -82,8 +90,11 @@ public class ChangePasswordLoginController extends BaseController {
         try {
             LoginUser login;
             // get user information if password correct
+            // A locked or disabled account answers exactly as a wrong password does.
+            // The password is still checked so the timing does not tell them apart.
+            boolean closed = accountClosed(form.getLoginName());
             Optional<LoginUser> matchedLogin = loginService.getValidatedLogin(form.getLoginName(), form.getPassword());
-            if (!matchedLogin.isPresent()) {
+            if (closed || !matchedLogin.isPresent()) {
                 result.reject("login.error.password.current.incorrect");
             } else {
                 login = matchedLogin.get();

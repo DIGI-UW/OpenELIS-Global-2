@@ -75,6 +75,8 @@ public class UnifiedSystemUserRestController extends BaseController {
     private static final String YES = "Y";
     private static final String NO = "N";
     public static final String ALL_LAB_UNITS = "AllLabUnits";
+    static final String ERROR_GLOBAL_ADMIN_GRANT = "errors.user.globalAdmin.grant";
+    static final String ERROR_GLOBAL_ADMIN_EDIT = "errors.user.globalAdmin.edit";
     public static final String ERROR_ALL_LAB_UNITS_EXCLUSIVE = "labUnitRoles.allLabUnitsExclusive";
     private static final String RESERVED_ADMIN_NAME = "admin";
     private static final int NAME_MAX_LENGTH = 30;
@@ -342,6 +344,53 @@ public class UnifiedSystemUserRestController extends BaseController {
         return currentWorkingList;
     }
 
+    /**
+     * The GET form hides the Global Administrator role from an administrator who
+     * does not hold it, but the save used to store whatever role list arrived and
+     * to rewrite any account, so a User Account Administrator could make anyone a
+     * Global Administrator or lock, rename or reset one. The caller's own roles
+     * decide what a save may grant and which accounts it may touch; the reserved
+     * admin login is protected whatever roles it carries.
+     */
+    private Errors privilegeRefusal(UnifiedSystemUserForm form, String callerId) {
+        Errors refusal = new BaseErrors();
+        if (GLOBAL_ADMIN_ID == null || userRoleService.getRoleIdsForUser(callerId).contains(GLOBAL_ADMIN_ID)) {
+            return refusal;
+        }
+        if (grantsGlobalAdministrator(form)) {
+            refusal.reject(ERROR_GLOBAL_ADMIN_GRANT);
+        }
+        if (targetsProtectedAccount(form)) {
+            refusal.reject(ERROR_GLOBAL_ADMIN_EDIT);
+        }
+        return refusal;
+    }
+
+    private boolean grantsGlobalAdministrator(UnifiedSystemUserForm form) {
+        if (form.getSelectedRoles() != null && form.getSelectedRoles().contains(GLOBAL_ADMIN_ID)) {
+            return true;
+        }
+        String copiedFrom = form.getSystemUserIdToCopy() == null ? "" : form.getSystemUserIdToCopy().trim();
+        return YES.equals(form.getAllowCopyUserRoles()) && !copiedFrom.isEmpty()
+                && userRoleService.getRoleIdsForUser(copiedFrom).contains(GLOBAL_ADMIN_ID);
+    }
+
+    private boolean targetsProtectedAccount(UnifiedSystemUserForm form) {
+        String loginName = form.getUserLoginName() == null ? "" : form.getUserLoginName().trim();
+        if (RESERVED_ADMIN_NAME.equals(loginName)) {
+            return true;
+        }
+        if (!GenericValidator.isBlankOrNull(form.getSystemUserId())
+                && userRoleService.getRoleIdsForUser(form.getSystemUserId()).contains(GLOBAL_ADMIN_ID)) {
+            return true;
+        }
+        if (GenericValidator.isBlankOrNull(form.getLoginUserId())) {
+            return false;
+        }
+        LoginUser login = loginService.get(Integer.parseInt(form.getLoginUserId()));
+        return login != null && (YES.equals(login.getIsAdmin()) || RESERVED_ADMIN_NAME.equals(login.getLoginName()));
+    }
+
     private List<Role> doRoleFiltering(List<Role> roles, String loggedInUserId) {
 
         List<String> rolesForLoggedInUser = userRoleService.getRoleIdsForUser(loggedInUserId);
@@ -457,6 +506,11 @@ public class UnifiedSystemUserRestController extends BaseController {
         boolean doFiltering = true;
         formValidator.validate(form, result);
         Map<String, String> response = new HashMap<>();
+
+        Errors privilegeRefusal = privilegeRefusal(form, getSysUserId(request));
+        if (privilegeRefusal.hasErrors()) {
+            return ResponseEntity.badRequest().body(refusalBody(findForward(FWD_FAIL_INSERT), privilegeRefusal));
+        }
 
         Errors fieldRefusal = fieldRefusal(form, result);
         if (fieldRefusal.hasErrors()) {
