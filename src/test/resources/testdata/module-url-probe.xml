@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="990001" external_id="EXT990001"
+        login_name="probe" last_name="Probe" first_name="Pat" initials="PP"
+        is_active="Y" is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+    <login_user id="990001" login_name="probe"
+        password="password" password_expired_dt="2035-12-31"
+        account_locked="N" account_disabled="N" is_admin="N"
+        user_time_out="30" last_updated="2025-03-16" />
+
+    <system_module id="990001" name="Probe Module"
+        description="A module mapped to one page" has_select_flag="Y"
+        has_add_flag="Y" has_update_flag="Y" has_delete_flag="Y" />
+
+    <system_module_url id="990001"
+        url_path="/PrivilegeProbe" system_module_id="990001" />
+</dataset>
