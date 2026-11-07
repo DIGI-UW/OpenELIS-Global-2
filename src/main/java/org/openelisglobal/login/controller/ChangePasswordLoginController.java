@@ -18,6 +18,7 @@ import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.validator.ChangePasswordLoginFormValidator;
 import org.openelisglobal.login.validator.LoginValidator;
 import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.security.LoginAttemptTracker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
@@ -48,6 +49,8 @@ public class ChangePasswordLoginController extends BaseController {
     private LoginValidator loginValidator;
     @Autowired
     private LoginUserService loginService;
+    @Autowired
+    private LoginAttemptTracker loginAttemptTracker;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -75,6 +78,13 @@ public class ChangePasswordLoginController extends BaseController {
             saveErrors(result);
             return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
         }
+        String client = LoginAttemptTracker.clientAddress(request);
+        if (loginAttemptTracker.isThrottled(form.getLoginName(), client)) {
+            result.reject("login.error.throttled", new Object[] { loginAttemptTracker.windowMinutes() },
+                    "login.error.throttled");
+            saveErrors(result);
+            return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
+        }
 
         // Login newLogin = new Login();
         // // populate valueholder from form
@@ -84,6 +94,7 @@ public class ChangePasswordLoginController extends BaseController {
             // get user information if password correct
             Optional<LoginUser> matchedLogin = loginService.getValidatedLogin(form.getLoginName(), form.getPassword());
             if (!matchedLogin.isPresent()) {
+                loginAttemptTracker.recordFailure(form.getLoginName(), client);
                 result.reject("login.error.password.current.incorrect");
             } else {
                 login = matchedLogin.get();
@@ -112,6 +123,7 @@ public class ChangePasswordLoginController extends BaseController {
                 } finally {
                     SecurityContextHolder.setContext(previous);
                 }
+                loginAttemptTracker.recordSuccess(form.getLoginName());
             }
 
         } catch (LIMSRuntimeException e) {
