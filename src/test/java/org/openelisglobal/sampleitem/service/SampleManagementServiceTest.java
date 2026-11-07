@@ -129,6 +129,25 @@ public class SampleManagementServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void createAliquot_withAnEnormousExponent_isRefusedBeforeDividing() {
+        int itemsBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample_item", Integer.class);
+        org.openelisglobal.sampleitem.form.CreateAliquotForm form = new org.openelisglobal.sampleitem.form.CreateAliquotForm();
+        form.setParentSampleItemId("1");
+        form.setQuantityToTransfer(new java.math.BigDecimal("1E+500000000"));
+        form.setNumberOfAliquots(3);
+
+        try {
+            sampleManagementService.createAliquot(form, "1");
+            org.junit.Assert.fail("an exponent of half a billion was accepted");
+        } catch (IllegalArgumentException refused) {
+            org.junit.Assert.assertTrue(refused.getMessage(), refused.getMessage().contains("plain decimal"));
+        }
+
+        assertEquals(itemsBefore,
+                (int) jdbcTemplate.queryForObject("SELECT COUNT(*) FROM clinlims.sample_item", Integer.class));
+    }
+
+    @Test
     public void searchByAccessionNumber_shouldLoadHierarchyDataForAliquots() {
         // Arrange: This test will verify parent-child relationships are loaded
         // Note: Current test data may not have aliquots, but the service should handle

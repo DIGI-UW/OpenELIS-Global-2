@@ -1316,6 +1316,12 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
 
                 // Get sample quantity (look for column with sample quantity)
                 int sampleQuantity = parseSampleQuantity(findValue(row, "samplequantity", "numberofsamples", "qty"));
+                if (sampleQuantity > MAX_SAMPLES_PER_ROW) {
+                    totalFailed++;
+                    errors.add("Row " + rowNumber + ": sample quantity " + sampleQuantity + " is more than the "
+                            + MAX_SAMPLES_PER_ROW + " samples one row may create");
+                    continue;
+                }
 
                 // Create samples based on quantity
                 // Each sample will auto-generate its own accession number in its own
@@ -1805,6 +1811,12 @@ public class GenericSampleOrderServiceImpl implements GenericSampleOrderService 
         }
         return null;
     }
+
+    /**
+     * Each sample of a row is committed on its own, so a row's quantity bounds the
+     * work one row can ask for.
+     */
+    static final int MAX_SAMPLES_PER_ROW = 500;
 
     private int parseSampleQuantity(String quantityStr) {
         if (GenericValidator.isBlankOrNull(quantityStr)) {
