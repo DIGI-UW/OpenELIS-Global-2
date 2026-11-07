@@ -57,6 +57,7 @@ import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
 import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
+import org.openelisglobal.sample.service.SamplePatientEntryServiceImpl;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
@@ -388,6 +389,19 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         // Now that sample is loaded, we can initialize program questions (which needs
         // sample.id for updates)
+        if (StringUtils.isNotBlank(sampleOrder.getExternalOrderNumber())) {
+            if (!SamplePatientEntryServiceImpl.hasMeaningfulId(sampleOrder.getAdditionalQuestions())
+                    || GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
+                List<ElectronicOrder> eOrders = electronicOrderService
+                        .getElectronicOrdersByExternalId(sampleOrder.getExternalOrderNumber());
+                ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
+                if (eOrder != null && StringUtils.isNotBlank(eOrder.getData())) {
+                    Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
+                    samplePatientService.resolveAndPrefillQuestionnaireResponse(sampleOrder, task, eOrder);
+                }
+            }
+        }
+
         if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
             updateData.initProgramQuestions(sampleOrder.getProgramId(), sampleOrder.getAdditionalQuestions());
         }
@@ -786,6 +800,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                         }
                     }
                 }
+                samplePatientService.resolveAndPrefillQuestionnaireResponse(form.getSampleOrderItems(), task, eOrder);
             }
         }
         form.setPatientProperties(new PatientManagementInfo());
