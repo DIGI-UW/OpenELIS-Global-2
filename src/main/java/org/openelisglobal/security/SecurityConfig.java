@@ -31,6 +31,7 @@ import org.openelisglobal.security.login.CustomAuthenticationFailureHandler;
 import org.openelisglobal.security.login.CustomFormAuthenticationSuccessHandler;
 import org.openelisglobal.security.login.CustomSSOAuthenticationSuccessHandler;
 import org.openelisglobal.security.login.CustomUserDetailsService;
+import org.openelisglobal.security.login.LoginThrottleFilter;
 import org.openelisglobal.spring.util.SpringContext;
 import org.opensaml.core.xml.XMLObject;
 import org.opensaml.core.xml.schema.XSString;
@@ -88,6 +89,7 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.context.NullSecurityContextRepository;
@@ -145,6 +147,9 @@ public class SecurityConfig {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Autowired
+    private LoginAttemptTracker loginAttemptTracker;
 
     @Autowired
     public void configureGlobalSecurity(AuthenticationManagerBuilder auth) throws Exception {
@@ -465,6 +470,8 @@ public class SecurityConfig {
         MultipartFilter multipartFilter = new MultipartFilter();
         multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
         http.addFilterBefore(multipartFilter, CsrfFilter.class);
+        http.addFilterBefore(new LoginThrottleFilter(loginAttemptTracker, customAuthenticationFailureHandler()),
+                UsernamePasswordAuthenticationFilter.class);
         http.authorizeHttpRequests(auth -> auth
                 // allow all users to access these pages no matter authentication status
                 .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
