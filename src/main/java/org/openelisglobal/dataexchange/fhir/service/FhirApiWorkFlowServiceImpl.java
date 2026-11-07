@@ -48,6 +48,7 @@ import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.spring.util.SpringContext;
@@ -76,6 +77,8 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
     private OrganizationService organizationService;
     @Autowired
     private ProviderService providerService;
+    @Autowired(required = false)
+    private QuestionnaireStorageService questionnaireStorageService;
 
     @Value("${org.openelisglobal.fhirstore.uri}")
     private String localFhirStorePath;
@@ -595,7 +598,19 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         objects.questionnaireResponses = new ArrayList<>();
         for (QuestionnaireResponse qResponse : remoteQResponses) {
             QuestionnaireResponse localQResponse = qResponse;
+            if (objects.patient != null
+                    && (!localQResponse.hasSubject() || !localQResponse.getSubject().hasReference())) {
+                localQResponse.setSubject(fhirTransformService.createReferenceFor(objects.patient));
+            }
             fhirOperations.updateResources.put(localQResponse.getIdElement().getIdPart(), localQResponse);
+            if (questionnaireStorageService != null) {
+                try {
+                    questionnaireStorageService.storeQuestionnaireResponseLocally(localQResponse);
+                } catch (RuntimeException e) {
+                    LogEvent.logWarn(getClass().getSimpleName(), "saveRemoteTaskAsLocalTask",
+                            "Could not store imported QuestionnaireResponse locally: " + e.getMessage());
+                }
+            }
             // questionnaireResponse only has one identifier so we can't add identifiers to
             // the
             // list like other objects

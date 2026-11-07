@@ -72,6 +72,7 @@ import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.valueholder.immunohistochemistry.ImmunohistochemistrySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.provider.service.ProviderService;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageServiceImpl;
 import org.openelisglobal.requester.service.SampleRequesterService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
@@ -528,7 +529,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // Only set new UUID if this is a new ProgramSample (no existing UUID)
             if (updateData.getProgramQuestionnaireResponse() != null
                     && updateData.getProgramSample().getQuestionnaireResponseUuid() == null) {
-                updateData.getProgramSample().setQuestionnaireResponseUuid(UUID.randomUUID());
+                if (updateData.getProgramQuestionnaireResponse().hasId() && org.apache.commons.lang3.StringUtils
+                        .isNotBlank(updateData.getProgramQuestionnaireResponse().getIdElement().getIdPart())) {
+                    updateData.getProgramSample().setQuestionnaireResponseUuid(QuestionnaireStorageServiceImpl
+                            .toStorageUuid(updateData.getProgramQuestionnaireResponse().getIdElement().getIdPart()));
+                } else {
+                    updateData.getProgramSample().setQuestionnaireResponseUuid(UUID.randomUUID());
+                }
             }
             updateData.getProgramSample().setSample(updateData.getSample());
 
