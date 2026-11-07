@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
@@ -51,6 +52,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
         CSVStudyExportColumnsTest.TestConfig.class })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@IsolatedDatabase
 public class CSVStudyExportColumnsTest extends BaseWebContextSensitiveTest {
     @Configuration
     public static class TestConfig extends BaseTestConfig {
