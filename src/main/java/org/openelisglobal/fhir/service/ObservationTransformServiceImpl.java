@@ -2,6 +2,8 @@ package org.openelisglobal.fhir.service;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Observation;
@@ -24,6 +26,8 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -36,6 +40,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ObservationTransformServiceImpl implements ObservationTransformService {
@@ -60,6 +65,8 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
     private HistoryService historyService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private NoteService noteService;
 
     private static Quantity numericQuantity(String value) {
         Quantity quantity = new Quantity();
@@ -76,6 +83,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Observation transformResultToObservation(String resultId) {
         return transformResultToObservation(resultService.get(resultId));
     }
@@ -114,8 +122,17 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         }
     }
 
+    private static final String INTERPRETATION_SUBJECT = "Interpretation";
+
     @Override
+    @Transactional(readOnly = true)
     public Observation transformResultToObservation(Result result) {
+        return transformResultToObservation(result, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Observation transformResultToObservation(Result result, List<Note> analysisNotes) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -198,6 +215,24 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         Reference validator = validatorOf(analysis);
         if (validator != null) {
             observation.addPerformer(validator);
+        }
+
+        String componentId = component != null ? component.getId()
+                : (result != null && result.getTestResult() != null ? result.getTestResult().getComponentId() : null);
+        if (!GenericValidator.isBlankOrNull(componentId) && analysis != null) {
+            List<Note> notes = analysisNotes != null ? analysisNotes : noteService.getNotes(analysis);
+            if (notes != null) {
+                for (Note note : notes) {
+                    if (note != null && Note.EXTERNAL.equals(note.getNoteType())
+                            && INTERPRETATION_SUBJECT.equalsIgnoreCase(note.getSubject())
+                            && componentId.equals(note.getTestResultComponentId())) {
+                        Annotation annotation = common.transformNoteToAnnotation(note);
+                        if (annotation != null && !GenericValidator.isBlankOrNull(annotation.getText())) {
+                            observation.addNote(annotation);
+                        }
+                    }
+                }
+            }
         }
 
         return observation;
