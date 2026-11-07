@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -8,6 +8,17 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
 import SecureRoute from "./SecureRoute";
 import { Roles } from "../utils/Utils";
+
+let idleTimerOptions = {};
+
+vi.mock("react-idle-timer", () => ({
+  useIdleTimer: (options) => {
+    idleTimerOptions = options;
+    return {
+      activate: vi.fn(),
+    };
+  },
+}));
 
 const renderRoute = ({ roles = [], permissions = [], routeProps = {} }) =>
   render(
@@ -66,5 +77,74 @@ describe("SecureRoute permission prop", () => {
       routeProps: { role: "Results" },
     });
     expect(screen.getByText("GUARDED CONTENT")).toBeInTheDocument();
+  });
+
+  test("keeps route content rendered when inactivity prompt modal is active", () => {
+    renderRoute({
+      roles: [Roles.GLOBAL_ADMIN],
+      routeProps: { role: Roles.GLOBAL_ADMIN },
+    });
+    expect(screen.getByText("GUARDED CONTENT")).toBeInTheDocument();
+
+    // Trigger idle prompt (warning timeout reached)
+    act(() => {
+      idleTimerOptions.onPrompt();
+    });
+
+    // Verify modal is displayed
+    expect(screen.getByText(messages["stillThere.title"])).toBeInTheDocument();
+
+    // Verify child/route content remains rendered in the document
+    expect(screen.getByText("GUARDED CONTENT")).toBeInTheDocument();
+  });
+
+  test("preserves entered form state across the inactivity warning and dismissal", () => {
+    const FormComponent = () => {
+      const [value, setValue] = React.useState("");
+      return (
+        <input
+          aria-label="test-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      );
+    };
+
+    renderRoute({
+      roles: [Roles.GLOBAL_ADMIN],
+      routeProps: { role: Roles.GLOBAL_ADMIN, component: FormComponent },
+    });
+
+    const input = screen.getByLabelText("test-input");
+    fireEvent.change(input, { target: { value: "Unsaved Lab Result 123" } });
+    expect(input).toHaveValue("Unsaved Lab Result 123");
+
+    const modalHeading = screen.getByText(messages["stillThere.title"]);
+    const modalContainer = modalHeading.closest(".cds--modal");
+
+    // Initially modal is not visible
+    expect(modalContainer).not.toHaveClass("is-visible");
+
+    // Trigger idle prompt (warning timeout reached)
+    act(() => {
+      idleTimerOptions.onPrompt();
+    });
+
+    // Verify modal is displayed and input retains entered state while modal is open
+    expect(modalContainer).toHaveClass("is-visible");
+    expect(screen.getByLabelText("test-input")).toHaveValue(
+      "Unsaved Lab Result 123",
+    );
+
+    // Dismiss modal via onActive
+    act(() => {
+      idleTimerOptions.onActive();
+    });
+
+    // Verify modal is dismissed and form input still preserves the entered state
+    expect(modalContainer).not.toHaveClass("is-visible");
+    expect(screen.getByLabelText("test-input")).toHaveValue(
+      "Unsaved Lab Result 123",
+    );
   });
 });
