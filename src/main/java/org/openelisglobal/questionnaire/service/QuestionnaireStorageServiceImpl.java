@@ -227,14 +227,16 @@ public class QuestionnaireStorageServiceImpl implements QuestionnaireStorageServ
             return false;
         }
         for (Reference ref : qr.getBasedOn()) {
-            if (ref.hasReference()) {
-                String refVal = ref.getReference();
-                if (refVal.endsWith(serviceRequestId) || refVal.endsWith("ServiceRequest/" + serviceRequestId)) {
+            if (ref.hasReferenceElement()) {
+                if (serviceRequestId.equals(ref.getReferenceElement().getIdPart())) {
                     return true;
                 }
-            }
-            if (ref.hasReferenceElement() && serviceRequestId.equals(ref.getReferenceElement().getIdPart())) {
-                return true;
+            } else if (ref.hasReference()) {
+                String refVal = ref.getReference();
+                String idPart = refVal.substring(refVal.lastIndexOf('/') + 1);
+                if (serviceRequestId.equals(idPart)) {
+                    return true;
+                }
             }
         }
         return false;

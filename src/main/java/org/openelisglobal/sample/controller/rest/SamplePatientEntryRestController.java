@@ -7,14 +7,12 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.r4.model.Enumerations.ResourceType;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -48,12 +46,8 @@ import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.program.service.ProgramService;
-import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
-import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
-import org.openelisglobal.questionnaire.service.QuestionnaireStorageServiceImpl;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
@@ -63,6 +57,7 @@ import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
 import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
+import org.openelisglobal.sample.service.SamplePatientEntryServiceImpl;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
@@ -220,12 +215,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     @Autowired
     @Lazy
     private EQAOrderEntryValidator eqaOrderEntryValidator;
-
-    @Autowired
-    private QuestionnaireStorageService questionnaireStorageService;
-
-    @Autowired
-    private ProgramService programService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -401,14 +390,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // Now that sample is loaded, we can initialize program questions (which needs
         // sample.id for updates)
         if (StringUtils.isNotBlank(sampleOrder.getExternalOrderNumber())) {
-            if (sampleOrder.getAdditionalQuestions() == null
+            if (!SamplePatientEntryServiceImpl.hasMeaningfulId(sampleOrder.getAdditionalQuestions())
                     || GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
                 List<ElectronicOrder> eOrders = electronicOrderService
                         .getElectronicOrdersByExternalId(sampleOrder.getExternalOrderNumber());
                 ElectronicOrder eOrder = eOrders.isEmpty() ? null : eOrders.get(0);
                 if (eOrder != null && StringUtils.isNotBlank(eOrder.getData())) {
                     Task task = fhirUtil.getFhirParser().parseResource(Task.class, eOrder.getData());
-                    resolveAndPrefillQuestionnaireResponse(form, task, eOrder);
+                    samplePatientService.resolveAndPrefillQuestionnaireResponse(sampleOrder, task, eOrder);
                 }
             }
         }
@@ -811,7 +800,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                         }
                     }
                 }
-                resolveAndPrefillQuestionnaireResponse(form, task, eOrder);
+                samplePatientService.resolveAndPrefillQuestionnaireResponse(form.getSampleOrderItems(), task, eOrder);
             }
         }
         form.setPatientProperties(new PatientManagementInfo());
@@ -837,45 +826,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
         if (FormFields.getInstance().useField(FormFields.Field.SampleNature)) {
             form.setSampleNatureList(DisplayListService.getInstance().getList(ListType.SAMPLE_NATURE));
-        }
-    }
-
-    void resolveAndPrefillQuestionnaireResponse(SamplePatientEntryForm form, Task task, ElectronicOrder eOrder) {
-        if (form.getSampleOrderItems() == null || form.getSampleOrderItems().getAdditionalQuestions() != null
-                || task == null) {
-            return;
-        }
-        String patientFhirId = null;
-        if (task.hasFor() && task.getFor().hasReference()) {
-            patientFhirId = task.getFor().getReferenceElement().getIdPart();
-        } else if (eOrder != null && eOrder.getPatient() != null && eOrder.getPatient().getFhirUuid() != null) {
-            patientFhirId = eOrder.getPatient().getFhirUuid().toString();
-        }
-
-        QuestionnaireResponse importedQr = null;
-        for (Reference basedOn : task.getBasedOn()) {
-            if (basedOn.hasReferenceElement()) {
-                String serviceRequestId = basedOn.getReferenceElement().getIdPart();
-                Optional<QuestionnaireResponse> found = questionnaireStorageService
-                        .getQuestionnaireResponseForServiceRequest(serviceRequestId, patientFhirId);
-                if (found.isPresent()) {
-                    importedQr = found.get();
-                    break;
-                }
-            }
-        }
-
-        if (importedQr != null) {
-            form.getSampleOrderItems().setAdditionalQuestions(importedQr);
-            if (StringUtils.isBlank(form.getSampleOrderItems().getProgramId())) {
-                UUID qUuid = QuestionnaireStorageServiceImpl.questionnaireUuidOf(importedQr);
-                if (qUuid != null) {
-                    List<Program> programs = programService.getAllMatching("questionnaireUUID", qUuid);
-                    if (programs != null && !programs.isEmpty()) {
-                        form.getSampleOrderItems().setProgramId(programs.get(0).getId());
-                    }
-                }
-            }
         }
     }
 
