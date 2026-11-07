@@ -31,6 +31,7 @@ import org.openelisglobal.dataexchange.fhir.service.FhirFacilityOrganizationServ
 import org.openelisglobal.dataexchange.fhir.service.TempIdGenerator;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -116,8 +117,45 @@ public class FhirCommonTransformServiceImpl implements FhirCommonTransformServic
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformNoteToAnnotation",
                 "transformNoteToAnnotation called");
 
+        if (note == null) {
+            return null;
+        }
+
         Annotation annotation = new Annotation();
         annotation.setText(note.getText());
+
+        if (note.getLastupdated() != null) {
+            annotation.setTime(new Date(note.getLastupdated().getTime()));
+        }
+
+        try {
+            SystemUser systemUser = note.getSystemUser();
+            if (systemUser != null) {
+                String authorDisplay = null;
+                String first = systemUser.getFirstName();
+                String last = systemUser.getLastName();
+                boolean hasFirst = !GenericValidator.isBlankOrNull(first) && !"null".equalsIgnoreCase(first.trim());
+                boolean hasLast = !GenericValidator.isBlankOrNull(last) && !"null".equalsIgnoreCase(last.trim());
+
+                if (hasFirst && hasLast) {
+                    authorDisplay = first.trim() + " " + last.trim();
+                } else if (hasFirst) {
+                    authorDisplay = first.trim();
+                } else if (hasLast) {
+                    authorDisplay = last.trim();
+                } else if (!GenericValidator.isBlankOrNull(systemUser.getLoginName())) {
+                    authorDisplay = systemUser.getLoginName().trim();
+                }
+
+                if (!GenericValidator.isBlankOrNull(authorDisplay)) {
+                    annotation.setAuthor(new StringType(authorDisplay.trim()));
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "transformNoteToAnnotation",
+                    "could not resolve note author for note " + note.getId() + ": " + e.getMessage());
+        }
+
         return annotation;
     }
 
