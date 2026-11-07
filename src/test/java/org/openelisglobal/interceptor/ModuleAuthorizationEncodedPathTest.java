@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.annotation.PreDestroy;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.Before;
@@ -11,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.AppTestConfig;
 import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.IsolatedDatabase;
 import org.openelisglobal.common.action.IActionConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * The module authorization lookup used the raw request URI, so percent-encoding
@@ -37,11 +40,27 @@ import org.springframework.test.context.ContextConfiguration;
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
         ModuleAuthorizationEncodedPathTest.TestConfig.class })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@IsolatedDatabase
 public class ModuleAuthorizationEncodedPathTest extends BaseWebContextSensitiveTest {
 
-    /** The test context leaves the interceptor package unscanned. */
+    /**
+     * The test context leaves the interceptor package unscanned. The context starts
+     * against its own freshly seeded database.
+     */
     @Configuration
     public static class TestConfig extends BaseTestConfig {
+        private final PostgreSQLContainer<?> database = new PostgreSQLContainer<>("postgres:14.4");
+
+        @Override
+        protected PostgreSQLContainer<?> databaseContainer() {
+            return database;
+        }
+
+        @PreDestroy
+        public void stopDatabase() {
+            database.stop();
+        }
+
         @Bean
         public ModuleAuthenticationInterceptor moduleAuthenticationInterceptor() {
             return new ModuleAuthenticationInterceptor();
