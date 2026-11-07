@@ -77,7 +77,6 @@ public class CalculatedValueRestController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> saveReflexRule(HttpServletRequest request,
             @RequestBody Calculation calculation) {
-        normalizeBlankComponents(calculation);
         try {
             validateDestination(calculation);
             if (calculation.getId() != null && stored(calculation.getId()) == null) {
@@ -87,6 +86,7 @@ public class CalculatedValueRestController {
         } catch (CalculationRuleViolation violation) {
             return refusal(HttpStatus.BAD_REQUEST, violation);
         }
+        normalizeBlankComponents(calculation);
         if (calculation.getId() != null) {
             testCalculationService.update(calculation);
         } else {

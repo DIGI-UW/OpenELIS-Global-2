@@ -857,11 +857,7 @@
             <artifactId>javase</artifactId>
             <version>3.5.2</version>
         </dependency>
-        <dependency>
-            <groupId>org.openjdk.nashorn</groupId>
-            <artifactId>nashorn-core</artifactId>
-            <version>15.4</version>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
@@ -1017,6 +1013,7 @@
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -1051,6 +1048,7 @@
                                 <exclude>.idea/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>frontend/**</exclude>
                                 <exclude>.settings/**</exclude>
                                 <exclude>**/target/**</exclude>
@@ -1077,6 +1075,7 @@
                                 <exclude>**/target/**</exclude>
                                 <exclude>.cursor/**</exclude>
                                 <exclude>.claude/**</exclude>
+                                <exclude>.worktrees/**</exclude>
                                 <exclude>tools/Liquibase-Outdated/**</exclude>
                                 <exclude>tools/openelis-analyzer-bridge/**</exclude>
                                 <exclude>tools/analyzer-mock-server/**</exclude>
