@@ -22,6 +22,7 @@ import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
+import org.openelisglobal.security.LoginAttemptTracker;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.systemusermodule.service.PermissionModuleService;
@@ -52,6 +53,8 @@ public class CustomFormAuthenticationSuccessHandler extends SavedRequestAwareAut
     private SystemUserService systemUserService;
     @Autowired
     private NotificationDAO notificationDAO;
+    @Autowired
+    private LoginAttemptTracker loginAttemptTracker;
 
     @Value("${org.openelisglobal.timezone:}")
     private String timezone;
@@ -65,6 +68,7 @@ public class CustomFormAuthenticationSuccessHandler extends SavedRequestAwareAut
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
             Authentication authentication) throws IOException, ServletException {
+        loginAttemptTracker.recordSuccess(authentication.getName());
         // get the X-Forwarded-For header so that we know if the request is from a proxy
         final String xfHeader = request.getHeader("X-Forwarded-For");
         if (xfHeader == null) {
