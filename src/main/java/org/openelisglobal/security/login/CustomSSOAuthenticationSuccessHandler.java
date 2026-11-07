@@ -62,6 +62,9 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
     @Value("${org.openelisglobal.timezone:}")
     private String timezone;
 
+    @Value("${org.itech.login.sso.provisionUnknownUsers:false}")
+    private boolean provisionUnknownUsers;
+
     public static final int DEFAULT_SESSION_TIMEOUT_IN_MINUTES = 20;
 
     public CustomSSOAuthenticationSuccessHandler() {
@@ -213,27 +216,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
         // create usersessiondata and store in session
         UserSessionData usd = new UserSessionData();
 
-        Optional<SystemUser> user = systemUserService.getMatch("loginName", principal.getName());
-
-        SystemUser systemUser = new SystemUser();
-        if (user.isEmpty()) {
-            systemUser.setFirstName(principal.getName());
-            systemUser.setLastName("");
-            systemUser.setLoginName(principal.getName());
-            systemUser.setIsActive("Y");
-            systemUser.setIsEmployee("Y");
-            systemUser.setExternalId("1");
-            String initial = (GenericValidator.isBlankOrNull(systemUser.getFirstName()) ? ""
-                    : systemUser.getFirstName().substring(0, 1))
-                    + (GenericValidator.isBlankOrNull(systemUser.getLastName()) ? ""
-                            : systemUser.getLastName().substring(0, 1));
-            systemUser.setInitials(initial);
-            systemUser.setSysUserId(daemonSysUserId);
-
-            systemUser = systemUserService.save(systemUser);
-        } else {
-            systemUser = user.get();
-        }
+        SystemUser systemUser = accountFor(principal.getName());
         usd.setSytemUserId(Integer.parseInt(systemUser.getId()));
         usd.setLoginName(principal.getName());
         // usd.setElisUserName(su.getNameForDisplay());
@@ -265,21 +248,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
         request.getSession().setMaxInactiveInterval(DEFAULT_SESSION_TIMEOUT_IN_MINUTES * 60);
 
         UserSessionData usd = new UserSessionData();
-        Optional<SystemUser> user = systemUserService.getMatch("loginName", principal.getName());
-        SystemUser systemUser = new SystemUser();
-        if (user.isEmpty()) {
-            systemUser.setFirstName(principal.getName());
-            systemUser.setLastName("");
-            systemUser.setLoginName(principal.getName());
-            systemUser.setIsActive("Y");
-            systemUser.setIsEmployee("Y");
-            systemUser.setExternalId("1");
-            String initial = systemUser.getFirstName().substring(0, 1) + systemUser.getLastName().substring(0, 1);
-            systemUser.setInitials(initial);
-            systemUser.setSysUserId(daemonSysUserId);
-
-            systemUser = systemUserService.save(systemUser);
-        }
+        SystemUser systemUser = accountFor(principal.getName());
         usd.setSytemUserId(Integer.parseInt(systemUser.getId()));
         usd.setLoginName(principal.getName());
         // usd.setElisUserName(su.getNameForDisplay());
@@ -296,6 +265,33 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
             request.getSession().setAttribute(IActionConstants.PERMITTED_ACTIONS_MAP, permittedPages);
             // showAdminMenu |= permittedPages.contains("MasterList");
         }
+    }
+
+    /**
+     * The identity provider asserts who signed in, not who may use this laboratory.
+     * The account has to exist here already; an installation that wants sign-ins to
+     * create accounts opts in with
+     * {@code org.itech.login.sso.provisionUnknownUsers}. A missing account refuses
+     * the login as "no OpenELIS user" and creates nothing.
+     */
+    private SystemUser accountFor(String loginName) {
+        Optional<SystemUser> user = systemUserService.getMatch("loginName", loginName);
+        if (user.isPresent()) {
+            return user.get();
+        }
+        if (!provisionUnknownUsers) {
+            throw new IllegalStateException("no OpenELIS account for the identity provider user " + loginName);
+        }
+        SystemUser systemUser = new SystemUser();
+        systemUser.setFirstName(loginName);
+        systemUser.setLastName("");
+        systemUser.setLoginName(loginName);
+        systemUser.setIsActive("Y");
+        systemUser.setIsEmployee("Y");
+        systemUser.setExternalId("1");
+        systemUser.setInitials(GenericValidator.isBlankOrNull(loginName) ? "" : loginName.substring(0, 1));
+        systemUser.setSysUserId(daemonSysUserId);
+        return systemUserService.save(systemUser);
     }
 
     private Set<String> getPermittedForms(Collection<? extends GrantedAuthority> authorities) {
