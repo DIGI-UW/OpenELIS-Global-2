@@ -478,45 +478,18 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
     }
   };
 
-  function replaceString(
-    string: string,
-    sequenceToReplace: string,
-    replacement: string,
-  ) {
-    const regex = new RegExp(sequenceToReplace, "g");
-    return string.replace(regex, replacement);
-  }
-
   const handleSubmit = (event: any, index: number) => {
     event.preventDefault();
     if (isSubmitting) {
       return;
     }
     setIsSubmitting(true);
-    let mathematicalOperation = "";
     calculationList[index]["operations"].forEach(
       (operation, operationIndex) => {
         operation.order = operationIndex;
-        mathematicalOperation = mathematicalOperation + operation.value + " ";
       },
     );
-    // for the function validation , remove text values
-    mathematicalOperation = replaceString(mathematicalOperation, "AGE", "0");
-    mathematicalOperation = replaceString(mathematicalOperation, "WEIGHT", "0");
-    mathematicalOperation = replaceString(
-      mathematicalOperation,
-      "IS_IN_NORMAL_RANGE",
-      ">=0 && 1<=10",
-    );
-    mathematicalOperation = replaceString(
-      mathematicalOperation,
-      "IS_OUTSIDE_NORMAL_RANGE",
-      "<0 || 1>10",
-    );
-
     try {
-      // Code that might throw an error
-      eval(mathematicalOperation);
       // Same as the reflex builder: the pickers display a default component,
       // and the calculation has to carry the one it is displaying rather than
       // save against none.
@@ -548,12 +521,13 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
         JSON.stringify(calculation),
         (response) => handleCalculationSubmited(response, index),
       );
-    } catch (error) {
+    } catch {
+      setIsSubmitting(false);
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: "Invalid Calculation Logic : " + error.message,
+        message: intl.formatMessage({ id: "error.invalid.calculation.logic" }),
       });
     }
   };
@@ -712,7 +686,6 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
               >
                 <SelectItem text="" value="" />
                 <SelectItem text="Patient Age(Years)" value="AGE" />
-                <SelectItem text="Patient Weight(Kg)" value="WEIGHT" />
               </Select>
             </Column>
             <Column lg={5}> </Column>

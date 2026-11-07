@@ -1,4 +1,5 @@
 {
+  "error.invalid.calculation.logic": "The calculation is invalid. Check its operations and numeric values.",
   "barcode.label.error.batch.limit": "This print job has more than {max} labels. Print fewer labels at a time.",
   "barcode.label.error.quantity.limit": "Each label quantity can be at most {max}.",
   "analyzer.mapping.error.profileUnavailable": "The analyzer profile could not be read. Retry confirmation when the Bridge is available.",
