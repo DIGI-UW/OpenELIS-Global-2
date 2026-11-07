@@ -2,6 +2,13 @@ package org.openelisglobal.fhir.service;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Observation;
@@ -24,6 +31,8 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
@@ -36,6 +45,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ObservationTransformServiceImpl implements ObservationTransformService {
@@ -60,6 +70,8 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
     private HistoryService historyService;
     @Autowired
     private SystemUserService systemUserService;
+    @Autowired
+    private NoteService noteService;
 
     private static Quantity numericQuantity(String value) {
         Quantity quantity = new Quantity();
@@ -76,6 +88,7 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Observation transformResultToObservation(String resultId) {
         return transformResultToObservation(resultService.get(resultId));
     }
@@ -114,8 +127,72 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         }
     }
 
+    private static final String INTERPRETATION_SUBJECT = "Interpretation";
+
+    private final Map<String, CachedAnalysisNotes> analysisNotesCache = new ConcurrentHashMap<>();
+
+    private static class CachedAnalysisNotes {
+        private final long timestamp = System.currentTimeMillis();
+        private final Map<String, List<Note>> notesByComponentId;
+
+        CachedAnalysisNotes(Map<String, List<Note>> notesByComponentId) {
+            this.notesByComponentId = notesByComponentId;
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > 5000;
+        }
+    }
+
+    private Map<String, List<Note>> groupInterpretationNotesByComponent(List<Note> notes) {
+        if (notes == null || notes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, List<Note>> map = new HashMap<>();
+        for (Note note : notes) {
+            if (note != null && Note.EXTERNAL.equals(note.getNoteType())
+                    && INTERPRETATION_SUBJECT.equalsIgnoreCase(note.getSubject())
+                    && !GenericValidator.isBlankOrNull(note.getTestResultComponentId())) {
+                map.computeIfAbsent(note.getTestResultComponentId(), k -> new ArrayList<>()).add(note);
+            }
+        }
+        return map;
+    }
+
+    private Map<String, List<Note>> getOrLoadComponentInterpretationNotes(Analysis analysis, List<Note> analysisNotes) {
+        if (analysis == null) {
+            return Collections.emptyMap();
+        }
+        if (analysisNotes != null) {
+            return groupInterpretationNotesByComponent(analysisNotes);
+        }
+        String analysisId = analysis.getId();
+        if (analysisId != null) {
+            CachedAnalysisNotes cached = analysisNotesCache.get(analysisId);
+            if (cached != null && !cached.isExpired()) {
+                return cached.notesByComponentId;
+            }
+        }
+        List<Note> fetchedNotes = noteService.getNotes(analysis);
+        Map<String, List<Note>> grouped = groupInterpretationNotesByComponent(fetchedNotes);
+        if (analysisId != null) {
+            if (analysisNotesCache.size() > 200) {
+                analysisNotesCache.entrySet().removeIf(e -> e.getValue().isExpired());
+            }
+            analysisNotesCache.put(analysisId, new CachedAnalysisNotes(grouped));
+        }
+        return grouped;
+    }
+
     @Override
+    @Transactional(readOnly = true)
     public Observation transformResultToObservation(Result result) {
+        return transformResultToObservation(result, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Observation transformResultToObservation(Result result, List<Note> analysisNotes) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -198,6 +275,21 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         Reference validator = validatorOf(analysis);
         if (validator != null) {
             observation.addPerformer(validator);
+        }
+
+        String componentId = component != null ? component.getId()
+                : (result != null && result.getTestResult() != null ? result.getTestResult().getComponentId() : null);
+        if (!GenericValidator.isBlankOrNull(componentId)) {
+            Map<String, List<Note>> notesByComponent = getOrLoadComponentInterpretationNotes(analysis, analysisNotes);
+            List<Note> componentNotes = notesByComponent.get(componentId);
+            if (componentNotes != null) {
+                for (Note note : componentNotes) {
+                    Annotation annotation = common.transformNoteToAnnotation(note);
+                    if (annotation != null && !GenericValidator.isBlankOrNull(annotation.getText())) {
+                        observation.addNote(annotation);
+                    }
+                }
+            }
         }
 
         return observation;

@@ -65,6 +65,7 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ServiceRequestTransformServiceImpl implements ServiceRequestTransformService {
@@ -154,6 +155,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ServiceRequest> transformToServiceRequests(SamplePatientUpdateData updateData,
             SampleTestCollection sampleTestCollection) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequests",
@@ -171,11 +173,13 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ServiceRequest transformToServiceRequest(String anlaysisId) {
         return this.transformToServiceRequest(analysisService.get(anlaysisId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ServiceRequest transformToServiceRequest(Analysis analysis) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToServiceRequest",
                 "transformToServiceRequest called");
