@@ -126,6 +126,8 @@ jobs:
 
       - name: Parse build context
         id: context
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ steps.scope.outputs.skip }}" = "true" ]; then
             echo "E2E suites are skipped: ${{ steps.scope.outputs.skip_description }}"
@@ -161,10 +163,16 @@ jobs:
             IMAGE_TRANSFER="$(cat /tmp/e2e-transfer-state/image_transfer 2>/dev/null || echo 'none')"
           fi
           PR_NUMBER="$(cat /tmp/e2e-build-context/pr_number 2>/dev/null || echo '')"
-          HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
+          ARTIFACT_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
 
-          if [ -z "$HEAD_SHA" ]; then
-            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          # The build run wrote this artifact, and a fork pull request authors
+          # that run, so the commit it names decides nothing. The checkout and
+          # the statuses use the commit the workflow_run event reports, and an
+          # artifact that names another commit is not this run's.
+          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          if [ -n "$ARTIFACT_SHA" ] && [ "$ARTIFACT_SHA" != "$HEAD_SHA" ]; then
+            echo "::error::Build context names commit $ARTIFACT_SHA but this run is for $HEAD_SHA"
+            exit 1
           fi
 
           # Fork PRs: expected mode is fork-handoff; privileged publish happens
@@ -176,6 +184,14 @@ jobs:
               CHECKOUT_REF="$HEAD_SHA"
             else
               ARTIFACT_SOURCE_MODE="same_run"
+              # The pull request number comes from the same artifact; the
+              # merge ref is checked out only when that pull request is at
+              # this run's commit.
+              PR_HEAD="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq .head.sha 2>/dev/null || echo '')"
+              if [ -z "$PR_NUMBER" ] || [ "$PR_HEAD" != "$HEAD_SHA" ]; then
+                echo "::error::Pull request #${PR_NUMBER} from the build context is not at $HEAD_SHA"
+                exit 1
+              fi
               CHECKOUT_REF="refs/pull/${PR_NUMBER}/merge"
             fi
           elif [ "$IMAGE_TRANSFER" = "ghcr" ]; then
