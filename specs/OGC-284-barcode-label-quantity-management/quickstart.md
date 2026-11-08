@@ -656,12 +656,9 @@ Minimum CI closure target:
   - Result: FAIL due pre-existing/unrelated admin suite failure:
     `cypress/e2e/AdminE2E/organizationManagement.cy.js` returned HTTP 400 in
     "Add organisation/site details"; fail-fast skipped remaining spec bodies.
-  - OGC-284 added spec status during fail-fast run:
-    `cypress/e2e/barcode-workflow.cy.js` executed in fail-fast mode as skipped
-    after prior failure.
-- Focused Cypress command (new OGC-284 spec):
-  `npm run cy:spec "cypress/e2e/barcode-workflow.cy.js"`
-  - Result: PASS (1 passing, 1 pending)
+  - The OGC-284 Cypress spec added at the time has since been retired; its
+    two checks live in the Playwright specs `barcode-printing.spec.ts` and
+    `barcode-workflow-rollout.spec.ts` under `playwright/tests/foundational/core`.
 - Playwright command: `npm run pw:test -- --grep "OGC-284"`
   - Result: BLOCKED in auth setup because `TEST_USER` / `TEST_PASS` environment
     variables are not set.
