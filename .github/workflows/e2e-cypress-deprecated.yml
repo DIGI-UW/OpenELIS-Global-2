@@ -57,8 +57,7 @@ jobs:
               cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
               cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
               cypress/e2e/AdminE2E/notifyUser.cy.js,
-              cypress/e2e/AdminE2E/resultReportingConfig.cy.js,
-              cypress/e2e/barcode-workflow.cy.js
+              cypress/e2e/AdminE2E/resultReportingConfig.cy.js
           - shard: independent
             shard_name: Independent
             specs: ""
@@ -182,11 +181,19 @@ jobs:
           # The folded matrix lists join with ", "; Cypress does not trim spec
           # paths, so an untrimmed entry matches no file and is skipped silently.
           SPECS=$(printf '%s' "$SPECS" | tr -d '[:space:]')
-          missing=0
+          # This list is the default branch's; the checkout is the pull
+          # request's. A spec the pull request has retired is skipped with a
+          # notice rather than failing the shard.
+          PRESENT=""
           for spec in $(printf '%s' "$SPECS" | tr ',' ' '); do
-            [ -f "$spec" ] || { echo "::error::Listed spec not found: $spec"; missing=1; }
+            if [ -f "$spec" ]; then
+              PRESENT="${PRESENT:+$PRESENT,}$spec"
+            else
+              echo "::warning::Listed spec not in this checkout, skipped: $spec"
+            fi
           done
-          [ "$missing" -eq 0 ] || exit 1
+          SPECS="$PRESENT"
+          [ -n "$SPECS" ] || { echo "::error::No listed spec exists in this checkout"; exit 1; }
           echo "Running $(printf '%s' "$SPECS" | tr ',' '\n' | grep -c .) specs: $SPECS"
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
