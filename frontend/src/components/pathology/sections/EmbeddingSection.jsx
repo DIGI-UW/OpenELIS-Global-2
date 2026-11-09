@@ -19,7 +19,7 @@ import {
   isUnsavedRow,
   rowListEditors,
 } from "../pathologyRows";
-import { embeddingOutstandingLabel, rowActionLock } from "../pathologySections";
+import { outstandingLabel, rowActionLock } from "../pathologySections";
 import "../pathologyCaseView.scss";
 
 /**
@@ -76,7 +76,7 @@ const EmbeddingSection = ({
             { id: "pathology.badge.embeddedOf" },
             { embedded: summary.embedded, total: summary.total },
           )}
-          subtitle={embeddingOutstandingLabel(intl, summary.outstanding).full}
+          subtitle={outstandingLabel(intl, summary.outstanding).full}
         />
       )}
       <div>

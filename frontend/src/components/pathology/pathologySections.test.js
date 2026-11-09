@@ -14,7 +14,7 @@ import {
   deriveCaseSections,
   railCurrentIndex,
   deriveRailItems,
-  embeddingOutstandingLabel,
+  outstandingLabel,
   embeddingStatement,
   stageApplies,
   decalcificationFlagFrozen,
@@ -23,6 +23,9 @@ import {
   advanceBlockedReason,
   returnBlockedReason,
   rowActionLock,
+  scanVerificationRequired,
+  switchedOn,
+  verifyLabelLock,
   sectionIdOfStage,
 } from "./pathologySections";
 
@@ -103,6 +106,39 @@ describe("isStageEnabled", () => {
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false",
       }),
     ).toBe(true);
+  });
+});
+
+describe("switchedOn", () => {
+  // One reading for every served switch: only an explicit false turns it off.
+  it.each([
+    [undefined, true],
+    [null, true],
+    ["", true],
+    ["true", true],
+    ["no", true],
+    ["false", false],
+    [" FALSE ", false],
+    ["False", false],
+  ])("reads %j as on: %s", (value, expected) => {
+    expect(switchedOn(value)).toBe(expected);
+  });
+});
+
+describe("scanVerificationRequired", () => {
+  // Scanning is the default, as the server's; only an explicit false, read
+  // as the stage switches are read, turns it into the typed confirmation.
+  it.each([
+    [undefined, true],
+    [{}, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "true" }, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "" }, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "no" }, true],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "false" }, false],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: " FALSE " }, false],
+    [{ PATHOLOGY_SCAN_VERIFICATION_REQUIRED: "False" }, false],
+  ])("reads %j as scanning: %s", (configurationProperties, expected) => {
+    expect(scanVerificationRequired(configurationProperties)).toBe(expected);
   });
 });
 
@@ -1108,14 +1144,14 @@ describe("embedding, read from the cassettes", () => {
       "{designations}",
       "A2, A3",
     );
-    expect(embeddingOutstandingLabel(intl, ["A2", "A3"])).toEqual({
+    expect(outstandingLabel(intl, ["A2", "A3"])).toEqual({
       visible: sentence,
       full: sentence,
     });
   });
 
   it("names two of three outstanding cassettes and counts the third, with all three in full", () => {
-    expect(embeddingOutstandingLabel(intl, ["A2", "A3", "A4"])).toEqual({
+    expect(outstandingLabel(intl, ["A2", "A3", "A4"])).toEqual({
       visible: intl.formatMessage(
         { id: "pathology.badge.outstandingMore" },
         { designations: "A2, A3", count: 1 },
@@ -1351,6 +1387,7 @@ describe("advanceBlockedReason", () => {
             { id: 2, cassetteState: "BLOCK" },
           ],
           slides: [{ id: 5, blockId: 1, active: true }],
+          labelVerifications: { 5: { verifiedAt: "x", verifiedBy: "y" } },
         },
         { storedStatus: "MICROTOMY" },
       ),
@@ -1365,6 +1402,122 @@ describe("advanceBlockedReason", () => {
         { storedStatus: "MICROTOMY", dirty: true },
       ),
     ).toEqual({ key: "pathology.locked.saveBeforeTransition" });
+  });
+
+  describe("at microtomy, the slide labels (FR-7.5)", () => {
+    const blocks = [
+      { id: 1, designation: "A1", cassetteState: "BLOCK" },
+      { id: 2, designation: "A2", cassetteState: "BLOCK" },
+    ];
+    const slides = [
+      { id: 5, designation: "1", blockId: 1, active: true },
+      { id: 6, designation: "2", blockId: 1, active: true },
+      { id: 7, designation: "1", blockId: 2, active: true },
+    ];
+    const verified = (...ids) =>
+      Object.fromEntries(
+        ids.map((id) => [id, { verifiedAt: "x", verifiedBy: "y" }]),
+      );
+    const unverifiedReason = (outstanding) => ({
+      key: "pathology.locked.slidesUnverified",
+      values: { outstanding },
+    });
+
+    // In flight, unsaved work, no slide, then the labels: each row of the
+    // order on a case that would also fail every later rule.
+    it.each([
+      [
+        "a request in flight first",
+        { slides },
+        { saving: true, dirty: true },
+        { key: "pathology.locked.requestInFlight" },
+      ],
+      [
+        "unsaved work next",
+        { slides },
+        { dirty: true },
+        { key: "pathology.locked.saveBeforeTransition" },
+      ],
+      [
+        "no slide in use before any label",
+        { slides: [{ id: 5, blockId: 1, active: false }] },
+        {},
+        { key: "pathology.locked.microtomyIncomplete" },
+      ],
+      [
+        "every unchecked slide, named under its block, in list order",
+        { slides, labelVerifications: verified(6) },
+        {},
+        unverifiedReason("A1.1, A2.1 outstanding"),
+      ],
+      [
+        "nothing once every label is checked",
+        { slides, labelVerifications: verified(5, 6, 7) },
+        {},
+        null,
+      ],
+    ])("says %s", (_, caseInfo, flags, expected) => {
+      expect(
+        advanceBlockedReason(
+          intl,
+          { blocks, ...caseInfo },
+          { storedStatus: "MICROTOMY", ...flags },
+        ),
+      ).toEqual(expected);
+    });
+
+    // A case of many blocks would otherwise put every slide in one title.
+    it("names the first two unchecked slides and counts the rest, the way the rail names cassettes", () => {
+      const many = [1, 2, 3, 4].map((n) => ({
+        id: 10 + n,
+        designation: String(n),
+        blockId: 1,
+        active: true,
+      }));
+      expect(
+        advanceBlockedReason(
+          intl,
+          { blocks, slides: many },
+          { storedStatus: "MICROTOMY" },
+        ),
+      ).toEqual(
+        unverifiedReason(
+          intl.formatMessage(
+            { id: "pathology.badge.outstandingMore" },
+            { designations: "A1.1, A1.2", count: 2 },
+          ),
+        ),
+      );
+    });
+
+    it("leaves out a retired slide, an unsaved one and one with no block on record", () => {
+      expect(
+        advanceBlockedReason(
+          intl,
+          {
+            blocks,
+            slides: [
+              { id: 5, designation: "1", blockId: 1, active: true },
+              { id: 6, designation: "2", blockId: 1, active: false },
+              { designation: "", blockId: 1, level: "" },
+              { id: 8, designation: "7", blockId: null, active: true },
+            ],
+            labelVerifications: verified(5),
+          },
+          { storedStatus: "MICROTOMY" },
+        ),
+      ).toBe(null);
+    });
+
+    it("holds no other stage for an unchecked label", () => {
+      expect(
+        advanceBlockedReason(
+          intl,
+          { blocks, slides },
+          { storedStatus: "STAINING" },
+        ),
+      ).toBe(null);
+    });
   });
 
   it("judges each rule on the stored stage only", () => {
@@ -1459,6 +1612,66 @@ describe("rowActionLock", () => {
     expect(
       rowActionLock({ status: "EMBEDDING", ...state, saveFirstKey }),
     ).toEqual({ disabled, reasonKey });
+  });
+});
+
+describe("verifyLabelLock", () => {
+  const slide = { id: 6, designation: "2", blockId: 1, active: true };
+  const stamp = { verifiedAt: "x", verifiedBy: "y" };
+  const offeredFree = { offered: true, disabled: false, reasonKey: null };
+  const notOffered = { offered: false, disabled: true, reasonKey: null };
+  const inFlight = {
+    offered: true,
+    disabled: true,
+    reasonKey: "pathology.locked.requestInFlight",
+  };
+
+  it.each([
+    ["an unchecked saved slide on a clean case", {}, offeredFree],
+    [
+      "unsaved work, which a check does not touch",
+      { dirty: true },
+      offeredFree,
+    ],
+    ["a save in flight", { saving: true }, inFlight],
+    ["a move in flight", { moving: true }, inFlight],
+    ["the row's own check in flight", { verifying: true }, inFlight],
+    [
+      "a slide already verified",
+      { labelVerifications: { 6: stamp } },
+      notOffered,
+    ],
+    [
+      "a signed-out case, before any request",
+      { status: "COMPLETED", saving: true },
+      notOffered,
+    ],
+    ["a section shown only for reading", { readOnly: true }, notOffered],
+    [
+      "a stage the laboratory stopped tracking",
+      { untracked: true },
+      notOffered,
+    ],
+    ["a retired slide", { slide: { ...slide, active: false } }, notOffered],
+    [
+      "an unsaved slide",
+      { slide: { designation: "", blockId: 1 } },
+      notOffered,
+    ],
+    [
+      "a slide with no block on record",
+      { slide: { ...slide, blockId: null } },
+      notOffered,
+    ],
+  ])("on %s", (_, state, expected) => {
+    expect(
+      verifyLabelLock({
+        slide,
+        labelVerifications: {},
+        status: "MICROTOMY",
+        ...state,
+      }),
+    ).toEqual(expected);
   });
 });
 

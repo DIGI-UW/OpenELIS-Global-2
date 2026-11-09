@@ -17,7 +17,15 @@ import {
   stageDisplayKey,
   stageLabel,
 } from "./pathologyStages";
-import { countedRows, embeddingSummary, isEmbeddedRow } from "./pathologyRows";
+import {
+  countedRows,
+  embeddingSummary,
+  hasVerifiableLabel,
+  isDeactivatedRow,
+  isEmbeddedRow,
+  isLabelVerified,
+  unverifiedSlides,
+} from "./pathologyRows";
 
 // The embedding section's id, which the case view also needs to reach the
 // section's header.
@@ -26,6 +34,11 @@ export const EMBEDDING_SECTION_ID = "pathology-section-embedding";
 export const PROCESSING_SECTION_ID = "pathology-section-processing";
 
 export const MICROTOMY_SECTION_ID = "pathology-section-microtomy";
+
+// A section's own header, where focus lands once nothing left to do in the
+// section can take it.
+export const sectionHeader = (sectionId) =>
+  "#" + sectionId + " button.cds--accordion__heading";
 
 // The single-stage sections are titled by the stage's own key, so the rail,
 // the header and the locked hint can never call one stage two things.
@@ -163,11 +176,32 @@ export function stageEnablementProperty(stageId) {
 export function isStageEnabled(stageId, configurationProperties) {
   // The server never serves a switch for a stage every deployment tracks, so
   // an absent property is what "cannot be disabled" looks like from here.
-  const value = configurationProperties?.[stageEnablementProperty(stageId)];
+  return switchedOn(
+    configurationProperties?.[stageEnablementProperty(stageId)],
+  );
+}
+
+/**
+ * Whether a served on/off setting is on: anything but an explicit "false",
+ * trimmed and ignoring case, as the server reads its switches, so an absent
+ * or unreadable value leaves the default on.
+ */
+export function switchedOn(value) {
   return (
     String(value ?? "")
       .trim()
       .toLowerCase() !== "false"
+  );
+}
+
+/**
+ * Whether the bench scans a slide's label against its block, or, where the
+ * laboratory has no scanner, types both as printed (FR-7.5). Scanning is the
+ * default; only the setting switched off turns it into the typed confirmation.
+ */
+export function scanVerificationRequired(configurationProperties) {
+  return switchedOn(
+    configurationProperties?.PATHOLOGY_SCAN_VERIFICATION_REQUIRED,
   );
 }
 
@@ -214,9 +248,10 @@ export function advanceLabelKey(stageId) {
  * since its answer may change the stage; then unsaved work, since saving it
  * may be what completes the stage; then the stage's own rule, judged on the
  * stored stage as the server judges it: grossing done under FR-3.4, every
- * cassette embedded, at least one slide cut at microtomy. The outstanding
- * cassettes are named as the rail names them, the first two and a count of
- * the rest.
+ * cassette embedded, at least one slide cut at microtomy and every slide's
+ * label checked against its block (FR-7.5). The outstanding
+ * cassettes and the unchecked slides are named the way the rail names
+ * cassettes, the first two and a count of the rest.
  */
 export function advanceBlockedReason(
   intl,
@@ -238,6 +273,24 @@ export function advanceBlockedReason(
   ) {
     return { key: "pathology.locked.microtomyIncomplete" };
   }
+  if (storedStatus === "MICROTOMY") {
+    const unverified = unverifiedSlides(
+      caseInfo?.blocks,
+      caseInfo?.slides,
+      caseInfo?.labelVerifications,
+    );
+    if (unverified.length > 0) {
+      return {
+        key: "pathology.locked.slidesUnverified",
+        values: {
+          outstanding: outstandingLabel(
+            intl,
+            unverified.map((entry) => entry.name),
+          ).visible,
+        },
+      };
+    }
+  }
   if (storedStatus === "EMBEDDING") {
     const summary = embeddingSummary(caseInfo?.blocks);
     if (summary.total === 0) {
@@ -247,8 +300,7 @@ export function advanceBlockedReason(
       return {
         key: "pathology.locked.embeddingIncomplete",
         values: {
-          outstanding: embeddingOutstandingLabel(intl, summary.outstanding)
-            .visible,
+          outstanding: outstandingLabel(intl, summary.outstanding).visible,
         },
       };
     }
@@ -330,6 +382,50 @@ export function addSlideLock({ status, block, configurationProperties } = {}) {
     return { disabled: true, reasonKey: "pathology.locked.embedBeforeSlides" };
   }
   return { disabled: false, reasonKey: null };
+}
+
+/**
+ * Whether a slide's label check is offered on its row, and if so whether it
+ * can be pressed, with the hint that says why not (FR-7.3 to FR-7.5). It is
+ * offered on a saved slide in use that names its block and is not yet
+ * verified, until the case is signed out, and only where the section can be
+ * worked in. Like Embed and Deactivate it is held while a save, a move or
+ * the row's own check is unanswered, since a check landing during the save
+ * races the same slide; unsaved work does not hold it, because a check
+ * changes nothing the save posts.
+ */
+export function verifyLabelLock({
+  slide,
+  labelVerifications,
+  status,
+  readOnly = false,
+  untracked = false,
+  saving = false,
+  moving = false,
+  verifying = false,
+} = {}) {
+  const offered =
+    hasVerifiableLabel(slide) &&
+    !isDeactivatedRow(slide) &&
+    !isLabelVerified(slide, labelVerifications) &&
+    !rowActionLock({ status }).disabled &&
+    !readOnly &&
+    !untracked;
+  if (!offered) {
+    return { offered: false, disabled: true, reasonKey: null };
+  }
+  const lock = rowActionLock({ status, saving, moving });
+  if (lock.disabled) {
+    return { offered, ...lock };
+  }
+  if (verifying) {
+    return {
+      offered,
+      disabled: true,
+      reasonKey: "pathology.locked.requestInFlight",
+    };
+  }
+  return { offered, disabled: false, reasonKey: null };
 }
 
 /**
@@ -455,11 +551,12 @@ function embeddingBadge({ embedded, total, complete }) {
 }
 
 /**
- * The sentence that names the cassettes still waiting for embedding, so the
- * rail, the section and the summary agree: `visible` names the first few and
- * counts the rest, `full` names them all.
+ * The sentence that names what is still outstanding, the cassettes waiting
+ * for embedding or the slides whose label is unchecked, so the rail, the
+ * section, the summary and the disabled primary agree: `visible` names the
+ * first few and counts the rest, `full` names them all.
  */
-export function embeddingOutstandingLabel(intl, outstanding) {
+export function outstandingLabel(intl, outstanding) {
   return namedListLabel(intl, outstanding, {
     allKey: "pathology.badge.outstanding",
     moreKey: "pathology.badge.outstandingMore",
@@ -491,7 +588,7 @@ export function embeddingStatement(
       { embedded: summary.embedded, total: summary.total },
     ),
     title: embeddingAwaitsBench(summary, status, false)
-      ? embeddingOutstandingLabel(intl, summary.outstanding).full
+      ? outstandingLabel(intl, summary.outstanding).full
       : undefined,
   };
 }
@@ -798,7 +895,7 @@ export function deriveRailItems(
       section.id === EMBEDDING_SECTION_ID &&
       embeddingAwaitsBench(embedding, status, notApplicable)
     ) {
-      pending = embeddingOutstandingLabel(intl, embedding.outstanding);
+      pending = outstandingLabel(intl, embedding.outstanding);
     }
 
     return {

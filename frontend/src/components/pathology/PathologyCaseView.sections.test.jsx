@@ -2904,4 +2904,592 @@ describe("Microtomy section", () => {
       section(MICROTOMY).querySelector("button.cds--accordion__heading"),
     ).toBeDisabled();
   });
+  // FR-7.3 to FR-7.5: a saved slide's printed label is scanned, or typed as
+  // printed, against its block, and only a match makes it Verified.
+  describe("checking a slide's label against its block", () => {
+    const stamp = { verifiedAt: "09/11/2026 10:05", verifiedBy: "Tech, Tina" };
+
+    const twoSlides = (overrides = {}) => ({
+      blocks: [asBlock(savedBlock("1", "A1"))],
+      slides: [
+        savedSlide("5", "1", "1"),
+        savedSlide("6", "2", "1", { barcode: "ACC9.A1.2" }),
+      ],
+      labelVerifications: { 5: stamp },
+      ...overrides,
+    });
+
+    const verifyName = (slide) =>
+      intl.formatMessage({ id: "pathology.action.verifyLabelOf" }, { slide });
+
+    const verifyButton = (slide) =>
+      screen.getByRole("button", { name: verifyName(slide) });
+
+    const queryVerifyButton = (slide) =>
+      screen.queryByRole("button", { name: verifyName(slide) });
+
+    const verifyBlock = (slideId) =>
+      document.getElementById("verifyLabel-" + slideId);
+
+    const confirmButton = (slideId) =>
+      buttonWithText(
+        verifyBlock(slideId),
+        messages["pathology.action.confirmLabel"],
+      );
+
+    const scanBlockField = (slideId) =>
+      document.getElementById("scanBlock-" + slideId);
+
+    const scanSlideField = (slideId) =>
+      document.getElementById("scanSlide-" + slideId);
+
+    const fillScan = (slideId, block, slide) => {
+      fireEvent.change(scanBlockField(slideId), { target: { value: block } });
+      fireEvent.change(scanSlideField(slideId), { target: { value: slide } });
+    };
+
+    const lastVerifyPost = () =>
+      postToOpenElisServerJsonResponse.mock.calls.at(-1);
+
+    const answerVerify = async (response) => {
+      const callback = lastVerifyPost()[2];
+      await act(async () => {
+        callback(response);
+      });
+    };
+
+    const tagOf = (row) =>
+      within(row).queryByText(
+        new RegExp(
+          "^(" +
+            messages["pathology.badge.verified"] +
+            "|" +
+            messages["pathology.badge.unverified"] +
+            ")$",
+        ),
+        { selector: ".cds--tag__label" },
+      );
+
+    it("tags each saved slide with a block Verified, naming who checked it and when, or Unverified, and tags no other row", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("5", "1", "1"),
+            savedSlide("6", "2", "1"),
+            { id: "8", designation: "9", blockId: null, active: true },
+          ],
+        }),
+      );
+
+      const verified = rowIn(MICROTOMY, "1");
+      expect(tagOf(verified)).toHaveTextContent(
+        messages["pathology.badge.verified"],
+      );
+      const verifiedBy = intl.formatMessage(
+        { id: "pathology.badge.verifiedBy" },
+        { name: "Tech, Tina", date: "09/11/2026 10:05" },
+      );
+      expect(
+        verified.querySelector(".pathology-case-view__label-verification"),
+      ).toHaveAttribute("title", verifiedBy);
+      // The verifier is said to a screen reader too, not only on hover.
+      expect(within(verified).getByText(verifiedBy)).toHaveClass(
+        "cds--visually-hidden",
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      // A slide cut before slides named their block has nothing to check.
+      expect(tagOf(rowIn(MICROTOMY, "9"))).toBeNull();
+
+      fireEvent.click(addSlideTo("A1"));
+      const added = pendingRows(MICROTOMY)[0].closest(
+        ".pathology-case-view__row",
+      );
+      expect(tagOf(added)).toBeNull();
+    });
+
+    it("keeps the tag on a retired slide", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("5", "1", "1", { active: false }),
+            savedSlide("6", "2", "1", { active: false }),
+          ],
+        }),
+      );
+
+      fireEvent.click(showDeactivatedSwitch(MICROTOMY));
+
+      expect(tagOf(rowIn(MICROTOMY, "1"))).toHaveTextContent(
+        messages["pathology.badge.verified"],
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+    });
+
+    it("opens the check under an unverified slide with the block field in focus, and holds Confirm back until both fields are filled, saying why", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      expect(queryVerifyButton("A1.1")).toBeNull();
+      const toggle = verifyButton("A1.2");
+      expect(toggle).toHaveTextContent(
+        messages["pathology.action.verifyLabel"],
+      );
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(toggle).toHaveAttribute("aria-controls", "verifyLabel-6");
+      expect(verifyBlock("6")).toBeNull();
+
+      const user = userEvent.setup();
+      await user.click(toggle);
+
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(rowIn(MICROTOMY, "2")).toContainElement(verifyBlock("6"));
+      await waitFor(() => expect(scanBlockField("6")).toHaveFocus());
+      expect(
+        within(verifyBlock("6")).getByText(
+          messages["pathology.label.scanVerificationHint"],
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(verifyBlock("6")).getByLabelText(
+          new RegExp("^" + messages["pathology.label.scanBlock"]),
+        ),
+      ).toBe(scanBlockField("6"));
+      expect(
+        within(verifyBlock("6")).getByLabelText(
+          new RegExp("^" + messages["pathology.label.scanSlideLabel"]),
+        ),
+      ).toBe(scanSlideField("6"));
+
+      const hold = messages["pathology.locked.scanBothFields"];
+      expect(confirmButton("6")).toBeDisabled();
+      expect(confirmButton("6")).toHaveAttribute("title", hold);
+      expect(
+        document.getElementById(
+          confirmButton("6").getAttribute("aria-describedby"),
+        ),
+      ).toHaveTextContent(hold);
+
+      fireEvent.change(scanBlockField("6"), { target: { value: "ACC9.A1" } });
+      expect(confirmButton("6")).toBeDisabled();
+      fireEvent.change(scanSlideField("6"), { target: { value: "   " } });
+      expect(confirmButton("6")).toBeDisabled();
+      fireEvent.change(scanSlideField("6"), {
+        target: { value: "ACC9.A1.2" },
+      });
+      expect(confirmButton("6")).toBeEnabled();
+      expect(confirmButton("6")).not.toHaveAttribute("title");
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+    });
+
+    it("posts both scans to the slide's check, then marks it Verified, says so, and leaves the form clean without reading the case again", async () => {
+      await openAtMicrotomy(twoSlides());
+      const fetchesBefore = caseFetchCount();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", " ACC9.A1 ", "ACC9.A1.2");
+      fireEvent.click(confirmButton("6"));
+
+      const [url, body] = lastVerifyPost();
+      expect(url).toBe("/rest/pathology/slide/6/verify-label");
+      expect(JSON.parse(body)).toEqual({
+        block: "ACC9.A1",
+        slide: "ACC9.A1.2",
+      });
+
+      await answerVerify({
+        id: 6,
+        designation: "2",
+        barcode: "ACC9.A1.2",
+        blockId: 1,
+        active: true,
+        labelVerification: {
+          verifiedAt: "09/11/2026 10:07",
+          verifiedBy: "Session, Sam",
+        },
+      });
+
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.verified"],
+      );
+      expect(
+        rowIn(MICROTOMY, "2").querySelector(
+          ".pathology-case-view__label-verification",
+        ),
+      ).toHaveAttribute(
+        "title",
+        intl.formatMessage(
+          { id: "pathology.badge.verifiedBy" },
+          { name: "Session, Sam", date: "09/11/2026 10:07" },
+        ),
+      );
+      expect(verifyBlock("6")).toBeNull();
+      expect(queryVerifyButton("A1.2")).toBeNull();
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "success",
+          message: intl.formatMessage(
+            { id: "pathology.toast.labelVerified" },
+            { slide: "A1.2" },
+          ),
+        }),
+      );
+      expect(caseFetchCount()).toBe(fetchesBefore);
+      // A check changes nothing a save posts, so it is no unsaved work.
+      expect(
+        screen.getByRole("button", {
+          name: messages["caseView.action.discard"],
+        }),
+      ).toBeDisabled();
+      // No label is left to check, so focus goes to the section's header.
+      await waitFor(() =>
+        expect(
+          section(MICROTOMY).querySelector("button.cds--accordion__heading"),
+        ).toHaveFocus(),
+      );
+    });
+
+    it("moves on from the block field with Enter and confirms from the slide field with Enter, as a scanner ends each read", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fireEvent.change(scanBlockField("6"), { target: { value: "ACC9.A1" } });
+      scanBlockField("6").focus();
+      pressEnter(scanBlockField("6"));
+
+      expect(scanSlideField("6")).toHaveFocus();
+      expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+
+      fireEvent.change(scanSlideField("6"), {
+        target: { value: "ACC9.A1.2" },
+      });
+      pressEnter(scanSlideField("6"));
+
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+      expect(lastVerifyPost()[0]).toBe("/rest/pathology/slide/6/verify-label");
+      // A second Enter while the first check is out posts nothing more.
+      pressEnter(scanSlideField("6"));
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1);
+      expect(confirmButton("6")).toBeDisabled();
+    });
+
+    it("says a label that belongs to another block does not match, naming both, and leaves the slide unverified with its scans in place", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A2.1");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({
+        status: 409,
+        conflict: "label",
+        messageKey: "pathology.banner.labelMismatch",
+        messageArgs: { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+        error: "Slide label does not match",
+      });
+
+      // Carbon's text inputs carry empty counter alerts of their own.
+      const alert = verifyBlock("6").querySelector(".cds--inline-notification");
+      expect(alert).toHaveAttribute("role", "alert");
+      expect(alert).toHaveClass("cds--inline-notification--error");
+      expect(alert).toHaveTextContent(
+        messages["pathology.banner.labelMismatchTitle"],
+      );
+      expect(alert).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.banner.labelMismatch" },
+          { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+        ),
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      expect(scanBlockField("6")).toHaveValue("ACC9.A1");
+      expect(scanSlideField("6")).toHaveValue("ACC9.A2.1");
+      await waitFor(() => expect(scanSlideField("6")).toHaveFocus());
+      expect(addNotification).not.toHaveBeenCalled();
+    });
+
+    // A scanner types into the field that holds focus, so after a mismatch
+    // the next read must replace the old one, not run on after it.
+    it("lets the rescan after a mismatch replace what was scanned, posting only the new read", async () => {
+      await openAtMicrotomy(twoSlides());
+      const user = userEvent.setup();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A2.1");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({
+        status: 409,
+        conflict: "label",
+        messageKey: "pathology.banner.labelMismatch",
+        messageArgs: { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+      });
+      await waitFor(() => expect(scanSlideField("6")).toHaveFocus());
+
+      await user.keyboard("ACC9.A1.2{Enter}");
+
+      expect(scanSlideField("6")).toHaveValue("ACC9.A1.2");
+      expect(JSON.parse(lastVerifyPost()[1])).toEqual({
+        block: "ACC9.A1",
+        slide: "ACC9.A1.2",
+      });
+    });
+
+    // A scanner ends its read with Enter in the slide field, so focus never
+    // leaves it and no focus event selects the old value.
+    it("lets the rescan replace what was scanned when the mismatch came from Enter in the slide field", async () => {
+      await openAtMicrotomy(twoSlides());
+      const user = userEvent.setup();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "");
+      scanSlideField("6").focus();
+      await user.keyboard("ACC9.A2.1{Enter}");
+      await answerVerify({
+        status: 409,
+        conflict: "label",
+        messageKey: "pathology.banner.labelMismatch",
+        messageArgs: { slideBarcode: "ACC9.A2.1", blockBarcode: "ACC9.A1" },
+      });
+      await waitFor(() => {
+        expect(scanSlideField("6")).toHaveFocus();
+        expect(scanSlideField("6").selectionEnd).toBe("ACC9.A2.1".length);
+        expect(scanSlideField("6").selectionStart).toBe(0);
+      });
+
+      await user.keyboard("ACC9.A1.2{Enter}");
+
+      expect(scanSlideField("6")).toHaveValue("ACC9.A1.2");
+      expect(JSON.parse(lastVerifyPost()[1])).toEqual({
+        block: "ACC9.A1",
+        slide: "ACC9.A1.2",
+      });
+    });
+
+    it("names the slide on its Confirm match and Cancel, so two open checks are told apart", async () => {
+      await openAtMicrotomy(twoSlides({ labelVerifications: {} }));
+
+      fireEvent.click(verifyButton("A1.1"));
+      fireEvent.click(verifyButton("A1.2"));
+
+      [
+        ["5", "A1.1"],
+        ["6", "A1.2"],
+      ].forEach(([slideId, name]) => {
+        expect(confirmButton(slideId)).toHaveTextContent(name);
+        expect(
+          buttonWithText(verifyBlock(slideId), messages["common.cancel"]),
+        ).toHaveTextContent(name);
+      });
+    });
+
+    // A check landing during the case save races the same slide.
+    it("holds Verify and Confirm match while a save is out, saying so", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      // The second slide's level, so there is something to save.
+      fireEvent.change(document.getElementById("slideLevel1"), {
+        target: { value: "4" },
+      });
+      fireEvent.click(saveDraftButton());
+      await waitFor(() =>
+        expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+      );
+
+      const inFlight = messages["pathology.locked.requestInFlight"];
+      expect(verifyButton("A1.2")).toBeDisabled();
+      expect(verifyButton("A1.2")).toHaveAttribute("title", inFlight);
+      expect(confirmButton("6")).toBeDisabled();
+      expect(confirmButton("6")).toHaveAttribute("title", inFlight);
+      pressEnter(scanSlideField("6"));
+      expect(
+        postToOpenElisServerJsonResponse.mock.calls.filter(([url]) =>
+          String(url).includes("verify-label"),
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("tells a lost race on the slide in its own words and reads a clean case again", async () => {
+      await openAtMicrotomy(twoSlides());
+      const fetchesBefore = caseFetchCount();
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({ status: 409, conflict: "version", error: "x" });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["pathology.toast.verifyFailed"],
+        }),
+      );
+      expect(caseFetchCount()).toBe(fetchesBefore + 1);
+    });
+
+    it("tells a refusal the server names in the reader's language", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      fireEvent.click(confirmButton("6"));
+      await answerVerify({
+        status: 400,
+        error: "This slide has been deactivated.",
+        messageKey: "pathology.error.slideRetired",
+        messageArgs: {},
+      });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: messages["pathology.error.slideRetired"],
+        }),
+      );
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+    });
+
+    it("asks for the block and the slide as printed where the laboratory has no scanner", async () => {
+      await openAtMicrotomy(twoSlides(), {
+        PATHOLOGY_SCAN_VERIFICATION_REQUIRED: " false ",
+      });
+
+      fireEvent.click(verifyButton("A1.2"));
+
+      const block = within(verifyBlock("6"));
+      expect(
+        block.getByText(messages["pathology.label.confirmVerificationHint"]),
+      ).toBeInTheDocument();
+      expect(
+        block.queryByText(messages["pathology.label.scanVerificationHint"]),
+      ).toBeNull();
+      expect(
+        block.getByLabelText(
+          new RegExp("^" + messages["pathology.label.block"]),
+        ),
+      ).toBe(scanBlockField("6"));
+      expect(
+        block.getByLabelText(
+          new RegExp("^" + messages["pathology.label.slide"]),
+        ),
+      ).toBe(scanSlideField("6"));
+      expect(
+        block.queryByLabelText(
+          new RegExp("^" + messages["pathology.label.scanBlock"]),
+        ),
+      ).toBeNull();
+    });
+
+    it("closes the check on Cancel, forgets what was scanned, and gives focus back to Verify", async () => {
+      await openAtMicrotomy(twoSlides());
+
+      fireEvent.click(verifyButton("A1.2"));
+      fillScan("6", "ACC9.A1", "ACC9.A1.2");
+      fireEvent.click(
+        buttonWithText(verifyBlock("6"), messages["common.cancel"]),
+      );
+
+      expect(verifyBlock("6")).toBeNull();
+      expect(verifyButton("A1.2")).toHaveAttribute("aria-expanded", "false");
+      await waitFor(() => expect(verifyButton("A1.2")).toHaveFocus());
+      fireEvent.click(verifyButton("A1.2"));
+      expect(scanBlockField("6")).toHaveValue("");
+      expect(scanSlideField("6")).toHaveValue("");
+    });
+
+    it("offers no check on a signed-out case", async () => {
+      servedCase = caseAtStage("COMPLETED", twoSlides());
+      renderCaseView();
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      expect(queryVerifyButton("A1.2")).toBeNull();
+    });
+
+    it("offers no check on a section shown only for reading", async () => {
+      servedCase = caseAtStage("STAINING", twoSlides());
+      renderCaseView({ PATHOLOGY_STAGE_MICROTOMY_ENABLED: "false" });
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      expect(tagOf(rowIn(MICROTOMY, "2"))).toHaveTextContent(
+        messages["pathology.badge.unverified"],
+      );
+      expect(queryVerifyButton("A1.2")).toBeNull();
+    });
+
+    it("offers no check on an unsaved, a blockless or a retired slide", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("6", "2", "1", { active: false }),
+            { id: "8", designation: "9", blockId: null, active: true },
+          ],
+          labelVerifications: {},
+        }),
+      );
+
+      fireEvent.click(showDeactivatedSwitch(MICROTOMY));
+      fireEvent.click(addSlideTo("A1"));
+
+      expect(rowIn(MICROTOMY, "2")).toBeInTheDocument();
+      expect(rowIn(MICROTOMY, "9")).toBeInTheDocument();
+      expect(pendingRows(MICROTOMY)).toHaveLength(1);
+      expect(
+        within(section(MICROTOMY)).queryByText(
+          messages["pathology.action.verifyLabel"],
+          { selector: "button" },
+        ),
+      ).toBeNull();
+    });
+
+    it("opens the section at microtomy on a warning naming every unchecked slide", async () => {
+      await openAtMicrotomy(
+        twoSlides({
+          slides: [
+            savedSlide("5", "1", "1"),
+            savedSlide("6", "2", "1"),
+            savedSlide("7", "3", "1"),
+          ],
+        }),
+      );
+
+      const title = intl.formatMessage(
+        { id: "pathology.banner.slidesUnverified" },
+        { count: 2 },
+      );
+      const banner = within(section(MICROTOMY))
+        .getByText(title)
+        .closest(".cds--inline-notification");
+      expect(banner).toHaveClass("cds--inline-notification--warning");
+      expect(banner).toHaveTextContent(
+        intl.formatMessage(
+          { id: "pathology.banner.slidesUnverifiedDetail" },
+          { designations: "A1.2, A1.3" },
+        ),
+      );
+    });
+
+    it("shows no unchecked-label warning on a case past microtomy", async () => {
+      servedCase = caseAtStage("STAINING", twoSlides());
+      renderCaseView();
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+      expect(
+        within(section(MICROTOMY)).queryByText(
+          intl.formatMessage(
+            { id: "pathology.banner.slidesUnverified" },
+            { count: 1 },
+          ),
+        ),
+      ).toBeNull();
+    });
+  });
 });
