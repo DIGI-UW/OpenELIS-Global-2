@@ -71,6 +71,7 @@ vi.mock("../../esignature/ESignatureButton", () => ({
 vi.mock("../../common/PageBreadCrumb", () => ({ default: () => <div /> }));
 
 import UnifiedResults from "./UnifiedResults";
+import { chooseLabUnit } from "./chooseLabUnit.test-utils";
 
 const worklistRow = (extra: Record<string, unknown> = {}) => ({
   id: null,
@@ -126,9 +127,7 @@ const renderPage = (row: Record<string, unknown>) => {
       <UnifiedResults />
     </IntlProvider>,
   );
-  fireEvent.change(screen.getByLabelText(/Lab Unit/i), {
-    target: { value: "165" },
-  });
+  chooseLabUnit("Immunology");
   fireEvent.click(screen.getByRole("button", { name: "Expand row" }));
 };
 
