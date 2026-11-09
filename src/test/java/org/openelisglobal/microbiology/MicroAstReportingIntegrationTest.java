@@ -1548,6 +1548,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void aCancelledRunsReportTickChecksRightsBeforeTheRunsStatus() {
+        var run = start(isolate);
+        cancel(run);
+        assertThrows(AccessDeniedException.class, () -> ast.setReported(run.getId(), drugB, false, outsider));
+    }
+
+    @Test
     public void aCancelledAnalyzerRunRefusesLateInstrumentResults() {
         var vitek = new org.openelisglobal.analyzer.valueholder.Analyzer();
         vitek.ensureFhirUuid();

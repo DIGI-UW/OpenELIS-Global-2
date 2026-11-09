@@ -750,13 +750,12 @@ public class MicroAstServiceImpl implements MicroAstService {
     @Transactional
     public MicroAstRunAntibiotic setReported(String runId, String antibioticId, boolean reported, String performedBy) {
         MicroAstRun run = requireRun(runId);
-        if (Set.of("INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus()))
-            throw new MicroAstConflictException("AST_RUN_NOT_EDITABLE");
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         authorization.requireWrite(isolate.getCaseId(), performedBy,
                 org.openelisglobal.common.constants.Constants.ROLE_RESULTS,
                 org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        requireOpenRun(run);
         MicroAstRunAntibiotic ordered = runAntibioticDAO.getByRunIdAndAntibioticId(runId, antibioticId)
                 .orElseThrow(() -> new MicroAstConflictException("AST_ANTIBIOTIC_NOT_ORDERED"));
         ordered.setReported(reported);
@@ -1515,6 +1514,10 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (MicroAstRunStatus.REVIEWED.name().equals(run.getStatus())) {
             throw new MicroAstConflictException("AST_RUN_ALREADY_REVIEWED");
         }
+        requireOpenRun(run);
+    }
+
+    private void requireOpenRun(MicroAstRun run) {
         if (Set.of("INVALIDATED", "RERUN_REQUIRED", "CANCELLED").contains(run.getStatus())) {
             throw new MicroAstConflictException("AST_RUN_NOT_EDITABLE");
         }
