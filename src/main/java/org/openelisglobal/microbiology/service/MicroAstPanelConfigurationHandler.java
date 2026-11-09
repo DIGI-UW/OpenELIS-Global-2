@@ -292,7 +292,8 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
 
     private static String content(MicroAstPanelAdminForm form) {
         StringBuilder content = new StringBuilder(Objects.toString(form.susceptibilityProtocol, "")).append('|')
-                .append(Objects.toString(form.organismGroup, ""));
+                .append(Objects.toString(form.organismGroup, "")).append('|')
+                .append(Objects.toString(form.specimenTypeId, "")).append('|').append(form.active);
         for (var drug : form.antibiotics) {
             content.append('|').append(drug.antibioticId).append(':').append(Objects.toString(drug.diskContent, ""));
         }

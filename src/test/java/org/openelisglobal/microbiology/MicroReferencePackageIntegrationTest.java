@@ -585,6 +585,35 @@ public class MicroReferencePackageIntegrationTest extends BaseWebContextSensitiv
     }
 
     @Test
+    public void packageLoadKeepsALocallyDeactivatedPanelAndALocalSpecimenType() throws Exception {
+        var fixture = new ReferencePackageFixture("2099.64", "LOCALFLAGS");
+        load(fixture);
+        String header = "panelName,antibioticWhonetCode,diskContent\n";
+        writePanels(header + "Synthetic deactivated panel," + fixture.antibiotic + ",30ug\n"
+                + "Synthetic specimen panel," + fixture.antibiotic + ",30ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+        var deactivated = referenceAdmin
+                .getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic deactivated panel").getId());
+        deactivated.active = false;
+        String inactive = referenceAdmin.publishPanelVersion(deactivated.id, deactivated, "1").id;
+        var withSpecimen = referenceAdmin
+                .getAstPanel(panels.findCurrentByNameIgnoreCase("Synthetic specimen panel").getId());
+        withSpecimen.specimenTypeId = jdbcTemplate
+                .queryForObject("SELECT id::text FROM clinlims.type_of_sample ORDER BY id LIMIT 1", String.class);
+        String local = referenceAdmin.publishPanelVersion(withSpecimen.id, withSpecimen, "1").id;
+
+        assertFalse(reloadPanels(true).hasErrors());
+        writePanels(header + "Synthetic deactivated panel," + fixture.antibiotic + ",30ug\n"
+                + "Synthetic specimen panel," + fixture.antibiotic + ",5ug\n");
+        assertFalse(reloadPanels(false).hasErrors());
+
+        assertEquals(inactive, panels.findCurrentByNameIgnoreCase("Synthetic deactivated panel").getId());
+        assertEquals("N", panels.get(inactive).orElseThrow().getIsActive());
+        assertEquals(local, panels.findCurrentByNameIgnoreCase("Synthetic specimen panel").getId());
+        assertEquals(withSpecimen.specimenTypeId, panels.get(local).orElseThrow().getSpecimenTypeId());
+    }
+
+    @Test
     public void panelFileReportBehaviorLoadsWithAWarningPointingAtAstRules() throws Exception {
         var fixture = new ReferencePackageFixture("2099.19", "PANELCOL");
         load(fixture);
