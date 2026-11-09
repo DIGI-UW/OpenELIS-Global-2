@@ -59,8 +59,7 @@ public class MicroAstResponseService {
         form.isolateId = run.getIsolateId();
         form.panelId = run.getPanelId();
         form.panelVersion = run.getPanelVersion();
-        form.panelLabel = panels.get(run.getPanelId()).map(p -> p.getName() + " v" + run.getPanelVersion())
-                .orElse(null);
+        form.panelLabel = panels.get(run.getPanelId()).map(p -> p.getName() + " v" + p.getVersionNumber()).orElse(null);
         form.panelProvenance = run.getPanelProvenance();
         form.panelAdjustmentReason = run.getPanelAdjustmentReason();
         form.breakpointStandardId = run.getBreakpointStandardId();

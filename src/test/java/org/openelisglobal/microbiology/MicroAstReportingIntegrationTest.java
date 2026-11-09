@@ -1583,6 +1583,17 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(expected, shown.runs().getFirst().panelLabel);
     }
 
+    @Test
+    public void aRunWithNoStoredPanelVersionIsNamedByItsPanelsVersion() {
+        var run = start(isolate);
+        em.flush();
+        em.createQuery("update MicroAstRun r set r.panelVersion = null where r.id = :id")
+                .setParameter("id", run.getId()).executeUpdate();
+        em.clear();
+        assertEquals(reference.panel().getName() + " v" + reference.panel().getVersionNumber(),
+                astResponses.toRunForm(runs.get(run.getId()).orElseThrow()).panelLabel);
+    }
+
     private void cancel(MicroAstRun run) {
         var cancel = new MicroAstWorkspaceForm.Action();
         cancel.isolateId = isolate;
