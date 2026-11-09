@@ -568,6 +568,43 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void reidentifyingAsAnNtmOrganismRetiresTheGeneralDefaultPanel() {
+        var ntm = fixtures.createOrganism("Mycobacterium " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        ntm.setSusceptibilityProtocol("NTM");
+        organisms.update(ntm);
+        reidentify(ntm.getId());
+        assertEquals(List.of(), assignments.getAssignments(isolate));
+    }
+
+    @Test
+    public void anNtmOrganismsSetupOrdersNoPanel() {
+        ntmReferenceOrganism();
+        assertNull(ast.getSetup(isolate).orderedPanelId);
+    }
+
+    @Test
+    public void anNtmOrganismsWorkspaceOffersNoDefaultPanel() {
+        ntmReferenceOrganism();
+        assertNull(workspace.get(c.getId(), writer).isolates.stream().filter(i -> i.id().equals(isolate)).findFirst()
+                .orElseThrow().defaultPanelId());
+    }
+
+    @Test
+    public void anNtmOrganismsRunNeedsAPanelChosen() {
+        ntmReferenceOrganism();
+        assertEquals("AST_ORDERED_PANEL_REQUIRED",
+                assertThrows(IllegalStateException.class, () -> start(isolate)).getMessage());
+    }
+
+    private void ntmReferenceOrganism() {
+        reference.organism().setSusceptibilityProtocol("NTM");
+        organisms.update(reference.organism());
+        em.flush();
+        em.clear();
+    }
+
+    @Test
     public void reportContainsOnlyExplicitlyExternalNotes() {
         timeline.addNote(c.getId(), "Internal bench observation", false, writer);
         timeline.addNote(c.getId(), "Communicate to clinician", true, writer);
