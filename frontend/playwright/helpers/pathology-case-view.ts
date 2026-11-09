@@ -119,6 +119,51 @@ export function slideRows(page: Page) {
   return page.locator("#pathology-section-microtomy .pathology-case-view__row");
 }
 
+/** The microtomy section, where every slide is listed under its block. */
+const MICROTOMY_SECTION = "#pathology-section-microtomy";
+
+/**
+ * One block's group on the microtomy list: its header line and the slides cut
+ * from it. Addressed by the designation in the header, matched whole, so the
+ * slides' own designations under it never match.
+ */
+export function blockGroup(page: Page, designation: string) {
+  return page
+    .locator(`${MICROTOMY_SECTION} .pathology-case-view__group`)
+    .filter({
+      has: page.locator(
+        ".pathology-case-view__group-header .pathology-case-view__row-designation",
+        { hasText: new RegExp(`^${escapeRegExp(designation)}$`) },
+      ),
+    });
+}
+
+/** The last group on the microtomy list, holding slides that name no block. */
+export function legacySlideGroup(page: Page) {
+  return page
+    .locator(`${MICROTOMY_SECTION} .pathology-case-view__group`)
+    .filter({
+      has: page.locator(".pathology-case-view__group-title", {
+        hasText: /^Slides with no block recorded$/,
+      }),
+    });
+}
+
+/** The Add slide of one block's group, named after the block. */
+export function addSlideButton(page: Page, designation: string) {
+  return page.getByRole("button", {
+    name: `Add slide to ${designation}`,
+    exact: true,
+  });
+}
+
+/** Add one unsaved slide under a block, from that block's own Add slide. */
+export async function addSlideTo(page: Page, designation: string) {
+  const button = addSlideButton(page, designation);
+  await expect(button).toBeEnabled();
+  await button.click();
+}
+
 /**
  * The one row on a list carrying a designation, matched whole, so A1 never
  * also matches A10.

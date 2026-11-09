@@ -37,6 +37,13 @@ const READ_BACK_INTERVAL_MS = 500;
 /** The dictionary category a cassette's tissue type is chosen from. */
 const TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
 
+/**
+ * The dictionary category a slide's stain is chosen from. The application
+ * creates it from its shipped dictionary files when it starts, not through a
+ * changeset.
+ */
+const STAIN_CATEGORY = "Pathology Stains";
+
 /** The column a dictionary entry's local abbreviation is stored in. */
 const LOCAL_ABBREVIATION_MAX_LENGTH = 10;
 
@@ -59,6 +66,9 @@ export type PathologyStageId = (typeof PATHOLOGY_STAGE_ORDER)[number];
 
 /** The description moveCaseToStage writes when it has to finish grossing. */
 const SETUP_DESCRIPTION = "Seeded by E2E";
+
+/** The level moveCaseToStage gives the slide it cuts at Microtomy. */
+const SETUP_SLIDE_LEVEL = "1";
 
 /** The reason moveCaseToStage gives when it returns a case. */
 const SETUP_RETURN_REASON = "E2E setup";
@@ -94,11 +104,17 @@ export interface PathologyOrderTarget {
   providerPersonId: string;
 }
 
-/** One tissue type a cassette can be given, as the case view offers it. */
-export interface TissueType {
+/** One dictionary entry a picker on the case view offers: its id and name. */
+export interface DictionaryEntry {
   id: string;
   name: string;
 }
+
+/** One tissue type a cassette can be given, as the case view offers it. */
+export type TissueType = DictionaryEntry;
+
+/** One stain a slide can be given, as the case view offers it. */
+export type Stain = DictionaryEntry;
 
 interface DictionaryCategoryRow {
   id: string;
@@ -537,18 +553,18 @@ async function findCaseId(
 }
 
 /**
- * A tissue type of this run's own, added to the laboratory's tissue category.
- *
- * Each call adds a new entry with a name no other run uses, so a spec picks a
- * tissue it created rather than whichever entry the shared category happens
- * to list first, which another spec or an administrator may retire or rename
- * at any time. The entry is added through the endpoint the Dictionary admin
- * screen posts to and is never deleted afterwards, since a cassette that
- * holds it keeps pointing at it; a retired entry stays valid on the cassettes
- * that recorded it. The name returned is the one the case view's picker
- * displays.
+ * A new entry of this run's own in one dictionary category, added through the
+ * endpoint the Dictionary admin screen posts to and read back through the list
+ * the case view loads, so what is returned is what its picker will offer
+ * rather than what was posted. `missing` says why the category would be
+ * absent on a deployment.
  */
-export async function ensureTissueType(page: Page): Promise<TissueType> {
+async function addRunEntry(
+  page: Page,
+  categoryName: string,
+  entryPrefix: string,
+  missing: string,
+): Promise<DictionaryEntry> {
   if (!page.url().startsWith("http")) {
     await page.goto("/", { waitUntil: "domcontentloaded" });
   }
@@ -558,17 +574,16 @@ export async function ensureTissueType(page: Page): Promise<TissueType> {
     `${API_PREFIX}/rest/dictionary-categories`,
   );
   const category = categories.find(
-    (entry) => entry.categoryName === TISSUE_TYPE_CATEGORY,
+    (entry) => entry.categoryName === categoryName,
   );
   if (!category) {
     throw new Error(
-      `No dictionary category named ${TISSUE_TYPE_CATEGORY} on this deployment, ` +
-        "so the changeset that creates it has not run here.",
+      `No dictionary category named ${categoryName} on this deployment, ${missing}`,
     );
   }
 
   const runTag = `${Date.now().toString(36)}${Math.floor(Math.random() * 36 * 36).toString(36)}`;
-  const dictEntry = `E2E tissue ${runTag}`;
+  const dictEntry = `${entryPrefix} ${runTag}`;
   const localAbbreviation = `E${runTag}`
     .slice(-LOCAL_ABBREVIATION_MAX_LENGTH)
     .toUpperCase();
@@ -582,10 +597,8 @@ export async function ensureTissueType(page: Page): Promise<TissueType> {
     dirtyFormFields: "",
   });
 
-  // Read back through the same list the case view loads, so what is returned
-  // is what the picker will offer rather than what was posted.
-  const listPath = `${API_PREFIX}/rest/dictionary/category/${TISSUE_TYPE_CATEGORY}`;
-  let added: TissueType | undefined;
+  const listPath = `${API_PREFIX}/rest/dictionary/category/${encodeURIComponent(categoryName)}`;
+  let added: DictionaryEntry | undefined;
   await expect
     .poll(
       async () => {
@@ -605,11 +618,58 @@ export async function ensureTissueType(page: Page): Promise<TissueType> {
   return added!;
 }
 
+/**
+ * A tissue type of this run's own, added to the laboratory's tissue category.
+ *
+ * Each call adds a new entry with a name no other run uses, so a spec picks a
+ * tissue it created rather than whichever entry the shared category happens
+ * to list first, which another spec or an administrator may retire or rename
+ * at any time. The entry is never deleted afterwards, since a cassette that
+ * holds it keeps pointing at it; a retired entry stays valid on the cassettes
+ * that recorded it.
+ */
+export async function ensureTissueType(page: Page): Promise<TissueType> {
+  return addRunEntry(
+    page,
+    TISSUE_TYPE_CATEGORY,
+    "E2E tissue",
+    "so the changeset that creates it has not run here.",
+  );
+}
+
+/**
+ * A stain of this run's own, added to the laboratory's stain category, for
+ * the same reasons as ensureTissueType: the shipped stains are the
+ * laboratory's to rename or retire, and a slide that recorded one keeps it.
+ */
+export async function ensureStain(page: Page): Promise<Stain> {
+  return addRunEntry(
+    page,
+    STAIN_CATEGORY,
+    "E2E stain",
+    "so the application never loaded its shipped dictionary files " +
+      "(configuration/backend/dictionaries/pathology-stains.csv).",
+  );
+}
+
 /** One cassette or block as the case view reads it. */
 interface CaseBlock {
   id?: number | string;
   designation?: string;
   cassetteState?: string;
+  active?: boolean;
+  location?: string;
+  tissueTypeId?: string | null;
+}
+
+/** One slide as the case view reads it. */
+export interface CaseSlide {
+  id?: number | string;
+  blockId?: number | string | null;
+  designation?: string;
+  barcode?: string;
+  level?: string | null;
+  stainId?: string | null;
   active?: boolean;
   location?: string;
 }
@@ -626,7 +686,7 @@ export interface StoredPathologyCase {
   assignedTechnicianId?: string | null;
   assignedPathologistId?: string | null;
   blocks?: CaseBlock[];
-  slides?: unknown[];
+  slides?: CaseSlide[];
   reports?: unknown[];
   techniques?: { id?: string }[];
   requests?: { id?: string; status?: string }[];
@@ -673,20 +733,43 @@ export async function moveCaseOnce(
   return status;
 }
 
+/** The changes saveCaseThroughApi applies on top of the stored case. */
+export interface CaseSaveChanges {
+  grossExam?: string;
+  /** Cut one new cassette. */
+  addCassette?: boolean;
+  /** The tissue type the new cassette is given. */
+  cassetteTissueTypeId?: string;
+  /** Cut one new slide (level 1, no stain) under the block with this id. */
+  addSlideUnder?: number | string;
+}
+
 /**
  * Save the case through the same endpoint and with the same form the case
  * view's Save draft posts, built from the stored case, with the changes
  * given applied on top.
  */
-async function saveCaseThroughApi(
+export async function saveCaseThroughApi(
   page: Page,
   caseId: string,
   stored: StoredPathologyCase,
-  changes: { grossExam?: string; addCassette?: boolean },
+  changes: CaseSaveChanges,
 ) {
   const blocks = [...(stored.blocks ?? [])];
   if (changes.addCassette) {
-    blocks.push({ location: "" });
+    blocks.push({
+      location: "",
+      tissueTypeId: changes.cassetteTissueTypeId ?? null,
+    });
+  }
+  const slides = [...(stored.slides ?? [])];
+  if (changes.addSlideUnder !== undefined) {
+    slides.push({
+      blockId: changes.addSlideUnder,
+      level: SETUP_SLIDE_LEVEL,
+      stainId: null,
+      location: "",
+    });
   }
   await apiPost(
     page,
@@ -695,7 +778,7 @@ async function saveCaseThroughApi(
       assignedTechnicianId: stored.assignedTechnicianId,
       assignedPathologistId: stored.assignedPathologistId,
       blocks,
-      slides: stored.slides ?? [],
+      slides,
       reports: stored.reports ?? [],
       grossExam: changes.grossExam ?? stored.grossExam,
       decalcificationRequired: stored.decalcificationRequired ?? false,
@@ -710,17 +793,20 @@ async function saveCaseThroughApi(
       })),
       conclusions: (stored.conclusions ?? []).map((entry) => entry.id),
     },
-    `Saving case ${caseId} to finish grossing`,
+    `Saving case ${caseId}`,
   );
 }
 
 /**
  * Bring a case to a stage for a test's setup, doing the bench's work on the
  * way rather than going round it: the server refuses to send a case on from
- * grossing until it is described and has a cassette, and from embedding until
- * every cassette is a block, so a blank description is filled in and a
- * cassette cut through the case save, and each outstanding cassette is
- * embedded through its own endpoint, exactly as the screen would. A target
+ * grossing until it is described and has a cassette, from embedding until
+ * every cassette is a block, and from microtomy until a slide is cut, so a
+ * blank description is filled in and a cassette cut through the case save,
+ * each outstanding cassette is embedded through its own endpoint, and one
+ * slide is cut under the first block through the case save, exactly as the
+ * screen would. Nothing is done at the target stage itself, so a case brought
+ * to microtomy arrives there with no slide. A target
  * behind the case is reached by returning it, one stage at a time, with a
  * reason.
  *
@@ -795,6 +881,29 @@ export async function moveCaseToStage(
           {},
           `Embedding cassette ${block.designation} of case ${caseId}`,
         );
+      }
+    }
+
+    if (stored.status === "MICROTOMY") {
+      const slideInUse = (stored.slides ?? []).some(
+        (slide) => slide.id != null && slide.active !== false,
+      );
+      if (!slideInUse) {
+        const inUse = (stored.blocks ?? []).filter(
+          (block) => block.id != null && block.active !== false,
+        );
+        // Where the laboratory tracks embedding a slide is cut only from a
+        // block; where it does not, no row ever becomes one.
+        const parent =
+          inUse.find((block) => block.cassetteState === "BLOCK") ?? inUse[0];
+        if (!parent) {
+          throw new Error(
+            `Case ${caseId} stands at MICROTOMY with no block to cut a slide from.`,
+          );
+        }
+        await saveCaseThroughApi(page, caseId, stored, {
+          addSlideUnder: parent.id,
+        });
       }
     }
 
