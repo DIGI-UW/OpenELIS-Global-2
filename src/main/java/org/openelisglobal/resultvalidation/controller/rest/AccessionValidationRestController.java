@@ -1063,8 +1063,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
      * SERVER finds in the Clear lane right now (re-derived from a fresh load of the
      * same queue, never from the client's list), under one e-signature. Anything
      * abnormal, critical, flagged or no longer awaiting validation is skipped and
-     * reported back by reason. Gated by the "allow bulk release of clear results"
-     * site flag (403 when off).
+     * reported back by reason. A test that another of its components still holds
+     * open is only validated in part and is reported as accepted, not released.
+     * Gated by the "allow bulk release of clear results" site flag (403 when off).
      */
     @PostMapping(value = "AccessionValidation/release-clear", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -1127,8 +1128,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             released.add(entry.getKey());
         }
 
+        List<String> accepted = new ArrayList<>();
         Map<String, Object> result = new HashMap<>();
         result.put("released", released);
+        result.put("accepted", accepted);
         result.put("skipped", skipped);
         if (released.isEmpty()) {
             return org.springframework.http.ResponseEntity.ok(result);
@@ -1140,11 +1143,21 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         ArrayList<Result> resultUpdateList = new ArrayList<>();
         ArrayList<Note> noteUpdateList = new ArrayList<>();
         List<Result> deletableList = new ArrayList<>();
-        if (!createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                resultSaveService, !updaters.isEmpty()).isEmpty()) {
-            Set<String> updated = analysisUpdateList.stream().map(Analysis::getId).collect(Collectors.toSet());
-            released.removeIf(id -> !updated.contains(id) && skipped.add(skipReason(id, "qcHold")));
-        }
+        boolean qcWithheld = !createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList,
+                deletableList, resultSaveService, !updaters.isEmpty()).isEmpty();
+        Set<String> updated = analysisUpdateList.stream().map(Analysis::getId).collect(Collectors.toSet());
+        Set<String> componentsValidated = resultUpdateList.stream()
+                .filter(r -> r.getValidatedDate() != null && r.getAnalysis() != null).map(r -> r.getAnalysis().getId())
+                .collect(Collectors.toSet());
+        released.removeIf(id -> {
+            if (updated.contains(id)) {
+                return false;
+            }
+            if (componentsValidated.contains(id)) {
+                return accepted.add(id);
+            }
+            return qcWithheld && skipped.add(skipReason(id, "qcHold"));
+        });
         ArrayList<Sample> sampleUpdateList = new ArrayList<>();
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, serverRows,
