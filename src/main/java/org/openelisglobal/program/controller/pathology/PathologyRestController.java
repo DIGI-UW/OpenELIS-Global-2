@@ -31,6 +31,19 @@ abstract class PathologyRestController extends BaseRestController {
     }
 
     /**
+     * A change that lost a row's version check to another landing in the same
+     * moment: the caller is told so and asked to reload, rather than seeing a
+     * server error.
+     *
+     * @param what the row that was changed, as the sentence names it ("case",
+     *             "cassette", "slide")
+     */
+    protected static ResponseEntity<Map<String, Object>> versionConflict(String what) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("conflict", "version", "error",
+                "another change to this " + what + " landed at the same moment; reload the case and try again"));
+    }
+
+    /**
      * A case id nothing carries is not found, not a server error. Any other missing
      * row (a user id posted with a save, for one) says nothing about the case, so
      * it stays the server error the application answers for any unexpected failure;

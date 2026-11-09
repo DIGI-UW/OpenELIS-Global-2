@@ -428,6 +428,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED));
         configs.put(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED));
+        configs.put(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.PATHOLOGY_SCAN_VERIFICATION_REQUIRED));
         // Required-field settings the order-entry lanes must honour. These have
         // always existed as FormFields, consulted only by the legacy JSP screens,
         // so the React lanes silently overrode what every shipped profile sets.

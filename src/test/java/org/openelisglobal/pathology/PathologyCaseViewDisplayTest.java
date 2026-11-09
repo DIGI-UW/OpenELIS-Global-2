@@ -25,8 +25,10 @@ import org.openelisglobal.program.controller.pathology.PathologySampleForm;
 import org.openelisglobal.program.service.PathologyDisplayService;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -80,6 +82,9 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     private TimeZone runnersTimeZone;
 
@@ -202,6 +207,28 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                         + " reads leaves out",
                 RETIRED_STAIN_NAME, displayItem.getStainNames().get(String.valueOf(RETIRED_STAIN)));
         assertEquals("nothing else is named", 2, displayItem.getStainNames().size());
+    }
+
+    /**
+     * The case view reads a slide's label check from a map naming who verified it
+     * and when; the raw row carries only the user's id, and a slide never checked
+     * is absent.
+     */
+    @Test
+    public void caseDisplayItem_namesWhoVerifiedEachSlideLabel() {
+        PathologyCaseRows.stampLabel(jdbcTemplate, LEGACY_SLIDE_ID, "1001");
+        jdbcTemplate.update("INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, last_updated, slide_number,"
+                + " active) VALUES (?, ?, now(), 2, true)", SECOND_SLIDE, CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        LabelVerificationView verification = displayItem.getLabelVerifications().get(LEGACY_SLIDE_ID);
+        assertNotNull("a verified slide is in the map", verification);
+        assertEquals("named by the verifier's display name, not an id", systemUserService.get("1001").getDisplayName(),
+                verification.verifiedBy());
+        assertNotNull("with the time as text", verification.verifiedAt());
+        assertFalse("a slide never checked is absent", displayItem.getLabelVerifications().containsKey(SECOND_SLIDE));
     }
 
     /**
@@ -408,6 +435,7 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
 
     private void removeSeededStainRows() {
         jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", SECOND_SLIDE);
+        PathologyCaseRows.clearLabelStamp(jdbcTemplate, LEGACY_SLIDE_ID);
         jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id IN (?, ?)", STAIN,
                 RETIRED_STAIN);
         DictionaryRows.removeEntries(jdbcTemplate, STAIN, RETIRED_STAIN);

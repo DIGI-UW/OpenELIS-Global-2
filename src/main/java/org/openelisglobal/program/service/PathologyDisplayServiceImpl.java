@@ -4,6 +4,7 @@ import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.LabelVerificationView;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
@@ -38,6 +40,8 @@ import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -57,6 +61,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     private OrganizationService organizationService;
     @Autowired
     private SampleItemService sampleItemService;
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     @Transactional
@@ -124,6 +130,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
                 pathologySample.getBlocks().stream().map(PathologyBlock::getTissueTypeId), dictionaryService));
         displayItem.setStainNames(dictionaryNames(pathologySample.getSlides().stream().map(PathologySlide::getStainId),
                 dictionaryService));
+        displayItem.setLabelVerifications(labelVerifications(pathologySample.getSlides(), systemUserService));
         List<PathologyStageEvent> stageEvents = pathologySampleService.getStageEvents(pathologySampleId);
         displayItem.setStageEvents(stageEvents.stream().map(StageEventView::of).collect(Collectors.toList()));
         displayItem.setRunReference(runReference(stageEvents));
@@ -196,6 +203,36 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         dictionaryIds.filter(StringUtils::isNotBlank).distinct()
                 .forEach(id -> names.put(id, DictionaryEntryNames.localizedNameOf(dictionaryService, id).orElse(id)));
         return names;
+    }
+
+    @Override
+    @Transactional
+    public LabelVerificationView labelVerificationOf(PathologySlide slide) {
+        if (slide == null) {
+            return null;
+        }
+        return LabelVerificationView.of(slide,
+                slide.getLabelVerifiedBy() == null ? null : systemUserService.get(slide.getLabelVerifiedBy()));
+    }
+
+    /**
+     * Who checked each slide's label and when, by slide id, for the slides whose
+     * label was checked. Each verifier is looked up once, however many slides they
+     * checked.
+     */
+    static Map<Integer, LabelVerificationView> labelVerifications(List<PathologySlide> slides,
+            SystemUserService systemUserService) {
+        Map<Integer, LabelVerificationView> verifications = new LinkedHashMap<>();
+        Map<String, SystemUser> verifiers = new HashMap<>();
+        for (PathologySlide slide : slides) {
+            if (slide.getId() == null || slide.getLabelVerifiedAt() == null) {
+                continue;
+            }
+            SystemUser verifier = slide.getLabelVerifiedBy() == null ? null
+                    : verifiers.computeIfAbsent(slide.getLabelVerifiedBy(), systemUserService::get);
+            verifications.put(slide.getId(), LabelVerificationView.of(slide, verifier));
+        }
+        return verifications;
     }
 
     /**
