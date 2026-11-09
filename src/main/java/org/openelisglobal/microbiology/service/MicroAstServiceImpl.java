@@ -265,9 +265,9 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstSetupForm form = new MicroAstSetupForm();
         form.isolateId = isolateId;
         form.panelProvenance = "UNASSIGNED";
-        if (!"NTM".equals(organism.getSusceptibilityProtocol()) && organism.getDefaultAstPanelId() != null
-                && !organism.getDefaultAstPanelId().isBlank()) {
-            MicroAstPanel panel = panelDAO.get(organism.getDefaultAstPanelId())
+        String defaultPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
+        if (defaultPanelId != null && !defaultPanelId.isBlank()) {
+            MicroAstPanel panel = panelDAO.get(defaultPanelId)
                     .orElseThrow(() -> new IllegalStateException("AST_ORDERED_PANEL_NOT_FOUND"));
             form.orderedPanelId = panel.getId();
             form.orderedPanelLabel = panel.getName();
@@ -1267,7 +1267,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         Set<String> organismGroups = labGroups(organism);
         String clinicalContext = MicroBreakpointClinicalContext.validate(request.clinicalContext);
         String sampleTypeId = trimToNull(request.sampleTypeId);
-        String defaultPanelId = defaultPanelId(organism);
+        String defaultPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
         MicroReportingRulePreviewResultForm result = new MicroReportingRulePreviewResultForm();
         result.defaultPanelName = defaultPanelId == null ? null
                 : panelDAO.get(defaultPanelId).map(MicroAstPanel::getName).orElse(null);
@@ -1395,12 +1395,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
     }
 
-    private String defaultPanelId(MicroOrganism organism) {
-        return "NTM".equals(organism.getSusceptibilityProtocol()) ? null : organism.getDefaultAstPanelId();
-    }
-
     private PanelSelection resolvePanel(MicroOrganism organism, String requestedPanelId) {
-        String orderedPanelId = defaultPanelId(organism);
+        String orderedPanelId = MicroAstPanelAssignmentService.defaultPanelId(organism);
         String selectedPanelId = requestedPanelId == null || requestedPanelId.isBlank() ? orderedPanelId
                 : requestedPanelId;
         if (selectedPanelId == null || selectedPanelId.isBlank()) {

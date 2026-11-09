@@ -35,9 +35,10 @@ public class MicroAstPanelAssignmentService {
         if (!"CONFIRMED".equals(isolate.getIdentificationStatus()) || isolate.getOrganismId() == null)
             return;
         var organism = organisms.get(isolate.getOrganismId()).orElseThrow();
-        if ("NTM".equals(organism.getSusceptibilityProtocol()) || organism.getDefaultAstPanelId() == null)
+        String defaultPanelId = defaultPanelId(organism);
+        if (defaultPanelId == null)
             return;
-        var panel = panels.get(organism.getDefaultAstPanelId()).orElse(null);
+        var panel = panels.get(defaultPanelId).orElse(null);
         if (panel == null || panel.getPublishedAt() == null || !"Y".equals(panel.getIsActive()))
             return;
         requireCompatible(organism, panel);
@@ -49,8 +50,8 @@ public class MicroAstPanelAssignmentService {
     @Transactional
     public void followIdentification(MicroIsolate isolate, String actor) {
         var organism = isolate.getOrganismId() == null ? null : organisms.get(isolate.getOrganismId()).orElse(null);
-        var defaultPanel = organism == null || organism.getDefaultAstPanelId() == null ? null
-                : panels.get(organism.getDefaultAstPanelId()).orElse(null);
+        var defaultPanelId = organism == null ? null : defaultPanelId(organism);
+        var defaultPanel = defaultPanelId == null ? null : panels.get(defaultPanelId).orElse(null);
         for (var assignment : getAssignments(isolate.getId())) {
             var panel = panels.get(assignment.getPanelId()).orElse(null);
             boolean keep = organism != null && panel != null
@@ -92,6 +93,10 @@ public class MicroAstPanelAssignmentService {
         if (getAssignments(isolateId).stream().anyMatch(a -> a.getPanelFamily().equals(panel.getLogicalKey())))
             throw new MicroAstConflictException("AST_PANEL_ALREADY_ASSIGNED");
         return insert(isolateId, panel, "MANUAL", actor);
+    }
+
+    public static String defaultPanelId(MicroOrganism organism) {
+        return "NTM".equals(organism.getSusceptibilityProtocol()) ? null : organism.getDefaultAstPanelId();
     }
 
     public static void requireCompatible(MicroOrganism organism, MicroAstPanel panel) {
