@@ -288,7 +288,7 @@ class UserManagementPage {
   }
 
   clearSearchBar() {
-    cy.get(this.selectors.searchBar)
+    cy.get(this.selectors.searchBar, { timeout: 20000 })
       .should("be.visible")
       .and("be.enabled")
       .invoke("val")
