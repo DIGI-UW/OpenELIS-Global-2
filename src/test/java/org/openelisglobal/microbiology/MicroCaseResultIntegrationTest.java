@@ -871,6 +871,21 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
+    public void anAcceptedAnalyzerResultMatchingOnlyACultureOrderWaitsInIncoming() {
+        var decisions = decisionsFor(stageAnalyzerRows(null));
+        var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
+        link.setCaseRole(MicroCaseRole.CULTURE);
+        links.update(link);
+        em.flush();
+        decisions.forEach(item -> item.setIsAccepted(true));
+        analyzerAcceptance.acceptAndPersist(decisions, actor);
+        em.flush();
+        assertEquals(List.of("WAITING"),
+                incomingItems.forCase(microCase.getId()).stream().map(MicroIncomingItem::getState).toList());
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
+    @Test
     public void aDeliveryMatchingACultureOrderAndAnAdditionalAnalysisLandsOnTheAdditional() {
         var link = links.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
         link.setCaseRole(MicroCaseRole.CULTURE);
