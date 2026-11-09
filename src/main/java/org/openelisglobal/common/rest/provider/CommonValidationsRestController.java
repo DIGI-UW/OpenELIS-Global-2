@@ -19,7 +19,6 @@ import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.util.CI.ProjectForm;
 import org.openelisglobal.search.service.SearchResultsService;
-import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -35,7 +34,7 @@ public class CommonValidationsRestController {
     @Autowired
     protected ProjectService projectService;
 
-    @Autowired(required = false)
+    @Autowired
     protected SearchResultsService searchResultsService;
 
     @Autowired(required = false)
@@ -43,18 +42,6 @@ public class CommonValidationsRestController {
 
     protected PhoneNumberService getPhoneNumberService() {
         return phoneNumberService != null ? phoneNumberService : new PhoneNumberService();
-    }
-
-    protected SearchResultsService getSearchResultsService() {
-        if (searchResultsService == null) {
-            try {
-                searchResultsService = SpringContext.getBean(SearchResultsService.class);
-            } catch (Exception e) {
-                // In non-Spring or mocked test environments where SpringContext is
-                // uninitialized
-            }
-        }
-        return searchResultsService;
     }
 
     @GetMapping(value = "SampleEntryAccessionNumberValidation", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -192,13 +179,7 @@ public class CommonValidationsRestController {
 
         if (!valid) {
             responseObject.setStatus(false);
-            String phoneFormat;
-            try {
-                phoneFormat = PhoneNumberService.getPhoneFormat();
-            } catch (Exception e) {
-                phoneFormat = "";
-            }
-            String result = MessageUtil.getMessage("phone.number.format.error", phoneFormat);
+            String result = MessageUtil.getMessage("phone.number.format.error", PhoneNumberService.getPhoneFormat());
             responseObject.setBody(result);
         } else {
             responseObject.setStatus(true);
@@ -224,9 +205,12 @@ public class CommonValidationsRestController {
         // We just care about duplicates but blank values do not count as duplicates
         if (!(GenericValidator.isBlankOrNull(STNumber) && GenericValidator.isBlankOrNull(subjectNumber)
                 && GenericValidator.isBlankOrNull(nationalId))) {
-            SearchResultsService searchService = getSearchResultsService();
-            List<PatientSearchResults> results = searchService != null ? searchService.getSearchResultsExact(null, null,
-                    STNumber, subjectNumber, nationalId, null, null, null, null, null) : List.of();
+            if (searchResultsService == null) {
+                throw new IllegalStateException(
+                        "SearchResultsService is required for subject number and national ID validation");
+            }
+            List<PatientSearchResults> results = searchResultsService.getSearchResultsExact(null, null, STNumber,
+                    subjectNumber, nationalId, null, null, null, null, null);
 
             boolean allowDuplicateSubjectNumber = ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "true");
