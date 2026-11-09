@@ -43,6 +43,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -139,6 +140,8 @@ public class ResultsLoadUtility {
     private PatientService patientService;
     @Autowired
     private ResultService resultService;
+    @Autowired
+    private RuleResultScope ruleResultScope;
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
@@ -1093,7 +1096,6 @@ public class ResultsLoadUtility {
         if (component != null) {
             testItem.setTestResultComponentId(component.getId());
         }
-        testItem.setResultValue(getFormattedResultValue(result));
         setResultLimitDependencies(resultLimit, testItem, testResults, analysis);
         testItem.setRangeNotAppliedReason(
                 rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
@@ -1124,9 +1126,7 @@ public class ResultsLoadUtility {
         }
         List<Result> componentResults = component == null ? null
                 : resultService.getResultsByAnalysis(analysis).stream()
-                        .filter(r -> r.getTestResult() == null || r.getTestResult().getComponentId() == null
-                                ? component.getIsPrimary()
-                                : component.getId().equals(r.getTestResult().getComponentId()))
+                        .filter(r -> component.getId().equals(ruleResultScope.componentIdOf(r)))
                         .collect(Collectors.toList());
         testItem.setResultValue(componentResults != null && result != null
                 && TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())

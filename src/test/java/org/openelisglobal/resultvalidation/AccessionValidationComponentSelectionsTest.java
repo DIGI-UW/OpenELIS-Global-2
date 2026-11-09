@@ -24,6 +24,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
 import org.openelisglobal.sample.service.SampleService;
@@ -53,6 +54,9 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
 
     @Autowired
     private ResultsValidationUtility validationUtility;
+
+    @Autowired
+    private ResultsLoadUtility resultsLoadUtility;
 
     @Autowired
     private AnalysisService analysisService;
@@ -95,6 +99,23 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
     }
 
     @Test
+    public void validationKeepsAPartsSelectionsTogetherWhenNoPartIsFlaggedPrimary() {
+        noPrimaryAndRedWithNoComponent();
+        assertEquals(List.of("{\"1\":\"9301,9303\"}", "{\"1\":\"9302\"}"),
+                validationUtility.getValidationAnalysisBySample(sampleService.getSampleByAccessionNumber(ACCESSION))
+                        .stream().map(AnalysisItem::getMultiSelectResultValues).sorted().toList());
+    }
+
+    @Test
+    public void resultsEntryKeepsAPartsSelectionsTogetherWhenNoPartIsFlaggedPrimary() {
+        noPrimaryAndRedWithNoComponent();
+        assertEquals(List.of("vms-colour: VMS Red,VMS Blue", "vms-size: VMS Large"),
+                resultsLoadUtility.getGroupedTestsForSample(sampleService.getSampleByAccessionNumber(ACCESSION))
+                        .stream().filter(row -> row.getAnalysisId() != null)
+                        .map(row -> row.getTestResultComponentId() + ": " + row.getResultValue()).sorted().toList());
+    }
+
+    @Test
     public void validatingAPartValidatesAllOfItsSelections() throws Exception {
         release("100").andExpect(jsonPath("$.outcome").value("accepted"));
         assertEquals("only Size is left to validate", List.of("101"), queueResultIds());
@@ -129,6 +150,13 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
         mockMvc.perform(post("/rest/results-entry/analysis/100/result").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultValue").value("VMS Large,VMS Small"));
+    }
+
+    private void noPrimaryAndRedWithNoComponent() {
+        jdbcTemplate.update(
+                "UPDATE clinlims.test_result_component SET is_primary = false WHERE id IN ('vms-colour', 'vms-size')");
+        jdbcTemplate.update("UPDATE clinlims.test_result SET component_id = NULL WHERE id = 1");
+        entityManager.clear();
     }
 
     private org.springframework.test.web.servlet.ResultActions release(String resultId) throws Exception {

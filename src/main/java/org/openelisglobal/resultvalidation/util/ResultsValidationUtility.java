@@ -43,6 +43,7 @@ import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.RecordStatus;
@@ -115,6 +116,8 @@ public class ResultsValidationUtility {
     protected TestSectionService testSectionService;
     @Autowired
     protected ResultService resultService;
+    @Autowired
+    protected RuleResultScope ruleResultScope;
     @Autowired
     protected TestResultService testResultService;
     @Autowired
@@ -565,22 +568,6 @@ public class ResultsValidationUtility {
         return displayTestName;
     }
 
-    // A result with no component belongs to the test's primary component.
-    private String componentIdOf(Result result, Map<String, String> primaryByTest) {
-        if (result == null) {
-            return null;
-        }
-        if (result.getTestResult() != null && result.getTestResult().getComponentId() != null) {
-            return result.getTestResult().getComponentId();
-        }
-        String testId = result.getAnalysis().getTest().getId();
-        if (!primaryByTest.containsKey(testId)) {
-            primaryByTest.put(testId, testResultComponentService.getActiveComponentsByTestId(testId).stream()
-                    .filter(c -> c.getIsPrimary()).map(c -> c.getId()).findFirst().orElse(null));
-        }
-        return primaryByTest.get(testId);
-    }
-
     /**
      * A part of a multi-component test carries its own unit, blank when it has
      * none, as Results Entry shows it; every other row carries the test's unit.
@@ -851,23 +838,15 @@ public class ResultsValidationUtility {
     public final List<AnalysisItem> testResultListToAnalysisItemList(List<ResultValidationItem> testResultList) {
         List<AnalysisItem> analysisResultList = new ArrayList<>();
 
-        /*
-         * The issue with multiselect results is that each selection is one
-         * ResultValidationItem but they all need to be condensed into one AnalysisItem
-         * (whose multiSelectResultValues carries every selection as JSON). The
-         * condensing is scoped per analysis component: other results of the same
-         * accession — other analyses, or other components of a multi-component analysis
-         * — must still get their own rows. Qualified results found among a component's
-         * multiselect selections are captured onto its condensed item.
-         */
+        // Condense each analysis component's multiselect selections into one row,
+        // carrying any qualified result; other components keep their own rows.
         Map<String, AnalysisItem> condensedMultiSelectByComponent = new HashMap<>();
-        Map<String, String> primaryByTest = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
             boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
                     .isMultiSelectVariant(testResultItem.getResultType());
             String componentKey = multiSelect
                     ? testResultItem.getAnalysis().getId() + "|"
-                            + componentIdOf(testResultItem.getResult(), primaryByTest)
+                            + ruleResultScope.componentIdOf(testResultItem.getResult())
                     : null;
 
             if (!multiSelect || !condensedMultiSelectByComponent.containsKey(componentKey)) {
@@ -1165,11 +1144,10 @@ public class ResultsValidationUtility {
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                Map<String, String> primaryByTest = new HashMap<>();
-                String componentId = componentIdOf(result, primaryByTest);
+                String componentId = ruleResultScope.componentIdOf(result);
                 analysisResultItem.setMultiSelectResultValues(ResultServiceImpl.getJSONStringForMultiSelect(
                         resultService.getResultsByAnalysis(testResultItem.getAnalysis()).stream()
-                                .filter(r -> java.util.Objects.equals(componentIdOf(r, primaryByTest), componentId))
+                                .filter(r -> java.util.Objects.equals(ruleResultScope.componentIdOf(r), componentId))
                                 .collect(Collectors.toList())));
             } else {
                 analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
