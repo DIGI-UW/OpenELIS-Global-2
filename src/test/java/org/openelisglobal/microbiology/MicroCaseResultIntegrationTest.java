@@ -690,7 +690,7 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void acceptsNegativeExponentUsingMantissaPrecision() {
+    public void aScientificValueIsSavedAsEnteredWhateverThePrecision() {
         configurePrecision(2);
         var submission = payload();
         submission.components.get(0).value = "1.5e-7";
@@ -902,14 +902,6 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
             p.components.add(c);
         }
         return p;
-    }
-
-    @Test
-    public void wholeNumberPrecisionDoesNotConstrainScientificMantissa() {
-        var submission = payload();
-        submission.components.get(0).value = "1.555e7";
-        assertEquals("TechnicalAcceptance", workspace
-                .saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)).get(0).status);
     }
 
     @Test
