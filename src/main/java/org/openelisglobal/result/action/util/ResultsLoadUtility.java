@@ -588,6 +588,7 @@ public class ResultsLoadUtility {
         }
         Sample sample = anchor != null && anchor.getSample() != null ? anchor.getSample() : sampleItem.getSample();
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
+        Map<String, String> primaryByTest = new HashMap<>();
 
         ResultInventory testKit = null;
 
@@ -669,7 +670,7 @@ public class ResultsLoadUtility {
                     sampleItem.getSortOrder(), result, sample.getAccessionNumber(), patientName, patientInfo,
                     techSignature, techSignatureId, initialConditions, SpringContext.getBean(TypeOfSampleService.class)
                             .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()),
-                    component);
+                    component, primaryByTest);
             resultItem.setNationalId(nationalId);
             applyQcMetadata(resultItem, sampleItem, result);
             // Pool-anchored: expose the pool id + member count so the frontend can
@@ -708,7 +709,7 @@ public class ResultsLoadUtility {
                         patientInfo, techSignature, techSignatureId, initialConditions,
                         SpringContext.getBean(TypeOfSampleService.class)
                                 .getTypeOfSampleNameForId(sampleItem.getTypeOfSampleId()),
-                        component);
+                        component, primaryByTest);
                 resultItem.setNationalId(nationalId);
                 testResultList.add(resultItem);
             }
@@ -950,7 +951,8 @@ public class ResultsLoadUtility {
     private TestResultItem createTestResultItem(Analysis analysis, SampleItem displaySampleItem,
             ResultInventory testKit, String notes, String sequenceNumber, Result result, String accessionNumber,
             String patientName, String patientInfo, String techSignature, String techSignatureId,
-            String initialSampleConditions, String sampleType, TestResultComponent component) {
+            String initialSampleConditions, String sampleType, TestResultComponent component,
+            Map<String, String> primaryByTest) {
 
         TestService testService = SpringContext.getBean(TestService.class);
         Test test = analysisService.getTest(analysis);
@@ -1126,7 +1128,7 @@ public class ResultsLoadUtility {
         }
         List<Result> componentResults = component == null ? null
                 : resultService.getResultsByAnalysis(analysis).stream()
-                        .filter(r -> component.getId().equals(ruleResultScope.componentIdOf(r)))
+                        .filter(r -> component.getId().equals(ruleResultScope.componentIdOf(r, primaryByTest)))
                         .collect(Collectors.toList());
         testItem.setResultValue(componentResults != null && result != null
                 && TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
