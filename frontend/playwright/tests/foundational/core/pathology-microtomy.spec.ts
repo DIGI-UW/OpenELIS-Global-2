@@ -13,6 +13,7 @@ import {
   SeededPathologyCase,
   Stain,
   TissueType,
+  verifySlideLabels,
 } from "../../../helpers/seed-pathology-data";
 import {
   addSlideButton,
@@ -49,7 +50,8 @@ import { UI_TIMEOUT } from "../../../helpers/timeouts";
  *   - a cassette not yet embedded takes no slide while the laboratory tracks
  *     embedding, and takes one as soon as it is embedded, or once embedding
  *     is switched off,
- *   - the case is not sent for staining before a slide is cut,
+ *   - the case is not sent for staining before a slide is cut and its label
+ *     checked,
  *   - a slide cut from another page at the same time is kept beside this
  *     page's own,
  *   - the slide labels print as one PDF, and
@@ -376,9 +378,13 @@ test.describe.serial("Pathology microtomy section", () => {
       await expect(slidesUnder(page, "A2")).toHaveCount(0);
     });
 
-    await test.step("the case may now be sent for staining", async () => {
+    await test.step("the case now waits for both labels to be checked", async () => {
       await expect(primaryAction(page)).toHaveText("Send for staining");
-      await expect(primaryAction(page)).toBeEnabled();
+      await expect(primaryAction(page)).toBeDisabled();
+      await expect(primaryAction(page)).toHaveAttribute(
+        "title",
+        "Verify every slide label first (A1.1, A1.2 outstanding)",
+      );
     });
 
     await test.step("a fresh load shows the same, A1 opened for its slides", async () => {
@@ -390,6 +396,15 @@ test.describe.serial("Pathology microtomy section", () => {
       );
       await expect(slidesUnder(page, "A1")).toHaveCount(2);
       await expect(slidesUnder(page, "A1").first()).toBeVisible();
+    });
+
+    await test.step("once both labels are checked, the case may be sent for staining", async () => {
+      // Checking a label is the label verification spec's subject, so here
+      // it goes through the endpoint the section posts to.
+      await verifySlideLabels(page, seeded);
+      await openCase(page, seeded);
+      await expect(primaryAction(page)).toHaveText("Send for staining");
+      await expect(primaryAction(page)).toBeEnabled();
     });
   });
 
@@ -625,7 +640,10 @@ test.describe.serial("Pathology microtomy section", () => {
     page,
   }) => {
     // A section's own current stage always applies, so the case is sent on
-    // to Staining before the switch is turned off.
+    // to Staining before the switch is turned off, once the labels of the
+    // slides cut since the last check are checked too.
+    await openCase(page, seeded);
+    await verifySlideLabels(page, seeded);
     await openCase(page, seeded);
     await advanceCase(page, { label: "Send for staining" });
     await expandSection(page, MICROTOMY);
