@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   Button,
@@ -45,7 +45,9 @@ export default function MethodsSection({ testId }) {
 
   const [links, setLinks] = useState([]);
   const [allMethods, setAllMethods] = useState([]);
+  const [inactiveMethodIds, setInactiveMethodIds] = useState(new Set());
   const [allTests, setAllTests] = useState([]);
+  const mounted = useRef(true);
   const [notification, setNotification] = useState(null);
 
   // Link Method modal state
@@ -73,26 +75,43 @@ export default function MethodsSection({ testId }) {
   const loadLinks = useCallback(() => {
     if (!testId) return;
     getFromOpenElisServer(`/rest/test/${testId}/methods`, (res) => {
-      setLinks(Array.isArray(res) ? res : []);
+      if (mounted.current) setLinks(Array.isArray(res) ? res : []);
     });
   }, [testId]);
 
   const loadAllMethods = useCallback(() => {
     getFromOpenElisServer("/rest/displayList/METHODS", (res) => {
-      setAllMethods(Array.isArray(res) ? res : []);
+      if (mounted.current) setAllMethods(Array.isArray(res) ? res : []);
+    });
+    getFromOpenElisServer("/rest/displayList/METHODS_INACTIVE", (res) => {
+      if (mounted.current) {
+        setInactiveMethodIds(
+          new Set((Array.isArray(res) ? res : []).map((m) => m.id)),
+        );
+      }
     });
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     loadLinks();
     loadAllMethods();
     getFromOpenElisServer("/rest/test-list", (res) => {
-      setAllTests(Array.isArray(res) ? res : []);
+      if (mounted.current) setAllTests(Array.isArray(res) ? res : []);
     });
+    return () => {
+      mounted.current = false;
+    };
   }, [loadLinks, loadAllMethods]);
 
   const linkedMethodIds = new Set(links.map((l) => l.methodId));
-  const availableMethods = allMethods.filter((m) => !linkedMethodIds.has(m.id));
+  const availableMethods = allMethods
+    .filter((m) => !linkedMethodIds.has(m.id) && !inactiveMethodIds.has(m.id))
+    .sort((a, b) =>
+      (a.value || "").localeCompare(b.value || "", undefined, {
+        sensitivity: "base",
+      }),
+    );
   const otherTests = allTests.filter((t) => t.id !== testId);
 
   const notify = (kind, titleKey, values) => {
