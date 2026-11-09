@@ -71,7 +71,7 @@ export default function CaseViewShell({
     ),
   );
   const history = useHistory();
-  const selectScope = (scope, parameters = {}) => {
+  const selectScope = (scope, parameters = {}, push = !!parameters.action) => {
     const next = new URLSearchParams(location.search);
     [
       "view",
@@ -86,15 +86,17 @@ export default function CaseViewShell({
     ].forEach((key) => next.delete(key));
     next.set("scope", scope);
     Object.entries(parameters).forEach(([key, value]) => next.set(key, value));
-    history[parameters.action ? "push" : "replace"]({
+    history[push ? "push" : "replace"]({
       pathname: location.pathname,
       search: next.toString(),
     });
   };
-  const openSection = (scope, parameters) => {
-    selectScope(scope, parameters);
+  const openSection = (scope, parameters, push) => {
+    selectScope(scope, parameters, push);
     setJump({ scope });
   };
+  const openCaseAction = (scope, parameters) =>
+    openSection(scope, parameters, true);
   const worklistSearch = new URLSearchParams(location.search);
   [
     "view",
@@ -325,7 +327,7 @@ export default function CaseViewShell({
                       <OverflowMenuItem
                         itemText={t("microbiology.critical.logNotification")}
                         onClick={() =>
-                          openSection("CRITICAL", {
+                          openCaseAction("CRITICAL", {
                             action: "log-critical",
                             targetType: "CASE",
                             targetId: id,
@@ -336,14 +338,14 @@ export default function CaseViewShell({
                     {detail.canWrite && (
                       <OverflowMenuItem
                         itemText={t("microbiology.nce.report")}
-                        onClick={() => openSection("NONCONFORMANCE")}
+                        onClick={() => openCaseAction("NONCONFORMANCE")}
                       />
                     )}
                     {detail.canAmend &&
                       detail.finalReleaseState === "FINAL_RELEASED" && (
                         <OverflowMenuItem
                           itemText={t("microbiology.amendment.open")}
-                          onClick={() => openSection("AMENDMENT")}
+                          onClick={() => openCaseAction("AMENDMENT")}
                         />
                       )}
                     {detail.canWrite && (
@@ -352,7 +354,9 @@ export default function CaseViewShell({
                         isDelete
                         hasDivider
                         onClick={() =>
-                          openSection("NONCONFORMANCE", { action: "mark-lost" })
+                          openCaseAction("NONCONFORMANCE", {
+                            action: "mark-lost",
+                          })
                         }
                       />
                     )}

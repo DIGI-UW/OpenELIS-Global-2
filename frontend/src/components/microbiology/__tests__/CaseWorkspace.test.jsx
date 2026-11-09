@@ -433,11 +433,19 @@ describe("case actions", () => {
     });
   });
 
-  test("a case action adds a history entry, so Back returns to the case", async () => {
-    const history = caseActions();
+  test.each([
+    "Log critical notification",
+    "Report NCE",
+    "Open amendment",
+    "Mark lost",
+  ])("%s adds a history entry, so Back returns to the case", async (name) => {
+    const history = caseActions({
+      canAmend: true,
+      finalReleaseState: "FINAL_RELEASED",
+    });
     const items = await openCaseActions();
     const entries = history.length;
-    fireEvent.click(items[0]);
+    fireEvent.click(items.find((item) => item.textContent.startsWith(name)));
     expect(history.length).toBe(entries + 1);
     act(() => history.goBack());
     expect(history.location.search).toBe("");
