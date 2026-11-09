@@ -1106,6 +1106,10 @@ public class TestCatalogEditorRestController {
         // Per-component default for printing on the patient report (OGC-1127).
         // Null/absent = true (backward-compatible: existing components print).
         public Boolean showOnReport;
+        // OGC-1608: a required component without a result keeps its test open.
+        // Null/absent keeps a stored component's value; a new one is required
+        // only when it is the primary.
+        public Boolean isRequired;
         // Detection limits of a quantitative component (OGC-1148), both optional.
         public java.math.BigDecimal lod;
         public java.math.BigDecimal loq;
@@ -1319,6 +1323,7 @@ public class TestCatalogEditorRestController {
             e.setAllowMultipleReadings(Boolean.TRUE.equals(c.allowMultipleReadings));
             e.setIsPrimary(Boolean.TRUE.equals(c.isPrimary));
             e.setShowOnReport(!Boolean.FALSE.equals(c.showOnReport));
+            e.setIsRequired(c.isRequired != null ? c.isRequired : storedIsRequired(testId, c));
             e.setLod(c.lod);
             e.setLoq(c.loq);
             desired.add(e);
@@ -1386,6 +1391,18 @@ public class TestCatalogEditorRestController {
         return components.isEmpty() ? null : components.get(0).getId();
     }
 
+    /**
+     * A save that leaves isRequired out keeps the value the component has: the one
+     * stored under its id, else under its code, else required only for the primary.
+     */
+    private boolean storedIsRequired(String testId, ResultComponentDto c) {
+        List<TestResultComponent> active = componentService.getActiveComponentsByTestId(testId);
+        TestResultComponent stored = active.stream().filter(e -> !isBlank(c.id) && c.id.equals(e.getId())).findFirst()
+                .orElseGet(() -> active.stream().filter(e -> !isBlank(c.code) && c.code.equalsIgnoreCase(e.getCode()))
+                        .findFirst().orElse(null));
+        return stored != null ? stored.getIsRequired() : Boolean.TRUE.equals(c.isPrimary);
+    }
+
     private SampleResults toSampleResults(String testId) {
         SampleResults sr = new SampleResults();
         sr.testId = testId;
@@ -1419,6 +1436,7 @@ public class TestCatalogEditorRestController {
             dto.allowMultipleReadings = c.getAllowMultipleReadings();
             dto.isPrimary = c.getIsPrimary();
             dto.showOnReport = c.getShowOnReport();
+            dto.isRequired = c.getIsRequired();
             dto.lod = c.getLod();
             dto.loq = c.getLoq();
             for (TestResultInterpretation i : interpretationService.getActiveByComponentId(c.getId())) {

@@ -1,5 +1,6 @@
 package org.openelisglobal.testresultcomponent.service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -14,6 +15,14 @@ public interface TestResultComponentService extends BaseObjectService<TestResult
     List<TestResultComponent> getActiveComponentsByTestId(String testId);
 
     TestResultComponent getByTestIdAndCode(String testId, String code);
+
+    /**
+     * OGC-1608: the active required components of a test that are not among the
+     * components holding a result. While one remains the test is not complete: it
+     * is not released, and the patient report prints the component as in progress.
+     */
+    List<TestResultComponent> getRequiredComponentsWithoutResult(String testId,
+            Collection<String> componentIdsWithResult);
 
     /**
      * Reconciles a test's active components to the desired set: a desired component

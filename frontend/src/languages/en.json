@@ -7080,6 +7080,7 @@
   "label.testCatalog.sampleResults.code": "Component code",
   "label.testCatalog.sampleResults.isPrimary": "Primary component",
   "label.testCatalog.sampleResults.showOnReport": "Show on patient report",
+  "label.testCatalog.sampleResults.isRequired": "Required to complete the test",
   "label.testCatalog.sampleResults.label": "Component label",
   "label.testCatalog.sampleResults.resultType": "Result type",
   "label.testCatalog.sampleResults.resultType.N": "Numeric",

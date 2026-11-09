@@ -540,6 +540,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,

@@ -179,6 +179,57 @@ public class AccessionValidationComponentReleaseTest extends BaseWebContextSensi
         assertEquals(List.of("100", "101"), queueResultIds());
     }
 
+    /**
+     * OGC-1608: a required part with no result keeps the test open. Validating the
+     * part that has a value validates that part only; the test is released once the
+     * required part is resulted and validated.
+     */
+    @Test
+    public void aRequiredPartWithoutAResultHoldsTheTestOpenUntilItIsResulted() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE id = 101");
+        jdbcTemplate.update("UPDATE clinlims.test_result_component SET is_required = true WHERE id = 'vcu-ct'");
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(row("100", "1010"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("accepted"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals("the test waits for its required Ct",
+                statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get("100").getStatusId());
+        assertNotNull(resultService.get("100").getValidatedDate());
+        assertEquals("nothing is left to validate until the Ct is entered", List.of(), queueResultIds());
+
+        jdbcTemplate.update("INSERT INTO clinlims.result (id, analysis_id, test_result_id, result_type, value,"
+                + " is_reportable, lastupdated) VALUES (101, 100, 2, 'N', '33.0', 'Y', NOW())");
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(row("101", "33.0"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("released"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("100").getStatusId());
+    }
+
+    /**
+     * OGC-1608: an optional part with no result does not hold the test open; the
+     * test is released with the parts that have a result.
+     */
+    @Test
+    public void anOptionalPartWithoutAResultDoesNotHoldTheTestOpen() throws Exception {
+        jdbcTemplate.update("DELETE FROM clinlims.result WHERE id = 101");
+        jdbcTemplate.update("UPDATE clinlims.test_result_component SET is_required = false WHERE id = 'vcu-ct'");
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(row("100", "1010"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("released"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("100").getStatusId());
+    }
+
     /** The rows the Validation page is served for the accession. */
     private List<String> queueResultIds() throws Exception {
         String body = mockMvc

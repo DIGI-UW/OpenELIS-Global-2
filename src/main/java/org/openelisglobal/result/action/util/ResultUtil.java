@@ -40,6 +40,7 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.beanAdapters.ResultSaveBeanAdapter;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
@@ -86,6 +87,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.http.HttpStatus;
@@ -439,6 +441,48 @@ public class ResultUtil {
             if (supportReferrals && testResultItem.isRefer()) {
                 handleReferrals(testResultItem, testResultItem.getReferralItem(), results, analysis, actionDataSet,
                         request);
+            }
+        }
+    }
+
+    /**
+     * OGC-1608: a save that would release a test while one of its required
+     * components still has no result leaves it awaiting validation instead, so the
+     * test is not complete and the patient report stays partial until that
+     * component is resulted. The values this save writes count as well as the
+     * stored ones.
+     */
+    public static void holdOpenWhileRequiredComponentsBlank(ResultsUpdateDataSet actionDataSet) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        ResultService resultService = SpringContext.getBean(ResultService.class);
+        TestResultComponentService componentService = SpringContext.getBean(TestResultComponentService.class);
+        for (Analysis analysis : actionDataSet.getModifiedAnalysis()) {
+            if (!statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                continue;
+            }
+            String testId = analysisService.getTest(analysis).getId();
+            Set<String> componentsWithResult = new HashSet<>();
+            for (Result stored : resultService.getResultsByAnalysis(analysis)) {
+                if (stored.getParentResult() == null && !GenericValidator.isBlankOrNull(stored.getValue())) {
+                    componentsWithResult.add(scope.componentIdOf(stored));
+                }
+            }
+            for (TestResultItem item : actionDataSet.getModifiedItems()) {
+                if (!analysis.getId().equals(item.getAnalysisId())) {
+                    continue;
+                }
+                String componentId = GenericValidator.isBlankOrNull(item.getTestResultComponentId())
+                        ? scope.primaryComponentId(testId)
+                        : item.getTestResultComponentId();
+                if (noResults(item.getShadowResultValue(), item.getMultiSelectResultValues(), item.getResultType())) {
+                    componentsWithResult.remove(componentId);
+                } else {
+                    componentsWithResult.add(componentId);
+                }
+            }
+            if (!componentService.getRequiredComponentsWithoutResult(testId, componentsWithResult).isEmpty()) {
+                analysis.setStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
             }
         }
     }

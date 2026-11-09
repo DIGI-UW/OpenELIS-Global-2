@@ -365,6 +365,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         ResultUtil.createResultsFromItems(dataSet, supportReferrals, alwaysValidate, useTechnicianName, statusRuleSet,
                 request);
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(dataSet);
 
         List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
         updaters.add(acknowledgementService.acknowledgementRecorder(alerts,

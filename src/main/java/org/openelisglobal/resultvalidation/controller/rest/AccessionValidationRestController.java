@@ -70,6 +70,7 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -668,8 +669,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
     /**
      * True when the accepted row is one component of a multi-component test and
      * another component that has a result is neither validated yet nor accepted in
-     * this same save. The test is then not released: only this component is marked
-     * validated, and the test is released with its last component.
+     * this same save, or a required component has no result yet (OGC-1608). The
+     * test is then not released: only this component is marked validated, and the
+     * test is released with its last component.
      */
     private boolean otherComponentsAwaitValidation(Analysis analysis, AnalysisItem accepted,
             List<AnalysisItem> analysisItems) {
@@ -686,7 +688,12 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         if (acceptedComponent == null) {
             return false;
         }
-        for (Result other : resultService.getResultsByAnalysis(analysis)) {
+        List<Result> stored = resultService.getResultsByAnalysis(analysis);
+        Set<String> componentsWithResult = new HashSet<>();
+        for (Result other : stored) {
+            if (other.getParentResult() == null && !isBlankOrNull(other.getValue())) {
+                componentsWithResult.add(scope.componentIdOf(other));
+            }
             if (other.getParentResult() != null || other.getId().equals(acceptedResult.getId())
                     || isBlankOrNull(other.getValue()) || other.getValidatedDate() != null
                     || acceptedComponent.equals(scope.componentIdOf(other))) {
@@ -698,7 +705,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 return true;
             }
         }
-        return false;
+        return !SpringContext.getBean(TestResultComponentService.class)
+                .getRequiredComponentsWithoutResult(analysisService.getTest(analysis).getId(), componentsWithResult)
+                .isEmpty();
     }
 
     private void markComponentValidated(AnalysisItem accepted, List<Result> saved, List<Result> resultUpdateList) {
