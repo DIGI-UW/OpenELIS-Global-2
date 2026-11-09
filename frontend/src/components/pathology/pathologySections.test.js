@@ -19,6 +19,7 @@ import {
   stageApplies,
   decalcificationFlagFrozen,
   advanceLabelKey,
+  addSlideLock,
   advanceBlockedReason,
   returnBlockedReason,
   rowActionLock,
@@ -1314,6 +1315,58 @@ describe("advanceBlockedReason", () => {
     ).toEqual({ key: "pathology.locked.embeddingNoCassettes" });
   });
 
+  it("holds microtomy until at least one slide in use is saved", () => {
+    expect(
+      advanceBlockedReason(intl, { slides: [] }, { storedStatus: "MICROTOMY" }),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+    expect(
+      advanceBlockedReason(intl, {}, { storedStatus: "MICROTOMY" }),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+  });
+
+  it("counts neither a retired slide nor one not yet saved towards microtomy", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { slides: [{ id: 5, blockId: 1, active: false }] },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+    expect(
+      advanceBlockedReason(
+        intl,
+        { slides: [{ blockId: 1, level: "" }] },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toEqual({ key: "pathology.locked.microtomyIncomplete" });
+  });
+
+  it("lets a case with one saved slide in use leave microtomy, one slide for the whole case", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        {
+          blocks: [
+            { id: 1, cassetteState: "BLOCK" },
+            { id: 2, cassetteState: "BLOCK" },
+          ],
+          slides: [{ id: 5, blockId: 1, active: true }],
+        },
+        { storedStatus: "MICROTOMY" },
+      ),
+    ).toBe(null);
+  });
+
+  it("says to save first at microtomy too, before the slide rule", () => {
+    expect(
+      advanceBlockedReason(
+        intl,
+        { slides: [] },
+        { storedStatus: "MICROTOMY", dirty: true },
+      ),
+    ).toEqual({ key: "pathology.locked.saveBeforeTransition" });
+  });
+
   it("judges each rule on the stored stage only", () => {
     expect(
       advanceBlockedReason(
@@ -1325,8 +1378,8 @@ describe("advanceBlockedReason", () => {
     expect(
       advanceBlockedReason(
         intl,
-        { grossExam: "" },
-        { storedStatus: "MICROTOMY" },
+        { grossExam: "", slides: [] },
+        { storedStatus: "STAINING" },
       ),
     ).toBe(null);
   });
@@ -1406,6 +1459,126 @@ describe("rowActionLock", () => {
     expect(
       rowActionLock({ status: "EMBEDDING", ...state, saveFirstKey }),
     ).toEqual({ disabled, reasonKey });
+  });
+});
+
+describe("addSlideLock", () => {
+  const block = { id: 1, designation: "A1", cassetteState: "BLOCK" };
+  const cassette = { id: 2, designation: "A2", cassetteState: "CASSETTE" };
+  const embeddingOff = { PATHOLOGY_STAGE_EMBEDDING_ENABLED: "false" };
+
+  it("lets a slide be added under a block", () => {
+    expect(addSlideLock({ status: "MICROTOMY", block })).toEqual({
+      disabled: false,
+      reasonKey: null,
+    });
+  });
+
+  it("holds a cassette back until it is embedded, where the laboratory tracks embedding", () => {
+    expect(addSlideLock({ status: "MICROTOMY", block: cassette })).toEqual({
+      disabled: true,
+      reasonKey: "pathology.locked.embedBeforeSlides",
+    });
+    // A row with no state is a cassette, as the server reads it.
+    expect(
+      addSlideLock({ status: "MICROTOMY", block: { id: 3 } }).reasonKey,
+    ).toBe("pathology.locked.embedBeforeSlides");
+  });
+
+  it("offers every row in use once the laboratory has stopped tracking embedding", () => {
+    expect(
+      addSlideLock({
+        status: "MICROTOMY",
+        block: cassette,
+        configurationProperties: embeddingOff,
+      }),
+    ).toEqual({ disabled: false, reasonKey: null });
+  });
+
+  it("holds every row back on a signed-out case, before the embedding rule", () => {
+    [block, cassette].forEach((row) =>
+      expect(addSlideLock({ status: "COMPLETED", block: row })).toEqual({
+        disabled: true,
+        reasonKey: "pathology.locked.caseCompleted",
+      }),
+    );
+  });
+});
+
+// 12.5 item 1: a stage switched off used to hide the slides already cut there
+// behind a locked section, whose body is never shown.
+describe("a stage the laboratory stopped tracking, with rows on record", () => {
+  const MICROTOMY = "pathology-section-microtomy";
+  const microtomyOff = { PATHOLOGY_STAGE_MICROTOMY_ENABLED: "false" };
+  const derive = (status, configurationProperties, hasRows) =>
+    deriveCaseSections({
+      intl,
+      status,
+      isPathologist: false,
+      configurationProperties,
+      decalcificationRequired: true,
+      sectionHasRows: (section) => hasRows && section.id === MICROTOMY,
+    });
+
+  it("shows the section read-only and still not applicable, with a badge saying it is not tracked", () => {
+    const sections = derive("STAINING", microtomyOff, true);
+    const microtomy = byId(sections, MICROTOMY);
+
+    expect(microtomy.state).toBe(SECTION_STATE.READ_ONLY);
+    expect(microtomy.notApplicable).toBe(true);
+    expect(microtomy.readOnlyBecauseUntracked).toBe(true);
+    expect(microtomy.lockedHintKey).toBeUndefined();
+    expect(
+      sectionBadge(microtomy, { caseInfo: { slides: [{ id: "1" }] } }),
+    ).toEqual({ kind: "none", textKey: "pathology.locked.stageDisabled" });
+
+    const railItem = deriveRailItems(sections, {
+      intl,
+      status: "STAINING",
+      reportCount: 0,
+      openRequestNames: [],
+      caseInfo: { slides: [{ id: "1" }] },
+    }).find((item) => item.id === MICROTOMY);
+    expect(railItem.notApplicable).toBe(true);
+    expect(railItem.complete).toBe(false);
+  });
+
+  it("keeps the section locked as before when it holds no rows", () => {
+    const microtomy = byId(derive("STAINING", microtomyOff, false), MICROTOMY);
+
+    expect(microtomy.state).toBe(SECTION_STATE.DISABLED);
+    expect(microtomy.lockedHintKey).toBe("pathology.locked.stageDisabled");
+    expect(microtomy.notApplicable).toBe(true);
+    expect(microtomy.readOnlyBecauseUntracked).toBeUndefined();
+  });
+
+  it("changes nothing for a section whose stage the laboratory tracks", () => {
+    const microtomy = byId(derive("STAINING", {}, true), MICROTOMY);
+
+    expect(microtomy.state).toBe(SECTION_STATE.COMPLETE);
+    expect(microtomy.notApplicable).toBe(false);
+    expect(microtomy.readOnlyBecauseUntracked).toBeUndefined();
+  });
+
+  it("asks no caller for rows it does not know about, and locks every other switched-off stage as before", () => {
+    const sections = deriveCaseSections({
+      intl,
+      status: "STAINING",
+      isPathologist: false,
+      configurationProperties: microtomyOff,
+      decalcificationRequired: true,
+    });
+    expect(byId(sections, MICROTOMY).state).toBe(SECTION_STATE.DISABLED);
+
+    const coverslipping = byId(
+      derive(
+        "STAINING",
+        { PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false" },
+        true,
+      ),
+      "pathology-section-coverslipping",
+    );
+    expect(coverslipping.state).toBe(SECTION_STATE.DISABLED);
   });
 });
 

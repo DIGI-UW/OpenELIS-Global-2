@@ -87,7 +87,16 @@ const caseAtStage = (status, overrides = {}) => ({
       location: "",
     },
   ],
-  slides: [],
+  slides: [
+    {
+      id: 5,
+      designation: "1",
+      barcode: "ACC9.A1.1",
+      blockId: 1,
+      active: true,
+      location: "",
+    },
+  ],
   reports: [],
   requests: [],
   techniques: [],
@@ -339,6 +348,38 @@ describe("PathologyCaseView stage transitions", () => {
       "title",
       messages["pathology.locked.embeddingNoCassettes"],
     );
+  });
+
+  it("holds microtomy back until a slide is saved, and lets one saved slide send the case on", async () => {
+    servedCase = caseAtStage("MICROTOMY", {
+      slides: [
+        // A retired slide is on record but is not work in hand.
+        {
+          id: 6,
+          designation: "2",
+          blockId: 1,
+          active: false,
+          location: "",
+        },
+      ],
+    });
+    const withNone = renderCaseView();
+    await loaded();
+
+    const reason = messages["pathology.locked.microtomyIncomplete"];
+    let primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveAttribute("title", reason);
+    expect(describedBy(primary)).toHaveTextContent(reason);
+    withNone.unmount();
+
+    servedCase = caseAtStage("MICROTOMY");
+    renderCaseView();
+    await loaded();
+
+    primary = primaryButton("pathology.action.sendForStaining");
+    expect(primary).toBeEnabled();
+    expect(primary).not.toHaveAttribute("title");
   });
 
   it("posts the stage the page shows to the advance endpoint, then says where the case went and reads it back", async () => {
@@ -1228,6 +1269,8 @@ describe("Embed and Deactivate: refusals and the signed-out lock", () => {
 
   it("leaves Embed and Deactivate to their usual rules before sign-out", async () => {
     servedCase = caseAtStage("EMBEDDING", {
+      // The cassette's Deactivate alone, so the query finds one button.
+      slides: [],
       blocks: [
         {
           id: 1,

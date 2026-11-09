@@ -1497,6 +1497,38 @@ function ImmunohistochemistryCaseView() {
                               disabled={true}
                             />
                           </Column>
+                          <Column lg={2} md={1} sm={1}>
+                            <TextInput
+                              id={"slideLevel_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.level",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.level",
+                              })}
+                              value={slide.level ?? ""}
+                              disabled={true}
+                            />
+                          </Column>
+                          <Column lg={2} md={1} sm={1}>
+                            <TextInput
+                              id={"slideStain_" + index}
+                              labelText={intl.formatMessage({
+                                id: "pathology.label.stain",
+                              })}
+                              hideLabel={true}
+                              placeholder={intl.formatMessage({
+                                id: "pathology.label.stain",
+                              })}
+                              value={
+                                immunohistochemistrySampleInfo.stainNames?.[
+                                  slide.stainId
+                                ] ?? ""
+                              }
+                              disabled={true}
+                            />
+                          </Column>
                           <Column lg={2} md={1} sm={2}>
                             {slide.image && (
                               <>
@@ -1518,7 +1550,7 @@ function ImmunohistochemistryCaseView() {
                               </>
                             )}
                           </Column>
-                          <Column lg={10} md={3} sm={2} />
+                          <Column lg={6} md={1} sm={2} />
                           <Column lg={16} md={8} sm={4}>
                             <div>
                               {" "}

@@ -10,9 +10,10 @@ import {
   isDeactivatedRow,
   isEmbeddedRow,
   isUnsavedRow,
+  heldOrServedItems,
   labelStreamUrl,
+  microtomyGroups,
   nextOutstandingCassette,
-  needsParentBlock,
   newRowName,
   objectNaming,
   parentBlockOf,
@@ -21,7 +22,6 @@ import {
   slideIdentifier,
   slideOnBlockName,
   stripClientKeys,
-  tissueTypeItems,
   unsavedPosition,
   withClientKey,
 } from "./pathologyRows";
@@ -254,13 +254,104 @@ describe("withClientKey and stripClientKeys", () => {
   });
 });
 
-describe("needsParentBlock", () => {
-  it("holds back only a new slide that names no block", () => {
-    expect(needsParentBlock({ blockId: null, location: "" })).toBe(true);
-    expect(needsParentBlock({ location: "" })).toBe(true);
-    expect(needsParentBlock({ blockId: "1", location: "" })).toBe(false);
-    // A slide cut before slides named their block is already on the case.
-    expect(needsParentBlock({ id: "6", blockId: null })).toBe(false);
+describe("microtomyGroups", () => {
+  const a1 = { id: 1, designation: "A1", cassetteState: "BLOCK" };
+  const a2 = { id: "2", designation: "A2", cassetteState: "CASSETTE" };
+  const retiredA3 = {
+    id: 3,
+    designation: "A3",
+    cassetteState: "BLOCK",
+    active: false,
+  };
+  const designations = (groups) =>
+    groups.map((group) => (group.legacy ? "legacy" : group.block.designation));
+
+  it("lists every saved block in use, cassettes included, in list order, and no block added since the last save", () => {
+    const groups = microtomyGroups(
+      [a2, { designation: "", location: "" }, a1],
+      [],
+      false,
+    );
+
+    expect(designations(groups)).toEqual(["A2", "A1"]);
+    expect(groups.every((group) => group.slides.length === 0)).toBe(true);
+    expect(groups.map((group) => group.retired)).toEqual([false, false]);
+  });
+
+  it("puts each slide under the block it was cut from, an unsaved one under the block it was added to", () => {
+    const saved = { id: 5, designation: "1", blockId: "1" };
+    const underA2 = { id: 6, designation: "1", blockId: 2 };
+    const unsaved = { blockId: 1, level: "", stainId: null, location: "" };
+
+    const groups = microtomyGroups([a1, a2], [saved, underA2, unsaved], false);
+
+    expect(groups[0].slides).toEqual([saved, unsaved]);
+    expect(groups[1].slides).toEqual([underA2]);
+  });
+
+  it("keeps a retired block that still holds a slide in use, whatever the switch says", () => {
+    const slide = { id: 5, designation: "1", blockId: 3 };
+
+    const groups = microtomyGroups([a1, retiredA3], [slide], false);
+
+    expect(designations(groups)).toEqual(["A1", "A3"]);
+    expect(groups[1]).toEqual({
+      block: retiredA3,
+      slides: [slide],
+      retired: true,
+      legacy: false,
+    });
+  });
+
+  it("lists a retired block with no slide in use only when retired rows are asked for", () => {
+    const retiredSlide = { id: 5, designation: "1", blockId: 3, active: false };
+
+    expect(
+      designations(microtomyGroups([a1, retiredA3], [retiredSlide], false)),
+    ).toEqual(["A1"]);
+    expect(
+      designations(microtomyGroups([a1, retiredA3], [retiredSlide], true)),
+    ).toEqual(["A1", "A3"]);
+  });
+
+  it("lists a retired slide only when retired rows are asked for", () => {
+    const inUse = { id: 5, designation: "1", blockId: 1 };
+    const retired = { id: 6, designation: "2", blockId: 1, active: false };
+
+    expect(microtomyGroups([a1], [inUse, retired], false)[0].slides).toEqual([
+      inUse,
+    ]);
+    expect(microtomyGroups([a1], [inUse, retired], true)[0].slides).toEqual([
+      inUse,
+      retired,
+    ]);
+  });
+
+  it("gathers last the slides with no block recorded and those naming a block not on the case", () => {
+    const noBlock = { id: 5, designation: "7", blockId: null };
+    const elsewhere = { id: 6, designation: "2", blockId: 99 };
+
+    const groups = microtomyGroups([a1], [noBlock, elsewhere], false);
+
+    expect(designations(groups)).toEqual(["A1", "legacy"]);
+    expect(groups[1]).toEqual({
+      block: null,
+      slides: [noBlock, elsewhere],
+      retired: false,
+      legacy: true,
+    });
+  });
+
+  it("adds no group for slides without a block when there are none to show", () => {
+    const retiredLegacy = { id: 5, designation: "7", active: false };
+
+    expect(
+      designations(microtomyGroups([a1], [{ id: 6, blockId: 1 }], false)),
+    ).toEqual(["A1"]);
+    expect(designations(microtomyGroups([a1], [retiredLegacy], false))).toEqual(
+      ["A1"],
+    );
+    expect(microtomyGroups(undefined, undefined, false)).toEqual([]);
   });
 });
 
@@ -323,39 +414,40 @@ describe("rowListEditors", () => {
   });
 });
 
-// The served tissue types are the active ones only, so a cassette holding a
-// type retired after it was recorded has to bring its own entry.
-describe("tissueTypeItems", () => {
+// The served entries are the active ones only, so a row holding a tissue type
+// or a stain retired after it was recorded has to bring its own entry.
+describe("heldOrServedItems", () => {
   const served = [
     { id: "21", value: "Skin" },
     { id: "22", value: "Bone" },
   ];
 
-  it("offers the served list as it is when the cassette holds nothing, or holds one of them", () => {
-    expect(tissueTypeItems(served, { tissueTypeId: null }, {})).toEqual(served);
-    expect(tissueTypeItems(served, { tissueTypeId: "" }, {})).toEqual(served);
-    expect(tissueTypeItems(served, {}, undefined)).toEqual(served);
-    expect(tissueTypeItems(served, { tissueTypeId: 22 }, {})).toEqual(served);
+  it("offers the served list as it is when the row holds nothing, or holds one of them", () => {
+    expect(heldOrServedItems(served, null, {})).toEqual(served);
+    expect(heldOrServedItems(served, "", {})).toEqual(served);
+    expect(heldOrServedItems(served, undefined, undefined)).toEqual(served);
+    expect(heldOrServedItems(served, 22, {})).toEqual(served);
   });
 
   it("adds the held type the list no longer serves, under the name the case carries for it", () => {
-    expect(
-      tissueTypeItems(served, { tissueTypeId: "23" }, { 23: "Cartilage" }),
-    ).toEqual([...served, { id: "23", value: "Cartilage" }]);
+    expect(heldOrServedItems(served, "23", { 23: "Cartilage" })).toEqual([
+      ...served,
+      { id: "23", value: "Cartilage" },
+    ]);
   });
 
   it("falls back to the id when the case carries no name for it, rather than showing nothing", () => {
-    expect(tissueTypeItems(served, { tissueTypeId: "23" }, {})).toEqual([
+    expect(heldOrServedItems(served, "23", {})).toEqual([
       ...served,
       { id: "23", value: "23" },
     ]);
   });
 
   it("still names the held type while the served list has not arrived", () => {
-    expect(
-      tissueTypeItems(null, { tissueTypeId: "23" }, { 23: "Cartilage" }),
-    ).toEqual([{ id: "23", value: "Cartilage" }]);
-    expect(tissueTypeItems(null, { tissueTypeId: null }, {})).toEqual([]);
+    expect(heldOrServedItems(null, "23", { 23: "Cartilage" })).toEqual([
+      { id: "23", value: "Cartilage" },
+    ]);
+    expect(heldOrServedItems(null, null, {})).toEqual([]);
   });
 });
 
