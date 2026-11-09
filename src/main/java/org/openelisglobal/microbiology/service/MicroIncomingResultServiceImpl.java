@@ -79,8 +79,9 @@ public class MicroIncomingResultServiceImpl implements MicroIncomingResultServic
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         if (!access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS))
             throw new AccessDeniedException("Case lab unit Results rights required");
-        return receive(caseId, sampleItemId, testId, source, key, raw, result, false, actor, analyzerId, analysisId,
-                completedAt);
+        var reviewed = analysisId == null ? null : links.getByCaseAndAnalysis(caseId, analysisId);
+        return receive(caseId, sampleItemId, testId, source, key, raw, result, false, actor, analyzerId,
+                reviewed != null && reviewed.isCultureOrder() ? null : analysisId, completedAt);
     }
 
     private MicroIncomingForm receive(String caseId, String sampleItemId, String testId, String source, String key,
