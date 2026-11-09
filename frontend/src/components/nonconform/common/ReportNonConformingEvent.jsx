@@ -37,6 +37,7 @@ import NceFileAttachment from "./NceFileAttachment";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./ReportNonConformingEvent.css";
 import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const initialReportFormValues = {
   type: undefined,
@@ -622,38 +623,25 @@ export const ReportNonConformingEvent = () => {
               </DatePicker>
             </Column>
             <Column lg={4} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="reporting-unit"
-                {...requiredProps()}
-                labelText={
-                  <>
-                    {intl.formatMessage({
-                      id: "nce.field.reportingUnit",
-                      defaultMessage: "Reporting Unit",
-                    })}
-                    <RequiredMarker />
-                  </>
-                }
+                required
+                labelText={intl.formatMessage({
+                  id: "nce.field.reportingUnit",
+                  defaultMessage: "Reporting Unit",
+                })}
+                options={reportingUnits}
                 value={nceForm.reportingUnit}
-                onChange={(e) => {
+                onChange={(id) => {
                   setnceForm((prev) => ({
                     ...prev,
-                    reportingUnit: e.target.value,
+                    reportingUnit: id,
                   }));
                   setErrors((prev) => ({ ...prev, reportingUnit: "" }));
                 }}
                 invalid={!!errors.reportingUnit}
                 invalidText={errors.reportingUnit}
-              >
-                <SelectItem value="" text="" />
-                {reportingUnits.map((option) => (
-                  <SelectItem
-                    key={option.id}
-                    value={option.id}
-                    text={option.value}
-                  />
-                ))}
-              </Select>
+              />
             </Column>
           </Grid>
         </Tile>

@@ -34,6 +34,7 @@ import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.eqa.service.EQAOrderEntryValidator;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.organization.service.OrganizationService;
@@ -491,6 +492,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // back...". Spring may wrap the original exception, so we walk the
         // cause chain.
         String persistErrorMessage = null;
+        IllegalArgumentException persistRefusal = null;
 
         try {
             // Note: persistData now publishes SamplePatientUpdateDataCreatedEvent
@@ -549,6 +551,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         } catch (IllegalArgumentException e) {
             logger.warn("Order save rejected (validation) for labNo={}: {}", sampleOrder.getLabNo(), e.getMessage());
             persistErrorMessage = e.getMessage();
+            persistRefusal = e;
             persistRejected = true;
             persistFailed = true;
         } catch (Exception e) {
@@ -602,7 +605,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             HttpStatus status = persistRejected ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR;
             if (StringUtils.isNotBlank(persistErrorMessage)
                     && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
-                return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
+                return ResponseEntity.status(status).body(persistErrorBody(persistErrorMessage, persistRefusal));
             }
             return ResponseEntity.status(status)
                     .body(buildErrorBody(result, "Failed to save order", workflowType, ordersWithoutPatient));
@@ -989,6 +992,18 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     private static boolean isPatientFieldError(org.springframework.validation.FieldError fe) {
         return "patientProperties".equals(fe.getField()) || fe.getField().startsWith("patientProperties.");
+    }
+
+    /**
+     * The body of a failed save. A refusal that carries a translation key passes it
+     * on, so the client can show the refusal in the user's language.
+     */
+    static Map<String, Object> persistErrorBody(String message, IllegalArgumentException refusal) {
+        if (refusal instanceof LabelQuantityRefusedException quantityRefusal) {
+            return Map.of("error", message, "messageKey", quantityRefusal.getMessageKey(), "messageArgs",
+                    quantityRefusal.getMessageArgs());
+        }
+        return Map.of("error", message);
     }
 
     private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage) {

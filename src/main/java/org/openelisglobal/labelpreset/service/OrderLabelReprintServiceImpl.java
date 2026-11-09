@@ -13,6 +13,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.SnapshotLabel;
+import org.openelisglobal.barcode.util.LabelQuantityPolicy;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.labelpreset.dao.OrderLabelRequestDAO;
@@ -106,17 +107,14 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
                 if (snapshot == null || snapshot.getPreset() == null) {
                     continue;
                 }
+                int qty = quantity != null ? quantity : (row.getQty() == null ? 1 : row.getQty());
+                LabelQuantityPolicy.require(qty, 1);
+                if (quantity != null && qty > maximumFor(row)) {
+                    throw new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_MAXIMUM,
+                            "Label quantity exceeds the preset maximum");
+                }
                 String labNo = resolveBarcodePayload(row);
                 SnapshotLabel label = new SnapshotLabel(snapshot, labNo, fieldValues(row));
-                int qty = row.getQty() == null ? 1 : row.getQty();
-                if (quantity != null) {
-                    int max = maximumFor(row);
-                    if (quantity > max) {
-                        throw new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_MAXIMUM,
-                                "quantity " + quantity + " exceeds the preset maximum of " + max);
-                    }
-                    qty = quantity;
-                }
                 label.setNumLabels(qty);
                 labels.add(label);
                 // Barcode symbology lives on the maker, not the Label. Apply the

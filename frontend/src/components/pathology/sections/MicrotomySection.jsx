@@ -1,3 +1,4 @@
+import ClinicalAttachmentPreview from "../../common/ClinicalAttachment/ClinicalAttachmentPreview";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Button,
@@ -9,7 +10,7 @@ import {
   Stack,
   TextInput,
 } from "@carbon/react";
-import { Add, ChevronDown, ChevronUp, Launch } from "@carbon/react/icons";
+import { Add, ChevronDown, ChevronUp } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
 import StatusBadge from "../../caseView/StatusBadge";
@@ -118,17 +119,6 @@ const MicrotomySection = ({
     focusFirstOf("#slideLevel" + index, { onlyFrom: [pending.from] });
   }, [slides]);
 
-  const openImage = (slide) => {
-    const win = window.open();
-    win.document.write(
-      '<iframe src="' +
-        slide.fileType +
-        ";base64," +
-        slide.image +
-        '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>',
-    );
-  };
-
   const slideRow = (slide) => {
     // The row's place in the case's own list, not in its group, so every
     // edit lands on this row.
@@ -158,7 +148,14 @@ const MicrotomySection = ({
           <>
             {/* The server leaves a deactivated slide untouched, so an image
                 attached to one would be dropped without a word. */}
+            <p className="pathology-case-view__upload-hint" aria-hidden="true">
+              <FormattedMessage id="clinicalAttachment.uploadHint" />
+            </p>
             <FileUploader
+              className="pathology-case-view__slide-upload"
+              labelDescription={intl.formatMessage({
+                id: "clinicalAttachment.uploadHint",
+              })}
               buttonLabel={intl.formatMessage({
                 id: "label.button.uploadfile",
               })}
@@ -182,14 +179,11 @@ const MicrotomySection = ({
               }}
             />
             {slide.image && (
-              <Button
+              <ClinicalAttachmentPreview
                 kind="tertiary"
                 size="md"
-                renderIcon={Launch}
-                onClick={() => openImage(slide)}
-              >
-                <FormattedMessage id="pathology.label.view" />
-              </Button>
+                attachment={slide}
+              />
             )}
           </>
         )}

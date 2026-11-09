@@ -40,6 +40,7 @@ import {
   shortestHoldingMinutes,
   storageConditionLabelId,
 } from "./handlingRules";
+import SearchableSelect from "../../../common/SearchableSelect";
 
 /**
  * SampleCollectionCard - Card for a single sample with collection details
@@ -219,7 +220,8 @@ const SampleCollectionCard = ({
 
   const sampleTypeName =
     sample.sampleTypeName ||
-    sampleTypes.find((st) => st.id === sample.sampleTypeId)?.value ||
+    sampleTypes.find((st) => String(st.id) === String(sample.sampleTypeId))
+      ?.value ||
     "";
 
   const requirements =
@@ -397,29 +399,25 @@ const SampleCollectionCard = ({
         )}
         {/* Sample Type */}
         <Column lg={4} md={4} sm={4}>
-          <Select
+          <SearchableSelect
             id={`sampleType-${sampleIndex}`}
             labelText={intl.formatMessage({
               id: "sample.type",
               defaultMessage: "Sample Type",
             })}
+            options={sampleTypes}
             value={sample.sampleTypeId || ""}
-            onChange={(e) => {
-              const newTypeId = e.target.value;
+            onChange={(newTypeId) => {
               const newTypeName =
-                sampleTypes.find((st) => st.id === newTypeId)?.value || "";
+                sampleTypes.find((st) => String(st.id) === newTypeId)?.value ||
+                "";
               onUpdate(sampleIndex, {
                 sampleTypeId: newTypeId,
                 sampleTypeName: newTypeName,
               });
             }}
             disabled={isReadOnly}
-          >
-            <SelectItem value="" text="" />
-            {sampleTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id} text={type.value} />
-            ))}
-          </Select>
+          />
         </Column>
 
         {/* Quantity */}

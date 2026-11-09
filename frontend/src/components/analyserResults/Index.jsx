@@ -286,10 +286,9 @@ const Index = () => {
   const breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "analyzer.navigation.analyzers", link: "/analyzers" },
-    {
-      label: analyzerName || "banner.menu.results.analyzer",
-      isCurrentPage: true,
-    },
+    analyzerName
+      ? { text: analyzerName, isCurrentPage: true }
+      : { label: "banner.menu.results.analyzer", isCurrentPage: true },
   ];
 
   return (

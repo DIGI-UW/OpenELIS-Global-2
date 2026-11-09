@@ -19,7 +19,9 @@ import { Locator, expect } from "@playwright/test";
 
 async function openListbox(combobox: Locator, filter?: string) {
   if (filter !== undefined) await combobox.fill(filter);
-  else if ((await combobox.getAttribute("aria-expanded")) !== "true")
+  // Typing the label the box already shows changes nothing, so the list stays
+  // closed; open it by clicking.
+  if ((await combobox.getAttribute("aria-expanded")) !== "true")
     await combobox.click();
   await expect(combobox).toHaveAttribute("aria-expanded", "true");
   const listboxId = await combobox.getAttribute("aria-controls");
@@ -56,6 +58,20 @@ export async function chooseCarbonOption(
   await optionIn(listbox, option).click();
   if (editable) await expect(combobox).toHaveValue(shown);
   else await expect(combobox).toContainText(shown);
+}
+
+/**
+ * Choose the first option a Carbon ComboBox lists, for a step that needs any
+ * real choice from site data. Returns the option's text.
+ */
+export async function chooseFirstCarbonOption(
+  combobox: Locator,
+): Promise<string> {
+  const first = (await openListbox(combobox)).getByRole("option").first();
+  const text = (await first.innerText()).trim();
+  await first.click();
+  await expect(combobox).toHaveValue(text);
+  return text;
 }
 
 /**

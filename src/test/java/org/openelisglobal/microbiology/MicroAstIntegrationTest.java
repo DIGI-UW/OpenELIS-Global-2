@@ -70,7 +70,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
         AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
+        breakpointAdminService.activate(alternative.standard().getId(), new Date(System.currentTimeMillis()),
+                fixtures.defaultUserId());
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -81,7 +84,11 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         MicroAstReading defaultReading = astService.recordReading(defaultRun.getId(),
                 referenceData.antibiotic().getId(), MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
 
-        MicroAstRun altRun = astService.startRun(isolate.getId(), referenceData.panel().getId(),
+        MicroIsolate alternativeIsolate = isolateService.createIsolate(microCase.getId(), "ISO-2", "Gram negative rods",
+                "Separate standard comparison", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                fixtures.defaultUserId());
+        identify(alternativeIsolate);
+        MicroAstRun altRun = astService.startRun(alternativeIsolate.getId(), referenceData.panel().getId(),
                 alternative.standard().getId(), fixtures.defaultUserId());
         MicroAstReading altReading = astService.recordReading(altRun.getId(), referenceData.antibiotic().getId(),
                 MicroAstMethod.MIC, new BigDecimal("4"), fixtures.defaultUserId());
@@ -94,6 +101,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void astRunStoresReadingsInterpretationOverrideAndReview() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -116,6 +124,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void repeatAttemptPersistsProvenanceAndExplicitReportableSelection() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
@@ -136,7 +145,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(MicroAstAttemptType.REPEAT.name(), repeat.getAttemptType());
         assertEquals("Discordant result on repeat culture", repeat.getAttemptReason());
         assertEquals(MicroAstMethod.MIC.name(), repeat.getMethod());
-        assertEquals(false, original.isReportable());
+        assertEquals(true, original.isReportable());
         assertEquals(false, repeat.isReportable());
 
         MicroAstRun selected = astService.selectReportableRun(repeat.getId(), fixtures.defaultUserId());
@@ -149,6 +158,7 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void reviewedWorklistFiltersCountsAndPagesAtTheDatabaseBoundary() {
         MicroCase microCase = caseService.createOrGetCase(sampleItemId, methodId, fixtures.defaultUserId());
+        microCase = fixtures.prepareAstCase(microCase, fixtures.defaultUserId());
         MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());

@@ -32,6 +32,7 @@
 	<queryString>
 		<![CDATA[]]>
 	</queryString>
+	<field name="microbiologyRows" class="java.util.List"/>
 	<field name="nationalId" class="java.lang.String"/>
 	<field name="gender" class="java.lang.String"/>
 	<field name="stNumber" class="java.lang.String"/>
@@ -478,6 +479,7 @@
 	</columnHeader>
 	<detail>
 		<band height="52" splitType="Prevent">
+<printWhenExpression><![CDATA[$F{microbiologyRows} == null]]></printWhenExpression>
 			<rectangle>
 				<reportElement positionType="Float" x="0" y="36" width="10" height="16" isRemoveLineWhenBlank="true" isPrintWhenDetailOverflows="true" forecolor="#999999" backcolor="#999999" uuid="5049d1d9-1ec8-41e2-9437-41e16ec6f7c0">
 					<printWhenExpression><![CDATA[$F{note} != null]]></printWhenExpression>
@@ -610,6 +612,12 @@
 				<textFieldExpression><![CDATA[$F{note}]]></textFieldExpression>
 			</textField>
 		</band>
+<band height="20" splitType="Stretch">
+<printWhenExpression><![CDATA[$F{microbiologyRows} != null]]></printWhenExpression>
+<subreport><reportElement x="0" y="0" width="552" height="20"/>
+<dataSourceExpression><![CDATA[new net.sf.jasperreports.engine.data.JRBeanCollectionDataSource($F{microbiologyRows})]]></dataSourceExpression>
+<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "MicrobiologyBlock.jasper"]]></subreportExpression>
+</subreport></band>
 	</detail>
 	<columnFooter>
 		<band height="83" splitType="Stretch">

@@ -3,6 +3,7 @@ package org.openelisglobal.microbiology.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Date;
 import java.util.Map;
+import org.openelisglobal.microbiology.form.MicroBreakpointDefaultForm;
 import org.openelisglobal.microbiology.form.MicroBreakpointImportPreviewForm;
 import org.openelisglobal.microbiology.form.MicroBreakpointRuleAdminForm;
 import org.openelisglobal.microbiology.form.MicroBreakpointStandardAdminForm;
@@ -10,6 +11,7 @@ import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
 import org.openelisglobal.microbiology.service.MicroBreakpointAdminService;
 import org.openelisglobal.microbiology.service.MicroBreakpointImportService;
+import org.openelisglobal.microbiology.service.MicroBreakpointService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,13 +30,26 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class MicroBreakpointAdminRestController extends MicrobiologyRestControllerSupport {
 
+    private final MicroBreakpointService breakpoints;
     private final MicroBreakpointAdminService service;
     private final MicroBreakpointImportService importService;
 
     public MicroBreakpointAdminRestController(MicroBreakpointAdminService service,
-            MicroBreakpointImportService importService) {
+            MicroBreakpointImportService importService, MicroBreakpointService breakpoints) {
+        this.breakpoints = breakpoints;
         this.service = service;
         this.importService = importService;
+    }
+
+    @GetMapping("/default")
+    public ResponseEntity<MicroBreakpointDefaultForm> getDefaultStandard() {
+        return ResponseEntity.ok(breakpoints.getDefaultStandard());
+    }
+
+    @PutMapping("/standards/{id}/default")
+    public ResponseEntity<MicroBreakpointDefaultForm> setDefaultStandard(@PathVariable String id,
+            HttpServletRequest request) {
+        return ResponseEntity.ok(breakpoints.setDefaultStandard(id, authenticatedUserId(request)));
     }
 
     @GetMapping("/standards")

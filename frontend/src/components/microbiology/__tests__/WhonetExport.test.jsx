@@ -74,7 +74,7 @@ const defaultPolicyRequest = {
 };
 const defaultPolicyQuery =
   "dedup=FIRST_ISOLATE_7_DAY&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE";
-const previewUrl = `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultPolicyQuery}&step=preview&page=1&pageSize=20`;
+const previewUrl = `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultPolicyQuery}&step=preview&page=1&pageSize=20`;
 
 const filterOptions = {
   specimenTypes: [
@@ -141,6 +141,8 @@ describe("WhonetExport", () => {
       significance: ["CLINICALLY_SIGNIFICANT"],
       includeScreening: false,
       includeUnspecified: false,
+      includeEnvironmentalIsolates: false,
+      surveyProgramIds: [],
       ...defaultPolicyRequest,
       page: 1,
       pageSize: 20,
@@ -210,7 +212,7 @@ describe("WhonetExport", () => {
 
     renderExport(
       service,
-      `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
+      `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
     );
 
     const specimenFilter = await screen.findByRole("combobox", {
@@ -235,14 +237,14 @@ describe("WhonetExport", () => {
     );
     await user.click(
       screen.getByRole("checkbox", {
-        name: "Include historical cultures with unspecified purpose",
+        name: "Include environmental isolates",
       }),
     );
     await user.click(screen.getByRole("button", { name: "Preview export" }));
 
     await waitFor(() =>
       expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
-        "specimen=sample-type-blood&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=true&dedup=NONE&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&step=preview&page=1&pageSize=20",
+        "specimen=sample-type-blood&significance=CLINICALLY_SIGNIFICANT&significance=NORMAL_FLORA&includeScreening=true&includeUnspecified=false&includeEnvironmentalIsolates=true&dedup=NONE&dedupBasis=COLLECTION_DATE&dedupScope=ANY_SOURCE&excludeContaminants=true&profileSensitivity=INSENSITIVE&step=preview&page=1&pageSize=20",
       ),
     );
     await waitFor(() =>
@@ -254,7 +256,9 @@ describe("WhonetExport", () => {
         origin: [],
         significance: ["CLINICALLY_SIGNIFICANT", "NORMAL_FLORA"],
         includeScreening: true,
-        includeUnspecified: true,
+        includeUnspecified: false,
+        includeEnvironmentalIsolates: true,
+        surveyProgramIds: [],
         dedup: "NONE",
         dedupBasis: "COLLECTION_DATE",
         dedupScope: "ANY_SOURCE",
@@ -272,7 +276,7 @@ describe("WhonetExport", () => {
 
     renderExport(
       service,
-      `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
+      `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
     );
 
     expect(
@@ -329,7 +333,7 @@ describe("WhonetExport", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
-        `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
+        `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
       ),
     );
     expect(
@@ -402,7 +406,7 @@ describe("WhonetExport", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("whonet-current-url")).toHaveTextContent(
-        `significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultPolicyQuery}&step=preview&page=2&pageSize=20`,
+        `significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultPolicyQuery}&step=preview&page=2&pageSize=20`,
       ),
     );
     await waitFor(() =>
@@ -415,6 +419,8 @@ describe("WhonetExport", () => {
         significance: ["CLINICALLY_SIGNIFICANT"],
         includeScreening: false,
         includeUnspecified: false,
+        includeEnvironmentalIsolates: false,
+        surveyProgramIds: [],
         ...defaultPolicyRequest,
         page: 2,
         pageSize: 20,
@@ -454,7 +460,7 @@ describe("WhonetExport", () => {
 
     renderExport(
       service,
-      `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
+      `/Microbiology/whonet?from=2026-07-01&to=2026-07-31&significance=CLINICALLY_SIGNIFICANT&includeScreening=false&includeUnspecified=false&includeEnvironmentalIsolates=false&${defaultPolicyQuery}&step=configure&page=1&pageSize=20`,
     );
 
     expect(

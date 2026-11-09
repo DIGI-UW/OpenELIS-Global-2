@@ -9,13 +9,13 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 
 /**
  * Whether a saved result value changed, which decides if a result already on an
- * issued patient report is booked as corrected. Validation saves a numeric
- * value back padded to its significant digits; that is not a correction.
+ * issued patient report is booked as corrected. Equivalent numeric notation is
+ * not a correction.
  */
 public class ResultSaveServiceSameValueTest extends BaseWebContextSensitiveTest {
 
     @Test
-    public void aNumericValuePaddedToItsSignificantDigitsIsTheSameValue() {
+    public void aNumericValuePaddedToItsReportingDecimalPlacesIsTheSameValue() {
         assertTrue(ResultSaveService.isSameValue("1.20", "1.2", "N"));
         assertTrue(ResultSaveService.isSameValue("0.50", "0.5", "N"));
         assertTrue(ResultSaveService.isSameValue("25", "25.0", "N"));
@@ -76,6 +76,16 @@ public class ResultSaveServiceSameValueTest extends BaseWebContextSensitiveTest 
         assertEquals("1", ResultSaveService.valueToStore("1", null, "0.9", "A", 0));
         assertEquals("1", ResultSaveService.valueToStore("1", null, "0.9", "N", -1));
         assertEquals("", ResultSaveService.valueToStore("", null, "0.9", "N", 0));
+    }
+
+    @Test
+    public void scientificMeasurementsStayAsEnteredAndExplicitEditsAreSaved() {
+        assertEquals("1.234E-2", ResultSaveService.valueToStore("1.234E-2", "1.234E-2", "1.234E-2", "N", 2));
+        assertEquals("1.234 × 10^-2",
+                ResultSaveService.valueToStore("1.234 × 10^-2", "1.234 × 10^-2", "1.234 × 10^-2", "N", 2));
+        assertEquals("0.01", ResultSaveService.valueToStore("0.01", "1.234E-2", "1.234E-2", "N", 2));
+        assertEquals("0.01", ResultSaveService.valueToStore("0.01", "0.01", "1.234E-2", "N", 2));
+        assertEquals("0.01", ResultSaveService.valueToStore("0.01", null, "1.234E-2", "N", -1));
     }
 
     @Test

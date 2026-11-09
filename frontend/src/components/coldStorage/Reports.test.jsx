@@ -1,5 +1,6 @@
 import React from "react";
 import { vi } from "vitest";
+import { differenceInCalendarDays } from "date-fns";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -96,8 +97,10 @@ describe("Reports", () => {
     expect(start.value).toMatch(mmddyyyy);
     expect(end.value).toMatch(mmddyyyy);
 
-    const days =
-      (new Date(end.value) - new Date(start.value)) / (1000 * 60 * 60 * 24);
+    const days = differenceInCalendarDays(
+      new Date(end.value),
+      new Date(start.value),
+    );
     expect(days).toBe(7);
   });
 });

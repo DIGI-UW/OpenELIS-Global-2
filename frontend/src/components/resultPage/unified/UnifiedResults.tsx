@@ -18,8 +18,6 @@ import {
   Pagination,
   Search,
   Section,
-  Select,
-  SelectItem,
   Table,
   TableBody,
   TableCell,
@@ -94,8 +92,11 @@ import Avatar from "./Avatar";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
+import SearchableSelect from "../../common/SearchableSelect";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
+import RunsChip from "./runs/RunsChip";
+import WaitingTag, { WaitingRun } from "./runs/WaitingTag";
 import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
 const replaceResultsUrl = (urlState: URLSearchParams) => {
@@ -148,6 +149,8 @@ interface WorklistRow extends ResultCellRow, PanelRow {
   analyzerId?: string;
   /** analysis-level non-conformity flag, computed server-side (QAService). */
   nonconforming?: boolean;
+  /** OGC-1200 FR-D3: the run this pending test's analyzer value waits in. */
+  waitingRun?: WaitingRun | null;
   [key: string]: unknown;
 }
 
@@ -169,6 +172,8 @@ interface WorklistResponse {
 
 interface SaveResponse {
   status?: number;
+  /** a save refused because the test's analyzer value waits in a run */
+  waitingRun?: WaitingRun;
   error?: string;
   modifiedBy?: string;
   modifiedAt?: string;
@@ -196,12 +201,15 @@ export interface UnifiedResultsProps {
   accessionNumber?: string;
   embedded?: boolean;
   includeFinished?: boolean;
+  /** Opens a run on /Results (OGC-1200); absent where runs are not offered. */
+  onOpenRun?: (runId: number) => void;
 }
 
 const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   accessionNumber: embeddedAccession,
   embedded = false,
   includeFinished = false,
+  onOpenRun,
 }) => {
   const intl = useIntl();
   const syncUrl = (urlState: URLSearchParams) => {
@@ -421,6 +429,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               row.multiSelectResultValues &&
               row.multiSelectResultValues !== "{}",
             ),
+          Boolean(row.waitingRun),
         );
         if (unsaved[worklistRowKey(row)]) {
           states[worklistRowKey(row)] =
@@ -901,6 +910,39 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
       const key = worklistRowKey(target);
+      if (response && response.status === 409 && response.waitingRun) {
+        // OGC-1200 FR-D3: an analyzer value reached a run after the worklist
+        // loaded. The row becomes the run's, and nothing typed here is kept.
+        const waitingRun = response.waitingRun;
+        setRows((current) =>
+          current.map((row) =>
+            row.analysisId === target.analysisId
+              ? { ...row, waitingRun, resultValue: "" }
+              : row,
+          ),
+        );
+        setRowStates((current) => {
+          const next = { ...current, [key]: "WAITING" as RowEditState };
+          for (const sibling of rowsRef.current) {
+            if (sibling.analysisId === target.analysisId) {
+              next[worklistRowKey(sibling)] = "WAITING";
+            }
+          }
+          return next;
+        });
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            serverMessage(response) ||
+            intl.formatMessage(
+              { id: "run.tag.waiting" },
+              { runId: waitingRun.label },
+            ),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
       if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
@@ -1433,25 +1475,19 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               />
             </Column>
             <Column
-              lg={3}
+              lg={4}
               md={4}
               sm={4}
               className="unifiedResultsToolbarColumn"
             >
-              <Select
+              <SearchableSelect
                 id="unifiedResultsLabUnit"
                 labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                options={labUnits}
                 value={selectedLabUnit}
                 disabled={Boolean(selectedPatient)}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setSelectedLabUnit(e.target.value)
-                }
-              >
-                <SelectItem text="" value="" />
-                {labUnits.map((unit) => (
-                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-                ))}
-              </Select>
+                onChange={(id: string) => setSelectedLabUnit(id)}
+              />
             </Column>
             <Column
               lg={3}
@@ -1506,7 +1542,7 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
               </Button>
             </Column>
             <Column
-              lg={4}
+              lg={3}
               md={2}
               sm={4}
               className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
@@ -1578,6 +1614,9 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
 
         {/* Status filter chips with counts */}
         <Column lg={16} md={8} sm={4} className="unifiedResultsChips">
+          {!embedded && onOpenRun && (
+            <RunsChip testSectionId={selectedLabUnit} onOpenRun={onOpenRun} />
+          )}
           <Tag
             type={statusFilter === "ALL" ? "blue" : "gray"}
             onClick={() => setStatusFilter("ALL")}
@@ -1679,7 +1718,12 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                   const stale = staleInfo[key];
                   const reviewer = presence[row.analysisId];
                   const isExpanded = expandedRowKey === key;
-                  const flag = resultFlagFor(row);
+                  const flag = resultFlagFor({
+                    ...row,
+                    resultValue: isRowEditable(state)
+                      ? row.resultValue
+                      : (row.rawResultValue ?? row.resultValue),
+                  });
                   return (
                     <React.Fragment key={key}>
                       <TableRow>
@@ -1721,6 +1765,12 @@ const UnifiedResults: React.FC<UnifiedResultsProps> = ({
                             <Tag type="cyan" size="sm">
                               <FormattedMessage id="label.results.referredOut" />
                             </Tag>
+                          )}
+                          {state === "WAITING" && row.waitingRun && (
+                            <WaitingTag
+                              run={row.waitingRun}
+                              onOpenRun={onOpenRun}
+                            />
                           )}
                         </TableCell>
                         <TableCell className="unifiedResultsSmallCell">

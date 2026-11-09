@@ -95,6 +95,14 @@ public class ImmunohistochemistrySampleServiceImpl
     @Override
     public void updateWithFormValues(Integer immunohistochemistrySampleId, ImmunohistochemistrySampleForm form) {
         ImmunohistochemistrySample immunohistochemistrySample = get(immunohistochemistrySampleId);
+        if (form.getReports() != null) {
+            form.getReports().forEach(upload -> {
+                if (!immunohistochemistrySample.getReports().stream().anyMatch(stored -> ClinicalAttachmentService
+                        .isUnchanged(upload, stored.getId(), stored.getImage(), stored.getFileType()))) {
+                    ClinicalAttachmentService.validate(upload);
+                }
+            });
+        }
         if (!GenericValidator.isBlankOrNull(form.getAssignedPathologistId())) {
             immunohistochemistrySample.setPathologist(systemUserService.get(form.getAssignedPathologistId()));
         }

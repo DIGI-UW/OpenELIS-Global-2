@@ -12,6 +12,7 @@ import {
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { asList } from "./eqaApi";
+import SearchableSelect from "../common/SearchableSelect";
 
 // The "my scheme is not on this list" option: an enrollment may name a provider
 // whose schemes this instance does not carry, so free text stays available.
@@ -219,7 +220,7 @@ const InlineEnrollmentForm = ({
 
       <Grid condensed>
         <Column lg={5} md={4} sm={4}>
-          <Select
+          <SearchableSelect
             id="enrollment-scheme"
             labelText={intl.formatMessage({ id: "eqa.enrollment.scheme" })}
             helperText={intl.formatMessage({
@@ -227,22 +228,22 @@ const InlineEnrollmentForm = ({
                 ? "eqa.enrollment.scheme.frozen"
                 : "eqa.enrollment.scheme.helper",
             })}
+            options={[
+              ...offeredSchemes.map((scheme) => ({
+                id: scheme.name,
+                value: scheme.name,
+              })),
+              {
+                id: NOT_LISTED,
+                value: intl.formatMessage({
+                  id: "eqa.enrollment.scheme.other",
+                }),
+              },
+            ]}
             value={schemeChoice}
             disabled={frozen}
-            onChange={(e) => pickScheme(e.target.value)}
-          >
-            {offeredSchemes.map((scheme) => (
-              <SelectItem
-                key={scheme.id}
-                value={scheme.name}
-                text={scheme.name}
-              />
-            ))}
-            <SelectItem
-              value={NOT_LISTED}
-              text={intl.formatMessage({ id: "eqa.enrollment.scheme.other" })}
-            />
-          </Select>
+            onChange={pickScheme}
+          />
         </Column>
         <Column lg={5} md={4} sm={4}>
           <TextInput

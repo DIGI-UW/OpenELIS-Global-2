@@ -28,7 +28,6 @@ public class PractitionerRevIncludeFacadeTest extends BaseWebContextSensitiveTes
 
     private static final String PROVIDER_1_UUID = "550e8400-e29b-41d4-a716-446655441004";
     private static final String ANALYSIS_1_UUID = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
-    private static final String RESULT_3_UUID = "550e8400-e29b-41d4-a716-446655440003";
 
     @Autowired
     private PractitionerProvider practitionerProvider;

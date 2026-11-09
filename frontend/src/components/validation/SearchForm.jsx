@@ -9,14 +9,13 @@ import {
   InlineNotification,
   Loading,
   Search,
-  Select,
-  SelectItem,
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, Roles } from "../utils/Utils";
 import { format, isValid, parse } from "date-fns";
 import SearchPatientForm from "../patient/SearchPatientForm";
+import SearchableSelect from "../common/SearchableSelect";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import {
@@ -273,19 +272,13 @@ const SearchForm = (props) => {
               </div>
             </div>
             <div className="unifiedResultsToolbarColumn validationToolbarLabUnit">
-              <Select
+              <SearchableSelect
                 id="validationLabUnit"
                 labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                options={testSections}
                 value={search.testSectionId}
-                onChange={(e) =>
-                  updateSearch({ testSectionId: e.target.value }, true)
-                }
-              >
-                <SelectItem text="" value="" />
-                {testSections.map((unit) => (
-                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-                ))}
-              </Select>
+                onChange={(id) => updateSearch({ testSectionId: id }, true)}
+              />
             </div>
             <div className="unifiedResultsToolbarColumn validationToolbarDates">
               <DatePicker

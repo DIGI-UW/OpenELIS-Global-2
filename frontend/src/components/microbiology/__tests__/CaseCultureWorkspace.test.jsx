@@ -1,0 +1,683 @@
+import React from "react";
+import { vi } from "vitest";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
+import { IntlProvider, createIntl } from "react-intl";
+import messages from "../../../languages/en.json";
+import { labTimeZone } from "../MicrobiologyTime";
+import CaseCultureWorkspace from "../CaseCultureWorkspace";
+const sources = [
+  {
+    sampleItemId: "s1",
+    sampleTypeId: "type1",
+    label: "SPEC-1",
+    specimenType: "Sputum",
+  },
+];
+const options = {
+  sources,
+  requireTrackedMedia: false,
+  gramStainTest: { id: "gram1", value: "Configured Gram stain" },
+  gramStainSampleTypeIds: ["type1"],
+  atmospheres: [{ id: "air", value: "Aerobic" }],
+  readings: [{ id: "growth", value: "Growth observed" }],
+  quantities: [{ id: "scant", value: "Scant" }],
+  extensionReasons: [{ id: "await", value: "Awaiting growth" }],
+  media: [
+    {
+      id: 10,
+      name: "Blood agar",
+      trackLots: true,
+      lots: [{ id: 20, lotNumber: "LOT-20" }],
+      atmosphereId: "air",
+      temperature: 35,
+    },
+  ],
+  mediaLinks: [
+    {
+      mediumItemId: 10,
+      sampleTypeId: "type1",
+      duration: 48,
+      durationUnit: "HOURS",
+      checkIntervalHours: 8,
+      loopVolume: 1,
+    },
+  ],
+};
+const row = {
+  id: "r1",
+  sourceSampleItemId: "s1",
+  containerIdentifier: "PLATE-1",
+  mediumItemId: 10,
+  mediumName: "Blood agar",
+  lotId: 20,
+  lotNumber: "LOT-20",
+  atmosphereId: "air",
+  atmosphereName: "Aerobic",
+  duration: 48,
+  durationUnit: "HOURS",
+  inoculatedAt: "2026-10-09T10:00:00Z",
+  incubationEnds: "2026-10-11T10:00:00Z",
+  readings: [],
+  extensions: [],
+  proposals: [],
+  canEditInoculatedAt: true,
+};
+const detail = { id: "c1", canWrite: true, samples: sources };
+const api = (rows = [row]) => ({
+  getCultures: vi.fn().mockResolvedValue(rows),
+  getCultureOptions: vi.fn().mockResolvedValue(options),
+  inoculateCulture: vi.fn().mockResolvedValue(rows),
+  cultureAction: vi.fn().mockResolvedValue(rows),
+});
+const show = (service, extra = {}) =>
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseCultureWorkspace
+        detail={detail}
+        service={service}
+        onSelect={vi.fn()}
+        onChooseTests={vi.fn()}
+        {...extra}
+      />
+    </IntlProvider>,
+  );
+const change = (label, value) =>
+  fireEvent.change(screen.getByLabelText(label), { target: { value } });
+it("prefills medium links and requires a lot for tracked media", async () => {
+  const service = api([]);
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  expect(screen.getByRole("combobox", { name: "Medium" })).toHaveValue(
+    "Blood agar · Lot tracked",
+  );
+  expect(screen.getByLabelText("Incubation duration")).toHaveValue(48);
+  expect(screen.getByLabelText("Atmosphere")).toHaveValue("air");
+  expect(screen.getByLabelText("Lot not tracked")).toBeDisabled();
+  change("Bottle or plate identifier", "P-NEW");
+  expect(
+    screen.getByRole("button", { name: "Save", exact: true }),
+  ).toBeDisabled();
+  change("Medium lot", "20");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        mediumItemId: 10,
+        lotId: 20,
+        notTracked: false,
+        duration: 48,
+        atmosphereId: "air",
+      }),
+    ),
+  );
+});
+it("renders parent children and separate read logs", async () => {
+  const parent = {
+    ...row,
+    readings: [
+      {
+        id: "read1",
+        readingName: "Growth observed",
+        note: "First parent reading",
+        incubationDay: 1,
+        by: "writer",
+        at: row.inoculatedAt,
+      },
+    ],
+  };
+  const child = {
+    ...row,
+    id: "r2",
+    parentId: "r1",
+    containerIdentifier: "CHILD-1",
+    outcome: "NO_GROWTH",
+  };
+  show(api([parent, child]));
+  const parentTile = await screen.findByTestId("culture-row-r1");
+  const childTile = screen.getByTestId("culture-row-r2");
+  expect(parentTile).toContainElement(childTile);
+  expect(within(parentTile).getByText("First parent reading")).toBeVisible();
+  expect(
+    within(childTile).queryByText("First parent reading"),
+  ).not.toBeInTheDocument();
+});
+it("read-only users see history without mutation controls", async () => {
+  show(api(), { detail: { ...detail, canWrite: false } });
+  await screen.findByTestId("culture-row-r1");
+  for (const name of [
+    "Inoculate culture",
+    "Add reading",
+    "Record outcome",
+    "Extend incubation",
+    "Gram stain",
+  ])
+    expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+  expect(screen.getByText("LOT-20")).toBeVisible();
+});
+it("a first reading removes inoculated-time editing", async () => {
+  show(
+    api([
+      {
+        ...row,
+        canEditInoculatedAt: false,
+        readings: [
+          {
+            id: "first",
+            readingName: "No growth observed",
+            incubationDay: 1,
+            by: "writer",
+            at: row.inoculatedAt,
+          },
+        ],
+      },
+    ]),
+  );
+  await screen.findByTestId("culture-row-r1");
+  expect(
+    screen.queryByRole("button", { name: "Edit inoculated time" }),
+  ).not.toBeInTheDocument();
+});
+it("an unconfirmed instrument proposal leaves the row incubating", async () => {
+  const proposal = {
+    id: "proposal1",
+    signal: "NEGATIVE",
+    receivedAt: row.inoculatedAt,
+  };
+  const service = api([{ ...row, proposals: [proposal] }]);
+  show(service);
+  await screen.findByText(/Instrument negative proposal: NEGATIVE/);
+  expect(screen.getByText("Incubating")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm no growth" }));
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith("c1", "r1", "outcome", {
+      outcome: "NO_GROWTH",
+      proposalId: "proposal1",
+    }),
+  );
+});
+it("a failed reading save retains its input and shows validation feedback", async () => {
+  const service = api();
+  service.cultureAction.mockRejectedValue({
+    response: { message: "MICROBIOLOGY_CULTURE_CODE" },
+  });
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Add reading" }));
+  change("Reading", "growth");
+  change("Note", "Keep this note");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await screen.findByText("Select an active dictionary option.");
+  expect(screen.getByLabelText("Note")).toHaveValue("Keep this note");
+});
+it("Gram shortcut passes the configured catalog test and the culture source", async () => {
+  const choose = vi.fn();
+  show(api(), { onChooseTests: choose });
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Gram stain", exact: true }),
+  );
+  expect(choose).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "r1", source: sources[0] }),
+    options.gramStainTest,
+  );
+});
+it("a transfer revokes access to an open mutation form", async () => {
+  const service = api();
+  const view = show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Add reading" }));
+  view.rerender(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseCultureWorkspace
+        detail={{ ...detail, canWrite: false }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});
+
+test("Gram stain is disabled on a source outside its specimen catalog", async () => {
+  const service = api([{ ...row, sourceSampleItemId: "incompatible" }]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      {
+        sampleItemId: "incompatible",
+        sampleTypeId: "type2",
+        specimenType: "Other specimen",
+      },
+    ],
+  });
+  show(service);
+  expect(
+    await screen.findByRole("button", {
+      name: messages["microbiology.culture.gramStain"],
+    }),
+  ).toBeDisabled();
+});
+
+test("growth still offers readings and incubation extension", async () => {
+  show(api([{ ...row, outcome: "GROWTH", positiveAt: row.inoculatedAt }]));
+  expect(
+    await screen.findByRole("button", { name: "Add reading" }),
+  ).toBeEnabled();
+  expect(
+    screen.getByRole("button", { name: "Extend incubation" }),
+  ).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Record outcome" })).toBeNull();
+});
+
+test("changing media applies source-specific incubation defaults before generic defaults", async () => {
+  const service = api();
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    media: [
+      ...options.media,
+      { id: 11, name: "Long incubation medium", trackLots: false, lots: [] },
+    ],
+    mediaLinks: [
+      ...options.mediaLinks,
+      { mediumItemId: 11, duration: 3, durationUnit: "DAYS" },
+      {
+        mediumItemId: 11,
+        sampleTypeId: "type1",
+        duration: 56,
+        durationUnit: "DAYS",
+        checkIntervalHours: 24,
+        loopVolume: 2,
+      },
+    ],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Medium" }), {
+    target: { value: "Long incubation" },
+  });
+  fireEvent.click(
+    screen.getByRole("option", {
+      name: "Long incubation medium · Lot not tracked",
+    }),
+  );
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.duration"]),
+  ).toHaveValue(56);
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+  ).toHaveValue("DAYS");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.checkIntervalHours"]),
+  ).toHaveValue(24);
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.loopVolume"]),
+  ).toHaveValue(2);
+});
+test("changing the source refreshes its media-link incubation defaults", async () => {
+  const service = api();
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { sampleItemId: "s2", sampleTypeId: "type2", label: "SPEC-2" },
+    ],
+    mediaLinks: [
+      ...options.mediaLinks,
+      {
+        mediumItemId: 10,
+        sampleTypeId: "type2",
+        duration: 7,
+        durationUnit: "DAYS",
+      },
+    ],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  fireEvent.change(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+    { target: { value: "s2" } },
+  );
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.duration"]),
+  ).toHaveValue(7);
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+  ).toHaveValue("DAYS");
+});
+
+it.each([null, "missing-source"])(
+  "hides source-dependent actions for a historical row with source %s while preserving reading access",
+  async (sourceSampleItemId) => {
+    show(api([{ ...row, sourceSampleItemId }]));
+    await screen.findByRole("heading", { name: /PLATE-1/ });
+    expect(
+      screen.queryByRole("button", { name: "Subculture", exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Add test on this culture",
+        exact: true,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Gram stain", exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add reading", exact: true }),
+    ).toBeEnabled();
+  },
+);
+
+it.each(["NO_GROWTH", "CONTAMINATED"])(
+  "hides new culture work for %s",
+  async (outcome) => {
+    show(api([{ ...row, outcome, canEditInoculatedAt: false }]));
+    await screen.findByText("PLATE-1");
+    expect(
+      screen.queryByRole("button", { name: "Subculture", exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Test on culture", exact: true }),
+    ).not.toBeInTheDocument();
+  },
+);
+
+test.each([{}, { atmosphereId: "air", temperature: 37 }])(
+  "changing to an unlinked medium clears old conditions and applies its own defaults %j",
+  async (environment) => {
+    const service = api([]);
+    service.getCultureOptions.mockResolvedValue({
+      ...options,
+      media: [
+        ...options.media,
+        {
+          id: 11,
+          name: "Unlinked medium",
+          trackLots: false,
+          lots: [],
+          ...environment,
+        },
+      ],
+    });
+    show(service);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Inoculate culture" }),
+    );
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Medium", exact: true }),
+      { target: { value: "Unlinked" } },
+    );
+    fireEvent.click(
+      screen.getByRole("option", { name: "Unlinked medium · Lot not tracked" }),
+    );
+    for (const key of ["duration", "checkIntervalHours", "loopVolume"])
+      expect(
+        screen.getByLabelText(messages[`microbiology.culture.${key}`]),
+      ).toHaveValue(null);
+    expect(
+      screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
+    ).toHaveValue("");
+    expect(
+      screen.getByLabelText(messages["microbiology.culture.atmosphereId"]),
+    ).toHaveValue(environment.atmosphereId || "");
+    expect(
+      screen.getByLabelText(messages["microbiology.culture.temperature"]),
+    ).toHaveValue(environment.temperature ?? null);
+    expect(
+      screen.getByRole("button", { name: "Save", exact: true }),
+    ).toBeDisabled();
+  },
+);
+
+test("changing source preserves an explicitly tracked lot on the same optional medium", async () => {
+  const service = api([]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { sampleItemId: "s2", sampleTypeId: "type1", label: "SPEC-2" },
+    ],
+    media: [{ ...options.media[0], trackLots: false }],
+  });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Inoculate culture" }),
+  );
+  fireEvent.click(screen.getByLabelText("Lot not tracked"));
+  change("Medium lot", "20");
+  change(messages["microbiology.culture.sourceSampleItemId"], "s2");
+  expect(screen.getByLabelText("Lot not tracked")).not.toBeChecked();
+  expect(screen.getByLabelText("Medium lot")).toHaveValue("20");
+  change("Bottle or plate identifier", "P-TRACKED");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        sourceSampleItemId: "s2",
+        mediumItemId: 10,
+        lotId: 20,
+        notTracked: false,
+      }),
+    ),
+  );
+});
+
+it("preserves received-isolate provenance while allowing a real subculture", async () => {
+  const service = api([
+    {
+      ...row,
+      receivedIsolate: true,
+      outcome: "GROWTH",
+      positiveAt: row.inoculatedAt,
+    },
+  ]);
+  show(service, { onPickIsolate: vi.fn() });
+  const tile = await screen.findByTestId("culture-row-r1");
+  expect(
+    within(tile).queryByRole("button", {
+      name: "Container labels",
+      exact: true,
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).getAllByText("Growth (received isolate)"),
+  ).not.toHaveLength(0);
+  expect(
+    within(tile).queryByRole("button", { name: "Pick isolate" }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).queryByRole("button", {
+      name: messages["microbiology.culture.action.positive-time"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).queryByRole("button", {
+      name: messages["microbiology.culture.action.reading"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).getByRole("button", {
+      name: messages["microbiology.culture.subculture"],
+    }),
+  ).toBeEnabled();
+});
+
+it("previews an extension from the existing end without resetting inoculation", async () => {
+  show(api());
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Extend incubation" }),
+  );
+  change("Extend by", "12");
+  change("Extension unit", "HOURS");
+  const preview = screen.getByText(/New incubation end:/);
+  const intl = createIntl({ locale: "en", messages });
+  const end = new Date("2026-10-11T22:00:00Z");
+  expect(preview).toHaveTextContent(
+    intl.formatDate(end, { timeZone: labTimeZone() }),
+  );
+  expect(preview).toHaveTextContent(
+    intl.formatTime(end, { timeZone: labTimeZone(), timeZoneName: "short" }),
+  );
+  change("Extend by", "0");
+  expect(screen.getByText(/New incubation end:/)).toHaveTextContent(
+    "Not available",
+  );
+});
+
+it.each([
+  ["mark-positive", "GROWTH"],
+  ["mark-no-growth", "NO_GROWTH"],
+])(
+  "opens the routed %s outcome and saves it on its culture row",
+  async (entryAction, outcome) => {
+    const service = api();
+    const changed = vi.fn();
+    const consumed = vi.fn();
+    show(service, {
+      entryAction,
+      onChanged: changed,
+      onEntryActionConsumed: consumed,
+    });
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Culture row")).toHaveValue("r1");
+    expect(within(dialog).getByLabelText("Outcome")).toHaveValue(outcome);
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save", exact: true }),
+    );
+    await waitFor(() =>
+      expect(service.cultureAction).toHaveBeenCalledWith(
+        "c1",
+        "r1",
+        "outcome",
+        expect.objectContaining({ outcome }),
+      ),
+    );
+    expect(service.cultureAction.mock.calls[0][3]).not.toHaveProperty(
+      "cultureRowId",
+    );
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(consumed).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("requires an explicit culture selection when a routed outcome has multiple eligible rows", async () => {
+  const service = api([
+    row,
+    { ...row, id: "r2", containerIdentifier: "PLATE-2" },
+  ]);
+  show(service, { entryAction: "mark-no-growth" });
+  const dialog = await screen.findByRole("dialog");
+  const save = within(dialog).getByRole("button", {
+    name: "Save",
+    exact: true,
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(within(dialog).getByLabelText("Culture row"), {
+    target: { value: "r2" },
+  });
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.cultureAction).toHaveBeenCalledWith(
+      "c1",
+      "r2",
+      "outcome",
+      expect.objectContaining({ outcome: "NO_GROWTH" }),
+    ),
+  );
+});
+
+it("explains a routed outcome without eligible cultures", async () => {
+  const service = api([]);
+  show(service, { entryAction: "mark-positive" });
+  await screen.findByText(
+    messages["microbiology.culture.noEligibleOutcomeRows"],
+  );
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});
+
+it("does not open a routed outcome for a read-only viewer", async () => {
+  const service = api();
+  show(service, {
+    entryAction: "mark-positive",
+    detail: { ...detail, canWrite: false },
+  });
+  await screen.findByTestId("culture-row-r1");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(service.cultureAction).not.toHaveBeenCalled();
+});
+
+it("opens and consumes the routed primary inoculation action", async () => {
+  const consumed = vi.fn();
+  show(api([]), {
+    entryAction: "start-inoculation",
+    onEntryActionConsumed: consumed,
+  });
+  await screen.findByRole("dialog");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toBeInTheDocument();
+  expect(screen.queryByLabelText("Parent culture")).not.toBeInTheDocument();
+  expect(consumed).toHaveBeenCalledTimes(1);
+});
+it("routed subculture requires an eligible parent and preserves its specimen", async () => {
+  const consumed = vi.fn();
+  const service = api([
+    row,
+    {
+      ...row,
+      id: "r2",
+      sourceSampleItemId: "s2",
+      containerIdentifier: "PLATE-2",
+    },
+    {
+      ...row,
+      id: "r3",
+      containerIdentifier: "CONCLUDED",
+      outcome: "NO_GROWTH",
+    },
+  ]);
+  service.getCultureOptions.mockResolvedValue({
+    ...options,
+    sources: [
+      ...sources,
+      { ...sources[0], sampleItemId: "s2", label: "SPEC-2" },
+    ],
+  });
+  show(service, {
+    entryAction: "add-subculture",
+    onEntryActionConsumed: consumed,
+  });
+  const parent = await screen.findByLabelText("Parent culture");
+  expect(
+    screen.queryByRole("option", { name: "CONCLUDED" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: messages["microbiology.culture.save"] }),
+  ).toBeDisabled();
+  fireEvent.change(parent, { target: { value: "r2" } });
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toHaveValue("s2");
+  expect(
+    screen.getByLabelText(messages["microbiology.culture.sourceSampleItemId"]),
+  ).toBeDisabled();
+  change("Bottle or plate identifier", "SUB-2");
+  change("Medium lot", "20");
+  fireEvent.click(screen.getByRole("button", { name: "Save", exact: true }));
+  await waitFor(() =>
+    expect(service.inoculateCulture).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ parentId: "r2", sourceSampleItemId: "s2" }),
+    ),
+  );
+  expect(consumed).toHaveBeenCalledTimes(1);
+});

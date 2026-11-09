@@ -1,4 +1,4 @@
-testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,significance
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,significance
 Malaria Parasite Detection,D,Positive,vecPathogenResult,1,N,Y,N,,,POSITIVE
 Malaria Parasite Detection,D,Negative,vecPathogenResult,2,N,Y,Y,,,NEGATIVE
 Pan-Plasmodium CSP ELISA,D,Positive,vecPathogenResult,1,N,Y,N,,,POSITIVE

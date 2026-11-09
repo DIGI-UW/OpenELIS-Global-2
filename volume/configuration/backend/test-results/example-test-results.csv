@@ -1,4 +1,4 @@
-testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,significance
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,significance
 # ============================================================================
 # DICTIONARY TYPE (D) - HIV and Hepatitis Tests
 # Note: Test names use base names (e.g., "HIV Rapid Test") and are automatically

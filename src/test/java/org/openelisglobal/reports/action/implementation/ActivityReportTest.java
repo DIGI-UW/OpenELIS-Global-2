@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,11 +15,13 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
+import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.reports.action.implementation.reportBeans.ActivityReportBean;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testsupport.PdfText;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 public class ActivityReportTest extends BaseWebContextSensitiveTest {
 
@@ -66,6 +69,32 @@ public class ActivityReportTest extends BaseWebContextSensitiveTest {
         assertTrue(item.getAccessionNumber(), item.getAccessionNumber().endsWith("901"));
         assertTrue("no patient name: " + item.getPatientLastName(), item.getPatientLastName().isEmpty());
         assertTrue("no patient id: " + item.getPatientId(), item.getPatientId().isEmpty());
+    }
+
+    /**
+     * OGC-1515: the report by test wrote to a parameters map that no longer existed
+     * and answered 500 for every test chosen.
+     */
+    @Test
+    public void theReportByTestListsTheChosenTestsResults() throws Exception {
+        executeDataSetWithStateManagement("testdata/patient-results-report.xml");
+        new JdbcTemplate(SpringContext.getBean(DataSource.class))
+                .update("UPDATE clinlims.result SET result_type = 'N' WHERE id = 1");
+        ActivityReportByTest report = new ActivityReportByTest();
+        ReportForm form = new ReportForm();
+        form.setLowerDateRange("12/02/2024");
+        form.setUpperDateRange("12/02/2024");
+        ReportSpecificationList selection = new ReportSpecificationList(List.of(new IdValuePair("1", "Glucose")),
+                "Test");
+        selection.setSelection("1");
+        form.setSelectList(selection);
+
+        report.initializeReport(form);
+        report.setReportPath(getClass().getClassLoader().getResource("reports/").getPath());
+        String text = PdfText.of(report.runReport());
+
+        assertTrue(text, text.contains("Test: Glucose"));
+        assertTrue(text, text.contains("24-00001"));
     }
 
     private ActivityReport report() {
