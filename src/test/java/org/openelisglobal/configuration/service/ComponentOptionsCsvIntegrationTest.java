@@ -128,6 +128,33 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
                 Boolean.class, TEST));
     }
 
+    /**
+     * OGC-1608: isRequired left blank makes a new component required only when it
+     * is the primary, and leaves an existing component's value as it is.
+     */
+    @Test
+    public void requiredDefaultsToThePrimaryAndBlankUpdatesPreserveIt() throws Exception {
+        assertEquals(Boolean.TRUE, required("PRIMARY"));
+        assertEquals(Boolean.FALSE, required("call"));
+
+        load(componentHandler, "testName,code,isRequired\n" + TEST + ",call,Y\n", "require-call.csv");
+        assertEquals(Boolean.TRUE, required("call"));
+        load(componentHandler, "testName,code,label,isRequired\n" + TEST + ",call,Call result,\n", "rename-call.csv");
+        assertEquals(Boolean.TRUE, required("call"));
+        load(componentHandler, "testName,code,isRequired\n" + TEST + ",call,N\n", "optional-call.csv");
+        assertEquals(Boolean.FALSE, required("call"));
+
+        load(componentHandler, "testName,code,label,resultType\n" + TEST + ",extra,Extra,N\n", "add-extra.csv");
+        assertEquals(Boolean.FALSE, required("extra"));
+    }
+
+    private Boolean required(String code) {
+        return jdbc.queryForObject(
+                "SELECT is_required FROM clinlims.test_result_component WHERE is_active = 'Y'"
+                        + " AND code = ? AND test_id = (SELECT id FROM clinlims.test WHERE description = ?)",
+                Boolean.class, code, TEST);
+    }
+
     @Test
     public void eachAnswerLandsOnTheComponentItsRowNames() throws Exception {
         load(testResultHandler, answers(), "test-results.csv");

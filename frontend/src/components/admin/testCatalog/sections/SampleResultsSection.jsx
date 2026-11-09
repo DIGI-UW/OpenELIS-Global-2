@@ -464,6 +464,7 @@ const SampleResultsSection = ({ testId }) => {
           allowMultipleReadings: false,
           isPrimary: prev.length === 0,
           showOnReport: true,
+          isRequired: prev.length === 0,
           options: [],
           interpretations: [],
         },
@@ -985,6 +986,18 @@ const SampleResultsSection = ({ testId }) => {
                   disabled={!!c.isPrimary}
                   onToggle={(checked) =>
                     patchComponent(ci, { showOnReport: checked })
+                  }
+                />
+                <Toggle
+                  id={`comp-required-${ci}`}
+                  labelText={intl.formatMessage({
+                    id: "label.testCatalog.sampleResults.isRequired",
+                  })}
+                  labelA={intl.formatMessage({ id: "label.no" })}
+                  labelB={intl.formatMessage({ id: "label.yes" })}
+                  toggled={c.isRequired === true}
+                  onToggle={(checked) =>
+                    patchComponent(ci, { isRequired: checked })
                   }
                 />
                 <TextInput

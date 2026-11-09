@@ -400,6 +400,36 @@ public class TestCatalogSampleResultsLifecycleIntegrationTest extends BaseWebCon
                 Integer.class, copied));
     }
 
+    /**
+     * OGC-1608: copying a test whose primary has another code retires the blank
+     * pre-seeded PRIMARY instead of keeping it as a required primary nobody
+     * configured; the copied primary and the required flags come across.
+     */
+    @org.junit.Test
+    public void aCopyFromASourceWithAnotherPrimaryCodeRetiresTheBlankPrimary() {
+        ResultComponentDto value = comp(primaryId(), "VALUE", "Value", true, 0);
+        value.isRequired = true;
+        ResultComponentDto interpretation = comp(null, "INTERP", "Interpretation", false, 1);
+        interpretation.isRequired = true;
+        assertEquals(200, save(value, interpretation));
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " VALUES (?, 'LifecycleIT copy', 'LifecycleIT copy desc', 'N', ?, NOW())",
+                COPY_TARGET_ID, UUID.randomUUID().toString());
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order,"
+                + " allow_multiple_readings, is_primary, show_on_report, is_required, is_active, lastupdated,"
+                + " last_updated) VALUES (?, ?, 'PRIMARY', 'Result', 0, false, true, true, true, 'Y', NOW(),"
+                + " NOW())", UUID.randomUUID().toString(), COPY_TARGET_ID);
+
+        componentService.copyComponentsFromTest(testId(), String.valueOf(COPY_TARGET_ID), "1");
+
+        var active = componentService.getActiveComponentsByTestId(String.valueOf(COPY_TARGET_ID));
+        assertEquals(java.util.List.of("VALUE", "INTERP"), active.stream().map(c -> c.getCode()).toList());
+        assertTrue("the copied primary stays the primary", active.get(0).getIsPrimary());
+        assertTrue(active.get(0).getIsRequired());
+        assertTrue(active.get(1).getIsRequired());
+    }
+
     // -- 6, 7, 8: the rulings of 11 Oct 2026 ---------------------------------
 
     @org.junit.Test

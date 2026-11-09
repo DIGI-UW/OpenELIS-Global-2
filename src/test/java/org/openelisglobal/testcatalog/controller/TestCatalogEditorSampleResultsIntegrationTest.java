@@ -361,6 +361,43 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
                 .filter(c -> "PRIMARY".equals(c.code)).findFirst().orElseThrow().log10SourceComponentCode);
     }
 
+    /**
+     * OGC-1608: Required round-trips per component. Left out of a save, a new
+     * component is required only when it is the primary, and a stored component
+     * keeps the value it has.
+     */
+    @org.junit.Test
+    public void requiredRoundTripsAndDefaultsToThePrimaryWhenLeftOut() {
+        ResultComponentDto primary = comp(null, "PRIMARY", "Value", 0);
+        primary.isPrimary = true;
+        ResultComponentDto interpretation = comp(null, "INTERP", "Interpretation", 1);
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), body(primary, interpretation), authedRequest())
+                        .getStatusCodeValue());
+        SampleResults saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(Boolean.TRUE, byCode(saved, "PRIMARY").isRequired);
+        assertEquals(Boolean.FALSE, byCode(saved, "INTERP").isRequired);
+
+        byCode(saved, "INTERP").isRequired = true;
+        byCode(saved, "PRIMARY").isRequired = false;
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest()).getStatusCodeValue());
+        saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals(Boolean.FALSE, byCode(saved, "PRIMARY").isRequired);
+        assertEquals(Boolean.TRUE, byCode(saved, "INTERP").isRequired);
+
+        saved.components.forEach(c -> c.isRequired = null);
+        assertEquals(200,
+                controller.saveSampleResults(String.valueOf(TEST_ID), saved, authedRequest()).getStatusCodeValue());
+        saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody();
+        assertEquals("a save without the field keeps it", Boolean.FALSE, byCode(saved, "PRIMARY").isRequired);
+        assertEquals(Boolean.TRUE, byCode(saved, "INTERP").isRequired);
+    }
+
+    private static ResultComponentDto byCode(SampleResults sr, String code) {
+        return sr.components.stream().filter(c -> code.equals(c.code)).findFirst().orElseThrow();
+    }
+
     @org.junit.Test
     public void getSampleResults_emptyReturns200WithNoComponents() {
         ResponseEntity<SampleResults> resp = controller.getSampleResults(String.valueOf(TEST_ID));
