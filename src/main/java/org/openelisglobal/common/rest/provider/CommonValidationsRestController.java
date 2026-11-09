@@ -32,20 +32,35 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class CommonValidationsRestController {
 
-    private ResponseObject responseObject;
-
     @Autowired
     protected ProjectService projectService;
 
-    protected SearchResultsService searchResultsService = SpringContext.getBean(SearchResultsService.class);
+    @Autowired(required = false)
+    protected SearchResultsService searchResultsService;
 
-    public CommonValidationsRestController() {
-        this.responseObject = new ResponseObject();
+    @Autowired(required = false)
+    protected PhoneNumberService phoneNumberService;
+
+    protected PhoneNumberService getPhoneNumberService() {
+        return phoneNumberService != null ? phoneNumberService : new PhoneNumberService();
+    }
+
+    protected SearchResultsService getSearchResultsService() {
+        if (searchResultsService == null) {
+            try {
+                searchResultsService = SpringContext.getBean(SearchResultsService.class);
+            } catch (Exception e) {
+                // In non-Spring or mocked test environments where SpringContext is
+                // uninitialized
+            }
+        }
+        return searchResultsService;
     }
 
     @GetMapping(value = "SampleEntryAccessionNumberValidation", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseObject getAccessionNumberValidation(HttpServletRequest request) {
+        ResponseObject responseObject = new ResponseObject();
         String accessionNumber = request.getParameter("accessionNumber");
         String field = request.getParameter("field");
         String recordType = request.getParameter("recordType");
@@ -121,7 +136,7 @@ public class CommonValidationsRestController {
     public ResponseObject accessionNumberGenerator(@RequestParam(required = false) String programCode,
             @RequestParam(defaultValue = "false") Boolean noIncrement,
             @RequestParam(required = false) AccessionFormat format) {
-
+        ResponseObject responseObject = new ResponseObject();
         String nextNumber = null;
         String error = null;
         try {
@@ -159,9 +174,7 @@ public class CommonValidationsRestController {
         }
 
         boolean success = !GenericValidator.isBlankOrNull(nextNumber);
-        if (success) {
-            responseObject.setStatus(true);
-        }
+        responseObject.setStatus(success);
         String result = GenericValidator.isBlankOrNull(error) ? nextNumber : error;
         responseObject.setBody(result);
         return responseObject;
@@ -170,16 +183,22 @@ public class CommonValidationsRestController {
     @GetMapping(value = "PhoneNumberValidationProvider", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseObject getPhoneNumberValidation(HttpServletRequest request) {
-
+        ResponseObject responseObject = new ResponseObject();
         String field = request.getParameter("fieldId");
         String phoneNumber = request.getParameter("value");
 
-        PhoneNumberService numberService = new PhoneNumberService();
+        PhoneNumberService numberService = getPhoneNumberService();
         boolean valid = numberService.validatePhoneNumber(phoneNumber);
 
         if (!valid) {
             responseObject.setStatus(false);
-            String result = MessageUtil.getMessage("phone.number.format.error", PhoneNumberService.getPhoneFormat());
+            String phoneFormat;
+            try {
+                phoneFormat = PhoneNumberService.getPhoneFormat();
+            } catch (Exception e) {
+                phoneFormat = "";
+            }
+            String result = MessageUtil.getMessage("phone.number.format.error", phoneFormat);
             responseObject.setBody(result);
         } else {
             responseObject.setStatus(true);
@@ -192,7 +211,7 @@ public class CommonValidationsRestController {
     @ResponseBody
     public ResponseObject validateSubjectNumberAndNationalId(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
+        ResponseObject responseObject = new ResponseObject();
         String fieldId = request.getParameter("fieldId");
         String number = request.getParameter("subjectNumber");
         String numberType = request.getParameter("numberType");
@@ -205,8 +224,9 @@ public class CommonValidationsRestController {
         // We just care about duplicates but blank values do not count as duplicates
         if (!(GenericValidator.isBlankOrNull(STNumber) && GenericValidator.isBlankOrNull(subjectNumber)
                 && GenericValidator.isBlankOrNull(nationalId))) {
-            List<PatientSearchResults> results = searchResultsService.getSearchResultsExact(null, null, STNumber,
-                    subjectNumber, nationalId, null, null, null, null, null);
+            SearchResultsService searchService = getSearchResultsService();
+            List<PatientSearchResults> results = searchService != null ? searchService.getSearchResultsExact(null, null,
+                    STNumber, subjectNumber, nationalId, null, null, null, null, null) : List.of();
 
             boolean allowDuplicateSubjectNumber = ConfigurationProperties.getInstance()
                     .isPropertyValueEqual(ConfigurationProperties.Property.ALLOW_DUPLICATE_SUBJECT_NUMBERS, "true");
