@@ -103,7 +103,7 @@ public class SchedulerConfig implements SchedulingConfigurer {
 
             addReloadableCronSchedulers(reloadableScheduler);
         } catch (SchedulerException e) {
-            LogEvent.logError("A scheduler excecption occured while reloading", e);
+            LogEvent.logError("A scheduler excecption occurred while reloading", e);
         }
     }
 
