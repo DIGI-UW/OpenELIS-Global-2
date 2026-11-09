@@ -469,6 +469,44 @@ public class PathologySampleStageEventTest extends PathologyCaseTestSupport {
         assertEquals("and the case stays at embedding", "EMBEDDING", storedStage());
     }
 
+    /**
+     * Microtomy is finished once at least one slide is cut and in use; a block may
+     * be held with no slide, so none is asked of every block.
+     */
+    @Test
+    public void advancingFromMicrotomyWithNoSlide_isRefused() {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+
+        assertRefusedWith("pathology.error.microtomyIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID));
+        assertEquals("the case stays at microtomy", "MICROTOMY", storedStage());
+        assertEquals("and no entry is written", 0, stageEvents().size());
+    }
+
+    /** A retired slide is not a slide to stain. */
+    @Test
+    public void advancingFromMicrotomyWithOnlyARetiredSlide_isRefused() {
+        storeAt(PathologyStatus.MICROTOMY);
+        pathologySampleService.deactivateSlide(LEGACY_SLIDE_ID, "section folded", TECHNICIAN_ID);
+
+        assertRefusedWith("pathology.error.microtomyIncomplete",
+                () -> pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID));
+        assertEquals("the case stays at microtomy", "MICROTOMY", storedStage());
+    }
+
+    @Test
+    public void advancingFromMicrotomyWithOneSlideInUse_sendsItOn() {
+        storeAt(PathologyStatus.MICROTOMY);
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", LEGACY_SLIDE_ID);
+        storeAsBlock(LEGACY_BLOCK_ID);
+        saveSlides(postedSlide(LEGACY_BLOCK_ID));
+
+        pathologySampleService.advance(CASE_ID, PathologyStatus.MICROTOMY, TECHNICIAN_ID);
+
+        assertEquals("one slide cut from the block is enough to send the case to staining", "STAINING", storedStage());
+    }
+
     /** From the pathologist's queue the bench has nothing to send the case to. */
     @Test
     public void advancingBeyondTheBench_isRefused() {

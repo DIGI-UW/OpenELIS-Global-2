@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.zxing.BarcodeFormat;
@@ -31,6 +33,8 @@ import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -73,6 +77,9 @@ public class BarcodeLabelMakerTest {
 
     @Mock
     private PatientService patientService;
+
+    @Mock
+    private DictionaryService dictionaryService;
 
     private AutowireCapableBeanFactory previousFactory;
     private Object previousMessageUtilInstance;
@@ -335,6 +342,60 @@ public class BarcodeLabelMakerTest {
                 fields.stream().noneMatch(field -> "20".equals(field.getValue())));
     }
 
+    /**
+     * The stain field printed blank on every slide label, because no stain was
+     * passed to it; it now names the slide's stain, and stays blank for a slide
+     * with none or with an entry that is gone. Slides sharing a stain look it up
+     * once per print.
+     */
+    @Test
+    public void slideOrder_printsTheStainsNameAndBlankForNone() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+        when(beanFactory.getBean(DictionaryService.class)).thenReturn(dictionaryService);
+        Dictionary stain = new Dictionary();
+        stain.setId("77");
+        stain.setDictEntry("Haematoxylin and eosin");
+        when(dictionaryService.getDataForId("77")).thenReturn(stain);
+
+        PathologySlide stained = slideWithStain(30, "77");
+        PathologySlide unstained = slideWithStain(31, null);
+        PathologySlide stainGone = slideWithStain(32, "78");
+        PathologySlide sameStain = slideWithStain(33, "77");
+        when(pathologySampleService.getSlides(99)).thenReturn(List.of(stained, unstained, stainGone, sameStain));
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "slideOrder", "1", "false");
+
+        List<Label> labels = getQueuedLabels(labelMaker);
+        assertEquals("one label per slide", 4, labels.size());
+        assertEquals("a stained slide's label names its stain", List.of("Haematoxylin and eosin"),
+                fieldValues(labels.get(0)));
+        assertEquals("a slide with no stain prints the field blank", List.of(""), fieldValues(labels.get(1)));
+        assertEquals("and so does one whose stain entry no longer exists", List.of(""), fieldValues(labels.get(2)));
+        assertEquals("a second slide of the same stain names it too", List.of("Haematoxylin and eosin"),
+                fieldValues(labels.get(3)));
+        verify(dictionaryService, times(1)).getDataForId("77");
+    }
+
     @Test
     public void generateLabels_freezerOrder_fallsBackToNationalIdWhenSubjectNumberMissing() {
         Sample sample = sampleService.getSampleByAccessionNumber("ACC-1");
@@ -383,6 +444,23 @@ public class BarcodeLabelMakerTest {
         }
         BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(page)));
         return new MultiFormatReader().decode(bitmap, Map.of(DecodeHintType.TRY_HARDER, Boolean.TRUE));
+    }
+
+    private PathologySlide slideWithStain(int id, String stainId) {
+        PathologySlide slide = new PathologySlide();
+        slide.setId(id);
+        slide.setSlideNumber(id);
+        slide.setBlockId(10);
+        slide.setStainId(stainId);
+        return slide;
+    }
+
+    private List<String> fieldValues(Label label) {
+        List<String> values = new ArrayList<>();
+        for (LabelField field : label.getAboveFields()) {
+            values.add(field.getValue());
+        }
+        return values;
     }
 
     @SuppressWarnings("unchecked")

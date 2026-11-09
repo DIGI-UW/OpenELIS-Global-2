@@ -1,6 +1,7 @@
 package org.openelisglobal.program.valueholder.immunohistochemistry;
 
 import java.util.List;
+import java.util.Map;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.util.IdValuePair;
@@ -23,6 +24,8 @@ public class ImmunohistochemistryCaseViewDisplayItem extends Immunohistochemistr
     // refered from pathology.These are Read Only
     private List<PathologyBlock> blocks;
     private List<PathologySlide> slides;
+    // the referred case's stains by dictionary id, retired entries included
+    private Map<String, String> stainNames;
     private List<IdValuePair> techniques;
     private List<IdValuePair> requests;
     private List<IdValuePair> conclusions;
@@ -124,6 +127,14 @@ public class ImmunohistochemistryCaseViewDisplayItem extends Immunohistochemistr
 
     public void setSlides(List<PathologySlide> slides) {
         this.slides = slides;
+    }
+
+    public Map<String, String> getStainNames() {
+        return stainNames;
+    }
+
+    public void setStainNames(Map<String, String> stainNames) {
+        this.stainNames = stainNames;
     }
 
     public List<IdValuePair> getTechniques() {

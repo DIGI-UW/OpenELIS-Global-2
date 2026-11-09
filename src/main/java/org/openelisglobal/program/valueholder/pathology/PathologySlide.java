@@ -19,6 +19,9 @@ import org.openelisglobal.common.valueholder.BaseObject;
 @Table(name = "pathology_slide")
 public class PathologySlide extends BaseObject<Integer> {
 
+    /** Width of the level column. */
+    public static final int LEVEL_MAX_LENGTH = 16;
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pathology_slide_generator")
     @SequenceGenerator(name = "pathology_slide_generator", sequenceName = "pathology_slide_seq", allocationSize = 1)
@@ -40,7 +43,7 @@ public class PathologySlide extends BaseObject<Integer> {
     private String barcode;
 
     /** Depth into the block the section was taken at, such as L1. */
-    @Column(name = "level", length = 16)
+    @Column(name = "level", length = LEVEL_MAX_LENGTH)
     private String level;
 
     /** Dictionary id of the stain applied to this section. */

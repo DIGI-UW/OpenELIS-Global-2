@@ -9,12 +9,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.program.controller.pathology.PathologySampleForm;
+import org.openelisglobal.program.controller.pathology.PathologySampleForm.PathologySlideForm;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
@@ -39,6 +41,9 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
      * and no tissue type.
      */
     protected static final int LEGACY_BLOCK_ID = 101;
+
+    /** The slide the fixture seeds, in use and with no block recorded. */
+    protected static final int LEGACY_SLIDE_ID = 201;
 
     /**
      * technician1, the fixture's own user, so audit attribution names a real one.
@@ -173,6 +178,62 @@ abstract class PathologyCaseTestSupport extends BaseWebContextSensitiveTest {
             }
         }
         return null;
+    }
+
+    protected int idOfBlockDesignated(String designation) {
+        Map<String, Object> block = blockDesignated(designation);
+        Assert.assertNotNull("no block on the case is designated " + designation, block);
+        return ((Number) block.get("id")).intValue();
+    }
+
+    /**
+     * Stores a row as a block by SQL, for a test whose subject is a slide cut from
+     * it rather than the embedding. It skips the service, so no embedding audit row
+     * is written and the case's stage is not checked.
+     */
+    protected void storeAsBlock(int blockId) {
+        jdbcTemplate.update("UPDATE clinlims.pathology_block SET cassette_state = 'BLOCK' WHERE id = ?", blockId);
+    }
+
+    protected void saveSlides(PathologySlideForm... slides) {
+        PathologySampleForm form = caseViewForm();
+        form.setSlides(Arrays.asList(slides));
+        save(form);
+    }
+
+    protected PathologySlideForm postedSlide(Integer blockId) {
+        PathologySlideForm slide = new PathologySlideForm();
+        slide.setBlockId(blockId);
+        slide.setLocation("Slide Storage 1");
+        return slide;
+    }
+
+    protected List<Map<String, Object>> slidesOnCase() {
+        return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, location, level, stain_id, active"
+                + " FROM clinlims.pathology_slide WHERE pathology_sample_id = ? ORDER BY id", CASE_ID);
+    }
+
+    protected List<Map<String, Object>> slidesCutFrom(int blockId) {
+        return jdbcTemplate.queryForList("SELECT id, block_id, designation, barcode, location, level, stain_id, active"
+                + " FROM clinlims.pathology_slide WHERE block_id = ? ORDER BY id", blockId);
+    }
+
+    protected Map<String, Object> slideRow(int slideId) {
+        for (Map<String, Object> slide : slidesOnCase()) {
+            if (Integer.valueOf(slideId).equals(slide.get("id"))) {
+                return slide;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The slide entries a test's setup left, such as the creation entry of a slide
+     * it cut, so the test counts only the entries its own action writes.
+     */
+    protected void clearSlideAudit() {
+        jdbcTemplate.update("DELETE FROM clinlims.history WHERE reference_table = ?",
+                Integer.parseInt(slideReferenceTableId));
     }
 
     protected List<History> caseAudit() {

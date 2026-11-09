@@ -8,8 +8,10 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import org.apache.commons.lang3.StringUtils;
@@ -31,11 +33,13 @@ import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
+import org.openelisglobal.program.util.DictionaryEntryNames;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
@@ -376,6 +380,8 @@ public class BarcodeLabelMaker {
         } else if ("slideOrder".equals(type)) {
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
+            // slides on one order mostly share a few stains, so each is looked up once
+            Map<String, String> stainNames = new HashMap<>();
             for (PathologySample pathologySample : pathologySamples) {
                 String caseNumber = pathologySample.getId() != null ? String.valueOf(pathologySample.getId()) : "";
                 // slides are lazy and this case was loaded in a transaction that has closed
@@ -385,7 +391,7 @@ public class BarcodeLabelMaker {
                     }
                     String blockId = blockContextFor(slide, pathologySample);
                     SlideLabel label = new SlideLabel(sampleService.getPatient(sample), sample, pathologySample, slide,
-                            labNo, "", blockId, caseNumber);
+                            labNo, stainNameOf(slide, stainNames), blockId, caseNumber);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);
                     label.setNumLabels(requestedQuantity);
                     label.linkBarcodeLabelInfo();
@@ -475,6 +481,16 @@ public class BarcodeLabelMaker {
     private SpecimenLabel buildEnvSpecimenLabel(Sample sample, SampleItem sampleItem, String labNo) {
         SampleService sampleService = SpringContext.getBean(SampleService.class);
         return new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem, labNo);
+    }
+
+    /**
+     * The stain a slide carries, by its dictionary name; a slide with no stain, or
+     * one whose entry is gone, prints a blank stain. Names already looked up for
+     * this request are reused from {@code stainNames}.
+     */
+    private String stainNameOf(PathologySlide slide, Map<String, String> stainNames) {
+        return stainNames.computeIfAbsent(slide.getStainId(), stainId -> DictionaryEntryNames
+                .localizedNameOf(SpringContext.getBean(DictionaryService.class), stainId).orElse(""));
     }
 
     /**

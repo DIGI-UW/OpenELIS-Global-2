@@ -163,6 +163,36 @@ public class SlideLabelTest {
         assertEquals("the barcode still carries the lab number", "ACC-1", label.getCode());
     }
 
+    @Test
+    public void aSlideWithNoStain_printsTheStainFieldBlank() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        SlideLabel label = new SlideLabel(null, new Sample(), new PathologySample(), new PathologySlide(), "ACC-1",
+                null, "B-4", "C-9");
+        List<LabelField> fields = collect(label.getAboveFields());
+
+        assertEquals("the stain field is still printed, so the preset's layout holds", 1, fields.size());
+        assertEquals("but blank rather than the word null", "", fields.get(0).getValue());
+    }
+
     private List<LabelField> collect(Iterable<LabelField> fields) {
         List<LabelField> list = new ArrayList<>();
         for (LabelField field : fields) {

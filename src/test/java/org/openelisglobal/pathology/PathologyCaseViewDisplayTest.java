@@ -56,12 +56,21 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     /** The block the fixture seeds on the first case. */
     private static final int LEGACY_BLOCK_ID = 101;
 
-    private static final String TISSUE_TYPE_CATEGORY = "pathology_tissue_types";
     private static final int TISSUE_CATEGORY = 9403;
     private static final int RETIRED_TISSUE = 9403;
     private static final String RETIRED_TISSUE_NAME = "Bone, retired";
 
+    private static final int STAIN_CATEGORY_ID = 9404;
+    private static final int STAIN = 9405;
+    private static final String STAIN_NAME = "Periodic acid-Schiff";
+    private static final int RETIRED_STAIN = 9406;
+    private static final String RETIRED_STAIN_NAME = "Mucicarmine, retired";
+    private static final int LEGACY_SLIDE_ID = 201;
+    private static final int SECOND_SLIDE = 9407;
+
     private boolean insertedTheCategory;
+
+    private boolean insertedTheStainCategory;
 
     @Autowired
     private PathologyDisplayService pathologyDisplayService;
@@ -88,6 +97,7 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
         authenticateAs("technician1");
         removeSeededSpecimenRows();
         removeSeededTissueRows();
+        removeSeededStainRows();
         seedSpecimenRows();
     }
 
@@ -95,6 +105,7 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     public void cleanUp() {
         removeSeededSpecimenRows();
         removeSeededTissueRows();
+        removeSeededStainRows();
         TimeZone.setDefault(runnersTimeZone);
     }
 
@@ -159,10 +170,7 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
     @Test
     public void caseDisplayItem_namesARetiredTissueTypeACassetteHolds() {
         int categoryId = ensureTissueCategory();
-        jdbcTemplate.update(
-                "INSERT INTO clinlims.dictionary (id, is_active, dict_entry, local_abbrev,"
-                        + " dictionary_category_id, sort_order, lastupdated) VALUES (?, 'N', ?, 'PTRet', ?, 1, now())",
-                RETIRED_TISSUE, RETIRED_TISSUE_NAME, categoryId);
+        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_TISSUE, categoryId, RETIRED_TISSUE_NAME, "PTRet", false);
         jdbcTemplate.update("UPDATE clinlims.pathology_block SET tissue_type_id = ? WHERE id = ?", RETIRED_TISSUE,
                 LEGACY_BLOCK_ID);
 
@@ -173,6 +181,27 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
                 "an entry taken out of use after a cassette recorded it is missing from the category list"
                         + " the picker reads, so the case names it itself",
                 RETIRED_TISSUE_NAME, displayItem.getTissueTypeNames().get(String.valueOf(RETIRED_TISSUE)));
+    }
+
+    @Test
+    public void caseDisplayItem_namesTheStainsTheSlidesCarry_aRetiredOneIncluded() {
+        seedStains();
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = ? WHERE id = ?", STAIN, LEGACY_SLIDE_ID);
+        jdbcTemplate.update(
+                "INSERT INTO clinlims.pathology_slide (id, pathology_sample_id, last_updated, slide_number,"
+                        + " active, stain_id) VALUES (?, ?, now(), 2, true, ?)",
+                SECOND_SLIDE, CASE_WITH_TWO_SPECIMEN_ITEMS, RETIRED_STAIN);
+
+        PathologyCaseViewDisplayItem displayItem = pathologyDisplayService
+                .convertToCaseDisplayItem(CASE_WITH_TWO_SPECIMEN_ITEMS);
+
+        assertEquals("a stain a slide carries is named for the picker", STAIN_NAME,
+                displayItem.getStainNames().get(String.valueOf(STAIN)));
+        assertEquals(
+                "and so is one taken out of use after a slide recorded it, which the category list the picker"
+                        + " reads leaves out",
+                RETIRED_STAIN_NAME, displayItem.getStainNames().get(String.valueOf(RETIRED_STAIN)));
+        assertEquals("nothing else is named", 2, displayItem.getStainNames().size());
     }
 
     /**
@@ -350,21 +379,41 @@ public class PathologyCaseViewDisplayTest extends BaseWebContextSensitiveTest {
      * dictionary_category may have truncated it, so it is added only when absent.
      */
     private int ensureTissueCategory() {
-        insertedTheCategory = jdbcTemplate.update("INSERT INTO clinlims.dictionary_category (id, description,"
-                + " local_abbrev, name, lastupdated) SELECT ?, 'Pathology - Tissue Types', 'PathTissue', ?, now()"
-                + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.dictionary_category WHERE name = ?)", TISSUE_CATEGORY,
-                TISSUE_TYPE_CATEGORY, TISSUE_TYPE_CATEGORY) == 1;
-        return jdbcTemplate.queryForObject("SELECT id FROM clinlims.dictionary_category WHERE name = ?", Integer.class,
-                TISSUE_TYPE_CATEGORY);
+        insertedTheCategory = DictionaryRows.insertCategory(jdbcTemplate, TISSUE_CATEGORY,
+                PathologySampleService.TISSUE_TYPE_CATEGORY, "Pathology - Tissue Types", "PathTissue");
+        return DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.TISSUE_TYPE_CATEGORY);
     }
 
     private void removeSeededTissueRows() {
         jdbcTemplate.update("UPDATE clinlims.pathology_block SET tissue_type_id = NULL WHERE tissue_type_id = ?",
                 RETIRED_TISSUE);
-        jdbcTemplate.update("DELETE FROM clinlims.dictionary WHERE id = ?", RETIRED_TISSUE);
+        DictionaryRows.removeEntries(jdbcTemplate, RETIRED_TISSUE);
         if (insertedTheCategory) {
-            jdbcTemplate.update("DELETE FROM clinlims.dictionary_category WHERE id = ?", TISSUE_CATEGORY);
+            DictionaryRows.removeCategory(jdbcTemplate, TISSUE_CATEGORY);
             insertedTheCategory = false;
+        }
+    }
+
+    /**
+     * The configuration loader ships the stain category and tests do not run it, so
+     * it is added only when absent.
+     */
+    private void seedStains() {
+        insertedTheStainCategory = DictionaryRows.insertCategory(jdbcTemplate, STAIN_CATEGORY_ID,
+                PathologySampleService.STAIN_CATEGORY, PathologySampleService.STAIN_CATEGORY, "PathStain");
+        int categoryId = DictionaryRows.idOfCategory(jdbcTemplate, PathologySampleService.STAIN_CATEGORY);
+        DictionaryRows.insertEntry(jdbcTemplate, STAIN, categoryId, STAIN_NAME, "PSPas", true);
+        DictionaryRows.insertEntry(jdbcTemplate, RETIRED_STAIN, categoryId, RETIRED_STAIN_NAME, "PSRet", false);
+    }
+
+    private void removeSeededStainRows() {
+        jdbcTemplate.update("DELETE FROM clinlims.pathology_slide WHERE id = ?", SECOND_SLIDE);
+        jdbcTemplate.update("UPDATE clinlims.pathology_slide SET stain_id = NULL WHERE stain_id IN (?, ?)", STAIN,
+                RETIRED_STAIN);
+        DictionaryRows.removeEntries(jdbcTemplate, STAIN, RETIRED_STAIN);
+        if (insertedTheStainCategory) {
+            DictionaryRows.removeCategory(jdbcTemplate, STAIN_CATEGORY_ID);
+            insertedTheStainCategory = false;
         }
     }
 
