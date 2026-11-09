@@ -1,6 +1,7 @@
 package org.openelisglobal.resultvalidation;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,13 +10,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.PersistenceContext;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -48,6 +53,9 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @Autowired
     private SampleService sampleService;
@@ -116,6 +124,18 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
     }
 
     @Test
+    public void validationLooksUpAPartsPrimaryOnceRatherThanPerSelection() {
+        assertComponentLookupsDoNotGrowWithSelectionsMissingAPart(() -> validationUtility
+                .getValidationAnalysisBySample(sampleService.getSampleByAccessionNumber(ACCESSION)));
+    }
+
+    @Test
+    public void resultsEntryLooksUpAPartsPrimaryOnceRatherThanPerSelection() {
+        assertComponentLookupsDoNotGrowWithSelectionsMissingAPart(
+                () -> resultsLoadUtility.getGroupedTestsForSample(sampleService.getSampleByAccessionNumber(ACCESSION)));
+    }
+
+    @Test
     public void validatingAPartValidatesAllOfItsSelections() throws Exception {
         release("100").andExpect(jsonPath("$.outcome").value("accepted"));
         assertEquals("only Size is left to validate", List.of("101"), queueResultIds());
@@ -150,6 +170,31 @@ public class AccessionValidationComponentSelectionsTest extends BaseWebContextSe
         mockMvc.perform(post("/rest/results-entry/analysis/100/result").session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultValue").value("VMS Large,VMS Small"));
+    }
+
+    private void assertComponentLookupsDoNotGrowWithSelectionsMissingAPart(Runnable load) {
+        jdbcTemplate.update("UPDATE clinlims.test_result SET component_id = NULL WHERE id = 1");
+        componentLookupsWhile(load);
+        long oneSelectionMissingAPart = componentLookupsWhile(load);
+        jdbcTemplate.update("UPDATE clinlims.test_result SET component_id = NULL WHERE id = 3");
+        long twoSelectionsMissingAPart = componentLookupsWhile(load);
+        assertTrue(twoSelectionsMissingAPart + " component lookups, up from " + oneSelectionMissingAPart,
+                twoSelectionsMissingAPart <= oneSelectionMissingAPart);
+    }
+
+    private long componentLookupsWhile(Runnable load) {
+        entityManager.clear();
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        boolean wasEnabled = statistics.isStatisticsEnabled();
+        statistics.clear();
+        statistics.setStatisticsEnabled(true);
+        try {
+            load.run();
+            return Arrays.stream(statistics.getQueries()).filter(q -> q.startsWith("from TestResultComponent"))
+                    .mapToLong(q -> statistics.getQueryStatistics(q).getExecutionCount()).sum();
+        } finally {
+            statistics.setStatisticsEnabled(wasEnabled);
+        }
     }
 
     private void noPrimaryAndRedWithNoComponent() {

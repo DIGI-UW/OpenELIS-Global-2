@@ -841,16 +841,17 @@ public class ResultsValidationUtility {
         // Condense each analysis component's multiselect selections into one row,
         // carrying any qualified result; other components keep their own rows.
         Map<String, AnalysisItem> condensedMultiSelectByComponent = new HashMap<>();
+        Map<String, String> primaryByTest = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
             boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
                     .isMultiSelectVariant(testResultItem.getResultType());
             String componentKey = multiSelect
                     ? testResultItem.getAnalysis().getId() + "|"
-                            + ruleResultScope.componentIdOf(testResultItem.getResult())
+                            + ruleResultScope.componentIdOf(testResultItem.getResult(), primaryByTest)
                     : null;
 
             if (!multiSelect || !condensedMultiSelectByComponent.containsKey(componentKey)) {
-                AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
+                AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem, primaryByTest);
                 analysisResultList.add(convertedItem);
                 if (multiSelect) {
                     condensedMultiSelectByComponent.put(componentKey, convertedItem);
@@ -1098,7 +1099,8 @@ public class ResultsValidationUtility {
         }
     }
 
-    public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
+    public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem,
+            Map<String, String> primaryByTest) {
         AnalysisItem analysisResultItem = new AnalysisItem();
         String testUnits = rowUnits(testResultItem.getTestId(), testResultItem.getResult());
         String testName = testResultItem.getTestName();
@@ -1144,10 +1146,11 @@ public class ResultsValidationUtility {
         analysisResultItem.setNormal(testResultItem.isNormalResult());
         if (result != null) {
             if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                String componentId = ruleResultScope.componentIdOf(result);
-                analysisResultItem.setMultiSelectResultValues(ResultServiceImpl.getJSONStringForMultiSelect(
-                        resultService.getResultsByAnalysis(testResultItem.getAnalysis()).stream()
-                                .filter(r -> java.util.Objects.equals(ruleResultScope.componentIdOf(r), componentId))
+                String componentId = ruleResultScope.componentIdOf(result, primaryByTest);
+                analysisResultItem.setMultiSelectResultValues(ResultServiceImpl
+                        .getJSONStringForMultiSelect(resultService.getResultsByAnalysis(testResultItem.getAnalysis())
+                                .stream().filter(r -> java.util.Objects
+                                        .equals(ruleResultScope.componentIdOf(r, primaryByTest), componentId))
                                 .collect(Collectors.toList())));
             } else {
                 analysisResultItem.setResult("N".equals(result.getResultType()) ? result.getEnteredValue()
