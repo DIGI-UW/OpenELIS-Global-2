@@ -32,12 +32,14 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import ShipmentNavigation from "./ShipmentNavigation";
 import "./ShipmentDashboard.css";
 import { labNow } from "../utils/labClock";
+import useSiteDateFormat from "../common/useSiteDateFormat";
 
 // jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
 applyPlugin(jsPDF);
 
 const ShipmentReport = () => {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
   const { addNotification } = useContext(NotificationContext);
 
   const [boxes, setBoxes] = useState([]);
@@ -425,13 +427,15 @@ const ShipmentReport = () => {
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={([date]) => setFilterDateFrom(date)}
             value={filterDateFrom}
           >
             <DatePickerInput
               id="report-date-from"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "shipment.filter.dateFrom" })}
               size="md"
             />
@@ -439,13 +443,15 @@ const ShipmentReport = () => {
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={([date]) => setFilterDateTo(date)}
             value={filterDateTo}
           >
             <DatePickerInput
               id="report-date-to"
-              placeholder="mm/dd/yyyy"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "shipment.filter.dateTo" })}
               size="md"
             />

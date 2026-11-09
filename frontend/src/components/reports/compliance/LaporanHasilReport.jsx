@@ -34,9 +34,9 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerForBlob,
   toLocalIsoDate,
-  parseIsoDate,
 } from "../../utils/Utils";
 import { labNow } from "../../utils/labClock";
+import useSiteDateFormat from "../../common/useSiteDateFormat";
 
 const STATUS_TAG_TYPE = {
   COMPLIANT: "green",
@@ -63,6 +63,7 @@ function statusTag(status, statusLabels) {
 
 export default function LaporanHasilReport() {
   const intl = useIntl();
+  const siteDate = useSiteDateFormat();
 
   const generationStatusItems = [
     { id: "all", text: intl.formatMessage({ id: "laporanHasil.filter.all" }) },
@@ -344,8 +345,8 @@ export default function LaporanHasilReport() {
       <Grid narrow style={{ marginBottom: "1.5rem", alignItems: "flex-end" }}>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
-            dateFormat="Y-m-d"
-            parseDate={parseIsoDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateFrom(
@@ -355,15 +356,15 @@ export default function LaporanHasilReport() {
           >
             <DatePickerInput
               id="filter-date-from"
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "laporanHasil.filter.dateFrom" })}
             />
           </DatePicker>
         </Column>
         <Column lg={3} md={4} sm={4}>
           <DatePicker
-            dateFormat="Y-m-d"
-            parseDate={parseIsoDate}
+            dateFormat={siteDate.dateFormat}
+            parseDate={siteDate.parseDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateTo(dates[0] ? toLocalIsoDate(dates[0]) : "")
@@ -371,7 +372,7 @@ export default function LaporanHasilReport() {
           >
             <DatePickerInput
               id="filter-date-to"
-              placeholder="yyyy-mm-dd"
+              placeholder={siteDate.placeholder}
               labelText={intl.formatMessage({ id: "laporanHasil.filter.dateTo" })}
             />
           </DatePicker>
