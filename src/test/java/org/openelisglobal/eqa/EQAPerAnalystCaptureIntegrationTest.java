@@ -356,8 +356,6 @@ public class EQAPerAnalystCaptureIntegrationTest extends EQASpineTestBase {
                 .assignAnalyst(analysisService.get(String.valueOf(secondAnalysisId)), OTHER_ANALYST, USER));
     }
 
-    // ---- in-house: the sealed analyst keeps the credit ----
-
     @Test
     public void anInHouseSampleAsksForNoAnalystAndSavesUnderItsSealedOne() throws Exception {
         Fixture fixture = order(inHousePerAnalystScheme());

@@ -25,8 +25,7 @@ public interface SampleEQAService extends BaseObjectService<SampleEQA, Long> {
      */
     /**
      * The scheme whose samples this one belongs to, when result entry must name the
-     * analyst: the scheme captures the analyst on every result and is not in-house,
-     * where the analyst sealed with the panel keeps the credit.
+     * analyst: the scheme captures the analyst on every result and is not in-house.
      *
      * <p>
      * Result entry asks per row, so this answers from the sample rather than making

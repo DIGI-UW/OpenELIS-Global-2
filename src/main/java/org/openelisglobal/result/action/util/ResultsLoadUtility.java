@@ -1215,7 +1215,6 @@ public class ResultsLoadUtility {
                 sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
                     testItem.setEqaPerAnalyst(true);
                     testItem.setEqaSchemeId(String.valueOf(schemeId));
-                    // Preselect the analyst already recorded; the bench can change it.
                     eqaParticipantResultService.findAssignedAnalystId(Long.valueOf(analysis.getId()))
                             .ifPresent(analystId -> testItem.setEqaAnalystId(String.valueOf(analystId)));
                 });
