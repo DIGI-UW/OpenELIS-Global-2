@@ -64,6 +64,12 @@ order, so a file may refer to anything an earlier domain created:
 | 320   | `sample-handling/`   | a test's storage and disposal rules       | `testName`, `storageCondition`, `storageDuration`, `disposalMethod`                                                                                                  |
 | 330   | `reflex-rules/`      | one condition and action of a rule        | `ruleName`, `overall`, `conditionTest`, `relation`, `value`, `reflexTest`                                                                                            |
 
+In `result-components/`, `isRequired` (Y/N) marks a component the test cannot be
+completed without: while it has no result the test stays open and the patient
+report prints it as in progress. Left blank, a new component is required only
+when it is the primary and an existing one keeps its setting; it does not move
+with `isPrimary`.
+
 Every catalog row is loaded in its own transaction: a row the database rejects
 is skipped with its line number and the reason, and the rest of the file still
 loads. Each file ends with a line you can grep for:

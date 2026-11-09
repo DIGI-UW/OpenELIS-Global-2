@@ -762,7 +762,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional
     public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
         Test target = testService.getTestById(targetTestId);
-        for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
+        List<TestResultComponent> sources = baseObjectDAO.getActiveComponentsByTestId(sourceTestId);
+        for (TestResultComponent src : sources) {
             TestResultComponent existing = getByTestIdAndCode(targetTestId, src.getCode());
             // A configured component (it has a result type) is never clobbered.
             // A blank row (the FR-56 pre-seeded PRIMARY) is reconciled from the
@@ -839,6 +840,30 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 testResultService.insert(placeholder);
             }
         }
+        retireBlankRowsTheCopyReplaced(targetTestId, sources, sysUserId);
         ensureSinglePrimary(targetTestId, sysUserId);
+    }
+
+    /**
+     * OGC-1608: a test created as a copy starts with a blank pre-seeded PRIMARY.
+     * When the source's primary has another code, that blank row is not filled by
+     * the copy; left in place it would stay the primary (and required), so the
+     * copied primary would be demoted and every order would wait on a component
+     * nobody configured. A blank row whose code the source does not have is retired
+     * once the source brings its own primary.
+     */
+    private void retireBlankRowsTheCopyReplaced(String targetTestId, List<TestResultComponent> sources,
+            String sysUserId) {
+        if (sources.stream().noneMatch(TestResultComponent::getIsPrimary)) {
+            return;
+        }
+        Set<String> sourceCodes = new HashSet<>();
+        sources.forEach(src -> sourceCodes.add(src.getCode()));
+        for (TestResultComponent row : baseObjectDAO.getActiveComponentsByTestId(targetTestId)) {
+            boolean blank = row.getResultType() == null || row.getResultType().isBlank();
+            if (blank && !sourceCodes.contains(row.getCode())) {
+                retireComponent(targetTestId, row.getId(), sysUserId);
+            }
+        }
     }
 }

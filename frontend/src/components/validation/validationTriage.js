@@ -227,7 +227,6 @@ export function bulkReleaseRequest(results, params, rows) {
   };
 }
 
-/** i18n key describing why a bulk release did nothing (or failed). */
 /**
  * OGC-1608 — the messages a successful bulk release shows: what was released
  * (and skipped), and the tests that were only validated in part because another
@@ -258,6 +257,7 @@ export function bulkSuccessMessages(response) {
   return messages;
 }
 
+/** i18n key describing why a bulk release did nothing (or failed). */
 export function bulkOutcomeKey(response) {
   const code = response && response.error;
   if (code === "bulkReleaseDisabled" || code === "qcAcknowledgmentRequired") {
