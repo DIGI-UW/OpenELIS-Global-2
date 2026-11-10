@@ -12,7 +12,6 @@ import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQACycleParticipantDAO;
@@ -507,21 +506,16 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         if (box.getState() != BoxState.SENT && box.getState() != BoxState.IN_TRANSIT) {
             return;
         }
-        EQACycle cycle = cycle(box.getEqaCycleId());
-        if (cycle.getStatus() == EQACycleStatus.CLOSED) {
-            LogEvent.logWarn(getClass().getSimpleName(), "applyRemoteDelivery", "Ignoring a delivery notice for box "
-                    + box.getBoxId() + ": cycle " + displayName(cycle) + " is closed");
-            return;
-        }
         Long organizationId = Long.valueOf(box.getDestinationFacility().getId());
 
         // The participant's current shipment takes the Receipt Monitor's own path,
         // so a remote receipt and a manual click write identical rows and the cycle
         // advances the same way. A superseded box (a repeat replaced it) must not
         // mark the participant delivered — the monitor follows the repeat — so it is
-        // only closed off.
+        // only closed off. So is a closed cycle's box, which markDelivered refuses.
         ShippingBox latest = latestBoxes(box.getEqaCycleId()).get(organizationId);
-        if (latest != null && latest.getId().equals(box.getId())) {
+        if (latest != null && latest.getId().equals(box.getId())
+                && cycle(box.getEqaCycleId()).getStatus() != EQACycleStatus.CLOSED) {
             markDelivered(box.getEqaCycleId(), organizationId, sysUserId);
             return;
         }

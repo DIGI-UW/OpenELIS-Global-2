@@ -57,8 +57,8 @@ public interface EQAShipmentService {
      * SupplyDelivery reads completed), so record the delivery here. When the box is
      * the participant's current shipment this is exactly the Receipt Monitor's
      * "Mark delivered" — cycle auto-advance and audit included; an outdated box (a
-     * repeat superseded it) is closed off quietly without touching the cycle. A
-     * notice for a closed cycle is logged and ignored.
+     * repeat superseded it) is closed off quietly without touching the cycle, and
+     * so is a closed cycle's box.
      *
      * @param shippingBoxId the delivered box
      * @param sysUserId     the automated user the delivery is attributed to

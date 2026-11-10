@@ -724,7 +724,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
-    public void aRemoteReceiptForAClosedCycleIsSkipped() {
+    public void aRemoteReceiptForAClosedCycleTakesTheBoxOutOfFlightWithoutTouchingTheCycle() {
         addToRoster(ORG_A);
         clearTheGate();
         shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
@@ -734,8 +734,10 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
 
         shipmentService.applyRemoteDelivery(boxDbId, USER);
 
-        assertEquals("SENT",
+        assertEquals("RECEIVED",
                 jdbc.queryForObject("SELECT state FROM clinlims.shipping_box WHERE id = ?", String.class, boxDbId));
+        assertEquals("DELIVERED", jdbc.queryForObject("SELECT status FROM clinlims.shipment WHERE shipping_box_id = ?",
+                String.class, boxDbId));
         assertEquals(EQACycleStatus.CLOSED, readBack(cycle.getId()).getStatus());
     }
 
