@@ -1,12 +1,49 @@
 import { expect, Locator, Page } from "@playwright/test";
-import type { SeededPathologyCase } from "./seed-pathology-data";
+import {
+  apiGet,
+  apiPost,
+  type PathologyStageId,
+  type SeededPathologyCase,
+} from "./seed-pathology-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "./timeouts";
 
 /**
  * Shared steps for the anatomic-pathology case view on the case-view shell:
- * opening a seeded case, moving it between stages, opening its sections and
- * saving it, plus the locators the specs read the shell through.
+ * opening a seeded case, sending it on and returning it, opening its sections
+ * and saving it, plus the locators the specs read the shell through, and the
+ * laboratory's stage switches the specs depend on.
  */
+
+const API_PREFIX = "/api/OpenELIS-Global";
+
+/** Each stage as the screen names it in English. */
+export const STAGE_LABELS: Record<PathologyStageId, string> = {
+  ACCESSIONED: "Accessioned",
+  GROSSING: "Grossing",
+  DECALCIFICATION: "Decalcification",
+  PROCESSING: "Processing",
+  EMBEDDING: "Embedding",
+  MICROTOMY: "Microtomy",
+  STAINING: "Staining",
+  COVERSLIPPING: "Coverslipping & QC",
+  READY_PATHOLOGIST: "Ready for Pathologist",
+  UNDER_REVIEW: "Under Pathologist Review",
+  COMPLETED: "Completed",
+};
+
+/** The optional stages, each of which a laboratory may switch off. */
+export type OptionalStageId =
+  | "DECALCIFICATION"
+  | "PROCESSING"
+  | "EMBEDDING"
+  | "MICROTOMY"
+  | "STAINING"
+  | "COVERSLIPPING"
+  | "UNDER_REVIEW";
+
+function escapeRegExp(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /** The accordion's own heading text, section number and title together. */
 export const NUMBERED_SECTION_TITLES = [
@@ -128,51 +165,216 @@ export function overlaps(
 }
 
 /**
- * The stage control in the action bar. It is a Carbon Dropdown rather than a
- * native select, because the bar sits at the foot of a long page where a
- * native menu opens downward and the browser clips it; the menu is markup in
- * the page, opened by its own toggle, and its options exist only while it is
- * open.
+ * The action bar's one primary button, whose label names where the case goes
+ * next ("Begin grossing", "Send for processing"). There is none from Ready
+ * for Pathologist on.
  */
-export function stageControl(page: Page) {
-  return page.getByRole("combobox", { name: "Status" });
+export function primaryAction(page: Page) {
+  return page.locator(".case-view__action-bar-actions .cds--btn--primary");
+}
+
+/** The control in the action bar's status slot that opens the return row. */
+export function returnControl(page: Page) {
+  return page.getByRole("button", {
+    name: "Return to previous stage",
+    exact: true,
+  });
+}
+
+/** The inline row a return is confirmed in, while it is open. */
+export function returnRow(page: Page) {
+  return page.locator(".pathology-case-view__return-row");
+}
+
+/** The success toast a move raises, naming the stage the case went to. */
+function moveToast(page: Page, text: string) {
+  return page.locator(".cds--toast-notification").filter({ hasText: text });
 }
 
 /**
- * The stage menu's options, with the menu opened.
- *
- * The menu is asserted to be drawn above its own toggle, which is the whole
- * point of the control: the action bar is at the foot of a long page, and the
- * native select this replaced opened downward, where the window clipped it.
- * Measured rather than read off a class name, because the class is Carbon's
- * and the clipping was the browser's.
+ * A wait for one move of the case, registered before the click that starts
+ * it.
  */
-export async function openStageMenu(page: Page) {
-  const toggle = stageControl(page);
-  await toggle.click();
-  const options = page.locator('#status [role="option"]');
-  await expect(options.first()).toBeVisible({ timeout: UI_TIMEOUT });
-
-  const toggleBox = await toggle.boundingBox();
-  const menuBox = await page
-    .locator("#status .cds--list-box__menu")
-    .boundingBox();
-  expect(toggleBox).not.toBeNull();
-  expect(menuBox).not.toBeNull();
-  expect(
-    menuBox!.y + menuBox!.height,
-    "the stage menu is drawn above its toggle",
-    // Two pixels: sub-pixel layout put the menu 0.97 px over the line once.
-  ).toBeLessThanOrEqual(toggleBox!.y + 2);
-
-  return options;
+function waitForMovePost(page: Page, caseId: string, direction: string) {
+  const path = `/rest/pathology/caseView/${caseId}/${direction}`;
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      new URL(r.url()).pathname.endsWith(path),
+    { timeout: UI_TIMEOUT },
+  );
 }
 
-/** Move the case to a stage by name, exactly as a technician would. */
-export async function setStage(page: Page, label: string) {
-  const options = await openStageMenu(page);
-  await options.filter({ hasText: new RegExp(`^${label}$`) }).click();
-  await expect(stageControl(page)).toContainText(label);
+/**
+ * A wait for the read of the case the screen makes once a move is answered.
+ * The screen reads the case back only on a clean form, which both moves
+ * require before they can be pressed.
+ */
+function waitForCaseRead(page: Page, caseId: string) {
+  const path = `/rest/pathology/caseView/${caseId}`;
+  return page.waitForResponse(
+    (r) =>
+      r.request().method() === "GET" &&
+      new URL(r.url()).pathname.endsWith(path),
+    { timeout: UI_TIMEOUT },
+  );
+}
+
+/** The id of the case the page shows, read from its address. */
+function caseIdOf(page: Page) {
+  const match = /\/PathologyCaseView\/(\d+)/.exec(page.url());
+  if (!match) {
+    throw new Error(`Not on a pathology case: ${page.url()}`);
+  }
+  return match[1];
+}
+
+/** The stage the case summary says the case stands at. */
+export async function expectStage(page: Page, label: string) {
+  await expect(summaryRow(page, "Stage")).toHaveText(
+    new RegExp(`^Stage\\s*${escapeRegExp(label)}$`),
+    { timeout: UI_TIMEOUT },
+  );
+}
+
+/**
+ * Send the case on with the primary button, exactly as the bench does, and
+ * wait for the screen to finish with it: the move is answered, the toast
+ * names the stage, and the case read back shows it. The button is found by
+ * the label the caller expects it to carry, so a label that names another
+ * stage fails here rather than moving the case somewhere unexpected. Returns
+ * the stage the case was sent to.
+ */
+export async function advanceCase(
+  page: Page,
+  { label }: { label: string },
+): Promise<PathologyStageId> {
+  const button = primaryAction(page);
+  await expect(button).toHaveText(label);
+  await expect(button).toBeEnabled();
+
+  const caseId = caseIdOf(page);
+  const moved = waitForMovePost(page, caseId, "advance");
+  const readBack = waitForCaseRead(page, caseId);
+  await button.click();
+  const answer = (await (await moved).json()) as { status?: PathologyStageId };
+  const stage = answer.status;
+  if (!stage) {
+    throw new Error(`"${label}" was answered with no stage`);
+  }
+  await expect(
+    moveToast(page, `Case sent to ${STAGE_LABELS[stage]}`),
+  ).not.toHaveCount(0, { timeout: UI_TIMEOUT });
+  await readBack;
+  await expectStage(page, STAGE_LABELS[stage]);
+  return stage;
+}
+
+/**
+ * Return the case one stage, giving the reason in the inline row the return
+ * control opens, and wait the same way as advanceCase. Returns the stage the
+ * case was returned to.
+ */
+export async function returnCase(
+  page: Page,
+  reason: string,
+): Promise<PathologyStageId> {
+  await expect(returnControl(page)).toBeEnabled();
+  await returnControl(page).click();
+  const row = returnRow(page);
+  await expect(row).toBeVisible();
+  await row.getByRole("textbox", { name: /^Reason/ }).fill(reason);
+
+  const confirm = row.getByRole("button", { name: /^Return to / });
+  await expect(confirm).toBeEnabled();
+  const caseId = caseIdOf(page);
+  const moved = waitForMovePost(page, caseId, "return");
+  const readBack = waitForCaseRead(page, caseId);
+  await confirm.click();
+  const answer = (await (await moved).json()) as { status?: PathologyStageId };
+  const stage = answer.status;
+  if (!stage) {
+    throw new Error("The return was answered with no stage");
+  }
+  await expect(
+    moveToast(page, `Case returned to ${STAGE_LABELS[stage]}`),
+  ).not.toHaveCount(0, { timeout: UI_TIMEOUT });
+  await readBack;
+  await expectStage(page, STAGE_LABELS[stage]);
+  await expect(row).toHaveCount(0);
+  return stage;
+}
+
+/** One configuration row of a stage switch, and its stored value. */
+async function readStageSwitchRow(page: Page, stage: OptionalStageId) {
+  const menu = await apiGet<{ menuList: { id: string; name: string }[] }>(
+    page,
+    `${API_PREFIX}/rest/ResultConfigurationMenu`,
+  );
+  const switchName = `pathology.stage.${stage}.enabled`;
+  const row = menu.menuList.find((entry) => entry.name === switchName);
+  if (!row) {
+    throw new Error(`No configuration row named ${switchName}`);
+  }
+  const stored = await apiGet<Record<string, unknown>>(
+    page,
+    `${API_PREFIX}/rest/ResultConfiguration?ID=${row.id}`,
+  );
+  return { row, stored, switchName };
+}
+
+/**
+ * Whether the laboratory tracks one optional stage, as the stage switch on
+ * the Result Entry Configuration page says ("true" or "false").
+ */
+export async function readStageSwitch(page: Page, stage: OptionalStageId) {
+  return String((await readStageSwitchRow(page, stage)).stored.value ?? "true");
+}
+
+/**
+ * Turn one optional bench stage on or off exactly as the Result Entry
+ * Configuration page does: read the configuration row the administrator would
+ * select, change its value, and post it back to the same endpoint. The server
+ * reloads its own configuration as part of that save; the browser reads it
+ * once, when the application boots, so a page shows the new value only after
+ * a full load.
+ */
+export async function setStageSwitch(
+  page: Page,
+  stage: OptionalStageId,
+  value: string,
+) {
+  const { row, stored } = await readStageSwitchRow(page, stage);
+  await apiPost(
+    page,
+    `${API_PREFIX}/rest/ResultConfiguration?ID=${row.id}`,
+    { ...stored, value },
+    `Setting pathology.stage.${stage}.enabled to ${value}`,
+  );
+}
+
+/**
+ * Fail at once, naming the switch, when a stage a spec walks through is
+ * switched off on this deployment: the server skips such a stage, so every
+ * later assertion would fail as if the feature were broken.
+ */
+export async function expectStageSwitchesOn(
+  page: Page,
+  stages: OptionalStageId[],
+) {
+  const off: string[] = [];
+  for (const stage of stages) {
+    if ((await readStageSwitch(page, stage)) === "false") {
+      off.push(`pathology.stage.${stage}.enabled`);
+    }
+  }
+  if (off.length > 0) {
+    throw new Error(
+      `This spec walks a case through stages this deployment does not track: ${off.join(", ")} ` +
+        "is switched off on the Result Entry Configuration page. Switch it back on, " +
+        "or find the spec that left it off.",
+    );
+  }
 }
 
 /**

@@ -22,11 +22,14 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.RequestDisplayBean;
+import org.openelisglobal.program.valueholder.pathology.PathologyCaseViewDisplayItem.StageEventView;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyDisplayItem;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.TechniqueType;
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
@@ -116,6 +119,14 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         displayItem.setMicroscopyExam(pathologySample.getMicroscopyExam());
         displayItem.setDecalcificationRequired(pathologySample.isDecalcificationRequired());
         displayItem.setTissueTypeNames(tissueTypeNames(pathologySample.getBlocks()));
+        List<PathologyStageEvent> stageEvents = pathologySampleService.getStageEvents(pathologySampleId);
+        displayItem.setStageEvents(stageEvents.stream().map(StageEventView::of).collect(Collectors.toList()));
+        displayItem.setRunReference(runReference(stageEvents));
+        displayItem.setRunReferenceEditable(pathologySampleService.isRunReferenceRecordable(pathologySample));
+        displayItem.setNextStage(pathologySampleService.nextStage(pathologySample).map(Enum::name).orElse(null));
+        displayItem
+                .setPreviousStage(pathologySampleService.previousStage(pathologySample).map(Enum::name).orElse(null));
+        displayItem.setReleasable(pathologySampleService.isReleasable(pathologySample));
 
         displayItem.setConclusions(
                 pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
@@ -158,6 +169,15 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         // Not date.toInstant(): java.sql.Date, which the driver may hand back for a
         // date column, throws from it.
         return date == null ? null : Instant.ofEpochMilli(date.getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /**
+     * The run written on the case's latest Processing entry; a case that never
+     * entered Processing with an entry recorded has none.
+     */
+    private static String runReference(List<PathologyStageEvent> stageEvents) {
+        return stageEvents.stream().filter(event -> event.getStage() == PathologyStatus.PROCESSING)
+                .reduce((earlier, later) -> later).map(PathologyStageEvent::getRunReference).orElse(null);
     }
 
     /**

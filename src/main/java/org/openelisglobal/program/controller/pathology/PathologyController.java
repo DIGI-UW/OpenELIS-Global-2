@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.StaleStateException;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.util.DashboardPage;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
@@ -43,7 +42,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class PathologyController extends BaseRestController {
+public class PathologyController extends PathologyRestController {
 
     @Autowired
     private PathologySampleService pathologySampleService;

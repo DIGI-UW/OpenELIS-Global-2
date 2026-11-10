@@ -23,6 +23,7 @@ import {
   rowListEditors,
   unsavedPosition,
 } from "../pathologyRows";
+import { rowActionLock } from "../pathologySections";
 import "../pathologyCaseView.scss";
 
 /**
@@ -37,10 +38,18 @@ const MicrotomySection = ({
   onSlideFile,
   dirty,
   saving,
+  moving,
   saveRefusedForBlock = false,
   onDeactivate,
 }) => {
   const intl = useIntl();
+  const deactivateLock = rowActionLock({
+    status: caseInfo.status,
+    dirty,
+    saving,
+    moving,
+    saveFirstKey: "pathology.locked.saveBeforeDeactivate",
+  });
   const [showDeactivated, setShowDeactivated] = useState(false);
 
   const slides = caseInfo.slides ?? [];
@@ -118,10 +127,11 @@ const MicrotomySection = ({
           position={unsavedPosition(slides, index)}
           readOnly={readOnly}
           showDeactivated={showDeactivated}
-          deactivateLocked={dirty || saving}
-          deactivateLockedReason={intl.formatMessage({
-            id: "pathology.locked.saveBeforeDeactivate",
-          })}
+          deactivateLocked={deactivateLock.disabled}
+          deactivateLockedReason={
+            deactivateLock.reasonKey &&
+            intl.formatMessage({ id: deactivateLock.reasonKey })
+          }
           onRemove={() => removeRow(index)}
           onDeactivate={onDeactivate}
           actions={({ disabled }) => (

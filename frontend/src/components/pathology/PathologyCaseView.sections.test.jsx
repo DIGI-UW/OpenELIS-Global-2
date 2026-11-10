@@ -71,11 +71,6 @@ const sectionHeading = (number, titleKey) =>
     { number, title: messages[titleKey] },
   );
 
-// The display list is served with the stage id as its own text, so an
-// assertion on the catalogue wording can only pass if the label came from
-// React Intl rather than from the server's English.
-const STATUS_LIST = PATHOLOGY_STAGES.map((id) => ({ id, value: id }));
-
 const caseAtStage = (status, overrides = {}) => ({
   pathologySampleId: CASE_ID,
   patientPK: "1",
@@ -106,6 +101,17 @@ const caseAtStage = (status, overrides = {}) => ({
   techniques: [],
   conclusions: [],
   immunoHistoChemistryTestIds: [],
+  // The fields the case read carries for a move, stated rather than left
+  // out: this file's tests are about the sections, so the case names no
+  // stage to move to and the bar holds Discard and Save only.
+  nextStage: null,
+  previousStage: null,
+  runReference: null,
+  runReferenceEditable: false,
+  stageEvents: [],
+  // As the server answers for a case that was released when it was signed
+  // out; a case set to Completed without a release says so itself.
+  releasable: status === "READY_PATHOLOGIST" || status === "UNDER_REVIEW",
   ...overrides,
 });
 
@@ -161,34 +167,8 @@ const renderCaseView = (configurationProperties) => {
 
 const section = (id) => document.getElementById(id);
 
-// The stage control is a Carbon Dropdown. Its wrapper carries the id, its
-// toggle carries the accessible name and the current stage, and its options
-// exist only while the menu is open.
-const statusSelect = () => document.getElementById("status");
-
-const statusToggle = () =>
-  screen.getByRole("combobox", {
-    name: messages["common.status"],
-  });
-
-// Scoped to the stage control: the technician and pathologist selectors on
-// the same screen are native selects, whose own <option> elements answer to
-// the same role.
-const statusOptionTexts = () => {
-  fireEvent.click(statusToggle());
-  const texts = within(statusSelect())
-    .getAllByRole("option")
-    .map((option) => option.textContent);
-  fireEvent.click(statusToggle());
-  return texts;
-};
-
-const setStage = (stageKey) => {
-  fireEvent.click(statusToggle());
-  fireEvent.click(
-    within(statusSelect()).getByRole("option", { name: messages[stageKey] }),
-  );
-};
+// The stage the action bar reads out, there once the case has loaded.
+const stageReadout = () => document.getElementById("caseStage");
 
 const caseInfoValue = (labelText) => {
   const rows = Array.from(
@@ -346,9 +326,6 @@ beforeEach(() => {
     { id: "CANCELLED", value: "Cancelled" },
   ];
   getFromOpenElisServer.mockImplementation((url, callback) => {
-    if (url === "/rest/displayList/PATHOLOGY_STATUS") {
-      return callback(STATUS_LIST);
-    }
     if (url === "/rest/dictionary/category/pathology_tissue_types") {
       return callback(tissueCatalogue);
     }
@@ -380,7 +357,7 @@ describe("PathologyCaseView sections", () => {
       servedCase = caseAtStage(status);
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
 
       EXPECTED_SECTIONS.forEach(([number, titleKey]) => {
         expect(
@@ -393,7 +370,7 @@ describe("PathologyCaseView sections", () => {
   it("opens the section the bench is working on and leaves case information collapsed", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByRole("button", { name: /1\. Case Information/ }),
@@ -406,7 +383,7 @@ describe("PathologyCaseView sections", () => {
   it("names the case in its own page heading", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByRole("heading", {
@@ -421,16 +398,16 @@ describe("PathologyCaseView sections", () => {
     ).toBeInTheDocument();
   });
 
-  it("tells a screen reader why the stage is set by hand, from the control itself", async () => {
+  it("reads the stage out as the status, in the user's language", async () => {
+    servedCase = caseAtStage("MICROTOMY");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
-    const describedBy = statusToggle().getAttribute("aria-describedby");
-    expect(describedBy).toBeTruthy();
-    expect(document.getElementById(describedBy)).toHaveTextContent(
-      messages["pathology.banner.transitionsLater"],
+    expect(stageReadout()).toHaveTextContent(
+      messages["common.status"] + " " + messages["pathology.stage.microtomy"],
     );
+    expect(screen.queryByText("MICROTOMY")).not.toBeInTheDocument();
   });
 
   it("keeps the grossing description open beside the reading the pathologist is writing", async () => {
@@ -438,7 +415,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("READY_PATHOLOGIST");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByRole("button", { name: /2\. Grossing/ }),
@@ -456,7 +433,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       within(section("pathology-section-grossing")).getByText(
@@ -475,7 +452,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("COMPLETED");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     [
       "pathology-section-grossing",
@@ -503,7 +480,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       within(section("pathology-section-review")).getByText(
@@ -528,7 +505,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       within(section("pathology-section-review")).queryByText(/\d+ open/),
@@ -544,7 +521,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const review = within(section("pathology-section-review"));
     expect(
@@ -564,7 +541,7 @@ describe("PathologyCaseView sections", () => {
   it("says a case carries no report at all, rather than counting none", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(summaryValue(messages["pathology.label.report"])).toBe(
       messages["common.none"],
@@ -575,7 +552,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("COMPLETED", { reports: [{ id: "1" }] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(summaryValue(messages["pathology.label.report"])).toBe("1");
   });
@@ -587,7 +564,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(caseInfoValue(messages["sample.label.requester"])).toBe(
       messages["caseView.label.notRecorded"],
@@ -607,17 +584,17 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(caseInfoValue(messages["sample.receivedDate"])).toBe("2024-06-03");
     expect(caseInfoValue(messages["sample.type"])).toBe("Tissue, Tissue");
   });
 
-  it("marks a stage the laboratory does not track as not applicable and stops offering it", async () => {
+  it("marks a stage the laboratory does not track as not applicable", async () => {
     servedCase = caseAtStage("STAINING");
     renderCaseView({ PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "false" });
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByText(messages["caseView.badge.notApplicable"]),
@@ -625,25 +602,17 @@ describe("PathologyCaseView sections", () => {
     expect(section("pathology-section-coverslipping").textContent).toContain(
       messages["pathology.locked.stageDisabled"],
     );
-    expect(statusOptionTexts()).not.toContain(
-      messages["pathology.stage.coverslipping"],
-    );
-    expect(statusOptionTexts()).toContain(messages["pathology.stage.staining"]);
   });
 
-  it("offers every stage and marks none not applicable when the laboratory tracks them all", async () => {
+  it("marks no stage not applicable when the laboratory tracks them all", async () => {
     servedCase = caseAtStage("STAINING");
     renderCaseView({ PATHOLOGY_STAGE_COVERSLIPPING_ENABLED: "true" });
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.queryByText(messages["caseView.badge.notApplicable"]),
     ).not.toBeInTheDocument();
-    expect(statusOptionTexts()).toContain(
-      messages["pathology.stage.coverslipping"],
-    );
-    expect(statusOptionTexts()).toContain(messages["pathology.stage.staining"]);
   });
 
   it("counts the rows the case actually holds in the summary", async () => {
@@ -665,7 +634,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(summaryValue(messages["pathology.label.cassettes"])).toBe("3");
     expect(summaryValue(messages["pathology.label.slides"])).toBe("2");
@@ -689,7 +658,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       rail().getByText(
@@ -707,15 +676,15 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(rail().queryByText(/Open requests:/)).not.toBeInTheDocument();
   });
 
-  it("offers a discard and a save and nothing else, and only lets a discard undo real work", async () => {
+  it("offers a discard and a save on a case with no next stage, and only lets a discard undo real work", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const actions = document.querySelector(".case-view__action-bar-actions");
     expect(within(actions).getAllByRole("button")).toHaveLength(2);
@@ -734,7 +703,10 @@ describe("PathologyCaseView sections", () => {
     ).not.toBeInTheDocument();
 
     const fetchesBefore = caseFetchCount();
-    setStage("pathology.stage.staining");
+    fireEvent.change(
+      screen.getByLabelText(messages["pathology.label.grossExam"]),
+      { target: { value: "Skin ellipse" } },
+    );
 
     expect(discard).toBeEnabled();
     expect(
@@ -747,16 +719,15 @@ describe("PathologyCaseView sections", () => {
     expect(
       screen.queryByText(messages["caseView.label.unsavedChanges"]),
     ).not.toBeInTheDocument();
-    expect(statusToggle()).toHaveTextContent(
-      messages["pathology.stage.grossing"],
-    );
+    expect(
+      screen.getByLabelText(messages["pathology.label.grossExam"]),
+    ).toHaveValue("");
   });
 
   it("posts the fields the backend has always been sent, then reads the saved case back", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
-    setStage("pathology.stage.staining");
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     const fetchesBefore = caseFetchCount();
 
     fireEvent.click(
@@ -786,10 +757,8 @@ describe("PathologyCaseView sections", () => {
       "reports",
       "requests",
       "slides",
-      "status",
       "techniques",
     ]);
-    expect(JSON.parse(body).status).toBe("STAINING");
 
     await act(async () => {
       await callback({ status: 200, json: async () => ({}) });
@@ -804,8 +773,7 @@ describe("PathologyCaseView sections", () => {
   it("reports a save that never reached the server, and lets it be tried again", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
-    setStage("pathology.stage.staining");
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const saveDraft = () =>
       screen.getByRole("button", {
@@ -845,7 +813,7 @@ describe("PathologyCaseView sections", () => {
     requestCatalogue = [{ id: "3", value: "Recut" }];
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const user = userEvent.setup();
     const review = within(section("pathology-section-review"));
@@ -884,7 +852,7 @@ describe("PathologyCaseView sections", () => {
     ];
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const user = userEvent.setup();
     const review = within(section("pathology-section-review"));
@@ -923,7 +891,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const statusOfRequest = document.getElementById("requeststatus0");
     expect(
@@ -936,7 +904,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("READY_PATHOLOGIST");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(section("pathology-section-review").textContent).toContain(
       messages["caseView.badge.readOnly"],
@@ -951,7 +919,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("READY_PATHOLOGIST");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByLabelText(messages["pathology.label.microscopyExam"]),
@@ -961,7 +929,7 @@ describe("PathologyCaseView sections", () => {
   it("tells a case still on the bench which stage unlocks the reading, in words", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const awaiting = intl.formatMessage(
       { id: "caseView.locked.awaitingStage" },
@@ -978,7 +946,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("MICROTOMY");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const band = document.querySelector(".patient-header2");
     expect(
@@ -1011,7 +979,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [{ id: "1" }] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const grossing = section("pathology-section-grossing");
     const order = [
@@ -1035,7 +1003,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
     // Numbered among the new rows only, so A1 and the hidden A2 before it
@@ -1078,7 +1046,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
     // The embedding list names the same saved cassette's field the same way.
@@ -1105,7 +1073,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
     const cassette = rowIn("pathology-section-grossing", "A1");
@@ -1139,7 +1107,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
     fireEvent.change(document.getElementById("blockLocation1"), {
       target: { value: "Tray 1" },
@@ -1168,7 +1136,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("MICROTOMY", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addSlideButton());
     fireEvent.click(addSlideButton());
 
@@ -1203,7 +1171,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     const deactivate = () =>
       screen.getByRole("button", { name: deactivateCassette("A1") });
     expect(deactivate()).toBeEnabled();
@@ -1233,7 +1201,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     const deactivate = () =>
       screen.getByRole("button", { name: deactivateCassette("A1") });
 
@@ -1245,7 +1213,7 @@ describe("PathologyCaseView sections", () => {
     expect(deactivate()).toBeDisabled();
     expect(deactivate()).toHaveAttribute(
       "title",
-      messages["pathology.locked.saveBeforeDeactivate"],
+      messages["pathology.locked.requestInFlight"],
     );
 
     const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
@@ -1263,7 +1231,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(document.querySelectorAll('input[type="number"]')).toHaveLength(0);
     expect(document.getElementById("blocksToAdd")).toBeNull();
@@ -1275,7 +1243,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
     const added = pendingRows("pathology-section-grossing");
@@ -1297,7 +1265,7 @@ describe("PathologyCaseView sections", () => {
     });
     const { unmount } = renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(queryRowIn("pathology-section-grossing", "A2")).toBeNull();
     const toggle = showDeactivatedSwitch("pathology-section-grossing");
@@ -1315,7 +1283,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     expect(showDeactivatedSwitch("pathology-section-grossing")).toBeNull();
   });
 
@@ -1328,7 +1296,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(showDeactivatedSwitch("pathology-section-microtomy"));
 
     const slide = rowIn("pathology-section-microtomy", "1");
@@ -1352,7 +1320,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const cut = rowIn("pathology-section-microtomy", "1");
     expect(
@@ -1380,7 +1348,7 @@ describe("PathologyCaseView sections", () => {
     });
     const { unmount } = renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     const addSlide = () =>
       buttonWithText(document.body, messages["pathology.action.addSlide"]);
     expect(addSlide()).toBeDisabled();
@@ -1395,7 +1363,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     expect(addSlide()).toBeEnabled();
     expect(addSlide()).not.toHaveAttribute("title");
   });
@@ -1406,7 +1374,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
     fireEvent.click(addSlideButton());
 
@@ -1428,7 +1396,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("MICROTOMY", { blocks: [savedBlock("1", "A1")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addSlideButton());
     const newSlideRow = pendingRows("pathology-section-microtomy")[0].closest(
       ".pathology-case-view__row",
@@ -1480,7 +1448,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(
       screen.getByRole("button", { name: deactivateCassette("A2") }),
     );
@@ -1528,7 +1496,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(
       screen.getByRole("button", { name: deactivateCassette("A2") }),
     );
@@ -1559,7 +1527,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     const launcher = () =>
       screen.getByRole("button", { name: deactivateCassette("A2") });
 
@@ -1588,7 +1556,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(
       screen.getByRole("button", { name: deactivateCassette("A2") }),
     );
@@ -1613,7 +1581,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(
       screen.getByRole("button", { name: deactivateCassette("A2") }),
     );
@@ -1648,7 +1616,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("GROSSING", { blocks: [savedBlock("2", "A2")] });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(
       screen.getByRole("button", { name: deactivateCassette("A2") }),
     );
@@ -1677,7 +1645,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(
       screen.getByRole("button", {
         name: intl.formatMessage(
@@ -1704,7 +1672,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(addCassetteButton());
 
     const grossing = within(section("pathology-section-grossing"));
@@ -1733,7 +1701,7 @@ describe("PathologyCaseView sections", () => {
       });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       fireEvent.click(
         screen.getByRole("button", {
           name: messages["pathology.action.printCassetteLabels"],
@@ -1764,7 +1732,7 @@ describe("PathologyCaseView sections", () => {
   it("says a concurrent save named the same cassette, in the reader's language", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(saveDraftButton());
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
@@ -1796,7 +1764,7 @@ describe("PathologyCaseView sections", () => {
   it("never shows the server's own sentence for a refused save, and says to reload the case", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(saveDraftButton());
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
@@ -1823,7 +1791,7 @@ describe("PathologyCaseView sections", () => {
   it("reports any other refused save as the ordinary save failure", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
     fireEvent.click(saveDraftButton());
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
@@ -1845,17 +1813,6 @@ describe("PathologyCaseView sections", () => {
     );
   });
 
-  // The bar sits at the foot of a long page, where the native select the
-  // screen used before opened its menu downward and the browser clipped it
-  // against the window.
-  it("opens the stage menu upward, away from the foot of the page", async () => {
-    servedCase = caseAtStage("MICROTOMY");
-    renderCaseView();
-
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
-
-    expect(statusSelect()).toHaveClass("cds--list-box--up");
-  });
   // S-7.4: a control the case is not ready for is the pathologist's answer to
   // "why can I not release this", so it is shown and disabled rather than
   // removed. The flat form rendered it only once both assignments existed,
@@ -1865,7 +1822,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("UNDER_REVIEW", { assignedPathologistId: "" });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(document.getElementById("release")).toBeDisabled();
     // The pathologist is the half that is missing, and saying so is the whole
@@ -1884,7 +1841,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("UNDER_REVIEW");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(document.getElementById("release")).toBeEnabled();
     expect(
@@ -1892,11 +1849,52 @@ describe("PathologyCaseView sections", () => {
     ).not.toBeInTheDocument();
   });
 
+  // A released case is not released again, and the server refuses a second
+  // release, so the box says so rather than offering a tick that fails.
+  it("holds the release back on a released case and says why", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("COMPLETED");
+    renderCaseView();
+
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    const release = document.getElementById("release");
+    expect(release).toBeDisabled();
+    // Carbon puts a checkbox's title on its label, the part a pointer rests on.
+    expect(document.querySelector('label[for="release"]')).toHaveAttribute(
+      "title",
+      messages["pathology.locked.caseCompleted"],
+    );
+    expect(
+      within(section("pathology-section-findings")).getByText(
+        messages["pathology.locked.caseCompleted"],
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // The stage control once set Completed without releasing the case. The
+  // server still takes one release of such a case, and says so, so the box is
+  // offered rather than held back as if the case were already released.
+  it("offers the release on a case left at Completed without one", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("COMPLETED", { releasable: true });
+    renderCaseView();
+
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
+
+    expect(document.getElementById("release")).toBeEnabled();
+    expect(
+      within(section("pathology-section-findings")).queryByText(
+        messages["pathology.locked.caseCompleted"],
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("says the case carries no report rather than showing an empty list", async () => {
     servedCase = caseAtStage("COMPLETED");
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       within(section("pathology-section-reports")).getByText(
@@ -1916,7 +1914,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const named = intl.formatMessage(
       { id: "pathology.badge.openRequests" },
@@ -1939,7 +1937,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByRole("button", {
@@ -1961,7 +1959,7 @@ describe("PathologyCaseView sections", () => {
     });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       within(section("pathology-section-grossing")).getByText(
@@ -1978,7 +1976,7 @@ describe("PathologyCaseView sections", () => {
     servedCase = caseAtStage("UNDER_REVIEW", { assignedPathologistId: "" });
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     const hint = screen.getByText(
       messages["pathology.locked.releaseNoPathologist"],
@@ -2004,7 +2002,7 @@ describe("PathologyCaseView sections", () => {
       servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       expect(decalcificationBox()).not.toBeChecked();
       expect((await postedCase()).decalcificationRequired).toBe(false);
 
@@ -2022,7 +2020,7 @@ describe("PathologyCaseView sections", () => {
       servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
 
       expect(decalcificationHeader()).toBeDisabled();
       expect(
@@ -2033,51 +2031,23 @@ describe("PathologyCaseView sections", () => {
       );
     });
 
-    // FR-4.1: the stage is enterable only for a specimen grossing flagged,
-    // and a case already standing there must still be able to say so.
-    it("offers the decalcification stage only for a flagged specimen, or a case already standing at it", async () => {
-      const decalcification = messages["pathology.stage.decalcification"];
-
-      servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
-      const unflagged = renderCaseView();
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
-      expect(statusOptionTexts()).not.toContain(decalcification);
-      unflagged.unmount();
-
-      servedCase = caseAtStage("GROSSING", { decalcificationRequired: true });
-      const flagged = renderCaseView();
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
-      expect(statusOptionTexts()).toContain(decalcification);
-      flagged.unmount();
-
-      servedCase = caseAtStage("DECALCIFICATION", {
-        decalcificationRequired: false,
-      });
-      renderCaseView();
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
-      expect(statusOptionTexts()).toContain(decalcification);
-    });
-
     // The flag records what was done to the specimen once the case has gone
     // past the stage, and the server ignores it from then on.
-    it("freezes the flag on a case stored past decalcification, says why, and keeps it frozen when the stage control is moved back", async () => {
+    it("freezes the flag on a case stored past decalcification, and says why", async () => {
       servedCase = caseAtStage("PROCESSING");
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       expect(decalcificationBox()).toBeDisabled();
       expect(decalcificationBox()).toHaveAccessibleDescription(
         messages["pathology.locked.decalcificationPassed"],
       );
-
-      setStage("pathology.stage.grossing");
-      expect(decalcificationBox()).toBeDisabled();
     });
 
-    it("leaves the flag editable at grossing and at decalcification, even with a later stage picked but not saved", async () => {
+    it("leaves the flag editable at grossing and at decalcification", async () => {
       servedCase = caseAtStage("DECALCIFICATION");
       const atDecalcification = renderCaseView();
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       expect(decalcificationBox()).toBeEnabled();
       expect(
         screen.queryByText(messages["pathology.locked.decalcificationPassed"]),
@@ -2086,10 +2056,7 @@ describe("PathologyCaseView sections", () => {
 
       servedCase = caseAtStage("GROSSING");
       renderCaseView();
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
-      expect(decalcificationBox()).toBeEnabled();
-
-      setStage("pathology.stage.processing");
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       expect(decalcificationBox()).toBeEnabled();
       expect(decalcificationBox()).not.toHaveAccessibleDescription(
         messages["pathology.locked.decalcificationPassed"],
@@ -2100,7 +2067,7 @@ describe("PathologyCaseView sections", () => {
       servedCase = caseAtStage("GROSSING", { decalcificationRequired: true });
       const { unmount } = renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       expect(
         summaryRow(messages["pathology.label.decalcificationRequired"]),
       ).toBeDefined();
@@ -2112,7 +2079,7 @@ describe("PathologyCaseView sections", () => {
       servedCase = caseAtStage("GROSSING", { decalcificationRequired: false });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       expect(
         summaryValue(messages["pathology.label.decalcificationRequired"]),
       ).toBe(messages["label.no"]);
@@ -2122,7 +2089,7 @@ describe("PathologyCaseView sections", () => {
   it("labels the grossing description as the macroscopic description", async () => {
     renderCaseView();
 
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(
       screen.getByLabelText(messages["pathology.label.grossExam"]),
@@ -2146,7 +2113,7 @@ describe("PathologyCaseView sections", () => {
       });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
 
       expect(
         tissueCombobox(rowIn("pathology-section-grossing", "A1")),
@@ -2179,7 +2146,7 @@ describe("PathologyCaseView sections", () => {
       });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
 
       expect(
         tissueCombobox(rowIn("pathology-section-grossing", "A1")),
@@ -2195,7 +2162,7 @@ describe("PathologyCaseView sections", () => {
       });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
 
       const a1 = rowIn("pathology-section-grossing", "A1");
       expect(tissueCombobox(a1)).toBeDisabled();
@@ -2212,7 +2179,7 @@ describe("PathologyCaseView sections", () => {
       });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       await postedCase();
       tissueCatalogue = [...tissueCatalogue, { id: "24", value: "Fat" }];
       const callback = postToOpenElisServerFullResponse.mock.calls.at(-1)[2];
@@ -2240,7 +2207,7 @@ describe("PathologyCaseView sections", () => {
       });
       renderCaseView();
 
-      await waitFor(() => expect(statusSelect()).not.toBeNull());
+      await waitFor(() => expect(stageReadout()).not.toBeNull());
       fireEvent.click(showDeactivatedSwitch("pathology-section-grossing"));
 
       const a1 = rowIn("pathology-section-grossing", "A1");
@@ -2299,7 +2266,7 @@ describe("Embedding section", () => {
       ...overrides,
     });
     renderCaseView();
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
   };
 
   it("lists every saved cassette and block with its tissue type, and not a cassette added since the last save", async () => {
@@ -2564,7 +2531,7 @@ describe("Embedding section", () => {
   it("names nothing on the rail for a case still at grossing", async () => {
     servedCase = caseAtStage("GROSSING", { blocks: oneOfThree() });
     renderCaseView();
-    await waitFor(() => expect(statusSelect()).not.toBeNull());
+    await waitFor(() => expect(stageReadout()).not.toBeNull());
 
     expect(rail().queryByText(outstanding("A2, A3"))).toBeNull();
   });

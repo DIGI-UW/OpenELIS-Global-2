@@ -9,6 +9,7 @@ import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
 import org.openelisglobal.program.valueholder.pathology.PathologySlide;
+import org.openelisglobal.program.valueholder.pathology.PathologyStageEvent;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
 public interface PathologySampleService extends BaseObjectService<PathologySample, Integer> {
@@ -24,6 +25,18 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     /** Audit verb recorded when a slide is retired. */
     String PATHOLOGY_SLIDE_DEACTIVATED = "PATHOLOGY_SLIDE_DEACTIVATED";
+
+    /** Audit verb recorded when a case is sent on to a later stage. */
+    String PATHOLOGY_STAGE_ADVANCED = "PATHOLOGY_STAGE_ADVANCED";
+
+    /** Audit verb recorded when a case is returned to an earlier stage. */
+    String PATHOLOGY_STAGE_RETURNED = "PATHOLOGY_STAGE_RETURNED";
+
+    /** Audit verb recorded when the pathologist releases the case. */
+    String PATHOLOGY_CASE_SIGNED_OUT = "PATHOLOGY_CASE_SIGNED_OUT";
+
+    /** Audit verb recorded when the processor run is written at Processing. */
+    String PATHOLOGY_RUN_REFERENCE_RECORDED = "PATHOLOGY_RUN_REFERENCE_RECORDED";
 
     List<PathologySample> getWithStatus(List<PathologyStatus> statuses);
 
@@ -78,4 +91,56 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     /** The case a slide belongs to, null when no case holds it. */
     PathologySample getCaseOfSlide(Integer slideId);
+
+    /**
+     * Sends the case on to the next stage this deployment uses (FR-2.4), recording
+     * who moved it and when. A stage left unfinished, or a case with no bench stage
+     * after it, is refused with a message id the screen translates.
+     *
+     * @param from the stage the caller saw the case at
+     * @return the event recording the case's entry onto its new stage
+     * @throws PathologyStageConflictException when the case no longer stands at
+     *                                         {@code from}
+     */
+    PathologyStageEvent advance(Integer pathologySampleId, PathologyStatus from, String sysUserId);
+
+    /**
+     * Returns the case to the nearest earlier stage that applies to it (FR-2.5),
+     * recording the reason.
+     *
+     * @param from the stage the caller saw the case at
+     * @return the event recording the case's entry onto the earlier stage
+     * @throws PathologyStageConflictException when the case no longer stands at
+     *                                         {@code from}
+     */
+    PathologyStageEvent returnToPreviousStage(Integer pathologySampleId, PathologyStatus from, String reason,
+            String sysUserId);
+
+    /** Every stage the case entered, oldest first. */
+    List<PathologyStageEvent> getStageEvents(Integer pathologySampleId);
+
+    /**
+     * The stage {@link #advance} would send the case to, on this deployment's
+     * switches and the case's decalcification flag; empty when the bench has
+     * nowhere to send it.
+     */
+    Optional<PathologyStatus> nextStage(PathologySample pathologySample);
+
+    /**
+     * The stage {@link #returnToPreviousStage} would send the case back to, on the
+     * same rules; empty when there is none.
+     */
+    Optional<PathologyStatus> previousStage(PathologySample pathologySample);
+
+    /**
+     * Whether a case save would take a processor run now: the case stands at
+     * Processing on an entry that holds none yet.
+     */
+    boolean isRunReferenceRecordable(PathologySample pathologySample);
+
+    /**
+     * Whether a release would be taken now: the case stands in the pathologist's
+     * queue, or it stands at Completed with no release on record.
+     */
+    boolean isReleasable(PathologySample pathologySample);
 }

@@ -149,8 +149,86 @@ $field-inline-size: 12rem;
   max-inline-size: 20rem;
 }
 
+// The action bar's status slot: the stage the case stands at, and the return
+// beside it, which opens into a reason field and its two buttons on the same
+// wrapping line.
+.pathology-case-view__stage-control,
+.pathology-case-view__return-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
 .pathology-case-view__stage-control {
-  max-inline-size: 18rem;
+  align-items: center;
+}
+
+// The status group takes the room the action group leaves and wraps its own
+// controls inside it, so an open return row does not push the three action
+// buttons onto a line of their own. Its basis is zero, not its content: with
+// the reason field and its two buttons open, the content is wider than the
+// room, and a content-sized group would wrap the action group under it.
+.case-view__action-bar-status:has(> .pathology-case-view__stage-control) {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+
+.pathology-case-view__stage-readout {
+  @include type.type-style("heading-compact-01");
+}
+
+// The reason field carries its label above the input and its helper text
+// below, so the buttons are lined up with the input itself: they start
+// below the label (one line of label-01 and the label's own bottom margin),
+// not at the foot of the helper text.
+.pathology-case-view__return-row {
+  align-items: flex-start;
+}
+
+.pathology-case-view__return-row > .cds--btn {
+  margin-block-start: spacing.$spacing-06;
+}
+
+.pathology-case-view__return-row > .case-view__locked-hint {
+  flex-basis: 100%;
+}
+
+// A reason is a sentence, but the field must leave the buttons beside it: it
+// takes what room the row has, between a width that still shows a few words
+// and the width every other field has, so the two buttons stay on its line
+// where the action bar is narrow.
+.pathology-case-view__return-row .cds--form-item {
+  flex: 1 1 8rem;
+  max-inline-size: $field-inline-size;
+  min-inline-size: 8rem;
+}
+
+// A stage history row's stage and its Returned tag, side by side.
+.pathology-case-view__stage-event-stage {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+// A stage list scrolls sideways on its own where the centre column is
+// narrower than its columns.
+.pathology-case-view__stage-events {
+  max-inline-size: 100%;
+  overflow-x: auto;
+
+  // The region is a tab stop so a keyboard can scroll it; the ring shows
+  // where focus is, in the theme's own focus colour.
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// A return's reason, under the Returned tag in a one-stage list.
+.pathology-case-view__stage-event-reason {
+  display: block;
+  margin-block-start: spacing.$spacing-02;
 }
 
 .pathology-case-view__heading {
