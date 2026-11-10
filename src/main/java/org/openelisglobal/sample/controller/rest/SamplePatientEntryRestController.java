@@ -55,6 +55,7 @@ import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
 import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
 import org.openelisglobal.sample.override.valueholder.OverrideType;
+import org.openelisglobal.sample.service.OrderTestEdits;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
@@ -656,6 +657,13 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 .ifPresent(refusal -> errors.rejectValue(refusal.field(), refusal.code(), refusal.code()));
     }
 
+    private static java.util.function.Function<String, List<String>> panelTestIds() {
+        org.openelisglobal.panelitem.service.PanelItemService panelItems = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.panelitem.service.PanelItemService.class);
+        return panelId -> panelItems.getPanelItemsForPanel(panelId).stream().filter(item -> item.getTest() != null)
+                .map(item -> item.getTest().getId()).toList();
+    }
+
     private void validateTestRemovals(SamplePatientEntryForm form, SamplePatientUpdateData updateData,
             BindingResult result) {
         if (form.getSampleOrderItems() == null
@@ -673,18 +681,36 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             return;
         }
 
-        java.util.Set<String> requestedTestIds = new java.util.HashSet<>();
+        java.util.function.Function<String, List<String>> panelTests = panelTestIds();
+        java.util.Map<String, java.util.Set<String>> requestedBySampleItem = OrderTestEdits.requestedTestsBySampleItem(
+                updateData.getSampleItemsTests(), form.getRequestedSampleTypes(), panelTests);
         boolean hasRemainingMicro = false;
-
         if (updateData.getSampleItemsTests() != null) {
             for (org.openelisglobal.common.services.SampleAddService.SampleTestCollection stc : updateData
                     .getSampleItemsTests()) {
                 if (stc.tests != null) {
                     for (org.openelisglobal.test.valueholder.Test t : stc.tests) {
-                        requestedTestIds.add(t.getId());
                         if (t.isOpensMicrobiologyCase()) {
                             hasRemainingMicro = true;
                         }
+                    }
+                }
+            }
+        }
+        if (form.getRequestedSampleTypes() != null) {
+            org.openelisglobal.test.service.TestService testService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.test.service.TestService.class);
+            for (org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO requested : form
+                    .getRequestedSampleTypes()) {
+                if (requested == null || hasRemainingMicro) {
+                    continue;
+                }
+                for (String testId : OrderTestEdits.requestedTests(requested.getRequestedTests(),
+                        requested.getRequestedPanels(), panelTests)) {
+                    org.openelisglobal.test.valueholder.Test test = testService.get(testId);
+                    if (test != null && test.isOpensMicrobiologyCase()) {
+                        hasRemainingMicro = true;
+                        break;
                     }
                 }
             }
@@ -707,10 +733,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             if (analysis.getTest().isOpensMicrobiologyCase()) {
                 hadMicro = true;
             }
-            if (!requestedTestIds.contains(analysis.getTest().getId())) {
-                if (!resultService.getResultsByAnalysis(analysis).isEmpty()) {
-                    removedTestWithResults = true;
-                }
+            if (OrderTestEdits.isTakenOff(analysis, requestedBySampleItem, cancelledId)
+                    && !resultService.getResultsByAnalysis(analysis).isEmpty()) {
+                removedTestWithResults = true;
             }
         }
 
