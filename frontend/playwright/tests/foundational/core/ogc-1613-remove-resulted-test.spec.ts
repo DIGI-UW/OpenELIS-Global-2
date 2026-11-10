@@ -13,8 +13,12 @@ const API = "/api/OpenELIS-Global";
 const CATALOG = `${API}/rest/test-catalog`;
 const SERUM_SAMPLE_TYPE_ID = "2";
 
-async function createNumericTest(page: Page, label: string): Promise<string> {
+async function createNumericTest(
+  page: Page,
+  label: string,
+): Promise<{ id: string; name: string }> {
   const stamp = Date.now().toString().slice(-8);
+  const name = `OGC1613 ${label} ${stamp}`;
   const result = await page.evaluate(
     async ({ catalog, name, code, sampleTypeId }) => {
       const csrf = localStorage.getItem("CSRF") || "";
@@ -82,13 +86,13 @@ async function createNumericTest(page: Page, label: string): Promise<string> {
     },
     {
       catalog: CATALOG,
-      name: `OGC1613 ${label} ${stamp}`,
+      name,
       code: `C1613${label}${stamp}`.slice(0, 20),
       sampleTypeId: SERUM_SAMPLE_TYPE_ID,
     },
   );
   expect(result.error, "test setup must succeed").toBeUndefined();
-  return result.testId as string;
+  return { id: result.testId as string, name };
 }
 
 test.describe("OGC-1613 removing a resulted test", () => {
@@ -97,8 +101,8 @@ test.describe("OGC-1613 removing a resulted test", () => {
   }) => {
     test.setTimeout(150_000);
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const resultedId = await createNumericTest(page, "R");
-    const keptId = await createNumericTest(page, "K");
+    const resulted = await createNumericTest(page, "R");
+    const kept = await createNumericTest(page, "K");
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const accessionNumber = await createSampleOrder(page, {
@@ -106,12 +110,12 @@ test.describe("OGC-1613 removing a resulted test", () => {
       receivedDate: `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}`,
       receivedTime: `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}`,
       sampleTypeId: SERUM_SAMPLE_TYPE_ID,
-      testIds: `${resultedId},${keptId}`,
+      testIds: `${resulted.id},${kept.id}`,
     });
     expect(accessionNumber, "the order must be created").toBeTruthy();
     const main = page.getByRole("main");
-    const resultedName = /OGC1613 R \d+/;
-    const keptName = /OGC1613 K \d+/;
+    const resultedName = resulted.name;
+    const keptName = kept.name;
 
     await test.step("Result one test", async () => {
       await page.goto(
@@ -151,7 +155,7 @@ test.describe("OGC-1613 removing a resulted test", () => {
       });
     });
 
-    await test.step("Keeping the test saves nothing and says why", async () => {
+    await test.step("Keeping the test saves nothing and ticks it again", async () => {
       await openEnterOrder();
       await main.locator("label").filter({ hasText: resultedName }).click();
       await main.getByRole("button", { name: "Save and exit" }).click();
@@ -161,9 +165,12 @@ test.describe("OGC-1613 removing a resulted test", () => {
       ).toBeDisabled();
       await dialog.getByRole("button", { name: "Keep the test" }).click();
       await expect(
-        page.getByText("A reason for cancelling is required").first(),
+        page.getByText("The test was kept and nothing was saved.").first(),
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(page.getByText("cancelReason:")).toHaveCount(0);
+      await expect(
+        main.getByRole("checkbox", { name: resultedName }),
+      ).toBeChecked();
     });
 
     await test.step("With a reason the test is cancelled", async () => {
