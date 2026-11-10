@@ -165,6 +165,30 @@ describe("CriticalCommunicationPanel", () => {
     );
   });
 
+  it("counts calls in red only while one still needs follow-up", async () => {
+    const service = {
+      getCriticalCommunications: vi.fn().mockResolvedValue([
+        {
+          id: "comm-1",
+          recipient: "Provider on call",
+          message: "Read back by the ward",
+          outcome: "CONFIRMED",
+          followUpNeeded: false,
+          acknowledgementStatus: "OPEN",
+        },
+      ]),
+    };
+
+    const { container } = renderPanel(service);
+
+    const count = container.querySelector(
+      ".microbiology-card__header .cds--tag",
+    );
+    await waitFor(() => expect(count).toHaveTextContent("1"));
+    expect(count).toHaveClass("cds--tag--gray");
+    expect(count).not.toHaveClass("cds--tag--red");
+  });
+
   it("requires a call outcome before logging", async () => {
     const user = userEvent.setup();
     const service = {
