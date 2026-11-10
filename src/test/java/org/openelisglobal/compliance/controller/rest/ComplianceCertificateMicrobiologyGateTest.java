@@ -56,7 +56,7 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
                 .contentType(MediaType.APPLICATION_JSON).content("{\"sampleId\":1}")).andReturn();
 
         assertEquals(409, refused.getResponse().getStatus());
-        assertEquals("The microbiology report must be released before the certificate is generated",
+        assertEquals("The microbiology report must be released before the report is generated",
                 refused.getResponse().getErrorMessage());
     }
 
@@ -69,7 +69,7 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
                 .andReturn();
 
         assertEquals(409, refused.getResponse().getStatus());
-        assertEquals("The microbiology report must be released before the certificate is reissued",
+        assertEquals("The microbiology report must be released before the report is reissued",
                 refused.getResponse().getContentAsString());
     }
 
@@ -127,7 +127,9 @@ public class ComplianceCertificateMicrobiologyGateTest extends SecuritySliceMock
 
         @Bean
         ComplianceEvaluationService complianceEvaluationService() {
-            return mock(ComplianceEvaluationService.class);
+            ComplianceEvaluationService evaluation = mock(ComplianceEvaluationService.class);
+            when(evaluation.orderedTestCount(any())).thenReturn(1);
+            return evaluation;
         }
 
         @Bean

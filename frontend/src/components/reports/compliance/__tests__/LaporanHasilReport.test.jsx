@@ -116,7 +116,7 @@ describe("LaporanHasilReport", () => {
   it("renders title and subtitle", () => {
     renderWithIntl(<LaporanHasilReport />);
     expect(screen.getByText(/Compliance Report/i)).toBeInTheDocument();
-    expect(screen.getByText(/Generate compliance certificates for validated environmental orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/Generate the results report or compliance certificate for validated environmental orders/i)).toBeInTheDocument();
   });
 
   it("renders all 6 filter controls", () => {
@@ -247,7 +247,7 @@ describe("LaporanHasilReport", () => {
               sampleId: 104,
               labNumber: "ENV-2026-004",
               complianceStatus: "INELIGIBLE",
-              ineligibleReason: "NO_STANDARD",
+              ineligibleReason: "NO_TESTS",
               parameterResults: [],
             },
           ],
@@ -262,7 +262,7 @@ describe("LaporanHasilReport", () => {
     expect(screen.getByText("Results not yet validated")).toBeInTheDocument();
     expect(screen.getAllByText("— Ineligible")).toHaveLength(2);
     expect(screen.queryByText("INELIGIBLE")).not.toBeInTheDocument();
-    expect(screen.getByText("No standard linked")).toBeInTheDocument();
+    expect(screen.getByText("No tests on this order")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Generate PDF/i }),
     ).not.toBeInTheDocument();
@@ -294,7 +294,7 @@ describe("LaporanHasilReport", () => {
 
     expect(
       screen.getByText(
-        "Every test must be validated before the certificate can be generated.",
+        "Every test must be validated before the report can be generated.",
       ),
     ).toBeInTheDocument();
   });
@@ -501,6 +501,93 @@ describe("LaporanHasilReport", () => {
       expect(screen.getByText(/Compliance Summary/i)).toBeInTheDocument();
       expect(screen.getByText(/Signatures/i)).toBeInTheDocument();
     }
+  });
+
+  it("lists every validated result, with the guideline and status only when a standard applies (OGC-1617)", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    const rows = [
+      {
+        sampleNumber: "1",
+        sampleType: "Surface water",
+        parameter: "Free chlorine",
+        result: "0.1",
+        unit: "mg/L",
+        method: "DPD",
+        guideline: "0.2 - 5 mg/L",
+        status: "NON_COMPLIANT",
+      },
+      {
+        sampleNumber: "1",
+        sampleType: "Surface water",
+        parameter: "Turbidity",
+        result: "3",
+        unit: "NTU",
+        method: null,
+        guideline: null,
+        status: null,
+      },
+    ];
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[1],
+              sampleId: 201,
+              labNumber: "ENV-RESULTS",
+              standardName: null,
+              regulationNumber: null,
+              complianceStatus: "NONE",
+              reportKind: "RESULTS",
+              hasBeenReleased: false,
+              lastGenerated: null,
+              reportRows: [{ ...rows[1] }],
+            },
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 202,
+              labNumber: "ENV-CERT",
+              reportKind: "COMPLIANCE",
+              reportRows: rows,
+            },
+          ],
+        });
+      }
+    });
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    expect(screen.getByText("Results report (no standard)")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Generate PDF/i })).toHaveLength(2);
+
+    const expand = screen.getAllByRole("button", { name: /expand/i });
+    await act(async () => {
+      fireEvent.click(expand[0]);
+      fireEvent.click(expand[1]);
+    });
+    const [resultsOnly, certificate] = screen.getAllByTestId(
+      "laporan-hasil-report-rows",
+    );
+    expect(resultsOnly).toHaveTextContent("Turbidity");
+    expect(resultsOnly).not.toHaveTextContent("Status");
+    expect(screen.getByTestId("laporan-hasil-results-only")).toBeInTheDocument();
+    expect(certificate).toHaveTextContent("Free chlorine");
+    expect(certificate).toHaveTextContent("0.2 - 5 mg/L");
+    expect(certificate).toHaveTextContent("Turbidity");
+    expect(certificate).toHaveTextContent("Status");
+
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
   });
 
   it("shows analyst and manager signature names in expanded row", async () => {

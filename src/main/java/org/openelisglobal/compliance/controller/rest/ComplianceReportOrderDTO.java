@@ -28,10 +28,37 @@ public class ComplianceReportOrderDTO {
     private String complianceStatus;
 
     /** Why an INELIGIBLE order cannot have a certificate. */
-    public static final String INELIGIBLE_NO_STANDARD = "NO_STANDARD";
+    public static final String INELIGIBLE_NO_TESTS = "NO_TESTS";
     public static final String INELIGIBLE_NOT_VALIDATED = "NOT_VALIDATED";
 
     private String ineligibleReason;
+
+    /**
+     * A certificate when a standard is linked, otherwise a results report
+     * (OGC-1617).
+     */
+    public static final String KIND_COMPLIANCE = "COMPLIANCE";
+    public static final String KIND_RESULTS = "RESULTS";
+
+    private String reportKind;
+
+    private List<org.openelisglobal.compliance.service.EnvironmentalReportRow> reportRows = List.of();
+
+    public String getReportKind() {
+        return reportKind;
+    }
+
+    public void setReportKind(String reportKind) {
+        this.reportKind = reportKind;
+    }
+
+    public List<org.openelisglobal.compliance.service.EnvironmentalReportRow> getReportRows() {
+        return reportRows;
+    }
+
+    public void setReportRows(List<org.openelisglobal.compliance.service.EnvironmentalReportRow> reportRows) {
+        this.reportRows = reportRows;
+    }
 
     public String getIneligibleReason() {
         return ineligibleReason;
