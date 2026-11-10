@@ -265,6 +265,72 @@ it("reloads the reagent lots after a control is recorded so a released lot can b
   );
 });
 
+it("reloads every run's QC after a control is recorded so a shared lot shows its new status", async () => {
+  const twoRuns = () => {
+    const data = workspace();
+    data.isolates[0].runs.push({ ...data.isolates[0].runs[0], id: "run2" });
+    return data;
+  };
+  let released = false;
+  const qcView = (runId) => ({
+    configured: true,
+    canRecord: runId === "run",
+    antibiotics: [{ id: "a", name: "Ampicillin" }],
+    controlLots: [
+      {
+        id: "ecoli",
+        label: "E. coli ATCC 25922",
+        ranges: { a: { low: 1, high: 4 } },
+      },
+    ],
+    lots: [
+      {
+        id: 7,
+        lotNumber: "LOT-7",
+        itemName: "AST cards",
+        qcStatus: released ? "PASSED" : "PENDING",
+      },
+    ],
+    candidateLots: [],
+    controls: [],
+  });
+  const service = {
+    getAstWorkspace: vi.fn(() => Promise.resolve(twoRuns())),
+    astAction: vi.fn(),
+    getReagentLotOverview: vi
+      .fn()
+      .mockResolvedValue({ requirements: [], usages: [] }),
+    getAstQc: vi.fn((caseId, runId) => Promise.resolve(qcView(runId))),
+    recordAstQc: vi.fn(() => {
+      released = true;
+      return Promise.resolve(qcView("run"));
+    }),
+  };
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseAstWorkspace
+        detail={{ id: "c1", canWrite: true, canValidate: true }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Record control result" }),
+  );
+  const dialog = await screen.findByRole("dialog", {
+    name: "Record control result",
+  });
+  fireEvent.change(within(dialog).getByLabelText("Control lot"), {
+    target: { value: "ecoli" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Measured value Ampicillin"), {
+    target: { value: "2" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Record" }));
+  const otherRun = screen.getAllByRole("region", { name: "Run QC" })[1];
+  expect(await within(otherRun).findByText("QC passed")).toBeInTheDocument();
+});
+
 it("says a failing QC control holds validation until its NCE is closed", async () => {
   const service = show(workspace("IN_PROGRESS"));
   service.astAction.mockRejectedValue({ response: { message: "AST_QC_HOLD" } });

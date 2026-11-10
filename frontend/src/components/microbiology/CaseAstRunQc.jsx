@@ -22,7 +22,13 @@ import { labTimestamp } from "./MicrobiologyTime";
 const qcStatusType = (status) =>
   status === "PASSED" ? "green" : status === "FAILED" ? "red" : "gray";
 
-export default function CaseAstRunQc({ caseId, runId, service, onRecorded }) {
+export default function CaseAstRunQc({
+  caseId,
+  runId,
+  service,
+  onRecorded,
+  reloadKey,
+}) {
   const intl = useIntl();
   const [view, setView] = useState(null);
   const [open, setOpen] = useState(false);
@@ -46,7 +52,7 @@ export default function CaseAstRunQc({ caseId, runId, service, onRecorded }) {
     return () => {
       live = false;
     };
-  }, [caseId, runId, service]);
+  }, [caseId, runId, service, reloadKey]);
 
   if (!view) return null;
 

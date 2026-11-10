@@ -398,6 +398,7 @@ export default function CaseAstWorkspace({
                       caseId={detail.id}
                       runId={run.id}
                       service={service}
+                      reloadKey={data}
                       onRecorded={() =>
                         service
                           .getAstWorkspace(detail.id)
