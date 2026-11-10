@@ -95,6 +95,10 @@ export const isolateAction = (id, isolateId, action, body) =>
     body,
   );
 export const getAstWorkspace = (id) => read(`${caseUrl(id)}/ast`);
+export const getAstQc = (id, runId) =>
+  read(`${caseUrl(id)}/ast/runs/${encodeURIComponent(runId)}/qc`);
+export const recordAstQc = (id, runId, body) =>
+  mutate(`${caseUrl(id)}/ast/runs/${encodeURIComponent(runId)}/qc`, body);
 export const astAction = (id, body, validation = false) =>
   mutate(`${caseUrl(id)}/ast/${validation ? "validation" : "entry"}`, body);
 export const resolveDst = (id, body) =>
@@ -178,6 +182,8 @@ export default {
   undoBench,
   printBench,
   getAstWorkspace,
+  getAstQc,
+  recordAstQc,
   astAction,
   resolveDst,
   getReport,
