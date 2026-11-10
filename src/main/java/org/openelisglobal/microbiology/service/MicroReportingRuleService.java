@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -58,12 +59,13 @@ public class MicroReportingRuleService {
     private final MicroBreakpointService breakpointService;
     private final SiteInformationService settings;
     private final MicroAstService astService;
+    private final MicroGroupRuleConflictFinder conflicts;
     private final ObjectMapper json = new ObjectMapper();
 
     public MicroReportingRuleService(MicroReportingRuleDAO rules, MicroReportingRuleHistoryDAO history,
             MicroAntibioticDAO antibiotics, MicroOrganismDAO organisms, MicroInterpretationRuleDAO interpretationRules,
             TypeOfSampleService sampleTypes, SystemUserService systemUsers, MicroBreakpointService breakpointService,
-            SiteInformationService settings, MicroAstService astService) {
+            SiteInformationService settings, MicroAstService astService, MicroGroupRuleConflictFinder conflicts) {
         this.rules = rules;
         this.history = history;
         this.antibiotics = antibiotics;
@@ -74,6 +76,7 @@ public class MicroReportingRuleService {
         this.breakpointService = breakpointService;
         this.settings = settings;
         this.astService = astService;
+        this.conflicts = conflicts;
     }
 
     @Transactional
@@ -153,6 +156,20 @@ public class MicroReportingRuleService {
             astService.reapplyReportingRules(previousAntibioticId, actor);
         }
         return rule;
+    }
+
+    @Transactional
+    public MicroReportingRule saveWithoutGroupConflict(MicroReportingRuleForm form, String actor) {
+        MicroReportingRule saved = save(form, actor);
+        Map<String, Set<String>> groupsByOrganismId = new HashMap<>();
+        for (MicroOrganism organism : organisms.getAll()) {
+            groupsByOrganismId.put(organism.getId(), Set.copyOf(organism.getLabGroups()));
+        }
+        if (conflicts.find(groupsByOrganismId, getRules()).stream().anyMatch(
+                conflict -> saved.getId().equals(conflict.first().id) || saved.getId().equals(conflict.second().id))) {
+            throw new IllegalArgumentException("REPORTING_RULE_GROUP_CONFLICT");
+        }
+        return saved;
     }
 
     public List<MicroReportingRuleForm> getRules() {

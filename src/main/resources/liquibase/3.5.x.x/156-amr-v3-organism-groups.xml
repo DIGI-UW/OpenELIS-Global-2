@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+<changeSet id="156-amr-v3-organism-groups" author="openelis">
+<createTable schemaName="clinlims" tableName="micro_organism_group"><column name="organism_id" type="varchar(36)"><constraints nullable="false"/></column><column name="group_name" type="varchar(100)"><constraints nullable="false"/></column></createTable>
+<addPrimaryKey schemaName="clinlims" tableName="micro_organism_group" columnNames="organism_id, group_name" constraintName="pk_micro_organism_group"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_organism_group" baseColumnNames="organism_id" referencedTableSchemaName="clinlims" referencedTableName="micro_organism" referencedColumnNames="id" constraintName="fk_micro_organism_group_organism"/>
+<createIndex schemaName="clinlims" tableName="micro_organism_group" indexName="idx_micro_organism_group_name"><column name="group_name"/></createIndex>
+<rollback><sql splitStatements="false"><![CDATA[
+DO $$ BEGIN
+ IF EXISTS (SELECT 1 FROM clinlims.micro_organism_group) THEN
+  RAISE EXCEPTION 'Cannot discard the laboratory organism groups';
+ END IF;
+END $$;
+]]></sql><dropTable schemaName="clinlims" tableName="micro_organism_group"/></rollback>
+</changeSet>
+</databaseChangeLog>

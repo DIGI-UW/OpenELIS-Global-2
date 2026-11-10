@@ -112,7 +112,7 @@ export default function AstRulesPage() {
       getInterpretationRules(controller.signal),
       getReferenceOptions("antibiotics", controller.signal),
       getReferenceOptions("organisms", controller.signal),
-      getReferenceOptions("organism-groups", controller.signal),
+      getReferenceOptions("lab-organism-groups", controller.signal),
       getReferenceOptions("specimen-types", controller.signal),
     ])
       .then(
