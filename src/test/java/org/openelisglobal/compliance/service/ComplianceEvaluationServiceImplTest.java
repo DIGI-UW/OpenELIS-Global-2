@@ -3,6 +3,11 @@ package org.openelisglobal.compliance.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -16,6 +21,8 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.compliance.valueholder.ComplianceStatus;
 import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
@@ -46,9 +53,13 @@ public class ComplianceEvaluationServiceImplTest {
     private ResultService resultService;
     @Mock
     private DictionaryService dictionaryService;
+    @Mock
+    private IStatusService statusService;
 
     @InjectMocks
     private ComplianceEvaluationServiceImpl service;
+
+    private static final String FINALIZED = "6";
 
     private Sample sample;
     private SampleItem sampleItem;
@@ -76,6 +87,9 @@ public class ComplianceEvaluationServiceImplTest {
 
         analysis = new Analysis();
         analysis.setTest(test);
+        analysis.setStatusId(FINALIZED);
+        lenient().when(statusService.matches(anyString(), eq(AnalysisStatus.Finalized)))
+                .thenAnswer(invocation -> FINALIZED.equals(invocation.getArgument(0)));
     }
 
     private ComplianceThreshold rangeThreshold(String min, String max) {
@@ -330,6 +344,7 @@ public class ComplianceEvaluationServiceImplTest {
         org.openelisglobal.test.valueholder.Test test2 = new org.openelisglobal.test.valueholder.Test();
         test2.setId("6");
         analysis2.setTest(test2);
+        analysis2.setStatusId(FINALIZED);
 
         ComplianceThreshold t1 = rangeThreshold("4.5", "8.5");
         t1.setParameterCode("pH");
@@ -368,5 +383,19 @@ public class ComplianceEvaluationServiceImplTest {
 
         assertNotNull(result);
         assertEquals(ComplianceStatus.BORDERLINE, result.getOverallStatus());
+    }
+
+    @Test
+    public void aResultNotYetValidatedIsNotGraded() {
+        analysis.setStatusId("15");
+        when(sampleComplianceStandardDAO.getAllForSample("1")).thenReturn(List.of(link));
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(analysis));
+        lenient().when(complianceThresholdService.getThresholdsByTestAndStandard("5", "10"))
+                .thenReturn(List.of(threshold(ThresholdType.RANGE, "0.2", "5")));
+        lenient().when(resultService.getResultsByAnalysis(analysis)).thenReturn(List.of(resultWithValue("5.3")));
+
+        assertNull("an edited result waiting for validation is not on the report", service.evaluate(sample));
+        verify(resultService, never()).getResultsByAnalysis(analysis);
     }
 }

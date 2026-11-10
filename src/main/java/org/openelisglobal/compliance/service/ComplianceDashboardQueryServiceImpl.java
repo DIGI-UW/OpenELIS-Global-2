@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.compliance.controller.rest.dto.DashboardSummaryDTO;
 import org.openelisglobal.compliance.controller.rest.dto.DashboardTrendDTO;
 import org.openelisglobal.compliance.controller.rest.dto.MonthDataPointDTO;
@@ -21,6 +23,7 @@ import org.openelisglobal.compliance.controller.rest.dto.ParameterSeriesDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteComparisonDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteParameterTrendDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteSeriesDTO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -140,6 +143,9 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
     @PersistenceContext
     private EntityManager em;
 
+    @Autowired
+    private IStatusService statusService;
+
     private static final String SITE_JOIN = "JOIN clinlims.observation_history oh_site "
             + "  ON oh_site.sample_id = s.id " + "  AND oh_site.observation_history_type_id = "
             + "    (SELECT id FROM clinlims.observation_history_type WHERE type_name = '" + ENV_SITE_TYPE + "') "
@@ -152,10 +158,12 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
      * Every result the Compliance Report judges is counted here too. A test made in
      * the Test Catalog is saved as not reportable, so filtering on the reportable
      * flag left those results out of the dashboard while the report and certificate
-     * graded them (OGC-1615).
+     * graded them (OGC-1615). Only validated (Finalized) results are counted, as on
+     * the report: a result edited after release, or a cancelled test, is not.
      */
     private String coreFrom() {
-        return "FROM clinlims.result r " + "JOIN clinlims.analysis a ON r.analysis_id = a.id "
+        return "FROM clinlims.result r " + "JOIN clinlims.analysis a ON r.analysis_id = a.id AND a.status_id = "
+                + Integer.parseInt(statusService.getStatusID(AnalysisStatus.Finalized)) + " "
                 + "JOIN clinlims.test t ON a.test_id = t.id " + "JOIN clinlims.sample_item si ON a.sampitem_id = si.id "
                 + "JOIN clinlims.sample s ON si.samp_id = s.id " + SITE_JOIN + THRESHOLD_JOIN;
     }

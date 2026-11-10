@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult.ParameterResult;
 import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.compliance.valueholder.ComplianceStatus;
@@ -30,9 +32,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Judges an environmental order's validated results against every compliance
- * standard linked to it (FR-02), and each result against every active threshold
- * its test has under that standard (S-05, BR-005).
+ * Judges an environmental order's validated (Finalized) results against every
+ * compliance standard linked to it (FR-02), and each result against every
+ * active threshold its test has under that standard (S-05, BR-005).
  *
  * <p>
  * A numeric result is Compliant when it meets every limit (Normal Range, Low
@@ -68,6 +70,9 @@ public class ComplianceEvaluationServiceImpl implements ComplianceEvaluationServ
     @Autowired
     private DictionaryService dictionaryService;
 
+    @Autowired
+    private IStatusService statusService;
+
     @Override
     public ComplianceEvaluationResult evaluate(Sample sample) {
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
@@ -85,7 +90,8 @@ public class ComplianceEvaluationServiceImpl implements ComplianceEvaluationServ
         for (SampleItem sampleItem : sampleItems) {
             List<Analysis> analyses = analysisService.getMaxRevisionAnalysesBySample(sampleItem);
             for (Analysis analysis : analyses) {
-                if (analysis.getTest() == null) {
+                if (analysis.getTest() == null
+                        || !statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
                     continue;
                 }
                 List<Result> results = null;

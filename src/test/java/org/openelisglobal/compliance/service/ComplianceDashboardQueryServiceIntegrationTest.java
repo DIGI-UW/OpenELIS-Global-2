@@ -12,6 +12,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.compliance.controller.rest.dto.DashboardSummaryDTO;
 import org.openelisglobal.compliance.controller.rest.dto.MonthDataPointDTO;
 import org.openelisglobal.compliance.controller.rest.dto.PagedExceedanceDTO;
@@ -34,10 +36,14 @@ public class ComplianceDashboardQueryServiceIntegrationTest extends BaseWebConte
     @Autowired
     private ComplianceDashboardQueryService dashboardService;
 
+    @Autowired
+    private IStatusService statusService;
+
     @Before
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/compliance-dashboard.xml");
+        setStatus("9101, 9102, 9103, 9104, 9105, 9106, 9107, 9108, 9109, 9110", AnalysisStatus.Finalized);
         jdbcTemplate.update("INSERT INTO clinlims.observation_history_type (id, type_name, description, lastupdated)"
                 + " SELECT 9101, 'envSamplingSiteId', 'Sampling site id', now() WHERE NOT EXISTS"
                 + " (SELECT 1 FROM clinlims.observation_history_type WHERE type_name = 'envSamplingSiteId')");
@@ -173,6 +179,7 @@ public class ComplianceDashboardQueryServiceIntegrationTest extends BaseWebConte
         for (int id = 9111; id <= 9112; id++) {
             jdbcTemplate.update("INSERT INTO clinlims.analysis (id, sampitem_id, test_id, analysis_type)"
                     + " VALUES (?, 9103, 9102, 'MANUAL')", id);
+            setStatus(String.valueOf(id), AnalysisStatus.Finalized);
             jdbcTemplate.update("INSERT INTO clinlims.result (id, analysis_id, value, is_reportable, lastupdated)"
                     + " VALUES (?, ?, '4', 'Y', now())", id, id);
         }
@@ -276,6 +283,26 @@ public class ComplianceDashboardQueryServiceIntegrationTest extends BaseWebConte
 
         assertEquals("7.4 misses the second standard's <= 7.3; only the first standard has a zone",
                 Map.of("7.4", "FAIL", "7.6", "FAIL", "10.0", "FAIL"), statusByValue);
+    }
+
+    @Test
+    public void aResultWaitingForValidationOrCancelledIsNotJudged() {
+        setStatus("9106", AnalysisStatus.TechnicalAcceptance);
+        setStatus("9104", AnalysisStatus.Canceled);
+
+        DashboardSummaryDTO summary = dashboardService.getSummary(null, null, JUNE_START, JUNE_END);
+
+        assertEquals("10.0 was edited and waits for validation; 7.6 was cancelled", 100.0, summary.getComplianceRate(),
+                0.0001);
+        assertEquals(0, summary.getTotalExceedances());
+        assertTrue(dashboardService.getExceedances(null, null, JUNE_START, JUNE_END, 0, 20, "date", "asc").getItems()
+                .isEmpty());
+    }
+
+    private void setStatus(String analysisIds, AnalysisStatus status) {
+        jdbcTemplate.update(
+                "UPDATE clinlims.analysis SET status_id = CAST(? AS numeric) WHERE id IN (" + analysisIds + ")",
+                statusService.getStatusID(status));
     }
 
     private void addThreshold(int id, String type, String min, String max) {

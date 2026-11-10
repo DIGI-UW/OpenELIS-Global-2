@@ -764,6 +764,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               defaultMessage: "e.g., PP No. 22/2021 — Water Quality",
             })}
             required
+            {...requiredProps()}
             invalid={submitted && requiredErrors.name}
             invalidText={intl.formatMessage({
               id: "compliance.validation.required",
@@ -790,6 +791,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               defaultMessage: "e.g., Government of Indonesia",
             })}
             required
+            {...requiredProps()}
             invalid={submitted && requiredErrors.issuingBody}
             invalidText={intl.formatMessage({
               id: "compliance.validation.required",
@@ -816,6 +818,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               defaultMessage: "e.g., PP 22/2021",
             })}
             required
+            {...requiredProps()}
             invalid={submitted && requiredErrors.regulationNumber}
             invalidText={intl.formatMessage({
               id: "compliance.validation.required",
@@ -842,6 +845,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               defaultMessage: "e.g., 2021",
             })}
             required
+            {...requiredProps()}
             invalid={submitted && requiredErrors.version}
             invalidText={intl.formatMessage({
               id: "compliance.validation.required",
@@ -906,6 +910,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
                 defaultMessage: "yyyy-mm-dd",
               })}
               required
+              {...requiredProps()}
               invalid={submitted && requiredErrors.effectiveDate}
               invalidText={intl.formatMessage({
                 id: "compliance.validation.required",

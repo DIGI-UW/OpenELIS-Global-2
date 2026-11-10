@@ -56,6 +56,18 @@ describe("Add Compliance Standard (OGC-1615 walk)", () => {
       ]),
     );
     expect(marked).toHaveLength(6);
+    const announced = Array.from(
+      container.querySelectorAll('[aria-required="true"]'),
+    ).map((input) => input.id);
+    expect(announced).toEqual(
+      expect.arrayContaining([
+        "std-name",
+        "std-issuing-body",
+        "std-reg-number",
+        "std-version",
+      ]),
+    );
+    expect(announced).toHaveLength(6);
   });
 
   it("takes a typed effective date without the calendar", () => {

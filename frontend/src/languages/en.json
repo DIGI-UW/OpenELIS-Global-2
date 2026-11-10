@@ -2098,6 +2098,7 @@
   "laporanHasil.status.ineligible": "No standard linked",
   "laporanHasil.status.nonCompliant": "Non-Compliant",
   "laporanHasil.status.none": "–",
+  "laporanHasil.status.notGraded": "Not graded",
   "laporanHasil.subtitle": "Generate compliance certificates for validated environmental orders",
   "laporanHasil.tile.generated": "Generated",
   "laporanHasil.tile.ineligible": "Ineligible",
