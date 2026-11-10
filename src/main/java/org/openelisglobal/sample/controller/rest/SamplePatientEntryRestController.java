@@ -205,6 +205,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     @Autowired
     private SampleOrderOverrideService sampleOrderOverrideService;
+    @Autowired
+    private org.openelisglobal.sample.service.TestCancelPermission testCancelPermission;
 
     @Autowired
     private org.openelisglobal.microbiology.service.MicroCultureSetWarningService setWarningService;
@@ -418,7 +420,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // They will be added in a later step (Collect Sample)
         boolean requireSampleItems = !form.isOrderEntryOnly();
 
-        validateTestRemovals(form, updateData, result);
+        validateTestRemovals(form, updateData, result, request);
         validateEqa(sampleOrder, result);
         updateData.validateSample(result, requireSampleItems, sampleOrder, workflowType);
 
@@ -665,7 +667,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     }
 
     private void validateTestRemovals(SamplePatientEntryForm form, SamplePatientUpdateData updateData,
-            BindingResult result) {
+            BindingResult result, HttpServletRequest request) {
         if (form.getSampleOrderItems() == null
                 || GenericValidator.isBlankOrNull(form.getSampleOrderItems().getSampleId())) {
             return;
@@ -725,6 +727,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
         org.openelisglobal.result.service.ResultService resultService = org.openelisglobal.spring.util.SpringContext
                 .getBean(org.openelisglobal.result.service.ResultService.class);
+        String notStartedId = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.common.services.IStatusService.class)
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.NotStarted);
+        List<String> startedTestsTakenOff = new ArrayList<>();
 
         for (Analysis analysis : existingAnalyses) {
             if (cancelledId != null && cancelledId.equals(analysis.getStatusId())) {
@@ -733,10 +739,31 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             if (analysis.getTest().isOpensMicrobiologyCase()) {
                 hadMicro = true;
             }
-            if (OrderTestEdits.isTakenOff(analysis, requestedBySampleItem, cancelledId)
-                    && !resultService.getResultsByAnalysis(analysis).isEmpty()) {
+            if (!OrderTestEdits.isTakenOff(analysis, requestedBySampleItem, cancelledId)) {
+                continue;
+            }
+            if (!resultService.getResultsByAnalysis(analysis).isEmpty()) {
                 removedTestWithResults = true;
             }
+            if (!notStartedId.equals(analysis.getStatusId())) {
+                startedTestsTakenOff.add(
+                        org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
+            }
+        }
+
+        if (OrderTestEdits.leavesACollectedSampleWithoutTests(updateData.getSampleItemsTests(),
+                form.getRequestedSampleTypes(), existingAnalyses, cancelledId)) {
+            result.reject("order.sample.needsTest",
+                    "A collected sample keeps at least one test. To stop every test on it, reject the sample or cancel the order.");
+            return;
+        }
+
+        if (!startedTestsTakenOff.isEmpty()
+                && !testCancelPermission.mayCancelStartedTests(request, getSysUserId(request))) {
+            result.reject("order.cancel.notAllowed", new Object[] { String.join(", ", startedTestsTakenOff) },
+                    "Only an administrator or a validator can remove a test that has started: "
+                            + String.join(", ", startedTestsTakenOff) + ".");
+            return;
         }
 
         if (hadMicro && !hasRemainingMicro) {
@@ -1050,7 +1077,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * arguments, so a refusal such as an unknown requester reads in French on a
      * French session; its English default when the key has no message.
      */
-    private static String localized(org.springframework.validation.FieldError error) {
+    private static String localized(org.springframework.validation.ObjectError error) {
         String fallback = error.getDefaultMessage() != null ? error.getDefaultMessage() : "invalid value";
         if (error.getCode() == null) {
             return fallback;
@@ -1079,7 +1106,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (firstFe != null) {
             message = firstFe.getField() + ": " + localized(firstFe);
         } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
-            message = result.getGlobalErrors().get(0).getDefaultMessage();
+            message = localized(result.getGlobalErrors().get(0));
         } else {
             message = fallbackMessage;
         }
@@ -1094,10 +1121,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // OGC-743: include globalErrors so reject(...) calls aren't silently
         // dropped from the response. Existing consumers reading fieldErrors[]
         // are unaffected.
-        body.put("globalErrors",
-                result.getGlobalErrors().stream()
-                        .map(oe -> oe.getDefaultMessage() != null ? oe.getDefaultMessage() : oe.getCode())
-                        .collect(Collectors.toList()));
+        body.put("globalErrors", result.getGlobalErrors().stream()
+                .map(oe -> oe.getDefaultMessage() != null ? localized(oe) : oe.getCode()).collect(Collectors.toList()));
         return body;
     }
 }

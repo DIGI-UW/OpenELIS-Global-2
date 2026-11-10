@@ -94,6 +94,37 @@ public final class OrderTestEdits {
         return requested != null && !requested.contains(analysis.getTest().getId());
     }
 
+    /**
+     * True when the order screen lists a collected sample with no tests while the
+     * sample still has ordered tests: that is a rejection or a cancelled order, not
+     * a test removal.
+     */
+    public static boolean leavesACollectedSampleWithoutTests(List<SampleTestCollection> collections,
+            List<SampleTypeRequestDTO> requestedSampleTypes, List<Analysis> existingAnalyses,
+            String cancelledStatusId) {
+        if (requestedSampleTypes == null || existingAnalyses == null) {
+            return false;
+        }
+        Set<String> inManifest = manifestSampleItemIds(collections);
+        for (SampleTypeRequestDTO requested : requestedSampleTypes) {
+            if (requested == null || GenericValidator.isBlankOrNull(requested.getSampleItemId())
+                    || inManifest.contains(requested.getSampleItemId())
+                    || !GenericValidator.isBlankOrNull(requested.getRequestedTests())
+                    || !GenericValidator.isBlankOrNull(requested.getRequestedPanels())) {
+                continue;
+            }
+            for (Analysis analysis : existingAnalyses) {
+                if (analysis.getSampleItem() != null
+                        && requested.getSampleItemId().equals(analysis.getSampleItem().getId())
+                        && analysis.getParentAnalysis() == null && analysis.getParentResult() == null
+                        && !java.util.Objects.equals(cancelledStatusId, analysis.getStatusId())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private static Set<String> testIds(List<Test> tests) {
         Set<String> ids = new HashSet<>();
         if (tests != null) {

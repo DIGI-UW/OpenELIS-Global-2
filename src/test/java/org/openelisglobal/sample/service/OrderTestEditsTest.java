@@ -70,4 +70,18 @@ public class OrderTestEditsTest {
         analysis.setStatusId(statusId);
         return analysis;
     }
+
+    @Test
+    public void aCollectedSampleListedWithNoTestsWhileItHasOrderedTestsIsCaught() {
+        List<Analysis> onSeven = List.of(analysis("7", "10", "1"));
+
+        assertTrue(OrderTestEdits.leavesACollectedSampleWithoutTests(List.of(), List.of(row("7", "", "")), onSeven,
+                CANCELLED));
+        assertFalse("tests listed", OrderTestEdits.leavesACollectedSampleWithoutTests(List.of(),
+                List.of(row("7", "10", "")), onSeven, CANCELLED));
+        assertFalse("only cancelled tests left", OrderTestEdits.leavesACollectedSampleWithoutTests(List.of(),
+                List.of(row("7", "", "")), List.of(analysis("7", "10", CANCELLED)), CANCELLED));
+        assertFalse("a sample not yet collected", OrderTestEdits.leavesACollectedSampleWithoutTests(List.of(),
+                List.of(row(null, "", "")), onSeven, CANCELLED));
+    }
 }

@@ -5,6 +5,7 @@ import { IntlProvider } from "react-intl";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { OrderProvider, useOrderContext } from "./OrderContext";
 import CancelTestReasonDialog from "./CancelTestReasonDialog";
+import { restoreRemovedTests } from "./cancelReasons";
 import messages from "../../languages/en.json";
 import {
   postToOpenElisServerFullResponse,
@@ -123,12 +124,30 @@ describe("removing a test that has results (OGC-1613)", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("outcome").textContent).toContain(
-        "order.cancel.reasonRequired",
+        "order.removeTest.kept",
       ),
     );
     expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("outcome").textContent).not.toContain(
       "cancelReason",
     );
+  });
+
+  it("keeping puts the removed tests back on each saved sample", () => {
+    const saved = [
+      { sampleItemId: "39", tests: [{ id: "4" }, { id: "5" }] },
+      { sampleItemId: "40", tests: [{ id: "6" }] },
+    ];
+    const edited = [
+      { sampleItemId: "39", tests: [{ id: "4" }, { id: "2" }] },
+      { sampleItemId: "40", tests: [{ id: "6" }] },
+      { sampleItemId: "", tests: [{ id: "7" }] },
+    ];
+
+    const restored = restoreRemovedTests(edited, saved);
+
+    expect(restored[0].tests.map((test) => test.id)).toEqual(["4", "2", "5"]);
+    expect(restored[1]).toBe(edited[1]);
+    expect(restored[2]).toBe(edited[2]);
   });
 });

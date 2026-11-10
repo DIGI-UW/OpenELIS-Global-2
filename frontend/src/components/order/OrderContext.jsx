@@ -33,6 +33,7 @@ import {
   normalizeDateForState,
   todayLocalIso,
 } from "./dateUtils";
+import { restoreRemovedTests } from "./cancelReasons";
 
 /**
  * OrderContext - Shared state for the decoupled sample collection workflow.
@@ -908,8 +909,15 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     }
     const reason = await askCancelReason();
     if (!reason) {
+      let savedSamples = [];
+      try {
+        savedSamples = JSON.parse(lastSavedDataRef.current || "{}").samples;
+      } catch (unreadable) {
+        savedSamples = [];
+      }
+      setSamplesState((current) => restoreRemovedTests(current, savedSamples));
       failure.fieldErrors = {};
-      failure.message = "order.cancel.reasonRequired";
+      failure.message = "order.removeTest.kept";
       return false;
     }
     cancelReasonRef.current = reason;
