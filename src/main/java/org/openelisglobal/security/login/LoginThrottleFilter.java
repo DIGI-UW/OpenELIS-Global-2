@@ -37,7 +37,7 @@ public class LoginThrottleFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (LOGIN_REQUEST.matches(request)
-                && tracker.isThrottled(request.getParameter("loginName"), LoginAttemptTracker.clientAddress(request))) {
+                && tracker.isThrottled(request.getParameter("loginName"), tracker.clientAddress(request))) {
             failureHandler.onAuthenticationFailure(request, response,
                     new LoginThrottledException(tracker.windowMinutes()));
             return;

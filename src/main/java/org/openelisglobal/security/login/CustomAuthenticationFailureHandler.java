@@ -43,7 +43,7 @@ public class CustomAuthenticationFailureHandler implements AuthenticationFailure
         }
         if (!(exception instanceof LoginThrottledException)) {
             loginAttemptTracker.recordFailure(request.getParameter("loginName"),
-                    LoginAttemptTracker.clientAddress(request));
+                    loginAttemptTracker.clientAddress(request));
         }
         if ("true".equals(request.getParameter("apiCall"))) {
             this.handleApiLogin(request, response, exception);

@@ -65,13 +65,74 @@ public class LoginAttemptTrackerTest {
     }
 
     @Test
-    public void clientAddress_isTheFirstForwardedHop_elseThePeer() {
+    public void untrustedPeer_cannotChooseItsAddressWithAHeader() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("192.168.1.40");
+        request.addHeader("X-Forwarded-For", "203.0.113.7");
+        assertEquals("192.168.1.40", tracker.clientAddress(request));
+    }
+
+    @Test
+    public void trustedProxy_usesTheNearestUntrustedHop_includingPrivateClients() {
+        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, WINDOW, clock, "172.16.0.5/32,172.16.0.6/32");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("172.16.0.5");
-        assertEquals("172.16.0.5", LoginAttemptTracker.clientAddress(request));
+        request.addHeader("X-Forwarded-For", "203.0.113.7, 192.168.1.40, 172.16.0.6");
+        assertEquals("192.168.1.40", proxied.clientAddress(request));
+    }
 
-        request.addHeader("X-Forwarded-For", "203.0.113.7, 172.16.0.5");
-        assertEquals("203.0.113.7", LoginAttemptTracker.clientAddress(request));
+    @Test
+    public void multipleHeaderValues_areReadInOrder() {
+        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, WINDOW, clock, "172.16.0.5");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("172.16.0.5");
+        request.addHeader("X-Forwarded-For", "203.0.113.7");
+        request.addHeader("X-Forwarded-For", "192.168.1.40");
+        assertEquals("192.168.1.40", proxied.clientAddress(request));
+    }
+
+    @Test
+    public void malformedProxyHeader_fallsBackToSocketPeer() {
+        LoginAttemptTracker proxied = new LoginAttemptTracker(LIMIT, WINDOW, clock, "172.16.0.5");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("172.16.0.5");
+        request.addHeader("X-Forwarded-For", "forged, unknown");
+        assertEquals("172.16.0.5", proxied.clientAddress(request));
+    }
+
+    @Test
+    public void concurrentFailureSuccessAndExpiry_doNotLoseTheClientFailures() throws Exception {
+        int attempts = 2000;
+        LoginAttemptTracker concurrent = new LoginAttemptTracker(attempts, WINDOW, clock);
+        java.util.concurrent.ExecutorService workers = java.util.concurrent.Executors.newFixedThreadPool(3);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+            futures.add(workers.submit(() -> {
+                start.await();
+                for (int i = 0; i < attempts; i++)
+                    concurrent.recordFailure("user", "192.0.2.1");
+                return null;
+            }));
+            futures.add(workers.submit(() -> {
+                start.await();
+                for (int i = 0; i < attempts; i++)
+                    concurrent.recordSuccess("user");
+                return null;
+            }));
+            futures.add(workers.submit(() -> {
+                start.await();
+                for (int i = 0; i < attempts; i++)
+                    concurrent.isThrottled("user", "192.0.2.1");
+                return null;
+            }));
+            start.countDown();
+            for (java.util.concurrent.Future<?> future : futures)
+                future.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            assertTrue(concurrent.isThrottled("another-user", "192.0.2.1"));
+        } finally {
+            workers.shutdownNow();
+        }
     }
 
     private void fail(String login, String client, int times) {
