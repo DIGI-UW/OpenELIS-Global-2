@@ -1,38 +1,28 @@
-# Upgrading OpenELIS 2.x
+# Upgrading OpenELIS Global
 
-## Special 2.0 to 2.3 Instructions
+Choose a supported release from [the release policy](../RELEASES.md) and follow
+that release's [default distribution instructions](install.md). Online and
+offline upgrades use the same configuration and pinned image set. Offline hosts
+load the supplied image archive before starting Compose with
+`--pull never --no-build`.
 
-If you have an OpenELIS Global 2.2 or earlier (but not 1.x) you will need to
-create a client facing keystore. The easiest way to do this is to simple copy
-the keystore.
+Before changing images, back up the database, configuration, installation keys,
+certificate stores and Analyzer Bridge state together. Rehearse restoration on a
+separate test instance using the distribution's
+[backup and restore procedure](https://github.com/DIGI-UW/openelis-docker/blob/main/docs/backup-restore.md).
 
-`cp /etc/openelis-global/keystore /etc/openelis-global/client_facing_keystore`
+Retain the original effective encryption key when adopting an existing database.
+The [credential upgrade guide](upgrades/private-install-credentials.md) covers
+private credentials and first-login setup. Key conversion is a separate,
+[one-time operation](upgrades/installation-encryption.md); ordinary image
+updates must not generate a replacement key for existing encrypted values.
 
-After this, you can upgrade as normal.
+The retired Python installer is no longer built or shipped from this branch.
+This does not modify any existing installation. Sites using historical packages
+must plan and test their data migration before adopting the current
+distribution. The current baseline is not a claim that every historical database
+can upgrade in one step.
 
-##Upgrades
-
-OpenELIS Global uses an "upgrade in place" mechanism that saves all the already
-entered data, as well as custom tests, system settings, etc.
-
-The default action of the installer is to install/upgrade. If the installer can
-find an existing version of OpenELIS, it runs the upgrade, if not, it installs.
-
-[Download latest installer package Here:](https://www.dropbox.com/sh/47lagjht4ynpcg8/AABORyLmkpVTtRReeD6wSnJra?dl=0)
-
-Production systems should run a release from a supported line. The supported
-lines and the versioning rules are listed in
-[RELEASES.md](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/RELEASES.md).
-
-So, to upgrade, one must download the new installer, EG for the RC of OpenELIS
-2.3
-
-`curl -L -O https://www.dropbox.com/s/h2t20m6kzfj519y/OpenELIS-Global_2.3.2.5_Installer.tar.gz`
-
-Then unpack the file
-
-`tar -xvf OpenELIS-Global_2.3.2.5_Installer.tar.gz`
-
-and finally, run the isntaller to upgrade
-
-`sudo python2 setup_OpenELIS.py`
+Historical [1.x to 2.x](upgrade1to2.md) and [2.7](27upgrade.md) material is
+retained in Git history for migration research, not as current install
+instructions.

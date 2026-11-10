@@ -1,8 +1,0 @@
-This is the framework for installing linux openElis
-Before it is run the correct files need to be included
-
-1) DockerImage -- The current OpenELIS-Global docker image to run
-2) liquibase -- The most recent changeLogs.xml file and site specific xml files, e.g. haiti.xml should be added here.  Even if the site specific file is not going to be used it should be included, changeLogs.xml will have a reference to it.
-3) databaseFiles -- actually only one is expected; "databaseInstall.backup"
-4) scripts -- the scripts that assist in installing OpenELIS-Global
-5) templates -- additional files that need to be included like the backup script
