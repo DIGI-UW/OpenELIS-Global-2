@@ -78,7 +78,7 @@ public class ChangePasswordLoginController extends BaseController {
             saveErrors(result);
             return apiCall ? writeApiResponse(response, result) : findForward(FWD_FAIL_INSERT, form);
         }
-        String client = LoginAttemptTracker.clientAddress(request);
+        String client = loginAttemptTracker.clientAddress(request);
         if (loginAttemptTracker.isThrottled(form.getLoginName(), client)) {
             result.reject("login.error.throttled", new Object[] { loginAttemptTracker.windowMinutes() },
                     "login.error.throttled");
