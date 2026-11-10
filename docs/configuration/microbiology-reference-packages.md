@@ -55,10 +55,11 @@ publisher,version,organism_or_group,antibiotic_whonet_code,method,specimen_type_
 ```
 
 Optional columns are `resistant_inclusive`, `organism_source`, `organism_code`,
-`antibiotic_source`, `antibiotic_code` and `notes`. Source codes resolve
-concepts without installation-specific IDs. `resistant_inclusive=false`
-preserves strict resistance boundaries; omission retains the existing inclusive
-convention. Imports validate supported measurements and exact storage precision.
+`antibiotic_source`, `antibiotic_code`, `clinical_context`, `disk_content` and
+`notes`. Source codes resolve concepts without installation-specific IDs.
+`resistant_inclusive=false` preserves strict resistance boundaries; omission
+retains the existing inclusive convention. Imports validate supported
+measurements and exact storage precision.
 
 Reporting rule files carry one rule per row:
 
@@ -128,9 +129,9 @@ activation and existing IDs. Retain historical editions referenced by results.
 An explicit rule with empty thresholds is valid: it yields “No breakpoint” and
 prevents matching from falling through to a broader numeric rule. Intermediate
 intervals must not overlap susceptible or resistant ranges. Imported notes are
-part of the rule content and edition identity. A zone rule needs `disk_content`,
-and a zone reading matches only a rule for the same disk content; otherwise it
-has no breakpoint.
+part of the rule content and edition identity. A zone rule with thresholds needs
+`disk_content`, and a zone reading matches only a rule for the same disk
+content; otherwise it has no breakpoint.
 
 CLSI MIC interpretation rounds observations up to the conventional dilution
 ladder used by AMR for R; the original measured value stays on the reading.
