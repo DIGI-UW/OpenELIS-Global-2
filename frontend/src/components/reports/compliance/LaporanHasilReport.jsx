@@ -488,7 +488,12 @@ export default function LaporanHasilReport() {
                             if (cell.info.header === "complianceStatus") {
                               return (
                                 <TableCell key={cell.id}>
-                                  {statusTag(cell.value, statusLabels)}
+                                  {statusTag(cell.value, {
+                                    ...statusLabels,
+                                    NONE: intl.formatMessage({
+                                      id: "laporanHasil.status.notGraded",
+                                    }),
+                                  })}
                                 </TableCell>
                               );
                             }

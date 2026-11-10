@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
@@ -15,6 +17,7 @@ import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
 import org.openelisglobal.compliance.service.LhuAmendmentService;
+import org.openelisglobal.compliance.valueholder.ComplianceStandard;
 import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
@@ -171,9 +174,8 @@ public class ComplianceReportRestController {
                 continue;
             }
 
-            SampleComplianceStandard primaryLink = links.get(0);
             if (standardId != null && !standardId.isEmpty()
-                    && !primaryLink.getComplianceStandard().getId().equals(standardId)) {
+                    && links.stream().noneMatch(link -> link.getComplianceStandard().getId().equals(standardId))) {
                 continue;
             }
 
@@ -197,7 +199,7 @@ public class ComplianceReportRestController {
                 }
             }
 
-            ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval, hasBeenGenerated);
+            ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval, hasBeenGenerated);
 
             if (siteId != null && !siteId.isEmpty()) {
                 if (!siteId.equals(dto.getSiteCode())) {
@@ -259,9 +261,8 @@ public class ComplianceReportRestController {
         }
 
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(sampleId).isPresent());
 
         dto.setMicrobiology(microbiologyReports.released(sample.getId(),
@@ -382,9 +383,8 @@ public class ComplianceReportRestController {
         if (!archiveService.findBySampleIdAndAmendmentNumber(request.getSampleId(), 0).isPresent()) {
             try {
                 List<SampleComplianceStandard> origLinks = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-                SampleComplianceStandard origPrimaryLink = origLinks.isEmpty() ? null : origLinks.get(0);
                 ComplianceEvaluationResult origEval = complianceEvaluationService.evaluate(sample);
-                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origPrimaryLink, origEval, true);
+                ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origLinks, origEval, true);
                 origDto.setMicrobiology(microbiologyReports.released(sample.getId(),
                         org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest)));
                 byte[] origPdfBytes = buildOriginalPdfBytes(origDto);
@@ -402,9 +402,8 @@ public class ComplianceReportRestController {
         // Refresh sample to get updated amendmentNumber, then regenerate PDF
         sample = sampleService.get(String.valueOf(request.getSampleId()));
         List<SampleComplianceStandard> links = sampleComplianceStandardDAO.getAllForSample(sample.getId());
-        SampleComplianceStandard primaryLink = links.isEmpty() ? null : links.get(0);
         ComplianceEvaluationResult eval = complianceEvaluationService.evaluate(sample);
-        ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
+        ComplianceReportOrderDTO dto = buildOrderDTO(sample, links, eval,
                 reportGenerationService.getLastGenerated(request.getSampleId()).isPresent());
 
         dto.setMicrobiology(releasedMicrobiology);
@@ -482,15 +481,25 @@ public class ComplianceReportRestController {
         return buf.toByteArray();
     }
 
-    private ComplianceReportOrderDTO buildOrderDTO(Sample sample, SampleComplianceStandard link,
+    private static String joinStandards(List<SampleComplianceStandard> links,
+            Function<ComplianceStandard, String> part) {
+        return links.stream().map(SampleComplianceStandard::getComplianceStandard).map(part)
+                .filter(text -> text != null && !text.isBlank()).distinct().collect(Collectors.joining(", "));
+    }
+
+    /**
+     * The report row and certificate for an order. Every standard linked to the
+     * order is named, in link order, since each one is evaluated (FR-02).
+     */
+    private ComplianceReportOrderDTO buildOrderDTO(Sample sample, List<SampleComplianceStandard> links,
             ComplianceEvaluationResult eval, boolean hasBeenGenerated) {
         ComplianceReportOrderDTO dto = new ComplianceReportOrderDTO();
         dto.setSampleId(Long.parseLong(sample.getId()));
         dto.setLabNumber(sample.getAccessionNumber());
 
-        if (link != null) {
-            dto.setStandardName(link.getComplianceStandard().getName());
-            dto.setRegulationNumber(link.getComplianceStandard().getRegulationNumber());
+        if (links != null && !links.isEmpty()) {
+            dto.setStandardName(joinStandards(links, standard -> standard.getName()));
+            dto.setRegulationNumber(joinStandards(links, standard -> standard.getRegulationNumber()));
         }
 
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());

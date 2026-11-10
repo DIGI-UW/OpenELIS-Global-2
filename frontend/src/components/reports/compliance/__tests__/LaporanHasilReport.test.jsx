@@ -160,6 +160,42 @@ describe("LaporanHasilReport", () => {
     expect(screen.getAllByText("✗ Non-Compliant").length + screen.getAllByText(/Non-Compliant/i).length).toBeGreaterThan(0);
   });
 
+  it("names an order with no graded result instead of showing its code", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[0],
+              complianceStatus: undefined,
+              testCount: 0,
+              parameterResults: [],
+            },
+          ],
+        });
+      }
+    });
+    try {
+      renderWithIntl(<LaporanHasilReport />);
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+      });
+
+      expect(screen.getByText("Not graded")).toBeInTheDocument();
+      expect(screen.queryByText("NONE")).not.toBeInTheDocument();
+    } finally {
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback(
+          url.includes("compliance-statuses") ? MOCK_STATUSES : MOCK_REPORT,
+        ),
+      );
+    }
+  });
+
   it("renders COMPLIANT as green tag", async () => {
     renderWithIntl(<LaporanHasilReport />);
     await act(async () => {
