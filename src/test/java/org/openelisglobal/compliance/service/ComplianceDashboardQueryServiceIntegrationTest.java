@@ -8,11 +8,13 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.compliance.controller.rest.dto.DashboardSummaryDTO;
 import org.openelisglobal.compliance.controller.rest.dto.MonthDataPointDTO;
+import org.openelisglobal.compliance.controller.rest.dto.PagedExceedanceDTO;
 import org.openelisglobal.compliance.controller.rest.dto.SiteComparisonDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -51,6 +53,14 @@ public class ComplianceDashboardQueryServiceIntegrationTest extends BaseWebConte
                             + " WHERE type_name = 'envSamplingSiteId'",
                     Integer.parseInt(row[0]), Integer.parseInt(row[0]), row[1]);
         }
+    }
+
+    @After
+    public void removeAddedThresholds() {
+        jdbcTemplate.update("DELETE FROM clinlims.compliance_threshold WHERE id IN (9102, 9103, 9104)");
+        jdbcTemplate.update("DELETE FROM clinlims.sample_compliance_standards WHERE id = 9104");
+        jdbcTemplate.update("DELETE FROM clinlims.parameter_group WHERE id = 9102");
+        jdbcTemplate.update("DELETE FROM clinlims.compliance_standard WHERE id = 9102");
     }
 
     @Test
@@ -197,5 +207,82 @@ public class ComplianceDashboardQueryServiceIntegrationTest extends BaseWebConte
         assertEquals(1, siteD.getTotalOrders());
         assertEquals(0, siteD.getExceedances());
         assertNull(siteD.getComplianceRate());
+    }
+
+    @Test
+    public void everyLimitOfATestIsAppliedAndNoMarginIsAdded() {
+        addThreshold(9102, "MAXIMUM", null, "7.3");
+
+        DashboardSummaryDTO summary = dashboardService.getSummary(null, null, JUNE_START, JUNE_END);
+
+        assertEquals("7.0 and 7.2 meet both 6-9 and <= 7.3; 7.4, 7.6 and 10.0 do not", 40.0,
+                summary.getComplianceRate(), 0.0001);
+        assertEquals(3, summary.getTotalExceedances());
+        Map<String, String> statusByValue = dashboardService
+                .getExceedances(null, null, JUNE_START, JUNE_END, 0, 20, "date", "asc").getItems().stream()
+                .collect(Collectors.toMap(PagedExceedanceDTO.ExceedanceItemDTO::getResult,
+                        PagedExceedanceDTO.ExceedanceItemDTO::getStatus));
+        assertEquals(Map.of("7.4", "FAIL", "7.6", "FAIL", "10.0", "FAIL"), statusByValue);
+        assertEquals("every limit, without trailing zeros", "6 to 9; <= 7.3",
+                dashboardService.getExceedances(null, null, JUNE_START, JUNE_END, 0, 20, "date", "asc").getItems()
+                        .get(0).getThreshold());
+    }
+
+    @Test
+    public void aConfiguredAdvisoryZoneMakesAMissMarginal() {
+        addThreshold(9102, "MAXIMUM", null, "7.3");
+        addThreshold(9103, "BORDERLINE", "7.3", "7.5");
+
+        Map<String, String> statusByValue = dashboardService
+                .getExceedances(null, null, JUNE_START, JUNE_END, 0, 20, "date", "asc").getItems().stream()
+                .collect(Collectors.toMap(PagedExceedanceDTO.ExceedanceItemDTO::getResult,
+                        PagedExceedanceDTO.ExceedanceItemDTO::getStatus));
+
+        assertEquals(Map.of("7.4", "MARGINAL", "7.6", "FAIL", "10.0", "FAIL"), statusByValue);
+    }
+
+    @Test
+    public void aResultOfATestNotMarkedReportableIsStillJudged() {
+        jdbcTemplate.update("UPDATE clinlims.result SET is_reportable = 'N' WHERE id = 9106");
+
+        DashboardSummaryDTO summary = dashboardService.getSummary(null, null, JUNE_START, JUNE_END);
+
+        assertEquals("the Test Catalog saves new tests as not reportable; the report still grades them", 1,
+                summary.getTotalExceedances());
+        assertEquals(80.0, summary.getComplianceRate(), 0.0001);
+    }
+
+    @Test
+    public void anAdvisoryZoneOnlyExcusesAMissUnderItsOwnStandard() {
+        addThreshold(9103, "BORDERLINE", "7.3", "7.5");
+        jdbcTemplate.update("INSERT INTO clinlims.compliance_standard (id, fhir_uuid, name, version, description,"
+                + " issuing_body, regulation_number, country_region, status, effective_date, sys_user_id, last_updated)"
+                + " VALUES (9102, gen_random_uuid(), 'Second Standard', '2026', 'Second', 'Government', 'CD 2/2026',"
+                + " 'Indonesia', 'ACTIVE', '2024-01-01', 1, now())");
+        jdbcTemplate.update("INSERT INTO clinlims.parameter_group (id, fhir_uuid, standard_id, name, description,"
+                + " sort_order, is_mandatory, sys_user_id, last_updated) VALUES (9102, gen_random_uuid(), 9102,"
+                + " 'Second group', 'Second', 1, true, 1, now())");
+        jdbcTemplate.update("INSERT INTO clinlims.compliance_threshold (id, fhir_uuid, group_id, test_id,"
+                + " parameter_code, display_name, threshold_type, max_value, is_mandatory, is_active, archived,"
+                + " sort_order, sys_user_id, last_updated) VALUES (9104, gen_random_uuid(), 9102, 9101, 'pH', 'pH',"
+                + " 'MAXIMUM', 7.3, true, true, false, 1, 1, now())");
+        jdbcTemplate.update("INSERT INTO clinlims.sample_compliance_standards (id, sample_id, compliance_standard_id,"
+                + " priority, created_date, last_updated) VALUES (9104, 9101, 9102, 1, now(), now())");
+
+        Map<String, String> statusByValue = dashboardService
+                .getExceedances(null, null, JUNE_START, JUNE_END, 0, 20, "date", "asc").getItems().stream()
+                .collect(Collectors.toMap(PagedExceedanceDTO.ExceedanceItemDTO::getResult,
+                        PagedExceedanceDTO.ExceedanceItemDTO::getStatus));
+
+        assertEquals("7.4 misses the second standard's <= 7.3; only the first standard has a zone",
+                Map.of("7.4", "FAIL", "7.6", "FAIL", "10.0", "FAIL"), statusByValue);
+    }
+
+    private void addThreshold(int id, String type, String min, String max) {
+        jdbcTemplate.update("INSERT INTO clinlims.compliance_threshold (id, fhir_uuid, group_id, test_id,"
+                + " parameter_code, display_name, threshold_type, min_value, max_value, is_mandatory, is_active,"
+                + " archived, sort_order, sys_user_id, last_updated) VALUES (?, gen_random_uuid(), 9101, 9101, 'pH',"
+                + " 'pH', ?, CAST(? AS numeric), CAST(? AS numeric), true, true, false, ?, 1, now())", id, type, min,
+                max, id);
     }
 }

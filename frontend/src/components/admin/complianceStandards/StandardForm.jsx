@@ -28,9 +28,12 @@ import {
   parseIsoDate,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 import { NotificationKinds } from "../../common/CustomNotification";
 import ParameterGroupAccordionItem from "./ParameterGroupAccordionItem";
 import { toDateString } from "./dateUtils";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const STATUSES = ["DRAFT", "ACTIVE", "SUPERSEDED", "ARCHIVED"];
 
@@ -414,8 +417,9 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
     countryRegion: !trim(countryRegion),
     effectiveDate: !trim(effectiveDate),
   };
-  const dateOrderError =
-    effectiveDate && expiryDate && expiryDate < effectiveDate;
+  const dateOrderError = Boolean(
+    effectiveDate && expiryDate && expiryDate < effectiveDate,
+  );
 
   const handleSave = () => {
     setSubmitted(true);
@@ -744,10 +748,15 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         <Column lg={4} md={4} sm={4}>
           <TextInput
             id="std-name"
-            labelText={intl.formatMessage({
-              id: "compliance.standard.name",
-              defaultMessage: "Standard Name",
-            })}
+            labelText={
+              <>
+                {intl.formatMessage({
+                  id: "compliance.standard.name",
+                  defaultMessage: "Standard Name",
+                })}
+                <RequiredMarker />
+              </>
+            }
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={intl.formatMessage({
@@ -765,10 +774,15 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         <Column lg={4} md={4} sm={4}>
           <TextInput
             id="std-issuing-body"
-            labelText={intl.formatMessage({
-              id: "compliance.standard.issuingBody",
-              defaultMessage: "Issuing Body",
-            })}
+            labelText={
+              <>
+                {intl.formatMessage({
+                  id: "compliance.standard.issuingBody",
+                  defaultMessage: "Issuing Body",
+                })}
+                <RequiredMarker />
+              </>
+            }
             value={issuingBody}
             onChange={(e) => setIssuingBody(e.target.value)}
             placeholder={intl.formatMessage({
@@ -786,10 +800,15 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         <Column lg={4} md={4} sm={4}>
           <TextInput
             id="std-reg-number"
-            labelText={intl.formatMessage({
-              id: "compliance.standard.regulationNumber",
-              defaultMessage: "Regulation No.",
-            })}
+            labelText={
+              <>
+                {intl.formatMessage({
+                  id: "compliance.standard.regulationNumber",
+                  defaultMessage: "Regulation No.",
+                })}
+                <RequiredMarker />
+              </>
+            }
             value={regulationNumber}
             onChange={(e) => setRegulationNumber(e.target.value)}
             placeholder={intl.formatMessage({
@@ -807,10 +826,15 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
         <Column lg={4} md={4} sm={4}>
           <TextInput
             id="std-version"
-            labelText={intl.formatMessage({
-              id: "compliance.standard.version",
-              defaultMessage: "Version",
-            })}
+            labelText={
+              <>
+                {intl.formatMessage({
+                  id: "compliance.standard.version",
+                  defaultMessage: "Version",
+                })}
+                <RequiredMarker />
+              </>
+            }
             value={version}
             onChange={(e) => setVersion(e.target.value)}
             placeholder={intl.formatMessage({
@@ -863,10 +887,20 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           >
             <DatePickerInput
               id="std-eff-date"
-              labelText={intl.formatMessage({
-                id: "compliance.standard.effectiveDate",
-                defaultMessage: "Effective Date",
-              })}
+              onChange={(event) => {
+                if (ISO_DATE.test(event.target.value)) {
+                  setEffectiveDate(event.target.value);
+                }
+              }}
+              labelText={
+                <>
+                  {intl.formatMessage({
+                    id: "compliance.standard.effectiveDate",
+                    defaultMessage: "Effective Date",
+                  })}
+                  <RequiredMarker />
+                </>
+              }
               placeholder={intl.formatMessage({
                 id: "compliance.standard.placeholder.date",
                 defaultMessage: "yyyy-mm-dd",
@@ -896,6 +930,11 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
           >
             <DatePickerInput
               id="std-expiry-date"
+              onChange={(event) => {
+                if (ISO_DATE.test(event.target.value)) {
+                  setExpiryDate(event.target.value);
+                }
+              }}
               labelText={intl.formatMessage({
                 id: "compliance.standard.expiryDate",
                 defaultMessage: "Expiry Date",
@@ -921,10 +960,15 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               one work the same way. */}
           <ComboBox
             id="std-country"
-            titleText={intl.formatMessage({
-              id: "compliance.standard.countryRegion",
-              defaultMessage: "Country / Region",
-            })}
+            titleText={
+              <>
+                {intl.formatMessage({
+                  id: "compliance.standard.countryRegion",
+                  defaultMessage: "Country / Region",
+                })}
+                <RequiredMarker />
+              </>
+            }
             items={countryRegionOptions}
             selectedItem={countryRegion || null}
             onChange={({ selectedItem }) =>
@@ -936,6 +980,7 @@ function StandardForm({ standard, isNew, hideHeading, onSaved, onCancel }) {
               defaultMessage: "e.g., Indonesia",
             })}
             allowCustomValue
+            {...requiredProps()}
             invalid={submitted && requiredErrors.countryRegion}
             invalidText={intl.formatMessage({
               id: "compliance.validation.required",
