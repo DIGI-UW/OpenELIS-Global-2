@@ -15,6 +15,7 @@ export const MICROBIOLOGY_REFERENCE_SECTIONS = [
     key: "ast-panels",
     label: "microbiology.admin.astPanels.title",
   },
+  { key: "ast-rules", label: "microbiology.admin.astRules.title" },
   {
     key: "breakpoints",
     label: "microbiology.admin.breakpoints.title",

@@ -39,4 +39,17 @@ public class MicroAstRunAntibioticDAOImpl extends BaseDAOImpl<MicroAstRunAntibio
         query.setParameter("antibioticId", antibioticId);
         return query.uniqueResultOptional();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroAstRunAntibiotic> getByAntibioticIdForCasesNotFinalReleased(String antibioticId) {
+        Query<MicroAstRunAntibiotic> query = entityManager.unwrap(Session.class)
+                .createQuery("select o from MicroAstRunAntibiotic o, MicroAstRun r, MicroIsolate i, MicroCase c"
+                        + " where o.astRunId = r.id and r.isolateId = i.id and i.caseId = c.id"
+                        + " and o.antibioticId = :antibioticId"
+                        + " and (c.finalReleaseState is null or c.finalReleaseState <> 'FINAL_RELEASED')"
+                        + " order by o.id", MicroAstRunAntibiotic.class);
+        query.setParameter("antibioticId", antibioticId);
+        return query.list();
+    }
 }

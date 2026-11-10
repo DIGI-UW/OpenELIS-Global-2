@@ -148,3 +148,22 @@ export const saveDstBinding = (value) =>
     method: "POST",
     body: JSON.stringify(value),
   });
+
+export const getReportingRules = (signal) =>
+  request("/rest/microbiology/admin/reporting-rules", { signal });
+export const saveReportingRule = (value) =>
+  request("/rest/microbiology/admin/reporting-rules", {
+    method: "POST",
+    body: JSON.stringify(value),
+  });
+export const getReportingRuleHistory = (ruleId) =>
+  request(
+    `/rest/microbiology/admin/reporting-rules/${encodeURIComponent(ruleId)}/history`,
+  );
+export const getReportingRuleSettings = (signal) =>
+  request("/rest/microbiology/admin/reporting-rules/settings", { signal });
+export const saveReportingRuleSettings = (value) =>
+  request("/rest/microbiology/admin/reporting-rules/settings", {
+    method: "PUT",
+    body: JSON.stringify(value),
+  });

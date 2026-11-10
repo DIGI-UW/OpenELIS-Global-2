@@ -109,6 +109,8 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstReportChoice</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroMolecularDstBinding</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportingRule</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroReportingRuleHistory</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroDstResolution</class>
 
         <class>org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication</class>
