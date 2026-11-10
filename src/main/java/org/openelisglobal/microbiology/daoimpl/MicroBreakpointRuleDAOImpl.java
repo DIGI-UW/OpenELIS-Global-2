@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.hibernate.Session;
@@ -103,6 +104,18 @@ public class MicroBreakpointRuleDAOImpl extends BaseDAOImpl<MicroBreakpointRule,
         query.setParameter("clinicalContext", clinicalContext);
         query.setParameter("diskContent", diskContent);
         return query.uniqueResultOptional();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroBreakpointRule> getActiveByAntibioticIds(Collection<String> antibioticIds) {
+        if (antibioticIds.isEmpty()) {
+            return List.of();
+        }
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroBreakpointRule r where r.isActive = 'Y' and r.antibioticId in (:antibioticIds)",
+                        MicroBreakpointRule.class)
+                .setParameterList("antibioticIds", antibioticIds).list();
     }
 
     @Override

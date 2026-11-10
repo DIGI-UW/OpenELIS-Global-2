@@ -75,6 +75,15 @@ export const publishAstPanel = (panel) =>
     { method: "POST", body: JSON.stringify(panel) },
   );
 
+export const getPanelOrganismCoverage = (antibioticIds, protocol, signal) => {
+  const params = new URLSearchParams({ protocol });
+  antibioticIds.forEach((id) => params.append("antibioticId", id));
+  return request(
+    `/rest/microbiology/admin/reference/ast-panels/organism-coverage?${params}`,
+    { signal },
+  );
+};
+
 export const getDefaultBreakpointStandard = (signal) =>
   request("/rest/microbiology/admin/breakpoints/default", { signal });
 

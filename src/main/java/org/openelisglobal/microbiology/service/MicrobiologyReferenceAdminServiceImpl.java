@@ -3,24 +3,34 @@ package org.openelisglobal.microbiology.service;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAssignmentDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
+import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.dao.MicroPatientOriginDAO;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
+import org.openelisglobal.microbiology.form.MicroPanelCoverageForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminQueryForm;
@@ -29,6 +39,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAssignment;
+import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -47,6 +58,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     private final MicroAstPanelDAO panelDAO;
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
     private final MicroAstPanelAssignmentDAO assignmentDAO;
+    private final MicroBreakpointRuleDAO breakpointRuleDAO;
     private final MicroPatientOriginDAO patientOriginDAO;
     private final MethodService methodService;
     private final TypeOfSampleService typeOfSampleService;
@@ -54,12 +66,14 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
     public MicrobiologyReferenceAdminServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO panelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
             MicroPatientOriginDAO patientOriginDAO, MethodService methodService,
-            TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO) {
+            TypeOfSampleService typeOfSampleService, MicroAstPanelAssignmentDAO assignmentDAO,
+            MicroBreakpointRuleDAO breakpointRuleDAO) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.panelDAO = panelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
         this.assignmentDAO = assignmentDAO;
+        this.breakpointRuleDAO = breakpointRuleDAO;
         this.patientOriginDAO = patientOriginDAO;
         this.methodService = methodService;
         this.typeOfSampleService = typeOfSampleService;
@@ -224,8 +238,12 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         panel.setLogicalKey(UUID.randomUUID().toString());
         panel.setVersionNumber(1);
         applyPanel(panel, request, actorId);
+        boolean defaultsChanged = applyDefaultFor(panel, request.defaultFor);
         panelDAO.insert(panel);
         savePanelRows(panel.getId(), request.antibiotics);
+        if (defaultsChanged) {
+            assignPanelDefaults(Map.of(), actorId);
+        }
         return toPanelForm(panel);
     }
 
@@ -251,6 +269,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         published.setDefaultForFile(current.getDefaultForFile());
         published.setConfigurationContent(current.getConfigurationContent());
         applyPanel(published, request, actorId);
+        boolean defaultsChanged = applyDefaultFor(published, request.defaultFor);
         panelDAO.insert(published);
         savePanelRows(published.getId(), request.antibiotics);
         for (MicroOrganism organism : organismDAO.getByDefaultAstPanelId(current.getId())) {
@@ -262,7 +281,178 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
             assignment.setPanelId(published.getId());
             assignmentDAO.update(assignment);
         }
+        if (defaultsChanged) {
+            assignPanelDefaults(Map.of(), actorId);
+        }
         return toPanelForm(published);
+    }
+
+    private static boolean applyDefaultFor(MicroAstPanel panel, List<String> requested) {
+        if (requested == null) {
+            return false;
+        }
+        List<String> wanted = defaultForEntries(String.join(";", requested));
+        if (wanted.equals(defaultForEntries(panel.getDefaultFor()))) {
+            return false;
+        }
+        panel.setDefaultFor(String.join("; ", wanted));
+        panel.setDefaultForFile(null);
+        return true;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroPanelCoverageForm> getPanelOrganismCoverage(List<String> antibioticIds, String protocol) {
+        Set<String> drugs = new HashSet<>(antibioticIds);
+        Map<String, Set<String>> byOrganism = new HashMap<>();
+        Map<String, Set<String>> byGroup = new HashMap<>();
+        Set<String> forEveryOrganism = new HashSet<>();
+        for (MicroBreakpointRule rule : breakpointRuleDAO.getActiveByAntibioticIds(drugs)) {
+            Set<String> covered = rule.getOrganismId() != null
+                    ? byOrganism.computeIfAbsent(rule.getOrganismId(), key -> new HashSet<>())
+                    : rule.getOrganismGroup() != null
+                            ? byGroup.computeIfAbsent(rule.getOrganismGroup(), key -> new HashSet<>())
+                            : forEveryOrganism;
+            covered.add(rule.getAntibioticId());
+        }
+        List<MicroPanelCoverageForm> rows = new ArrayList<>();
+        Map<String, Set<String>> labGroups = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (MicroOrganism organism : organismDAO.getActiveOrganisms()) {
+            if (!Objects.equals(protocol, organism.getSusceptibilityProtocol())) {
+                continue;
+            }
+            Set<String> covered = new HashSet<>(forEveryOrganism);
+            covered.addAll(byOrganism.getOrDefault(organism.getId(), Set.of()));
+            covered.addAll(byGroup.getOrDefault(organism.getOrganismGroup(), Set.of()));
+            rows.add(coverage(organism.getDisplayName(), false, covered.size(), drugs.size()));
+            for (String group : organism.getLabGroups()) {
+                labGroups.computeIfAbsent(group, key -> new HashSet<>()).addAll(covered);
+            }
+        }
+        labGroups.forEach((group, covered) -> rows.add(coverage(group, true, covered.size(), drugs.size())));
+        rows.sort(Comparator.comparingInt((MicroPanelCoverageForm row) -> -row.covered).thenComparing(row -> row.value,
+                String.CASE_INSENSITIVE_ORDER));
+        return rows;
+    }
+
+    private static MicroPanelCoverageForm coverage(String value, boolean group, int covered, int total) {
+        MicroPanelCoverageForm form = new MicroPanelCoverageForm();
+        form.value = value;
+        form.group = group;
+        form.covered = covered;
+        form.total = total;
+        return form;
+    }
+
+    @Override
+    @Transactional
+    public void assignPanelDefaults(Map<String, Integer> lines, String actorId) {
+        List<MicroAstPanel> claimants = panelDAO.getAll().stream()
+                .filter(p -> "Y".equals(p.getIsCurrent()) && "Y".equals(p.getIsActive())
+                        && !defaultForEntries(p.getDefaultFor()).isEmpty())
+                .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER)).toList();
+        Map<MicroOrganism, MicroAstPanel> winners = new LinkedHashMap<>();
+        Set<String> matched = new HashSet<>();
+        List<String> errors = new ArrayList<>();
+        for (var organism : organismDAO.getActiveOrganisms()) {
+            Map<MicroAstPanel, String> bestEntries = new LinkedHashMap<>();
+            int bestRank = 0;
+            for (var panel : claimants) {
+                for (String entry : defaultForEntries(panel.getDefaultFor())) {
+                    int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
+                    if (rank > 0) {
+                        matched.add(panel.getId() + "\n" + entry);
+                    }
+                    if (rank > bestRank) {
+                        bestRank = rank;
+                        bestEntries.clear();
+                    }
+                    if (rank > 0 && rank == bestRank) {
+                        bestEntries.putIfAbsent(panel, entry);
+                    }
+                }
+            }
+            if (bestEntries.isEmpty()) {
+                continue;
+            }
+            var tied = new ArrayList<>(bestEntries.entrySet());
+            if (tied.size() > 1) {
+                errors.add(line(lines, bestEntries.keySet().toArray(MicroAstPanel[]::new)) + organism.getDisplayName()
+                        + " is claimed equally specifically by " + tied
+                                .stream().map(claim -> "\"" + claim.getKey().getName() + "\" (\"" + claim.getValue()
+                                        + "\", " + source(lines, claim.getKey()) + ")")
+                                .collect(Collectors.joining(", ")));
+                continue;
+            }
+            MicroAstPanel best = tied.get(0).getKey();
+            String bestEntry = tied.get(0).getValue();
+            // Identification assigns the default to every organism except NTM, and
+            // refuses a panel whose protocol differs from the organism's.
+            if (!"NTM".equals(organism.getSusceptibilityProtocol())
+                    && !Objects.equals(organism.getSusceptibilityProtocol(), best.getSusceptibilityProtocol())) {
+                errors.add(line(lines, best) + "panel \"" + best.getName() + "\" uses the "
+                        + best.getSusceptibilityProtocol() + " protocol but its defaultFor \"" + bestEntry
+                        + "\" matches " + organism.getDisplayName() + ", which uses "
+                        + organism.getSusceptibilityProtocol());
+            } else {
+                winners.put(organism, best);
+            }
+        }
+        for (var panel : claimants) {
+            if (lines.containsKey(panel.getId())) {
+                for (String entry : defaultForEntries(panel.getDefaultFor())) {
+                    if (!matched.contains(panel.getId() + "\n" + entry)) {
+                        errors.add(line(lines, panel) + "Panel \"" + panel.getName() + "\": defaultFor \"" + entry
+                                + "\" matches no organism");
+                    }
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+        winners.forEach((organism, panel) -> {
+            if (!panel.getId().equals(organism.getDefaultAstPanelId())) {
+                organism.setDefaultAstPanelId(panel.getId());
+                organism.setLastUpdatedBy(actorId);
+                organismDAO.update(organism);
+            }
+        });
+    }
+
+    static List<String> defaultForEntries(String defaultFor) {
+        return defaultFor == null ? List.of()
+                : Stream.of(defaultFor.split(";")).map(String::trim).filter(entry -> !entry.isEmpty()).toList();
+    }
+
+    private static String source(Map<String, Integer> lines, MicroAstPanel panel) {
+        return lines.containsKey(panel.getId()) ? "line " + lines.get(panel.getId())
+                : Objects.requireNonNullElse(panel.getDefaultForFile(), "AST panels page");
+    }
+
+    private static String line(Map<String, Integer> lines, MicroAstPanel... panels) {
+        List<String> numbers = Stream.of(panels).map(panel -> lines.get(panel.getId())).filter(Objects::nonNull)
+                .sorted().map(String::valueOf).toList();
+        return numbers.isEmpty() ? ""
+                : (numbers.size() == 1 ? "Line " : "Lines ") + String.join(" and ", numbers) + ": ";
+    }
+
+    /**
+     * 3 for the species itself, 2 for its genus, 1 for one of its laboratory
+     * groups, 0 otherwise.
+     */
+    static int specificity(String entry, String organismName, Set<String> labGroups) {
+        if (entry.isBlank() || organismName == null) {
+            return 0;
+        }
+        String name = organismName.trim();
+        if (name.equalsIgnoreCase(entry)) {
+            return 3;
+        }
+        if (name.toLowerCase(Locale.ROOT).startsWith(entry.toLowerCase(Locale.ROOT) + " ")) {
+            return 2;
+        }
+        return labGroups.stream().anyMatch(entry::equalsIgnoreCase) ? 1 : 0;
     }
 
     @Override
@@ -414,6 +604,7 @@ public class MicrobiologyReferenceAdminServiceImpl implements MicrobiologyRefere
         form.organismGroup = panel.getOrganismGroup();
         form.susceptibilityProtocol = panel.getSusceptibilityProtocol();
         form.specimenTypeId = panel.getSpecimenTypeId();
+        form.defaultFor = defaultForEntries(panel.getDefaultFor());
         form.active = "Y".equals(panel.getIsActive());
         form.current = "Y".equals(panel.getIsCurrent());
         form.publishedBy = panel.getPublishedBy();

@@ -1,16 +1,11 @@
 package org.openelisglobal.microbiology.service;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.openelisglobal.configuration.service.AbstractCatalogCsvHandler;
 import org.openelisglobal.configuration.service.CatalogReferenceResolver;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
@@ -22,7 +17,6 @@ import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAntibioticAdminForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
-import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,7 +26,8 @@ import org.springframework.stereotype.Component;
  * the default for: a species name, a genus, or a laboratory organism group from
  * the organism groups file. When several panels, in any panel file, claim an
  * organism, the most specific entry wins (species, then genus, then group); two
- * equally specific entries from different panels fail the load.
+ * equally specific entries from different panels fail the load. A list set on
+ * the AST panels page wins over the file's.
  */
 @Component
 public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler {
@@ -86,9 +81,14 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                         }
                     }
                     String claims = blankToNull(sameValue(panelRows, "defaultFor", ""));
-                    if (claims != null) {
-                        MicroAstPanel current = panels
-                                .findCurrentByNameIgnoreCase(required(panelRows.get(0), "panelName"));
+                    MicroAstPanel current = claims == null ? null
+                            : panels.findCurrentByNameIgnoreCase(required(panelRows.get(0), "panelName"));
+                    if (current != null && current.getDefaultFor() != null && current.getDefaultForFile() == null
+                            && !MicrobiologyReferenceAdminServiceImpl.defaultForEntries(current.getDefaultFor())
+                                    .equals(MicrobiologyReferenceAdminServiceImpl.defaultForEntries(claims))) {
+                        summary.warned(getClass().getSimpleName(), panelRows.get(0).lineNumber(),
+                                "defaultFor set on the AST panels page; file value not applied");
+                    } else if (current != null) {
                         claimLines.put(current.getId(), panelRows.get(0).lineNumber());
                         claim(current, claims, fileName);
                     }
@@ -112,7 +112,7 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
                     claim(panel, null, null);
                 }
             }
-            assignDefaults(claimLines);
+            admin.assignPanelDefaults(claimLines, SYS_USER_ID);
             return null;
         });
     }
@@ -128,116 +128,6 @@ public class MicroAstPanelConfigurationHandler extends AbstractCatalogCsvHandler
 
     private List<MicroAstPanel> currentPanels() {
         return panels.getAll().stream().filter(p -> "Y".equals(p.getIsCurrent())).toList();
-    }
-
-    /**
-     * Fails when a defaultFor entry of a panel in {@code lines} (panel id to file
-     * line) matches no active organism.
-     */
-    public void assignDefaults(Map<String, Integer> lines) {
-        List<MicroAstPanel> claimants = currentPanels().stream()
-                .filter(p -> "Y".equals(p.getIsActive()) && p.getDefaultFor() != null)
-                .sorted(Comparator.comparing(MicroAstPanel::getName, String.CASE_INSENSITIVE_ORDER)).toList();
-        Map<MicroOrganism, MicroAstPanel> winners = new LinkedHashMap<>();
-        Set<String> matched = new HashSet<>();
-        List<String> errors = new ArrayList<>();
-        for (var organism : organisms.getActiveOrganisms()) {
-            Map<MicroAstPanel, String> bestEntries = new LinkedHashMap<>();
-            int bestRank = 0;
-            for (var panel : claimants) {
-                for (String entry : entries(panel)) {
-                    int rank = specificity(entry, organism.getDisplayName(), organism.getLabGroups());
-                    if (rank > 0) {
-                        matched.add(panel.getId() + "\n" + entry);
-                    }
-                    if (rank > bestRank) {
-                        bestRank = rank;
-                        bestEntries.clear();
-                    }
-                    if (rank > 0 && rank == bestRank) {
-                        bestEntries.putIfAbsent(panel, entry);
-                    }
-                }
-            }
-            if (bestEntries.isEmpty()) {
-                continue;
-            }
-            var tied = new ArrayList<>(bestEntries.entrySet());
-            if (tied.size() > 1) {
-                errors.add(line(lines, bestEntries.keySet().toArray(MicroAstPanel[]::new)) + organism.getDisplayName()
-                        + " is claimed equally specifically by " + tied
-                                .stream().map(claim -> "\"" + claim.getKey().getName() + "\" (\"" + claim.getValue()
-                                        + "\", " + source(lines, claim.getKey()) + ")")
-                                .collect(Collectors.joining(", ")));
-                continue;
-            }
-            MicroAstPanel best = tied.get(0).getKey();
-            String bestEntry = tied.get(0).getValue();
-            // Identification assigns the default to every organism except NTM, and
-            // refuses a panel whose protocol differs from the organism's.
-            if (!"NTM".equals(organism.getSusceptibilityProtocol())
-                    && !Objects.equals(organism.getSusceptibilityProtocol(), best.getSusceptibilityProtocol())) {
-                errors.add(line(lines, best) + "panel \"" + best.getName() + "\" uses the "
-                        + best.getSusceptibilityProtocol() + " protocol but its defaultFor \"" + bestEntry
-                        + "\" matches " + organism.getDisplayName() + ", which uses "
-                        + organism.getSusceptibilityProtocol());
-            } else {
-                winners.put(organism, best);
-            }
-        }
-        for (var panel : claimants) {
-            if (lines.containsKey(panel.getId())) {
-                for (String entry : entries(panel)) {
-                    if (!matched.contains(panel.getId() + "\n" + entry)) {
-                        errors.add(line(lines, panel) + "Panel \"" + panel.getName() + "\": defaultFor \"" + entry
-                                + "\" matches no organism");
-                    }
-                }
-            }
-        }
-        if (!errors.isEmpty()) {
-            throw new IllegalArgumentException(String.join("; ", errors));
-        }
-        winners.forEach((organism, panel) -> {
-            if (!panel.getId().equals(organism.getDefaultAstPanelId())) {
-                organism.setDefaultAstPanelId(panel.getId());
-                organism.setLastUpdatedBy(SYS_USER_ID);
-                organisms.update(organism);
-            }
-        });
-    }
-
-    private static List<String> entries(MicroAstPanel panel) {
-        return List.of(panel.getDefaultFor().split("\\s*;\\s*"));
-    }
-
-    private static String source(Map<String, Integer> lines, MicroAstPanel panel) {
-        return lines.containsKey(panel.getId()) ? "line " + lines.get(panel.getId()) : panel.getDefaultForFile();
-    }
-
-    private static String line(Map<String, Integer> lines, MicroAstPanel... panels) {
-        List<String> numbers = Stream.of(panels).map(panel -> lines.get(panel.getId())).filter(Objects::nonNull)
-                .sorted().map(String::valueOf).toList();
-        return numbers.isEmpty() ? ""
-                : (numbers.size() == 1 ? "Line " : "Lines ") + String.join(" and ", numbers) + ": ";
-    }
-
-    /**
-     * 3 for the species itself, 2 for its genus, 1 for one of its laboratory
-     * groups, 0 otherwise.
-     */
-    static int specificity(String entry, String organismName, Set<String> labGroups) {
-        if (entry.isBlank() || organismName == null) {
-            return 0;
-        }
-        String name = organismName.trim();
-        if (name.equalsIgnoreCase(entry)) {
-            return 3;
-        }
-        if (name.toLowerCase(Locale.ROOT).startsWith(entry.toLowerCase(Locale.ROOT) + " ")) {
-            return 2;
-        }
-        return labGroups.stream().anyMatch(entry::equalsIgnoreCase) ? 1 : 0;
     }
 
     private LoadedRow<String> loadPanel(List<CsvRow> rows) {
