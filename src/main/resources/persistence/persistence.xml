@@ -164,6 +164,7 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerBridgePairing</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerDeliveryAction</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.resultrun.valueholder.ResultRun</class>
         <class>org.openelisglobal.containertype.valueholder.ContainerType</class>
