@@ -179,7 +179,8 @@ const CriticalCommunicationPanel = ({
         <Tag
           type={
             communications.some(
-              (item) => item.acknowledgementStatus !== "CLOSED",
+              (item) =>
+                item.followUpNeeded && item.acknowledgementStatus !== "CLOSED",
             )
               ? "red"
               : "gray"
