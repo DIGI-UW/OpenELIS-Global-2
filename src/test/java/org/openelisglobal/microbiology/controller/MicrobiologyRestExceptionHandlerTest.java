@@ -17,8 +17,6 @@ import org.openelisglobal.microbiology.controller.rest.MicrobiologyRestException
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
-import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
-import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
@@ -63,18 +61,18 @@ public class MicrobiologyRestExceptionHandlerTest {
 
     @Test
     public void moduleSpecificLockHandlerWinsOverGlobalRuntimeHandler() throws Exception {
-        MicroIsolateService isolateService = org.mockito.Mockito.mock(MicroIsolateService.class);
-        when(isolateService.createIsolate(any(), any(), any(), any(), any(), any()))
+        var isolateService = org.mockito.Mockito
+                .mock(org.openelisglobal.microbiology.service.MicroIsolateWorkspaceService.class);
+        when(isolateService.pick(any(), any(), any()))
                 .thenThrow(new MicroCaseLockedException("Final-released microbiology cases cannot be changed"));
-        MockMvc mockMvc = MockMvcBuilders
-                .standaloneSetup(new MicroIsolateRestController(isolateService,
-                        org.mockito.Mockito.mock(MicroIdentificationHistoryService.class)))
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new MicroIsolateRestController(isolateService))
                 .setControllerAdvice(new MicrobiologyRestExceptionHandler(), new ControllerSetup()).build();
         UserSessionData sessionData = new UserSessionData();
         sessionData.setSytemUserId(42);
 
-        mockMvc.perform(post("/rest/microbiology/isolates").sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData)
-                .contentType(MediaType.APPLICATION_JSON).content("""
+        mockMvc.perform(post("/rest/microbiology/cases/case-1/isolates")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionData).contentType(MediaType.APPLICATION_JSON)
+                .content("""
                         {
                           "caseId": "case-1",
                           "isolateLabel": "ISO-LOCKED",

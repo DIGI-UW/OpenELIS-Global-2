@@ -220,6 +220,35 @@ public class PathologyController extends BaseRestController {
                         .status(HttpStatus.NOT_FOUND).body(Map.of("error", "No pathology block with id " + blockId)));
     }
 
+    /**
+     * Embeds a cassette; a retired one is refused with the sentence the service
+     * raised, and a row another change reached first is a conflict.
+     */
+    @PostMapping(value = "/rest/pathology/block/{blockId}/embed", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<?> embedBlock(@PathVariable("blockId") Integer blockId, HttpServletRequest request) {
+        PathologySample owner = pathologySampleService.getCaseOfBlock(blockId);
+        if (owner != null) {
+            programSampleLabUnitScope.requireVisible(getSysUserId(request), owner);
+        }
+        try {
+            return pathologySampleService.embedBlock(blockId, getSysUserId(request))
+                    .<ResponseEntity<?>>map(block -> ResponseEntity.ok(toMap(block)))
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("error", "No pathology block with id " + blockId)));
+        } catch (PathologyCaseRuleException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            // Two embeds of one cassette race on its version check, and the one
+            // that loses has to say so rather than fail.
+            if (concurrentSaveConflict(e)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("conflict", "version", "error",
+                        "another change to this cassette landed at the same moment; reload the case and try again"));
+            }
+            throw e;
+        }
+    }
+
     @PostMapping(value = "/rest/pathology/slide/{slideId}/deactivate", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<?> deactivateSlide(@PathVariable("slideId") Integer slideId,

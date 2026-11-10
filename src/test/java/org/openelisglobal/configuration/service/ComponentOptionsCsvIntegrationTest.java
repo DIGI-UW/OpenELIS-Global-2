@@ -27,7 +27,7 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     private static final String TEST = PREFIX + "Viral load";
     private static final String CATEGORY = PREFIX + "answers";
     private static final String RESULTS_HEADER = "testName,resultType,resultValue,dictionaryCategory,sortOrder,"
-            + "isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode\n";
+            + "isQuantifiable,isActive,isNormal,reportingDecimalPlaces,flags,componentCode\n";
 
     @Autowired
     @Qualifier("testSectionConfigurationHandler")
@@ -74,7 +74,7 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
                         + ",Not detected,,Y,2\n" + CATEGORY + ",PASS,,Y,3\n" + CATEGORY + ",FAIL,,Y,4\n",
                 "dictionaries.csv");
         load(componentHandler,
-                "testName,code,label,resultType,significantDigits,isPrimary,showOnReport\n" + TEST
+                "testName,code,label,resultType,reportingDecimalPlaces,isPrimary,showOnReport\n" + TEST
                         + ",PRIMARY,Viral load,N,0,Y,Y\n" + TEST + ",call,Call,D,,N,Y\n" + TEST
                         + ",IQS-H,IQS-H,D,,N,N\n" + TEST + ",IQS-L,IQS-L,D,,N,N\n",
                 "result-components.csv");
@@ -84,6 +84,75 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     public void tearDown() {
         ImportRunContext.clearPending();
         cleanup();
+    }
+
+    @Test
+    public void blankDecimalCellsPreserveTheAuthoredSettingOnReimport() throws Exception {
+        String query = "SELECT reporting_decimal_places FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'";
+        load(componentHandler, "testName,code,reportingDecimalPlaces\n" + TEST + ",PRIMARY,2\n", "decimal-policy.csv");
+        load(componentHandler, "testName,code,reportingDecimalPlaces\n" + TEST + ",PRIMARY,\n", "blank-policy.csv");
+        assertEquals(Integer.valueOf(2), jdbc.queryForObject(query, Integer.class, TEST));
+        load(componentHandler, "testName,code,reportingDecimalPlaces\n" + TEST + ",PRIMARY,0\n", "explicit-zero.csv");
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(query, Integer.class, TEST));
+    }
+
+    @Test
+    public void explicitLogDisplayImportsAndBlankUpdatesPreserveIt() throws Exception {
+        load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,Y\n", "log-display.csv");
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+        load(componentHandler, "testName,code,label\n" + TEST + ",PRIMARY,Renamed measurement\n", "rename.csv");
+        assertEquals(Boolean.TRUE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+        load(componentHandler, "testName,code,displayLog10\n" + TEST + ",PRIMARY,N\n", "no-log.csv");
+        assertEquals(Boolean.FALSE, jdbc.queryForObject(
+                "SELECT display_log10 FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'",
+                Boolean.class, TEST));
+    }
+
+    @Test
+    public void receivedLogAssociationImportsTogetherAndBlankUpdatesPreserveIt() throws Exception {
+        load(componentHandler, "testName,code,label,resultType,displayLog10,log10SourceComponentCode,showOnReport\n"
+                + TEST + ",PRIMARY,Measured,N,Y,LOG,Y\n" + TEST + ",LOG,Received log,N,N,,Y\n", "log-source.csv");
+        String query = "SELECT log10_source_component_code FROM clinlims.test_result_component WHERE test_id = (SELECT id FROM clinlims.test WHERE description = ?) AND code = 'PRIMARY'";
+        assertEquals("LOG", jdbc.queryForObject(query, String.class, TEST));
+        load(componentHandler, "testName,code,label,log10SourceComponentCode\n" + TEST + ",PRIMARY,Renamed,\n",
+                "rename-log.csv");
+        assertEquals("LOG", jdbc.queryForObject(query, String.class, TEST));
+        load(componentHandler, "testName,code,displayLog10,log10SourceComponentCode\n" + TEST + ",PRIMARY,N,\n",
+                "disable-log.csv");
+        assertEquals(null, jdbc.queryForObject(query, String.class, TEST));
+        assertEquals(Boolean.FALSE, jdbc.queryForObject(query.replace("log10_source_component_code", "display_log10"),
+                Boolean.class, TEST));
+    }
+
+    /**
+     * OGC-1608: isRequired left blank makes a new component required only when it
+     * is the primary, and leaves an existing component's value as it is.
+     */
+    @Test
+    public void requiredDefaultsToThePrimaryAndBlankUpdatesPreserveIt() throws Exception {
+        assertEquals(Boolean.TRUE, required("PRIMARY"));
+        assertEquals(Boolean.FALSE, required("call"));
+
+        load(componentHandler, "testName,code,isRequired\n" + TEST + ",call,Y\n", "require-call.csv");
+        assertEquals(Boolean.TRUE, required("call"));
+        load(componentHandler, "testName,code,label,isRequired\n" + TEST + ",call,Call result,\n", "rename-call.csv");
+        assertEquals(Boolean.TRUE, required("call"));
+        load(componentHandler, "testName,code,isRequired\n" + TEST + ",call,N\n", "optional-call.csv");
+        assertEquals(Boolean.FALSE, required("call"));
+
+        load(componentHandler, "testName,code,label,resultType\n" + TEST + ",extra,Extra,N\n", "add-extra.csv");
+        assertEquals(Boolean.FALSE, required("extra"));
+    }
+
+    private Boolean required(String code) {
+        return jdbc.queryForObject(
+                "SELECT is_required FROM clinlims.test_result_component WHERE is_active = 'Y'"
+                        + " AND code = ? AND test_id = (SELECT id FROM clinlims.test WHERE description = ?)",
+                Boolean.class, code, TEST);
     }
 
     @Test

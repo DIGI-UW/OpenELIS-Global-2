@@ -1,6 +1,7 @@
 package org.openelisglobal.testresultcomponent.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -97,9 +98,38 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<TestResultComponent> getRequiredComponentsWithoutResult(String testId,
+            Collection<String> componentIdsWithResult) {
+        return baseObjectDAO.getActiveComponentsByTestId(testId).stream()
+                .filter(c -> c.getIsRequired() && !componentIdsWithResult.contains(c.getId())).toList();
+    }
+
+    @Override
     @Transactional
     public List<TestResultComponent> saveComponentsForTest(String testId, List<TestResultComponent> desired,
             String sysUserId) {
+        for (TestResultComponent component : desired) {
+            if (component.getDisplayLog10() && !"N".equals(component.getResultType())
+                    && !"A".equals(component.getResultType())) {
+                throw new IllegalArgumentException("displayLog10 requires a numeric or alpha component");
+            }
+            if (component.getLog10SourceComponentCode() != null) {
+                boolean validSource = component.getDisplayLog10() && desired.stream()
+                        .anyMatch(source -> component.getLog10SourceComponentCode().equals(source.getCode())
+                                && !source.getCode().equals(component.getCode()) && "N".equals(source.getResultType())
+                                && source.getShowOnReport() && !source.getDisplayLog10()
+                                && source.getLog10SourceComponentCode() == null);
+                if (!validSource) {
+                    throw new IllegalArgumentException(
+                            "log10 source must be another visible numeric component without a calculated logarithm");
+                }
+            }
+            if (component.getReportingDecimalPlaces() != null) {
+                org.openelisglobal.result.util.ReportingDecimalPlaces
+                        .parse(component.getReportingDecimalPlaces().toString());
+            }
+        }
         List<TestResultComponent> existing = baseObjectDAO.getActiveComponentsByTestId(testId);
         Map<String, TestResultComponent> existingById = new HashMap<>();
         for (TestResultComponent e : existing) {
@@ -137,11 +167,14 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 match.setDisplayOrder(d.getDisplayOrder());
                 match.setResultType(d.getResultType());
                 match.setUomId(d.getUomId());
-                match.setSignificantDigits(d.getSignificantDigits());
+                match.setReportingDecimalPlaces(d.getReportingDecimalPlaces());
                 match.setDefaultResult(d.getDefaultResult());
                 match.setAllowMultipleReadings(d.getAllowMultipleReadings());
                 match.setIsPrimary(d.getIsPrimary());
                 match.setShowOnReport(d.getShowOnReport());
+                match.setIsRequired(d.getIsRequired());
+                match.setDisplayLog10(d.getDisplayLog10());
+                match.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                 match.setLod(d.getLod());
                 match.setLoq(d.getLoq());
                 match.setSysUserId(sysUserId);
@@ -158,11 +191,14 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     slot.setDisplayOrder(d.getDisplayOrder());
                     slot.setResultType(d.getResultType());
                     slot.setUomId(d.getUomId());
-                    slot.setSignificantDigits(d.getSignificantDigits());
+                    slot.setReportingDecimalPlaces(d.getReportingDecimalPlaces());
                     slot.setDefaultResult(d.getDefaultResult());
                     slot.setAllowMultipleReadings(d.getAllowMultipleReadings());
                     slot.setIsPrimary(d.getIsPrimary());
                     slot.setShowOnReport(d.getShowOnReport());
+                    slot.setIsRequired(d.getIsRequired());
+                    slot.setDisplayLog10(d.getDisplayLog10());
+                    slot.setLog10SourceComponentCode(d.getLog10SourceComponentCode());
                     slot.setLod(d.getLod());
                     slot.setLoq(d.getLoq());
                     slot.setIsActive("Y");
@@ -461,10 +497,10 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     }
 
     /**
-     * Mirror the PRIMARY component's unit-of-measure and significant digits back
-     * onto the legacy columns the old Test Modify page still reads from
-     * ({@code test.uom_id} and {@code test_result.significant_digits}). The M1
-     * backfill seeded the PRIMARY component <em>from</em> those columns; this is
+     * Mirror the PRIMARY component's unit-of-measure and reporting decimal places
+     * back onto the legacy columns the old Test Modify page still reads from
+     * ({@code test.uom_id} and {@code test_result.reporting_decimal_places}). The
+     * M1 backfill seeded the PRIMARY component <em>from</em> those columns; this is
      * the inverse, keeping both editors consistent during the OGC-949 transition.
      * Falls back to the lowest-display-order component when no PRIMARY code exists.
      */
@@ -500,8 +536,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
             String resultType = component.getResultType();
-            String significantDigits = component.getSignificantDigits() == null ? null
-                    : String.valueOf(component.getSignificantDigits());
+            String reportingDecimalPlaces = component.getReportingDecimalPlaces() == null ? null
+                    : String.valueOf(component.getReportingDecimalPlaces());
             boolean dictionary = resultType != null
                     && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(resultType);
 
@@ -528,14 +564,14 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                     tr.setSortOrder(
                             String.valueOf(component.getDisplayOrder() == null ? 1 : component.getDisplayOrder() + 1));
                     tr.setIsActive(true);
-                    tr.setSignificantDigits(significantDigits);
+                    tr.setReportingDecimalPlaces(reportingDecimalPlaces);
                     tr.setComponentId(component.getId());
                     tr.setSysUserId(sysUserId);
                     testResultService.insert(tr);
                 }
             } else {
                 for (TestResult tr : componentRows) {
-                    tr.setSignificantDigits(significantDigits);
+                    tr.setReportingDecimalPlaces(reportingDecimalPlaces);
                     if (resultType != null) {
                         tr.setTestResultType(resultType);
                     }
@@ -565,7 +601,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         testResults.sort((a, b) -> Long.compare(parseId(b.getId()), parseId(a.getId())));
         String uomId = test.getUnitOfMeasure() == null ? null : test.getUnitOfMeasure().getId();
         String resultType = latestResultType(testResults);
-        Integer significantDigits = latestSignificantDigits(testResults);
+        Integer reportingDecimalPlaces = latestReportingDecimalPlaces(testResults);
 
         if (primary == null) {
             // Legacy created this test outside the new editor (or before the M1
@@ -577,9 +613,10 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             primary.setDisplayOrder(0);
             primary.setResultType(resultType);
             primary.setUomId(uomId);
-            primary.setSignificantDigits(significantDigits);
+            primary.setReportingDecimalPlaces(reportingDecimalPlaces);
             primary.setIsActive("Y");
             primary.setIsPrimary(true);
+            primary.setIsRequired(true);
             primary.setSysUserId(sysUserId);
             insert(primary);
         } else {
@@ -588,7 +625,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             // another component), the primary keeps the type and digits it was given.
             if (!testResults.isEmpty()) {
                 primary.setResultType(resultType);
-                primary.setSignificantDigits(significantDigits);
+                primary.setReportingDecimalPlaces(reportingDecimalPlaces);
             }
             primary.setSysUserId(sysUserId);
             update(primary);
@@ -687,14 +724,11 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         return null;
     }
 
-    private static Integer latestSignificantDigits(List<TestResult> newestFirst) {
-        for (TestResult tr : newestFirst) {
-            Integer parsed = parseSignificantDigits(tr.getSignificantDigits());
-            if (parsed != null) {
-                return parsed;
-            }
-        }
-        return null;
+    private static Integer latestReportingDecimalPlaces(List<TestResult> newestFirst) {
+        // Preserve legacy metadata, including on a nonnumeric row, without using
+        // it to format nonnumeric results. A cleared newest setting stays cleared.
+        return newestFirst.isEmpty() ? null
+                : parseReportingDecimalPlaces(newestFirst.get(0).getReportingDecimalPlaces());
     }
 
     private static long parseId(String id) {
@@ -713,7 +747,7 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         return name == null || name.trim().isEmpty() ? PRIMARY_CODE : name;
     }
 
-    private static Integer parseSignificantDigits(String value) {
+    private static Integer parseReportingDecimalPlaces(String value) {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
@@ -728,7 +762,8 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional
     public void copyComponentsFromTest(String sourceTestId, String targetTestId, String sysUserId) {
         Test target = testService.getTestById(targetTestId);
-        for (TestResultComponent src : baseObjectDAO.getActiveComponentsByTestId(sourceTestId)) {
+        List<TestResultComponent> sources = baseObjectDAO.getActiveComponentsByTestId(sourceTestId);
+        for (TestResultComponent src : sources) {
             TestResultComponent existing = getByTestIdAndCode(targetTestId, src.getCode());
             // A configured component (it has a result type) is never clobbered.
             // A blank row (the FR-56 pre-seeded PRIMARY) is reconciled from the
@@ -745,13 +780,16 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             copy.setDisplayOrder(src.getDisplayOrder());
             copy.setResultType(src.getResultType());
             copy.setUomId(src.getUomId());
-            copy.setSignificantDigits(src.getSignificantDigits());
+            copy.setReportingDecimalPlaces(src.getReportingDecimalPlaces());
             copy.setDefaultResult(src.getDefaultResult());
             copy.setAllowMultipleReadings(src.getAllowMultipleReadings());
             copy.setLod(src.getLod());
             copy.setLoq(src.getLoq());
             copy.setIsPrimary(src.getIsPrimary());
             copy.setShowOnReport(src.getShowOnReport());
+            copy.setIsRequired(src.getIsRequired());
+            copy.setDisplayLog10(src.getDisplayLog10());
+            copy.setLog10SourceComponentCode(src.getLog10SourceComponentCode());
             copy.setIsActive("Y");
             copy.setSysUserId(sysUserId);
             if (existing != null) {
@@ -795,13 +833,37 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 placeholder
                         .setSortOrder(String.valueOf(copy.getDisplayOrder() == null ? 1 : copy.getDisplayOrder() + 1));
                 placeholder.setIsActive(true);
-                placeholder.setSignificantDigits(
-                        copy.getSignificantDigits() == null ? null : String.valueOf(copy.getSignificantDigits()));
+                placeholder.setReportingDecimalPlaces(copy.getReportingDecimalPlaces() == null ? null
+                        : String.valueOf(copy.getReportingDecimalPlaces()));
                 placeholder.setComponentId(copy.getId());
                 placeholder.setSysUserId(sysUserId);
                 testResultService.insert(placeholder);
             }
         }
+        retireBlankRowsTheCopyReplaced(targetTestId, sources, sysUserId);
         ensureSinglePrimary(targetTestId, sysUserId);
+    }
+
+    /**
+     * OGC-1608: a test created as a copy starts with a blank pre-seeded PRIMARY.
+     * When the source's primary has another code, that blank row is not filled by
+     * the copy; left in place it would stay the primary (and required), so the
+     * copied primary would be demoted and every order would wait on a component
+     * nobody configured. A blank row whose code the source does not have is retired
+     * once the source brings its own primary.
+     */
+    private void retireBlankRowsTheCopyReplaced(String targetTestId, List<TestResultComponent> sources,
+            String sysUserId) {
+        if (sources.stream().noneMatch(TestResultComponent::getIsPrimary)) {
+            return;
+        }
+        Set<String> sourceCodes = new HashSet<>();
+        sources.forEach(src -> sourceCodes.add(src.getCode()));
+        for (TestResultComponent row : baseObjectDAO.getActiveComponentsByTestId(targetTestId)) {
+            boolean blank = row.getResultType() == null || row.getResultType().isBlank();
+            if (blank && !sourceCodes.contains(row.getCode())) {
+                retireComponent(targetTestId, row.getId(), sysUserId);
+            }
+        }
     }
 }

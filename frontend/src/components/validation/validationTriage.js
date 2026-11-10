@@ -194,7 +194,9 @@ export function filterTriaged(triaged, filter) {
 /** OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane only. */
 export function clearRows(triaged) {
   return (triaged || [])
-    .filter((item) => item.lane === LANE_CLEAR)
+    .filter(
+      (item) => item.lane === LANE_CLEAR && !item.row.selfValidationBlocked,
+    )
     .map((item) => item.row);
 }
 
@@ -223,6 +225,36 @@ export function bulkReleaseRequest(results, params, rows) {
       noteContext: row.noteContext || "VALIDATION",
     })),
   };
+}
+
+/**
+ * OGC-1608 — the messages a successful bulk release shows: what was released
+ * (and skipped), and the tests that were only validated in part because another
+ * of their components is still to be resulted or validated.
+ */
+export function bulkSuccessMessages(response) {
+  const released = response?.released?.length || 0;
+  const skipped = response?.skipped?.length || 0;
+  const accepted = response?.accepted?.length || 0;
+  const messages = [];
+  if (skipped > 0) {
+    messages.push({
+      id: "label.validation.bulk.partial",
+      values: { released, skipped },
+    });
+  } else if (released > 0) {
+    messages.push({
+      id: "label.validation.bulk.success",
+      values: { count: released },
+    });
+  }
+  if (accepted > 0) {
+    messages.push({
+      id: "label.validation.bulk.accepted",
+      values: { count: accepted },
+    });
+  }
+  return messages;
 }
 
 /** i18n key describing why a bulk release did nothing (or failed). */

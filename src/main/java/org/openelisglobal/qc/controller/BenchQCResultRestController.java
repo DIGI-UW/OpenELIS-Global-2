@@ -2,21 +2,27 @@ package org.openelisglobal.qc.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
+import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
+import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -51,6 +57,9 @@ public class BenchQCResultRestController extends BaseRestController {
     @Autowired
     private QCResultService qcResultService;
 
+    @Autowired
+    private QCControlLotService controlLotService;
+
     /**
      * Record one bench control run. Returns 201 with the persisted result —
      * including the z-score, when the run was quantitative against a lot with
@@ -84,5 +93,23 @@ public class BenchQCResultRestController extends BaseRestController {
             String message = e.getMessage() == null ? "Invalid control result" : e.getMessage();
             return ResponseEntity.badRequest().body(Map.of("message", message));
         }
+    }
+
+    /**
+     * The control lots a Results-page capture picks from (OGC-427). The
+     * administrator list at {@code /rest/qc/controlLots} refused the Results role,
+     * so a bench technician saw no lot and could not record a manual control. Same
+     * lookup: with an analyzer, its active lots for the test (shown read-only on an
+     * analyzer row); without, the test's active bench lots.
+     */
+    @GetMapping(value = "/control-lots", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('RESULTS') or hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<List<QCControlLot>> controlLots(@RequestParam String testId,
+            @RequestParam(required = false) String instrumentId) {
+        if (StringUtils.isBlank(testId)) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(StringUtils.isBlank(instrumentId) ? controlLotService.getActiveBenchControlLots(testId)
+                : controlLotService.getActiveControlLots(testId, instrumentId));
     }
 }

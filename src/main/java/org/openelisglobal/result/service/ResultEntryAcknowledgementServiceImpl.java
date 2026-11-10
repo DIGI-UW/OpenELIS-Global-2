@@ -37,8 +37,6 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.test.beanItems.TestResultItem;
-import org.openelisglobal.testresult.service.TestResultService;
-import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -77,8 +75,6 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
     @Autowired
     private TestResultComponentService testResultComponentService;
     @Autowired
-    private TestResultService testResultService;
-    @Autowired
     private AnalyzerResultsService analyzerResultsService;
     @Autowired
     private SampleService sampleService;
@@ -100,20 +96,11 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
 
     @Override
     public List<ResultEntryAlert> alertsFor(ResultLimit limit, String resultType, String value, String previousValue) {
-        return alertsFor(limit, resultType, value, previousValue, null);
-    }
-
-    @Override
-    public List<ResultEntryAlert> alertsFor(ResultLimit limit, String resultType, String value, String previousValue,
-            Integer decimalPlaces) {
         List<ResultEntryAlert> alerts = new ArrayList<>();
         if (GenericValidator.isBlankOrNull(value)) {
             return alerts;
         }
         String numeric = value.trim().replaceAll("[<>]", "").trim();
-        if (decimalPlaces != null && !value.trim().matches("^[<>].*")) {
-            numeric = StringUtil.roundToPlaces(numeric, decimalPlaces);
-        }
         String flag = ValidationSignals.resultFlag(limit, resultType, numeric);
         if (flag == null || sameNumber(numeric, previousValue)) {
             return alerts;
@@ -259,8 +246,7 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
                             item.getTypeOfSampleId())
                     : resultLimitService.getResultLimitForComponentAndPatient(componentId, patient,
                             item.getTypeOfSampleId());
-            for (ResultEntryAlert alert : alertsFor(limit, "N", item.getResult(), staged.getResult(),
-                    decimalPlaces(staged.getTestId(), componentId))) {
+            for (ResultEntryAlert alert : alertsFor(limit, "N", item.getResult(), staged.getResult())) {
                 alert.setRowId(staged.getId());
                 alert.setTestId(staged.getTestId());
                 alert.setComponentId(componentId);
@@ -273,32 +259,6 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
             }
         }
         return alerts;
-    }
-
-    /**
-     * The decimal places the test, or its component, reports a numeric result to:
-     * the component's own row, else a row that names no component (a test set up
-     * before components); null when none is configured.
-     */
-    private Integer decimalPlaces(String testId, String componentId) {
-        String places = null;
-        for (TestResult testResult : testResultService.getActiveTestResultsByTest(testId)) {
-            if (GenericValidator.isBlankOrNull(testResult.getSignificantDigits())) {
-                continue;
-            }
-            if (GenericValidator.isBlankOrNull(componentId) || componentId.equals(testResult.getComponentId())) {
-                places = testResult.getSignificantDigits();
-                break;
-            }
-            if (places == null && GenericValidator.isBlankOrNull(testResult.getComponentId())) {
-                places = testResult.getSignificantDigits();
-            }
-        }
-        try {
-            return places == null ? null : Integer.valueOf(places.trim());
-        } catch (NumberFormatException notANumber) {
-            return null;
-        }
     }
 
     private boolean multiComponent(String testId) {
@@ -319,8 +279,7 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
         String scope = componentScope(analysis, componentId);
         ResultLimit limit = resultLimitService.selectResultLimitForResult(analysis, stored, patientOf(analysis), scope)
                 .getResultLimit();
-        List<ResultEntryAlert> alerts = alertsFor(limit, resultType, value, stored == null ? null : stored.getValue(),
-                decimalPlaces(analysis.getTest().getId(), scope));
+        List<ResultEntryAlert> alerts = alertsFor(limit, resultType, value, stored == null ? null : stored.getValue());
         for (ResultEntryAlert alert : alerts) {
             alert.setAnalysisId(analysis.getId());
             alert.setComponentId(scope);

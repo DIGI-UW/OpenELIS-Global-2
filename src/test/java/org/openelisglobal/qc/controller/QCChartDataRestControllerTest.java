@@ -47,6 +47,9 @@ public class QCChartDataRestControllerTest {
     @Mock
     private QCChartDataService chartDataService;
 
+    @Mock
+    private org.openelisglobal.qc.service.QCControlLotService controlLotService;
+
     @InjectMocks
     private QCChartDataRestController controller;
 
@@ -61,6 +64,9 @@ public class QCChartDataRestControllerTest {
 
     @Test
     public void getChartData_returnsDataPointsWithViolationFlag() throws Exception {
+        var lot = new org.openelisglobal.qc.valueholder.QCControlLot();
+        lot.setControlLevel("NORMAL");
+        when(controlLotService.get("lot-1")).thenReturn(lot);
         QCResult r1 = new QCResult();
         r1.setId("res-1");
         r1.setResultValue(new BigDecimal("5.20"));
@@ -86,6 +92,7 @@ public class QCChartDataRestControllerTest {
                 .andExpect(jsonPath("$.controlLotId").value("lot-1"))
                 .andExpect(jsonPath("$.dataPoints.length()").value(2))
                 .andExpect(jsonPath("$.dataPoints[0].resultId").value("res-1"))
+                .andExpect(jsonPath("$.dataPoints[0].controlLevel").value("NORMAL"))
                 .andExpect(jsonPath("$.dataPoints[0].hasViolation").value(false))
                 .andExpect(jsonPath("$.dataPoints[1].resultId").value("res-2"))
                 .andExpect(jsonPath("$.dataPoints[1].hasViolation").value(true))

@@ -29,6 +29,7 @@ import {
   ListChecked,
   Chemistry,
   WarningAlt,
+  Plug,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -1018,6 +1019,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/calendarManagement`)}
       >
         <FormattedMessage id="calendar.management.title" />
+      </SideNavLink>
+      <SideNavLink
+        data-cy="modulesAdmin"
+        renderIcon={Plug}
+        {...navProps(`${path}/modules`)}
+      >
+        <FormattedMessage id="modules.admin.title" />
       </SideNavLink>
       <SideNavLink
         renderIcon={Catalog}

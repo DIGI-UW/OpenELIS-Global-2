@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -27,11 +28,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.barcode.labeltype.BlankLabel;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
@@ -43,6 +49,7 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -397,4 +404,83 @@ public class BarcodeLabelMakerTest {
         }
         return collectedFields;
     }
+
+    @Test
+    public void renderer_rejectsExcessiveQuantityBeforeProducingPartialPdf() {
+        Label valid = new BlankLabel("VALID");
+        Label invalid = new BlankLabel("INVALID");
+        invalid.setNumLabels(101);
+        BarcodeLabelMaker maker = new BarcodeLabelMaker(new ArrayList<>(List.of(valid, invalid)));
+        maker.setOverride("TRUE");
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStream);
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStreamWithMaximumPrints);
+    }
+
+    @Test
+    public void preprint_rejectsEmptyOrExcessiveJobsBeforeAllocatingAccessionNumbers() {
+        BarcodeLabelMaker maker = new BarcodeLabelMaker();
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(0, 1, 1, "Test", List.of(), ""));
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(1, 0, 0, "Test", List.of(), ""));
+        assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(Integer.MAX_VALUE, 1, 1, "Test", List.of(), ""));
+        assertTrue(maker.getLabels().isEmpty());
+    }
+
+    @Test
+    public void renderer_printsConfiguredMaximumWithCorrectContent() throws Exception {
+        when(configurationProperties.getPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY)).thenReturn("12");
+        Label label = new BlankLabel("CAP-12");
+        label.setNumLabels(12);
+        BarcodeLabelMaker maker = new BarcodeLabelMaker(new ArrayList<>(List.of(label)));
+        byte[] pdf = maker.createLabelsAsStream().toByteArray();
+        assertEquals(12, PdfText.pageCount(pdf));
+        try (PDDocument doc = Loader.loadPDF(pdf)) {
+            assertTrue(new org.apache.pdfbox.text.PDFTextStripper().getText(doc).contains("CAP-12"));
+        }
+    }
+
+    @Test
+    public void renderer_enforcesTotalAcrossLabelDefinitions() throws Exception {
+        when(configurationProperties.getPropertyValue(Property.MAX_REQUEST_LABEL_TOTAL)).thenReturn("12");
+        Label first = new BlankLabel("FIRST");
+        first.setNumLabels(6);
+        Label second = new BlankLabel("SECOND");
+        second.setNumLabels(6);
+        BarcodeLabelMaker maker = new BarcodeLabelMaker(new ArrayList<>(List.of(first, second)));
+        assertEquals(12, PdfText.pageCount(maker.createLabelsAsStream().toByteArray()));
+        second.setNumLabels(7);
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStream);
+        assertThrows(LabelQuantityRefusedException.class, maker::createLabelsAsStreamWithMaximumPrints);
+    }
+
+    @Test
+    public void preprint_rejectsMultipliedTotalWithoutIntegerOverflow() {
+        when(configurationProperties.getPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY))
+                .thenReturn(Integer.toString(Integer.MAX_VALUE));
+        BarcodeLabelMaker maker = new BarcodeLabelMaker();
+        LabelQuantityRefusedException ex = assertThrows(LabelQuantityRefusedException.class,
+                () -> maker.generatePrePrintLabels(65536, 65536, 0, "Test", List.of(), ""));
+        assertEquals(LabelQuantityRefusedException.JOB_TOO_LARGE, ex.getMessageKey());
+        assertTrue(maker.getLabels().isEmpty());
+    }
+
+    @Test
+    public void preprint_allowsOneUnusedLabelKindAndPreservesAccessionPerSet() throws Exception {
+        AccessionNumberValidatorFactory factory = org.mockito.Mockito.mock(AccessionNumberValidatorFactory.class);
+        IAccessionNumberGenerator generator = org.mockito.Mockito.mock(IAccessionNumberGenerator.class);
+        when(beanFactory.getBean(AccessionNumberValidatorFactory.class)).thenReturn(factory);
+        when(factory.getGenerator(AccessionFormat.MAIN)).thenReturn(generator);
+        when(generator.getNextAvailableAccessionNumber("", true)).thenReturn("PRE-001", "PRE-002");
+        BarcodeLabelMaker maker = new BarcodeLabelMaker();
+        maker.generatePrePrintLabels(2, 2, 0, "Test facility", List.of(), "");
+        byte[] pdf = maker.createLabelsAsStream().toByteArray();
+        assertEquals(4, PdfText.pageCount(pdf));
+        String text = PdfText.of(pdf);
+        assertTrue(text.contains("PRE-001"));
+        assertTrue(text.contains("PRE-002"));
+        org.mockito.Mockito.verify(generator, org.mockito.Mockito.times(2)).getNextAvailableAccessionNumber("", true);
+    }
+
 }

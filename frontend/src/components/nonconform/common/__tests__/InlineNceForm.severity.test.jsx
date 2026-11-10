@@ -75,10 +75,8 @@ const renderForm = (props = {}) => {
 
 const fillAndSubmit = async () => {
   const user = userEvent.setup();
-  await user.selectOptions(
-    document.getElementById("inline-nce-reporting-unit"),
-    "136",
-  );
+  await user.type(document.getElementById("inline-nce-reporting-unit"), "hema");
+  await user.click(screen.getByRole("option", { name: "Hematology" }));
   await user.selectOptions(document.getElementById("inline-nce-category"), "1");
   await user.selectOptions(document.getElementById("inline-nce-type"), "58");
   fireEvent.click(screen.getByTestId("inline-nce-severity-MINOR"));

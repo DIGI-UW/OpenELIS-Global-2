@@ -20,7 +20,7 @@
      Documentation at /docs/config/server.html
  -->
 <Server port="-1" shutdown="SHUTDOWN">
-     <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+     <Listener className="org.apache.catalina.startup.VersionLoggerListener" logArgs="false" />
      <!-- Security listener. Documentation at /docs/config/listeners.html
   <Listener className="org.apache.catalina.security.SecurityListener" />
   -->
@@ -138,8 +138,10 @@
                          resourceName="UserDatabase" />
                </Realm>
 
+               <!-- Contexts are declared below. Scanning the same WARs also deploys
+                    a second application, duplicating imports and scheduled jobs. -->
                <Host name="localhost" appBase="webapps"
-                    unpackWARs="true" autoDeploy="true">
+                    unpackWARs="true" autoDeploy="false" deployOnStartup="false">
 
                     <Context docBase="ROOT" path="/api" />
                     <Context docBase="OpenELIS-Global"

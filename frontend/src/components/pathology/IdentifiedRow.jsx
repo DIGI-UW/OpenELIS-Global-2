@@ -95,7 +95,11 @@ export const RowLifecycleAction = ({
 
 /**
  * One cassette, block or slide on a list. Its fields and actions render from
- * `{ objectName, disabled }`, so every name and lock on the row agrees.
+ * `{ objectName, hiddenName, disabled }`, so every name and lock on the row
+ * agrees. `hiddenName` goes inside a field's label, so the field is announced
+ * with the object it belongs to while the row shows the object only once.
+ * A list that repeats rows another list already removes and deactivates
+ * passes `withLifecycleAction={false}`, so each such button exists once.
  */
 const IdentifiedRow = ({
   kind,
@@ -108,6 +112,7 @@ const IdentifiedRow = ({
   stateBadge,
   onRemove,
   onDeactivate,
+  withLifecycleAction = true,
   actions,
   children,
 }) => {
@@ -118,7 +123,13 @@ const IdentifiedRow = ({
   }
   const objectName = rowObjectName(intl, kind, row, position);
   const naming = objectNaming(kind, row);
-  const slots = { objectName, disabled: readOnly || deactivated };
+  const slots = {
+    objectName,
+    hiddenName: (
+      <span className="cds--visually-hidden">{" " + objectName}</span>
+    ),
+    disabled: readOnly || deactivated,
+  };
 
   return (
     <div
@@ -138,25 +149,27 @@ const IdentifiedRow = ({
       {children(slots)}
       <div className="pathology-case-view__row-actions">
         {actions?.(slots)}
-        <RowLifecycleAction
-          unsaved={isUnsavedRow(row)}
-          deactivated={deactivated}
-          readOnly={readOnly}
-          deactivateLocked={deactivateLocked}
-          deactivateLockedReason={deactivateLockedReason}
-          removeLabel={intl.formatMessage(
-            { id: "common.removeSelection" },
-            { name: objectName },
-          )}
-          deactivateLabel={intl.formatMessage(
-            { id: naming.actionKey },
-            naming.values,
-          )}
-          onRemove={onRemove}
-          onDeactivate={(event) =>
-            onDeactivate({ kind, row, launcher: event.currentTarget })
-          }
-        />
+        {withLifecycleAction && (
+          <RowLifecycleAction
+            unsaved={isUnsavedRow(row)}
+            deactivated={deactivated}
+            readOnly={readOnly}
+            deactivateLocked={deactivateLocked}
+            deactivateLockedReason={deactivateLockedReason}
+            removeLabel={intl.formatMessage(
+              { id: "common.removeSelection" },
+              { name: objectName },
+            )}
+            deactivateLabel={intl.formatMessage(
+              { id: naming.actionKey },
+              naming.values,
+            )}
+            onRemove={onRemove}
+            onDeactivate={(event) =>
+              onDeactivate({ kind, row, launcher: event.currentTarget })
+            }
+          />
+        )}
       </div>
     </div>
   );
@@ -164,6 +177,11 @@ const IdentifiedRow = ({
 
 export default IdentifiedRow;
 
+/**
+ * The line under a list. Add and Print render only for a list that is given
+ * their labels; the Show deactivated switch only once the list holds a
+ * deactivated row. With none of the three there is no line at all.
+ */
 export const ListToolbar = ({
   addLabelKey,
   onAdd,
@@ -179,32 +197,40 @@ export const ListToolbar = ({
 }) => {
   const intl = useIntl();
 
+  if (!addLabelKey && !printLabelKey && !(deactivatedCount > 0)) {
+    return null;
+  }
+
   return (
     <div className="pathology-case-view__list-toolbar">
-      <Button
-        size="md"
-        kind="tertiary"
-        renderIcon={Add}
-        disabled={addDisabled}
-        title={addTitle}
-        onClick={onAdd}
-      >
-        <FormattedMessage id={addLabelKey} />
-      </Button>
-      <Button
-        size="md"
-        kind="ghost"
-        renderIcon={Printer}
-        disabled={!canPrint}
-        title={
-          canPrint
-            ? undefined
-            : intl.formatMessage({ id: "pathology.locked.nothingToPrint" })
-        }
-        onClick={() => window.open(printUrl, "_blank")}
-      >
-        <FormattedMessage id={printLabelKey} />
-      </Button>
+      {addLabelKey && (
+        <Button
+          size="md"
+          kind="tertiary"
+          renderIcon={Add}
+          disabled={addDisabled}
+          title={addTitle}
+          onClick={onAdd}
+        >
+          <FormattedMessage id={addLabelKey} />
+        </Button>
+      )}
+      {printLabelKey && (
+        <Button
+          size="md"
+          kind="ghost"
+          renderIcon={Printer}
+          disabled={!canPrint}
+          title={
+            canPrint
+              ? undefined
+              : intl.formatMessage({ id: "pathology.locked.nothingToPrint" })
+          }
+          onClick={() => window.open(printUrl, "_blank")}
+        >
+          <FormattedMessage id={printLabelKey} />
+        </Button>
+      )}
       {deactivatedCount > 0 && (
         <Toggle
           id={toggleId}

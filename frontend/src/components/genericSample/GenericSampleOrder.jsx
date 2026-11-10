@@ -13,6 +13,7 @@ import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
 import CustomTimePicker from "../common/CustomTimePicker";
 import CustomSelect from "../common/CustomSelect";
+import SearchableSelect from "../common/SearchableSelect";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
@@ -605,7 +606,7 @@ export default function GenericSampleOrder({
             </Column>
             {showSampleType && (
               <Column lg={8} md={8} sm={4}>
-                <CustomSelect
+                <SearchableSelect
                   id="sampleType"
                   labelText={
                     <FormattedMessage
@@ -619,7 +620,7 @@ export default function GenericSampleOrder({
                     id: s.id,
                     value: s.value,
                   }))}
-                  placeholder="Select sample type"
+                  placeholder={intl.formatMessage({ id: "sample.select.type" })}
                 />
               </Column>
             )}
@@ -648,7 +649,7 @@ export default function GenericSampleOrder({
               )}
               {showUom && (
                 <Column lg={8} md={8} sm={4}>
-                  <CustomSelect
+                  <SearchableSelect
                     id="sampleUnitOfMeasure"
                     labelText={
                       <FormattedMessage
@@ -661,7 +662,9 @@ export default function GenericSampleOrder({
                       updateDefaultField("sampleUnitOfMeasure", v)
                     }
                     options={uoms.map((u) => ({ id: u.id, value: u.value }))}
-                    placeholder="Select units"
+                    placeholder={intl.formatMessage({
+                      id: "sample.uom.search",
+                    })}
                   />
                 </Column>
               )}

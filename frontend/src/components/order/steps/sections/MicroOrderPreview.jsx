@@ -1,23 +1,16 @@
 import CultureSetSummary from "../../../microbiology/CultureSetSummary";
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
-import {
-  Tile,
-  Tag,
-  InlineLoading,
-  InlineNotification,
-  Button,
-} from "@carbon/react";
+import { Callout, InlineNotification, Button } from "@carbon/react";
 import { previewMicrobiologyOrder } from "../../../microbiology/MicrobiologyService";
 
-export default function MicroOrderPreview({
+export function useMicroOrderPreview({
   samples,
   savedOrder = false,
   domain,
   samplingSiteId,
   samplingSiteName,
 }) {
-  const intl = useIntl();
   const [result, setResult] = useState(null);
   const [failedPayload, setFailedPayload] = useState(null);
   const [attempt, setAttempt] = useState(0);
@@ -66,10 +59,167 @@ export default function MicroOrderPreview({
     };
   }, [payload, existing, hasTests, attempt]);
 
-  if (existing || !hasTests) return null;
-  // Hide the previous selection's answer immediately, even before its effect cleans up.
   const preview = result?.payload === payload ? result.response : null;
-  if (preview && preview.cases.length === 0) return null;
+  const hidden =
+    existing || !hasTests || (preview && preview.cases.length === 0);
+  const typedSampleIndexes = samples.reduce(
+    (indexes, sample, index) =>
+      sample.sampleTypeId ? [...indexes, index] : indexes,
+    [],
+  );
+  const caseIndexesBySample = {};
+  (preview?.cases || []).forEach((entry, caseIndex) => {
+    entry.specimens.forEach((specimen) => {
+      const sampleIndex = typedSampleIndexes[specimen.index];
+      if (sampleIndex === undefined) return;
+      caseIndexesBySample[sampleIndex] = [
+        ...(caseIndexesBySample[sampleIndex] || []),
+        caseIndex,
+      ];
+    });
+  });
+  const splitSamples = {};
+  (preview?.warnings || []).forEach((warning) => {
+    const sampleIndex = typedSampleIndexes[warning.specimenIndex];
+    if (sampleIndex === undefined) return;
+    splitSamples[sampleIndex] = true;
+  });
+  const ordinaryTestsBySample = {};
+  (preview?.ordinaryTests || []).forEach((entry) => {
+    const sampleIndex = typedSampleIndexes[entry.specimenIndex];
+    if (sampleIndex === undefined) return;
+    ordinaryTestsBySample[sampleIndex] = [
+      ...(ordinaryTestsBySample[sampleIndex] || []),
+      entry.testName,
+    ];
+  });
+
+  return {
+    hidden,
+    loading: !hidden && !preview && failedPayload !== payload,
+    failed: failedPayload === payload,
+    retry: () => setAttempt((value) => value + 1),
+    preview,
+    caseIndexesBySample,
+    splitSamples,
+    ordinaryTestsBySample,
+  };
+}
+
+export function MicroSampleCaseNote({ preview, sampleIndex }) {
+  const intl = useIntl();
+  if (!preview || preview.hidden || !preview.preview) return null;
+  const answer = preview.preview;
+  const caseIndexes = preview.caseIndexesBySample[sampleIndex] || [];
+  const cases = caseIndexes.map((index) => answer.cases[index]);
+  const ordinaryTests = preview.ordinaryTestsBySample[sampleIndex] || [];
+  const hasOtherWork =
+    answer.cases.length > 1 || (answer.ordinaryTests || []).length > 0;
+  const unitWarnings =
+    hasOtherWork && !preview.splitSamples[sampleIndex]
+      ? (answer.newUnitWarnings || []).filter((warning) =>
+          cases.some((entry) => entry.labUnitId === warning.labUnitId),
+        )
+      : [];
+  const sentence = (entry) =>
+    intl.formatMessage(
+      { id: "order.microPreview.sampleNote" },
+      {
+        tests: intl.formatList(
+          entry.testNames.map((name) => <strong key={name}>{name}</strong>),
+          { type: "conjunction" },
+        ),
+        count: entry.testNames.length,
+        unit: <strong>{entry.labUnitName}</strong>,
+      },
+    );
+  const siteName = cases.find((entry) => entry.siteName)?.siteName;
+  return (
+    <>
+      {cases.length > 0 &&
+        (preview.splitSamples[sampleIndex] ? (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            className="micro-sample-callout"
+            title={intl.formatMessage(
+              { id: "order.microPreview.sampleSplit" },
+              { count: cases.length },
+            )}
+            subtitle={intl.formatList(
+              cases.map((entry) =>
+                intl.formatMessage(
+                  { id: "order.microPreview.caseIn" },
+                  {
+                    tests: intl.formatList(entry.testNames, {
+                      type: "conjunction",
+                    }),
+                    unit: entry.labUnitName,
+                  },
+                ),
+              ),
+              { type: "unit" },
+            )}
+          />
+        ) : (
+          <Callout
+            kind="info"
+            lowContrast
+            className="micro-sample-callout"
+            statusIconDescription={intl.formatMessage({
+              id: "notification.info",
+            })}
+            subtitle={
+              <>
+                {cases.map((entry, index) => (
+                  <span
+                    key={`case-${index}`}
+                    className="micro-sample-note__line"
+                  >
+                    {sentence(entry)}
+                  </span>
+                ))}
+                {siteName && (
+                  <span className="micro-sample-note__site">
+                    {intl.formatMessage(
+                      { id: "order.microPreview.site" },
+                      { site: siteName },
+                    )}
+                  </span>
+                )}
+              </>
+            }
+          />
+        ))}
+      {unitWarnings.map((warning, index) => (
+        <InlineNotification
+          key={`unit-${warning.labUnitId}-${index}`}
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          className="micro-sample-callout"
+          title={intl.formatMessage(
+            { id: "order.microPreview.noOtherWork" },
+            { unit: warning.labUnitName },
+          )}
+        />
+      ))}
+      {ordinaryTests.length > 0 && (
+        <p className="micro-sample-note__results">
+          {intl.formatMessage(
+            { id: "order.microPreview.staysInResults" },
+            { tests: intl.formatList(ordinaryTests, { type: "unit" }) },
+          )}
+        </p>
+      )}
+    </>
+  );
+}
+
+export default function MicroOrderPreview({ preview }) {
+  const intl = useIntl();
+  if (!preview || preview.hidden || preview.loading) return null;
   const text = (key, values) =>
     intl.formatMessage({ id: `order.microPreview.${key}` }, values);
   const describeCondition = (condition) => {
@@ -92,10 +242,13 @@ export default function MicroOrderPreview({
       value2: condition.value2,
     });
   };
+  const answer = preview.preview;
+  const hasSets = (answer?.cases || []).some((entry) => entry.bottles?.length);
+  const hasReflexRules = (answer?.reflexRules || []).length > 0;
+  if (!preview.failed && !hasSets && !hasReflexRules) return null;
   return (
-    <Tile role="region" aria-label={text("title")} aria-live="polite">
-      <h3>{text("title")}</h3>
-      {failedPayload === payload ? (
+    <div className="order-micro-preview">
+      {preview.failed ? (
         <>
           <InlineNotification
             kind="error"
@@ -103,67 +256,21 @@ export default function MicroOrderPreview({
             subtitle={text("failedDetail")}
             hideCloseButton
           />
-          <Button kind="ghost" onClick={() => setAttempt((value) => value + 1)}>
+          <Button kind="ghost" onClick={preview.retry}>
             {intl.formatMessage({ id: "common.retry" })}
           </Button>
         </>
-      ) : !preview ? (
-        <InlineLoading description={text("loading")} />
       ) : (
-        <div>
-          {preview.cases.map((entry, index) => (
-            <div key={`case-${index}`}>
-              <div>
-                <Tag type="blue">{text("opens")}</Tag>{" "}
-                {text("case", {
-                  tests: entry.testNames.join(", "),
-                  unit: entry.labUnitName,
-                  samples: entry.specimens
-                    .map((sample) =>
-                      text("sample", {
-                        type: sample.sampleTypeName,
-                        number: sample.index + 1,
-                      }),
-                    )
-                    .join(", "),
-                })}
-              </div>
-              {entry.siteName && (
-                <div>{text("site", { site: entry.siteName })}</div>
-              )}
-              <CultureSetSummary
-                specimens={entry.bottles}
-                warnings={entry.setWarnings}
-              />
-            </div>
+        <>
+          {(answer?.cases || []).map((entry, index) => (
+            <CultureSetSummary
+              key={`case-${index}`}
+              specimens={entry.bottles}
+              warnings={entry.setWarnings}
+            />
           ))}
-          {preview.ordinaryTests.map((entry) => (
-            <div key={`${entry.specimenIndex}-${entry.testId}`}>
-              <Tag type="gray">{text("ordinary")}</Tag>{" "}
-              {text("stays", { test: entry.testName })}
-            </div>
-          ))}
-          {preview.warnings.map((warning) => (
-            <div key={`split-${warning.specimenIndex}`}>
-              <Tag type="warm-gray">{text("splitTag")}</Tag>{" "}
-              {text("split", {
-                number: warning.specimenIndex + 1,
-                count: warning.labUnits.length,
-                units: warning.labUnits.join(", "),
-              })}
-            </div>
-          ))}
-          {preview.newUnitWarnings.map((warning) => (
-            <div key={`unit-${warning.labUnitId}`}>
-              <Tag type="warm-gray">{text("newUnitTag")}</Tag>{" "}
-              {text("newUnit", {
-                test: warning.testName,
-                unit: warning.labUnitName,
-              })}
-            </div>
-          ))}
-          {preview.reflexRules.map((rule, index) => (
-            <div key={`rule-${index}`}>
+          {(answer?.reflexRules || []).map((rule, index) => (
+            <p key={`rule-${index}`}>
               {text("reflex", {
                 name: rule.name,
                 conditions: rule.conditions
@@ -174,10 +281,10 @@ export default function MicroOrderPreview({
                   .join(text(rule.overall === "ALL" ? "and" : "or")),
                 tests: rule.addedTests.join(", "),
               })}
-            </div>
+            </p>
           ))}
-        </div>
+        </>
       )}
-    </Tile>
+    </div>
   );
 }

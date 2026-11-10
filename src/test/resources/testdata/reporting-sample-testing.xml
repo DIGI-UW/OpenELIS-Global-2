@@ -270,13 +270,13 @@
 
     <!-- test_result -->
     <test_result id="1" test_id="1" result_group="1"
-        flags="FLAG1" tst_rslt_type="N" value="5.6" significant_digits="2"
-        quant_limit="10.0" cont_level="High" lastupdated="2025-04-01 12:00:00"
-        scriptlet_id="1" sort_order="1" is_quantifiable="true"
-        is_active="true" is_normal="true" />
+        flags="FLAG1" tst_rslt_type="N" value="5.6"
+        reporting_decimal_places="2" quant_limit="10.0" cont_level="High"
+        lastupdated="2025-04-01 12:00:00" scriptlet_id="1" sort_order="1"
+        is_quantifiable="true" is_active="true" is_normal="true" />
     <test_result id="2" test_id="2" result_group="2"
         flags="FLAG2" tst_rslt_type="T" value="Positive"
-        significant_digits="0" quant_limit="15.1" cont_level="High"
+        reporting_decimal_places="0" quant_limit="15.1" cont_level="High"
         lastupdated="2025-04-01 12:30:00" scriptlet_id="2" sort_order="2"
         is_quantifiable="true" is_active="true" is_normal="false" />
 
@@ -314,12 +314,12 @@
     <!-- result -->
     <result id="1" sort_order="1" result_type="N" value="85.0"
         analyte_id="1" test_result_id="1" lastupdated="2025-07-07 14:00:00"
-        min_normal="70.0" max_normal="100.0" significant_digits="1"
+        min_normal="70.0" max_normal="100.0" reporting_decimal_places="1"
         grouping="0" fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
     <result id="2" sort_order="2" result_type="N" value="14.5"
         analyte_id="2" test_result_id="2" lastupdated="2025-07-07 14:00:00"
         min_normal="12.0" max_normal="16.0" parent_id="1"
-        significant_digits="1" grouping="0"
+        reporting_decimal_places="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <analysis id="1" sampitem_id="1" test_sect_id="1" test_id="1"

@@ -6,9 +6,12 @@ import {
   cassetteStateBadge,
   countedRows,
   deactivatedCount,
+  embeddingSummary,
   isDeactivatedRow,
+  isEmbeddedRow,
   isUnsavedRow,
   labelStreamUrl,
+  nextOutstandingCassette,
   needsParentBlock,
   newRowName,
   objectNaming,
@@ -18,6 +21,7 @@ import {
   slideIdentifier,
   slideOnBlockName,
   stripClientKeys,
+  tissueTypeItems,
   unsavedPosition,
   withClientKey,
 } from "./pathologyRows";
@@ -316,5 +320,180 @@ describe("rowListEditors", () => {
     expect(read().slides[1]).toMatchObject({ blockId: null, location: "" });
     expect(read().slides[1].clientKey).toBeTruthy();
     expect(read().slides[1]).not.toHaveProperty("id");
+  });
+});
+
+// The served tissue types are the active ones only, so a cassette holding a
+// type retired after it was recorded has to bring its own entry.
+describe("tissueTypeItems", () => {
+  const served = [
+    { id: "21", value: "Skin" },
+    { id: "22", value: "Bone" },
+  ];
+
+  it("offers the served list as it is when the cassette holds nothing, or holds one of them", () => {
+    expect(tissueTypeItems(served, { tissueTypeId: null }, {})).toEqual(served);
+    expect(tissueTypeItems(served, { tissueTypeId: "" }, {})).toEqual(served);
+    expect(tissueTypeItems(served, {}, undefined)).toEqual(served);
+    expect(tissueTypeItems(served, { tissueTypeId: 22 }, {})).toEqual(served);
+  });
+
+  it("adds the held type the list no longer serves, under the name the case carries for it", () => {
+    expect(
+      tissueTypeItems(served, { tissueTypeId: "23" }, { 23: "Cartilage" }),
+    ).toEqual([...served, { id: "23", value: "Cartilage" }]);
+  });
+
+  it("falls back to the id when the case carries no name for it, rather than showing nothing", () => {
+    expect(tissueTypeItems(served, { tissueTypeId: "23" }, {})).toEqual([
+      ...served,
+      { id: "23", value: "23" },
+    ]);
+  });
+
+  it("still names the held type while the served list has not arrived", () => {
+    expect(
+      tissueTypeItems(null, { tissueTypeId: "23" }, { 23: "Cartilage" }),
+    ).toEqual([{ id: "23", value: "Cartilage" }]);
+    expect(tissueTypeItems(null, { tissueTypeId: null }, {})).toEqual([]);
+  });
+});
+
+// The same four cases the server's summary is tested on, so the screen and the
+// audit trail cannot reconcile a case differently.
+describe("embeddingSummary", () => {
+  const cassette = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    cassetteState: "CASSETTE",
+    active: true,
+    ...overrides,
+  });
+  const block = (id, designation, overrides = {}) =>
+    cassette(id, designation, { cassetteState: "BLOCK", ...overrides });
+
+  it("finds nothing to embed on a case with no rows", () => {
+    expect(embeddingSummary(undefined)).toEqual({
+      embedded: 0,
+      total: 0,
+      outstanding: [],
+      complete: false,
+    });
+    expect(embeddingSummary([])).toEqual({
+      embedded: 0,
+      total: 0,
+      outstanding: [],
+      complete: false,
+    });
+  });
+
+  it("names every cassette as outstanding before any is embedded", () => {
+    expect(embeddingSummary([cassette(1, "A1"), cassette(2, "A2")])).toEqual({
+      embedded: 0,
+      total: 2,
+      outstanding: ["A1", "A2"],
+      complete: false,
+    });
+  });
+
+  it("counts three of four embedded and names the fourth", () => {
+    expect(
+      embeddingSummary([
+        block(1, "A1"),
+        block(2, "A2"),
+        block(3, "A3"),
+        cassette(4, "A4"),
+      ]),
+    ).toEqual({
+      embedded: 3,
+      total: 4,
+      outstanding: ["A4"],
+      complete: false,
+    });
+  });
+
+  it("is complete once every cassette in use is a block", () => {
+    expect(
+      embeddingSummary([
+        block(1, "A1"),
+        block(2, "A2"),
+        cassette(3, "A3", { active: false }),
+      ]),
+    ).toEqual({ embedded: 2, total: 2, outstanding: [], complete: true });
+  });
+
+  // A retired cassette is kept for the record and a row added on this screen
+  // is not cut until it is saved, so neither is work waiting at the bench.
+  it("counts neither a deactivated cassette nor an unsaved row either way", () => {
+    expect(
+      embeddingSummary([
+        block(1, "A1"),
+        cassette(2, "A2", { active: false }),
+        block(3, "A3", { active: false }),
+        { designation: null, location: "" },
+        cassette(4, "A4"),
+      ]),
+    ).toEqual({
+      embedded: 1,
+      total: 2,
+      outstanding: ["A4"],
+      complete: false,
+    });
+  });
+
+  it("names a legacy cassette without a designation as the server does", () => {
+    expect(
+      embeddingSummary([{ id: 7, blockNumber: 3, active: true }]).outstanding,
+    ).toEqual(["3"]);
+  });
+});
+
+describe("nextOutstandingCassette", () => {
+  const cassette = (id, designation, overrides = {}) => ({
+    id,
+    designation,
+    cassetteState: "CASSETTE",
+    active: true,
+    ...overrides,
+  });
+
+  it("moves to the next cassette still waiting, in list order", () => {
+    const blocks = [
+      cassette(1, "A1"),
+      cassette(2, "A2", { cassetteState: "BLOCK" }),
+      cassette(3, "A3"),
+    ];
+    expect(nextOutstandingCassette(blocks, blocks[0])).toBe(blocks[2]);
+  });
+
+  it("wraps to the first cassette waiting after the last in the list", () => {
+    const blocks = [cassette(1, "A1"), cassette(2, "A2"), cassette(3, "A3")];
+    expect(nextOutstandingCassette(blocks, blocks[2])).toBe(blocks[0]);
+  });
+
+  it("finds none when the given cassette is the last one waiting", () => {
+    const blocks = [
+      cassette(1, "A1", { cassetteState: "BLOCK" }),
+      cassette(2, "A2"),
+    ];
+    expect(nextOutstandingCassette(blocks, blocks[1])).toBeUndefined();
+  });
+
+  it("skips a deactivated cassette", () => {
+    const blocks = [
+      cassette(1, "A1"),
+      cassette(2, "A2", { active: false }),
+      cassette(3, "A3"),
+    ];
+    expect(nextOutstandingCassette(blocks, blocks[0])).toBe(blocks[2]);
+  });
+});
+
+describe("isEmbeddedRow", () => {
+  it("reads only a block as embedded, and a row with no state as a cassette", () => {
+    expect(isEmbeddedRow({ cassetteState: "BLOCK" })).toBe(true);
+    expect(isEmbeddedRow({ cassetteState: "CASSETTE" })).toBe(false);
+    expect(isEmbeddedRow({})).toBe(false);
+    expect(isEmbeddedRow(undefined)).toBe(false);
   });
 });
