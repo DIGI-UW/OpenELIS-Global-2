@@ -105,12 +105,20 @@ public class MicroQcRangeConfigurationHandler extends AbstractCatalogCsvHandler 
 
     private static BigDecimal decimal(CsvRow row, String column) {
         String value = required(row, column);
+        BigDecimal number;
         try {
-            return new BigDecimal(value);
+            number = new BigDecimal(value);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(
                     "Line " + row.lineNumber() + ": " + column + " must be a number, was '" + value + "'");
         }
+        if (number.signum() <= 0 || number.stripTrailingZeros().scale() > 4
+                || number.precision() - number.scale() > 8) {
+            throw new IllegalArgumentException("Line " + row.lineNumber() + ": " + column
+                    + " must be positive with at most 8 digits before and 4 after the decimal point, was '" + value
+                    + "'");
+        }
+        return number;
     }
 
     private static String required(CsvRow row, String column) {
