@@ -32,4 +32,5 @@ public class MicroCaseShellForm extends MicroCaseSummaryForm {
     public boolean canWrite;
     public boolean canValidate;
     public boolean readOnlyAccess;
+    public boolean canLogCritical;
 }

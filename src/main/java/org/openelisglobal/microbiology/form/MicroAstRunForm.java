@@ -11,6 +11,7 @@ public class MicroAstRunForm {
     public String isolateId;
     public String panelId;
     public Integer panelVersion;
+    public String panelLabel;
     public String panelProvenance;
     public String panelAdjustmentReason;
     public String breakpointStandardId;

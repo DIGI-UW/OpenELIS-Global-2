@@ -56,6 +56,8 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroAstService ast;
     @Autowired
+    private org.openelisglobal.analyzer.service.AnalyzerService analyzers;
+    @Autowired
     private MicroIsolateService isolateService;
     @Autowired
     private MicroAstPanelAssignmentService assignments;
@@ -563,6 +565,43 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
         assertEquals(List.of(), assignments.getAssignments(ntm));
         assertEquals("AST_PANEL_ORGANISM_MISMATCH", assertThrows(IllegalArgumentException.class,
                 () -> assignments.assign(ntm, reference.panel().getId(), writer)).getMessage());
+    }
+
+    @Test
+    public void reidentifyingAsAnNtmOrganismRetiresTheGeneralDefaultPanel() {
+        var ntm = fixtures.createOrganism("Mycobacterium " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        ntm.setSusceptibilityProtocol("NTM");
+        organisms.update(ntm);
+        reidentify(ntm.getId());
+        assertEquals(List.of(), assignments.getAssignments(isolate));
+    }
+
+    @Test
+    public void anNtmOrganismsSetupOrdersNoPanel() {
+        ntmReferenceOrganism();
+        assertNull(ast.getSetup(isolate).orderedPanelId);
+    }
+
+    @Test
+    public void anNtmOrganismsWorkspaceOffersNoDefaultPanel() {
+        ntmReferenceOrganism();
+        assertNull(workspace.get(c.getId(), writer).isolates.stream().filter(i -> i.id().equals(isolate)).findFirst()
+                .orElseThrow().defaultPanelId());
+    }
+
+    @Test
+    public void anNtmOrganismsRunNeedsAPanelChosen() {
+        ntmReferenceOrganism();
+        assertEquals("AST_ORDERED_PANEL_REQUIRED",
+                assertThrows(IllegalStateException.class, () -> start(isolate)).getMessage());
+    }
+
+    private void ntmReferenceOrganism() {
+        reference.organism().setSusceptibilityProtocol("NTM");
+        organisms.update(reference.organism());
+        em.flush();
+        em.clear();
     }
 
     @Test
@@ -1295,8 +1334,13 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     private void reidentify(String organismId) {
-        isolateService.updateIdentification(isolate, organismId, null, MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
-                MicroIsolateIdentificationStatus.CONFIRMED, fixtures.createMethodId(), null, "Corrected identification",
+        reidentify(isolate, organismId);
+    }
+
+    private void reidentify(String isolateId, String organismId) {
+        isolateService.updateIdentification(isolateId, organismId, null,
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                fixtures.createMethodId(), null, "Corrected identification",
                 new Timestamp(System.currentTimeMillis() - 1000), validator);
         em.flush();
         em.clear();
@@ -1442,5 +1486,165 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     private org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm.Row row(
             org.openelisglobal.microbiology.form.MicroReportingRulePreviewResultForm result, String antibioticId) {
         return result.rows.stream().filter(r -> antibioticId.equals(r.antibioticId)).findFirst().orElseThrow();
+    }
+
+    @Test
+    public void aCaseWhoseOnlyAnalysisIsNotReportableHasNothingToReport() {
+        var source = fixtures.createSampleWithSampleItem("M6");
+        var onlyInternal = new MicroCase();
+        onlyInternal.setSampleId(source.getSample().getId());
+        onlyInternal.setSampleItemId(source.getId());
+        onlyInternal.setLabUnitId(c.getLabUnitId());
+        onlyInternal.setCreatedBy(writer);
+        cases.insert(onlyInternal);
+        var analysis = fixtures.createAnalysis(source, fixtures.createCatalogTest());
+        var link = new MicroCaseAnalysis();
+        link.setCaseId(onlyInternal.getId());
+        link.setAnalysisId(analysis.getId());
+        link.setPlacement("INITIAL");
+        link.setCaseRole(MicroCaseRole.DIRECT);
+        em.persist(link);
+        em.find(org.openelisglobal.analysis.valueholder.Analysis.class, analysis.getId()).setIsReportable("N");
+        em.flush();
+        assertTrue(readiness.getReadiness(onlyInternal.getId()).blockers.contains("REPORTABLE_WORK_REQUIRED"));
+
+        em.find(org.openelisglobal.analysis.valueholder.Analysis.class, analysis.getId()).setIsReportable("Y");
+        em.flush();
+        assertFalse(readiness.getReadiness(onlyInternal.getId()).blockers.contains("REPORTABLE_WORK_REQUIRED"));
+    }
+
+    @Test
+    public void reidentifyingOutOfThePanelsGroupRetiresItsAssignment() {
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        reidentify(klebsiella.getId());
+        assertEquals(List.of(reference.panel().getId()),
+                assignments.getAssignments(isolate).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+
+        var staphylococcus = fixtures.createOrganism("Staphylococcus " + UUID.randomUUID(), "Staphylococci", null);
+        reidentify(staphylococcus.getId());
+        assertEquals(List.of(), assignments.getAssignments(isolate));
+    }
+
+    @Test
+    public void aDefaultAssignmentFollowsTheNewOrganismsDefaultEvenWithoutAPanelGroup() {
+        var groupless = panel(null);
+        var manual = panel(null);
+        reference.organism().setDefaultAstPanelId(groupless.getId());
+        organisms.update(reference.organism());
+        String id = isolate("ISO-G");
+        assignments.assign(id, manual.getId(), writer);
+        var klebsiella = fixtures.createOrganism("Klebsiella " + UUID.randomUUID(), "Enterobacterales",
+                reference.panel().getId());
+        reidentify(id, klebsiella.getId());
+        assertEquals(Set.of(reference.panel().getId(), manual.getId()), assignments.getAssignments(id).stream()
+                .map(MicroAstPanelAssignment::getPanelId).collect(java.util.stream.Collectors.toSet()));
+    }
+
+    @Test
+    public void reconfirmingTheSameOrganismLeavesItsPanelsAlone() {
+        reference.organism().setDefaultAstPanelId(panel("Enterobacterales").getId());
+        organisms.update(reference.organism());
+        reidentify(reference.organism().getId());
+        assertEquals(List.of(reference.panel().getId()),
+                assignments.getAssignments(isolate).stream().map(MicroAstPanelAssignment::getPanelId).toList());
+    }
+
+    @Test
+    public void theWorkspaceNamesTheOrganismsCurrentDefaultPanel() {
+        var current = panel("Enterobacterales");
+        reference.organism().setDefaultAstPanelId(current.getId());
+        organisms.update(reference.organism());
+        em.flush();
+        em.clear();
+        var shown = workspace.get(c.getId(), writer).isolates.stream().filter(i -> i.id().equals(isolate)).findFirst()
+                .orElseThrow();
+        assertEquals(current.getId(), shown.defaultPanelId());
+        assertEquals(List.of(reference.panel().getId()),
+                shown.assignments().stream().map(MicroAstWorkspaceForm.Assignment::panelId).toList());
+    }
+
+    private MicroAstPanel panel(String organismGroup) {
+        var p = new MicroAstPanel();
+        p.setName("Panel " + UUID.randomUUID());
+        p.setOrganismGroup(organismGroup);
+        p.setPublishedAt(new Timestamp(System.currentTimeMillis()));
+        p.setPublishedBy(writer);
+        panels.insert(p);
+        return p;
+    }
+
+    @Test
+    public void aCancelledRunsAgentsCannotBeTickedForTheReport() {
+        var run = start(isolate);
+        cancel(run);
+        boolean before = agent(run, drugB).isReported();
+        assertEquals("AST_RUN_NOT_EDITABLE", assertThrows(MicroAstConflictException.class,
+                () -> ast.setReported(run.getId(), drugB, !before, validator)).getMessage());
+        assertEquals(before, agent(run, drugB).isReported());
+    }
+
+    @Test
+    public void aCancelledRunsReportTickChecksRightsBeforeTheRunsStatus() {
+        var run = start(isolate);
+        cancel(run);
+        assertThrows(AccessDeniedException.class, () -> ast.setReported(run.getId(), drugB, false, outsider));
+    }
+
+    @Test
+    public void aCancelledAnalyzerRunRefusesLateInstrumentResults() {
+        var vitek = new org.openelisglobal.analyzer.valueholder.Analyzer();
+        vitek.ensureFhirUuid();
+        vitek.setName("VITEK " + UUID.randomUUID());
+        vitek.setStatus(org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus.SETUP);
+        vitek.setSysUserId("1");
+        String analyzerId = analyzers.insert(vitek);
+        var run = ast.startRun(new MicroAstRunSetupCommand(isolate, null, reference.standard().getId(), null,
+                MicroAstTechnique.VITEK_2, List.of(), null, true, analyzerId, "card-1"), writer);
+        cancel(run);
+        var late = new MicroAstAnalyzerResultBatch(run.getId(), "late-event", analyzerId, "card-1", null, null, null,
+                null, List.of(), null, true, null, null, List.of(),
+                List.of(new MicroAstAnalyzerReading(drugB, new BigDecimal("4"), "mg/L", null, null)));
+        assertEquals("AST_RUN_NOT_AWAITING_ANALYZER_RESULTS",
+                assertThrows(MicroAstConflictException.class, () -> ast.applyAnalyzerResults(late, writer))
+                        .getMessage());
+        em.flush();
+        em.clear();
+        assertEquals("CANCELLED", runs.get(run.getId()).orElseThrow().getStatus());
+        assertEquals(List.of(), ast.getReadingsForRun(run.getId()));
+    }
+
+    @Test
+    public void runsAndAssignmentsNameTheirPanelVersion() {
+        start(isolate);
+        em.flush();
+        em.clear();
+        var shown = workspace.get(c.getId(), writer).isolates.stream().filter(i -> i.id().equals(isolate)).findFirst()
+                .orElseThrow();
+        String expected = reference.panel().getName() + " v" + reference.panel().getVersionNumber();
+        assertEquals(List.of(expected),
+                shown.assignments().stream().map(MicroAstWorkspaceForm.Assignment::label).toList());
+        assertEquals(expected, shown.runs().getFirst().panelLabel);
+    }
+
+    @Test
+    public void aRunWithNoStoredPanelVersionIsNamedByItsPanelsVersion() {
+        var run = start(isolate);
+        em.flush();
+        em.createQuery("update MicroAstRun r set r.panelVersion = null where r.id = :id")
+                .setParameter("id", run.getId()).executeUpdate();
+        em.clear();
+        assertEquals(reference.panel().getName() + " v" + reference.panel().getVersionNumber(),
+                astResponses.toRunForm(runs.get(run.getId()).orElseThrow()).panelLabel);
+    }
+
+    private void cancel(MicroAstRun run) {
+        var cancel = new MicroAstWorkspaceForm.Action();
+        cancel.isolateId = isolate;
+        cancel.runId = run.getId();
+        cancel.action = "cancel";
+        cancel.reason = "Started on the wrong isolate";
+        workspace.act(c.getId(), cancel, writer, false);
+        em.flush();
     }
 }

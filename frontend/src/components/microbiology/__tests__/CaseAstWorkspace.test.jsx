@@ -652,6 +652,7 @@ it.each([
 
 it("sends an explicitly chosen clinical indication on new runs", async () => {
   const data = workspace("IN_PROGRESS");
+  data.isolates[0].defaultPanelId = "panel";
   data.isolates[0].panels = [{ id: "panel", label: "Routine panel" }];
   data.isolates[0].assignments = [
     { panelId: "panel", provenance: "ORGANISM_DEFAULT" },
@@ -704,6 +705,56 @@ it("asks for a panel adjustment reason only when the run does not use the organi
   expect(save).toBeEnabled();
 });
 
+const defaultChanged = () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].defaultPanelId = "current";
+  data.isolates[0].panels = [
+    { id: "older", label: "Older default v1" },
+    { id: "current", label: "Current default v2" },
+  ];
+  data.isolates[0].assignments = [
+    { panelId: "older", provenance: "ORGANISM_DEFAULT" },
+  ];
+  return data;
+};
+
+it("starts from the organism's current default panel, not an older default assignment", async () => {
+  show(defaultChanged());
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  const reason = messages["microbiology.ast.panelAdjustmentReason"];
+  expect(within(modal).getByLabelText(t("panel"))).toHaveValue("current");
+  expect(within(modal).queryByLabelText(reason)).not.toBeInTheDocument();
+  fireEvent.change(within(modal).getByLabelText(t("panel")), {
+    target: { value: "older" },
+  });
+  expect(within(modal).getByLabelText(reason)).toBeInTheDocument();
+});
+
+it.each([
+  [
+    "AST_PANEL_ADJUSTMENT_REASON_REQUIRED",
+    "Give a reason for using a panel other than the organism's default panel.",
+  ],
+  [
+    "AST_PANEL_ALREADY_ACTIVE",
+    "This isolate already has a run on this panel. Repeat or cancel that run instead of starting another.",
+  ],
+])("explains a run refused with %s", async (code, text) => {
+  const service = show(defaultChanged());
+  service.astAction.mockRejectedValue({ response: { message: code } });
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.start") }),
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  expect(await within(modal).findByText(text)).toBeInTheDocument();
+});
+
 const discordantRifampicin = () => {
   const data = workspace();
   data.dst = {
@@ -720,13 +771,11 @@ const discordantRifampicin = () => {
             source: "MOLECULAR",
             sourceId: "m1",
             interpretation: "RESISTANT",
-            validated: true,
           },
           {
             source: "PHENOTYPIC",
             sourceId: "p1",
             interpretation: "SUSCEPTIBLE",
-            validated: true,
           },
         ],
       },
@@ -783,15 +832,14 @@ it("cancels a run started by mistake with a recorded reason", async () => {
     await screen.findByRole("button", { name: t("action.cancel") }),
   );
   const modal = screen.getByRole("dialog");
-  const save = within(modal).getByRole("button", {
-    name: t("save"),
-    exact: true,
+  const cancelRun = within(modal).getByRole("button", {
+    name: t("action.cancel"),
   });
-  expect(save).toBeDisabled();
+  expect(cancelRun).toBeDisabled();
   fireEvent.change(within(modal).getByLabelText(t("reason")), {
     target: { value: "Started on the wrong isolate" },
   });
-  fireEvent.click(save);
+  fireEvent.click(cancelRun);
   await waitFor(() =>
     expect(service.astAction).toHaveBeenCalledWith(
       "c1",
@@ -821,11 +869,86 @@ it("explains a run that can no longer be cancelled", async () => {
     target: { value: "Started on the wrong isolate" },
   });
   fireEvent.click(
-    within(modal).getByRole("button", { name: t("save"), exact: true }),
+    within(modal).getByRole("button", { name: t("action.cancel") }),
   );
   const message = messages["microbiology.m6.error.AST_RUN_CANNOT_BE_CANCELLED"];
   expect(message).toBeDefined();
   expect(await within(modal).findByText(message)).toBeInTheDocument();
+  expect(screen.getAllByText(message)).toHaveLength(1);
+});
+
+it("the cancel-run dialog keeps the run unless Cancel run is chosen", async () => {
+  const data = workspace("AWAITING_RESULTS");
+  data.isolates[0].runs[0].readings = [];
+  const service = show(data);
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("action.cancel") }),
+  );
+  const modal = screen.getByRole("dialog");
+  expect(
+    within(modal).queryByRole("button", { name: t("save"), exact: true }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(within(modal).getByRole("button", { name: t("keepRun") }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(service.astAction).not.toHaveBeenCalled();
+});
+
+it("a reading request does not carry the isolate's panel", async () => {
+  const data = workspace("IN_PROGRESS");
+  data.isolates[0].assignments = [
+    { id: "as", panelId: "p1", label: "Panel v2", provenance: "MANUAL" },
+  ];
+  const service = show(data);
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: t("action.reading") }))[0],
+  );
+  const modal = screen.getByRole("dialog");
+  fireEvent.change(within(modal).getByLabelText(t("raw")), {
+    target: { value: "4" },
+  });
+  fireEvent.click(
+    within(modal).getByRole("button", { name: t("save"), exact: true }),
+  );
+  await waitFor(() => expect(service.astAction).toHaveBeenCalledTimes(1));
+  expect(service.astAction.mock.calls[0][1]).toEqual(
+    expect.objectContaining({ action: "reading", runId: "run" }),
+  );
+  expect(service.astAction.mock.calls[0][1]).not.toHaveProperty("panelId");
+});
+
+it("names the panel version each run used", async () => {
+  const data = workspace();
+  data.isolates[0].runs[0].panelLabel = "Enterobacterales v3";
+  show(data);
+  expect(
+    await screen.findByText(`${t("panel")}: Enterobacterales v3`),
+  ).toBeInTheDocument();
+});
+
+it("a cancelled run's report ticks cannot be changed", async () => {
+  const data = ticks();
+  data.isolates[0].runs[0].status = "CANCELLED";
+  show(data);
+  expect(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  ).toBeDisabled();
+});
+
+it("explains a report tick refused because the run closed meanwhile", async () => {
+  const service = show(ticks());
+  service.astAction.mockRejectedValue({
+    response: { message: "AST_RUN_NOT_EDITABLE" },
+  });
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "Report Ampicillin" }),
+  );
+  expect(
+    await screen.findByText(
+      "This run is cancelled, invalidated, or needs repeating, so it can no longer be changed. Reload the case to see its current state.",
+    ),
+  ).toBeInTheDocument();
 });
 
 it("explains a resolution the server rejects as invalid", async () => {

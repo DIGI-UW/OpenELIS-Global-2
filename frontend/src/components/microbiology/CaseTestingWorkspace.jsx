@@ -786,7 +786,7 @@ export default function CaseTestingWorkspace({
                     finalReleaseState={detail.finalReleaseState}
                     service={service}
                     canAmend={detail.canAmend}
-                    onCaseUpdated={onCaseChanged}
+                    onCaseUpdated={refreshTesting}
                   />
                 )}
                 {placement === "CRITICAL" && (
@@ -812,7 +812,7 @@ export default function CaseTestingWorkspace({
                         : ""
                     }
                     service={service}
-                    isReadOnly={!detail.canWrite}
+                    isReadOnly={!detail.canLogCritical}
                     onCaseUpdated={onCaseChanged}
                   />
                 )}
@@ -869,7 +869,7 @@ export default function CaseTestingWorkspace({
                   <CaseReportWorkspace
                     detail={detail}
                     service={service}
-                    onChanged={onCaseChanged}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {placement === "CULTURE" && (
@@ -933,13 +933,7 @@ export default function CaseTestingWorkspace({
                     service={service}
                     initialCultureId={pickCultureId}
                     onClosePick={() => setPickCultureId("")}
-                    onChanged={() => {
-                      service
-                        .getTests(detail.id)
-                        .then(setTests)
-                        .catch(() => setError(true));
-                      onCaseChanged?.();
-                    }}
+                    onChanged={refreshTesting}
                   />
                 )}
                 {["INITIAL", "ADDITIONAL"].includes(placement) &&

@@ -5,6 +5,7 @@ import {
   labTimeZone,
 } from "./MicrobiologyTime";
 import ContainerLabelButton from "./ContainerLabelButton";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 import React, { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -68,6 +69,7 @@ function IsolateAction({
   cultures,
   saving,
   error,
+  amendmentOpen,
   onSave,
   onClose,
 }) {
@@ -78,6 +80,10 @@ function IsolateAction({
       values,
     );
   const isolate = action.isolate;
+  const methods =
+    isolate?.method && !options.methods.some((m) => m.value === isolate.method)
+      ? [...options.methods, { id: isolate.method, value: isolate.method }]
+      : options.methods;
   const [draft, setDraft] = useState(() => ({
     cultureId: action.cultureId || "",
     gramStain: "",
@@ -86,7 +92,7 @@ function IsolateAction({
     organismId: isolate?.organismId || "",
     identificationStatus: isolate?.status === "FINAL" ? "FINAL" : "PRELIMINARY",
     identificationMethod:
-      options.methods.find((m) => m.value === isolate?.method)?.id || "",
+      methods.find((m) => m.value === isolate?.method)?.id || "",
     confidence: isolate?.confidence ?? "",
     identifiedAt: localTime(),
     reason: "",
@@ -163,6 +169,9 @@ function IsolateAction({
     .filter((test) => test.sampleTypeIds.includes(specimenType))
     .map((test) => ({ id: test.id, value: test.name }));
   const isIdentification = ["identify", "reidentify"].includes(action.kind);
+  const reasonRequired =
+    ["reidentify", "acknowledge"].includes(action.kind) ||
+    (action.kind === "identify" && !!amendmentOpen);
   const valid =
     action.kind === "pick"
       ? !!draft.cultureId
@@ -174,7 +183,7 @@ function IsolateAction({
             (Number.isFinite(Number(draft.confidence)) &&
               Number(draft.confidence) >= 0 &&
               Number(draft.confidence) <= 100)) &&
-          (action.kind !== "reidentify" || !!draft.reason.trim())
+          (!reasonRequired || !!draft.reason.trim())
         : action.kind === "received-origin"
           ? !!draft.originalSpecimenTypeId &&
             !!draft.sendingOrganizationId &&
@@ -247,7 +256,7 @@ function IsolateAction({
         {isIdentification && (
           <>
             {combo("organismId", options.organisms)}
-            {select("identificationMethod", options.methods)}
+            {select("identificationMethod", methods)}
             {select(
               "identificationStatus",
               ["PRELIMINARY", "FINAL"].map((id) => ({ id, value: t(id) })),
@@ -269,7 +278,13 @@ function IsolateAction({
         {["identify", "reidentify", "acknowledge"].includes(action.kind) && (
           <TextArea
             id="isolate-reason"
-            labelText={t("reason")}
+            labelText={
+              <>
+                {t("reason")}
+                <RequiredMarker required={reasonRequired} />
+              </>
+            }
+            {...requiredProps(reasonRequired)}
             maxLength={2000}
             value={draft.reason}
             onChange={(e) => set("reason", e.target.value)}
@@ -399,7 +414,14 @@ export default function CaseIsolateWorkspace({
       }
     } catch (failure) {
       if (!mounted.current) return;
-      setError(failure.response?.status === 409 ? "conflict" : "saveError");
+      const code = failure.response?.message;
+      setError(
+        intl.messages[`microbiology.isolateWorkspace.${code}`]
+          ? code
+          : failure.response?.status === 409
+            ? "conflict"
+            : "saveError",
+      );
     } finally {
       if (mounted.current) setSaving(false);
     }
@@ -718,6 +740,7 @@ export default function CaseIsolateWorkspace({
               cultures={cultures}
               saving={saving}
               error={error}
+              amendmentOpen={detail.amendmentOpen}
               onSave={save}
               onClose={close}
             />

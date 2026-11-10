@@ -19,6 +19,7 @@ const detail = {
   id: "case-1",
   canWrite: true,
   canValidate: true,
+  canLogCritical: true,
   samples: [
     {
       sampleItemId: "sample-1",
@@ -727,11 +728,121 @@ test("cancelling an AST run refreshes the case timeline", async () => {
   const fetched = api.getTimeline.mock.calls.length;
   fireEvent.click(
     within(modal).getByRole("button", {
-      name: messages["microbiology.m6.save"],
-      exact: true,
+      name: messages["microbiology.m6.action.cancel"],
     }),
   );
   await waitFor(() => expect(api.astAction).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
+test("cancelling an amendment refreshes the case timeline", async () => {
+  const api = service();
+  api.getCaseAmendments = vi.fn().mockResolvedValue([]);
+  api.getCaseReportVersions = vi.fn().mockResolvedValue([]);
+  api.cancelCaseAmendment = vi.fn().mockResolvedValue({});
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={{
+          ...detail,
+          canAmend: true,
+          finalReleaseState: "AMENDMENT_IN_PROGRESS",
+        }}
+        service={api}
+        scanSearch="?scope=AMENDMENT"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.change(
+    await screen.findByLabelText(
+      messages["microbiology.amendment.cancelReason"],
+    ),
+    { target: { value: "Withdraw the correction" } },
+  );
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: new RegExp(messages["microbiology.amendment.cancel"]),
+    }),
+  );
+  await waitFor(() => expect(api.cancelCaseAmendment).toHaveBeenCalledTimes(1));
+  await waitFor(() =>
+    expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
+  );
+});
+
+test("a locked case still lets results users log a critical call", async () => {
+  const api = service();
+  api.getCriticalCommunications = vi.fn().mockResolvedValue([]);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={{ ...detail, canWrite: false, canLogCritical: true }}
+        service={api}
+        scanSearch="?scope=CRITICAL"
+      />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("button", { name: "Log communication" }),
+  ).toBeInTheDocument();
+});
+
+test("re-identifying from the Isolates section refreshes the case timeline", async () => {
+  const api = service();
+  const identified = {
+    id: "i1",
+    label: "ISO-1",
+    cultureId: "r1",
+    cultureLabel: "PLATE-1",
+    significance: "UNKNOWN",
+    status: "FINAL",
+    organismId: "o1",
+    method: "Biochemical identification",
+    sourceSampleItemId: "sample-1",
+    canIdentify: false,
+    canReidentify: true,
+    canAcknowledge: false,
+    version: "v1",
+    history: [],
+  };
+  const isolates = { isolates: [identified], referrals: [], referred: false };
+  api.getIsolates = vi.fn().mockResolvedValue(isolates);
+  api.getIsolateOptions = vi.fn().mockResolvedValue({
+    methods: [{ id: "m1", value: "Biochemical identification" }],
+    organisms: [{ id: "o1", value: "Escherichia coli" }],
+    sampleTypes: [],
+    sources: [{ id: "sample-1", value: "SOURCE-1", sampleTypeId: "type-1" }],
+    tests: [],
+    organizations: [],
+    referralOrganizations: [],
+    reasons: [],
+  });
+  api.getCultures = vi.fn().mockResolvedValue([]);
+  api.isolateAction = vi.fn().mockResolvedValue(isolates);
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CaseTestingWorkspace
+        detail={detail}
+        service={api}
+        scanSearch="?scope=ISOLATES"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText(/Re-identification reason/), {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  const fetched = api.getTimeline.mock.calls.length;
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  await waitFor(() => expect(api.isolateAction).toHaveBeenCalledTimes(1));
   await waitFor(() =>
     expect(api.getTimeline.mock.calls.length).toBeGreaterThan(fetched),
   );
