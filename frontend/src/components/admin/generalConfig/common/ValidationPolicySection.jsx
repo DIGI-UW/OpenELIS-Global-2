@@ -17,7 +17,10 @@ import { useInvalidateServerData } from "../../../utils/useServerData";
 export const VALIDATION_POLICY_API = "/rest/validation-policy/default";
 const TRIGGERS = ["ALL", "NEEDS_REVIEW", "NONE"];
 
-export function policyError(policy) {
+export function policyError(policy, maxLevels) {
+  if (maxLevels != null && policy.levels > maxLevels) {
+    return "levelsOutOfRange";
+  }
   if (policy.levels === 0 && policy.trigger !== "NONE") {
     return "zeroReviewsNeedsNoReview";
   }
@@ -40,7 +43,16 @@ export default function ValidationPolicySection({ policy: loaded }) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
 
-  const error = policyError(draft);
+  const [seen, setSeen] = useState(loaded);
+  if (loaded !== seen) {
+    setSeen(loaded);
+    setPolicy(loaded);
+    if (draft.trigger === policy.trigger && draft.levels === policy.levels) {
+      setDraft(toDraft(loaded));
+    }
+  }
+
+  const error = policyError(draft, policy.maxLevels);
   const changed =
     draft.trigger !== policy.trigger || draft.levels !== policy.levels;
   const roleName =
@@ -153,7 +165,9 @@ export default function ValidationPolicySection({ policy: loaded }) {
           allowEmpty={false}
           onChange={(event, { value }) => setLevels(value)}
         />
-        {Array.from({ length: draft.levels }).map((_, index) => (
+        {Array.from({
+          length: Math.min(draft.levels, policy.maxLevels),
+        }).map((_, index) => (
           <Select
             key={index}
             id={`validation-policy-level-${index + 1}-role`}

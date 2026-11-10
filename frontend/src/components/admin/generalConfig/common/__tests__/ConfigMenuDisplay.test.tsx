@@ -268,6 +268,30 @@ describe("ConfigMenuDisplay", () => {
     expect(reloadConfiguration).toHaveBeenCalledOnce();
   });
 
+  it("reopens a just saved setting with the saved value", async () => {
+    await openTheEditor();
+    await userEvent.click(screen.getByLabelText("True"));
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, body: string, callback: (status: number) => void) => {
+        onServer = { value: "true" };
+        callback(200);
+      },
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("true")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("selectRow"));
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await screen.findByRole("heading", { name: "Edit Record" });
+
+    await waitFor(() => expect(screen.getByLabelText("True")).toBeChecked());
+    (postToOpenElisServer as ReturnType<typeof vi.fn>).mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [, body] = (postToOpenElisServer as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(JSON.parse(body).value).toBe("true");
+  });
+
   it("does not refresh runtime configuration when saving fails", async () => {
     await openTheEditor();
     (postToOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
@@ -363,11 +387,14 @@ describe("ConfigMenuDisplay with an image row", () => {
     (postToOpenElisServer as ReturnType<typeof vi.fn>).mockReset();
   });
 
-  const renderImageMenu = () =>
-    render(
+  let queryClient: ReturnType<typeof createQueryClient>;
+
+  const renderImageMenu = () => {
+    queryClient = createQueryClient();
+    return render(
       <MemoryRouter>
         <IntlProvider locale="en" messages={messages}>
-          <QueryClientProvider client={createQueryClient()}>
+          <QueryClientProvider client={queryClient}>
             <NotificationContext.Provider
               value={{
                 notificationVisible: false,
@@ -384,6 +411,7 @@ describe("ConfigMenuDisplay with an image row", () => {
         </IntlProvider>
       </MemoryRouter>,
     );
+  };
 
   const openTheTextEditor = async () => {
     fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
@@ -458,14 +486,30 @@ describe("ConfigMenuDisplay with an image row", () => {
       ).not.toBeInTheDocument(),
     );
 
-    // Cycle two: the record is served from the cache while it rereads.
-    input = await openTheTextEditor();
+    // Cycle two: the cached record is out of date, so the editor waits for
+    // the reread instead of offering the value it replaced.
+    fireEvent.click((await screen.findAllByLabelText("selectRow"))[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Modify" }));
+    await waitFor(() => expect(pendingRereads.length).toBeGreaterThan(0));
+    expect(document.getElementById("textInput")).toBeNull();
+    await act(async () =>
+      pendingRereads.splice(0).forEach((deliver) => deliver()),
+    );
+    input = (await screen.findByDisplayValue("Dr B")) as HTMLInputElement;
+
+    // A later reread answering mid-edit leaves what is typed alone.
     await userEvent.clear(input);
     await userEvent.type(input, "Dr C");
-    expect(pendingRereads.length).toBeGreaterThan(0);
-    pendingRereads.forEach((deliver) => deliver());
+    onServerValue = "Dr D";
+    await act(async () => {
+      queryClient.invalidateQueries();
+    });
+    await waitFor(() => expect(pendingRereads.length).toBeGreaterThan(0));
+    await act(async () =>
+      pendingRereads.splice(0).forEach((deliver) => deliver()),
+    );
 
-    await waitFor(() => expect(input.isConnected).toBe(true));
+    expect(input.isConnected).toBe(true);
     expect(input.value).toBe("Dr C");
   });
 

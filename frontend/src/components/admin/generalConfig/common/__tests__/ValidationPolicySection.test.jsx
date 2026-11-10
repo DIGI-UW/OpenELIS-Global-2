@@ -1,6 +1,5 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -112,6 +111,73 @@ describe("Validation policy on Result Configuration (OGC-1364 v1)", () => {
     expect(summary()).toHaveTextContent(
       "Results the clearance rule clears: wait for a validator",
     );
+  });
+
+  it("follows blockSelfValidation when the policy is read again", async () => {
+    const { rerender } = renderSection(
+      policy({ trigger: "NONE", levels: 0, levelRoles: [] }),
+    );
+    expect(
+      await screen.findByTestId("validation-policy-summary"),
+    ).toHaveTextContent("Results the clearance rule clears: released at entry");
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <QueryClientProvider client={createQueryClient()}>
+          <ValidationPolicySection
+            policy={policy({
+              trigger: "NONE",
+              levels: 0,
+              levelRoles: [],
+              blockSelfValidation: true,
+            })}
+          />
+        </QueryClientProvider>
+      </IntlProvider>,
+    );
+
+    expect(summary()).toHaveTextContent(
+      "Results the clearance rule clears: wait for a validator",
+    );
+    expect(
+      screen.getByText(/Self-validation is blocked \(blockSelfValidation\)/),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps an unsaved choice when the policy is read again", async () => {
+    const { rerender } = renderSection();
+    fireEvent.click(await screen.findByLabelText("No review"));
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <QueryClientProvider client={createQueryClient()}>
+          <ValidationPolicySection
+            policy={policy({ blockSelfValidation: true })}
+          />
+        </QueryClientProvider>
+      </IntlProvider>,
+    );
+
+    expect(screen.getByLabelText("No review")).toBeChecked();
+    expect(screen.getByRole("button", { name: "Save policy" })).toBeEnabled();
+    expect(summary()).toHaveTextContent(
+      "Results the clearance rule clears: wait for a validator",
+    );
+  });
+
+  it("refuses more reviews than this version supports on the page", async () => {
+    renderSection();
+
+    const levels = await screen.findByLabelText("Number of reviews");
+    fireEvent.change(levels, { target: { value: "2" } });
+
+    expect(
+      await screen.findByText(
+        "Choose a number of reviews this version supports.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save policy" })).toBeDisabled();
+    expect(screen.queryByLabelText("Level 2 role")).not.toBeInTheDocument();
   });
 
   it("names the server's refusal", async () => {
