@@ -222,6 +222,135 @@ describe("LaporanHasilReport", () => {
     expect(reissueButtons).toHaveLength(1);
   });
 
+  it("says why an order with results not yet validated has no certificate (OGC-1620)", async () => {
+    const { getFromOpenElisServer } = await import("../../../utils/Utils");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          orders: [
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 103,
+              labNumber: "ENV-2026-003",
+              complianceStatus: "INELIGIBLE",
+              ineligibleReason: "NOT_VALIDATED",
+              parameterResults: [],
+            },
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 104,
+              labNumber: "ENV-2026-004",
+              complianceStatus: "INELIGIBLE",
+              ineligibleReason: "NO_STANDARD",
+              parameterResults: [],
+            },
+          ],
+        });
+      }
+    });
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    expect(screen.getByText("Results not yet validated")).toBeInTheDocument();
+    expect(screen.getAllByText("— Ineligible")).toHaveLength(2);
+    expect(screen.queryByText("INELIGIBLE")).not.toBeInTheDocument();
+    expect(screen.getByText("No standard linked")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Generate PDF/i }),
+    ).not.toBeInTheDocument();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
+  it("explains a certificate the server refuses because results are not validated", async () => {
+    const { postToOpenElisServerForBlob } = await import(
+      "../../../utils/Utils"
+    );
+    postToOpenElisServerForBlob.mockImplementation(
+      (url, body, callback, errorCallback) =>
+        errorCallback(new Error("HTTP error! status: 409")),
+    );
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Generate PDF/i }));
+    });
+
+    expect(
+      screen.getByText(
+        "Every test must be validated before the certificate can be generated.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("counts a certificate as generated only the first time", async () => {
+    const { getFromOpenElisServer, postToOpenElisServerForBlob } = await import(
+      "../../../utils/Utils"
+    );
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback({
+          ...MOCK_REPORT,
+          generatedCount: 1,
+          notYetGeneratedCount: 1,
+          orders: [
+            { ...MOCK_REPORT.orders[0], lastGenerated: "2026-04-05T10:30:00" },
+            {
+              ...MOCK_REPORT.orders[0],
+              sampleId: 105,
+              labNumber: "ENV-2026-005",
+            },
+          ],
+        });
+      }
+    });
+    postToOpenElisServerForBlob.mockImplementation((url, body, callback) =>
+      callback(new Blob(["%PDF"]), {}),
+    );
+    global.URL.createObjectURL = vi.fn(() => "blob:x");
+    global.URL.revokeObjectURL = vi.fn();
+    renderWithIntl(<LaporanHasilReport />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Search/i }));
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /Generate PDF/i })[0],
+      );
+    });
+
+    const tile = (label) =>
+      screen
+        .getAllByText(label, { exact: true })
+        .map((element) => element.closest(".cds--tile"))
+        .find(Boolean).textContent;
+    expect(tile("Not Yet Generated")).toBe("1Not Yet Generated");
+    expect(tile("Generated")).toBe("1Generated");
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("compliance-statuses")) {
+        callback(MOCK_STATUSES);
+      } else {
+        callback(MOCK_REPORT);
+      }
+    });
+  });
+
   it("shows empty state when no orders", async () => {
     const { getFromOpenElisServer } = await import("../../../utils/Utils");
     getFromOpenElisServer.mockImplementation((url, callback) => {

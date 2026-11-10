@@ -198,10 +198,14 @@ export default function LaporanHasilReport() {
           const now = labNow().toLocaleString();
           setReportData((prev) => {
             if (!prev) return prev;
+            const firstTime = !prev.orders.find((o) => o.sampleId === sampleId)
+              ?.lastGenerated;
             return {
               ...prev,
-              generatedCount: prev.generatedCount + 1,
-              notYetGeneratedCount: Math.max(0, prev.notYetGeneratedCount - 1),
+              generatedCount: prev.generatedCount + (firstTime ? 1 : 0),
+              notYetGeneratedCount: firstTime
+                ? Math.max(0, prev.notYetGeneratedCount - 1)
+                : prev.notYetGeneratedCount,
               orders: prev.orders.map((o) =>
                 o.sampleId === sampleId ? { ...o, lastGenerated: now } : o,
               ),
@@ -211,10 +215,12 @@ export default function LaporanHasilReport() {
         },
         (err) => {
           setError(
-            intl.formatMessage(
-              { id: "laporanHasil.error.pdf", defaultMessage: "Failed to download PDF: {msg}" },
-              { msg: err.message },
-            ),
+            String(err?.message).includes("409")
+              ? intl.formatMessage({ id: "laporanHasil.error.notValidated" })
+              : intl.formatMessage(
+                  { id: "laporanHasil.error.pdf", defaultMessage: "Failed to download PDF: {msg}" },
+                  { msg: err.message },
+                ),
           );
           setGeneratingPdf(null);
         },
@@ -271,7 +277,9 @@ export default function LaporanHasilReport() {
         setAmendmentModal((prev) => ({
           ...prev,
           submitting: false,
-          error: err.message,
+          error: String(err?.message).includes("409")
+            ? intl.formatMessage({ id: "laporanHasil.error.notValidated" })
+            : err.message,
         }));
       },
     );
@@ -493,6 +501,9 @@ export default function LaporanHasilReport() {
                                     NONE: intl.formatMessage({
                                       id: "laporanHasil.status.notGraded",
                                     }),
+                                    INELIGIBLE: intl.formatMessage({
+                                      id: "laporanHasil.tile.ineligible",
+                                    }),
                                   })}
                                 </TableCell>
                               );
@@ -505,10 +516,15 @@ export default function LaporanHasilReport() {
                                 <TableCell key={cell.id}>
                                   {isIneligible ? (
                                     <span style={{ color: "#525252", fontSize: "0.875rem" }}>
-                                      <FormattedMessage
-                                        id="laporanHasil.status.ineligible"
-                                        defaultMessage="No standard linked"
-                                      />
+                                      {order?.ineligibleReason ===
+                                      "NOT_VALIDATED" ? (
+                                        <FormattedMessage id="laporanHasil.status.notValidated" />
+                                      ) : (
+                                        <FormattedMessage
+                                          id="laporanHasil.status.ineligible"
+                                          defaultMessage="No standard linked"
+                                        />
+                                      )}
                                     </span>
                                   ) : hasBeenReleased ? (
                                     <Button

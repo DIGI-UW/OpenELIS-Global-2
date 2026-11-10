@@ -20,6 +20,7 @@ import org.openelisglobal.compliance.valueholder.ComplianceThreshold;
 import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -72,6 +73,32 @@ public class ComplianceEvaluationServiceImpl implements ComplianceEvaluationServ
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private MicroCaseAnalysisDAO microCaseAnalysisDAO;
+
+    /**
+     * A test owned by a microbiology case is released with the case's final report,
+     * which the certificate requires separately, so only the other tests must be
+     * validated.
+     */
+    @Override
+    public boolean awaitsValidation(Sample sample) {
+        return orderedTests(sample)
+                .anyMatch(analysis -> !statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)
+                        && !microCaseAnalysisDAO.hasOwnership(analysis.getId()));
+    }
+
+    @Override
+    public int orderedTestCount(Sample sample) {
+        return (int) orderedTests(sample).count();
+    }
+
+    private Stream<Analysis> orderedTests(Sample sample) {
+        return sampleItemService.getSampleItemsBySampleId(sample.getId()).stream()
+                .flatMap(item -> analysisService.getMaxRevisionAnalysesBySample(item).stream())
+                .filter(analysis -> !statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled));
+    }
 
     @Override
     public ComplianceEvaluationResult evaluate(Sample sample) {

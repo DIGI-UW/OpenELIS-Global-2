@@ -1,8 +1,10 @@
 package org.openelisglobal.compliance.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -30,6 +32,7 @@ import org.openelisglobal.compliance.valueholder.ComplianceThresholdValueMap;
 import org.openelisglobal.compliance.valueholder.ThresholdType;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.dao.SampleComplianceStandardDAO;
@@ -55,6 +58,8 @@ public class ComplianceEvaluationServiceImplTest {
     private DictionaryService dictionaryService;
     @Mock
     private IStatusService statusService;
+    @Mock
+    private MicroCaseAnalysisDAO microCaseAnalysisDAO;
 
     @InjectMocks
     private ComplianceEvaluationServiceImpl service;
@@ -397,5 +402,48 @@ public class ComplianceEvaluationServiceImplTest {
 
         assertNull("an edited result waiting for validation is not on the report", service.evaluate(sample));
         verify(resultService, never()).getResultsByAnalysis(analysis);
+    }
+
+    @Test
+    public void anOrderAwaitsValidationUntilEveryTestThatWasNotCancelledIsFinalized() {
+        Analysis validated = analysisWithStatus("6");
+        Analysis cancelled = analysisWithStatus("14");
+        Analysis notStarted = analysisWithStatus("4");
+        when(statusService.matches(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(AnalysisStatus.Finalized)))
+                .thenAnswer(invocation -> "6".equals(invocation.getArgument(0)));
+        when(statusService.matches(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq(AnalysisStatus.Canceled)))
+                .thenAnswer(invocation -> "14".equals(invocation.getArgument(0)));
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+
+        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(validated, cancelled));
+        assertFalse("validated, and the cancelled test does not count", service.awaitsValidation(sample));
+
+        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem))
+                .thenReturn(List.of(validated, cancelled, notStarted));
+        assertTrue("a test with no result yet holds the order back", service.awaitsValidation(sample));
+        assertEquals("the cancelled test is not counted", 2, service.orderedTestCount(sample));
+    }
+
+    @Test
+    public void aMicrobiologyCaseTestFollowsItsCaseReleaseNotResultValidation() {
+        Analysis validated = analysisWithStatus("6");
+        Analysis culture = analysisWithStatus("4");
+        culture.setId("77");
+        when(microCaseAnalysisDAO.hasOwnership("77")).thenReturn(true);
+        when(sampleItemService.getSampleItemsBySampleId("1")).thenReturn(List.of(sampleItem));
+        when(analysisService.getMaxRevisionAnalysesBySample(sampleItem)).thenReturn(List.of(validated, culture));
+
+        assertFalse("a culture is released with its case report, which the certificate checks",
+                service.awaitsValidation(sample));
+        assertEquals(2, service.orderedTestCount(sample));
+    }
+
+    private Analysis analysisWithStatus(String statusId) {
+        Analysis a = new Analysis();
+        a.setTest(analysis.getTest());
+        a.setStatusId(statusId);
+        return a;
     }
 }
