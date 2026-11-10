@@ -705,4 +705,5 @@
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
   <include file="148-amr-v3-report-tick.xml" relativeToChangelogFile="true"/>
   <include file="149-amr-v3-reporting-rules.xml" relativeToChangelogFile="true"/>
+  <include file="150-amr-v3-rule-notes.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
