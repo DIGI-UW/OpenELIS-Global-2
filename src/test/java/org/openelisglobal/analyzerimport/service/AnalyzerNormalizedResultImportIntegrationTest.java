@@ -1072,7 +1072,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                     .map(Specimen.class::cast).findFirst().orElseThrow().getIdentifierFirstRep().setValue("123456789");
             bundle.getEntry().stream().map(entry -> entry.getResource()).filter(Observation.class::isInstance)
                     .map(Observation.class::cast).findFirst().orElseThrow().setEffective(new DateTimeType(completedAt));
-            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow());
 
             importService.importBundle(bundle, "1");
             AnalyzerResults staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
