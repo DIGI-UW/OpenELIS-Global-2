@@ -177,7 +177,7 @@ public class TATReportServiceImpl implements TATReportService {
         hql.append(" JOIN ordering.organization o WHERE ordering.sample = s)) FROM Analysis a ");
         hql.append("JOIN a.sampleItem si ");
         hql.append("JOIN si.sample s ");
-        hql.append("WHERE s.receivedTimestamp BETWEEN :fromDate AND :toDate ");
+        hql.append("WHERE s.receivedTimestamp >= :fromDate AND s.receivedTimestamp < :toDate ");
 
         if (!includeCancelled) {
             hql.append(

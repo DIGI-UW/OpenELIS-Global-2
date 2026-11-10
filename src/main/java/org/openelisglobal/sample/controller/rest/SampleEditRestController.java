@@ -3,7 +3,6 @@ package org.openelisglobal.sample.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -54,7 +53,6 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
-import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -86,7 +84,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
     private static final Set<String> excludedAnalysisStatusList;
     private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
-    private static final Collection<String> ABLE_TO_CANCEL_ROLE_NAMES = new ArrayList<>();
 
     static {
         excludedAnalysisStatusList = new HashSet<>();
@@ -94,9 +91,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
         ENTERED_STATUS_SAMPLE_LIST.add(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
-        ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");
     }
 
     @Autowired
@@ -116,7 +110,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
-    private UserRoleService userRoleService;
+    private org.openelisglobal.sample.service.TestCancelPermission testCancelPermission;
     @Autowired
     private SampleEditService sampleEditService;
     @Autowired
@@ -137,8 +131,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
-        boolean allowedToCancelResults = userModuleService.isUserAdmin(request)
-                || userRoleService.userInRole(getSysUserId(request), ABLE_TO_CANCEL_ROLE_NAMES);
+        boolean allowedToCancelResults = testCancelPermission.mayCancelStartedTests(request, getSysUserId(request));
         boolean isEditable = "readwrite".equals(request.getSession().getAttribute(SAMPLE_EDIT_WRITABLE))
                 || "readwrite".equals(request.getParameter("type"));
         form.setIsEditable(isEditable);

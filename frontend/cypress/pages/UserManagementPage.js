@@ -288,7 +288,7 @@ class UserManagementPage {
   }
 
   clearSearchBar() {
-    cy.get(this.selectors.searchBar)
+    cy.get(this.selectors.searchBar, { timeout: 20000 })
       .should("be.visible")
       .and("be.enabled")
       .invoke("val")
@@ -312,7 +312,7 @@ class UserManagementPage {
   }
 
   searchByFilters(value) {
-    cy.get(this.selectors.filters)
+    cy.get(this.selectors.filters, { timeout: 20000 })
       .should("be.visible")
       .and("be.enabled")
       .find("option")
@@ -346,10 +346,13 @@ class UserManagementPage {
   /**
    * Carbon hides the input and wraps its text in a div inside the label. The
    * label is the activation surface; clicking the inner text does not reliably
-   * toggle the control.
+   * toggle the control. After a reload the list loads before the filters render,
+   * which can take longer than the default command timeout.
    */
   toggleCheckbox(inputSelector) {
-    cy.get(`label[for="${inputSelector.replace("#", "")}"]`).click();
+    cy.get(`label[for="${inputSelector.replace("#", "")}"]`, {
+      timeout: 20000,
+    }).click();
   }
 
   activeUser() {

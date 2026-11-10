@@ -81,6 +81,12 @@ public class TestResultComponent extends BaseObject<String> {
     @Column(name = "show_on_report", nullable = false)
     private boolean showOnReport = true;
 
+    // OGC-1608: a required component without a result keeps its test open and
+    // prints as in progress; an optional one without a result is left off the
+    // patient report. The primary is required unless the catalog says otherwise.
+    @Column(name = "is_required", nullable = false)
+    private boolean isRequired = false;
+
     @Column(name = "is_active", nullable = false, length = 2)
     private String isActive = "Y";
 
@@ -169,6 +175,14 @@ public class TestResultComponent extends BaseObject<String> {
 
     public void setShowOnReport(boolean showOnReport) {
         this.showOnReport = showOnReport;
+    }
+
+    public boolean getIsRequired() {
+        return isRequired;
+    }
+
+    public void setIsRequired(boolean isRequired) {
+        this.isRequired = isRequired;
     }
 
     public String getResultType() {

@@ -18,6 +18,7 @@ import SaveNavigationButtons from "./SaveNavigationButtons";
 import MicroCasesOpened from "./MicroCasesOpened";
 import ToContinueChecklist from "./ToContinueChecklist";
 import { useOrderContext, SaveStatus } from "./OrderContext";
+import CancelTestReasonDialog from "./CancelTestReasonDialog";
 import "./order-workflow.scss";
 
 /**
@@ -221,6 +222,7 @@ const OrderWorkflowLayout = ({
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      <CancelTestReasonDialog />
       <Stack gap={5}>
         <div className="order-workflow-container">
           {/* Header with title, save status, and edit button */}

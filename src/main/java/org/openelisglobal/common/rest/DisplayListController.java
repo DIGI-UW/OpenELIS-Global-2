@@ -306,18 +306,16 @@ public class DisplayListController extends BaseRestController {
     }
 
     /**
-     * Returns methods linked to the given test plus the default method id. Falls
-     * back to all active methods (no default) if the test has no configured links.
+     * Returns the active methods linked to the given test, A to Z, plus the default
+     * method id. Falls back to every active method, A to Z (no default), if the
+     * test has no active links.
      */
     @GetMapping(value = "methods-for-test/{testId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public MethodsForTestResponse getMethodsForTest(@PathVariable String testId) {
-        List<IdValuePair> methodList = testMethodService.getMethodDisplayListForTest(testId);
-        if (methodList != null) {
-            return new MethodsForTestResponse(methodList, testMethodService.getDefaultMethodId(testId));
-        }
-        return new MethodsForTestResponse(DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS),
-                null);
+        List<IdValuePair> linked = testMethodService.getMethodDisplayListForTest(testId);
+        return new MethodsForTestResponse(testMethodService.getMethodChoicesForTest(testId),
+                linked == null ? null : testMethodService.getDefaultMethodId(testId));
     }
 
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)

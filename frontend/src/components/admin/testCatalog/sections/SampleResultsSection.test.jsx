@@ -486,6 +486,59 @@ describe("SampleResultsSection", () => {
     expect(container.querySelector("#comp-code-1")).toBeDisabled();
   });
 
+  it("shows each component's Required setting and saves a change to it (OGC-1608)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/test-list" || url === "/rest/uom") {
+        cb([]);
+      } else {
+        const loaded = clone(TWO_COMPONENTS);
+        loaded.components[0].isPrimary = true;
+        loaded.components[0].isRequired = true;
+        loaded.components[1].isRequired = false;
+        cb(loaded);
+      }
+    });
+    const { container } = renderSection();
+    await screen.findByDisplayValue("Systolic");
+
+    expect(container.querySelector("#comp-required-0")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(container.querySelector("#comp-required-1")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.click(container.querySelector("#comp-required-1"));
+    fireEvent.click(saveButton());
+
+    const components = savedPayload().components;
+    expect(components[0].isRequired).toBe(true);
+    expect(components[1].isRequired).toBe(true);
+  });
+
+  it("makes a new test's first component required and a later one optional (OGC-1608)", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      cb(
+        url === "/rest/test-list" || url === "/rest/uom"
+          ? []
+          : { testId: "7", components: [] },
+      );
+    });
+    const { container } = renderSection();
+    fireEvent.click(await screen.findByTestId("add-component"));
+    fireEvent.click(screen.getByTestId("add-component"));
+
+    expect(container.querySelector("#comp-required-0")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(container.querySelector("#comp-required-1")).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+
   it("shows result types as primary cards with the legacy types behind a disclosure (FR-28)", async () => {
     renderSection();
     await screen.findByDisplayValue("SYS");
