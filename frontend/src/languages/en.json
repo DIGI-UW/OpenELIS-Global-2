@@ -3915,6 +3915,7 @@
   "import.error.selectFile": "Please select a file first",
   "import.error.validateFile": "Failed to validate file",
   "import.error.validateFirst": "Please validate the file first and fix any errors",
+  "import.error.sampleQuantityLimit": "Row {row}: sample quantity {quantity} exceeds the maximum of {maximum} samples per row.",
   "import.error.validationFailed": "Validation failed. Please check the errors below.",
   "import.failed": "Import Failed",
   "import.failedCount": "Failed",

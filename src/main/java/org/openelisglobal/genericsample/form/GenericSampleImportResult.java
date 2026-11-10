@@ -2,6 +2,7 @@ package org.openelisglobal.genericsample.form;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class GenericSampleImportResult {
 
@@ -25,6 +26,23 @@ public class GenericSampleImportResult {
         private int rowNumber;
         private String field;
         private String message;
+        private String messageKey;
+        private Map<String, Object> messageValues;
+
+        public ImportRowError(int rowNumber, String field, String messageKey, Map<String, Object> messageValues) {
+            this.rowNumber = rowNumber;
+            this.field = field;
+            this.messageKey = messageKey;
+            this.messageValues = messageValues;
+        }
+
+        public String getMessageKey() {
+            return messageKey;
+        }
+
+        public Map<String, Object> getMessageValues() {
+            return messageValues;
+        }
 
         public ImportRowError(int rowNumber, String field, String message) {
             this.rowNumber = rowNumber;
@@ -142,7 +160,11 @@ public class GenericSampleImportResult {
     }
 
     public void addError(int rowNumber, String field, String message) {
-        this.errors.add(new ImportRowError(rowNumber, field, message));
+        addError(new ImportRowError(rowNumber, field, message));
+    }
+
+    public void addError(ImportRowError error) {
+        this.errors.add(error);
         this.valid = false;
     }
 

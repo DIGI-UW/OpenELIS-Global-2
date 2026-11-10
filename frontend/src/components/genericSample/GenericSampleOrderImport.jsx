@@ -95,6 +95,11 @@ export default function GenericSampleOrderImport({
     });
   };
 
+  const formatImportError = (error) =>
+    error.messageKey
+      ? intl.formatMessage({ id: error.messageKey }, error.messageValues)
+      : error.message || error;
+
   const handleFileUpload = (event) => {
     const files = event.target.files;
     if (files && files.length > 0) {
@@ -392,7 +397,7 @@ export default function GenericSampleOrderImport({
                           id: index,
                           rowNumber: error.rowNumber,
                           field: error.field,
-                          message: error.message,
+                          message: formatImportError(error),
                         }))}
                         headers={getErrorTableHeaders()}
                       >
@@ -549,7 +554,7 @@ export default function GenericSampleOrderImport({
                     </Heading>
                     <ul>
                       {importResult.errors.map((error, index) => (
-                        <li key={index}>{error}</li>
+                        <li key={index}>{formatImportError(error)}</li>
                       ))}
                     </ul>
                   </div>
