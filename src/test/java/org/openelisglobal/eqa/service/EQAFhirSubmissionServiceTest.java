@@ -6,6 +6,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -75,6 +77,7 @@ public class EQAFhirSubmissionServiceTest {
     @Before
     public void setUp() {
         when(fhirConfig.getOeFhirSystem()).thenReturn("http://openelis-global.org");
+        lenient().when(fhirConfig.getLocalFhirStorePath()).thenReturn("https://fhir.openelis.org:8443/fhir/");
 
         EQAProgram program = new EQAProgram();
         program.setId(1L);
@@ -135,6 +138,24 @@ public class EQAFhirSubmissionServiceTest {
 
         assertFalse((Boolean) response.get("success"));
         assertNotNull(response.get("error"));
+    }
+
+    /**
+     * A light installation has no FHIR store. The persistence service then
+     * answers as an empty store, so the refusal must come from this service or
+     * the provider would be told the scores were placed (OGC-1546).
+     */
+    @Test
+    public void testSubmitResultsViaFhir_RefusesWithoutAStore() throws FhirLocalPersistingException {
+        when(fhirConfig.getLocalFhirStorePath()).thenReturn("");
+        when(distributionDAO.get(10L)).thenReturn(Optional.of(distribution));
+        when(resultDAO.findByDistributionId(10L)).thenReturn(List.of(result1));
+
+        Map<String, Object> response = submissionService.submitResultsViaFhir(10L, 50L);
+
+        assertFalse((Boolean) response.get("success"));
+        assertEquals(EQAFhirSubmissionServiceImpl.NO_SUBMISSION_CHANNEL, response.get("error"));
+        verify(fhirPersistanceService, never()).createFhirResourcesInFhirStore(anyMap());
     }
 
     @Test(expected = IllegalArgumentException.class)

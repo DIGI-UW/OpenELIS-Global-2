@@ -30,18 +30,36 @@ gh pr checks 1234                      # the whole picture
 gh pr checks 1234 | grep -E "fail"     # just the failures
 ```
 
-Three checks are required — `01 Checkpoint - Backend`,
-`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some of
-them exist, so **confirm all three are present and none are `pending`** before
-calling a PR green.
+The three build checkpoints are `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, and `03 Checkpoint - E2E`. The trusted
+`Validation / Submodule pins` check is also required after its rollout below.
+Early in a run only some checks exist, so **confirm all required checks are
+present and none are `pending`** before calling a PR green.
 
 Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
 a `workflow_run` follow-up stage, so the underlying run's own conclusion does
 not tell you whether the checkpoint passed, and `gh run watch` exits 0 on
-failure for this pipeline. Do not hand-parse `--json statusCheckRollup` either:
-it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes (`.state`),
-and an in-flight check reports an empty conclusion rather than null, so naive
-`jq` reports passing checks as queued and single checks as "all green".
+failure for this pipeline. Do not write ad hoc `jq` over `statusCheckRollup`
+either: it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes
+(`.state`), an in-flight check reports an empty conclusion rather than null, and
+a re-run leaves the earlier run of a check in the list. Naive `jq` reports
+passing checks as queued and single checks as "all green";
+`scripts/download-ci-logs.sh` handles all three.
+
+For a commit or branch tip with no PR (develop after a merge), read the same
+checks GitHub shows on that commit:
+`./scripts/download-ci-logs.sh --branch develop --list`. Never list runs by
+branch or commit (`gh run list --branch`/`--commit`,
+`gh api .../actions/runs?head_sha=`), and never read `check-runs`,
+`check-suites` or `commits/<sha>/status`. `workflow_run` runs execute on the
+default branch, so GitHub files every PR's `E2E / Tests` run and every
+Dependabot run under develop's newest commit; those queries show other PRs'
+failures as develop's. The combined status endpoint leaves out check runs.
+
+`03 Checkpoint - E2E` stays pending until every suite has finished. Open the run
+it links (`gh run view <run-id>`) to see shards that have already failed. When
+someone links a run or job, diagnose that job first
+(`gh run view <run-id> --job <job-id> --log`).
 
 `/fix-ci` automates the whole diagnose-fix-push-recheck loop.
 `specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
@@ -57,19 +75,12 @@ This project keeps several worktrees. When asked to work on a branch or PR, find
 its worktree first and make every edit there — never in the primary directory.
 Note that each worktree needs its own installer run, per step 1.
 
-## FILE Ownership Model
+## Analyzer architecture
 
-For FILE-based analyzer workflows in OpenELIS Global 2:
-
-- Bridge owns the analyzer connection, its runtime configuration, directory
-  watching/polling, parsing, archive/error handling, and file transport.
-- OpenELIS owns the lab-facing connection reference, local clinical bindings,
-  direct normalized ingestion endpoint, result processing, review, and audit.
-- An OpenELIS app-side FILE poller is outside the target architecture and must
-  not be added. Any proposal to change this requires an explicit architecture
-  decision that supersedes this ownership model.
-
-When guidance conflicts, this ownership model takes precedence.
+What the Analyzer Bridge and OpenELIS each own (profiles, connections, FILE
+watching, mappings, adoption, placement, import, pairing and roles) is specified
+in [specs/analyzers/spec.md](specs/analyzers/spec.md). Read it before analyzer
+work; it, not this file, is the authority.
 
 ## OpenELIS Work Product/Engineering Boundary
 
@@ -88,58 +99,6 @@ source only.
   explicit ADR or versioned contract when a new decision is required.
 - Use `openelis-work` screenshots and prototypes for functional and visual
   comparison, never as an implementation specification.
-
-For the target analyzer architecture, Analyzer Bridge owns portable analyzer
-profiles, durable analyzer connections and their runtime configuration, and
-analyzer-facing behavior (listeners, parsing, probes, protocol execution, and
-FILE watching/transport). OpenELIS owns lab-facing orchestration, the reference
-to a Bridge connection, lab units, local clinical catalog bindings,
-verification/audit, activation intent, operational QC, held results, and review.
-Do not recreate Bridge runtime or connection-configuration authority in
-OpenELIS.
-
-The established working analyzer profile system is the implementation baseline,
-not a disposable legacy model. A profile has exactly two jobs: define
-communication/runtime behavior for one analyzer type, and supply defaults for
-creating a new Bridge connection for that type through the OpenELIS setup
-workflow. Bridge persists the connection's profile pin and runtime values;
-OpenELIS persists only its Bridge connection reference and LIMS-owned state.
-Moving catalog packaging to Bridge, making revisions immutable, and adding
-lifecycle/management UX must evolve those semantics additively. Do not introduce
-a second profile contract, replace profile-owned defaults with frontend/server
-constants, or accept a profile-contract change without unabridged GeneXpert ASTM
-and FluoroCycler compatibility tests across OE setup, Bridge runtime, and
-analyzer mock traffic.
-
-Existing profile content is curated from instrument evidence. A current row is
-retained, corrected, represented as a proven alias, split, or removed according
-to its semantics; current storage or equal LOINC values never create a
-preservation obligation. Do not introduce `LEGACY_UNBOUND`, a legacy profile-row
-domain, or a runtime compatibility path for superseded profile/config storage.
-
-Profile execution is fully data-driven. Production code must not special-case a
-hard-coded profile ID/revision, manufacturer, model, display name, analyzer test
-code, fixture name, or vendor-specific field/value, and it must not duplicate a
-profile-owned default in frontend or server constants. Generic lookup by values
-read from a profile or analyzer pin is expected. Named analyzer profiles belong
-only in profile data and parameterized test fixtures; validators, consumers,
-runtime handlers, and UI composition remain profile-agnostic.
-
-Control-result recognition is Analyzer Type behavior owned by the pinned Bridge
-profile revision. Bridge must use only the profile's explicit recognition mode
-and rules; it must not use an OpenELIS-pushed classifier or a hard-coded
-fallback. `AnalyzerQcRule` is not part of the target architecture. OpenELIS
-operational QC (`QCControlLot`, `QCResult`, statistics, Westgard evaluation,
-violations, and alerts) remains a separate linked workflow and must not gate
-analyzer activation or stale analyzer mapping/recognition verification.
-
-Published Bridge profile revisions are immutable and retained while referenced.
-A Bridge connection pins a profile ID/revision; an OpenELIS analyzer references
-that connection and records the acknowledged profile reference needed for local
-binding verification and audit. Update shared and Duplicate Profile never move a
-configured connection implicitly, and OpenELIS must not keep an authoritative
-copied-profile snapshot, runtime-configuration copy, or per-analyzer mapping
-editor.
 
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
@@ -174,7 +133,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.1) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.12.1) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -247,7 +206,8 @@ mvn clean install -DskipTests
 - **Docker + Docker Compose**: For container orchestration
 - **PostgreSQL 14+**: Database (runs in Docker)
 - **Maven 3.8+**: Build system
-- **Node.js 16+**: Frontend development
+- **Node.js**: Use the version selected by the local CI runner; see
+  `frontend/package.json` for supported development versions.
 - **Git with submodules**: `git submodule update --init --recursive`
 
 ### Environment Configuration (.env file) - CRITICAL
@@ -309,7 +269,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Core Framework:**
 
-- **React 17** (react-scripts 5.0.1)
+- **React 17** (Vite; versions are maintained in `frontend/package.json`)
 - **Carbon Design System v1.15** (@carbon/react v1.15.0) - OFFICIAL UI FRAMEWORK
 - **Carbon Icons** (@carbon/icons-react v11.17.0)
 - **Carbon Charts** (@carbon/charts-react v1.5.2)
@@ -388,7 +348,7 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (v1.8.1)
+> **Full Document:** `.specify/memory/constitution.md` (v1.12.1)
 
 The constitution defines 9 core principles that ALL code changes MUST follow:
 
@@ -548,8 +508,25 @@ complex logic.
 
 ### VI. Database Schema Management
 
-**Rule:** All database changes MUST go through Liquibase. NO direct DDL/DML in
-production.
+**Rule:** Database schema changes and conversions of existing historical records
+MUST go through Liquibase. Concepts, catalogs, and configuration defaults MUST
+use configuration files and application configuration loaders.
+
+**Choose the correct path before writing a migration:**
+
+- Tables, columns, indexes, and constraints: Liquibase.
+- Converting existing records to a new schema: Liquibase, with explicit
+  preservation and rollback rules. This does not permit seeding new vocabulary.
+- Dictionary categories and entries, test catalogs, reporting tracks, label
+  presets, and settings defaults: configuration loaders. Inspect the existing
+  handlers and [configuration guide](docs/configuration/README.md) first; extend
+  the loader when a domain is missing.
+- Do not seed or manage concepts through Liquibase `insert`, SQL inserts,
+  `loadData`, or `loadUpdateData`. Existing seed migrations are legacy code, not
+  examples to copy.
+- Configuration imports must be repeatable, preserve referenced IDs and local
+  customizations, and test fresh installation, reload, and upgrade behavior.
+  Moving an existing catalog must not delete or recreate referenced concepts.
 
 **How:**
 
@@ -670,8 +647,8 @@ resistance, pulling all future work toward the wrong design.
 - Do NOT add features to superseded components (entities, readers, handlers)
 - Remove legacy code in the same PR, a paired PR, or a tracked priority issue
 - No dual-write to old and new tables/entities
-- Respect component boundaries (Bridge owns parsing and analyzer runtime
-  configuration; OE owns clinical bindings and review)
+- Respect component boundaries (for analyzers, as
+  [specs/analyzers/spec.md](specs/analyzers/spec.md) assigns them)
 - Build on the target architecture, not the legacy one
 
 **Anti-pattern:** Marking code `@Deprecated` without migrating callers or
@@ -686,7 +663,7 @@ exists in one of them.
 
 Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
 supported interactive development launcher and starts the complete core
-OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+OpenELIS + analyzer harness with checkout-scoped containers, images, networks,
 ports, and volumes.
 
 ```bash
@@ -702,10 +679,42 @@ application scenario services. `scripts/dev-stack down --volumes --yes` is the
 only supported destructive reset. CI-parity and release tooling are separate
 interfaces and are not replacements for this development path.
 
-Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
-servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+Localhost uses random loopback ports and mkcert TLS. Install mkcert as a
+prerequisite; `up` handles first-use system trust before building and may
+request administrator authentication. Later starts reuse trust. Domain-enabled
+dev servers use the same command after setting `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
 existing Let's Encrypt flow.
+
+### Source development, candidate CI and published deployment
+
+Use the mode matching the work:
+
+- `scripts/dev-stack up` builds this checkout's WAR and runs it, with the
+  frontend source mounted, in the published development images named in the
+  harness compose files. It never builds container images by default; only
+  `up --build` builds them from the checkout, which Bridge, mock, frontend
+  dependency and image build changes need. Without `--build` it warns when the
+  checkout differs from what the published images contain. It initializes only
+  empty submodules, never moves or resets a populated one, and prints a line for
+  each submodule that differs from the recorded commit or has uncommitted
+  changes.
+- `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
+  revision and its recorded submodule commits, concurrently with GitHub after
+  each push. Targeted tests alone are not full parity. Retain and inspect the
+  aggregate result and reports.
+- Published deployments use the released image Compose/installer path described
+  in [the setup guide](docs/dev_setup.md). Pull a coherent version or digest
+  set; do not mount source, a local WAR, or silently build missing application
+  images.
+
+Use the selected Docker context. Native tests and browser tools run on the host;
+see [docs/dev_setup.md](docs/dev_setup.md) for environment export and
+prerequisites. CI implementation is divided into `scripts/ci/backend.sh`,
+`frontend.sh`, `e2e-core.sh`, `e2e-analyzers.sh`, and `e2e-cypress.sh`,
+corresponding to GitHub's jobs. Invoke them through
+`scripts/run-ci-checks.sh --job NAME`. They do not introduce additional public
+startup commands. Dependency caches remain reusable.
 
 ### Initial Setup
 
@@ -722,23 +731,16 @@ java -version  # Must be Java 21
 # OR use SDKMAN
 sdk env  # Automatically switches to Java 21
 
-# Build DataExport submodule
-cd dataexport
-mvn clean install -DskipTests -Dmaven.test.skip=true
-cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Start the complete isolated development stack
+# Check prerequisites, then build and start the complete source stack
+scripts/dev-stack doctor
 scripts/dev-stack up
 ```
 
 **Access Points:**
 
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
+- React UI: output of `scripts/dev-stack url`
+- Legacy UI: `<scripts/dev-stack url>/api/OpenELIS-Global/`
+- FHIR Server: use `FHIR_URL` from `scripts/dev-stack env`
 
 ### Git Worktrees
 
@@ -762,13 +764,34 @@ convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
 which preserves commits, and clear dead entries with `git worktree prune`.
 
 **Do not skip the setup step.** `git worktree add` does not initialize
-submodules, so a fresh worktree has all 11 of them empty. Several are build
-inputs rather than optional extras: `./Dockerfile` does
+submodules, so a fresh worktree has all of them empty. Several are build inputs
+rather than optional extras: `./Dockerfile` does
 `WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
 out with `submodules: recursive`. Skip it and a Docker build fails roughly
 twenty minutes in with `there is no POM in this directory`, which reads like a
 broken Dockerfile rather than a missing checkout step. If you only need the
 submodules, `git submodule update --init --recursive` is the relevant part.
+
+**Analyzer submodule pins.** OpenELIS builds the Bridge and analyzer mock images
+from the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` pins.
+The `Validation / Submodule pins` status applies to pull requests into `develop`
+and every pull request of a stack based on `develop`. Its `pull_request_target`
+workflow executes only the validator and repository mappings from `develop`. The
+PR's exact commit is read through GitHub's tree/blob API as data; PR scripts are
+never executed and submodules are never initialized by this check. The check
+rejects repository URL changes and pins absent from upstream default branches.
+Equivalent GitHub HTTPS and SSH URLs are accepted. A squash merge creates a new
+upstream commit, so update the pin to that merged commit. Dependabot proposes
+submodule bumps daily.
+
+After installing this workflow on `develop`, dispatch `submodule-pins.yml` with
+its `pull_request` input to verify a result, then require
+`Validation / Submodule pins` in the develop branch rules. The manual dispatch
+also supports rechecking a pin after its upstream PR merges. Keep the existing
+three checkpoints required. This check uses the GitHub Actions identity; it
+prevents PR code from replacing the executing validator but does not prevent a
+writer from deliberately forging a same-named Actions status. Stronger identity
+isolation requires a separate GitHub App as the required status source.
 
 The same reasoning applies to anything else worth keeping (evidence, triage
 notes, reports, artifacts): if losing the file would cost something, it does not
@@ -1173,42 +1196,26 @@ detailed guidance, see the Testing Roadmap.
 
 ### Test Data Management
 
-**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
-fixture loading system.
-
 **Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
 for comprehensive guide.
 
-**Key Principles:**
+Test data belongs to its environment:
 
-- Single source of truth: `storage-test-data.sql` contains all test fixtures
-- Unified loader: `load-test-fixtures.sh` used by all test types
-- Dependency validation: Scripts verify required tables exist before loading
-- Comprehensive verification: Automatic verification after loading
-- Safe cleanup: Only removes test-created data, preserves fixtures
+- **Interactive and manual development**: `scripts/dev-stack` creates
+  property-gated application scenarios. Do not load SQL fixtures or reset this
+  database to reproduce CI.
+- **Full local CI**: `scripts/run-ci-checks.sh` owns fresh isolated databases.
+  Its internal lane runners load the same baseline as their GitHub workflows
+  through `load-test-fixtures.sh`. This loader is not a development launcher.
+- **Analyzer workflows**: Create connections, mappings and per-test clinical
+  data through the application APIs; fixture setup must not manufacture the
+  behavior under test.
+- **Backend integration**: Tests own their DBUnit datasets and cleanup.
+  `BaseStorageTest` uses `executeDataSetWithStateManagement`, not the shell
+  fixture loader.
 
-**Quick Start:**
-
-```bash
-# Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness profile: core fixtures; analyzer orders are created through the API
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Fixture Loading:**
-
-- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
-  `load-test-fixtures.sh`
-- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
-- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+For an isolated Cypress CI job, `cy.loadStorageFixtures()` delegates to the
+internal baseline loader. Keep this CI-only setup inside the owning runner.
 
 **DBUnit datasets (MANDATORY for DB-backed tests):**
 
@@ -1727,8 +1734,9 @@ the npm scripts.**
 **Execution Strategy (Constitution V.5):**
 
 1. **During Development:** Run individual tests for fast feedback
-2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
-3. **In CI/CD:** Automatic via GitHub Actions
+2. **Before Pushing:** Run focused checks for the affected change
+3. **After Each Push:** Run `scripts/run-ci-checks.sh` while GitHub CI runs; it
+   owns the isolated Cypress stacks and the full test package
 
 **Available npm Scripts (use these, NOT direct cypress commands):**
 
@@ -1742,34 +1750,22 @@ npm run cy:admin
 # Run full suite (development)
 npm run cy:run
 
-# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+# Focused debugging with fail-fast (not full CI parity)
 npm run cy:failfast
 
 # Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 
 # Open Cypress UI (interactive mode)
 npm run cy:open
 ```
 
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+**Anti-Pattern:** Reporting a targeted browser run as full CI parity. Use the
+aggregate runner after each push and inspect every lane outcome.
 
-**Configuration (`cypress.config.js`):**
-
-```javascript
-module.exports = defineConfig({
-  video: false, // MUST be disabled by default (Constitution V.5)
-  screenshotOnRunFailure: true, // MUST be enabled (Constitution V.5)
-  defaultCommandTimeout: 10000,
-  e2e: {
-    baseUrl: "https://localhost",
-    testIsolation: true, // Default: true (cy.session() handles caching)
-  },
-  viewportWidth: 1025, // Desktop default
-  viewportHeight: 900,
-});
-```
+Cypress configuration is maintained in `frontend/cypress.config.js`; do not copy
+its timeouts, URLs or viewport settings into this guide. Isolated runners supply
+the URL of their own stack.
 
 **Post-Run Review (MANDATORY - Constitution V.5):**
 
@@ -1852,9 +1848,10 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - The `harness-*` projects need the analyzer stack (`scripts/dev-stack up`,
->   then `eval "$(scripts/dev-stack env)"`). `core-demo` / `core-demo-video` run
->   on the build stack only.
+> - For interactive development, export `scripts/dev-stack env` from the
+>   repository root, then run `npm run pw:test --` from `frontend`. For CI
+>   validation, the full runner owns fresh stacks for the core and analyzer
+>   projects.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -2002,49 +1999,22 @@ npm run pw:test:ui
 
 #### Local Execution
 
-**Prerequisites:**
-
-1. App running through `scripts/dev-stack up`
-2. Auth env vars: `TEST_USER` and `TEST_PASS`
-3. Run `eval "$(scripts/dev-stack env)"` from the repo root
-
-**Core-app tests (build stack):**
+For interactive checks, the development launcher owns setup and endpoints:
 
 ```bash
+scripts/dev-stack up
+eval "$(scripts/dev-stack env)"
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-app <spec-path>
+npm run pw:test -- --project=harness-demo <spec-path>
+npm run pw:test -- --project=core-demo-video <spec-path>
 ```
 
-**Harness tests (analyzer harness stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-foundational
-```
-
-**Harness demos:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
-```
-
-**Core demos (build stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
-```
-
-**Demo video recording:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
-# or full harness demos:
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
-# Videos saved to frontend/test-results/
-```
+For full CI, run `scripts/run-ci-checks.sh` on the committed candidate. For a
+focused CI reproduction, select `--job NAME`. For native tests and recording,
+follow the development instructions in `frontend/playwright/README.md`. A
+development database and a CI fixture database are different environments; do
+not reset one to imitate the other.
 
 #### Adding New Tests
 
@@ -2394,6 +2364,8 @@ Before creating PR, verify ALL items:
 
     - Schema changes via Liquibase XML (NOT direct SQL)
     - Rollback scripts provided
+    - No concept, catalog, or configuration-default seeds in Liquibase;
+      configuration loaders cover fresh installation, reload, and upgrades
 
 13. **FHIR Resources Validated:**
 
@@ -2454,6 +2426,14 @@ Before creating PR, verify ALL items:
   and checkpoint/status semantics
 - **E2E CI Operator Model:** `specs/plans/e2e-ci-operator-model.md` -
   operational troubleshooting guide for CI maintainers
+- **Module System Architecture:** `specs/plans/module-system-architecture.md` -
+  research and design for the implementation-specific module/plugin system
+  (backend module JARs, frontend remotes, manifests, roadmap); the module author
+  guide is `docs/modules.md`
+- **Module System Decision Record:** `docs/adr/0001-module-system.md` - the
+  accepted architecture, the Phase 0 decisions (publishing, package naming,
+  strict mode, schema layout, route policy, fail policy, loader engine) and the
+  decision-check results
 
 ### Testing Documentation
 
@@ -2548,6 +2528,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
+**Last Updated:** 2026-10-14 **Constitution Version:** 1.12.1 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

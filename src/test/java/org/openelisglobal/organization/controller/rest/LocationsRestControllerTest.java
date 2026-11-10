@@ -450,4 +450,130 @@ public class LocationsRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals("Y",
                 jdbc.queryForObject("SELECT is_active FROM clinlims.organization WHERE id = " + LAE_ID, String.class));
     }
+
+    private Map<String, Object> with(Map<String, Object> base, String key, Object value) {
+        Map<String, Object> out = new java.util.HashMap<>(base);
+        out.put(key, value);
+        return out;
+    }
+
+    /**
+     * OGC-1420 (6a-6c): a value longer than its column is refused, naming the
+     * field.
+     */
+    @Test
+    public void save_refusesAValueLongerThanItsColumn_namingTheField_insteadOfCuttingIt() throws Exception {
+        Map<String, Object> base = facility("Long Fields Clinic", "LFC-01");
+        mockMvc.perform(post("/rest/locations/organizations").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(with(base, "contactName", "x".repeat(101)))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.fieldErrors.contactName", containsString("100")));
+        mockMvc.perform(post("/rest/locations/organizations").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(with(base, "name", "N".repeat(201)))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.fieldErrors.name", containsString("200")));
+        mockMvc.perform(post("/rest/locations/organizations").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(with(base, "identifiers",
+                        List.of(Map.of("label", "Code", "value", "LFC-01", "reporting", true),
+                                Map.of("label", "DHIS2 ID", "value", "D".repeat(150), "reporting", false))))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.fieldErrors.identifiers", containsString("100")));
+        mockMvc.perform(post("/rest/locations/organizations").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(with(base, "internetAddress", "w".repeat(41)))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.fieldErrors.internetAddress", containsString("40")));
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.organization WHERE name LIKE 'Long Fields%'", Integer.class));
+    }
+
+    /** OGC-1420 (6d): a province name fits State / Province. */
+    @Test
+    public void save_keepsAStateOrProvinceNameInFull() throws Exception {
+        MvcResult created = mockMvc
+                .perform(
+                        post("/rest/locations/organizations").contentType(MediaType.APPLICATION_JSON)
+                                .content(JSON.writeValueAsString(with(facility("Province Field Clinic", "PFC-01"),
+                                        "state", "National Capital District"))))
+                .andExpect(status().isCreated()).andReturn();
+        String id = json(created).get("detail").get("row").get("id").asText();
+        assertEquals("National Capital District",
+                jdbc.queryForObject("SELECT state FROM clinlims.organization WHERE id = ?::numeric", String.class, id));
+    }
+
+    /** OGC-1420 (7b): the default list is one name order, coded or not. */
+    @Test
+    public void list_defaultOrderIsByName_whetherARecordHasACodeOrNot() throws Exception {
+        insertOrganization("9150", "Zulu Clinic", null, LAE_ID, "Y");
+        link("9150", "2");
+        insertOrganization("9151", "Alpha Clinic", "ALP-01", LAE_ID, "Y");
+        link("9151", "2");
+        jdbc.update("INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting,"
+                + " lastupdated) VALUES (nextval('clinlims.organization_identifier_seq'), 9151, 'Code', 'ALP-01',"
+                + " true, now())");
+        JsonNode items = json(
+                mockMvc.perform(get("/rest/locations/organizations")).andExpect(status().isOk()).andReturn())
+                .get("items");
+        List<String> names = new java.util.ArrayList<>();
+        items.forEach(item -> names.add(item.get("name").asText()));
+        List<String> sorted = new java.util.ArrayList<>(names);
+        sorted.sort(String.CASE_INSENSITIVE_ORDER);
+        assertEquals(sorted, names);
+    }
+
+    /**
+     * OGC-1420 (8): two records that came out of the upgrade with the same code can
+     * still be edited; the clash is only checked for a code being set.
+     */
+    @Test
+    public void update_ofARecordSharingALegacyCode_savesOtherChanges_butACodeBeingSetMustBeFree() throws Exception {
+        insertOrganization("9160", "Upgrade Clinic One", "QADUP1", LAE_ID, "Y");
+        link("9160", "2");
+        insertOrganization("9161", "Upgrade Clinic Two", "QADUP1", LAE_ID, "Y");
+        link("9161", "2");
+        jdbc.update("INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting,"
+                + " lastupdated) VALUES (nextval('clinlims.organization_identifier_seq'), 9160, 'Code', 'QADUP1',"
+                + " true, now()), (nextval('clinlims.organization_identifier_seq'), 9161, 'Code', 'QADUP1', true,"
+                + " now())");
+        JsonNode detail = json(
+                mockMvc.perform(get("/rest/locations/organizations/9160")).andExpect(status().isOk()).andReturn());
+        Map<String, Object> update = new java.util.HashMap<>();
+        update.put("kind", "facility");
+        update.put("name", "Upgrade Clinic One");
+        update.put("typeIds", List.of("2"));
+        update.put("parentId", LAE_ID);
+        update.put("phone", "+675 111 2222");
+        update.put("identifiers", List.of(Map.of("label", "Code", "value", "QADUP1", "reporting", true)));
+        update.put("lastupdated", detail.get("lastupdated"));
+        mockMvc.perform(put("/rest/locations/organizations/9160").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(update))).andExpect(status().isOk());
+        assertEquals("+675 111 2222",
+                jdbc.queryForObject("SELECT phone FROM clinlims.organization WHERE id = 9160", String.class));
+
+        update.put("identifiers", List.of(Map.of("label", "Code", "value", "HSI002", "reporting", true)));
+        update.put("lastupdated",
+                json(mockMvc.perform(get("/rest/locations/organizations/9160")).andReturn()).get("lastupdated"));
+        mockMvc.perform(put("/rest/locations/organizations/9160").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(update))).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.fieldErrors.identifiers", containsString("Health Services Inc")));
+    }
+
+    /**
+     * OGC-1420 (8): codes the upgrade left on two records are listed for an admin.
+     */
+    @Test
+    public void identifierCollisions_listsEveryValueTwoRecordsOfOneKindShare() throws Exception {
+        insertOrganization("9170", "Collision Clinic One", "QADUP2", LAE_ID, "Y");
+        link("9170", "2");
+        insertOrganization("9171", "Collision Clinic Two", "QADUP2", LAE_ID, "Y");
+        link("9171", "2");
+        jdbc.update("INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting,"
+                + " lastupdated) VALUES (nextval('clinlims.organization_identifier_seq'), 9170, 'Code', 'QADUP2',"
+                + " true, now()), (nextval('clinlims.organization_identifier_seq'), 9171, 'Code', 'qadup2', true,"
+                + " now())");
+        mockMvc.perform(get("/rest/locations/identifier-collisions")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].label").value("Code"))
+                .andExpect(jsonPath("$[0].value").value("QADUP2")).andExpect(jsonPath("$[0].records.length()").value(2))
+                .andExpect(jsonPath("$[0].records[0].name").value("Collision Clinic One"))
+                .andExpect(jsonPath("$[0].records[1].id").value("9171"));
+    }
 }

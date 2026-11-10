@@ -40,7 +40,9 @@ import {
 } from "../utils/serverPaging";
 import ServerPageArrows from "../common/ServerPageArrows";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 export default function Workplan(props) {
+  const navigate = useInAppNavigation();
   const { configurationProperties } = useContext(ConfigurationContext);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -239,7 +241,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="print-top"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />
@@ -347,9 +349,13 @@ export default function Workplan(props) {
                                   <Link
                                     style={{ color: "blue" }}
                                     href={
-                                      `/result?type=order&doRange=false&source=${sourceTitle}&accessionNumber=` +
-                                      row.accessionNumber
+                                      `/Results?accessionNumber=` +
+                                      encodeURIComponent(row.accessionNumber)
                                     }
+                                    onClick={navigate(
+                                      `/Results?accessionNumber=` +
+                                        encodeURIComponent(row.accessionNumber),
+                                    )}
                                   >
                                     <u>
                                       {convertAlphaNumLabNumForDisplay(
@@ -412,7 +418,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="print-bottom"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />

@@ -1,65 +1,96 @@
-import { expect, type APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { csrfToken } from "./api-session";
+
+const API = "/api/OpenELIS-Global/rest";
 
 const mockUrl =
   process.env.MOCK_SIMULATOR_URL ||
   process.env.MOCK_URL ||
   "http://localhost:8085";
 
-export async function sendGeneXpertAstm(
+/** A transport prepared by the harness before browser tests start. */
+export async function geneXpertMockSource(
   request: APIRequestContext,
-  connectionId: string,
-  accession: string,
-  testCode: string,
-  value: string,
-  senderId: string,
-  additionalResults: Array<{ testCode: string; value: string }> = [],
-): Promise<string> {
-  const bridgeUrl =
-    process.env.ANALYZER_BRIDGE_URL ||
-    process.env.BRIDGE_ADMIN_URL ||
-    "https://localhost:8442";
-  const bridgeUser =
-    process.env.ANALYZER_BRIDGE_USERNAME || process.env.TEST_USER || "admin";
-  const bridgePassword =
-    process.env.ANALYZER_BRIDGE_PASSWORD ||
-    process.env.TEST_PASS ||
-    "adminADMIN!";
-  const connectionResponse = await request.get(
-    `${bridgeUrl}/api/connections/${encodeURIComponent(connectionId)}`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${bridgeUser}:${bridgePassword}`).toString("base64")}`,
-      },
-    },
-  );
-  expect(
-    connectionResponse.ok(),
-    `Bridge connection: ${connectionResponse.status()}`,
-  ).toBeTruthy();
-  const connection = (await connectionResponse.json()) as {
-    fields: Array<{ key: string; currentValue?: string | number }>;
-    configRevision: number;
-    actualRuntimeState: string;
+  port = 12001,
+): Promise<{ name: string; ip: string; destination: string }> {
+  // A remote launcher can describe a prepared source without exposing Docker
+  // control through the mock. Application tests only consume this transport.
+  if (process.env.ANALYZER_GENEXPERT_SOURCE) {
+    const source = JSON.parse(process.env.ANALYZER_GENEXPERT_SOURCE);
+    expect(source.name).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(source.ip).toEqual(expect.any(String));
+    const destination = new URL(source.destination);
+    expect(destination.protocol).toBe("tcp:");
+    expect(destination.port).toBe(String(port));
+    return source;
+  }
+  const response = await request.get(`${mockUrl}/analyzers`);
+  expect(response.ok(), "Read prepared mock transports").toBeTruthy();
+  const { analyzers } = (await response.json()) as {
+    analyzers: Array<{
+      name: string;
+      ip: string;
+      subnet: string;
+      template: string;
+    }>;
   };
-  expect(connection.actualRuntimeState).toBe("ACTIVE");
+  const sources = analyzers.filter((source) => source.name === "genexpert");
   expect(
-    connection.fields.find((field) => field.key === "senderId")?.currentValue,
-    "The UI-configured sender must match the instrument message",
+    sources,
+    "The harness must prepare one GeneXpert mock before tests start",
+  ).toHaveLength(1);
+  const source = sources[0];
+  expect(source.template).toBe("genexpert_astm");
+  expect(source.subnet).toMatch(/^10\.\d+\.\d+\.0\/24$/);
+  // The mock network manager attaches Bridge at .2 on this isolated /24.
+  return {
+    name: source.name,
+    ip: source.ip,
+    destination: `tcp://${source.subnet.replace(/\.0\/24$/, ".2")}:${port}`,
+  };
+}
+
+/** A message Cepheid documents for one assay outcome, as the mock replays it. */
+export type GeneXpertFixture = { assay: string; outcome: string };
+
+/** A message Mindray prints for the BC-5380 (Operator's Manual, appendix C.3.3). */
+export type Bc5380Fixture = "analysis-result" | "manual-count" | "xr-qc";
+
+/**
+ * The port of the shared Bridge listener this active connection receives on.
+ * The paired Bridge answers only OpenELIS, so its connection is read and
+ * probed through OpenELIS.
+ */
+async function activeListenerPort(
+  page: Page,
+  analyzerId: string,
+  senderId: string,
+): Promise<number> {
+  const request = page.request;
+  const analyzerUrl = `${API}/analyzer/analyzers/${encodeURIComponent(analyzerId)}`;
+  const analyzerResponse = await request.get(analyzerUrl);
+  expect(
+    analyzerResponse.ok(),
+    `Analyzer ${analyzerId}: ${analyzerResponse.status()}`,
+  ).toBeTruthy();
+  const { connection } = (await analyzerResponse.json()) as {
+    connection?: {
+      fields: Array<{ key: string; currentValue?: string | number }>;
+      actualRuntimeState: string;
+    };
+  };
+  expect(connection, "OpenELIS reads the Bridge connection").toBeDefined();
+  expect(connection?.actualRuntimeState).toBe("ACTIVE");
+  expect(
+    String(
+      connection?.fields.find((field) => field.key === "senderId")
+        ?.currentValue || "",
+    ).split("^")[0],
+    "The saved identity must name the mock's instrument instance (component 1)",
   ).toBe(senderId);
-  const probeResponse = await request.post(
-    `${bridgeUrl}/api/connections/${encodeURIComponent(connectionId)}/probe`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${bridgeUser}:${bridgePassword}`).toString("base64")}`,
-      },
-      data: {
-        schemaVersion: "1.0",
-        requestId: `native-${accession}`,
-        connectionId,
-        expectedConfigRevision: connection.configRevision,
-      },
-    },
-  );
+  const probeResponse = await request.post(`${analyzerUrl}/test-connection`, {
+    headers: { "X-CSRF-Token": await csrfToken(page) },
+  });
   expect(
     probeResponse.ok(),
     `Bridge listener probe: ${probeResponse.status()}`,
@@ -73,36 +104,66 @@ export async function sendGeneXpertAstm(
   expect(port, "Effective shared listener port from Bridge").toEqual(
     expect.any(Number),
   );
-  const networksResponse = await request.get(`${mockUrl}/analyzers`);
-  expect(networksResponse.ok()).toBeTruthy();
-  const networks = (await networksResponse.json()) as {
-    analyzers: Array<{ name: string; subnet: string; template: string }>;
-  };
-  const mockNetworks = networks.analyzers.filter(
-    (analyzer) => analyzer.name === "genexpert",
+  return port as number;
+}
+
+/**
+ * Replay a Cepheid-documented message from the provisioned GeneXpert mock to
+ * this connection's Bridge listener, for this accession. `instrumentCodes`
+ * renames profile codes the way the instrument would send them, and `patient`
+ * fills the patient record Cepheid's examples leave empty.
+ */
+export async function sendGeneXpertFixture(
+  page: Page,
+  analyzerId: string,
+  accession: string,
+  fixture: GeneXpertFixture,
+  senderId: string,
+  instrumentCodes: Record<string, string> = {},
+  patient?: { id: string; name: string },
+  messageTime?: string,
+): Promise<string> {
+  const port = await activeListenerPort(page, analyzerId, senderId);
+  return sendUnassignedGeneXpertFixture(
+    page,
+    accession,
+    fixture,
+    senderId,
+    instrumentCodes,
+    patient,
+    messageTime,
+    port,
   );
-  expect(mockNetworks, "One provisioned GeneXpert mock network").toHaveLength(
-    1,
-  );
-  expect(mockNetworks[0].template).toBe("genexpert_astm");
-  expect(mockNetworks[0].subnet).toMatch(/^10\.\d+\.\d+\.0\/24$/);
-  // The mock's isolated /24 attaches Bridge at .2 (its network manager contract).
-  const bridgeIp = mockNetworks[0].subnet.replace(/\.0\/24$/, ".2");
-  const destination = `tcp://${bridgeIp}:${port}`;
-  const response = await request.post(`${mockUrl}/simulate/astm/genexpert`, {
-    data: {
-      destination,
-      sample_id: accession,
-      sender_id: senderId,
-      results: [
-        { test_code: testCode, value },
-        ...additionalResults.map((result) => ({
-          test_code: result.testCode,
-          value: result.value,
-        })),
-      ],
+}
+
+/** Send before an identity is configured, so setup must adopt the received sender. */
+export async function sendUnassignedGeneXpertFixture(
+  page: Page,
+  accession: string,
+  fixture: GeneXpertFixture,
+  senderId: string,
+  instrumentCodes: Record<string, string> = {},
+  patient?: { id: string; name: string },
+  messageTime?: string,
+  port = 12001,
+): Promise<string> {
+  const request = page.request;
+  const source = await geneXpertMockSource(request, port);
+  const destination = source.destination;
+  const response = await request.post(
+    `${mockUrl}/simulate/fixture/${source.name}/${fixture.assay}/${fixture.outcome}`,
+    {
+      data: {
+        destination,
+        source_ip: source.ip,
+        sample_id: accession,
+        sender_id: senderId,
+        instrument_codes: instrumentCodes,
+        ...(patient ? { patient } : {}),
+        ...(messageTime ? { message_time: messageTime } : {}),
+      },
     },
-  });
+  );
   expect(
     response.ok(),
     `GeneXpert mock: ${response.status()} ${await response.text()}`,
@@ -125,20 +186,61 @@ export async function sendGeneXpertAstm(
   return destination;
 }
 
-export async function writeFluoroCyclerFile(
-  request: APIRequestContext,
-  targetDirectory: string,
-  sampleIds: string[],
-): Promise<Array<{ sampleId: string; result: string }>> {
-  const response = await request.post(
-    `${mockUrl}/simulate/file/hain_fluorocycler`,
-    {
-      data: { target_dir: targetDirectory, sample_ids: sampleIds },
-    },
+/**
+ * Replay a message Mindray prints for the BC-5380 to the Bridge's shared MLLP
+ * listener, for this accession, under the system name this analyzer was given.
+ * The Bridge tells it apart by that name, so no mock network is needed.
+ */
+export async function sendBc5380Fixture(
+  page: Page,
+  analyzerId: string,
+  accession: string,
+  outcome: Bc5380Fixture,
+  senderId: string,
+): Promise<string> {
+  const port = await activeListenerPort(page, analyzerId, senderId);
+  const destination = `mllp://bridge.openelis.org:${port}`;
+  const response = await page.request.post(
+    `${mockUrl}/simulate/fixture/mindray_bc5380_hl7/cbc/${outcome}`,
+    { data: { destination, sample_id: accession, sender_id: senderId } },
   );
   expect(
     response.ok(),
-    `FluoroCycler mock: ${response.status()} ${await response.text()}`,
+    `BC-5380 mock: ${response.status()} ${await response.text()}`,
+  ).toBeTruthy();
+  const result = (await response.json()) as {
+    pushed: number;
+    results: Array<{
+      sample_id: string;
+      pushed: boolean;
+      error: string | null;
+    }>;
+  };
+  expect(result.pushed, JSON.stringify(result)).toBe(1);
+  expect(result.results[0]).toMatchObject({
+    sample_id: accession,
+    pushed: true,
+    error: null,
+  });
+  return destination;
+}
+
+/**
+ * The mock writes an instrument's results workbook into a folder a connection
+ * watches, with these sample IDs on its result rows, in the workbook's order.
+ */
+export async function writeResultsFile(
+  request: APIRequestContext,
+  template: "hain_fluorocycler" | "quantstudio7",
+  targetDirectory: string,
+  sampleIds: string[],
+): Promise<Array<{ sampleId: string; result: string }>> {
+  const response = await request.post(`${mockUrl}/simulate/file/${template}`, {
+    data: { target_dir: targetDirectory, sample_ids: sampleIds },
+  });
+  expect(
+    response.ok(),
+    `${template} mock: ${response.status()} ${await response.text()}`,
   ).toBeTruthy();
   const result = (await response.json()) as {
     written_path: string;
@@ -148,3 +250,9 @@ export async function writeFluoroCyclerFile(
   expect(result.metadata.results.length).toBeGreaterThan(0);
   return result.metadata.results;
 }
+
+export const writeFluoroCyclerFile = (
+  request: APIRequestContext,
+  targetDirectory: string,
+  sampleIds: string[],
+) => writeResultsFile(request, "hain_fluorocycler", targetDirectory, sampleIds);

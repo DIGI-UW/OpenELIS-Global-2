@@ -41,8 +41,10 @@ import SampleAssignmentModal from "./SampleAssignmentModal";
 import ShipmentNavigation from "./ShipmentNavigation";
 import { generateLabelPDF, generateManifestPDF } from "./utils/pdfGenerator";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const BoxDetails = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { boxId } = useParams();
   const { addNotification } = useContext(NotificationContext);
 
@@ -607,9 +609,9 @@ const BoxDetails = () => {
                       onCloseButtonClick={() => setReconcileBlockCount(null)}
                       actions={
                         <NotificationActionButton
-                          onClick={() =>
-                            (window.location.href = `/SampleShipment/reference-lab-results?view=returned&boxId=${boxId}`)
-                          }
+                          onClick={navigate(
+                            `/SampleShipment/reference-lab-results?view=returned&boxId=${boxId}`,
+                          )}
                         >
                           {intl.formatMessage({
                             id: "referral.box.viewBlockedReferrals",

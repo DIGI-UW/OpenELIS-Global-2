@@ -33,6 +33,7 @@ import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AutoComplete from "../../common/AutoComplete";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 interface OrganizationType {
   id: string;
@@ -567,14 +568,15 @@ function OrganizationAddModify() {
               >
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="org-name">
                       <FormattedMessage id="organization.organizationName" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-name"
+                      {...requiredProps()}
                       labelText={intl.formatMessage({
                         id: "organization.organizationName",
                       })}
@@ -627,14 +629,15 @@ function OrganizationAddModify() {
                 </Grid>
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="is-active">
                       <FormattedMessage id="organization.isActive" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="is-active"
+                      {...requiredProps()}
                       labelText={intl.formatMessage({
                         id: "organization.isActive",
                       })}
@@ -818,7 +821,7 @@ function OrganizationAddModify() {
                       label={
                         <>
                           <FormattedMessage id="organization.search.parent.name" />{" "}
-                          <span className="requiredlabel">*</span>
+                          <RequiredMarker announce />
                         </>
                       }
                       style={{ width: "!important 100%" }}
@@ -841,7 +844,7 @@ function OrganizationAddModify() {
                     <Heading>
                       <>
                         <FormattedMessage id="organization.type.CI" />
-                        <span className="requiredlabel">*</span>
+                        <RequiredMarker announce />
                       </>
                     </Heading>
                   </Section>

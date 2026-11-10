@@ -39,6 +39,16 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String accessionNumber;
     private String packageId;
     private String domain;
+    private Integer microbiologyReplicateCount;
+
+    public Integer getMicrobiologyReplicateCount() {
+        return microbiologyReplicateCount;
+    }
+
+    public void setMicrobiologyReplicateCount(Integer count) {
+        microbiologyReplicateCount = count;
+    }
+
     // S-09 (OGC-580) Resample linkage: original <-> replacement order
     private String resampledFromSampleId;
     private String resampledToSampleId;
@@ -234,7 +244,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setReceivedDate(Date receivedDate) {
         receivedDateForDisplay = DateUtil.convertSqlDateToStringDate(receivedDate);
-        receivedTimestamp = DateUtil.convertSqlDateToTimestamp(receivedDate);
+        receivedTimestamp = receivedDate == null ? null : DateUtil.convertSqlDateToTimestamp(receivedDate);
     }
 
     public String getReceivedTimeForDisplay() {

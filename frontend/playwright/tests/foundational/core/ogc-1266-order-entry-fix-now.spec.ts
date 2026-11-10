@@ -1,6 +1,7 @@
 import { test, expect, Page } from "../../../helpers/test-base";
 import { NAV_TIMEOUT } from "../../../helpers/timeouts";
 import { csrfToken } from "../../../helpers/api-session";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1266 (Clinical Order Entry v4, slice M1) — the fix-now bundle, driven
@@ -59,7 +60,11 @@ async function panelMemberTest(page: Page) {
         .split(",")
         .find((id: string) => testIds.has(id));
       if (member) {
-        return { sampleTypeId: type.id, testId: member, panelId: panel.id };
+        return {
+          sampleTypeName: type.value as string,
+          testId: member,
+          panelId: panel.id,
+        };
       }
     }
   }
@@ -123,22 +128,30 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await picker.evaluate((input) => input.scrollIntoView({ block: "center" }));
     await picker.click();
     await expect(options).toHaveCount(programs.length);
-    const menu = await page
-      .locator(".program-section .cds--list-box__menu")
-      .evaluate((list) => {
-        const box = list.getBoundingClientRect();
-        const bottomEdge = document.elementFromPoint(
-          box.left + 10,
-          box.bottom - 4,
-        );
-        return {
-          wholeMenuShowing: list.contains(bottomEdge),
-          scrollsWhenLonger:
-            list.scrollHeight <= list.clientHeight ||
-            ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
-        };
-      });
-    expect(menu).toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
+    // Sections above the picker can still be laying out, which pushes the menu
+    // below the viewport. Only the window is scrolled back, so a container
+    // clipping the menu still fails the check.
+    const menu = page.locator(".program-section .cds--list-box__menu");
+    await expect
+      .poll(() =>
+        menu.evaluate((list) => {
+          const input = document.querySelector("#program");
+          const inputBox = input.getBoundingClientRect();
+          window.scrollBy(0, inputBox.top - window.innerHeight / 3);
+          const box = list.getBoundingClientRect();
+          const bottomEdge = document.elementFromPoint(
+            box.left + 10,
+            box.bottom - 4,
+          );
+          return {
+            wholeMenuShowing: list.contains(bottomEdge),
+            scrollsWhenLonger:
+              list.scrollHeight <= list.clientHeight ||
+              ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
+          };
+        }),
+      )
+      .toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
     const last = programs[programs.length - 1].value;
     await options.filter({ hasText: last }).click();
     await expect(picker).toHaveValue(last);
@@ -157,7 +170,7 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     page,
   }) => {
     const lastName = await seedPatient(page);
-    const { sampleTypeId, testId } = await panelMemberTest(page);
+    const { sampleTypeName, testId } = await panelMemberTest(page);
     const mapped = await (
       await page.request.get(`${API}/rest/test-sample-types?testIds=${testId}`)
     ).json();
@@ -170,7 +183,10 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     const labNumber = await page.locator("#labNumber").inputValue();
     await selectPatient(page, lastName);
     const samples = page.getByTestId("order-sample-test-section");
-    await samples.getByLabel("Sample Type").first().selectOption(sampleTypeId);
+    await chooseCarbonOption(
+      samples.getByRole("combobox", { name: /^Sample Type/ }).first(),
+      sampleTypeName,
+    );
     await samples.locator(`label[for="test-0-${testId}"]`).click();
     await expect(samples.locator(`#test-0-${testId}`)).toBeChecked();
     await page.getByRole("button", { name: "Save and next" }).click();
@@ -218,6 +234,15 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     const storage = page.getByTestId("prepare-storage-section");
     await expect(storage).toContainText(`${labNumber}-1`);
     await expect(storage).not.toContainText(`${labNumber}-2`);
+
+    // The defaults would complete the step (the collector is optional,
+    // OGC-1419), so the collection time is cleared to save it incomplete and
+    // have Continue reopen Prepare Samples.
+    await page.locator("#collectionTime-0").fill("");
+    await page.locator("#collectionTime-0").press("Tab");
+    await expect(page.getByTestId("to-continue-checklist")).toContainText(
+      `Collection date and time for ${labNumber}-1`,
+    );
 
     const saved = page.waitForResponse(
       (response) =>

@@ -19,7 +19,6 @@ import jakarta.servlet.http.HttpSession;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,18 +33,21 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.RequesterService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -78,8 +80,11 @@ import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.OrderProgressService;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
+import org.openelisglobal.sample.service.SampleLabUnitScopeService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -90,20 +95,18 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
-import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
-import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.userrole.service.UserRoleService;
-import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.openelisglobal.vector.service.VectorPoolService;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorPool;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -129,6 +132,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/order")
 public class OrderSearchRestController extends BaseRestController {
 
+    @Lazy
+    @Autowired
+    private FhirTransformService fhirTransformService;
     @Autowired
     private SampleService sampleService;
 
@@ -137,6 +143,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Autowired
     private PatientService patientService;
@@ -198,11 +207,15 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private SampleComplianceStandardService sampleComplianceStandardService;
 
-    /** Dashboard filter value for orders that have been referred out. */
+    /** Dashboard filter value for orders whose every test is referred out. */
     private static final String REFERRED_OUT_FILTER = "referred_out";
+    /** Dashboard filter value for orders with at least one referred test. */
+    private static final String HAS_REFERRED_FILTER = "has_referred";
 
     @Autowired
     private ReferralService referralService;
+    @Autowired
+    private IStatusService statusService;
 
     @Autowired
     private PanelItemService panelItemService;
@@ -211,13 +224,7 @@ public class OrderSearchRestController extends BaseRestController {
     private PanelService panelService;
 
     @Autowired
-    private UserService userService;
-
-    @Autowired
     private TestSectionService testSectionService;
-
-    @Autowired
-    private UserRoleService userRoleService;
 
     @Autowired
     private VectorSamplingSiteService vectorSamplingSiteService;
@@ -226,17 +233,27 @@ public class OrderSearchRestController extends BaseRestController {
 
     /**
      * Configuration property name (site_information or
-     * SystemConfiguration.properties) that opts a deployment in to scoping the
-     * recent-orders list by the user's test sections. Absent or anything other than
-     * "true" leaves the list unscoped.
+     * SystemConfiguration.properties) that opts a deployment out of scoping the
+     * orders dashboard by the user's lab units. The dashboard is scoped like the
+     * home dashboard unless the property is explicitly "false".
      */
     private static final String RESTRICT_RECENT_ORDERS_PROPERTY = "restrictRecentOrdersByTestSection";
 
     @Autowired
+    private SampleLabUnitScopeService sampleLabUnitScopeService;
+
+    @Autowired
     private TestMethodService testMethodService;
 
+    @Autowired
+    @Lazy
+    private SampleEQAService sampleEQAService;
+
+    @Autowired
+    @Lazy
+    private SampleOrderOverrideService sampleOrderOverrideService;
+
     @Autowired(required = false)
-    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
@@ -264,18 +281,24 @@ public class OrderSearchRestController extends BaseRestController {
         final boolean qa;
         final OrderProgressStatus progress;
         final boolean complete;
+        final boolean fullyReferred;
 
-        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete) {
+        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete,
+                boolean fullyReferred) {
             this.collect = collect;
             this.label = label;
             this.qa = qa;
             this.progress = progress;
             this.complete = complete;
+            this.fullyReferred = fullyReferred;
         }
 
         String status() {
             if (progress == OrderProgressStatus.CANCELLED) {
                 return CANCELLED_FILTER;
+            }
+            if (fullyReferred && progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED)) {
+                return REFERRED_OUT_FILTER;
             }
             if (complete) {
                 return "completed";
@@ -310,7 +333,7 @@ public class OrderSearchRestController extends BaseRestController {
      * @param workflowType clinical, environmental or vector
      * @return the page's orders, the page announcement and the total matched
      * @see #resolveAllowedSectionIds(String) for when the list is narrowed to the
-     *      user's test sections (opt-in, off by default)
+     *      user's lab units (on by default)
      */
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getDashboard(@RequestParam(required = false) Integer page,
@@ -384,7 +407,7 @@ public class OrderSearchRestController extends BaseRestController {
             }
             boolean createdByCurrentUser = currentSysUserId != null && currentSysUserId.equals(sample.getSysUserId());
             if (!allowedSectionIds.isEmpty() && !createdByCurrentUser
-                    && !sampleBelongsToSections(sample, allowedSectionIds)) {
+                    && !sampleLabUnitScopeService.belongsToSections(sample, allowedSectionIds)) {
                 continue;
             }
             if (!searchLower.isEmpty() && !matchesSearch(sample, searchLower)) {
@@ -401,7 +424,7 @@ public class OrderSearchRestController extends BaseRestController {
                     continue;
                 } else {
                     List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
-                    if (REFERRED_OUT_FILTER.equals(status)) {
+                    if (HAS_REFERRED_FILTER.equals(status)) {
                         if (!hasReferral(sampleItems)) {
                             continue;
                         }
@@ -512,8 +535,40 @@ public class OrderSearchRestController extends BaseRestController {
             labelComplete = prepared;
             qaComplete = progress == OrderProgressStatus.READY_FOR_TESTING;
         }
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
         return new StepState(collectComplete, labelComplete, qaComplete, progress,
-                orderProgressService.isComplete(progress, workflowType));
+                orderProgressService.isComplete(progress, workflowType, fullyReferred), fullyReferred);
+    }
+
+    /**
+     * How much of the order is referred out, for the dashboard row: the referred
+     * and total test counts and the receiving laboratories.
+     */
+    Map<String, Object> referralSummary(List<SampleItem> sampleItems) {
+        int total = 0;
+        int referred = 0;
+        java.util.Set<String> laboratories = new java.util.LinkedHashSet<>();
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                total++;
+                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                if (!orderProgressService.isOpenReferral(referral)) {
+                    continue;
+                }
+                referred++;
+                if (referral.getOrganization() != null) {
+                    laboratories.add(referral.getOrganization().getOrganizationName());
+                }
+            }
+        }
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("referredTests", referred);
+        summary.put("totalTests", total);
+        summary.put("referredTo", String.join(", ", laboratories));
+        return summary;
     }
 
     /** One dashboard row, built only for the samples on the page shown. */
@@ -565,15 +620,18 @@ public class OrderSearchRestController extends BaseRestController {
             facilityName = referringOrg.getOrganizationName();
         orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
 
+        boolean finished = steps.complete && steps.progress != OrderProgressStatus.CANCELLED;
         Map<String, Boolean> stepProgress = new HashMap<>();
         stepProgress.put("enter", isEnterComplete(sample));
-        stepProgress.put("collect", steps.collect);
-        stepProgress.put("label", steps.label);
-        stepProgress.put("qa", steps.qa);
+        stepProgress.put("collect", steps.collect || finished);
+        stepProgress.put("label", steps.label || finished);
+        stepProgress.put("qa", steps.qa || finished);
         orderData.put("stepProgress", stepProgress);
         orderData.put("status", steps.status());
+        orderData.put("referralSummary", referralSummary(sampleItems));
         putProgress(orderData, sample,
-                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress);
+                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress,
+                steps.complete, steps.fullyReferred);
         orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
         if (sampleWorkflowType != null) {
@@ -630,7 +688,8 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber) {
+    public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber,
+            HttpServletRequest request) {
 
         if (labNumber == null || labNumber.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
@@ -640,7 +699,7 @@ public class OrderSearchRestController extends BaseRestController {
             // Find the sample by accession number
             Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
 
-            if (sample == null) {
+            if (sample == null || !sampleLabUnitScopeService.isVisible(getSysUserId(request), sample)) {
                 return ResponseEntity.notFound().build();
             }
 
@@ -772,6 +831,7 @@ public class OrderSearchRestController extends BaseRestController {
                         sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
                 sampleItemData.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                putReceiptAndArrival(sampleItemData, sampleItem);
 
                 String receivedDateDisplay = "";
                 String receivedTimeDisplay = "";
@@ -796,6 +856,9 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleXML.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
                 sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
+                sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
+                sampleXML.put("bodySite", sampleItem.getBodySite() != null ? sampleItem.getBodySite() : "");
+                sampleXML.put("collectionLocationId", sampleItem.getCollectionLocationId());
                 sampleXML.put("locationDetails",
                         sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
                 sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");
@@ -822,7 +885,8 @@ public class OrderSearchRestController extends BaseRestController {
                 Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
                 Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
-                    if (analysis.getTest() == null) {
+                    if (analysis.getTest() == null
+                            || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
                         continue;
                     }
                     testsData.add(buildSelectedTestData(analysis.getTest()));
@@ -939,8 +1003,6 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
             response.put("sampleOrderItems", sampleOrderItems);
 
-            addMicrobiologyOrderDetail(response, sample);
-
             // Step progress - determine based on actual data
             boolean isVectorOrder = "V".equals(sample.getDomain());
             Map<String, Boolean> stepProgress = new HashMap<>();
@@ -1036,8 +1098,16 @@ public class OrderSearchRestController extends BaseRestController {
 
     private void putProgress(Map<String, Object> target, Sample sample, String workflowType,
             OrderProgressStatus status) {
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        putProgress(target, sample, workflowType, status,
+                orderProgressService.isComplete(status, workflowType, fullyReferred), fullyReferred);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType, OrderProgressStatus status,
+            boolean complete, boolean fullyReferred) {
         target.put("progressStatus", status.name());
-        target.put("complete", orderProgressService.isComplete(status, workflowType));
+        target.put("complete", complete);
+        target.put("fullyReferred", fullyReferred);
         target.put("sampleCheckEnabled", orderProgressService.sampleCheckEnabled(workflowType));
         Map<String, Object> progress = new HashMap<>();
         progress.put("enteredAt", timestampText(sample.getOrderEnteredAt()));
@@ -1071,6 +1141,7 @@ public class OrderSearchRestController extends BaseRestController {
         }
         try {
             Sample cancelled = orderProgressService.cancel(sample.getId(), body.get("reason"), getSysUserId(request));
+            republishToFhir(cancelled);
             Map<String, Object> response = new HashMap<>();
             response.put("labNumber", cancelled.getAccessionNumber());
             putProgress(response, cancelled, workflowTypeOf(cancelled),
@@ -1083,26 +1154,33 @@ public class OrderSearchRestController extends BaseRestController {
         }
     }
 
-    private boolean hasReferral(List<SampleItem> sampleItems) {
+    /**
+     * Sends the cancelled order to the FHIR store again, so its Task reads
+     * cancelled and its ServiceRequests revoked instead of the order as it was
+     * entered. The cancellation itself has committed; a failed publish is logged
+     * and does not undo it.
+     */
+    private void republishToFhir(Sample cancelled) {
+        try {
+            fhirTransformService.transformPersistObjectsUnderSamples(List.of(cancelled.getId()));
+        } catch (FhirLocalPersistingException | RuntimeException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "republishToFhir",
+                    "could not republish cancelled order " + cancelled.getAccessionNumber() + ": " + e.getMessage());
+        }
+    }
+
+    boolean hasReferral(List<SampleItem> sampleItems) {
         for (SampleItem sampleItem : sampleItems) {
             for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
-                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
-                if (referral != null && referral.getId() != null) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                if (orderProgressService.isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
                     return true;
                 }
             }
         }
         return false;
-    }
-
-    void addMicrobiologyOrderDetail(Map<String, Object> response, Sample sample) {
-        if (microCaseOrderDetailService == null) {
-            return;
-        }
-        var microbiologyOrderDetail = microCaseOrderDetailService.getOrderDraft(sample.getId());
-        if (microbiologyOrderDetail != null) {
-            response.put("microbiologyOrderDetail", microbiologyOrderDetail);
-        }
     }
 
     TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {
@@ -1262,6 +1340,31 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
+     * The EQA and no-patient decisions travel with the order, so a later step
+     * opened on it skips the patient block and the consent gate (OGC-1483).
+     */
+    private void putEqaAndNoPatient(Map<String, Object> sampleOrderItems, String sampleId) {
+        if (sampleId == null) {
+            return;
+        }
+        Long id = Long.valueOf(sampleId);
+        sampleEQAService.findBySampleId(id).ifPresent(eqa -> {
+            sampleOrderItems.put("isEQASample", Boolean.TRUE.equals(eqa.getIsEqaSample()));
+            sampleOrderItems.put("eqaProgramId",
+                    eqa.getEqaEnrollmentId() == null ? "" : String.valueOf(eqa.getEqaEnrollmentId()));
+            sampleOrderItems.put("eqaCycleId", eqa.getCycleId() == null ? "" : String.valueOf(eqa.getCycleId()));
+            sampleOrderItems.put("eqaProviderSampleId",
+                    eqa.getEqaProviderSampleId() == null ? "" : eqa.getEqaProviderSampleId());
+        });
+        sampleOrderOverrideService.findBySampleIdAndType(id, OverrideType.NO_PATIENT).ifPresent(override -> {
+            sampleOrderItems.put("noPatientOverride", true);
+            sampleOrderItems.put("noPatientReasonCode",
+                    override.getReasonCode() == null ? "" : override.getReasonCode().name());
+            sampleOrderItems.put("noPatientReason", override.getReason() == null ? "" : override.getReason());
+        });
+    }
+
+    /**
      * Build sampleOrderItems with all order-level data including: - Lab number and
      * dates - Provider/Requester info from SampleHuman (provider) and
      * SampleRequester (organization) - Referring site (organization) info - Program
@@ -1281,6 +1384,7 @@ public class OrderSearchRestController extends BaseRestController {
         sampleOrderItems.put("receivedTime", sample.getReceivedTimeForDisplay());
 
         String sampleId = sample.getId();
+        putEqaAndNoPatient(sampleOrderItems, sampleId);
 
         // Provider - get from SampleHuman.providerId via
         // sampleHumanService.getProviderForSample()
@@ -1742,106 +1846,51 @@ public class OrderSearchRestController extends BaseRestController {
     }
 
     /**
-     * The test section IDs the recent-orders list may be narrowed to, or an empty
-     * set meaning "show everything" (the pre-existing behaviour).
+     * The test section IDs the orders dashboard is narrowed to, or an empty set
+     * meaning the whole lab.
      *
      * <p>
-     * Scoping recent orders by test section is opt-in through the
-     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property (a
-     * site_information row or a SystemConfiguration.properties entry), which is
-     * absent by default. Without the opt-in this endpoint keeps returning every
-     * recent order, as it did before section scoping was introduced: with
-     * {@code REQUIRE_LAB_UNIT_AT_LOGIN=true},
-     * {@link UserService#getUserTestSections(String, String)} returns only the
-     * single lab unit chosen at login for non-admins, which would silently collapse
-     * "Recent Orders" to one section for existing clinical deployments.
-     *
-     * <p>
-     * Even when enabled, global administrators and {@code AllLabUnits} users are
-     * never scoped, and neither is a user whose section list came from the login
-     * lab-unit constraint rather than from their own assignments.
-     *
-     * <p>
-     * The returned set is expanded to include child sections of every assigned
-     * section, because analyses are filed under child sections (e.g. "Entomology")
-     * rather than the domain-level parent (e.g. "Vector Surveillance") a user is
-     * assigned to.
+     * The dashboard reads with the same lab-unit scope as the home dashboard and
+     * the order lookups ({@link SampleLabUnitScopeService}). A site can switch the
+     * dashboard back to the whole lab by setting the
+     * {@value #RESTRICT_RECENT_ORDERS_PROPERTY} configuration property to
+     * {@code false}. Global administrators, {@code AllLabUnits} users and users
+     * whose section comes from the login lab-unit constraint read the whole lab;
+     * assigned sections are expanded to their child sections.
      */
     private Set<String> resolveAllowedSectionIds(String sysUserId) {
-        if (!recentOrderSectionScopingEnabled()) {
+        if (recentOrderSectionScopingDisabled()) {
             return Collections.emptySet();
         }
-        if (isGlobalScopeUser(sysUserId) || isLoginLabUnitConstrained()) {
-            return Collections.emptySet();
-        }
-        List<IdValuePair> userSections = userService.getUserTestSections(sysUserId, null);
-        if (userSections == null || userSections.isEmpty()) {
-            return Collections.emptySet();
-        }
-        Set<String> ids = new HashSet<>();
-        for (IdValuePair section : userSections) {
-            ids.add(section.getId());
-        }
-        List<TestSection> allSections = testSectionService.getAllActiveTestSections();
-        for (TestSection section : allSections) {
-            TestSection parent = section.getParentTestSection();
-            if (parent != null && ids.contains(parent.getId())) {
-                ids.add(section.getId());
-            }
-        }
-        return ids;
+        return sampleLabUnitScopeService.restrictedSectionIds(sysUserId);
     }
 
-    private boolean recentOrderSectionScopingEnabled() {
-        return "true".equalsIgnoreCase(
+    private boolean recentOrderSectionScopingDisabled() {
+        return "false".equalsIgnoreCase(
                 ConfigurationProperties.getInstance().getPropertyValue(RESTRICT_RECENT_ORDERS_PROPERTY));
     }
 
     /**
-     * True when lab unit selection is required at login, in which case a
-     * non-admin's resolved section list is the single unit chosen at login rather
-     * than the set of sections they are actually assigned to.
+     * Who received the sample and the condition it arrived in, with display names
+     * (OGC-1424). Empty strings where nothing was recorded.
      */
-    private boolean isLoginLabUnitConstrained() {
-        return ConfigurationProperties.getInstance().isPropertyValueEqual(Property.REQUIRE_LAB_UNIT_AT_LOGIN, "true");
+    void putReceiptAndArrival(Map<String, Object> sampleItemData, SampleItem sampleItem) {
+        sampleItemData.put("receivedById", sampleItem.getReceivedById() == null ? "" : sampleItem.getReceivedById());
+        sampleItemData.put("receivedByName", userName(sampleItem.getReceivedById()));
+        sampleItemData.put("arrivalCondition",
+                sampleItem.getArrivalCondition() == null ? "" : sampleItem.getArrivalCondition());
+        sampleItemData.put("arrivalTemperature", sampleItem.getArrivalTemperature() == null ? ""
+                : sampleItem.getArrivalTemperature().stripTrailingZeros().toPlainString());
+        sampleItemData.put("arrivalRecordedByName", userName(sampleItem.getArrivalRecordedById()));
+        sampleItemData.put("arrivalRecordedAt",
+                sampleItem.getArrivalRecordedAt() == null ? "" : sampleItem.getArrivalRecordedAt().toString());
     }
 
-    /**
-     * True when the user's lab-unit assignments already cover every test section —
-     * a global administrator or a user mapped to {@code AllLabUnits}.
-     */
-    private boolean isGlobalScopeUser(String sysUserId) {
-        if (sysUserId == null) {
-            return false;
+    private String userName(String systemUserId) {
+        if (GenericValidator.isBlankOrNull(systemUserId)) {
+            return "";
         }
-        if (userRoleService.userInRole(sysUserId, Constants.ROLE_GLOBAL_ADMIN)) {
-            return true;
-        }
-        UserLabUnitRoles labUnitRoles = userService.getUserLabUnitRoles(sysUserId);
-        if (labUnitRoles == null || labUnitRoles.getLabUnitRoleMap() == null) {
-            return false;
-        }
-        return labUnitRoles.getLabUnitRoleMap().stream()
-                .anyMatch(roleMap -> UnifiedSystemUserController.ALL_LAB_UNITS.equals(roleMap.getLabUnit()));
-    }
-
-    /**
-     * Whether any analysis on the sample belongs to one of the allowed sections.
-     * Samples with no analyses yet are treated as belonging everywhere — there is
-     * no section to match against, and hiding them would hide freshly entered
-     * orders.
-     */
-    private boolean sampleBelongsToSections(Sample sample, Set<String> allowedSectionIds) {
-        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
-        if (analyses == null || analyses.isEmpty()) {
-            return true;
-        }
-        for (Analysis analysis : analyses) {
-            String sectionId = analysis.getTestSection() != null ? analysis.getTestSection().getId() : null;
-            if (sectionId != null && allowedSectionIds.contains(sectionId)) {
-                return true;
-            }
-        }
-        return false;
+        SystemUser user = systemUserService.getUserById(systemUserId);
+        return user == null ? "" : user.getNameForDisplay().trim();
     }
 }

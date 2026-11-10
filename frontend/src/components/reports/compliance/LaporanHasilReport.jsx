@@ -36,6 +36,7 @@ import {
   toLocalIsoDate,
   parseIsoDate,
 } from "../../utils/Utils";
+import { labNow } from "../../utils/labClock";
 
 const STATUS_TAG_TYPE = {
   COMPLIANT: "green",
@@ -194,7 +195,7 @@ export default function LaporanHasilReport() {
           a.download = `LH-${safeLabel}.pdf`;
           a.click();
           URL.revokeObjectURL(url);
-          const now = new Date().toLocaleString();
+          const now = labNow().toLocaleString();
           setReportData((prev) => {
             if (!prev) return prev;
             return {
@@ -254,7 +255,7 @@ export default function LaporanHasilReport() {
         a.click();
         URL.revokeObjectURL(url);
 
-        const now = new Date().toLocaleString();
+        const now = labNow().toLocaleString();
         setReportData((prev) => {
           if (!prev) return prev;
           return {

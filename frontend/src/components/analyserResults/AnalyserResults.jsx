@@ -10,9 +10,11 @@ import {
   Grid,
   InlineNotification,
   Link as CarbonLink,
+  Modal,
   Pagination,
   Select,
   SelectItem,
+  Stack,
   Tag,
   TextArea,
   TextInput,
@@ -37,6 +39,14 @@ import config from "../../config.json";
 import ResultAlertModal, {
   acknowledgementRefusal,
 } from "../resultPage/ResultAlertModal";
+import PlacementNotice from "./PlacementNotice";
+import InstrumentReported from "./InstrumentReported";
+import ResultParts, { decisionKey, groupTestParts } from "./ResultParts";
+import DeliveryBundleModal from "./DeliveryBundleModal";
+import RedirectControl from "./RedirectControl";
+
+// Held for a decision the reviewer can make on the page, not for a mapping fix.
+const REVIEWABLE_HOLDS = ["awaiting_specimen", "awaiting_placement"];
 
 export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
   if (!analyzerId) {
@@ -53,6 +63,10 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
     "unknown_analyzer_result_value",
     "result_mapping_not_ready",
     "invalid_result_mapping",
+    "conflicting_answer_mapping",
+    "reading_changed",
+    "type_reading_changed",
+    "arrived_under_other_revision",
   ];
   if (
     !mappingIssues.includes(row.importIssueReason) ||
@@ -65,25 +79,25 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
   }
 
   const query = new URLSearchParams({
-    revision: String(row.sourceProfileRevision),
-    analyzerId: String(analyzerId),
     returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
     focusTest: row.rawTestCode,
   });
   if (row.rawResultValue) {
     query.set("focusValue", row.rawResultValue);
   }
-  return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
+  return `/analyzers/${encodeURIComponent(analyzerId)}/mapping?${query.toString()}`;
 };
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
   const draftEdits = useRef({});
+  const removalLauncher = useRef(null);
   const history = useHistory();
   const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
+  const formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
 
   const intl = useIntl();
 
@@ -91,6 +105,9 @@ const AnalyserResults = (props) => {
   // OGC-1417: retyped values the server will not accept until the reviewer
   // acknowledges them as critical, or confirms them outside the valid range
   const [resultAlert, setResultAlert] = useState(null);
+  const [bundleReceiptId, setBundleReceiptId] = useState(null);
+  const [dismissingRunIds, setDismissingRunIds] = useState([]);
+  const [removalCandidate, setRemovalCandidate] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -146,7 +163,18 @@ const AnalyserResults = (props) => {
   };
 
   const allResults = props.results?.resultList ?? [];
-  const patientResults = allResults.filter((r) => !r.isControl);
+  const setupResults = allResults.filter(
+    (row) => row.importIssueReason === "setup_capture",
+  );
+  const routineResults = allResults.filter(
+    (row) => row.importIssueReason !== "setup_capture",
+  );
+  const patientResults = routineResults.filter((r) => !r.isControl);
+  // Accept, retest and ignore are decided per test: its first row carries the
+  // decision, and the rows on its components show beneath its main result.
+  const { decisionHeadIds, partsByHeadId, partIds } =
+    groupTestParts(patientResults);
+  const tableRows = patientResults.filter((row) => !partIds.has(row.id));
   const arrows = serverPageArrowsProps({
     paging: props.results?.paging,
     onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
@@ -154,12 +182,28 @@ const AnalyserResults = (props) => {
   const heldPatientResults = patientResults.filter(
     (result) => result.importIssueReason,
   );
+  const needsPlacementDecision = heldPatientResults.some((result) =>
+    REVIEWABLE_HOLDS.includes(result.importIssueReason),
+  );
   const actionablePatientResults = patientResults.filter(
     (result) =>
       !result.importIssueReason ||
-      result.importIssueReason === "awaiting_specimen",
+      REVIEWABLE_HOLDS.includes(result.importIssueReason),
   );
-  const qcResults = allResults.filter((r) => r.isControl);
+  // One tick saves a whole grouping, so "accept all" ticks only the groupings
+  // whose every result has exactly one analysis waiting for it and a patient
+  // that matches the order or was not reported.
+  const groupIsMatched = (grouping) =>
+    actionablePatientResults
+      .filter((result) => result.sampleGroupingNumber === grouping)
+      .every(
+        (result) =>
+          result.placement?.state === "RESOLVED" &&
+          ["NOT_REPORTED", "MATCH"].includes(
+            result.placement?.patient?.status ?? "NOT_REPORTED",
+          ),
+      );
+  const qcResults = routineResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
       r.result && (/failed/i.test(r.result) || /\binvalid\b/i.test(r.result)),
@@ -223,7 +267,7 @@ const AnalyserResults = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "5rem",
+      width: needsPlacementDecision ? "14rem" : "5rem",
     },
     {
       id: "notes",
@@ -307,14 +351,14 @@ const AnalyserResults = (props) => {
     jpSet(form, name, value);
     const field = name.match(/\.(result|note)$/)?.[1];
     if (field) rememberEdit(rowId, field, value);
-    if (field === "result") {
-      const row = (form.resultList || []).find(
-        (candidate) => String(candidate.id) === String(rowId),
-      );
-      if (row) {
-        row.criticalAcknowledged = false;
-        row.invalidResultConfirmed = false;
-      }
+    const row = (form.resultList || []).find(
+      (candidate) => String(candidate.id) === String(rowId),
+    );
+    // A row without a note has no note property for the path above to set.
+    if (field === "note" && row) row.note = value;
+    if (field === "result" && row) {
+      row.criticalAcknowledged = false;
+      row.invalidResultConfirmed = false;
     }
   };
 
@@ -324,13 +368,18 @@ const AnalyserResults = (props) => {
     var form = props.results;
     jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
+  // A test is decided on its head row; its parts and duplicates carry the same
+  // decision, so a tick they loaded with cannot outvote it on save.
   const handleCheckBox = (e, rowId, fieldName) => {
-    const row = (props.results.resultList || []).find(
-      (result) => String(result.id) === String(rowId),
-    );
+    const rows = props.results.resultList || [];
+    const row = rows.find((result) => String(result.id) === String(rowId));
     if (row) {
-      row[fieldName] = e.target.checked;
-      rememberEdit(rowId, fieldName, e.target.checked);
+      rows
+        .filter((other) => decisionKey(other) === decisionKey(row))
+        .forEach((other) => {
+          other[fieldName] = e.target.checked;
+          rememberEdit(other.id, fieldName, e.target.checked);
+        });
     }
   };
 
@@ -342,6 +391,26 @@ const AnalyserResults = (props) => {
     if (row) {
       row.typeOfSampleId = e.target.value;
       rememberEdit(rowId, "typeOfSampleId", e.target.value);
+    }
+  };
+
+  const handleAnalysisChoice = (analysisId, rowId) => {
+    const row = (props.results.resultList || []).find(
+      (r) => String(r.id) === String(rowId),
+    );
+    if (row) {
+      row.chosenAnalysisId = analysisId;
+      rememberEdit(rowId, "chosenAnalysisId", analysisId);
+    }
+  };
+
+  const handleRedirect = (field, value, rowId) => {
+    const row = (props.results.resultList || []).find(
+      (r) => String(r.id) === String(rowId),
+    );
+    if (row) {
+      row[field] = value;
+      rememberEdit(rowId, field, value);
     }
   };
 
@@ -362,63 +431,271 @@ const AnalyserResults = (props) => {
     return props.sampleGroup.some((item) => item.id === id);
   };
 
-  const renderCell = (row, index, column, id) => {
-    let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
-    const held = Boolean(row.importIssueReason);
-    const awaitingSpecimen = row.importIssueReason === "awaiting_specimen";
-    switch (column.id) {
-      case "sampleInfo":
-        return (
+  // A reviewer's decision on a held row: a failed run is recorded on the order's
+  // waiting test, which stays open for the repeat; any held row can also be
+  // removed from review, which the audit trail records.
+  const decideHeldResult = (row, action, successKey, errorKey) => {
+    setDismissingRunIds((ids) => [...ids, row.id]);
+    postToOpenElisServerFullResponse(
+      `/rest/analyzer/results/${encodeURIComponent(row.id)}/${action}`,
+      JSON.stringify({}),
+      // The response is undefined when the request never reached the server.
+      async (response) => {
+        setDismissingRunIds((ids) => ids.filter((id) => id !== row.id));
+        const succeeded = response?.status == 200 || response?.status == 204;
+        let message = intl.formatMessage({
+          id: succeeded ? successKey : errorKey,
+        });
+        if (!succeeded) {
+          const body = await response?.json?.().catch(() => null);
+          if (body?.error) {
+            message = message + ": " + body.error;
+          }
+        }
+        addNotification({
+          kind: succeeded ? NotificationKinds.success : NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message,
+        });
+        setNotificationVisible(true);
+        if (succeeded) {
+          props.refreshResults?.(
+            Number(props.results?.paging?.currentPage) || 1,
+            { ...draftEdits.current },
+          );
+        }
+      },
+    );
+  };
+
+  const dismissFailedRun = (row) =>
+    decideHeldResult(
+      row,
+      "failed-run",
+      "analyzer.results.failedRun.dismissed",
+      "analyzer.results.failedRun.error",
+    );
+
+  const confirmHeldRemoval = () => {
+    if (!removalCandidate) return;
+    const row = removalCandidate;
+    setRemovalCandidate(null);
+    decideHeldResult(
+      row,
+      "dismiss",
+      "analyzer.results.held.removed",
+      "analyzer.results.held.removeError",
+    );
+  };
+
+  const renderHeldResult = (row) => {
+    const resolutionUrl = buildHeldResultResolutionUrl(row, props.analyzerId);
+    return (
+      <div data-testid={`held-analyzer-result-${row.id}`}>
+        <Tag type="warm-gray" size="sm">
+          <FormattedMessage
+            id={
+              row.importIssueReason === "setup_capture"
+                ? "analyzer.setup.reception.sample"
+                : "analyzer.results.held.tag"
+            }
+          />
+        </Tag>
+        {row.importIssueReason === "setup_capture" && (
+          <p>
+            <FormattedMessage id="analyzer.setup.reception.sampleHelp" />
+          </p>
+        )}
+        <div>
+          <strong>{row.rawResultValue || row.result}</strong>
+        </div>
+        <div>
+          <FormattedMessage
+            id="analyzer.results.held.code"
+            values={{ code: row.rawTestCode || row.testName }}
+          />
+        </div>
+        {resolutionUrl && (
+          <CarbonLink
+            as={RouterLink}
+            to={resolutionUrl}
+            onClick={(event) => openMappingWithDraft(event, resolutionUrl)}
+          >
+            <FormattedMessage id="analyzer.results.held.reviewMapping" />
+          </CarbonLink>
+        )}
+        {row.instrumentNote && (
+          <div data-testid={`instrument-note-${row.id}`}>
+            <FormattedMessage
+              id="analyzer.results.held.instrumentNote"
+              values={{ note: row.instrumentNote }}
+            />
+          </div>
+        )}
+        <Button
+          kind="ghost"
+          size="sm"
+          disabled={dismissingRunIds.includes(row.id)}
+          onClick={(event) => {
+            removalLauncher.current = event.currentTarget;
+            setRemovalCandidate(row);
+          }}
+        >
+          <FormattedMessage id="analyzer.results.held.remove" />
+        </Button>
+        {row.importIssueReason === "run_failed" && !row.isControl && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            disabled={dismissingRunIds.includes(row.id)}
+            onClick={() => dismissFailedRun(row)}
+          >
+            <FormattedMessage id="analyzer.results.failedRun.dismiss" />
+          </Button>
+        )}
+        {row.importIssueReason === "assay_not_enabled" && (
           <>
-            {sampleGroupHasId(row.id) && (
-              <>
-                <Button
-                  onClick={async () => {
-                    if ("clipboard" in navigator) {
-                      return await navigator.clipboard.writeText(
-                        row.accessionNumber,
-                      );
-                    } else {
-                      return document.execCommand(
-                        "copy",
-                        true,
-                        row.accessionNumber,
-                      );
-                    }
-                  }}
-                  kind="ghost"
-                  iconDescription={intl.formatMessage({
-                    id: "instructions.copy.labnum",
-                  })}
-                  hasIconOnly
-                  renderIcon={Copy}
-                />
-                <div className="sampleInfo" data-testid="LabNo">
-                  <br></br>
-                  {formatLabNum
-                    ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-                    : row.accessionNumber}
-                  <br></br>
-                  <br></br>
-                </div>
-                {row.nonconforming && (
-                  <picture>
-                    <img
-                      src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                      alt="nonconforming"
-                      width="20"
-                      height="15"
-                    />
-                  </picture>
-                )}
-              </>
+            <div>
+              <FormattedMessage id="analyzer.results.held.assayNotEnabled" />
+            </div>
+            {props.analyzerId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/analyzers?setup=assays&analyzerId=${encodeURIComponent(props.analyzerId)}`}
+              >
+                <FormattedMessage id="analyzer.results.held.enableAssay" />
+              </CarbonLink>
             )}
           </>
-        );
+        )}
+
+        {row.importIssueReason === "conflicting_answer_mapping" && (
+          <div>
+            <FormattedMessage id="analyzer.results.held.conflictingAnswerMapping" />
+          </div>
+        )}
+        {row.importIssueReason === "qc_lot_missing" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.qcLotMissing" />
+            </div>
+            <div>
+              <CarbonLink as={RouterLink} to="/qa/qc/control-lots">
+                <FormattedMessage id="analyzer.results.held.setQcLot" />
+              </CarbonLink>
+            </div>
+            {props.analyzerId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/analyzers/${encodeURIComponent(props.analyzerId)}/mapping`}
+              >
+                <FormattedMessage id="analyzer.results.held.retryQcMapping" />
+              </CarbonLink>
+            )}
+          </>
+        )}
+        {row.importIssueReason === "qc_value_unsupported" && (
+          <div>
+            <FormattedMessage id="analyzer.results.held.qcValueUnsupported" />
+          </div>
+        )}
+        {row.importIssueReason === "qc_target_missing" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.qcTargetMissing" />
+            </div>
+            {row.testId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/MasterListsPage/TestCatalogEditor/${encodeURIComponent(row.testId)}/qc-targets`}
+              >
+                <FormattedMessage id="analyzer.results.held.setQcTarget" />
+              </CarbonLink>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderCell = (row, index, column, id) => {
+    const held = Boolean(row.importIssueReason);
+    const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
+    switch (column.id) {
+      case "sampleInfo":
+        // The table's cells break words anywhere, so the lab number gets a row
+        // to itself: beside the redirect control it shrinks to one character a line.
+        return sampleGroupHasId(row.id) ? (
+          <Stack gap={3}>
+            <Stack orientation="horizontal" gap={2}>
+              <Button
+                onClick={async () => {
+                  if ("clipboard" in navigator) {
+                    return await navigator.clipboard.writeText(
+                      row.accessionNumber,
+                    );
+                  } else {
+                    return document.execCommand(
+                      "copy",
+                      true,
+                      row.accessionNumber,
+                    );
+                  }
+                }}
+                kind="ghost"
+                iconDescription={intl.formatMessage({
+                  id: "instructions.copy.labnum",
+                })}
+                hasIconOnly
+                renderIcon={Copy}
+              />
+              <div className="sampleInfo" data-testid="LabNo">
+                {formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                  : row.accessionNumber}
+                {row.instrumentSpecimenId &&
+                  row.instrumentSpecimenId !== row.accessionNumber && (
+                    <div data-testid="InstrumentSpecimenId">
+                      <FormattedMessage
+                        id="analyzer.placement.instrumentSpecimen"
+                        values={{ id: row.instrumentSpecimenId }}
+                      />
+                    </div>
+                  )}
+              </div>
+              {row.nonconforming && (
+                <picture>
+                  <img
+                    src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                    alt="nonconforming"
+                    width="20"
+                    height="15"
+                  />
+                </picture>
+              )}
+            </Stack>
+            {row.instrumentSampleFlags && (
+              <div data-testid="InstrumentSampleFlags">
+                <FormattedMessage
+                  id="analyzer.results.sampleFlags"
+                  values={{ flags: row.instrumentSampleFlags }}
+                />
+              </div>
+            )}
+            {row.placement && (
+              <RedirectControl row={row} onChange={handleRedirect} />
+            )}
+          </Stack>
+        ) : null;
       case "testName":
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
             {row.testName}
+            <PlacementNotice
+              row={row}
+              onChooseAnalysis={handleAnalysisChoice}
+              onViewBundle={setBundleReceiptId}
+            />
             {/* OGC-1145 FR-8 — specimen-ambiguous row: the reviewer picks the
                 sample type; accepting without a choice keeps the row staged
                 (awaiting specimen) instead of guessing. */}
@@ -433,7 +710,7 @@ const AnalyserResults = (props) => {
                   id: "label.testCatalog.specimenType",
                 })}
                 helperText={intl.formatMessage({
-                  id: "notice.testCatalog.intake.awaitingSpecimen",
+                  id: "analyzer.placement.chooseSpecimen.help",
                 })}
                 defaultValue={row.typeOfSampleId || ""}
                 onChange={(e) => handleSampleTypeChoice(e, row.id)}
@@ -452,13 +729,13 @@ const AnalyserResults = (props) => {
         );
 
       case "save":
-        if (held && !awaitingSpecimen) {
+        if (held && !awaitingReview) {
           return null;
         }
         return (
           <>
             <div>
-              {sampleGroupHasId(row.id) && (
+              {decisionHeadIds.has(row.id) && (
                 <Field name="isAccepted">
                   {({ field }) => (
                     <Checkbox
@@ -482,7 +759,7 @@ const AnalyserResults = (props) => {
         }
         return (
           <>
-            {sampleGroupHasId(row.id) && (
+            {decisionHeadIds.has(row.id) && (
               <Field name="isRejected">
                 {({ field }) => (
                   <Checkbox
@@ -500,12 +777,29 @@ const AnalyserResults = (props) => {
         );
 
       case "ignore":
+        // A row held for placement is saved by its review decision, which never
+        // deletes a held row, so it is removed the way other held rows are.
+        if (awaitingReview) {
+          return (
+            <Button
+              kind="ghost"
+              size="sm"
+              disabled={dismissingRunIds.includes(row.id)}
+              onClick={(event) => {
+                removalLauncher.current = event.currentTarget;
+                setRemovalCandidate(row);
+              }}
+            >
+              <FormattedMessage id="analyzer.results.held.remove" />
+            </Button>
+          );
+        }
         if (held) {
           return null;
         }
         return (
           <>
-            {sampleGroupHasId(row.id) && (
+            {decisionHeadIds.has(row.id) && (
               <Field name="isDeleted">
                 {({ field }) => (
                   <Checkbox
@@ -523,7 +817,7 @@ const AnalyserResults = (props) => {
         );
 
       case "notes":
-        if (held) {
+        if (held && !awaitingReview) {
           return null;
         }
         return (
@@ -544,83 +838,66 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held && !awaitingSpecimen) {
-          const resolutionUrl = buildHeldResultResolutionUrl(
-            row,
-            props.analyzerId,
-          );
-          return (
-            <div data-testid={`held-analyzer-result-${row.id}`}>
-              <Tag type="warm-gray" size="sm">
-                <FormattedMessage id="analyzer.results.held.tag" />
-              </Tag>
-              <div>
-                <strong>{row.rawResultValue || row.result}</strong>
-              </div>
-              <div>
-                <FormattedMessage
-                  id="analyzer.results.held.code"
-                  values={{ code: row.rawTestCode || row.testName }}
-                />
-              </div>
-              {resolutionUrl && (
-                <CarbonLink
-                  as={RouterLink}
-                  to={resolutionUrl}
-                  onClick={(event) =>
-                    openMappingWithDraft(event, resolutionUrl)
-                  }
-                >
-                  <FormattedMessage id="analyzer.results.held.reviewMapping" />
-                </CarbonLink>
-              )}
-            </div>
-          );
-        }
-        switch (row.testResultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <>
-                {
-                  row.dictionaryResultList.find(
-                    (result) => result.id == row.result,
-                  )?.displayValue
-                }
-              </>
-            );
-          default:
-            if (row.readOnly) {
-              return row.result;
-            } else {
-              return (
-                <>
-                  <div className="result">
-                    <TextInput
-                      id={"resultList" + row.id + ".result"}
-                      name={"resultList[?(@.id == " + row.id + ")].result"}
-                      disabled={false}
-                      type="text"
-                      value={row.result}
-                      labelText=""
-                      size="lg"
-                      onChange={(e) => handleChange(e, row.id)}
-                    ></TextInput>
-                  </div>
-                </>
-              );
-            }
-        }
+        return (
+          <>
+            {renderResultValue(row, held && !awaitingReview)}
+            <InstrumentReported row={row} />
+            <ResultParts
+              headId={row.id}
+              parts={partsByHeadId.get(row.id) || []}
+              renderHeld={renderHeldResult}
+            />
+          </>
+        );
 
       default:
     }
     return row.result;
   };
 
+  const renderResultValue = (row, heldForMapping) => {
+    if (heldForMapping) {
+      return renderHeldResult(row);
+    }
+    switch (row.testResultType) {
+      case "M":
+      case "C":
+      case "D":
+        return (
+          <>
+            {
+              row.dictionaryResultList.find((result) => result.id == row.result)
+                ?.displayValue
+            }
+          </>
+        );
+      default:
+        if (row.readOnly) {
+          return row.result;
+        } else {
+          return (
+            <>
+              <div className="result">
+                <TextInput
+                  id={"resultList" + row.id + ".result"}
+                  name={"resultList[?(@.id == " + row.id + ")].result"}
+                  disabled={false}
+                  type="text"
+                  value={row.result}
+                  labelText=""
+                  size="lg"
+                  onChange={(e) => handleChange(e, row.id)}
+                ></TextInput>
+              </div>
+            </>
+          );
+        }
+    }
+  };
+
   return (
     <>
-      {patientResults.length === 0 && qcResults.length === 0 && (
+      {allResults.length === 0 && (
         <div
           className="orderLegendBody"
           data-testid="analyzer-results-empty"
@@ -637,7 +914,9 @@ const AnalyserResults = (props) => {
             { count: heldPatientResults.length },
           )}
           subtitle={intl.formatMessage({
-            id: "analyzer.results.held.subtitle",
+            id: needsPlacementDecision
+              ? "analyzer.results.held.placementGuidance"
+              : "analyzer.results.held.otherGuidance",
           })}
           lowContrast
           hideCloseButton
@@ -697,6 +976,12 @@ const AnalyserResults = (props) => {
                     "resultList" + result.id + ".isAccepted",
                   );
                   if (!checkbox) return;
+                  if (
+                    e.target.checked &&
+                    !groupIsMatched(result.sampleGroupingNumber)
+                  ) {
+                    return;
+                  }
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(
                     e.target.checked,
@@ -760,15 +1045,13 @@ const AnalyserResults = (props) => {
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
             {arrows.show && <ServerPageArrows {...arrows} />}
-            <DataTable
-              data={patientResults}
-              columns={columns}
-              isSortable
-            ></DataTable>
+            {tableRows.length > 0 && (
+              <DataTable data={tableRows} columns={columns} isSortable />
+            )}
             <Pagination
               {...serverPaginationProps({
                 paging: props.results?.paging,
-                rowsOnPage: patientResults.length,
+                rowsOnPage: allResults.length,
                 pageSize: props.serverPageSize,
                 onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
                 intl,
@@ -793,6 +1076,58 @@ const AnalyserResults = (props) => {
           </Form>
         )}
       </Formik>
+      {setupResults.length > 0 && (
+        <section data-testid="analyzer-setup-evidence">
+          <Accordion>
+            <AccordionItem
+              title={intl.formatMessage(
+                { id: "analyzer.results.setupEvidence.title" },
+                { count: setupResults.length },
+              )}
+            >
+              <p>
+                {intl.formatMessage({
+                  id: "analyzer.results.setupEvidence.help",
+                })}
+              </p>
+              <DataTable
+                data={setupResults}
+                columns={[
+                  {
+                    name: intl.formatMessage({ id: "column.name.sampleInfo" }),
+                    cell: (row) => (
+                      <div>
+                        {row.accessionNumber}
+                        {row.instrumentSampleFlags && (
+                          <div data-testid="InstrumentSampleFlags">
+                            <FormattedMessage
+                              id="analyzer.results.sampleFlags"
+                              values={{ flags: row.instrumentSampleFlags }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    name: intl.formatMessage({ id: "column.name.testName" }),
+                    selector: (row) => row.rawTestCode || row.testName,
+                  },
+                  {
+                    name: intl.formatMessage({ id: "column.name.result" }),
+                    cell: (row) => (
+                      <div>
+                        {renderHeldResult(row)}
+                        <InstrumentReported row={row} />
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </AccordionItem>
+          </Accordion>
+        </section>
+      )}
       {qcResults.length > 0 && (
         <Accordion style={{ marginTop: "24px" }}>
           <AccordionItem
@@ -825,6 +1160,8 @@ const AnalyserResults = (props) => {
                   id: "result",
                   name: intl.formatMessage({ id: "column.name.result" }),
                   selector: (row) => row.result,
+                  cell: (row) =>
+                    row.importIssueReason ? renderHeldResult(row) : row.result,
                   width: "20rem",
                 },
               ]}
@@ -832,6 +1169,46 @@ const AnalyserResults = (props) => {
           </AccordionItem>
         </Accordion>
       )}
+      <Modal
+        open={Boolean(removalCandidate)}
+        danger
+        launcherButtonRef={
+          removalLauncher.current ? removalLauncher : undefined
+        }
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "analyzer.results.removeConfirm.heading",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "analyzer.results.removeConfirm.remove",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setRemovalCandidate(null)}
+        onRequestSubmit={confirmHeldRemoval}
+      >
+        {removalCandidate && (
+          <p>
+            <FormattedMessage
+              id="analyzer.results.removeConfirm.body"
+              values={{
+                test:
+                  removalCandidate.componentLabel ||
+                  removalCandidate.testName ||
+                  removalCandidate.rawTestCode,
+                value:
+                  removalCandidate.rawResultValue ||
+                  removalCandidate.result ||
+                  "—",
+                accession: formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(
+                      removalCandidate.accessionNumber,
+                    )
+                  : removalCandidate.accessionNumber,
+              }}
+            />
+          </p>
+        )}
+      </Modal>
       <ResultAlertModal
         open={Boolean(resultAlert)}
         alerts={resultAlert?.alerts || []}
@@ -839,6 +1216,10 @@ const AnalyserResults = (props) => {
         customCriticalMessage={resultAlert?.customCriticalMessage}
         onConfirm={confirmResultAlert}
         onCorrect={() => setResultAlert(null)}
+      />
+      <DeliveryBundleModal
+        receiptId={bundleReceiptId}
+        onClose={() => setBundleReceiptId(null)}
       />
     </>
   );

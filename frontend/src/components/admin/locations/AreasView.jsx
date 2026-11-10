@@ -145,6 +145,12 @@ const AreasView = ({ lists }) => {
         refresh(parentId);
         if (parentId) {
           setOpen((current) => new Set([...current, parentId]));
+          const parentArea = Object.values(children)
+            .flat()
+            .find((candidate) => candidate.id === parentId);
+          if (!area && parentArea) {
+            refresh(parentArea.parentId);
+          }
         }
       })
       .catch((error) => {
@@ -254,7 +260,7 @@ const AreasView = ({ lists }) => {
     }
   };
 
-  const AddRow = ({ depth, parent }) => {
+  const renderAddRow = (depth, parent) => {
     const level = parent ? levelBelow(parent.level) : levels[0];
     return (
       <TableRow data-testid="locations-area-add-row">
@@ -401,7 +407,7 @@ const AreasView = ({ lists }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {adding === ROOT && <AddRow depth={0} parent={null} />}
+          {adding === ROOT && renderAddRow(0, null)}
           {rows.map(({ area, depth, hasChildren }) => {
             const isOpen = search !== null || open.has(area.id);
             const below = levelBelow(area.level);
@@ -553,9 +559,7 @@ const AreasView = ({ lists }) => {
                     </TableCell>
                   </TableRow>
                 )}
-                {adding === area.id && (
-                  <AddRow depth={depth + 1} parent={area} />
-                )}
+                {adding === area.id && renderAddRow(depth + 1, area)}
               </React.Fragment>
             );
           })}

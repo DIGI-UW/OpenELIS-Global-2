@@ -5,6 +5,7 @@ import { Modal } from "@carbon/react";
 import ImagePreviewModal from "./ImagePreviewModal";
 import "./PatientImageSelector.css";
 import { useIntl } from "react-intl";
+import { RequiredMarker } from "../../../common/RequiredMarker";
 
 const PatientImageSelector = ({
   value = null,
@@ -31,7 +32,7 @@ const PatientImageSelector = ({
     <div className="patient-image-selector">
       <label className="image-selector-label">
         {label}
-        {required && <span className="required-indicator"> *</span>}
+        <RequiredMarker required={required} announce />
       </label>
 
       <div className="image-selector-content">

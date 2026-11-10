@@ -96,6 +96,9 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
     });
   }, [dirty, draft.validationIssues, onStateChange, publishable, recognition]);
 
+  const validationIssues =
+    recognition?.validationIssues || draft.validationIssues || [];
+
   const accept = useCallback((response) => {
     setDraft(response);
     setProfile(response.profile);
@@ -746,14 +749,15 @@ const ProfileDraftEditor = ({ draft: initialDraft, onStateChange }) => {
         </>
       )}
       {!dirty &&
-        !recognition?.loaded &&
-        (draft.validationIssues || []).length > 0 && (
+        !recognition?.dirty &&
+        !recognition?.saving &&
+        validationIssues.length > 0 && (
           <InlineNotification
             kind="warning"
             lowContrast
             hideCloseButton
             title={text("validation")}
-            subtitle={draft.validationIssues.join(" ")}
+            subtitle={validationIssues.join(" ")}
           />
         )}
     </section>

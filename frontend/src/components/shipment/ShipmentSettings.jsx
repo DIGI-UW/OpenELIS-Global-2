@@ -21,9 +21,12 @@ import {
 } from "../utils/Utils";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
+import { labNow } from "../utils/labClock";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const ShipmentSettings = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { addNotification } = useContext(NotificationContext);
 
   const [boxLabelPrefix, setBoxLabelPrefix] = useState("");
@@ -339,7 +342,7 @@ const ShipmentSettings = () => {
                 <FormattedMessage
                   id="shipment.settings.prefixPreview"
                   values={{
-                    preview: `${boxLabelPrefix.trim().toUpperCase() || "BOX"}-${new Date().getFullYear()}-0001`,
+                    preview: `${boxLabelPrefix.trim().toUpperCase() || "BOX"}-${labNow().getFullYear()}-0001`,
                   }}
                 />
               </p>
@@ -462,6 +465,7 @@ const ShipmentSettings = () => {
 
             <ClickableTile
               href="/MasterListsPage/organizationManagement"
+              onClick={navigate("/MasterListsPage/organizationManagement")}
               style={{ marginBottom: "0.5rem" }}
             >
               <div
@@ -491,6 +495,7 @@ const ShipmentSettings = () => {
 
             <ClickableTile
               href="/MasterListsPage/userManagement"
+              onClick={navigate("/MasterListsPage/userManagement")}
               style={{ marginBottom: "0.5rem" }}
             >
               <div

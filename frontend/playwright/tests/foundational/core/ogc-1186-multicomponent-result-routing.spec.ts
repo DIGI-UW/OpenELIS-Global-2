@@ -286,10 +286,16 @@ test.describe("OGC-1186 multi-component result routing", () => {
 
       // Every component row of an accepted analysis renders read-only, so the
       // sibling is checked for what it shows, not for which control it offers.
+      // Only the result cell is read: the row's reference range legitimately
+      // names the dictionary's normal entry, which is one of the same words.
       const dictionaryRow = rowFor("Dictionary Result");
       await expect(dictionaryRow).toBeVisible();
-      await expect(dictionaryRow).not.toContainText(DETECTED);
-      await expect(dictionaryRow).not.toContainText(NOT_DETECTED);
+      const dictionaryValue = dictionaryRow.locator(
+        ".unifiedResultsReadOnlyValue",
+      );
+      await expect(dictionaryValue).toHaveCount(1);
+      await expect(dictionaryValue).not.toContainText(DETECTED);
+      await expect(dictionaryValue).not.toContainText(NOT_DETECTED);
     });
 
     await test.step("The worklist reads the value back on the Multi-Select component only", async () => {

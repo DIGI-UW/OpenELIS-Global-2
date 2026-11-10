@@ -187,12 +187,12 @@ test("E-Signature — full result entry and validation flow", async ({
       waitUntil: "domcontentloaded",
     });
 
-    // Search by accession number (scope to main to avoid header Search button)
+    // Search by accession number in the one Validation search (OGC-1418)
     const main = page.getByRole("main");
-    const searchInput = main.getByPlaceholder(/accession|lab no/i);
+    const searchInput = main.locator("#validationSearch");
     await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
     await searchInput.fill(accessionNumber);
-    await main.getByRole("button", { name: /search/i }).click();
+    await main.getByTestId("validation-load").click();
 
     // OGC-1030: release is per row, from the review panel — the queue row's
     // expander is what appears once the search has loaded.

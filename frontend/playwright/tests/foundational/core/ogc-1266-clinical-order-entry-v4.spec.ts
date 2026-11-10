@@ -5,6 +5,7 @@ import {
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1266 (Clinical Order Entry v4): the three-step clinical workflow with
@@ -53,9 +54,10 @@ async function enterNewPatient(page: Page, suffix: string) {
 
 async function chooseSerumWithOneTest(page: Page) {
   const sampleSection = page.getByTestId("order-sample-test-section");
-  await sampleSection
-    .getByLabel("Sample Type *")
-    .selectOption({ label: "Serum" });
+  await chooseCarbonOption(
+    sampleSection.getByRole("combobox", { name: /^Sample Type/ }),
+    "Serum",
+  );
   const firstTest = sampleSection.locator('label[for^="test-0-"]').first();
   await expect(firstTest).toBeVisible({ timeout: LONG_TIMEOUT });
   await firstTest.click();
@@ -147,26 +149,26 @@ test.describe("OGC-1266 clinical order entry", () => {
       timeout: LONG_TIMEOUT,
     });
     await expect(
-      page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
+      page.getByRole("heading", { level: 1, name: "Prepare Samples" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     const steps = page.locator(".order-stepper .cds--progress-label");
     await expect(steps).toHaveText(
       mode === "OFF"
         ? ["Enter Order", "Prepare Samples"]
-        : ["Enter Order", "Prepare Samples", "Sample check"],
+        : ["Enter Order", "Prepare Samples", "Sample Check"],
     );
 
-    // The collector is what the step still needs; the laboratory took the
-    // sample itself. Storage is skipped, and both travel with the save.
-    const checklist = page.getByTestId("to-continue-checklist");
-    await expect(checklist).toContainText("Collector for", {
+    // OGC-1419: the collector is optional, so a sample with its collection
+    // date and time and no collector continues. Storage is skipped, and it
+    // travels with the save.
+    const card = page.getByTestId("sample-collection-card-0");
+    await expect(card.locator("#collector-0")).toHaveValue("", {
       timeout: UI_TIMEOUT,
     });
-    await page
-      .getByTestId("sample-collection-card-0")
-      .locator('label[for="labPerformedSampling-0"]')
-      .click();
-    await expect(checklist).toHaveCount(0);
+    await expect(card.locator('label[for="collector-0"]')).toHaveText(
+      "Collector",
+    );
+    await expect(page.getByTestId("to-continue-checklist")).toHaveCount(0);
     const storage = page.getByTestId("prepare-storage-section");
     await expect(storage).toContainText(`${labNumber}-1`);
     await page.locator('label[for="skip-storage-checkbox"]').click();
@@ -199,8 +201,17 @@ test.describe("OGC-1266 clinical order entry", () => {
     await expect(page).toHaveURL(/\/order\/clinical\/qa\?order=/, {
       timeout: LONG_TIMEOUT,
     });
+    // Save and next names the saved order here too (OGC-1598). Enter Order's
+    // save raised the same message moments earlier and may still be shown, so
+    // the newest toast is this step's.
     await expect(
-      page.getByRole("heading", { level: 2, name: "Sample check" }),
+      page
+        .locator(".cds--toast-notification")
+        .filter({ hasText: `Order ${labNumber} has been saved.` })
+        .last(),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sample Check" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       page.getByRole("button", { name: "Return to Prepare Samples" }),

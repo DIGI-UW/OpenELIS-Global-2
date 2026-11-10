@@ -56,7 +56,7 @@ test.describe("OGC-949: Test Catalog editor sections M9–M12 (US9–US12)", () 
       await expect(page.getByTestId("terminology-section")).toBeVisible({
         timeout: 10_000,
       });
-      await page.locator("#terminology-source").selectOption("LOINC");
+      await page.locator("#terminology-source").fill("LOINC");
       await page.locator("#terminology-code").fill("1558-6");
       await page.locator("#terminology-relationship").selectOption("SAME_AS");
       await page.getByRole("button", { name: "Add mapping" }).click();

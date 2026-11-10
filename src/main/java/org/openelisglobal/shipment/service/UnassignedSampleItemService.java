@@ -32,6 +32,15 @@ public interface UnassignedSampleItemService {
     List<SampleItemDTO> getAllUnassigned();
 
     /**
+     * Get the unassigned sample items referred to one destination facility, the
+     * facility a box for them would be sent to.
+     *
+     * @param facilityId - The referral organization PK
+     * @return List of SampleItemDTO whose destination facility is that one
+     */
+    List<SampleItemDTO> getUnassignedByDestinationFacility(String facilityId);
+
+    /**
      * Check if a sample item is already assigned to a box.
      *
      * @param sampleItemId - The SampleItem PK

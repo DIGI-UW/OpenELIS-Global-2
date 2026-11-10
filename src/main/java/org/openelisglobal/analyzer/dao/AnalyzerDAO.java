@@ -23,9 +23,9 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
 
     Optional<Analyzer> findByName(String name);
 
-    List<Analyzer> findAllWithBindings();
+    List<Analyzer> findAllWithMapping();
 
-    Optional<Analyzer> findByIdWithBinding(String id);
+    Optional<Analyzer> findByIdWithMapping(String id);
 
     Optional<Analyzer> findByBridgeConnectionId(String bridgeConnectionId);
 

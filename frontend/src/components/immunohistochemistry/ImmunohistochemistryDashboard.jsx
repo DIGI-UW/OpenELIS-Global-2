@@ -39,6 +39,8 @@ import "./../pathology/PathologyDashboard.css";
 import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { programStatusLabel } from "../common/programStatusLabel";
+import { labNow } from "../utils/labClock";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
@@ -93,7 +95,7 @@ function ImmunohistochemistryDashboard() {
 
   const getPastWeek = () => {
     // Get the current date
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     // Calculate the date of the past week
     var pastWeekDate = new Date(currentDate);
@@ -190,9 +192,20 @@ function ImmunohistochemistryDashboard() {
           </Button>
         </TableCell>
       );
-    } else {
-      return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
+    if (cell.info.header === "status") {
+      return (
+        <TableCell key={cell.id}>
+          {programStatusLabel(
+            intl,
+            "immunohistochemistry.status.",
+            cell.value,
+            statuses.find((s) => s.id === cell.value)?.value,
+          )}
+        </TableCell>
+      );
+    }
+    return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
   /** One server page of cases and the page announcement it came with. */
@@ -339,12 +352,10 @@ function ImmunohistochemistryDashboard() {
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth={true}>
         <Column lg={16}>
-          <Section>
-            <Section>
-              <Heading>
-                <FormattedMessage id="immunohistochemistry.label.title" />
-              </Heading>
-            </Section>
+          <Section level={1}>
+            <Heading className="page-heading-04">
+              <FormattedMessage id="immunohistochemistry.label.title" />
+            </Heading>
           </Section>
         </Column>
       </Grid>
@@ -413,7 +424,12 @@ function ImmunohistochemistryDashboard() {
                     return (
                       <SelectItem
                         key={index}
-                        text={status.value}
+                        text={programStatusLabel(
+                          intl,
+                          "immunohistochemistry.status.",
+                          status.id,
+                          status.value,
+                        )}
                         value={status.id}
                       />
                     );
@@ -430,31 +446,35 @@ function ImmunohistochemistryDashboard() {
               headers={[
                 {
                   key: "requestDate",
-                  header: "Request Date",
+                  header: intl.formatMessage({ id: "sample.requestDate" }),
                 },
                 {
                   key: "status",
-                  header: "Stage",
+                  header: intl.formatMessage({ id: "pathology.label.stage" }),
                 },
                 {
                   key: "lastName",
-                  header: "Last Name",
+                  header: intl.formatMessage({ id: "patient.last.name" }),
                 },
                 {
                   key: "firstName",
-                  header: "First Name",
+                  header: intl.formatMessage({ id: "patient.first.name" }),
                 },
                 {
                   key: "assignedTechnician",
-                  header: "Assigned Technician",
+                  header: intl.formatMessage({
+                    id: "assigned.technician.label",
+                  }),
                 },
                 {
                   key: "assignedPathologist",
-                  header: "Assigned Pathologist",
+                  header: intl.formatMessage({
+                    id: "assigned.pathologist.label",
+                  }),
                 },
                 {
                   key: "labNumber",
-                  header: "Lab Number",
+                  header: intl.formatMessage({ id: "sample.label.labnumber" }),
                 },
               ]}
               isSortable

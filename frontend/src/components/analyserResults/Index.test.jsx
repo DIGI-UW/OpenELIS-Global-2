@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { createMemoryHistory } from "history";
@@ -137,6 +137,62 @@ describe("Analyzer results page", () => {
       expect.any(Function),
     );
     expect(history.location.state).toBeUndefined();
+  });
+
+  it("reapplies a dismissal draft only to surviving editable rows and clears it after Save", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          { id: "mapped", isAccepted: false, note: "", result: "original" },
+          {
+            id: "still-held",
+            importIssueReason: "unknown_analyzer_result_value",
+          },
+        ],
+        paging: { totalPages: 1, currentPage: 1 },
+      }),
+    );
+    renderPage("/AnalyzerResults?id=5");
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].results.resultList).toHaveLength(2),
+    );
+    const edits = {
+      isAccepted: true,
+      note: "Checked",
+      result: "edited",
+      typeOfSampleId: "2",
+      chosenAnalysisId: "10",
+      redirectAccession: "ACC-2",
+      redirectReason: "Corrected tube",
+    };
+
+    act(() =>
+      tableProps.mock.lastCall[0].refreshResults(1, {
+        mapped: edits,
+        removed: { isAccepted: true },
+        "still-held": { isAccepted: true },
+      }),
+    );
+
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].results.resultList[0]).toMatchObject(
+        edits,
+      ),
+    );
+    expect(tableProps.mock.lastCall[0].restoredEdits).toEqual({
+      mapped: edits,
+    });
+    expect(
+      tableProps.mock.lastCall[0].results.resultList[1].isAccepted,
+    ).toBeUndefined();
+    act(() => tableProps.mock.lastCall[0].refreshResults(1));
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].restoredEdits).toEqual({}),
+    );
+    expect(tableProps.mock.lastCall[0].results.resultList[0].isAccepted).toBe(
+      false,
+    );
   });
 
   it("finds an accession on a one-page analyzer worklist", async () => {

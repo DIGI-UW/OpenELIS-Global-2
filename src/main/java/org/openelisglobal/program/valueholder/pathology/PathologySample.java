@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.program.valueholder.pathology.PathologyConclusion.ConclusionType;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestType;
@@ -72,15 +73,17 @@ public class PathologySample extends ProgramSample {
     @NotNull
     private PathologyStatus status = PathologyStatus.ACCESSIONED;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     @LazyCollection(LazyCollectionOption.FALSE)
     private List<PathologyBlock> blocks;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologySlide> slides;
 
+    // Rebuilt on every save; keeps orphan removal until these rows carry a
+    // lifecycle of their own.
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "pathology_sample_id")
     private List<PathologyRequest> requests;
@@ -102,6 +105,13 @@ public class PathologySample extends ProgramSample {
 
     @Column(name = "microscopy_exam")
     private String microscopyExam;
+
+    /**
+     * Whether the specimen needs decalcifying before processing, which is what
+     * makes the DECALCIFICATION stage apply to this case.
+     */
+    @Column(name = "decalcification_required", nullable = false)
+    private boolean decalcificationRequired;
 
     public List<PathologyRequest> getRequests() {
         return requests;
@@ -208,15 +218,30 @@ public class PathologySample extends ProgramSample {
         return blocks;
     }
 
+    /** Names each block by the identifier written on it and the tissue it holds. */
     public String getBlocks_Audit() {
         if (blocks == null) {
             return null;
         } else {
-            return StringUtils.join(
-                    blocks.stream().map(e -> "Block Number: " + e.getBlockNumber() + ", Location: " + e.getLocation())
-                            .collect(Collectors.toList()),
-                    "; ");
+            return StringUtils.join(blocks.stream()
+                    .map(e -> "Block: " + e.displayIdentifier() + ", Cassette State: "
+                            + (e.getCassetteState() == null ? "" : e.getCassetteState().name()) + ", Location: "
+                            + StringUtils.defaultString(e.getLocation()) + ", Tissue: "
+                            + tissueTypeName(e.getTissueTypeId()) + ", Active: " + e.isActive())
+                    .collect(Collectors.toList()), "; ");
         }
+    }
+
+    /**
+     * The tissue type by its dictionary name, so a history row says what the
+     * cassette held rather than a bare id; the id stands in for a missing entry.
+     */
+    private static String tissueTypeName(String tissueTypeId) {
+        if (StringUtils.isBlank(tissueTypeId)) {
+            return "";
+        }
+        Dictionary entry = SpringContext.getBean(DictionaryService.class).getDataForId(tissueTypeId);
+        return entry == null ? tissueTypeId : entry.getDisplayValue();
     }
 
     public void setBlocks(List<PathologyBlock> blocks) {
@@ -227,13 +252,17 @@ public class PathologySample extends ProgramSample {
         return slides;
     }
 
+    /** Names each slide by the identifier written on it and by its parent block. */
     public String getSlides_Audit() {
         if (slides == null) {
             return null;
         } else {
-            return StringUtils
-                    .join(slides.stream().map(e -> "File Type: " + e.getFileType() + ", Location: " + e.getLocation())
-                            .collect(Collectors.toList()), "; ");
+            return StringUtils.join(slides.stream()
+                    .map(e -> "Slide: " + e.displayIdentifier() + ", Block: "
+                            + (e.getBlockId() == null ? "" : e.getBlockId()) + ", Location: "
+                            + StringUtils.defaultString(e.getLocation()) + ", Active: " + e.isActive() + ", File Type: "
+                            + StringUtils.defaultString(e.getFileType()))
+                    .collect(Collectors.toList()), "; ");
         }
     }
 
@@ -255,6 +284,14 @@ public class PathologySample extends ProgramSample {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public boolean isDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
     }
 
     public List<PathologyReport> getReports() {

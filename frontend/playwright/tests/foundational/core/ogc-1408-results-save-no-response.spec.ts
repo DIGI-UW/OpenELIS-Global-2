@@ -17,13 +17,11 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 const API = "/api/OpenELIS-Global";
 const CATALOG = `${API}/rest/test-catalog`;
 const SERUM_SAMPLE_TYPE_ID = "2";
-const UNIFIED_ROUTE_SETTING = "resultsEntryUnifiedRoute";
 const ESIG_SETTING = "electronicSignatureEnabled";
 const SAVE_ROUTE = "**/rest/results-entry/analysis/*/result";
 const NOT_SAVED = "The result was not saved because the server did not respond";
 
 const SETTING_MENU: Record<string, SettingsMenu> = {
-  [UNIFIED_ROUTE_SETTING]: "ResultConfigurationMenu",
   [ESIG_SETTING]: "SiteInformationMenu",
 };
 
@@ -136,14 +134,9 @@ async function orderTest(page: Page, testId: string): Promise<string> {
 }
 
 test.describe("Unified Results: a save that gets no answer", () => {
-  let unifiedWasOn = true;
   let esigWasOn = false;
 
   test.beforeEach(async ({ page }) => {
-    unifiedWasOn = await isSettingOn(page, UNIFIED_ROUTE_SETTING);
-    if (!unifiedWasOn) {
-      await setSetting(page, UNIFIED_ROUTE_SETTING, true);
-    }
     esigWasOn = await isSettingOn(page, ESIG_SETTING);
     if (esigWasOn) {
       await setSetting(page, ESIG_SETTING, false);
@@ -153,9 +146,6 @@ test.describe("Unified Results: a save that gets no answer", () => {
   test.afterEach(async ({ page }) => {
     if (esigWasOn) {
       await setSetting(page, ESIG_SETTING, true);
-    }
-    if (!unifiedWasOn) {
-      await setSetting(page, UNIFIED_ROUTE_SETTING, false);
     }
   });
 

@@ -1,5 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -128,7 +129,7 @@ describe("AreasView (OGC-1363)", () => {
       expect(api.searchAreas).toHaveBeenCalledWith("lae", "active"),
     );
     expect(
-      await screen.findByText("1 matches, shown with the areas they sit in"),
+      await screen.findByText("1 match, shown with the areas they sit in"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("locations-area-9101")).toHaveClass(
       "lo-highlight",
@@ -154,5 +155,80 @@ describe("AreasView (OGC-1363)", () => {
         "error",
       ),
     );
+  });
+  it("keeps a new area name as it is typed key by key (OGC-1420 3a)", async () => {
+    wrap();
+    await screen.findByText("Lae");
+    fireEvent.click(screen.getByTestId("locations-area-add-9100"));
+    const name = screen.getByLabelText(/New District · Morobe Province/);
+    await userEvent.type(name, "Kerema");
+
+    expect(screen.getByLabelText(/New District · Morobe Province/)).toHaveValue(
+      "Kerema",
+    );
+    expect(
+      screen.getByLabelText(/New District · Morobe Province/),
+    ).toHaveFocus();
+  });
+
+  it("shows that a parent has children once one is added under it (OGC-1420 3b)", async () => {
+    let laeChildren = 0;
+    api.listAreas.mockImplementation((parentId) =>
+      Promise.resolve(
+        parentId === "9101"
+          ? laeChildren
+            ? [
+                {
+                  ...LAE,
+                  id: "9106",
+                  name: "Taraka",
+                  level: 3,
+                  parentId: "9101",
+                },
+              ]
+            : []
+          : parentId
+            ? [{ ...LAE, childCount: laeChildren }]
+            : [MOROBE],
+      ),
+    );
+    api.createArea.mockImplementation(() => {
+      laeChildren = 1;
+      return Promise.resolve({ id: "9106" });
+    });
+    const levels = {
+      areaLevels: [
+        ...LISTS.areaLevels,
+        { level: 3, name: "Ward", typeId: "915" },
+      ],
+    };
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <LocationsContext.Provider
+          value={{ lists: levels, reloadLists: vi.fn(), notify, go: vi.fn() }}
+        >
+          <MemoryRouter>
+            <AreasView lists={levels} />
+          </MemoryRouter>
+        </LocationsContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText("Lae");
+    expect(screen.getByTestId("locations-area-9101")).not.toHaveAttribute(
+      "aria-expanded",
+    );
+    fireEvent.click(screen.getByTestId("locations-area-add-9101"));
+    fireEvent.change(screen.getByLabelText(/New Ward · Lae/), {
+      target: { value: "Taraka" },
+    });
+    fireEvent.click(screen.getByTestId("locations-area-save"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("locations-area-9101")).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      ),
+    );
+    expect(await screen.findByText("Taraka")).toBeInTheDocument();
   });
 });

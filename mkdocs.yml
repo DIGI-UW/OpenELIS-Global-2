@@ -26,6 +26,7 @@ nav:
        - Examples of FHIR messages used: messages.md
        - Deploy Consolidated Server: csbuild.md
        - Setup High Availability Failover: failover.md
+       - Run on Other Ports or Behind a Reverse Proxy: reverse-proxy.md
     - Develop: 
        - Dev Environment Setup Instructions: dev_setup.md
        - Developers Notes: dev.md
@@ -36,7 +37,8 @@ nav:
        - Analyzers:
           - Shipped analyzer clinical defaults: analyzers/default-catalog-evidence.md
           - Analyzer setup with partial mappings: analyzers/partial-mapping-setup.md
-          - Existing analyzer upgrade: analyzer-upgrade-migration.md
+          - Pairing with the Analyzer Bridge: analyzers/bridge-pairing.md
+          - Pre-Bridge analyzer settings: analyzers/pre-bridge-settings-export.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
     - Security:

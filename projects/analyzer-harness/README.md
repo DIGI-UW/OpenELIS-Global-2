@@ -2,53 +2,45 @@
 
 This directory now follows a single authoritative path for analyzer E2E parity.
 
-## Authoritative Base (required for CI parity)
+## Development and CI
 
-The analyzer harness CI gate runs from the repository root using:
+Start source development with `scripts/dev-stack up`. Export
+`eval "$(scripts/dev-stack env)"` from the repository root, then use the native
+Playwright/npm commands in `frontend`. Development data persists until an
+explicit reset.
 
-- `projects/analyzer-harness/docker-compose.base.yml`
-- `build.docker-compose.yml`
-- `.github/ci/ci.analyzer-harness.yml`
-- `.github/workflows/e2e-playwright-reusable.yml`
+Use `scripts/run-ci-checks.sh` for isolated CI. Select a CI job through that
+same command, for example `--job playwright-analyzers-1`. `--list-jobs` lists
+the supported choices. Selected jobs include their setup and produce a partial
+result. Internal lane scripts under `scripts/ci/` are implementation details.
+They use the workflow's Compose inputs, fixture loader and test projects, with
+local overrides for isolated identities and ports.
 
-Use `ci-parity-test.sh` to run that path locally. The extra local Compose
-override keeps CI images and service settings. Each run gets fresh containers,
-networks, volumes, and random loopback ports; its image tags are scoped to the
-worktree.
-
-```bash
-./projects/analyzer-harness/ci-parity-test.sh --build
-```
-
-`--build` rebuilds the WAR and isolated images from the current checkout before
-testing. Without it, the runner reuses this worktree's existing parity images;
-use that only when those images are already current. Neither mode stops other
-Docker projects or removes their volumes. The runner removes its own test stack
-and volumes when it exits; pass `--keep-stack` to leave that run available for
-inspection.
-
-The script performs:
-
-- strict preflight validation (no silent assumptions)
-- exact CI step order (compose up, readiness, fixtures, seed, permissions,
-  Playwright)
-- deterministic evidence capture in `/tmp/oe-ci-parity-<timestamp>/`
+See [the development guide](../../docs/dev_setup.md) for the authoritative
+commands, prerequisites and separation from published-image deployment.
 
 ## Workflow wait policy
 
 Analyzer browser tests wait for observable UI, API, and persisted-result states.
-Assertions use the existing whole-test deadline, configured through the harness
-Playwright projects, rather than separate step deadlines. Do not add sleeps or
-increase a test's deadline to repair failures. Diagnose the missing state using
-traces and service logs. Video-only pacing is presentation, never readiness.
+Neither a step nor a test has a time budget: the harness Playwright projects set
+one ten-minute limit that only ends a test that hangs, with its trace, and no
+spec sets its own. A slow service shows as a slow test, to be fixed in that
+service. Do not add sleeps; diagnose a missing state using traces and service
+logs. Video-only pacing is presentation, never readiness.
 
 ## Startup Catalog
 
-Before OE starts, the harness copies missing molecular test and result-choice
-CSVs from `projects/analyzer-harness/config-templates/` into the writable
-`configuration-data` volume. OE loads them through its ordinary startup
-configuration service. The harness files are test data, not application-wide
-clinical defaults. Existing uploaded files are not overwritten on restart.
+Before OE starts, the harness copies its dictionary,
+`projects/analyzer-harness/dictionary/`, into the writable `configuration-data`
+volume. OE loads it through its ordinary startup configuration service. The
+dictionary holds only what the analyzer stories use, as `analyzer-harness-*`
+files in the `volume/configuration/backend/` shape: the tests each shipped
+profile resolves by LOINC, their sample types, and the answers and components
+every shipped instrument sends, so each binds on a fresh setup with no operator
+work. A domain the dictionary supplies replaces OE's built-in files for that
+domain; other domains load the built-in files, as in every OE2 deployment. It is
+test data, not an application-wide clinical default. A file already in the
+volume, such as a Catalog Import upload, is not overwritten on restart.
 
 - CI and local parity load the same harness catalog through the normal loader.
 - Local development keeps optional Catalog Import uploads in its worktree-scoped
@@ -82,6 +74,7 @@ local-only overrides layered on top:
 - `docker-compose.dev.yml`
 - `docker-compose.analyzer-test.yml`
 - `docker-compose.letsencrypt.yml`
+- `docker-compose.worktree.yml`
 
 These files must not drift behaviorally from the authoritative CI harness path
 for critical analyzer flows.
@@ -101,11 +94,29 @@ Playwright.
 The startup path does not execute SQL fixture loaders or use fixed primary keys.
 It calls `seed-analyzers.sh --ensure-connections` to create missing
 profile-backed harness connections through authenticated application services.
-Ordinary restarts preserve existing connection configuration, mappings, and
-review data; they do not replay result traffic. CI uses the same
-`--ensure-connections` mode. The Playwright scenarios own their API-created
-clinical orders and native traffic. CI parity is a separate validation command
-because it intentionally reproduces CI packaging.
+Ordinary restarts preserve existing profile-pinned connection configuration,
+mappings, and review data; they do not replay result traffic. A harness analyzer
+row from before profile-pinned analyzers (no profile, no Bridge connection) is
+set up like a new one. CI uses the same `--ensure-connections` mode. The
+Playwright scenarios own their API-created clinical orders and native traffic.
+CI parity is a separate validation command because it intentionally reproduces
+CI packaging.
+
+A stack for recording the evidence videos starts with
+`scripts/dev-stack up --no-scenarios` and then runs
+`seed-analyzers.sh --networks-only`, which creates the mock's transports and no
+analyzer: every analyzer on screen is one a story sets up.
+
+The `harness-demo-video` Playwright project records every harness story tagged
+`@evidence` and nothing else. The tags on a story also say where its video
+belongs: one lane per analyzer type (`@astm`, `@hl7`, `@file`) and one stage
+(`@admin`, `@setup`, `@results`, `@exceptions`). After
+`npm run pw:test:harness-demo-video` (which also writes the JSON report),
+`npm run pw:evidence-videos` turns each recording into one MP4 under
+`evidence-videos/<lane>/<stage>/`, with the stretches in which nothing on screen
+changes cut short, and lists them in `index.json`. A story without its three
+tags, or without a passing recording, stops the packager. The videos are
+attached to the pull request, never committed.
 
 To remove this worktree's data explicitly:
 
@@ -123,17 +134,11 @@ classes):
 Re-run `scripts/dev-stack up`. The command rebuilds the WAR and recreates the
 changed application services. Frontend changes hot-reload automatically.
 
-## Resetting the test environment
+## Resetting development data
 
-For exact CI parity, prefer:
-
-```bash
-./projects/analyzer-harness/ci-parity-test.sh --build
-```
-
-The old reset wrapper was removed. Use `scripts/dev-stack down --volumes --yes`
-for an explicit local data reset, then `scripts/dev-stack up`. Use
-`ci-parity-test.sh` to reproduce CI; it is a separate validation command.
+Use `scripts/dev-stack down --volumes --yes`, then `scripts/dev-stack up`. The
+isolated CI runner creates fresh test state and cleans up its own resources; it
+does not reset the development stack.
 
 ## Let's Encrypt (analyzers.openelis-global.org)
 

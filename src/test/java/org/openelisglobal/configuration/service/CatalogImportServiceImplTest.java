@@ -147,6 +147,47 @@ public class CatalogImportServiceImplTest {
         assertTrue(summary.getValue(), summary.getValue().contains("test-sections/test-sections-a.csv: created=2"));
     }
 
+    /**
+     * OGC-1466: two files with one name would overwrite each other; refused,
+     * nothing stored.
+     */
+    @Test
+    public void twoFilesWithOneNameAreRefusedBeforeAnythingIsStored() {
+        IllegalArgumentException refused = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.apply(List.of(csv("tests-c.csv", 1), csv("tests-c.csv", 2)), null, "7"));
+
+        assertTrue(refused.getMessage(), refused.getMessage().contains("tests-c.csv"));
+        org.junit.Assert.assertFalse(Files.exists(stored("tests", "tests-c.csv")));
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.preview(List.of(csv("tests-c.csv", 1), csv("TESTS-C.csv", 2)), null, "7"));
+    }
+
+    @Test
+    public void apply_leavesNoTraceOfAFileThatFailedToLoad() throws Exception {
+        Path replaced = stored("tests", "tests-bad.csv");
+        Files.createDirectories(replaced.getParent());
+        Files.writeString(replaced, "name\nearlier\n");
+        doAnswer(invocation -> {
+            ConfigurationReloadOptions options = invocation.getArgument(0);
+            String domain = options.domains().iterator().next();
+            String fileName = options.forcedFiles().iterator().next();
+            return fileName.contains("bad")
+                    ? new ConfigurationReloadResult(
+                            List.of(ConfigurationReloadFileResult.error(domain, fileName, "bad rule")))
+                    : loadStoredFile(options);
+        }).when(initializationService).reload(any(ConfigurationReloadOptions.class));
+
+        ImportPlan plan = service.apply(
+                List.of(csv("test-sections-bad.csv", 1), csv("tests-bad.csv", 2), csv("test-sections-ok.csv", 1)), null,
+                "7");
+
+        assertEquals(List.of("test-sections-bad.csv", "tests-bad.csv"),
+                plan.files().stream().filter(file -> file.error() != null).map(FilePlan::fileName).sorted().toList());
+        assertFalse(Files.exists(stored("test-sections", "test-sections-bad.csv")));
+        assertEquals("name\nearlier\n", Files.readString(replaced));
+        assertTrue(Files.exists(stored("test-sections", "test-sections-ok.csv")));
+    }
+
     @Test
     public void apply_reportsAFileTheLoaderNeverSawAsAnError() {
         when(initializationService.reload(any(ConfigurationReloadOptions.class)))

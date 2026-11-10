@@ -93,7 +93,7 @@ export function displayResult(row) {
     );
     return match ? match.value : (row.result ?? "");
   }
-  return row.result ?? "";
+  return row.displayResult ?? row.result ?? "";
 }
 
 export function unitsOnly(units) {

@@ -1,6 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { seedPatient } from "../../../helpers/seed-patient-order";
 
 /**
  * Lists the server pages are shown behind one Carbon Pagination that drives
@@ -74,30 +75,23 @@ test.describe("Server paging through Carbon", () => {
     await page.goto("/WorkPlanByTestSection", {
       waitUntil: "domcontentloaded",
     });
-    const unit = page.locator("#select-1");
+    const unit = page.getByRole("combobox", { name: "Unit Type" });
     await expect(unit).toBeVisible({ timeout: NAV_TIMEOUT });
-    await expect
-      .poll(() => unit.locator("option").count(), { timeout: NAV_TIMEOUT })
-      .toBeGreaterThan(1);
-    const units = await unit
-      .locator("option")
-      .evaluateAll((options) =>
-        options
-          .map((option) => (option as HTMLOptionElement).value)
-          .filter(Boolean),
-      );
+    const units: { id: string; value: string }[] = await page.request
+      .get("/api/OpenELIS-Global/rest/user-test-sections/Results")
+      .then((response) => response.json());
     test.skip(units.length === 0, "needs a lab unit to open");
 
     const main = page.getByRole("main");
     const carbon = main.locator(".cds--pagination").first();
     let totalPages = 0;
-    for (const unitId of units) {
+    for (const { id: unitId, value: unitName } of units) {
       const loaded = page.waitForResponse((response) =>
         response
           .url()
           .includes(`WorkPlanByTestSection?test_section_id=${unitId}`),
       );
-      await unit.selectOption(unitId);
+      await chooseCarbonOption(unit, unitName);
       await loaded;
       await carbon.waitFor({ state: "visible", timeout: 1_500 }).catch(() => {
         // a unit with nothing to work on renders no table and no pagination
@@ -153,13 +147,19 @@ test.describe("Server paging through Carbon", () => {
   test("the merge screen's two panels are the shared patient search and hide the patient chosen opposite", async ({
     page,
   }) => {
+    // Two patients sharing a last name nothing else has: once one is chosen
+    // in the first panel, the second panel still has the other to list,
+    // whatever other patients the database holds.
+    const first = await seedPatient(page);
+    const second = await seedPatient(page, { lastName: first.lastName });
+
     await page.goto("/PatientMerge", { waitUntil: "domcontentloaded" });
     const firstLastName = page.locator("#patient1-lastName");
     await expect(firstLastName).toBeVisible({ timeout: NAV_TIMEOUT });
     await expect(page.locator("#patient2-lastName")).toBeVisible();
     await expect(page.locator("#lastName")).toHaveCount(0);
 
-    await firstLastName.fill("a");
+    await firstLastName.fill(first.lastName);
     const searched = page.waitForResponse((response) =>
       response.url().includes("/rest/patient-search-results"),
     );
@@ -167,11 +167,16 @@ test.describe("Server paging through Carbon", () => {
     await searched;
     const panels = page.locator(".patientSelectionSection");
     const firstRows = panels.nth(0).locator("tbody tr");
-    const found = await firstRows.count();
-    test.skip(found === 0, "needs at least one local patient to choose");
+    await expect(firstRows.filter({ hasText: first.firstName })).toHaveCount(
+      1,
+      { timeout: UI_TIMEOUT },
+    );
+    await expect(firstRows.filter({ hasText: second.firstName })).toHaveCount(
+      1,
+    );
     await expect(panels.nth(0).locator(".cds--pagination")).toBeVisible();
 
-    const chosenRow = firstRows.first();
+    const chosenRow = firstRows.filter({ hasText: first.firstName });
     const chosen = (await chosenRow.getAttribute("data-cy")) || "";
     const details = page.waitForResponse((response) =>
       response.url().includes("/rest/patient/merge/details/"),
@@ -185,14 +190,20 @@ test.describe("Server paging through Carbon", () => {
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(page.locator("#patient1-lastName")).toHaveCount(0);
 
-    await page.locator("#patient2-lastName").fill("a");
+    await page.locator("#patient2-lastName").fill(first.lastName);
     const searchedAgain = page.waitForResponse((response) =>
       response.url().includes("/rest/patient-search-results"),
     );
     await page.locator("#patient2-local_search").click();
     await searchedAgain;
     const secondRows = panels.nth(1).locator("tbody tr");
-    await expect(secondRows.first()).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(secondRows.filter({ hasText: second.firstName })).toHaveCount(
+      1,
+      { timeout: UI_TIMEOUT },
+    );
+    await expect(secondRows.filter({ hasText: first.firstName })).toHaveCount(
+      0,
+    );
     await expect(panels.nth(1).locator(`[data-cy="${chosen}"]`)).toHaveCount(0);
   });
 

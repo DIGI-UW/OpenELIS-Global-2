@@ -20,18 +20,6 @@ import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 public class PatientARVFollowupVersion1Report extends PatientARVReport implements IReportCreator {
 
     @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("showSerologie", Boolean.FALSE);
-        reportParameters.put("showVirologie", Boolean.TRUE);
-    }
-
-    @Override
-    protected String reportFileName() {
-        return "Patient_ARV_Version1";
-    }
-
-    @Override
     protected String getReportNameForReport() {
         return MessageUtil.getMessage("reports.label.patient.ARV.followup");
     }

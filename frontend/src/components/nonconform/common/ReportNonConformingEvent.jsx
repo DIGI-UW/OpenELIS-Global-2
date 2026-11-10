@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
+import { labNow } from "../../utils/labClock";
 import {
   Button,
   Column,
@@ -35,12 +36,36 @@ import {
 import NceFileAttachment from "./NceFileAttachment";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./ReportNonConformingEvent.css";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
+import SearchableSelect from "../../common/SearchableSelect";
 
 const initialReportFormValues = {
   type: undefined,
   value: "",
   error: undefined,
 };
+
+// Each severity is a radio a keyboard can reach and choose.
+const SEVERITIES = [
+  {
+    value: "CRITICAL",
+    tone: "critical",
+    label: "nce.severity.critical",
+    description: "nce.severity.critical.desc",
+  },
+  {
+    value: "MAJOR",
+    tone: "major",
+    label: "nce.severity.major",
+    description: "nce.severity.major.desc",
+  },
+  {
+    value: "MINOR",
+    tone: "minor",
+    label: "nce.severity.minor",
+    description: "nce.severity.minor.desc",
+  },
+];
 
 export const ReportNonConformingEvent = () => {
   const [reportFormValues, setReportFormValues] = useState(
@@ -59,10 +84,12 @@ export const ReportNonConformingEvent = () => {
   const intl = useIntl();
   const location = useLocation();
 
+  const today = format(labNow(), "MM/dd/yyyy");
+
   const [nceForm, setnceForm] = useState({
     nceNumber: "",
     reporterName: "",
-    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    dateOfEvent: today,
     reportingUnit: "",
     title: "",
     description: "",
@@ -95,28 +122,8 @@ export const ReportNonConformingEvent = () => {
 
   // Load categories, reporting units, and generate NCE number on mount
   useEffect(() => {
-    // Fetch categories - try new endpoint first, fall back to displayList
     getFromOpenElisServer("/rest/nce/categories", (response) => {
-      if (response && Array.isArray(response)) {
-        setCategories(response);
-      } else {
-        // Fallback: fetch from displayList (prebuilt image compatibility)
-        getFromOpenElisServer(
-          "/rest/displayList/NCE_CATEGORY",
-          (fallbackResponse) => {
-            if (fallbackResponse && Array.isArray(fallbackResponse)) {
-              // Convert IdValuePair format to expected format
-              setCategories(
-                fallbackResponse.map((item) => ({
-                  id: item.id,
-                  name: item.value,
-                  types: [], // Types will be fetched separately when category selected
-                })),
-              );
-            }
-          },
-        );
-      }
+      setCategories(Array.isArray(response) ? response : []);
     });
 
     getFromOpenElisServer(
@@ -151,41 +158,40 @@ export const ReportNonConformingEvent = () => {
   useEffect(() => {
     if (nceForm.categoryId) {
       const category = categories.find((cat) => cat.id === nceForm.categoryId);
-      if (category && category.types && category.types.length > 0) {
-        setTypes(category.types);
-      } else {
-        // Fallback: fetch types for category from displayList
-        getFromOpenElisServer(
-          `/rest/displayList/NCE_TYPE_FOR_CATEGORY?categoryId=${nceForm.categoryId}`,
-          (response) => {
-            if (response && Array.isArray(response)) {
-              setTypes(
-                response.map((item) => ({
-                  id: item.id,
-                  name: item.value,
-                })),
-              );
-            } else {
-              setTypes([]);
-            }
-          },
-        );
-      }
+      setTypes(category && Array.isArray(category.types) ? category.types : []);
     } else {
       setTypes([]);
     }
   }, [nceForm.categoryId, categories]);
 
   const selectOptions = [
-    { text: "Last Name", value: "lastName" },
-    { text: "First Name", value: "firstName" },
-    { value: "STNumber", text: "Patient Identification Code" },
-    { text: "Lab Number", value: "labNumber" },
+    {
+      text: intl.formatMessage({ id: "nonconform.search.lastName" }),
+      value: "lastName",
+    },
+    {
+      text: intl.formatMessage({ id: "nonconform.search.firstName" }),
+      value: "firstName",
+    },
+    {
+      text: intl.formatMessage({ id: "nonconform.search.patientCode" }),
+      value: "STNumber",
+    },
+    {
+      text: intl.formatMessage({ id: "nonconform.search.labNumber" }),
+      value: "labNumber",
+    },
   ];
 
   const headers = [
-    { key: "labOrderNumber", value: "Lab Number" },
-    { key: "type", value: "Specimen type" },
+    {
+      key: "labOrderNumber",
+      value: intl.formatMessage({ id: "nonconform.search.labNumber" }),
+    },
+    {
+      key: "type",
+      value: intl.formatMessage({ id: "nonconform.search.specimenType" }),
+    },
   ];
 
   const searchFor = (type, value) => {
@@ -370,7 +376,7 @@ export const ReportNonConformingEvent = () => {
       setnceForm({
         nceNumber: "",
         reporterName: "",
-        dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+        dateOfEvent: today,
         reportingUnit: "",
         title: "",
         description: "",
@@ -418,12 +424,17 @@ export const ReportNonConformingEvent = () => {
       });
     };
 
-    const handleError = () => {
+    const handleError = (reason) => {
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
+        message: reason
+          ? intl.formatMessage(
+              { id: "nonconform.order.save.failBecause" },
+              { reason },
+            )
+          : intl.formatMessage({ id: "nonconform.order.save.fail" }),
       });
     };
 
@@ -450,10 +461,10 @@ export const ReportNonConformingEvent = () => {
         "/rest/reportnonconformingevent",
         JSON.stringify(body),
         (data) => {
-          if (data.success) {
+          if (data && data.success) {
             handleSuccess();
           } else {
-            handleError();
+            handleError(data && data.error);
           }
         },
       );
@@ -464,7 +475,7 @@ export const ReportNonConformingEvent = () => {
     setnceForm({
       nceNumber: "",
       reporterName: "",
-      dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+      dateOfEvent: today,
       reportingUnit: "",
       title: "",
       description: "",
@@ -581,7 +592,7 @@ export const ReportNonConformingEvent = () => {
                 datePickerType="single"
                 dateFormat="m/d/Y"
                 value={nceForm.dateOfEvent}
-                maxDate={format(new Date(), "MM/dd/yyyy")}
+                maxDate={today}
                 onChange={(dates) => {
                   if (dates && dates[0]) {
                     const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
@@ -596,11 +607,15 @@ export const ReportNonConformingEvent = () => {
                 <DatePickerInput
                   id="date-of-event"
                   placeholder="mm/dd/yyyy"
+                  {...requiredProps()}
                   labelText={
-                    intl.formatMessage({
-                      id: "nce.field.dateOfEvent",
-                      defaultMessage: "Date of Event",
-                    }) + " *"
+                    <>
+                      {intl.formatMessage({
+                        id: "nce.field.dateOfEvent",
+                        defaultMessage: "Date of Event",
+                      })}
+                      <RequiredMarker />
+                    </>
                   }
                   invalid={!!errors.dateOfEvent}
                   invalidText={errors.dateOfEvent}
@@ -608,34 +623,25 @@ export const ReportNonConformingEvent = () => {
               </DatePicker>
             </Column>
             <Column lg={4} md={4} sm={4}>
-              <Select
+              <SearchableSelect
                 id="reporting-unit"
-                labelText={
-                  intl.formatMessage({
-                    id: "nce.field.reportingUnit",
-                    defaultMessage: "Reporting Unit",
-                  }) + " *"
-                }
+                required
+                labelText={intl.formatMessage({
+                  id: "nce.field.reportingUnit",
+                  defaultMessage: "Reporting Unit",
+                })}
+                options={reportingUnits}
                 value={nceForm.reportingUnit}
-                onChange={(e) => {
+                onChange={(id) => {
                   setnceForm((prev) => ({
                     ...prev,
-                    reportingUnit: e.target.value,
+                    reportingUnit: id,
                   }));
                   setErrors((prev) => ({ ...prev, reportingUnit: "" }));
                 }}
                 invalid={!!errors.reportingUnit}
                 invalidText={errors.reportingUnit}
-              >
-                <SelectItem value="" text="" />
-                {reportingUnits.map((option) => (
-                  <SelectItem
-                    key={option.id}
-                    value={option.id}
-                    text={option.value}
-                  />
-                ))}
-              </Select>
+              />
             </Column>
           </Grid>
         </Tile>
@@ -656,11 +662,15 @@ export const ReportNonConformingEvent = () => {
             <Column lg={8} md={4} sm={4}>
               <Select
                 id="nce-category"
+                {...requiredProps()}
                 labelText={
-                  intl.formatMessage({
-                    id: "nce.field.category",
-                    defaultMessage: "Category",
-                  }) + " *"
+                  <>
+                    {intl.formatMessage({
+                      id: "nce.field.category",
+                      defaultMessage: "Category",
+                    })}
+                    <RequiredMarker />
+                  </>
                 }
                 value={nceForm.categoryId}
                 onChange={(e) => {
@@ -717,85 +727,53 @@ export const ReportNonConformingEvent = () => {
           </Grid>
 
           <div className="nce-severity-section">
-            <label className="nce-field-label">
+            <label className="nce-field-label" id="nce-severity-label">
               <FormattedMessage
                 id="nce.field.severity"
                 defaultMessage="Severity"
               />{" "}
               *
             </label>
-            <div className="nce-severity-options">
-              <div
-                className={`nce-severity-card ${nceForm.severity === "CRITICAL" ? "selected critical" : ""}`}
-                onClick={() => {
-                  setnceForm((prev) => ({ ...prev, severity: "CRITICAL" }));
+            <div
+              className="nce-severity-options"
+              role="radiogroup"
+              aria-labelledby="nce-severity-label"
+              aria-required="true"
+            >
+              {SEVERITIES.map(({ value, tone, label, description }) => {
+                const selected = nceForm.severity === value;
+                const choose = () => {
+                  setnceForm((prev) => ({ ...prev, severity: value }));
                   setErrors((prev) => ({ ...prev, severity: "" }));
-                }}
-              >
-                <div className="nce-severity-indicator critical"></div>
-                <div className="nce-severity-content">
-                  <span className="nce-severity-label">
-                    <FormattedMessage
-                      id="nce.severity.critical"
-                      defaultMessage="Critical"
-                    />
-                  </span>
-                  <span className="nce-severity-description">
-                    <FormattedMessage
-                      id="nce.severity.critical.desc"
-                      defaultMessage="Patient safety risk, regulatory violation"
-                    />
-                  </span>
-                </div>
-              </div>
-
-              <div
-                className={`nce-severity-card ${nceForm.severity === "MAJOR" ? "selected major" : ""}`}
-                onClick={() => {
-                  setnceForm((prev) => ({ ...prev, severity: "MAJOR" }));
-                  setErrors((prev) => ({ ...prev, severity: "" }));
-                }}
-              >
-                <div className="nce-severity-indicator major"></div>
-                <div className="nce-severity-content">
-                  <span className="nce-severity-label">
-                    <FormattedMessage
-                      id="nce.severity.major"
-                      defaultMessage="Major"
-                    />
-                  </span>
-                  <span className="nce-severity-description">
-                    <FormattedMessage
-                      id="nce.severity.major.desc"
-                      defaultMessage="Significant quality or operational impact"
-                    />
-                  </span>
-                </div>
-              </div>
-
-              <div
-                className={`nce-severity-card ${nceForm.severity === "MINOR" ? "selected minor" : ""}`}
-                onClick={() => {
-                  setnceForm((prev) => ({ ...prev, severity: "MINOR" }));
-                  setErrors((prev) => ({ ...prev, severity: "" }));
-                }}
-              >
-                <div className="nce-severity-indicator minor"></div>
-                <div className="nce-severity-content">
-                  <span className="nce-severity-label">
-                    <FormattedMessage
-                      id="nce.severity.minor"
-                      defaultMessage="Minor"
-                    />
-                  </span>
-                  <span className="nce-severity-description">
-                    <FormattedMessage
-                      id="nce.severity.minor.desc"
-                      defaultMessage="Limited impact, easily corrected"
-                    />
-                  </span>
-                </div>
-              </div>
+                };
+                return (
+                  <div
+                    key={value}
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={0}
+                    data-testid={`nce-severity-${value}`}
+                    className={`nce-severity-card ${selected ? `selected ${tone}` : ""}`}
+                    onClick={choose}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        choose();
+                      }
+                    }}
+                  >
+                    <div className={`nce-severity-indicator ${tone}`}></div>
+                    <div className="nce-severity-content">
+                      <span className="nce-severity-label">
+                        <FormattedMessage id={label} />
+                      </span>
+                      <span className="nce-severity-description">
+                        <FormattedMessage id={description} />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {errors.severity && (
               <div className="nce-error-text">{errors.severity}</div>
@@ -840,11 +818,15 @@ export const ReportNonConformingEvent = () => {
             <Column lg={16} md={8} sm={4}>
               <TextArea
                 id="nce-description"
+                {...requiredProps()}
                 labelText={
-                  intl.formatMessage({
-                    id: "nce.field.description",
-                    defaultMessage: "Description",
-                  }) + " *"
+                  <>
+                    {intl.formatMessage({
+                      id: "nce.field.description",
+                      defaultMessage: "Description",
+                    })}
+                    <RequiredMarker />
+                  </>
                 }
                 placeholder={intl.formatMessage({
                   id: "nce.field.description.placeholder",

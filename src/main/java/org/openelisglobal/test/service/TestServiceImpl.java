@@ -2,6 +2,7 @@ package org.openelisglobal.test.service;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.Vector;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,6 +31,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.dao.TestQcThresholdDAO;
 import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
@@ -1004,6 +1007,34 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     public Optional<TestQcThreshold> getQcThreshold(String testId) {
         return SpringContext.getBean(org.openelisglobal.qc.dao.TestQcThresholdDAO.class)
                 .findByTestId(Integer.valueOf(testId));
+    }
+
+    @Override
+    @Transactional
+    public void saveQcThreshold(String testId, BigDecimal blankThreshold, BigDecimal rpdThreshold,
+            BigDecimal recoveryWindowPct, String sysUserId) {
+        TestQcThresholdDAO dao = SpringContext.getBean(TestQcThresholdDAO.class);
+        Optional<TestQcThreshold> existing = dao.findByTestId(Integer.valueOf(testId));
+        if (blankThreshold == null && rpdThreshold == null && recoveryWindowPct == null) {
+            existing.ifPresent(dao::delete);
+            return;
+        }
+        TestQcThreshold threshold = existing.orElseGet(() -> {
+            TestQcThreshold created = new TestQcThreshold();
+            created.setId(UUID.randomUUID().toString());
+            created.setTestId(Integer.valueOf(testId));
+            return created;
+        });
+        threshold.setBlankThreshold(blankThreshold);
+        threshold.setRpdThreshold(rpdThreshold);
+        threshold.setRecoveryWindowPct(recoveryWindowPct);
+        threshold.setSystemUserId(Integer.valueOf(sysUserId));
+        threshold.setSysUserId(sysUserId);
+        if (existing.isPresent()) {
+            dao.update(threshold);
+        } else {
+            dao.insert(threshold);
+        }
     }
 
     @Override

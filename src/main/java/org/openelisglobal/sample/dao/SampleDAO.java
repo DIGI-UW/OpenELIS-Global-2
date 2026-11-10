@@ -101,4 +101,7 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
     List<Sample> getSamplesByPriority(OrderPriority priority) throws LIMSRuntimeException;
 
     List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
+
+    List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(Timestamp since, Timestamp cutoff,
+            List<String> analysisStatusIds);
 }

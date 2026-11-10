@@ -9,6 +9,7 @@ import { fetchHistoricalReadings } from "./api";
 import { toDate } from "./shared/timeUtils";
 import { useIntl } from "react-intl";
 import { toLocalIsoDate } from "../utils/Utils";
+import { labNow } from "../utils/labClock";
 
 const TIME_RANGE_OPTIONS = [
   "Last 24 Hours",
@@ -300,7 +301,7 @@ export default function HistoricalTrends({
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
 
-    const timestamp = toLocalIsoDate(new Date());
+    const timestamp = toLocalIsoDate(labNow());
     const filename = `freezer-${selectedMetric.toLowerCase()}-data-${timestamp}.csv`;
 
     link.setAttribute("href", url);

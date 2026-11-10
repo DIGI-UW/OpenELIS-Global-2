@@ -29,9 +29,10 @@ import org.springframework.stereotype.Component;
  * {@code testName} is required. {@code sampleType} scopes the range to one of
  * the test's specimens (and picks a legacy {@code Name(Specimen)} record);
  * {@code componentCode} scopes it to one of the test's result components;
- * {@code gender} is M or F; ages are in years, blank meaning 0 and no upper
- * bound; a blank bound is open. The rows of one test are that test's complete
- * numeric ranges and replace what it had, written through
+ * {@code gender} is M or F; ages are in years (stored in days, as the Ranges
+ * editor stores them), blank meaning 0 and no upper bound; a blank bound is
+ * open. The rows of one test are that test's complete numeric ranges and
+ * replace what it had, written through
  * {@link ResultLimitService#saveRangesForTest}; dictionary limits and reporting
  * ranges are left alone, as the editor leaves them.
  */
@@ -143,8 +144,8 @@ public class ResultLimitConfigurationHandler extends AbstractCatalogCsvHandler {
         if (minAge < 0d || maxAge <= minAge) {
             throw new IllegalArgumentException("age range must be 0 <= minAge < maxAge");
         }
-        limit.setMinAge(minAge);
-        limit.setMaxAge(maxAge);
+        limit.setMinAge(yearsToDays(minAge));
+        limit.setMaxAge(yearsToDays(maxAge));
         limit.setLowNormal(orDefault(row.decimal("lowNormal"), Double.NEGATIVE_INFINITY));
         limit.setHighNormal(orDefault(row.decimal("highNormal"), Double.POSITIVE_INFINITY));
         limit.setLowCritical(orDefault(row.decimal("lowCritical"), Double.POSITIVE_INFINITY));
@@ -156,5 +157,13 @@ public class ResultLimitConfigurationHandler extends AbstractCatalogCsvHandler {
 
     private static double orDefault(Double value, double defaultValue) {
         return value == null ? defaultValue : value;
+    }
+
+    /**
+     * The file states ages in years; a limit holds them in days, the unit the
+     * patient's age is compared in (the Ranges editor converts the same way).
+     */
+    static double yearsToDays(double years) {
+        return years == Double.POSITIVE_INFINITY ? years : years * 365d;
     }
 }

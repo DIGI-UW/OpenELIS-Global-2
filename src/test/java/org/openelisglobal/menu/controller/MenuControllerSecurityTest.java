@@ -8,8 +8,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import org.junit.After;
 import org.junit.Test;
 import org.openelisglobal.menu.service.MenuService;
+import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
@@ -30,6 +32,15 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @WebAppConfiguration
 @ContextConfiguration(classes = MenuControllerSecurityTest.TestConfig.class)
 public class MenuControllerSecurityTest extends SecuritySliceMockMvcTest {
+
+    /**
+     * The admin GET builds the static menu tree with this context's stand-in
+     * service; dropped here so the next context builds its own.
+     */
+    @After
+    public void dropTreeBuiltWithTheStandIn() {
+        MenuUtil.forceRebuild();
+    }
 
     @Test
     public void adminMenuWithoutAuthenticationReturns401() throws Exception {

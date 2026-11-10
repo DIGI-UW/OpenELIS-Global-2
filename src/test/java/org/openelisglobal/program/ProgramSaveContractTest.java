@@ -83,6 +83,32 @@ public class ProgramSaveContractTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void microbiologyVisibilityIsOptInAndSurvivesPartialSaves() {
+        EditProgramForm form = newForm("V2TMICRO", "V2 micro program");
+        EditProgramForm saved = controller.createProgram(form);
+        assertEquals(Boolean.FALSE, saved.getShowOnMicroCase());
+        Program created = programService.get(saved.getProgram().getId());
+        EditProgramForm enable = identityForm(created);
+        enable.setShowOnMicroCase(true);
+        controller.createProgram(enable);
+        assertTrue(programService.get(created.getId()).isShowOnMicroCase());
+        assertEquals(Boolean.TRUE, controller.createProgram(created.getId()).getShowOnMicroCase());
+
+        EditProgramForm partial = identityForm(created);
+        partial.getProgram().setProgramName("V2 micro renamed");
+        partial.setActive(false);
+        controller.createProgram(partial);
+        assertTrue(programService.get(created.getId()).isShowOnMicroCase());
+        assertEquals("N", programService.get(created.getId()).getIsActive());
+
+        EditProgramForm disable = identityForm(programService.get(created.getId()));
+        disable.setShowOnMicroCase(false);
+        controller.createProgram(disable);
+        assertEquals(Boolean.FALSE, controller.createProgram(created.getId()).getShowOnMicroCase());
+        assertEquals("N", programService.get(created.getId()).getIsActive());
+    }
+
+    @Test
     public void create_persistsDomainLifecycleAndEveryLabUnit() {
         EditProgramForm form = newForm("V2TNEW", "V2 new program");
         form.setDomain("ENVIRONMENTAL");

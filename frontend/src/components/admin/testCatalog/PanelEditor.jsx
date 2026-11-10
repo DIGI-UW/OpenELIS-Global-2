@@ -1,6 +1,14 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
-import { Button, Column, Grid, Loading, Section, Tag } from "@carbon/react";
+import {
+  Button,
+  Column,
+  Grid,
+  InlineNotification,
+  Loading,
+  Section,
+  Tag,
+} from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -123,6 +131,14 @@ const PanelEditor = () => {
           </Section>
           {loading ? (
             <Loading small withOverlay={false} />
+          ) : !isCreate && !panel ? (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              data-testid="panel-not-found"
+              title={intl.formatMessage({ id: "label.panel.notFound" })}
+            />
           ) : (
             <>
               {activeSection === "basic-info" && (

@@ -34,7 +34,9 @@ import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.localization.ShippedLabels;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 @Entity
 @Table(name = "DICTIONARY")
@@ -64,6 +66,17 @@ public class Dictionary extends BaseObject<String> {
     @Column(name = "DICT_ENTRY", length = 4000)
     private String dictEntry;
 
+    @Column(name = "container_population", length = 20)
+    private String containerPopulation;
+
+    public String getContainerPopulation() {
+        return containerPopulation;
+    }
+
+    public void setContainerPopulation(String value) {
+        containerPopulation = value;
+    }
+
     @Transient
     private String selectedDictionaryCategoryId;
 
@@ -77,7 +90,7 @@ public class Dictionary extends BaseObject<String> {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
-    @Column(name = "display_key", length = 60)
+    @Column(name = "display_key", length = 100)
     private String nameKey;
 
     @Column(name = "LOINC_CODE", length = 20)
@@ -187,7 +200,20 @@ public class Dictionary extends BaseObject<String> {
         this.localizedDictionaryName = localizedDictionaryName;
     }
 
+    /**
+     * Where the label in the current user's language comes from: the shipped
+     * translation, the lab's override of it, or the site's own value (OGC-1507
+     * FR-6).
+     */
+    public String getLabelOrigin() {
+        return ShippedLabels
+                .origin(getNameKey(), localizedDictionaryName, LocaleContextHolder.getLocale().getLanguage()).name();
+    }
+
     public String getDisplayValue() {
+        if (ShippedLabels.isShipped(getNameKey())) {
+            return ShippedLabels.label(getNameKey(), localizedDictionaryName, dictEntry);
+        }
         if (localizedDictionaryName == null) {
             return getDictEntry();
         } else {
@@ -196,14 +222,17 @@ public class Dictionary extends BaseObject<String> {
     }
 
     /**
-     * Override to prioritize database localization over message bundle
-     * (display_key). Order of precedence: 1. Database localization
+     * An entry OpenELIS ships with a display key in the interface catalogue reads
+     * through that key (OGC-1507). Any other entry: 1. Database localization
      * (localization_value table) 2. Message bundle lookup via nameKey/display_key
      * 3. dictEntry as final fallback
      */
     @Override
     @JsonIgnore
     public String getLocalizedName() {
+        if (ShippedLabels.isShipped(getNameKey())) {
+            return ShippedLabels.label(getNameKey(), localizedDictionaryName, dictEntry);
+        }
         // First, try the new database localization system
         if (localizedDictionaryName != null) {
             String localizedValue = localizedDictionaryName.getLocalizedValue();

@@ -20,6 +20,7 @@ import {
   formatPickerDateForIso,
 } from "../order/dateUtils";
 import "./MicrobiologyOrderDetailFields.scss";
+import { labNow } from "../utils/labClock";
 
 export const emptyMicrobiologyOrderDetail = {
   culturePurpose: "",
@@ -29,12 +30,6 @@ export const emptyMicrobiologyOrderDetail = {
   numberOfSets: "",
   clinicalHistory: "",
   antibioticExposure: false,
-};
-
-// Starting values for an order that qualifies for the microbiology workflow.
-export const defaultMicrobiologyOrderDetail = {
-  ...emptyMicrobiologyOrderDetail,
-  culturePurpose: "CLINICAL_DIAGNOSTIC",
 };
 
 export const formatAdmissionDateForPicker = formatIsoDateForBackend;
@@ -49,6 +44,7 @@ const MicrobiologyOrderDetailFields = ({
   isReadOnly = false,
   showCultureMethod = true,
   collectionDate = "",
+  showCulturePurpose = true,
 }) => {
   const intl = useIntl();
   const { configurationProperties = {} } =
@@ -70,7 +66,7 @@ const MicrobiologyOrderDetailFields = ({
   const isOutpatient = fields.patientOrigin === "OUTPATIENT";
   const admissionDateIsFuture =
     Boolean(fields.admissionDate) &&
-    fields.admissionDate > format(new Date(), "yyyy-MM-dd");
+    fields.admissionDate > format(labNow(), "yyyy-MM-dd");
   const daysAfterAdmission = daysBetweenIsoDates(
     fields.admissionDate,
     collectionDate,
@@ -123,41 +119,43 @@ const MicrobiologyOrderDetailFields = ({
           )}
         </div>
       )}
-      <div className="microbiology-order-detail-fields__wide">
-        <RadioButtonGroup
-          legendText={intl.formatMessage({
-            id: "microbiology.culturePurpose.label",
-          })}
-          name={`${idPrefix}-culture-purpose`}
-          valueSelected={fields.culturePurpose || ""}
-          onChange={(value) => onChange("culturePurpose", value)}
-          orientation="vertical"
-        >
-          <RadioButton
-            id={`${idPrefix}-culture-purpose-clinical`}
-            labelText={intl.formatMessage({
-              id: "microbiology.culturePurpose.clinical",
+      {showCulturePurpose && (
+        <div className="microbiology-order-detail-fields__wide">
+          <RadioButtonGroup
+            legendText={intl.formatMessage({
+              id: "microbiology.culturePurpose.label",
             })}
-            value="CLINICAL_DIAGNOSTIC"
-            disabled={isReadOnly}
-          />
-          <RadioButton
-            id={`${idPrefix}-culture-purpose-screening`}
-            labelText={intl.formatMessage({
-              id: "microbiology.culturePurpose.screening",
-            })}
-            value="ACTIVE_SCREENING"
-            disabled={isReadOnly}
-          />
-        </RadioButtonGroup>
-        {!fields.culturePurpose && (
-          <Tag type="gray" size="sm">
-            {intl.formatMessage({
-              id: "microbiology.culturePurpose.unspecified",
-            })}
-          </Tag>
-        )}
-      </div>
+            name={`${idPrefix}-culture-purpose`}
+            valueSelected={fields.culturePurpose || ""}
+            onChange={(value) => onChange("culturePurpose", value)}
+            orientation="vertical"
+          >
+            <RadioButton
+              id={`${idPrefix}-culture-purpose-clinical`}
+              labelText={intl.formatMessage({
+                id: "microbiology.culturePurpose.clinical",
+              })}
+              value="CLINICAL_DIAGNOSTIC"
+              disabled={isReadOnly}
+            />
+            <RadioButton
+              id={`${idPrefix}-culture-purpose-screening`}
+              labelText={intl.formatMessage({
+                id: "microbiology.culturePurpose.screening",
+              })}
+              value="ACTIVE_SCREENING"
+              disabled={isReadOnly}
+            />
+          </RadioButtonGroup>
+          {!fields.culturePurpose && (
+            <Tag type="gray" size="sm">
+              {intl.formatMessage({
+                id: "microbiology.culturePurpose.unspecified",
+              })}
+            </Tag>
+          )}
+        </div>
+      )}
       <Select
         id={`${idPrefix}-patient-origin`}
         labelText={intl.formatMessage({

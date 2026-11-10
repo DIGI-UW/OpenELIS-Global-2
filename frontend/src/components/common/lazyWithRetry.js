@@ -1,4 +1,9 @@
 import React from "react";
+import {
+  appShellReachable,
+  createServerRetrier,
+  serverRetryDelay,
+} from "../utils/serverConnection";
 
 const RELOAD_MARK = "oe.lazyWithRetry.reloaded";
 
@@ -45,12 +50,40 @@ function clearReloadMark() {
  * milliseconds. Longer waits would harm real error reporting when the
  * chunk is genuinely missing (e.g., deploy mismatch).
  *
+ * When those attempts fail because the server is down (a frontend
+ * restart, a dropped connection), reloading would land on the proxy's
+ * error page, so the route waits instead: it checks that the server hands
+ * out the app's start page again, with the shared growing gaps and the
+ * "Can't reach the server" notice (OGC-1442), then loads the chunk again.
+ * Browsers may remember the failed import, so if that last try fails the
+ * page reloads on the same URL; the server has just answered, so this
+ * reload cannot land on an error page or loop, and it happens even when
+ * an earlier outage already used the tab's one stale-build reload.
+ *
  * A tab opened before a deploy still requests the previous build's
  * hashed chunks, which no longer exist, so retrying cannot succeed.
- * When every attempt fails, the page reloads once to fetch the current
- * index.html; a second failure in the same tab reaches the error
- * boundary. A successful load clears the guard for the next deploy.
+ * When the server is up and the chunk still fails, the page reloads once
+ * to fetch the current index.html; a second failure in the same tab
+ * reaches the error boundary. A successful load clears the guard for the
+ * next deploy.
  */
+async function waitForAppShell() {
+  if (await appShellReachable()) {
+    return false;
+  }
+  const retrier = createServerRetrier();
+  try {
+    for (let failures = 1; ; failures += 1) {
+      await retrier.wait(serverRetryDelay(failures));
+      if (await appShellReachable()) {
+        return true;
+      }
+    }
+  } finally {
+    retrier.done();
+  }
+}
+
 export default function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
   // This helper is the one legitimate wrapper around React.lazy.
   // eslint-disable-next-line local/no-raw-react-lazy
@@ -68,6 +101,17 @@ export default function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
             setTimeout(resolve, backoffMs * (attempt + 1)),
           );
         }
+      }
+    }
+    if (await waitForAppShell()) {
+      try {
+        const module = await factory();
+        clearReloadMark();
+        return module;
+      } catch {
+        markReload();
+        window.location.reload();
+        return new Promise(() => {});
       }
     }
     if (markReload()) {

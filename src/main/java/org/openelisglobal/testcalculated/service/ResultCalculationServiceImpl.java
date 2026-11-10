@@ -52,4 +52,12 @@ public class ResultCalculationServiceImpl extends AuditableBaseObjectServiceImpl
         }
         return resultCalculationDAO.getResultCalculationByPatientAndCalculation(patient, calculation);
     }
+
+    @Override
+    public List<ResultCalculation> getResultCalculationsByResultId(String resultId) {
+        if (resultId == null) {
+            return Collections.emptyList();
+        }
+        return resultCalculationDAO.getResultCalculationsByResultId(resultId);
+    }
 }

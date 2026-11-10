@@ -18,12 +18,7 @@ export const MenuCheckBox = (props) => {
         },
       );
     }
-    if (
-      !currentMenuItem.menu.configurationOnly &&
-      !currentMenuItem.menu.configurationFields?.includes("isActive")
-    ) {
-      newCurrentMenuItem.menu.isActive = value;
-    }
+    newCurrentMenuItem.menu.isActive = value;
     return newCurrentMenuItem;
   };
 
@@ -54,11 +49,7 @@ export const MenuCheckBox = (props) => {
                   ? curMenuItem.menu.displayKey
                   : "missing display key",
             })}
-            disabled={
-              curMenuItem.menu.elementId === "menu_sidenav" ||
-              curMenuItem.menu.configurationOnly ||
-              curMenuItem.menu.configurationFields?.includes("isActive")
-            }
+            disabled={curMenuItem.menu.elementId === "menu_sidenav"}
             checked={curMenuItem?.menu.isActive}
             onChange={(_, { checked }) => {
               if (path === "$" || !path) {
@@ -81,12 +72,6 @@ export const MenuCheckBox = (props) => {
               }
             }}
           />
-          {(curMenuItem.menu.configurationOnly ||
-            curMenuItem.menu.configurationFields?.includes("isActive")) && (
-            <span>
-              {intl.formatMessage({ id: "menu.configuration.managed" })}
-            </span>
-          )}
         </div>
         {recurse &&
           curMenuItem?.childMenus?.map((childMenuItem, index) => {

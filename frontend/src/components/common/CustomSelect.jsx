@@ -14,6 +14,10 @@ const CustomSelect = (props) => {
         id={props.id}
         value={props.value ? props.value : ""}
         disabled={props.disabled}
+        aria-label={props["aria-label"]}
+        aria-required={props["aria-required"]}
+        invalid={props.invalid}
+        invalidText={props.invalidText}
       >
         <SelectItem text={props.placeholder || "Select..."} value="" />
         {props.defaultSelect && (

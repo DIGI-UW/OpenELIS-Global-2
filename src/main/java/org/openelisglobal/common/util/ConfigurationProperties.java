@@ -125,6 +125,7 @@ public abstract class ConfigurationProperties {
                                                               // failed to
         // reach their destination
         TRACK_PATIENT_PAYMENT("trackPayment", "text"), // If true then patient payment status can be entered
+        SHOW_FAX_FIELDS("showFaxFields", "text"), // If true order entry shows fax fields for facilities and providers
         ACCESSION_NUMBER_VALIDATE("validateAccessionNumber", "text"), // If true then validate the accession number
         ALERT_FOR_INVALID_RESULTS("alertWhenInvalidResult", "text"), // If true then technician will get an alert for
                                                                      // results
@@ -136,6 +137,7 @@ public abstract class ConfigurationProperties {
                                                                             // page
         // only if user has correct permissions
         USE_PAGE_NUMBERS_ON_REPORTS("reportPageNumbers", "text"), // If true page numbers will be used on reports
+        REPORT_PAPER_SIZE("reportPaperSize", "text"), // A4 or Letter, the paper printed reports are laid out on
         QA_SORT_EVENT_LIST("sortQaEvents", "text"), // If true QA events will be sorted by name
         ALWAYS_VALIDATE_RESULTS("validate all results", "text"), // If true all results will be validated, otherwise
                                                                  // just those
@@ -212,9 +214,10 @@ public abstract class ConfigurationProperties {
         MAX_SLIDE_LABEL_PRINTED("numMaxSlideLabels", "text"), // Max slides that can be printed
         MAX_BLOCK_LABEL_PRINTED("numMaxBlockLabels", "text"), // Max block labels that can be printed
         MAX_FREEZER_LABEL_PRINTED("numMaxFreezerLabels", "text"), // Max freezer labels that can be printed
-        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"), // Hard upper bound on the per-request
-        // quantity parameter, applied even when override=true (defends against
-        // unbounded PDF render loops)
+        // Per-quantity safety bound, applied even when override=true.
+        MAX_REQUEST_LABEL_QUANTITY("numMaxRequestLabelQuantity", "text"),
+        // Total copies in one PDF, including all sets/specimens.
+        MAX_REQUEST_LABEL_TOTAL("numMaxRequestLabelTotal", "text"),
         DEFAULT_ORDER_LABEL_PRINTED("numDefaultOrderLabels", "text"), // Max order labels that can be printed
         DEFAULT_SPECIMEN_LABEL_PRINTED("numDefaultSpecimenLabels", "text"), // Max specimen labels that can be printed
         DEFAULT_ALIQUOT_LABEL_PRINTED("numDefaultAliquotLabels", "text"), // Max aliquots that can be printed
@@ -319,7 +322,6 @@ public abstract class ConfigurationProperties {
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
 
-        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
         // When true the UI layers translation files mounted at /translation over
         // its bundled ones, so a deployment can reword any string without a
         // source change or a frontend rebuild.
@@ -333,6 +335,7 @@ public abstract class ConfigurationProperties {
         RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
         // OGC-1147: does an open QC failure block release, or only warn
         QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
+        BLOCK_SELF_VALIDATION("blockSelfValidation", "text"),
 
         // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,
@@ -343,7 +346,14 @@ public abstract class ConfigurationProperties {
         PATHOLOGY_STAGE_MICROTOMY_ENABLED("pathology.stage.MICROTOMY.enabled", "text"),
         PATHOLOGY_STAGE_STAINING_ENABLED("pathology.stage.STAINING.enabled", "text"),
         PATHOLOGY_STAGE_COVERSLIPPING_ENABLED("pathology.stage.COVERSLIPPING.enabled", "text"),
-        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text");
+        PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED("pathology.stage.UNDER_REVIEW.enabled", "text"),
+
+        // FR-9.3: how a deployment names and barcodes the cassettes, blocks and
+        // slides cut from a case. A missing row means the scheme below.
+        PATHOLOGY_IDENTIFIER_PART_SCHEME("pathology.identifier.partScheme", "text"),
+        PATHOLOGY_IDENTIFIER_BLOCK_FORMAT("pathology.identifier.blockFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SLIDE_FORMAT("pathology.identifier.slideFormat", "text"),
+        PATHOLOGY_IDENTIFIER_SEPARATOR("pathology.identifier.separator", "text");
 
         // visible on
         // the ui

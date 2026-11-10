@@ -33,6 +33,13 @@ const UNCYCLED_ORDERS = [
   },
 ];
 
+const chooseScheme = (name) => {
+  fireEvent.click(
+    screen.getByRole("combobox", { name: "Scheme (from My EQA Schemes)" }),
+  );
+  fireEvent.click(screen.getByRole("option", { name }));
+};
+
 const renderPage = (orders = UNCYCLED_ORDERS, cycles = MOCK_CYCLES) => {
   getFromOpenElisServer.mockImplementation((url, cb) => {
     if (url.startsWith("/rest/eqa/cycles/mine")) cb(cycles);
@@ -117,9 +124,7 @@ describe("MyCyclesPage", () => {
   test("New cycle posts the enrolled programme, name and deadline, then confirms", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
-      target: { value: "CPHL National HIV Viral Load EQA" },
-    });
+    chooseScheme("CPHL National HIV Viral Load EQA");
     fireEvent.change(screen.getByLabelText("Cycle name"), {
       target: { value: "Round 9" },
     });
@@ -150,9 +155,7 @@ describe("MyCyclesPage", () => {
   test("New cycle shows the server's refusal instead of a false success", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
-      target: { value: "CPHL National HIV Viral Load EQA" },
-    });
+    chooseScheme("CPHL National HIV Viral Load EQA");
     fireEvent.change(screen.getByLabelText("Cycle name"), {
       target: { value: "Round 9" },
     });
@@ -295,7 +298,7 @@ describe("MyCyclesPage", () => {
     const link = within(expanded).getByText("2026-00018421");
     expect(link.closest("a")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=2026-00018421",
+      "/Results?accessionNumber=2026-00018421",
     );
     // per-analyst column absent for a non-per-analyst scheme
     expect(within(expanded).queryByText("Assigned analyst")).toBeNull();
@@ -350,7 +353,7 @@ describe("MyCyclesPage", () => {
     const link = within(table).getByText("DEV01260000000000014");
     expect(link.closest("a")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=DEV01260000000000014",
+      "/Results?accessionNumber=DEV01260000000000014",
     );
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       "/rest/eqa/orders",

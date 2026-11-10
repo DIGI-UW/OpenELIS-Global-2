@@ -1,7 +1,5 @@
 package org.openelisglobal.barcode.labeltype;
 
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Font.FontFamily;
 import java.util.ArrayList;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.service.BarcodeLabelInfoService;
@@ -9,6 +7,7 @@ import org.openelisglobal.barcode.valueholder.BarcodeLabelInfo;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openpdf.text.Font;
 
 /**
  * Stores all the values, layout, and acts as a link to the persisted meta data
@@ -25,8 +24,8 @@ public abstract class Label {
     static int LARGE_BARCODE = 9; // most of the width
 
     // default fonts
-    private Font valueFont = new Font(FontFamily.HELVETICA, 9, Font.NORMAL);
-    private Font nameFont = new Font(FontFamily.HELVETICA, 9, Font.BOLD);
+    private Font valueFont = new Font(Font.HELVETICA, 9, Font.NORMAL);
+    private Font nameFont = new Font(Font.HELVETICA, 9, Font.BOLD);
 
     // default dimension (height width are used only as a ratio)
     // pdfWidth and pdfHeight used for actual pdfScaling
@@ -320,36 +319,66 @@ public abstract class Label {
     }
 
     /**
+     * The key the print count is stored under. Defaults to the printed code; a
+     * label kind that prints the same code as another overrides it so each kind
+     * keeps its own count.
+     *
+     * @return the code of this label's barcode_label_info row
+     */
+    protected String labelInfoCode() {
+        return getCode();
+    }
+
+    /**
+     * The type recorded on a new print-count row, or null to let the row derive it
+     * from its code.
+     *
+     * @return the type of this label's barcode_label_info row
+     */
+    protected String labelInfoType() {
+        return null;
+    }
+
+    /**
      * Link the meta data stored in the database to the label if it exists
      * Otherwise, create new meta data for the label
      */
     public void linkBarcodeLabelInfo() {
+        String key = code == null || code.trim().isEmpty() ? null : labelInfoCode();
         try {
-            if (code == null || code.trim().isEmpty()) {
+            if (key == null) {
                 // If code is not set, create a new label info without database lookup
                 labelInfo = new BarcodeLabelInfo("");
                 return;
             }
             BarcodeLabelInfoService service = getBarcodeLabelService();
             if (service != null) {
-                labelInfo = service.getDataByCode(code);
+                labelInfo = service.getDataByCode(key);
             }
             if (labelInfo == null) {
-                labelInfo = new BarcodeLabelInfo(code);
+                labelInfo = newLabelInfo(key);
             }
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);
             // Create new label info if database lookup fails
             if (labelInfo == null) {
-                labelInfo = new BarcodeLabelInfo(code != null ? code : "");
+                labelInfo = newLabelInfo(key != null ? key : "");
             }
         } catch (Exception e) {
             LogEvent.logError("Label", "linkBarcodeLabelInfo", "Failed to link barcode label info: " + e.getMessage());
             // Create new label info if service is not available
             if (labelInfo == null) {
-                labelInfo = new BarcodeLabelInfo(code != null ? code : "");
+                labelInfo = newLabelInfo(key != null ? key : "");
             }
         }
+    }
+
+    private BarcodeLabelInfo newLabelInfo(String key) {
+        BarcodeLabelInfo info = new BarcodeLabelInfo(key);
+        if (labelInfoType() != null) {
+            info.setType(labelInfoType());
+        }
+        return info;
     }
 
     public BarcodeLabelInfo getLabelInfo() {

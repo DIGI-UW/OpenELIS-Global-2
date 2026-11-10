@@ -4,7 +4,7 @@
 > OpenELIS operational Quality Control: control lots, QC results, statistics,
 > Westgard evaluation, violations, alerts, and their user workflows. Its older
 > per-analyzer editable identification-rule design is superseded by the
-> [OGC-1054 authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+> [analyzer specification](../analyzers/spec.md).
 > Control-result recognition is immutable behavior of the pinned Bridge profile
 > revision. OpenELIS does not own an editable recognition rule or send a
 > classifier to Bridge.
@@ -34,7 +34,7 @@ Operational-QC foundation implemented; analyzer-identification path superseded
 ## Analyzer Architecture Boundary
 
 The canonical
-[OGC-1054 analyzer roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
+[analyzer specification](../analyzers/spec.md)
 supersedes the analyzer-classification ownership originally proposed here.
 This specification remains authoritative for OpenELIS operational QC: control
 lots, QC results, statistics, Westgard configuration and evaluation,

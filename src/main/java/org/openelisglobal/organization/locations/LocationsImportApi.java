@@ -53,8 +53,12 @@ public final class LocationsImportApi {
     public record Scope(String text, List<String> types, List<String> untouched, List<String> wardParents) {
     }
 
+    /**
+     * {@code ignoredColumns} names the columns of the files that the importer does
+     * not know and left out.
+     */
     public record Plan(String importRunId, String mode, Scope scope, Map<String, Integer> counts, List<PlanRow> rows,
-            List<Deactivation> deactivations, int unresolvedCount, List<String> errors) {
+            List<Deactivation> deactivations, int unresolvedCount, List<String> errors, List<String> ignoredColumns) {
     }
 
     public record Decision(String choice, boolean remember) {
@@ -79,7 +83,10 @@ public final class LocationsImportApi {
         }
     }
 
+    /**
+     * {@code files} names the run's files; {@code action} is "preview" or "apply".
+     */
     public record RecentRun(String id, String startedAt, String finishedAt, String user, String mode, String summary,
-            String status) {
+            String status, List<String> files, String action) {
     }
 }

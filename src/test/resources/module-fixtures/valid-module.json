@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "example-workflow",
+  "kind": "module",
+  "name": "Example workflow",
+  "version": "1.2.0",
+  "description": "A full module fixture: entities, changelog, permissions, menu, frontend and configuration.",
+  "vendor": { "name": "Example Lab", "url": "https://example.org", "contact": "lis@example.org" },
+  "requires": {
+    "openelis": ">=3.4.0",
+    "coreApi": "^1.0",
+    "spi": "^1.0",
+    "frontendContract": "^1.0",
+    "modules": []
+  },
+  "conflicts": ["legacy-example-workflow"],
+  "backend": {
+    "basePackages": ["org.openelisglobal.module.workflow"],
+    "activator": "org.openelisglobal.module.workflow.ExampleWorkflowModule",
+    "entities": ["org.openelisglobal.module.workflow.valueholder.WorkflowCase"],
+    "liquibase": "liquibase/example-workflow/changelog.xml",
+    "extensions": [
+      { "spi": "report", "class": "org.openelisglobal.module.workflow.report.CaseSummaryReportProvider", "order": 10 }
+    ],
+    "libraries": ["org.apache.commons:commons-csv:1.12.0"]
+  },
+  "permissions": [
+    { "key": "view", "description": "Open the example workflow pages", "defaultRoles": ["Results"] },
+    { "key": "manage", "description": "Create and close cases", "defaultRoles": [] }
+  ],
+  "menu": [
+    {
+      "elementId": "menu_mod_example_workflow",
+      "parent": "menu_sample",
+      "displayKey": "mod.example-workflow.menu.title",
+      "actionURL": "/m/example-workflow/cases",
+      "presentationOrder": 90,
+      "icon": "workplan",
+      "permission": "view"
+    }
+  ],
+  "frontend": {
+    "entry": "remoteEntry.js",
+    "messages": "messages/{locale}.json",
+    "routes": [
+      { "path": "/m/example-workflow/cases", "expose": "./CasesPage", "permission": "view" },
+      { "path": "/m/example-workflow/cases/:caseId", "expose": "./CasePage", "permission": "view" }
+    ],
+    "slots": [
+      { "slot": "patient.header.actions", "expose": "./PatientAction", "order": 50, "permission": "manage" }
+    ]
+  },
+  "configuration": {
+    "properties": [
+      { "key": "threshold", "type": "integer", "default": 5, "description": "Cases per page", "exposeToFrontend": true },
+      { "key": "registry.url", "type": "url", "default": null, "description": "Upstream registry", "exposeToFrontend": false }
+    ]
+  }
+}

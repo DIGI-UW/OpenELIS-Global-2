@@ -1,16 +1,7 @@
 package org.openelisglobal.compliance.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.servlet.http.HttpServletResponse;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -19,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
@@ -34,6 +26,14 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -60,6 +60,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/complianceReport")
 @PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
 public class ComplianceReportRestController {
+
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroEnvironmentalReportService microbiologyReports;
 
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final String RECORD_TYPE_SAMPLE = "SAMPLE";
@@ -242,7 +245,8 @@ public class ComplianceReportRestController {
      * reports nobody downloaded.
      */
     @PostMapping("/exportPdf")
-    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response) throws IOException {
+    public void exportPdf(@RequestBody ExportRequest request, HttpServletResponse response,
+            jakarta.servlet.http.HttpServletRequest httpRequest) throws IOException {
         Long sampleId = request == null ? null : request.getSampleId();
         if (sampleId == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "sampleId is required");
@@ -260,6 +264,8 @@ public class ComplianceReportRestController {
         ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
                 reportGenerationService.getLastGenerated(sampleId).isPresent());
 
+        dto.setMicrobiology(microbiologyReports.released(sample.getId(),
+                org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest)));
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "attachment; filename=\"LH-" + safeFilename + ".pdf\"");
@@ -292,12 +298,12 @@ public class ComplianceReportRestController {
     private byte[] buildOriginalPdfBytes(ComplianceReportOrderDTO dto) throws DocumentException, IOException {
         Font titleFont = CertificateFonts.bold(14);
         Font sectionFont = CertificateFonts.bold(11);
-        Font headerFont = CertificateFonts.bold(9, BaseColor.WHITE);
+        Font headerFont = CertificateFonts.bold(9, Color.WHITE);
         Font cellFont = CertificateFonts.regular(9);
         Font labelFont = CertificateFonts.bold(9);
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
+        Document document = new Document(PdfExportSupport.pageSize());
         PdfWriter.getInstance(document, buf);
         document.open();
 
@@ -319,6 +325,8 @@ public class ComplianceReportRestController {
                         { "Preservation", safe(dto.getPreservation()) } });
 
         addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
+        org.openelisglobal.microbiology.service.MicroEnvironmentalCertificateRows.append(document,
+                dto.getMicrobiology(), sectionFont, cellFont);
         addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
 
         document.close();
@@ -347,8 +355,8 @@ public class ComplianceReportRestController {
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response)
-            throws IOException {
+    public ResponseEntity<?> reissue(@RequestBody ReissueRequest request, HttpServletResponse response,
+            jakarta.servlet.http.HttpServletRequest httpRequest) throws IOException {
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Amendment reason must not be blank");
         }
@@ -363,6 +371,9 @@ public class ComplianceReportRestController {
             return ResponseEntity.status(404).body("Sample has not been released; nothing to amend");
         }
 
+        var releasedMicrobiology = microbiologyReports.released(sample.getId(),
+                org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest));
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String userId = auth != null ? auth.getName() : null;
 
@@ -374,6 +385,8 @@ public class ComplianceReportRestController {
                 SampleComplianceStandard origPrimaryLink = origLinks.isEmpty() ? null : origLinks.get(0);
                 ComplianceEvaluationResult origEval = complianceEvaluationService.evaluate(sample);
                 ComplianceReportOrderDTO origDto = buildOrderDTO(sample, origPrimaryLink, origEval, true);
+                origDto.setMicrobiology(microbiologyReports.released(sample.getId(),
+                        org.openelisglobal.common.util.ControllerUtills.getSysUserId(httpRequest)));
                 byte[] origPdfBytes = buildOriginalPdfBytes(origDto);
                 archiveService.archiveIfAbsent(request.getSampleId(), 0, origPdfBytes, userId);
             } catch (Exception e) {
@@ -394,6 +407,7 @@ public class ComplianceReportRestController {
         ComplianceReportOrderDTO dto = buildOrderDTO(sample, primaryLink, eval,
                 reportGenerationService.getLastGenerated(request.getSampleId()).isPresent());
 
+        dto.setMicrobiology(releasedMicrobiology);
         String safeFilename = sample.getAccessionNumber().replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition",
@@ -422,12 +436,12 @@ public class ComplianceReportRestController {
             throws DocumentException, IOException {
         Font titleFont = CertificateFonts.bold(14);
         Font sectionFont = CertificateFonts.bold(11);
-        Font headerFont = CertificateFonts.bold(9, BaseColor.WHITE);
+        Font headerFont = CertificateFonts.bold(9, Color.WHITE);
         Font cellFont = CertificateFonts.regular(9);
         Font labelFont = CertificateFonts.bold(9);
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
+        Document document = new Document(PdfExportSupport.pageSize());
         PdfWriter.getInstance(document, buf);
         document.open();
 
@@ -460,6 +474,8 @@ public class ComplianceReportRestController {
                         { "Preservation", safe(dto.getPreservation()) } });
 
         addComplianceTable(document, dto, sectionFont, headerFont, cellFont);
+        org.openelisglobal.microbiology.service.MicroEnvironmentalCertificateRows.append(document,
+                dto.getMicrobiology(), sectionFont, cellFont);
         addSignatureTable(document, dto, sectionFont, labelFont, cellFont);
 
         document.close();
@@ -508,6 +524,9 @@ public class ComplianceReportRestController {
                 org.openelisglobal.vector.valueholder.VectorSamplingSite site = vectorSamplingSiteService
                         .get(Integer.parseInt(siteIdStr));
                 if (site != null) {
+                    if (siteName == null || siteName.isBlank())
+                        dto.setSiteName(site.getName());
+                    dto.setSiteCode(site.getCode());
                     String lat = site.getGpsLatitude();
                     String lon = site.getGpsLongitude();
                     if (lat != null && !lat.isEmpty() && lon != null && !lon.isEmpty()) {
@@ -594,7 +613,7 @@ public class ComplianceReportRestController {
         compTable.setWidths(new float[] { 3f, 2f, 2.5f, 1.5f });
         for (String h : new String[] { "Parameter", "Result", "Threshold", "Status" }) {
             PdfPCell hCell = new PdfPCell(new Phrase(h, headerFont));
-            hCell.setBackgroundColor(new BaseColor(33, 82, 149));
+            hCell.setBackgroundColor(new Color(33, 82, 149));
             hCell.setHorizontalAlignment(Element.ALIGN_CENTER);
             hCell.setPadding(4);
             compTable.addCell(hCell);

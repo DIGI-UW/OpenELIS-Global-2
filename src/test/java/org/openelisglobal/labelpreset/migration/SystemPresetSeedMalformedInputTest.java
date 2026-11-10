@@ -62,11 +62,14 @@ public class SystemPresetSeedMalformedInputTest extends BaseWebContextSensitiveT
     @Before
     public void seedFromMalformedFixture() throws Exception {
         SystemPresetSeedTest.clearSystemPresets(dataSource);
-        SystemPresetSeedTest.clearBarcodeSiteInformation(dataSource);
+        SystemPresetSeedTest.stashLegacyLabelKeys(dataSource);
         SystemPresetSeedTest.loadFixture(dataSource, MALFORMED_FIXTURE);
         // If the seed did not normalize 'garbage' -> NULL, this call would throw on
         // value::INTEGER.
         SystemPresetSeedTest.executeSeedSql(dataSource, SEED_CHANGESET);
+        // The MG-6 guard must tolerate the malformed value too: only numeric keys
+        // are compared, so a non-numeric default that fell back is not a mismatch.
+        SystemPresetSeedTest.executeGuardSql(dataSource, SEED_CHANGESET);
     }
 
     @After
@@ -74,7 +77,6 @@ public class SystemPresetSeedMalformedInputTest extends BaseWebContextSensitiveT
         // Restore the pristine baseline for sibling tests: canonical presets, their
         // LAB_NUMBER field rows, the universality backfill, and no fixture keys.
         // Shared committed Testcontainer (NOT_SUPPORTED).
-        SystemPresetSeedTest.clearBarcodeSiteInformation(dataSource);
         SystemPresetSeedTest.restoreCanonicalSeed(dataSource);
     }
 

@@ -46,3 +46,16 @@ export function applySampleTypeUpdate(samples, update) {
     i === index ? { ...sample, ...changes } : sample,
   );
 }
+
+/**
+ * Whether a sample is ticked Reject without a rejection reason. The order
+ * cannot be submitted then: the server refuses it (OGC-1488).
+ */
+export function rejectedWithoutReason(samples) {
+  return (samples || []).some((sample) => {
+    const rejected = sample?.sampleXML?.rejected ?? sample?.sampleRejected;
+    const reason =
+      sample?.sampleXML?.rejectionReason || sample?.rejectionReason || "";
+    return Boolean(rejected) && !String(reason).trim();
+  });
+}

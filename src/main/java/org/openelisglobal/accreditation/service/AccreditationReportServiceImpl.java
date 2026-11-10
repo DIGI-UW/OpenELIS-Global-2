@@ -94,7 +94,30 @@ public class AccreditationReportServiceImpl implements AccreditationReportServic
             return AccreditationReportData.EMPTY;
         }
         return new AccreditationReportData(logos,
-                MessageUtil.getMessage("report.accreditation.notesLine", String.join(", ", claimedBodyNames)));
+                MessageUtil.getMessage("report.accreditation.notesLine", String.join(", ", claimedBodyNames)),
+                claimedBodyNames);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> testsInAccreditedScope(Collection<String> testIds, LocalDate asOf) {
+        Set<String> inScope = new HashSet<>();
+        if (testIds == null || testIds.isEmpty()) {
+            return inScope;
+        }
+        LocalDate evaluationDate = asOf == null ? LocalDate.now() : asOf;
+        Set<Long> validBodyIds = new HashSet<>();
+        for (AccreditingBody body : accreditingBodyDAO.getAllOrdered()) {
+            if (AccreditationStatus.of(body.getActive(), body.getExpiresOn(), evaluationDate).isValidForReporting()) {
+                validBodyIds.add(body.getId());
+            }
+        }
+        for (TestAccreditation enrollment : testAccreditationDAO.getByTestIds(new HashSet<>(testIds))) {
+            if (validBodyIds.contains(enrollment.getAccreditingBodyId())) {
+                inScope.add(enrollment.getTestId());
+            }
+        }
+        return inScope;
     }
 
     /**

@@ -1,7 +1,9 @@
 import React from "react";
-import { Grid, Column, Section, Tag } from "@carbon/react";
+import ExtensionSlot from "../../modules/ExtensionSlot";
+import { Grid, Column, Section, Stack, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
+import "./patientHeader.scss";
 
 /**
  * The patient band every screen puts above a sample or a case.
@@ -93,7 +95,11 @@ const PatientHeader = (props) => {
                       </span>
                     </div>
                     <br />
-                    <div className="patient-id">
+                    <div className="patient-id patient-header__ids">
+                      <ExtensionSlot
+                        name="patient.header.actions"
+                        context={{ patientId: String(id) }}
+                      />
                       {patientId && (
                         <Tag size="lg" type="blue" style={tagStyle}>
                           <FormattedMessage id="patient.id" /> :{" "}
@@ -147,33 +153,37 @@ const PatientHeader = (props) => {
                   </Column>
                   {hasCaseState && (
                     <Column lg={4} md={8} sm={4}>
-                      {statusTag}
-                      {staff.map(
-                        (entry, index) =>
-                          // A malformed entry is dropped rather than rendered:
-                          // this band sits above a patient's identity on every
-                          // screen that shows it, and a missing roleKey would
-                          // otherwise reach formatMessage as an undefined id
-                          // and print the literal string "undefined" here.
-                          entry.name &&
-                          entry.roleKey && (
-                            <div
-                              key={`${entry.roleKey}-${index}`}
-                              className="cds--type-helper-text-01"
-                              data-testid="case-assigned-staff"
-                            >
-                              {intl.formatMessage(
-                                { id: "caseView.label.assignedStaff" },
-                                {
-                                  role: intl.formatMessage({
-                                    id: entry.roleKey,
-                                  }),
-                                  name: entry.name,
-                                },
-                              )}
-                            </div>
-                          ),
-                      )}
+                      <Stack gap={2}>
+                        {/* In its own block, or the Stack's grid stretches the
+                            tag to the column's full width. */}
+                        <div>{statusTag}</div>
+                        {staff.map(
+                          (entry, index) =>
+                            // A malformed entry is dropped rather than rendered:
+                            // this band sits above a patient's identity on every
+                            // screen that shows it, and a missing roleKey would
+                            // otherwise reach formatMessage as an undefined id
+                            // and print the literal string "undefined" here.
+                            entry.name &&
+                            entry.roleKey && (
+                              <div
+                                key={`${entry.roleKey}-${index}`}
+                                className="cds--type-helper-text-01"
+                                data-testid="case-assigned-staff"
+                              >
+                                {intl.formatMessage(
+                                  { id: "caseView.label.assignedStaff" },
+                                  {
+                                    role: intl.formatMessage({
+                                      id: entry.roleKey,
+                                    }),
+                                    name: entry.name,
+                                  },
+                                )}
+                              </div>
+                            ),
+                        )}
+                      </Stack>
                     </Column>
                   )}
                 </Grid>

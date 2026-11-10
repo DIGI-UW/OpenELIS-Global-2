@@ -2,13 +2,12 @@ package org.openelisglobal.compliance.controller.rest;
 
 import static org.junit.Assert.assertTrue;
 
-import com.itextpdf.text.Document;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.PdfWriter;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.ByteArrayOutputStream;
 import org.junit.Test;
+import org.openelisglobal.testsupport.PdfText;
+import org.openpdf.text.Document;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * OGC-1266: the compliance certificate printed "Lead (Pb) 0.050 mg/L 0.03 mg/L"
@@ -28,7 +27,7 @@ public class CertificateFontsTest {
         document.add(new Phrase(" — ≤ bold", CertificateFonts.bold(9)));
         document.close();
 
-        String text = PdfTextExtractor.getTextFromPage(new PdfReader(out.toByteArray()), 1);
+        String text = PdfText.ofPage(out.toByteArray(), 1);
         assertTrue(text, text.contains("≤ 0.03 mg/L"));
         assertTrue(text, text.contains("≥ 6 mg/L"));
         assertTrue(text, text.contains("≤ bold"));

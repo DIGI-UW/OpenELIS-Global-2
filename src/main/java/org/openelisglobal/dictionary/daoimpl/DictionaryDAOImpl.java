@@ -170,6 +170,12 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
     // is unique
     @Override
     public boolean duplicateDictionaryExists(Dictionary dictionary) throws LIMSRuntimeException {
+        return !findDuplicates(dictionary).isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Dictionary> findDuplicates(Dictionary dictionary) throws LIMSRuntimeException {
         try {
             // local_abbrev is nullable in the schema (e.g. legacy 2012 seed
             // categories like marital status). Build the abbreviation clause
@@ -211,11 +217,11 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
             }
             query.setParameter("param3", dictId);
 
-            return !query.list().isEmpty();
+            return query.list();
         } catch (RuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in duplicateDictionaryExists()", e);
+            throw new LIMSRuntimeException("Error in findDuplicates()", e);
         }
     }
 

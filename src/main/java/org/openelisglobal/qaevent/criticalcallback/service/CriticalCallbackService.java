@@ -28,4 +28,10 @@ public interface CriticalCallbackService extends BaseObjectService<CriticalCallb
      * row — the durable backing for the Results-Entry "needs callback" banner.
      */
     List<String> getLoggedResultIds(Collection<String> resultIds);
+
+    /**
+     * Every callback logged against the given analyses, newest first: what the
+     * patient report prints under a critical result.
+     */
+    List<CriticalCallback> getCallbacksForAnalyses(Collection<String> analysisIds);
 }

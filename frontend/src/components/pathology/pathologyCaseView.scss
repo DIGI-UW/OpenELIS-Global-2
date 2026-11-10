@@ -1,0 +1,160 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+@use "@carbon/styles/scss/utilities/visually-hidden";
+
+// One form field's width, for every row field.
+$field-inline-size: 12rem;
+
+// The repeating rows of the pathology case view: one cassette, one slide, one
+// report version.
+//
+// These rows sit inside the shell's centre column, which is nine of the
+// layout's sixteen. A Carbon Grid nested there still counts its own columns
+// to sixteen, so rows laid out as Grid columns wrapped inside the narrower
+// column and their controls landed on top of one another. A row is one
+// wrapping flex line instead. It needs no column arithmetic and reflows at
+// whatever width the centre column happens to have.
+
+.pathology-case-view__row {
+  border-block-end: 1px solid var(--cds-border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-05;
+  padding-block: spacing.$spacing-04;
+}
+
+.pathology-case-view__row-field {
+  flex: 0 1 $field-inline-size;
+  min-inline-size: 8rem;
+}
+
+// Static text standing where a field would, such as a report row's name.
+.pathology-case-view__row-label {
+  flex: 0 1 $field-inline-size;
+}
+
+// The row's buttons always take a line of their own under the fields, at any
+// width. Sharing the fields' line would put the alignment of a button with an
+// input at the mercy of the file uploader, which grows downward by a filename
+// once a file is attached.
+.pathology-case-view__row-actions {
+  align-items: flex-start;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+// Carbon's file uploader always renders a description paragraph above its
+// button, with a bottom margin, whether or not a description was given; in a
+// line of buttons that empty paragraph set Upload file lower than its
+// neighbours.
+.pathology-case-view__row-actions .cds--label-description:empty {
+  display: none;
+}
+
+// Carbon wraps the uploader in a form item that grows to fill its line; in a
+// line of buttons it must take only its own width, like the buttons beside it.
+.pathology-case-view__row-actions .cds--form-item {
+  flex: 0 0 auto;
+}
+
+// Keep the shared guidance above the action row. Carbon's own description
+// remains available through its uploader's existing accessible association.
+.pathology-case-view__upload-hint {
+  @include type.type-style("helper-text-01");
+
+  color: var(--cds-text-secondary);
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.pathology-case-view__slide-upload .cds--label-description {
+  @include visually-hidden.visually-hidden;
+}
+
+.pathology-case-view__add-row {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+  padding-block-start: spacing.$spacing-05;
+}
+
+// A row's identity line: designation, barcode and state tag side by side, above
+// the fields, so a reader sees which object the row is before its controls.
+.pathology-case-view__row-identity {
+  align-items: center;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+.pathology-case-view__row-designation {
+  @include type.type-style("heading-compact-01");
+}
+
+// The barcode is read aloud to a scanner or a colleague, so it sets in the
+// monospace style and stays secondary to the designation.
+.pathology-case-view__row-barcode {
+  @include type.type-style("code-01");
+
+  color: var(--cds-text-secondary);
+}
+
+// A deactivated identifier reads as such before the tag is noticed; the tag
+// still carries the word for anyone who cannot see the strike-through.
+.pathology-case-view__row--deactivated {
+  color: var(--cds-text-secondary);
+}
+
+.pathology-case-view__row--deactivated .pathology-case-view__row-designation {
+  text-decoration: line-through;
+}
+
+// Read-only text standing beside a field, such as a slide's parent block.
+.pathology-case-view__row-meta {
+  display: flex;
+  flex: 0 1 $field-inline-size;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+}
+
+// Matches the label of a TextInput beside it so the two line up.
+.pathology-case-view__row-meta-label {
+  @include type.type-style("label-01");
+
+  color: var(--cds-text-secondary);
+}
+
+// Add, Print and the Show deactivated switch share one line under a list,
+// with the switch pushed to the end.
+.pathology-case-view__list-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-05;
+  padding-block-start: spacing.$spacing-05;
+}
+
+.pathology-case-view__list-toolbar-end {
+  margin-inline-start: auto;
+}
+
+// A selector the bench picks one name from has no business spanning the whole
+// section: past about twenty characters of value the control is all empty
+// space.
+.pathology-case-view__field-group {
+  max-inline-size: 20rem;
+}
+
+.pathology-case-view__stage-control {
+  max-inline-size: 18rem;
+}
+
+.pathology-case-view__heading {
+  @include type.type-style("heading-compact-01");
+
+  margin-block-end: spacing.$spacing-03;
+}

@@ -53,6 +53,15 @@ export const REFERENCE_DEFINITIONS = {
         label: "microbiology.admin.field.group",
         required: true,
       },
+      {
+        key: "susceptibilityProtocol",
+        label: "microbiology.m6.protocol",
+        type: "select",
+        defaultValue: "GENERAL",
+        options: ["GENERAL", "TB", "NTM"].map((value) =>
+          option(value, `microbiology.m6.protocol.${value}`),
+        ),
+      },
       { key: "gramStain", label: "microbiology.admin.field.gramStain" },
       {
         key: "initialSignificance",
@@ -111,6 +120,20 @@ export const REFERENCE_DEFINITIONS = {
         required: true,
       },
       {
+        key: "resistanceRole",
+        label: "microbiology.m6.resistanceRole",
+        type: "select",
+        defaultValue: "NONE",
+        options: [
+          "NONE",
+          "RIFAMPICIN",
+          "ISONIAZID",
+          "OTHER_FIRST_LINE",
+          "FLUOROQUINOLONE",
+          "XDR_GROUP_A",
+        ].map((value) => option(value, `microbiology.m6.role.${value}`)),
+      },
+      {
         key: "route",
         label: "microbiology.admin.field.route",
         type: "select",
@@ -124,93 +147,6 @@ export const REFERENCE_DEFINITIONS = {
       {
         key: "notes",
         label: "microbiology.admin.field.notes",
-        type: "textarea",
-      },
-      {
-        key: "active",
-        label: "microbiology.admin.field.active",
-        type: "checkbox",
-      },
-    ],
-  },
-  "culture-setups": {
-    resource: "culture-setups",
-    title: "microbiology.admin.cultureSetups.title",
-    description: "microbiology.admin.cultureSetups.description",
-    addLabel: "microbiology.admin.cultureSetups.add",
-    editTitle: "microbiology.admin.cultureSetups.edit",
-    canToggle: false,
-    columns: [
-      { key: "methodName", label: "microbiology.admin.field.method" },
-      { key: "name", label: "microbiology.admin.field.name" },
-      { key: "workflowType", label: "microbiology.admin.field.workflow" },
-      { key: "mediaDefaults", label: "microbiology.admin.field.media" },
-      {
-        key: "incubationDefaults",
-        label: "microbiology.admin.field.incubation",
-      },
-      {
-        key: "maxIncubationDays",
-        label: "microbiology.admin.field.maxIncubationDays",
-      },
-    ],
-    fields: [
-      {
-        key: "methodId",
-        label: "microbiology.admin.field.method",
-        required: true,
-        disabledOnEdit: true,
-        type: "dynamic-select",
-        optionsResource: "methods",
-      },
-      { key: "name", label: "microbiology.admin.field.name", required: true },
-      {
-        key: "workflowType",
-        label: "microbiology.admin.field.workflow",
-        type: "select",
-        options: [
-          option("BACTERIOLOGY", "microbiology.workflow.bacteriology"),
-          option(
-            "MYCOBACTERIOLOGY_TB",
-            "microbiology.workflow.mycobacteriology",
-          ),
-          option("MYCOLOGY", "microbiology.workflow.mycology"),
-        ],
-      },
-      {
-        key: "mediaDefaults",
-        label: "microbiology.admin.field.media",
-        type: "textarea",
-      },
-      {
-        key: "incubationDefaults",
-        label: "microbiology.admin.field.incubation",
-        type: "textarea",
-      },
-      {
-        key: "incubationHours",
-        label: "microbiology.admin.field.incubationHours",
-        type: "number",
-        min: 1,
-        max: 8760,
-      },
-      {
-        key: "subcultureAtHours",
-        label: "microbiology.admin.field.subcultureAtHours",
-        type: "number",
-        min: 1,
-        max: 8760,
-      },
-      {
-        key: "maxIncubationDays",
-        label: "microbiology.admin.field.maxIncubationDays",
-        type: "number",
-        min: 1,
-        max: 365,
-      },
-      {
-        key: "atmosphereDefaults",
-        label: "microbiology.admin.field.atmosphere",
         type: "textarea",
       },
       {

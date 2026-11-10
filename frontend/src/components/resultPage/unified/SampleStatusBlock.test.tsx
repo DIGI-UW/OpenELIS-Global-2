@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
@@ -23,6 +23,13 @@ const wrap = (node: React.ReactElement) =>
     <IntlProvider locale="en" messages={messages}>
       {node}
     </IntlProvider>,
+  );
+
+const confirmMarkUsedUp = () =>
+  fireEvent.click(
+    within(screen.getByTestId("mark-used-up-confirm")).getByRole("button", {
+      name: /Mark used up/,
+    }),
   );
 
 describe("SampleStatusBlock (R7 / D13)", () => {
@@ -63,6 +70,28 @@ describe("SampleStatusBlock (R7 / D13)", () => {
     );
   });
 
+  it("an amount above the remaining volume is refused with the remaining amount", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 1, unitOfMeasure: "mL" }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("record-usage-open"));
+    fireEvent.change(screen.getByLabelText("Amount used this test"), {
+      target: { value: "5" },
+    });
+    expect(
+      screen.getByText(
+        "Requested quantity (5) exceeds remaining quantity (1 mL)",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("record-usage-apply"));
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
   it("Mark used up posts markUsedUp and refreshes on success", () => {
     const onChanged = vi.fn();
     postMock.mockImplementation(
@@ -81,12 +110,32 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("mark-used-up"));
+    expect(postMock).not.toHaveBeenCalled();
+    confirmMarkUsedUp();
     expect(postMock).toHaveBeenCalledWith(
       "/rest/storage/sample-items/record-usage",
       JSON.stringify({ sampleItemId: "17", markUsedUp: true }),
       expect.any(Function),
     );
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("cancelling the Mark used up confirmation sends nothing", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 3.5 }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("mark-used-up"));
+    fireEvent.click(
+      within(screen.getByTestId("mark-used-up-confirm")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(postMock).not.toHaveBeenCalled();
   });
 
   it("exhausted sample offers Start disposal, which posts the disposal form", () => {
@@ -117,6 +166,58 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       }),
       expect.any(Function),
     );
+  });
+
+  it("Confirm disposal with no method marks the method as required and sends nothing", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 0, unitOfMeasure: "mL" }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("start-disposal"));
+    fireEvent.change(screen.getByLabelText("Disposal reason"), {
+      target: { value: "testing_complete" },
+    });
+    fireEvent.click(screen.getByTestId("confirm-disposal"));
+    expect(postMock).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Disposal method")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Disposal reason")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByText("This field is required")).toBeInTheDocument();
+  });
+
+  it("reopening the disposal form after Cancel shows no required-field errors", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 0, unitOfMeasure: "mL" }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("start-disposal"));
+    fireEvent.click(screen.getByTestId("confirm-disposal"));
+    expect(screen.getAllByText("This field is required")).toHaveLength(2);
+
+    fireEvent.click(screen.getByTestId("cancel-disposal"));
+    fireEvent.click(screen.getByTestId("start-disposal"));
+
+    expect(
+      screen.queryByText("This field is required"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Disposal method")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(postMock).not.toHaveBeenCalled();
   });
 
   it("disposed sample shows the status with no actions", () => {
@@ -165,6 +266,7 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("mark-used-up"));
+    confirmMarkUsedUp();
     expect(
       screen.getByText("SampleItem is already disposed"),
     ).toBeInTheDocument();
@@ -198,6 +300,7 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("mark-used-up"));
+    confirmMarkUsedUp();
     expect(
       screen.getByText(messages["label.results.sampleStatus.updateFailed"]),
     ).toBeInTheDocument();

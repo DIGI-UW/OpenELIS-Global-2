@@ -25,7 +25,8 @@
         received_date="2024-01-01 10:00:00" entered_date="2024-01-01 10:00:00"
         lastupdated="2024-01-01 10:00:00" sys_user_id="1" />
     <sample_item id="1000" samp_id="1000" sort_order="1"
-        status_id="1" external_id="EXT-1000" lastupdated="2024-01-01 10:00:00" />
+        status_id="1" external_id="EXT-1000" quantity="1"
+        remaining_quantity="1" lastupdated="2024-01-01 10:00:00" />
     <sample_item id="1001" samp_id="1001" sort_order="1"
         status_id="24" external_id="EXT-1001"
         lastupdated="2024-01-01 10:00:00" />

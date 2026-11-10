@@ -143,7 +143,11 @@ const SearchBar: React.FC = () => {
                     {patientData.length}
                   </Tag>
                 </div>
-                <SearchOutput loading={loading} patientData={patientData} />
+                <SearchOutput
+                  loading={loading}
+                  patientData={patientData}
+                  onSelect={handleClearSearch}
+                />
               </>
             )}
           </div>

@@ -1,7 +1,20 @@
 package org.openelisglobal.common.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.OptimisticLockException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +43,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class StaleSaveGuard {
 
+    private static final ObjectMapper CANONICAL = JsonMapper.builder()
+            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY).enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .findAndAddModules().build();
+
     private final HistoryDAO historyDAO;
     private final SystemUserService systemUserService;
     private final ReferenceTablesService referenceTablesService;
@@ -57,6 +74,61 @@ public class StaleSaveGuard {
             return false;
         }
         return parse(clientToken.trim()) != current.getTime();
+    }
+
+    /**
+     * The version token of something an editor saves as a whole list (components,
+     * mappings, members), where no single row carries a version: a digest of what
+     * the editor's load returned. Built from the same view before a save, it
+     * differs when anyone changed the list since that load (OGC-1463). Lists are
+     * compared as sets, so a load that returns rows in another order is not a
+     * change; a move shows in the rows' own order fields.
+     */
+    public static String versionOf(Object loaded) {
+        try {
+            String canonical = CANONICAL.writeValueAsString(unordered(CANONICAL.valueToTree(loaded)));
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest, 0, 16);
+        } catch (JsonProcessingException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("cannot compute a version token", e);
+        }
+    }
+
+    private static JsonNode unordered(JsonNode node) throws JsonProcessingException {
+        if (node.isArray()) {
+            List<String> elements = new ArrayList<>();
+            for (JsonNode element : node) {
+                elements.add(CANONICAL.writeValueAsString(unordered(element)));
+            }
+            elements.sort(null);
+            ArrayNode sorted = CANONICAL.createArrayNode();
+            for (String element : elements) {
+                sorted.add(CANONICAL.readTree(element));
+            }
+            return sorted;
+        }
+        if (node.isObject()) {
+            ObjectNode copy = CANONICAL.createObjectNode();
+            List<String> names = new ArrayList<>();
+            node.fieldNames().forEachRemaining(names::add);
+            names.sort(null);
+            for (String name : names) {
+                copy.set(name, unordered(node.get(name)));
+            }
+            return copy;
+        }
+        return node;
+    }
+
+    /**
+     * True when the editor sent a list version and it is not the current one. A
+     * missing version is not stale, as for {@link #isStale}.
+     */
+    public static boolean isStaleVersion(String clientVersion, String currentVersion) {
+        if (GenericValidator.isBlankOrNull(clientVersion)) {
+            return false;
+        }
+        return !clientVersion.trim().equals(currentVersion);
     }
 
     /**

@@ -1,14 +1,21 @@
 services:
   harness-catalog-init:
     volumes:
-      - ./config-templates:/templates:ro
+      - ./dictionary:/dictionary:ro
 
   certs:
-    image: itechuw/certgen:main
+    image: ${DEV_STACK_CERTS_IMAGE:-itechuw/openelis-global-2-certs:develop}
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile.certs
     platform: linux/amd64
     restart: "no"
+    # Gives the install its own TLS key on first start and keeps the stores built from it.
 
   db.openelis.org:
+    networks:
+      default:
+        aliases: [db]
     image: postgres:14.4
     restart: always
     env_file:
@@ -18,9 +25,9 @@ services:
       - ./volume/database/dbInit:/docker-entrypoint-initdb.d
 
   oe.openelis.org:
-    image: itechuw/openelis-global-2-dev:develop
-    # scripts/dev-stack builds this image from the branch's Dockerfile.dev so local
-    # source drives the webapp, overriding the pulled :develop image tag.
+    # Published development image; the locally built WAR is mounted below.
+    # `scripts/dev-stack up --build` builds this image from the checkout instead.
+    image: ${DEV_STACK_BACKEND_IMAGE:-itechuw/openelis-global-2-dev:develop}
     build:
       context: ../..
       dockerfile: Dockerfile.dev
@@ -29,7 +36,7 @@ services:
       db.openelis.org:
         condition: service_healthy
       certs:
-        condition: service_started
+        condition: service_completed_successfully
       fhir.openelis.org:
         condition: service_healthy
     restart: always
@@ -37,7 +44,11 @@ services:
       CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
       JDK_JAVA_OPTIONS: -Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
-      - key_trust-store-volume:/etc/openelis-global
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
       - lucene_index-vol:/var/lib/lucene_index
       - ../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
       - ../../volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
@@ -49,29 +60,47 @@ services:
       - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
       - configuration-data:/var/lib/openelis-global/configuration
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+      - ../../volume/translation:/var/lib/openelis-global/translation:ro
+      # Module JARs for local development: drop a module into volume/modules and restart the webapp
+      - ../../volume/modules:/var/lib/openelis-global/modules:ro
     secrets:
+      - source: initial-admin-password
       - source: datasource.password
       - source: common.properties
 
   fhir.openelis.org:
+    networks:
+      default:
+        aliases: [fhir]
     image: hapiproject/hapi:v6.6.0-tomcat
+    # The older development HAPI image runs as uid 1001; grant only its TLS group.
+    group_add: ["8443"]
     depends_on:
       db.openelis.org:
         condition: service_started
       certs:
-        condition: service_started
+        condition: service_completed_successfully
     restart: always
     environment:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      CATALINA_OPTS: >-
+        -Dhapi.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore}
+        -Dhapi.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
+        -Dhapi.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore}
+        -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
-        -Djavax.net.ssl.trustStorePassword=tspass
+        -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
         -Djavax.net.ssl.trustStoreType=pkcs12
         -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
-        -Djavax.net.ssl.keyStorePassword=kspass
+        -Djavax.net.ssl.keyStorePassword=${SSL_KEYSTORE_PASSWORD:-kspass}
         -Djavax.net.ssl.keyStoreType=pkcs12"
     volumes:
-      - key_trust-store-volume:/etc/openelis-global
+      - type: volume
+        source: key_trust-store-volume
+        target: /etc/openelis-global
+        volume:
+          nocopy: true
       - ../../tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
     secrets:
       - source: hapi_application.yaml
@@ -87,7 +116,9 @@ services:
       start_period: 60s
 
   frontend.openelis.org:
-    image: itechuw/openelis-global-2-frontend-dev:develop
+    # Published development image; src and public are mounted below.
+    # `scripts/dev-stack up --build` builds this image from the checkout instead.
+    image: ${DEV_STACK_FRONTEND_IMAGE:-itechuw/openelis-global-2-frontend-dev:develop}
     # Local-dev default: `target: dev` selects the Vite dev-server stage
     # of the single multi-stage Dockerfile — HMR + unminified React for
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
@@ -102,23 +133,34 @@ services:
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
+      - ../../volume/translation:/app/public/translation
 
   proxy:
     image: nginx:1.27-alpine
     volumes:
-      - certs-vol:/etc/nginx/certs/
-      - keys-vol:/etc/nginx/keys/
+      - type: volume
+        source: certs-vol
+        target: /etc/nginx/certs/
+        volume:
+          nocopy: true
+      - type: volume
+        source: keys-vol
+        target: /etc/nginx/keys/
+        volume:
+          nocopy: true
       - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../volume/nginx/certbot:/var/www/certbot
       - ../../volume/letsencrypt:/etc/letsencrypt:ro
     restart: unless-stopped
     depends_on:
       certs:
-        condition: service_started
+        condition: service_completed_successfully
       oe.openelis.org:
         condition: service_started
 
 secrets:
+  initial-admin-password:
+    file: ../../dev/initial-admin-password
   datasource.password:
     file: ./volume/properties/datasource.password
   common.properties:

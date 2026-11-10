@@ -21,7 +21,6 @@ import {
   hasRequesterOrRequestor,
 } from "../saveRequirements";
 import SaveRequirementsNotice from "../SaveRequirementsNotice";
-import { fetchServerNow } from "../serverClock";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -34,6 +33,7 @@ import RequesterSection from "./sections/RequesterSection";
 import ProgramSection from "./sections/ProgramSection";
 import SampleTestSection from "./sections/SampleTestSection";
 import "../order-workflow.scss";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 const WORKFLOW_TYPE = "vector";
 const WORKFLOW_PREFIX = "/order/vector";
@@ -153,11 +153,14 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry(await fetchServerNow());
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {
@@ -174,11 +177,13 @@ const VectorOrderEnter = () => {
   const handleSaveAndNext = async () => {
     if (!canSave) return;
     try {
-      await saveOrderEntry(await fetchServerNow());
+      await saveOrderEntry();
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/vector/label?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/vector/label?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/vector/label",
       );
     } catch (error) {
@@ -202,7 +207,7 @@ const VectorOrderEnter = () => {
       return;
     }
     try {
-      await saveOrderEntry(await fetchServerNow());
+      await saveOrderEntry();
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- An analyzer control can report an answer (Detected, Not detected) rather
+         than a number. OpenELIS judges it PASS or FAIL against the Test Catalog QC
+         target and stores the outcome with no value, as an RDT row already is. Every
+         other row still needs a value, and no row may have neither. -->
+    <changeSet author="oe" id="qc-015-analyzer-qualitative-qc-shape">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM pg_constraint WHERE conname = 'chk_qc_result_source_shape'
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            ALTER TABLE clinlims.qc_result DROP CONSTRAINT chk_qc_result_source_shape;
+            ALTER TABLE clinlims.qc_result
+            ADD CONSTRAINT chk_qc_result_source_shape
+            CHECK (
+                (source IN ('RDT', 'ASTM') AND result_value IS NULL AND qualitative_outcome IS NOT NULL)
+                OR
+                (source &lt;&gt; 'RDT' AND result_value IS NOT NULL)
+            );
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.qc_result DROP CONSTRAINT chk_qc_result_source_shape;
+                ALTER TABLE clinlims.qc_result
+                ADD CONSTRAINT chk_qc_result_source_shape
+                CHECK (
+                    (source = 'RDT' AND result_value IS NULL AND qualitative_outcome IS NOT NULL)
+                    OR
+                    (source &lt;&gt; 'RDT' AND result_value IS NOT NULL)
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

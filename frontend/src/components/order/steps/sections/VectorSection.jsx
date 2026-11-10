@@ -22,9 +22,11 @@ import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { labNow } from "../../../utils/labClock";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 const todayIso = () => {
-  const d = new Date();
+  const d = labNow();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -65,10 +67,12 @@ function SectionHeader({ title }) {
   );
 }
 
-function FieldLabel({ label, required }) {
+function FieldLabel({ label, required, htmlFor }) {
   return (
-    <p
+    <label
+      htmlFor={htmlFor}
       style={{
+        display: "block",
         fontSize: "0.75rem",
         fontWeight: 600,
         color: "#525252",
@@ -76,8 +80,8 @@ function FieldLabel({ label, required }) {
       }}
     >
       {label}
-      {required && <span style={{ color: "#da1e28" }}> *</span>}
-    </p>
+      <RequiredMarker required={required} />
+    </label>
   );
 }
 
@@ -502,6 +506,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             defaultMessage: "Site name or code",
           })}
           required
+          htmlFor="vec-site-search"
         />
         {selectedSite ? (
           <SelectedCard
@@ -542,6 +547,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
             <TextInput
               id="vec-site-search"
               labelText=""
+              {...requiredProps()}
               placeholder={intl.formatMessage({
                 id: "vector.order.site.placeholder",
                 defaultMessage: "Search by site name or code...",

@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -17,12 +18,12 @@ import org.hibernate.StaleObjectStateException;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.paging.PagingUtility;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -58,6 +59,8 @@ import org.openelisglobal.result.service.LogbookResultsPersistService;
 import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
+import org.openelisglobal.resultrun.form.WaitingRun;
+import org.openelisglobal.resultrun.service.ResultRunService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -106,7 +109,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.shadowResultValue", "testResult*.reflexJSONResult", "testResult*.testDate",
             "testResult*.analysisMethod", "testResult*.testMethod", "testResult*.testKitInventoryId",
             "testResult*.forceTechApproval", "testResult*.forceTechApprovalNote", "testResult*.lowerNormalRange",
-            "testResult*.upperNormalRange", "testResult*.significantDigits", "testResult*.resultValue",
+            "testResult*.upperNormalRange", "testResult*.reportingDecimalPlaces", "testResult*.resultValue",
             "testResult*.qualifiedResultValue", "testResult*.multiSelectResultValues", "testResult*.testMethod",
             "testResult*.multiSelectResultValues", "testResult*.qualifiedResultValue",
             "testResult*.qualifiedResultValue", "testResult*.shadowReferredOut", "testResult*.referredOut",
@@ -136,6 +139,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private SampleEQAService sampleEQAService;
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private ResultRunService resultRunService;
     @Autowired
     private AnalysisAnchorService analysisAnchorService;
     @Autowired
@@ -261,14 +266,16 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 tests.clear();
                 LogbookStatusResults sectionStatusResults = new LogbookStatusResults(analysisService, sampleService,
                         sampleItemService);
-                tests = sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
-                        form.getTestSectionId());
+                tests = keepAccession(sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
+                        form.getTestSectionId()), labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
                 request.setAttribute("pageSize", filteredTests.size());
                 form.setSearchFinished(true);
             } else if (!GenericValidator.isBlankOrNull(form.getTestSectionId())) {
-                tests = resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId());
+                tests = keepAccession(
+                        resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId()),
+                        labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
                 int count = resultsLoadUtility.getTotalCountAnalysisByTestSectionAndStatus(form.getTestSectionId());
@@ -305,7 +312,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 LogbookStatusResults reactLogbookStatusResults = new LogbookStatusResults(analysisService,
                         sampleService, sampleItemService);
 
-                tests = reactLogbookStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility);
+                tests = keepAccession(reactLogbookStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility),
+                        labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
 
@@ -371,6 +379,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 }
             }
 
+            resultRunService.markWaiting(filteredTests);
             paging.setDatabaseResults(request, form, filteredTests);
             LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
                     "After setDatabaseResults: form.getTestResult() size="
@@ -411,6 +420,18 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         return (form);
+    }
+
+    /**
+     * The Results page sends a typed lab number together with the Lab Unit or date
+     * filters; those branches load by unit or date, so the lab number narrows what
+     * they found instead of being ignored.
+     */
+    private List<TestResultItem> keepAccession(List<TestResultItem> tests, String labNumber) {
+        if (GenericValidator.isBlankOrNull(labNumber)) {
+            return tests;
+        }
+        return tests.stream().filter(test -> labNumber.equals(test.getAccessionNumber())).collect(Collectors.toList());
     }
 
     private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {
@@ -456,8 +477,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             saveErrors(result);
         }
 
-        List<Result> checkPagedResults = (List<Result>) request.getSession()
-                .getAttribute(IActionConstants.RESULTS_SESSION_CACHE);
+        List<Result> checkPagedResults = new PagingUtility<Result>().getLoadedPages(request.getSession());
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "LogbookResults()", "Attempted save of stale page.");
@@ -495,6 +515,17 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
         rejectEqaRowsMissingAnalyst(tests);
 
+        for (TestResultItem modified : actionDataSet.getModifiedItems()) {
+            Optional<WaitingRun> waiting = resultRunService.waitingFor(analysisService.get(modified.getAnalysisId()));
+            if (waiting.isPresent()) {
+                Map<String, Object> refusal = new HashMap<>();
+                refusal.put("error",
+                        MessageUtil.getMessage("run.refusal.waiting", new String[] { waiting.get().label() }));
+                refusal.put("waitingRun", waiting.get());
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(refusal);
+            }
+        }
+
         List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(actionDataSet.getModifiedItems());
         List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
                 .collect(Collectors.toList());
@@ -509,6 +540,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+        ResultUtil.holdOpenWhileRequiredComponentsBlank(actionDataSet);
 
         try {
             List<Analysis> reflexAnalysises = logbookPersistService.persistDataSet(actionDataSet, updaters,
@@ -602,7 +634,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             if (e.getCause() instanceof StaleObjectStateException) {
                 errorMsg = "errors.OptimisticLockException";
             } else {
-                LogEvent.logDebug(e);
+                LogEvent.logError(e);
                 errorMsg = "errors.UpdateException";
             }
 

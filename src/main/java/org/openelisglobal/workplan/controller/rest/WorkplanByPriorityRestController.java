@@ -79,7 +79,8 @@ public class WorkplanByPriorityRestController extends WorkplanRestController {
         int sampleGroupingNumber = 0;
 
         if (priority != null) {
-            List<Analysis> analysisList = analysisService.getAnalysesByPriorityAndStatusId(priority, statusList);
+            List<Analysis> analysisList = withoutReferredOut(
+                    analysisService.getAnalysesByPriorityAndStatusId(priority, statusList));
             for (Analysis analysis : analysisList) {
                 TestResultItem testResultItem = new TestResultItem();
                 testResultItem.setTestId(analysis.getTest().getId());

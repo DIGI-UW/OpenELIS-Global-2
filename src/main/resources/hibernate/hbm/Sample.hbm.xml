@@ -30,6 +30,8 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="PACKAGE_ID" precision="10" scale="0" />
         </property>
+        <property name="microbiologyReplicateCount"
+            column="microbiology_replicate_count" type="java.lang.Integer" />
         <property name="domain" type="java.lang.String">
             <column name="DOMAIN" length="1" />
         </property>
@@ -45,7 +47,7 @@
             <column name="ENTERED_DATE" length="7" not-null="true" />
         </property>
         <property name="receivedTimestamp" type="java.sql.Timestamp">
-            <column name="RECEIVED_DATE" length="7" not-null="true" />
+            <column name="RECEIVED_DATE" length="7" />
         </property>
         <property name="collectionDate" type="java.sql.Timestamp">
             <column name="COLLECTION_DATE" length="7" />

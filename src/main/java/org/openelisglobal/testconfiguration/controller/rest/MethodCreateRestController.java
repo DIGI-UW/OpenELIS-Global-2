@@ -2,12 +2,14 @@ package org.openelisglobal.testconfiguration.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
@@ -68,9 +70,29 @@ public class MethodCreateRestController extends BaseController {
         form.setInactiveMethodList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.METHODS_INACTIVE));
 
+        form.setMethods(methodRows());
+
         form.setExistingEnglishNames(getExistingMethodNames(Locale.ENGLISH));
 
         form.setExistingFrenchNames(getExistingMethodNames(Locale.FRENCH));
+    }
+
+    /**
+     * Every method with both of its names, so Manage Methods can list them and
+     * prefill a rename.
+     */
+    private List<Map<String, String>> methodRows() {
+        List<Map<String, String>> rows = new ArrayList<>();
+        for (Method method : methodService.getAll()) {
+            Map<String, String> row = new HashMap<>();
+            row.put("id", method.getId());
+            row.put("nameEnglish", method.getLocalization().getLocalizedValue(Locale.ENGLISH));
+            row.put("nameFrench", method.getLocalization().getLocalizedValue(Locale.FRENCH));
+            row.put("code", method.getCode());
+            row.put("active", String.valueOf("Y".equals(method.getIsActive())));
+            rows.add(row);
+        }
+        return rows;
     }
 
     private String getExistingMethodNames(Locale locale) {
@@ -116,7 +138,7 @@ public class MethodCreateRestController extends BaseController {
             methodCreateService.insertMethod(localization, method, workplanModule, resultModule, validationModule,
                     workplanResultModule, resultResultModule, validationValidationModule);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.METHODS);

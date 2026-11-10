@@ -2,11 +2,10 @@ package org.openelisglobal.role.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.role.valueholder.Role;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,7 +49,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
 
         // Read and validate header
         String headerLine = reader.readLine();
@@ -156,7 +155,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         }
 
         // Check if role already exists
-        Role existingRole = roleService.getRoleByName(name);
+        Role existingRole = findExistingRole(name);
         if (existingRole != null) {
             // Update existing role
             updateRoleFromCsv(existingRole, values, descriptionIndex, displayKeyIndex, activeIndex, editableIndex,
@@ -216,7 +215,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         // Set grouping parent (resolve parent role name to ID)
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
-            Role parentRole = roleService.getRoleByName(groupingParentName);
+            Role parentRole = findExistingRole(groupingParentName);
             if (parentRole != null) {
                 role.setGroupingParent(parentRole.getId());
             } else {
@@ -270,7 +269,7 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         // Set grouping parent (resolve parent role name to ID)
         String groupingParentName = getValueOrEmpty(values, groupingParentIndex);
         if (!groupingParentName.isEmpty()) {
-            Role parentRole = roleService.getRoleByName(groupingParentName);
+            Role parentRole = findExistingRole(groupingParentName);
             if (parentRole != null) {
                 role.setGroupingParent(parentRole.getId());
             } else {
@@ -282,6 +281,20 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
         String roleId = roleService.insert(role);
         role = roleService.get(roleId);
         LogEvent.logInfo(this.getClass().getSimpleName(), "createRole", "Created new role: " + name);
+        return role;
+    }
+
+    /**
+     * {@link RoleService#getRoleByName} answers a stub with id {@code -1} for a
+     * name it does not know, so callers that only read the id keep working; a
+     * loader that would update that stub gets "No row with the given identifier
+     * exists" instead of creating the role.
+     */
+    private Role findExistingRole(String name) {
+        Role role = roleService.getRoleByName(name);
+        if (role == null || role.getId() == null || "-1".equals(role.getId())) {
+            return null;
+        }
         return role;
     }
 }

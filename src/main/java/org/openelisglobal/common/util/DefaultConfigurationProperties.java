@@ -273,6 +273,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ReflexAction, "Haiti");
         properties.setPropertyValue(Property.AccessionFormat, "SITEYEARNUM");
         properties.setPropertyValue(Property.TRACK_PATIENT_PAYMENT, "false");
+        properties.setPropertyValue(Property.SHOW_FAX_FIELDS, "false");
         properties.setPropertyValue(Property.ACCESSION_NUMBER_VALIDATE, "false");
         properties.setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
         properties.setPropertyValue(Property.DEFAULT_DATE_LOCALE, "fr-FR");
@@ -281,6 +282,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.CONDENSE_NFS_PANEL, "false");
         properties.setPropertyValue(Property.PATIENT_DATA_ON_RESULTS_BY_ROLE, "false");
         properties.setPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS, "true");
+        properties.setPropertyValue(Property.REPORT_PAPER_SIZE, "A4");
         properties.setPropertyValue(Property.QA_SORT_EVENT_LIST, "true");
         properties.setPropertyValue(Property.ALWAYS_VALIDATE_RESULTS, "true");
         properties.setPropertyValue(Property.ADDITIONAL_SITE_INFO, "");
@@ -330,6 +332,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.MAX_FREEZER_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.MAX_REQUEST_LABEL_QUANTITY, "100");
+        properties.setPropertyValue(Property.MAX_REQUEST_LABEL_TOTAL, "1000");
         properties.setPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED, "2");
         properties.setPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED, "1");
         properties.setPropertyValue(Property.DEFAULT_ALIQUOT_LABEL_PRINTED, "1");
@@ -403,6 +406,14 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED, "true");
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED, "true");
         properties.setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED, "true");
+
+        // The scheme a deployment falls back to when it has configured none: parts
+        // lettered A, B, C, a block named for its part and its number, a slide named
+        // for its number alone, and a dot between the segments of a barcode.
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_PART_SCHEME, "ALPHA");
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_BLOCK_FORMAT, "{part}{n}");
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_SLIDE_FORMAT, "{n}");
+        properties.setPropertyValue(Property.PATHOLOGY_IDENTIFIER_SEPARATOR, ".");
         return properties;
     }
 

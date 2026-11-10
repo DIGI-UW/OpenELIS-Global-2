@@ -14,6 +14,8 @@ BASE_URL="${BASE_URL:-https://localhost}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-240}"
 BRIDGE_TIMEOUT_SECONDS="${BRIDGE_TIMEOUT_SECONDS:-120}"
 SIMULATOR_TIMEOUT_SECONDS="${SIMULATOR_TIMEOUT_SECONDS:-120}"
+BRIDGE_ADMIN_URL="${BRIDGE_ADMIN_URL:-https://localhost:8442}"
+MOCK_SIMULATOR_URL="${MOCK_SIMULATOR_URL:-http://localhost:8085}"
 
 wait_for_url() {
   local label="$1"
@@ -30,9 +32,9 @@ bash "${SCRIPT_DIR}/wait-for-openelis-login.sh"
 wait_for_url \
   "bridge readiness" \
   "${BRIDGE_TIMEOUT_SECONDS}" \
-  "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health"
+  "curl -k -s -f --connect-timeout 2 --max-time 3 $BRIDGE_ADMIN_URL/actuator/health"
 
 wait_for_url \
   "simulator readiness" \
   "${SIMULATOR_TIMEOUT_SECONDS}" \
-  "curl -s -f --connect-timeout 2 --max-time 3 http://localhost:8085/health"
+  "curl -s -f --connect-timeout 2 --max-time 3 $MOCK_SIMULATOR_URL/health"

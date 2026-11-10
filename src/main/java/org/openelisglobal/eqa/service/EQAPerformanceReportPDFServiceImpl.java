@@ -1,20 +1,6 @@
 package org.openelisglobal.eqa.service;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Paragraph;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.ColumnText;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.PdfStamper;
-import com.itextpdf.text.pdf.PdfWriter;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,6 +20,7 @@ import org.openelisglobal.analyte.dao.AnalyteDAO;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
@@ -58,6 +45,19 @@ import org.openelisglobal.systemuser.dao.SystemUserDAO;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.Rectangle;
+import org.openpdf.text.pdf.ColumnText;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfReader;
+import org.openpdf.text.pdf.PdfStamper;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,15 +66,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportPDFService {
 
-    private static final Font TITLE_FONT = new Font(Font.FontFamily.HELVETICA, 15, Font.BOLD);
-    private static final Font SECTION_FONT = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-    private static final Font META_FONT = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL);
-    private static final Font HEAD_FONT = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-    private static final Font CELL_FONT = new Font(Font.FontFamily.HELVETICA, 9, Font.NORMAL);
-    private static final BaseColor HEAD_BG = new BaseColor(21, 96, 143);
-    private static final BaseColor SECTION_BG = new BaseColor(233, 238, 242);
-    private static final Font SECTION_ROW_FONT = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
-    private static final Font FOOTER_FONT = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
+    private static final Font TITLE_FONT = new Font(Font.HELVETICA, 15, Font.BOLD);
+    private static final Font SECTION_FONT = new Font(Font.HELVETICA, 11, Font.BOLD);
+    private static final Font META_FONT = new Font(Font.HELVETICA, 9, Font.NORMAL);
+    private static final Font HEAD_FONT = new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 9, Font.NORMAL);
+    private static final Color HEAD_BG = new Color(21, 96, 143);
+    private static final Color SECTION_BG = new Color(233, 238, 242);
+    private static final Font SECTION_ROW_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
+    private static final Font FOOTER_FONT = new Font(Font.HELVETICA, 8, Font.NORMAL);
 
     /** Printed wherever a value is absent, so a blank cell never reads as zero. */
     private static final String DASH = "—";
@@ -145,7 +145,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
      */
     private byte[] render(EQACycle cycle, List<Row> rows, String participant, boolean includeLabColumns) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4.rotate(), 36, 36, 42, 42);
+        Document document = new Document(PdfExportSupport.pageSize().rotate(), 36, 36, 42, 42);
         try {
             PdfWriter.getInstance(document, out);
             document.open();
@@ -416,7 +416,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         }
         document.add(paragraph(MessageUtil.getMessage("eqa.report.table.title"), SECTION_FONT, 14f));
 
-        // Eleven columns are tight on A4 landscape: the difference column is kept
+        // Eleven columns are tight on a landscape page: the difference column is kept
         // narrow (its content is "-8 (-8%)") and its room comes off the analyte,
         // which already wraps on a long name either way. Widening it instead
         // wrapped the reported value and its unit onto a second line, which is the

@@ -49,6 +49,7 @@ import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { orderSavedMessage } from "../orderSavedMessage";
 
 /**
  * OrderLabel - Step 3: Label & Store
@@ -713,7 +714,10 @@ const OrderLabel = () => {
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "save.order.success.msg" }),
+        message: orderSavedMessage(
+          intl,
+          labNumber || orderData?.sampleOrderItems?.labNo,
+        ),
       });
       setNotificationVisible(true);
     } catch (error) {

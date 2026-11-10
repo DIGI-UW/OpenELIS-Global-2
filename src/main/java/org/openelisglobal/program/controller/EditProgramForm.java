@@ -24,6 +24,26 @@ public class EditProgramForm {
      */
     private String domain;
     private Boolean active;
+    private Boolean showOnMicroCase;
+    private String reportingTrackId;
+    private List<org.openelisglobal.common.util.IdValuePair> reportingTracks;
+
+    public String getReportingTrackId() {
+        return reportingTrackId;
+    }
+
+    public void setReportingTrackId(String id) {
+        reportingTrackId = id;
+    }
+
+    public List<org.openelisglobal.common.util.IdValuePair> getReportingTracks() {
+        return reportingTracks;
+    }
+
+    public void setReportingTracks(List<org.openelisglobal.common.util.IdValuePair> tracks) {
+        reportingTracks = tracks;
+    }
+
     private List<String> labUnitIds;
 
     public Program getProgram() {
@@ -72,6 +92,14 @@ public class EditProgramForm {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getShowOnMicroCase() {
+        return showOnMicroCase;
+    }
+
+    public void setShowOnMicroCase(Boolean showOnMicroCase) {
+        this.showOnMicroCase = showOnMicroCase;
     }
 
     public List<String> getLabUnitIds() {

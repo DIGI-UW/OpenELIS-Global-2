@@ -2,18 +2,28 @@ import React from "react";
 import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import AsyncAvatar from "../../patient/photoManagement/photoAvatar/AyncAvatar";
-import { openPatientResults, type PatientSearchResult } from "./searchService";
+import { type PatientSearchResult } from "./searchService";
+import useInAppNavigation from "../../common/useInAppNavigation";
 
 interface SearchOutputProps {
   patientData: PatientSearchResult[];
   loading?: boolean;
   className?: string;
+  onSelect?: () => void;
 }
 
 const SearchOutput: React.FC<SearchOutputProps> = ({
   patientData,
   className = "patientHead",
+  onSelect,
 }) => {
+  const navigate = useInAppNavigation();
+  const openPatientResults = (patientId?: string | number) => {
+    if (patientId) {
+      onSelect?.();
+      navigate("/PatientResults/" + patientId)();
+    }
+  };
   return (
     <div>
       {patientData.map((patient) => {

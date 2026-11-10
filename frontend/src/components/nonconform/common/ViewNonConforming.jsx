@@ -38,29 +38,14 @@ export const initialReportFormValues = {
 };
 
 export const selectOptions = [
-  {
-    value: "nceNumber",
-    text: "NCE Number",
-  },
-  {
-    text: "Lab Number",
-    value: "labNumber",
-  },
+  { value: "nceNumber", labelId: "nonconform.search.nceNumber" },
+  { value: "labNumber", labelId: "nonconform.search.labNumber" },
 ];
 
 export const headers = [
-  {
-    key: "date",
-    value: "Date",
-  },
-  {
-    key: "nceNumber",
-    value: "NCE Number",
-  },
-  {
-    key: "specimen",
-    value: "Lab Section/Unit",
-  },
+  { key: "date", labelId: "nonconform.column.date" },
+  { key: "nceNumber", labelId: "nonconform.search.nceNumber" },
+  { key: "specimen", labelId: "nonconform.column.labSection" },
 ];
 
 const initialFormData = {
@@ -190,6 +175,14 @@ export const ViewNonConformingEvent = () => {
       setData(null);
     }
   };
+
+  const savedEvent = data?.nceEventsSearchResults?.[0];
+  const savedCategory = data?.nceCategories?.find(
+    (c) => String(c.id) === String(savedEvent?.nceCategoryId),
+  )?.value;
+  const savedType = data?.nceTypes?.find(
+    (t) => String(t.id) === String(savedEvent?.nceTypeId),
+  )?.value;
 
   const canSubmitNceForm =
     !!formData.labComponent &&
@@ -329,7 +322,7 @@ export const ViewNonConformingEvent = () => {
                     <SelectItem
                       key={statusOption.value}
                       value={statusOption.value}
-                      text={statusOption.text}
+                      text={intl.formatMessage({ id: statusOption.labelId })}
                     />
                   ))}
                 </Select>
@@ -389,7 +382,7 @@ export const ViewNonConformingEvent = () => {
                     <TableHeader key="checkbox" />
                     {headers.map((header) => (
                       <TableHeader id={header.key} key={header.key}>
-                        {header.value}
+                        {intl.formatMessage({ id: header.labelId })}
                       </TableHeader>
                     ))}
                   </TableRow>
@@ -555,7 +548,7 @@ export const ViewNonConformingEvent = () => {
           </Column>
 
           {/* Display saved severity */}
-          {data.severity && (
+          {savedEvent?.severity && (
             <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
               <div style={{ marginBottom: "10px" }}>
                 <span style={{ color: "#3366B3", fontWeight: "bold" }}>
@@ -568,18 +561,18 @@ export const ViewNonConformingEvent = () => {
               <div style={{ marginBottom: "10px" }}>
                 <Tag
                   type={
-                    data.severity === "CRITICAL"
+                    savedEvent.severity === "CRITICAL"
                       ? "red"
-                      : data.severity === "MAJOR"
+                      : savedEvent.severity === "MAJOR"
                         ? "magenta"
-                        : data.severity === "MINOR"
+                        : savedEvent.severity === "MINOR"
                           ? "blue"
                           : "green"
                   }
                 >
                   <FormattedMessage
-                    id={`nce.severity.${data.severity?.toLowerCase() || "low"}`}
-                    defaultMessage={data.severity || "Low"}
+                    id={`nce.severity.${savedEvent.severity.toLowerCase()}`}
+                    defaultMessage={savedEvent.severity}
                   />
                 </Tag>
               </div>
@@ -587,7 +580,7 @@ export const ViewNonConformingEvent = () => {
           )}
 
           {/* Display saved category */}
-          {data.nceCategory && (
+          {savedCategory && (
             <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
               <div style={{ marginBottom: "10px" }}>
                 <span style={{ color: "#3366B3", fontWeight: "bold" }}>
@@ -597,19 +590,19 @@ export const ViewNonConformingEvent = () => {
                   />
                 </span>
               </div>
-              <div style={{ marginBottom: "10px" }}>{data.nceCategory}</div>
+              <div style={{ marginBottom: "10px" }}>{savedCategory}</div>
             </Column>
           )}
 
           {/* Display saved type */}
-          {data.nceType && (
+          {savedType && (
             <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
               <div style={{ marginBottom: "10px" }}>
                 <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                   <FormattedMessage id="nce.field.type" defaultMessage="Type" />
                 </span>
               </div>
-              <div style={{ marginBottom: "10px" }}>{data.nceType}</div>
+              <div style={{ marginBottom: "10px" }}>{savedType}</div>
             </Column>
           )}
 

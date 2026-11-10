@@ -148,4 +148,13 @@ describe("saveFailureMessage", () => {
       messages["server.error.msg"],
     );
   });
+
+  it("words the no-tests refusal instead of showing its key (OGC-1443)", () => {
+    const intl = createIntl({ locale: "en", messages });
+    expect(
+      saveFailureMessage(intl, {
+        message: "sampleOrderItems: errors.samples.with.no.tests",
+      }),
+    ).toBe(messages["errors.samples.with.no.tests"]);
+  });
 });

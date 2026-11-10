@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -31,9 +32,11 @@ import org.openelisglobal.organization.locations.LocationsApi.Area;
 import org.openelisglobal.organization.locations.LocationsApi.AreaLevel;
 import org.openelisglobal.organization.locations.LocationsApi.AreaRequest;
 import org.openelisglobal.organization.locations.LocationsApi.ChildUsage;
+import org.openelisglobal.organization.locations.LocationsApi.CollisionRecord;
 import org.openelisglobal.organization.locations.LocationsApi.Detail;
 import org.openelisglobal.organization.locations.LocationsApi.HistoryEntry;
 import org.openelisglobal.organization.locations.LocationsApi.Identifier;
+import org.openelisglobal.organization.locations.LocationsApi.IdentifierCollision;
 import org.openelisglobal.organization.locations.LocationsApi.ListRef;
 import org.openelisglobal.organization.locations.LocationsApi.Lists;
 import org.openelisglobal.organization.locations.LocationsApi.LocationRef;
@@ -354,7 +357,8 @@ public class LocationsServiceImpl implements LocationsService {
 
         Comparator<Organization> byName = Comparator.comparing(o -> norm(o.getOrganizationName()));
         Comparator<Organization> order = Comparator.<Organization, Integer>comparing(
-                o -> exactIdentifierHits.contains(o.getId()) || norm(o.getCode()).equals(text) ? 0 : 1);
+                o -> !text.isEmpty() && (exactIdentifierHits.contains(o.getId()) || norm(o.getCode()).equals(text)) ? 0
+                        : 1);
         if ("location".equals(query.sort())) {
             order = order.thenComparing(o -> norm(
                     ancestors(o).stream().map(Organization::getOrganizationName).collect(Collectors.joining(" / "))));
@@ -411,7 +415,46 @@ public class LocationsServiceImpl implements LocationsService {
         return null;
     }
 
-    private Map<String, Usage> usageFor(List<Organization> organizations) {
+    @Override
+    @Transactional(readOnly = true)
+    public List<IdentifierCollision> identifierCollisions() {
+        Map<String, Organization> byId = new HashMap<>();
+        for (Organization organization : organizationService.getAllWithTypes()) {
+            byId.put(organization.getId(), organization);
+        }
+        List<Integer> ids = byId.keySet().stream().filter(id -> id.matches("\\d+")).map(Integer::valueOf)
+                .collect(Collectors.toList());
+        Map<String, List<OrganizationIdentifier>> groups = new TreeMap<>();
+        for (OrganizationIdentifier identifier : identifierService.getForOrganizations(ids)) {
+            Organization owner = byId.get(String.valueOf(identifier.getOrganizationId()));
+            if (owner == null) {
+                continue;
+            }
+            groups.computeIfAbsent(
+                    kindOf(owner) + "|" + norm(identifier.getLabel()) + "|" + norm(identifier.getValue()),
+                    key -> new ArrayList<>()).add(identifier);
+        }
+        List<IdentifierCollision> collisions = new ArrayList<>();
+        for (List<OrganizationIdentifier> group : groups.values()) {
+            group.sort(Comparator.comparing(identifier -> Integer.valueOf(identifier.getOrganizationId())));
+            List<CollisionRecord> records = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+            for (OrganizationIdentifier identifier : group) {
+                Organization owner = byId.get(String.valueOf(identifier.getOrganizationId()));
+                if (seen.add(owner.getId())) {
+                    records.add(new CollisionRecord(owner.getId(), owner.getOrganizationName(), kindOf(owner)));
+                }
+            }
+            if (records.size() > 1) {
+                collisions.add(new IdentifierCollision(group.get(0).getLabel(), group.get(0).getValue(), records));
+            }
+        }
+        return collisions;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Usage> usageFor(List<Organization> organizations) {
         Map<String, Usage> usage = new HashMap<>();
         if (organizations.isEmpty()) {
             return usage;
@@ -720,6 +763,11 @@ public class LocationsServiceImpl implements LocationsService {
                 errors.put("identifiers", "Every identifier needs a value");
                 continue;
             }
+            if (identifier.label().trim().length() > 100 || identifier.value().trim().length() > 100) {
+                errors.put("identifiers", "The " + (identifier.label().trim().length() > 100 ? "label" : "value")
+                        + " of " + identifier.label().trim() + " can be at most 100 characters");
+                continue;
+            }
             if (!labels.add(norm(identifier.label()))) {
                 errors.put("identifiers", "The label \"" + identifier.label().trim() + "\" is used twice");
                 continue;
@@ -736,9 +784,24 @@ public class LocationsServiceImpl implements LocationsService {
         return clean;
     }
 
+    /**
+     * An identifier being set must not already name another record of the same
+     * kind. One the record already carries is left alone: a code two records shared
+     * before the upgrade (migration 112) must not stop an edit of something else on
+     * either record.
+     */
     private void checkIdentifierClashes(List<Identifier> identifiers, String kind, String selfId,
             Map<String, String> errors) {
+        Set<String> kept = new HashSet<>();
+        if (selfId != null && selfId.matches("\\d+")) {
+            for (OrganizationIdentifier stored : identifierService.getForOrganization(Integer.valueOf(selfId))) {
+                kept.add(norm(stored.getLabel()) + "|" + norm(stored.getValue()));
+            }
+        }
         for (Identifier identifier : identifiers) {
+            if (kept.contains(norm(identifier.label()) + "|" + norm(identifier.value()))) {
+                continue;
+            }
             for (OrganizationIdentifier other : identifierService.getByLabelAndValue(identifier.label(),
                     identifier.value())) {
                 String otherId = String.valueOf(other.getOrganizationId());
@@ -757,44 +820,65 @@ public class LocationsServiceImpl implements LocationsService {
 
     private void applyFields(Organization organization, SaveRequest request, String kind, Organization parent,
             List<Identifier> identifiers, Map<String, String> errors) {
-        organization.setOrganizationName(request.name().trim());
-        organization.setShortName(trimTo(request.shortName(), 15));
+        organization.setOrganizationName(limited(request.name(), 200, "name", "Name", errors));
+        organization.setShortName(limited(request.shortName(), 15, "shortName", "Short name", errors));
         organization.setOrganization(parent);
         organization.setCategoryId(blankToNull(request.categoryId()));
         organization.setOwnershipId(blankToNull(request.ownershipId()));
-        organization.setDescription(trimTo(request.description(), 1000));
-        organization.setStreetAddress(trimTo(request.streetAddress(), 30));
-        organization.setCity(trimTo(request.city(), 30));
-        organization.setState(trimTo(request.state(), 2));
-        organization.setZipCode(trimTo(request.zipCode(), 10));
+        organization.setDescription(limited(request.description(), 1000, "description", "Description", errors));
+        organization.setStreetAddress(limited(request.streetAddress(), 30, "streetAddress", "Street address", errors));
+        organization.setCity(limited(request.city(), 30, "city", "City", errors));
+        organization.setState(limited(request.state(), 100, "state", "State / Province", errors));
+        organization.setZipCode(limited(request.zipCode(), 10, "zipCode", "Postal code", errors));
         organization.setGpsLatitude(request.gpsLatitude());
         organization.setGpsLongitude(request.gpsLongitude());
-        organization.setContactName(trimTo(request.contactName(), 100));
-        organization.setPhone(trimTo(request.phone(), 20));
-        organization.setFax(trimTo(request.fax(), 20));
-        organization.setEmail(trimTo(request.email(), 255));
-        organization.setInternetAddress(trimTo(request.internetAddress(), 40));
+        organization.setContactName(limited(request.contactName(), 100, "contactName", "Contact name", errors));
+        organization.setPhone(limited(request.phone(), 20, "phone", "Phone", errors));
+        organization.setFax(limited(request.fax(), 20, "fax", "Fax", errors));
+        organization.setEmail(limited(request.email(), 255, "email", "Email", errors));
+        organization.setInternetAddress(limited(request.internetAddress(), 40, "internetAddress", "Website", errors));
         WardServiceType serviceType = WardServiceType.parse(request.serviceType());
         organization.setServiceType(serviceType == null ? null : serviceType.name());
         Identifier reporting = identifiers.stream().filter(Identifier::reporting).findFirst().orElse(null);
-        organization.setCode(reporting == null ? null : trimTo(reporting.value(), 20));
+        organization.setCode(
+                reporting == null ? null : limited(reporting.value(), 20, "identifiers", "The reporting code", errors));
         Identifier clia = identifiers.stream()
                 .filter(i -> OrganizationIdentifier.CLIA_LABEL.equalsIgnoreCase(i.label())).findFirst().orElse(null);
-        organization.setCliaNum(clia == null ? null : trimTo(clia.value(), 12));
+        organization
+                .setCliaNum(clia == null ? null : limited(clia.value(), 12, "identifiers", "The CLIA number", errors));
         Referral referral = request.referral();
         if (referral != null) {
             organization.setApprovalStatus(blankToNull(referral.approvalStatus()));
-            organization.setAccreditationBody(trimTo(referral.accreditationBody(), 100));
-            organization.setAccreditationNumber(trimTo(referral.accreditationNumber(), 50));
+            organization.setAccreditationBody(limited(referral.accreditationBody(), 100, "referral.accreditationBody",
+                    "Accreditation body", errors));
+            organization.setAccreditationNumber(limited(referral.accreditationNumber(), 50,
+                    "referral.accreditationNumber", "Accreditation number", errors));
             organization.setAccreditationExpiry(
                     date(referral.accreditationExpiry(), "referral.accreditationExpiry", errors));
             organization.setLastReviewDate(date(referral.lastReviewDate(), "referral.lastReviewDate", errors));
             organization.setNextReviewDue(date(referral.nextReviewDue(), "referral.nextReviewDue", errors));
-            organization.setReviewNotes(trimTo(referral.reviewNotes(), 1000));
+            organization.setReviewNotes(
+                    limited(referral.reviewNotes(), 1000, "referral.reviewNotes", "Review notes", errors));
         }
         if (LocationsApi.KIND_SITE.equals(kind) && reporting == null) {
             errors.put("identifiers", "A sampling site needs a code");
         }
+    }
+
+    /**
+     * The trimmed value, or null when blank. A value longer than its column is
+     * refused with a message naming the field rather than cut (OGC-1264).
+     */
+    private static String limited(String text, int length, String field, String label, Map<String, String> errors) {
+        if (GenericValidator.isBlankOrNull(text)) {
+            return null;
+        }
+        String trimmed = text.trim();
+        if (trimmed.length() > length) {
+            errors.putIfAbsent(field, label + " can be at most " + length + " characters");
+            return trimmed.substring(0, length);
+        }
+        return trimmed;
     }
 
     private static String trimTo(String text, int length) {
@@ -1094,6 +1178,11 @@ public class LocationsServiceImpl implements LocationsService {
                 && !request.lastupdated().equals(millis(ward))) {
             throw new LocationsConflictException("Another admin saved this ward first", detail(ward));
         }
+        limited(request.name(), 200, "name", "Name", errors);
+        limited(request.code(), 20, "code", "Code", errors);
+        limited(request.contactName(), 100, "contactName", "Contact name", errors);
+        limited(request.phone(), 20, "phone", "Phone", errors);
+        limited(request.email(), 255, "email", "Email", errors);
         checkIdentifierClashes(identifiers, LocationsApi.KIND_WARD, ward.getId(), errors);
         if (!errors.isEmpty()) {
             throw new LocationsValidationException("The ward was not saved", errors);
@@ -1351,6 +1440,8 @@ public class LocationsServiceImpl implements LocationsService {
         if (isNew && levelType == null) {
             errors.put("parent", "There is no level below " + (parent == null ? "the top" : levelName(parent)));
         }
+        limited(request.name(), 200, "name", "Name", errors);
+        limited(request.code(), 20, "code", "Code", errors);
         if (!errors.isEmpty()) {
             throw new LocationsValidationException("The area was not saved", errors);
         }

@@ -15,6 +15,7 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.junit.Test;
+import org.openelisglobal.IsolatedDatabase;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
@@ -25,6 +26,7 @@ import org.testcontainers.utility.MountableFile;
  * shape and checks the locations land in the storage hierarchy and each lot
  * keeps its place.
  */
+@IsolatedDatabase
 public class InventoryStorageLocationMigrationTest {
 
     private static final String SKELETON = "CREATE SEQUENCE clinlims.inventory_storage_location_seq;"
@@ -43,8 +45,8 @@ public class InventoryStorageLocationMigrationTest {
             + " (2, gen_random_uuid(), 'Congelateur -20', 'FRZ-20', 'FREEZER', 1, -25, -15, true),"
             + " (3, gen_random_uuid(), 'Etagere 1', 'SH1', 'SHELF', 2, NULL, NULL, true),"
             + " (4, gen_random_uuid(), 'Frigo reactifs', 'FRG-A', 'REFRIGERATOR', NULL, 2, 8, true);"
-            + " INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, item_type, units, code) VALUES"
-            + " (9001, gen_random_uuid(), 'Kit', 'REAGENT', 'tests', 'KIT9001');"
+            + " INSERT INTO clinlims.inventory_item (id, fhir_uuid, name, units, code) VALUES"
+            + " (9001, gen_random_uuid(), 'Kit', 'tests', 'KIT9001');"
             + " INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number, initial_quantity,"
             + " current_quantity, storage_location_id) VALUES (9101, gen_random_uuid(), 9001, 'LOT-SHELF', 10, 10, 3),"
             + " (9102, gen_random_uuid(), 9001, 'LOT-FRIDGE', 10, 10, 4),"

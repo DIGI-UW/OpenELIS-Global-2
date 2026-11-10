@@ -73,11 +73,21 @@ const sampleTypeMatchesDomain = (type, domain) => {
   return normalized === null || normalized === domain;
 };
 
-const CULTURE_WORKFLOW_TYPES = [
-  "BACTERIOLOGY",
-  "MYCOBACTERIOLOGY_TB",
-  "MYCOLOGY",
+const QC_THRESHOLD_FIELDS = [
+  { field: "qcBlankThreshold", labelKey: "test.qc.blankThreshold" },
+  { field: "qcRpdThreshold", labelKey: "test.qc.rpdThreshold" },
+  { field: "qcRecoveryWindowPct", labelKey: "test.qc.recoveryWindowPct" },
 ];
+
+const isBlankValue = (value) =>
+  value === undefined || value === null || String(value).trim() === "";
+
+// Mirrors the server: whole minutes, and non-negative numbers for QC limits.
+const holdingTimeValid = (value) =>
+  isBlankValue(value) || /^\d{1,9}$/.test(String(value).trim());
+
+const thresholdValid = (value) =>
+  isBlankValue(value) || /^\d{1,10}(\.\d{1,5})?$/.test(String(value).trim());
 
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
@@ -94,6 +104,7 @@ const BasicInfoSection = ({ testId }) => {
   const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
   const [staleSave, setStaleSave] = useState(null);
   const [form, setForm] = useState(null);
   const [pendingDomain, setPendingDomain] = useState(null);
@@ -109,6 +120,8 @@ const BasicInfoSection = ({ testId }) => {
   // FR-18 (OGC-1119) — the LOINC integrity warnings activation re-surfaces:
   // shown beside the toggle right after the test goes Active, never a block.
   const [activationWarnings, setActivationWarnings] = useState(null);
+  // The field a 422 save named as unstorable.
+  const [serverInvalidField, setServerInvalidField] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -127,6 +140,22 @@ const BasicInfoSection = ({ testId }) => {
   const [labUnits, setLabUnits] = useState([]);
   const [sampleTypes, setSampleTypes] = useState([]);
 
+  // FR-58 — what still blocks activation. Loaded with the form and again after
+  // a save, since a save can close a gap (a sample type, a lab unit).
+  const loadCompleteness = (signal = null) => {
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${testId}/completeness`,
+      (res) => {
+        if (res && !res.complete) {
+          setCompletenessGaps(res.messages || []);
+        } else {
+          setCompletenessGaps([]);
+        }
+      },
+      signal,
+    );
+  };
+
   const cancelDomainChange = () => {
     setPendingDomain(null);
     setDomainRadioKey((k) => k + 1);
@@ -136,6 +165,7 @@ const BasicInfoSection = ({ testId }) => {
     if (!testId || isCreate) {
       return;
     }
+    const controller = new AbortController();
     setLoading(true);
     setError(false);
     getFromOpenElisServer(
@@ -148,33 +178,36 @@ const BasicInfoSection = ({ testId }) => {
         }
         setForm(res);
       },
+      controller.signal,
     );
     // FR-58 — proactively fetch what still blocks activation so the editor can
     // show the checklist before the user tries to activate.
-    getFromOpenElisServer(
-      `/rest/test-catalog/tests/${testId}/completeness`,
-      (res) => {
-        if (res && !res.complete) {
-          setCompletenessGaps(res.messages || []);
-        } else {
-          setCompletenessGaps([]);
-        }
-      },
-    );
+    loadCompleteness(controller.signal);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId, isCreate]);
 
   // Both create and edit need the Lab Unit + Sample type reference lists (they are
   // editable in both modes).
   useEffect(() => {
-    getFromOpenElisServer("/rest/test-catalog/lab-units", (res) =>
-      setLabUnits(Array.isArray(res) ? res : []),
+    const controller = new AbortController();
+    getFromOpenElisServer(
+      "/rest/test-catalog/lab-units?includeInactive=true",
+      (res) => setLabUnits(Array.isArray(res) ? res : []),
+      controller.signal,
     );
-    getFromOpenElisServer("/rest/test-catalog/sample-types", (res) =>
-      setSampleTypes(Array.isArray(res) ? res : []),
+    getFromOpenElisServer(
+      "/rest/test-catalog/sample-types",
+      (res) => setSampleTypes(Array.isArray(res) ? res : []),
+      controller.signal,
     );
+    return () => controller.abort();
   }, []);
 
-  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const update = (patch) => {
+    setServerInvalidField(null);
+    setForm((prev) => ({ ...prev, ...patch }));
+  };
   const updateCreate = (patch) =>
     setCreateForm((prev) => ({ ...prev, ...patch }));
 
@@ -293,6 +326,7 @@ const BasicInfoSection = ({ testId }) => {
     }
     setSaving(true);
     setCodeError(false);
+    setServerInvalidField(null);
     // The create endpoint expects `amr` (not `antimicrobialResistance`); map the
     // form's field names to the request body.
     const payload = {
@@ -352,6 +386,26 @@ const BasicInfoSection = ({ testId }) => {
                 setCodeError(true);
               }
             });
+        } else if (response && response.status === 422) {
+          response
+            .json()
+            .catch(() => null)
+            .then((body) => {
+              if (body && body.invalidField === "labUnitId") {
+                setServerInvalidField("labUnitId");
+                return;
+              }
+              setNotificationVisible(true);
+              addNotification({
+                kind: "error",
+                title: intl.formatMessage({
+                  id: "label.testCatalog.section.basic-info",
+                }),
+                message: intl.formatMessage({
+                  id: "error.testCatalog.create.refused",
+                }),
+              });
+            });
         } else {
           setNotificationVisible(true);
           addNotification({
@@ -366,6 +420,7 @@ const BasicInfoSection = ({ testId }) => {
 
   const handleSave = () => {
     setSaving(true);
+    setServerInvalidField(null);
     putToOpenElisServerJsonResponse(
       `/rest/test-catalog/tests/${testId}/basic-info`,
       JSON.stringify(form),
@@ -376,6 +431,7 @@ const BasicInfoSection = ({ testId }) => {
         // field; the helper folds an error response's status into the JSON.
         if (res && res.testId && !res.status) {
           setForm((prev) => ({ ...prev, lastupdated: res.lastupdated }));
+          loadCompleteness();
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -388,6 +444,28 @@ const BasicInfoSection = ({ testId }) => {
         } else if (res && res.status === 409 && res.conflict === "stale") {
           setNotificationVisible(false);
           setStaleSave(resolveApiErrorMessage(intl, res, "server.error.msg"));
+        } else if (res && res.status === 422 && res.invalidField) {
+          setServerInvalidField(res.invalidField);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.basicInfo.invalidValue",
+            }),
+          });
+        } else if (res && res.status === 409 && res.conflict === "code") {
+          setCodeError(true);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.codeExists",
+            }),
+          });
         } else if (
           res &&
           res.status === 409 &&
@@ -415,10 +493,12 @@ const BasicInfoSection = ({ testId }) => {
   };
 
   const handleActivate = (gapsAcknowledged) => {
+    setActivating(true);
     postToOpenElisServerJsonResponse(
       `/rest/test-catalog/tests/${testId}/activate`,
       JSON.stringify(gapsAcknowledged ? { gapsAcknowledged } : {}),
       (res) => {
+        setActivating(false);
         if (res && (res.status === 422 || res.statusCode === 422)) {
           // FR-57/FR-59 — incomplete test: surface the checklist, never silently
           // succeed or flip the toggle.
@@ -516,9 +596,16 @@ const BasicInfoSection = ({ testId }) => {
           items={labUnitOptionsFor(createForm.labUnitId)}
           itemToString={labUnitItemToString}
           selectedItem={labUnits.find((u) => u.id === createForm.labUnitId)}
-          onChange={({ selectedItem }) =>
-            updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
-          }
+          onChange={({ selectedItem }) => {
+            if (serverInvalidField === "labUnitId") {
+              setServerInvalidField(null);
+            }
+            updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" });
+          }}
+          invalid={serverInvalidField === "labUnitId"}
+          invalidText={intl.formatMessage({
+            id: "error.testCatalog.basicInfo.labUnitInactive",
+          })}
         />
         {renderSampleTypesControl(
           "basic-info",
@@ -631,6 +718,17 @@ const BasicInfoSection = ({ testId }) => {
     );
   }
 
+  const timeHoldingInvalid =
+    !holdingTimeValid(form.timeHolding) || serverInvalidField === "timeHolding";
+  const invalidThresholds = QC_THRESHOLD_FIELDS.map(
+    ({ field }) => field,
+  ).filter(
+    (field) => !thresholdValid(form[field]) || serverInvalidField === field,
+  );
+  const showQcThresholds =
+    (form.domain && form.domain !== "CLINICAL") ||
+    QC_THRESHOLD_FIELDS.some(({ field }) => !isBlankValue(form[field]));
+
   return (
     <Stack gap={6}>
       <TextInput
@@ -650,7 +748,14 @@ const BasicInfoSection = ({ testId }) => {
           id: "label.testCatalog.basicInfo.code",
         })}
         value={form.code || ""}
-        onChange={(e) => update({ code: e.target.value })}
+        invalid={codeError}
+        invalidText={intl.formatMessage({
+          id: "error.testCatalog.codeExists",
+        })}
+        onChange={(e) => {
+          setCodeError(false);
+          update({ code: e.target.value });
+        }}
       />
       <TextArea
         id="basic-info-description"
@@ -670,8 +775,22 @@ const BasicInfoSection = ({ testId }) => {
         items={labUnitOptionsFor(form.labUnitId)}
         itemToString={labUnitItemToString}
         selectedItem={labUnits.find((u) => u.id === form.labUnitId) || null}
-        onChange={({ selectedItem }) =>
-          update({ labUnitId: selectedItem ? selectedItem.id : "" })
+        onChange={({ selectedItem }) => {
+          if (serverInvalidField === "labUnitId") {
+            setServerInvalidField(null);
+          }
+          update({ labUnitId: selectedItem ? selectedItem.id : "" });
+        }}
+        invalid={serverInvalidField === "labUnitId"}
+        invalidText={intl.formatMessage({
+          id: "error.testCatalog.basicInfo.labUnitInactive",
+        })}
+        helperText={
+          labUnits.find((u) => u.id === form.labUnitId)?.isActive === false
+            ? intl.formatMessage({
+                id: "label.testCatalog.basicInfo.labUnit.inactiveHelp",
+              })
+            : undefined
         }
       />
       <div id="basic-info-edit-sample-type">
@@ -739,32 +858,116 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
-      <Select
-        id="basic-info-culture-workflow-type"
+      <Toggle
+        id="basic-info-opens-microbiology-case"
         labelText={intl.formatMessage({
-          id: "label.testCatalog.basicInfo.cultureWorkflowType",
+          id: "label.testCatalog.basicInfo.opensMicrobiologyCase",
         })}
-        value={form.cultureWorkflowType || ""}
-        onChange={(event) =>
-          update({ cultureWorkflowType: event.target.value || "" })
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.opensMicrobiologyCase}
+        onToggle={(checked) =>
+          update({
+            opensMicrobiologyCase: checked,
+            ...(!checked ? { collectedInSets: false } : {}),
+          })
         }
-      >
-        <SelectItem
-          value=""
-          text={intl.formatMessage({
-            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
+      />
+      {form.opensMicrobiologyCase && (
+        <Select
+          id="basic-info-microbiology-role"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.microbiologyCaseRole",
           })}
-        />
-        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
-          <SelectItem
-            key={workflowType}
-            value={workflowType}
-            text={intl.formatMessage({
-              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
-            })}
-          />
-        ))}
-      </Select>
+          value={form.microbiologyCaseRole || "DIRECT"}
+          disabled={!form.opensMicrobiologyCase}
+          onChange={(event) =>
+            update({
+              microbiologyCaseRole: event.target.value,
+              ...(event.target.value !== "CULTURE"
+                ? { collectedInSets: false }
+                : {}),
+            })
+          }
+        >
+          {["CULTURE", "DIRECT", "CASE"].map((role) => (
+            <SelectItem
+              key={role}
+              value={role}
+              text={intl.formatMessage({
+                id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
+              })}
+            />
+          ))}
+        </Select>
+      )}
+      <Toggle
+        id="basic-info-collected-in-sets"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.collectedInSets",
+        })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.collectedInSets}
+        disabled={
+          !form.opensMicrobiologyCase || form.microbiologyCaseRole !== "CULTURE"
+        }
+        onToggle={(checked) => update({ collectedInSets: checked })}
+      />
+      <TextInput
+        id="basic-info-time-holding"
+        labelText={intl.formatMessage({ id: "test.timeHolding" })}
+        value={form.timeHolding || ""}
+        onChange={(e) => update({ timeHolding: e.target.value })}
+        invalid={timeHoldingInvalid}
+        invalidText={intl.formatMessage({
+          id: "error.testCatalog.basicInfo.timeHolding",
+        })}
+      />
+      <Toggle
+        id="basic-info-in-lab-only"
+        labelText={intl.formatMessage({ id: "test.inLabOnly" })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.inLabOnly}
+        onToggle={(checked) => update({ inLabOnly: checked })}
+      />
+      <Toggle
+        id="basic-info-notify-results"
+        labelText={intl.formatMessage({ id: "test.notifyResults" })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.notifyResults}
+        onToggle={(checked) => update({ notifyResults: checked })}
+      />
+      {showQcThresholds && (
+        <fieldset
+          className="cds--fieldset"
+          data-testid="basic-info-qc-thresholds"
+        >
+          <legend className="cds--label">
+            <FormattedMessage id="test.qc.thresholds.heading" />
+          </legend>
+          <p className="cds--form__helper-text">
+            <FormattedMessage id="test.qc.thresholds.description" />
+          </p>
+          <Stack gap={5}>
+            {QC_THRESHOLD_FIELDS.map(({ field, labelKey }) => (
+              <TextInput
+                key={field}
+                id={`basic-info-${field}`}
+                labelText={intl.formatMessage({ id: labelKey })}
+                value={form[field] || ""}
+                onChange={(e) => update({ [field]: e.target.value })}
+                invalid={invalidThresholds.includes(field)}
+                invalidText={intl.formatMessage({
+                  id: "error.testCatalog.basicInfo.qcThreshold",
+                })}
+              />
+            ))}
+          </Stack>
+        </fieldset>
+      )}
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({
@@ -858,7 +1061,10 @@ const BasicInfoSection = ({ testId }) => {
           kind="primary"
           disabled={
             saving ||
+            activating ||
             Boolean(staleSave) ||
+            timeHoldingInvalid ||
+            invalidThresholds.length > 0 ||
             editSampleTypesMissing ||
             editIncompatibleTypes.length > 0
           }

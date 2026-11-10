@@ -1,4 +1,5 @@
 import React, {
+  useMemo,
   useState,
   useEffect,
   useContext,
@@ -52,6 +53,12 @@ import ServerPageArrows from "../common/ServerPageArrows";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
 import "./order-workflow.scss";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
+import {
+  CANCEL_REASON_CATEGORY,
+  OTHER_REASON,
+  cancelReasonText as reasonText,
+} from "./cancelReasons";
 
 /**
  * OrderDashboard - Default landing page for "Add Order" menu (DSH-1 to DSH-9)
@@ -65,16 +72,41 @@ import "./order-workflow.scss";
  * - DSH-9: Pagination, one server page at a time (paging.results.pageSize)
  */
 
-const STATUS_OPTIONS = [
-  { id: "all", label: "All Statuses" },
-  { id: "in_progress", label: "In Progress" },
-  { id: "pending_qa", label: "Awaiting sample check" },
-  { id: "completed", label: "Completed" },
-  // Driven by the order's referral rather than a sample status column: the
+// The filter lists are built per render so their labels come from the
+// message bundle (no hard-coded text), like every other label on the page.
+const statusOptions = (intl) => [
+  {
+    id: "all",
+    label: intl.formatMessage({ id: "order.dashboard.status.all" }),
+  },
+  {
+    id: "in_progress",
+    label: intl.formatMessage({ id: "order.dashboard.status.inProgress" }),
+  },
+  {
+    id: "pending_qa",
+    label: intl.formatMessage({ id: "order.dashboard.status.pendingQa" }),
+  },
+  {
+    id: "completed",
+    label: intl.formatMessage({ id: "order.dashboard.status.completed" }),
+  },
+  // Driven by the order's referrals rather than a sample status column: the
   // FHIR-aligned ReferralStatus already models the lifecycle (OGC-1201 U).
-  { id: "referred_out", label: "Referred Out" },
+  // "Has referred tests" is any open referral; "Referred Out" is every test.
+  {
+    id: "has_referred",
+    label: intl.formatMessage({ id: "order.dashboard.status.hasReferred" }),
+  },
+  {
+    id: "referred_out",
+    label: intl.formatMessage({ id: "order.dashboard.status.referredOut" }),
+  },
   // Cancelled orders are hidden from every other filter (FR-A4).
-  { id: "cancelled", label: "Cancelled" },
+  {
+    id: "cancelled",
+    label: intl.formatMessage({ id: "order.dashboard.filter.cancelled" }),
+  },
 ];
 
 const PROGRESS_STATUS_TAG = {
@@ -87,18 +119,33 @@ const PROGRESS_STATUS_TAG = {
   CANCELLED: { type: "gray", labelId: "order.status.cancelled" },
 };
 
-const CANCEL_REASON_CATEGORY = "Order cancel reasons";
-
-const PRIORITY_OPTIONS = [
-  { id: "all", label: "All Priorities" },
-  { id: "stat", label: "STAT" },
-  { id: "asap", label: "ASAP" },
-  { id: "timed", label: "Timed" },
-  { id: "routine", label: "Routine" },
+const priorityOptions = (intl) => [
+  {
+    id: "all",
+    label: intl.formatMessage({ id: "order.dashboard.priority.all" }),
+  },
+  {
+    id: "stat",
+    label: intl.formatMessage({ id: "order.dashboard.priority.stat" }),
+  },
+  {
+    id: "asap",
+    label: intl.formatMessage({ id: "order.dashboard.priority.asap" }),
+  },
+  {
+    id: "timed",
+    label: intl.formatMessage({ id: "order.dashboard.priority.timed" }),
+  },
+  {
+    id: "routine",
+    label: intl.formatMessage({ id: "order.dashboard.priority.routine" }),
+  },
 ];
 
 const OrderDashboardContent = () => {
   const intl = useIntl();
+  const STATUS_OPTIONS = useMemo(() => statusOptions(intl), [intl]);
+  const PRIORITY_OPTIONS = useMemo(() => priorityOptions(intl), [intl]);
   const history = useHistory();
   const location = useLocation();
   const workflowPrefix = useWorkflowPrefix();
@@ -365,8 +412,7 @@ const OrderDashboardContent = () => {
     setCancelOther("");
   };
 
-  const cancelReasonText =
-    cancelReason === "__other__" ? cancelOther.trim() : cancelReason;
+  const cancelReasonText = reasonText(cancelReason, cancelOther);
 
   const confirmCancel = async () => {
     if (!cancelTarget || !cancelReasonText) return;
@@ -530,16 +576,47 @@ const OrderDashboardContent = () => {
       if (!tag) {
         return "---";
       }
+      const referredOut = order.status === "referred_out";
       const completeLabel =
         order.complete && order.progressStatus !== "CANCELLED"
           ? intl.formatMessage({ id: "order.status.complete" })
           : null;
+      const label = referredOut
+        ? intl.formatMessage({ id: "order.status.referredOut" })
+        : completeLabel && order.progressStatus === "SAMPLES_PREPARED"
+          ? completeLabel
+          : intl.formatMessage({ id: tag.labelId });
+      const summary = order.referralSummary;
+      const referralLine =
+        summary && summary.referredTests > 0
+          ? intl.formatMessage(
+              {
+                id:
+                  summary.referredTests >= summary.totalTests
+                    ? "order.referral.fully"
+                    : "order.referral.partial",
+              },
+              {
+                referred: summary.referredTests,
+                total: summary.totalTests,
+                lab: summary.referredTo,
+              },
+            )
+          : null;
       return (
-        <Tag type={tag.type} size="sm">
-          {completeLabel && order.progressStatus === "SAMPLES_PREPARED"
-            ? completeLabel
-            : intl.formatMessage({ id: tag.labelId })}
-        </Tag>
+        <div className="order-status-cell">
+          <Tag type={referredOut ? "purple" : tag.type} size="sm">
+            {label}
+          </Tag>
+          {referralLine ? (
+            <div
+              className="order-referral-line"
+              data-testid="order-referral-line"
+            >
+              {referralLine}
+            </div>
+          ) : null}
+        </div>
       );
     })(),
     progress: (
@@ -650,9 +727,13 @@ const OrderDashboardContent = () => {
         <p>{intl.formatMessage({ id: "order.dashboard.cancel.body" })}</p>
         <Select
           id="cancel-order-reason"
-          labelText={intl.formatMessage({
-            id: "order.dashboard.cancel.reason",
-          })}
+          labelText={
+            <>
+              {intl.formatMessage({ id: "order.dashboard.cancel.reason" })}
+              <RequiredMarker />
+            </>
+          }
+          {...requiredProps()}
           value={cancelReason}
           onChange={(e) => setCancelReason(e.target.value)}
         >
@@ -667,16 +748,22 @@ const OrderDashboardContent = () => {
               />
             ))}
           <SelectItem
-            value="__other__"
+            value={OTHER_REASON}
             text={intl.formatMessage({ id: "order.dashboard.cancel.other" })}
           />
         </Select>
-        {cancelReason === "__other__" && (
+        {cancelReason === OTHER_REASON && (
           <TextInput
             id="cancel-order-reason-other"
-            labelText={intl.formatMessage({
-              id: "order.dashboard.cancel.reasonOther",
-            })}
+            labelText={
+              <>
+                {intl.formatMessage({
+                  id: "order.dashboard.cancel.reasonOther",
+                })}
+                <RequiredMarker />
+              </>
+            }
+            {...requiredProps()}
             value={cancelOther}
             onChange={(e) => setCancelOther(e.target.value)}
             maxLength={255}
@@ -814,7 +901,6 @@ const OrderDashboardContent = () => {
               getHeaderProps,
               getRowProps,
               getToolbarProps,
-              onInputChange,
             }) => (
               <TableContainer>
                 <TableToolbar {...getToolbarProps()}>
@@ -833,10 +919,13 @@ const OrderDashboardContent = () => {
                                 "Search by patient, lab number, or ID...",
                             },
                       )}
-                      onChange={(e) => {
-                        onInputChange(e);
-                        applyFilter(setSearchQuery)(e.target.value);
-                      }}
+                      // The server answers the search (patient, lab number,
+                      // identifiers); Carbon's own text filter is not used
+                      // because the cells are rendered elements it cannot
+                      // read, which hid every matching row.
+                      onChange={(e) =>
+                        applyFilter(setSearchQuery)(e.target.value)
+                      }
                     />
                   </TableToolbarContent>
                 </TableToolbar>

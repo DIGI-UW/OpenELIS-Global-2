@@ -1,5 +1,8 @@
 package org.openelisglobal.result.controller.rest;
 
+import static org.hamcrest.CoreMatchers.everyItem;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -22,8 +25,10 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -190,6 +195,38 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * A test with several parts shows each part with its own status, and a save can
+     * move the test from one status to another, so the save reports every part's
+     * status: the saved part awaits validation, the part without a value is not
+     * started. A result bound to no part belongs to the primary.
+     */
+    @Test
+    public void save_reportsEveryPartsStatus() throws Exception {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, display_order, is_active,"
+                + " lastupdated, is_primary) VALUES ('rerc-a', 1, 'A', 'Part A', 0, 'Y', NOW(), true),"
+                + " ('rerc-b', 1, 'B', 'Part B', 1, 'Y', NOW(), false)");
+        try {
+            mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                    .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.componentStatusIds['rerc-a']")
+                            .value(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance)))
+                    .andExpect(jsonPath("$.componentStatusIds['rerc-b']")
+                            .value(statusService.getStatusID(AnalysisStatus.NotStarted)));
+        } finally {
+            jdbc.update("DELETE FROM clinlims.test_result_component WHERE id IN ('rerc-a', 'rerc-b')");
+        }
+    }
+
+    /** A test with one part has no part statuses to report. */
+    @Test
+    public void save_ofASinglePartTestReportsNoPartStatuses() throws Exception {
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.componentStatusIds").doesNotExist());
+    }
+
+    /**
      * The stored value is echoed exactly, not as reported. A test that reports to
      * no decimal places renders 90.5 as "90" — a row that adopted that would save
      * it back over the stored value on its next edit.
@@ -217,10 +254,129 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(valueBefore, resultService.get("3").getValue());
     }
 
+    /**
+     * OGC-1200 FR-D3: a test whose analyzer value is waiting in an open run is
+     * resulted from that run; entering a value around it is refused and names the
+     * run. Once the run is complete, entry is the bench's again.
+     */
+    @Test
+    public void save_ofAPendingTestWhoseValueWaitsInAnOpenRun_isRefused409_namingTheRun() throws Exception {
+        jdbc.update("UPDATE clinlims.result SET value = NULL WHERE analysis_id = 1");
+        long run = jdbc.queryForObject("SELECT nextval('clinlims.result_run_seq')", Long.class);
+        jdbc.update("INSERT INTO clinlims.result_run (id, source, state, analyzer_id, row_count, opened_at,"
+                + " last_activity_at) VALUES (?, 'ANALYZER', 'OPEN', 9201, 1, NOW(), NOW())", run);
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, run_id, raw_sub_identity, last_updated) VALUES (nextval('analyzer_results_seq'),"
+                + " 9201, '12345', 'Waiting', '91', false, 1, ?, '', NOW())", run);
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.waitingRun.label").value("RUN-" + run))
+                .andExpect(jsonPath("$.error").exists());
+        assertEquals("nothing was entered around the run", null, resultService.get("3").getValue());
+
+        jdbc.update("UPDATE clinlims.result_run SET state = 'COMPLETE' WHERE id = ?", run);
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "90.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        assertEquals("90.0", resultService.get("3").getValue());
+    }
+
     @Test
     public void save_whosePayloadNamesAnotherAnalysis_isRejected400() throws Exception {
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
                 .content(saveBody("2", "4", "2", "15.0", null)).session(session)).andExpect(status().isBadRequest());
+    }
+
+    /**
+     * The referral date is free text read in the lab's date format, and a day and
+     * month typed the other way round was read leniently: 15/10/2026 on a
+     * month-first site became 10 March 2027, and the referral showed -145 days
+     * outstanding.
+     */
+    @Test
+    public void save_ofAReferralWhoseDateIsNotADateInTheLabsFormat_isRefused400() throws Exception {
+        String swapped = DateUtil.getDateFormat().startsWith("MM") ? "15/10/2026" : "10/15/2026";
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "15.0", currentToken("1"), referral(swapped)))
+                .session(session)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(MessageUtil.getMessage("errors.date", new String[] { swapped })));
+
+        assertEquals(0, (int) jdbc.queryForObject("SELECT count(*) FROM clinlims.referral WHERE analysis_id = 1",
+                Integer.class));
+    }
+
+    @Test
+    public void save_ofAReferralSentTomorrow_isRefused400() throws Exception {
+        String tomorrow = DateUtil.formatDateAsText(new java.util.Date(System.currentTimeMillis() + 86_400_000L));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "15.0", currentToken("1"), referral(tomorrow)))
+                .session(session)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(MessageUtil.getMessage("error.date.inFuture")));
+    }
+
+    @Test
+    public void save_ofAReferenceLabReportDateNotInTheLabsFormat_isRefused400() throws Exception {
+        String swapped = DateUtil.getDateFormat().startsWith("MM") ? "18/09/2026" : "09/18/2026";
+        String valueBefore = resultService.get("3").getValue();
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "15.0", currentToken("1"),
+                        "\"note\":\"\",\"referralItem\":{\"referredReportDate\":\"" + swapped + "\"}"))
+                .session(session)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(MessageUtil.getMessage("errors.date", new String[] { swapped })));
+
+        assertEquals("nothing was written", valueBefore, resultService.get("3").getValue());
+    }
+
+    /**
+     * A change counts as a correction only when a patient report showed the
+     * released result: a report printed before the release masked it.
+     */
+    @Test
+    public void save_marksACorrectionOnlyWhenAReportShowedTheReleasedResult() throws Exception {
+        patientReportFor("1", "2025-07-07 12:00:00");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "16.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        assertEquals("reported before the 13:00 release", 0, correctedNotes("1"));
+
+        patientReportFor("1", "2025-07-07 14:00:00");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "17.0", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        assertEquals("reported after the release", 1, correctedNotes("1"));
+    }
+
+    private void patientReportFor(String sampleId, String at) {
+        Object tracking = org.springframework.test.util.AopTestUtils
+                .getTargetObject(org.openelisglobal.spring.util.SpringContext
+                        .getBean(org.openelisglobal.common.services.IReportTrackingService.class));
+        String typeId = (String) org.springframework.test.util.ReflectionTestUtils.getField(tracking,
+                "PATIENT_DOCUMENT_TYPE_ID");
+        jdbc.update(
+                "INSERT INTO clinlims.document_type (id, name, description, lastupdated)"
+                        + " SELECT ?, 'patientReport', 'Patient report', now() WHERE NOT EXISTS"
+                        + " (SELECT 1 FROM clinlims.document_type WHERE id = ?)",
+                Integer.valueOf(typeId), Integer.valueOf(typeId));
+        jdbc.update(
+                "INSERT INTO clinlims.document_track (id, table_id, row_id, document_type_id, report_generation_time,"
+                        + " name) VALUES (nextval('clinlims.document_track_seq'), ?, ?, ?, ?, 'patientCILNSP_vreduit')",
+                Integer.valueOf(ensureReferenceTable("SAMPLE")), Integer.valueOf(sampleId), Integer.valueOf(typeId),
+                Timestamp.valueOf(at));
+    }
+
+    private int correctedNotes(String analysisId) {
+        return jdbc.queryForObject("SELECT count(*) FROM clinlims.note WHERE reference_id = ? AND text = ?",
+                Integer.class, Integer.valueOf(analysisId), MessageUtil.getMessage("note.corrected.result"));
+    }
+
+    private static String referral(String sentDate) {
+        return "\"note\":\"\",\"refer\":true,\"referralItem\":{\"referredInstituteId\":\"1\","
+                + "\"referralReasonId\":\"1\",\"referredSendDate\":\"" + sentDate + "\"}";
     }
 
     /**
@@ -460,7 +616,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         try {
             loadWorklistFor12345().andExpect(status().isOk())
                     .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"))
-                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.00 or > 400.00"));
+                    .andExpect(jsonPath("$.testResult[0].criticalRange").value("< 50.0 or > 400.0"));
         } finally {
             reset(webApplicationContext.getBean(DisplayListService.class));
         }
@@ -480,6 +636,38 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         try {
             loadWorklistFor12345().andExpect(status().isOk())
                     .andExpect(jsonPath("$.testResult[0].resultFlag").value("NORMAL"));
+        } finally {
+            reset(webApplicationContext.getBean(DisplayListService.class));
+        }
+    }
+
+    /**
+     * OGC-1574 — whole-number reporting cannot hide a clinical threshold crossing.
+     * 49.6 is below 50 and requires acknowledgement even when displayed as 50.
+     */
+    @Test
+    public void save_criticalValueHiddenByReporting_requiresAcknowledgementAndPreservesValue() throws Exception {
+        seedNumericResultLimit();
+        jdbc.update("UPDATE clinlims.test_result SET reporting_decimal_places = '0' WHERE test_id = 1");
+        String storedBefore = resultService.get("3").getValue();
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "49.6", currentToken("1"))).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("ACKNOWLEDGEMENT_REQUIRED"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("49.6"));
+
+        assertEquals(storedBefore, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(0), acknowledgementCount());
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(acknowledgedSaveBody("49.6")).session(session)).andExpect(status().isOk());
+        assertEquals("49.6", resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(1), acknowledgementCount());
+        try {
+            loadWorklistFor12345().andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult[0].resultFlag").value("CRITICAL"));
         } finally {
             reset(webApplicationContext.getBean(DisplayListService.class));
         }
@@ -666,8 +854,9 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * OGC-1022 (R3) — acknowledging a critical alert records the session user and
-     * the resolution comment; the dashboard sends the comment under "notes".
+     * OGC-1022 (R3): acknowledging a critical alert leaves it Acknowledged and
+     * records the session user and the comment, which the dashboard sends under
+     * "notes".
      */
     @Test
     public void criticalAlert_acknowledge_recordsSessionUserAndComment() throws Exception {
@@ -682,12 +871,12 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"notes\":\"physician notified\"}").session(session))
                 .andExpect(status().isOk());
 
-        assertEquals("RESOLVED",
+        assertEquals("ACKNOWLEDGED",
                 jdbc.queryForObject("SELECT status FROM clinlims.alert WHERE id = " + alertId, String.class));
         assertEquals(Integer.valueOf(1),
                 jdbc.queryForObject("SELECT acknowledged_by FROM clinlims.alert WHERE id = " + alertId, Integer.class));
-        assertEquals("physician notified",
-                jdbc.queryForObject("SELECT resolution_notes FROM clinlims.alert WHERE id = " + alertId, String.class));
+        assertEquals("physician notified", jdbc
+                .queryForObject("SELECT acknowledgment_notes FROM clinlims.alert WHERE id = " + alertId, String.class));
     }
 
     /**
@@ -859,9 +1048,9 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void testReagentLinks_returnsCatalogLinksWithItemNames() throws Exception {
-        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, item_type, units,"
+        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, units,"
                 + " is_active, last_updated) VALUES (9501, '11111111-1111-1111-1111-111111119501'::uuid,"
-                + " 'GLUCOSE_HK_GEN_3', 'Glucose HK Gen.3', 'REAGENT', 'mL', 'Y', NOW())");
+                + " 'GLUCOSE_HK_GEN_3', 'Glucose HK Gen.3', 'mL', 'Y', NOW())");
         jdbc.update("INSERT INTO clinlims.test_reagent_link (id, test_id, reagent_id, usage_type, quantity_per_test,"
                 + " quantity_unit, lastupdated) VALUES ('trl-9501', 1, 9501, 'PRIMARY', 1.5, 'mL', NOW())");
 
@@ -1045,5 +1234,70 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertFalse("another component's events must not leak", componentB.contains("scoped to A"));
         assertTrue(componentB.contains("analysis wide"));
+    }
+
+    /**
+     * The Results page sends a typed lab number together with the selected Lab
+     * Unit. Both must hold: the unit's worklist narrowed to that order, and nothing
+     * when the order has no work in the unit, not the whole unit with the lab
+     * number ignored.
+     */
+    @Test
+    public void labNumberNarrowsTheLabUnitWorklist() throws Exception {
+        jdbc.update("UPDATE clinlims.sample SET status_id = 9109 WHERE id = 1");
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9103 WHERE id = 1");
+        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
+        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
+                .thenReturn(List.of(new IdValuePair("1", "TB"), new IdValuePair("2", "TestSection2")));
+        try {
+            mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", "1").param("doRange", "false")
+                    .param("finished", "false").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult.length()").value(1))
+                    .andExpect(jsonPath("$.testResult[0].accessionNumber").value("12345"));
+
+            mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", "1").param("labNumber", "12345")
+                    .param("doRange", "false").param("finished", "false").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult.length()").value(1));
+
+            mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", "1").param("labNumber", "13333")
+                    .param("doRange", "false").param("finished", "false").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult.length()").value(0));
+        } finally {
+            reset(displayList);
+        }
+    }
+
+    /**
+     * The date filter loads by collection date, with or without a Lab Unit; a typed
+     * lab number narrows that list too.
+     */
+    @Test
+    public void labNumberNarrowsTheDateWorklist() throws Exception {
+        jdbc.update("UPDATE clinlims.sample SET status_id = 9109 WHERE id = 1");
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9103 WHERE id = 1");
+        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
+        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
+                .thenReturn(List.of(new IdValuePair("1", "TB"), new IdValuePair("2", "TestSection2")));
+        try {
+            for (String testSectionId : new String[] { "", "1" }) {
+                mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", testSectionId)
+                        .param("collectionDate", "15/11/2023").param("doRange", "false").param("finished", "false")
+                        .session(session)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.testResult[*].accessionNumber", hasItem("12345")));
+
+                mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", testSectionId)
+                        .param("collectionDate", "15/11/2023").param("labNumber", "12345").param("doRange", "false")
+                        .param("finished", "false").session(session)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.testResult[*].accessionNumber", everyItem(is("12345"))))
+                        .andExpect(jsonPath("$.testResult[*].accessionNumber", hasItem("12345")));
+
+                mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", testSectionId)
+                        .param("collectionDate", "15/11/2023").param("labNumber", "99999").param("doRange", "false")
+                        .param("finished", "false").session(session)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.testResult.length()").value(0));
+            }
+        } finally {
+            reset(displayList);
+        }
     }
 }

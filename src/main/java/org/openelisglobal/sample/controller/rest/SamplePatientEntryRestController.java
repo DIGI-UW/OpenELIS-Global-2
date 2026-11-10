@@ -32,7 +32,9 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.EQAOrderEntryValidator;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.organization.service.OrganizationService;
@@ -53,6 +55,7 @@ import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
 import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
 import org.openelisglobal.sample.override.valueholder.OverrideType;
+import org.openelisglobal.sample.service.OrderTestEdits;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
@@ -68,11 +71,14 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -157,7 +163,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "referralItems*.cocContactName", "referralItems*.cocContactPhone", "referralItems*.cocContactEmail",
             "referralItems*.subcontractNotes",
             //
-            "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId", "orderEntryOnly" };
+            "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId", "orderEntryOnly",
+            "cancelReason" };
 
     @Autowired
     private SamplePatientEntryFormValidator formValidator;
@@ -198,6 +205,18 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     @Autowired
     private SampleOrderOverrideService sampleOrderOverrideService;
+    @Autowired
+    private org.openelisglobal.sample.service.TestCancelPermission testCancelPermission;
+
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCultureSetWarningService setWarningService;
+
+    @Autowired
+    private org.openelisglobal.dictionary.service.SampleContainerClassificationService containers;
+
+    @Autowired
+    @Lazy
+    private EQAOrderEntryValidator eqaOrderEntryValidator;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -318,7 +337,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             if (hasNonPatientErrors) {
                 saveErrors(result);
                 logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
-                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
+                return ResponseEntity.badRequest()
+                        .body(buildErrorBody(result, "Validation failed", workflowType, ordersWithoutPatient));
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
@@ -362,6 +382,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         updateData.setPriority(sampleOrder.getPriority());
         updateData.initProvider(sampleOrder);
         updateData.initRequestorContact(sampleOrder);
+        updateData.setCancelReason(form.getCancelReason());
 
         // initSampleData MUST be called before initProgramQuestions so that the sample
         // object is loaded (for updates) before we try to load the existing
@@ -399,7 +420,50 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // They will be added in a later step (Collect Sample)
         boolean requireSampleItems = !form.isOrderEntryOnly();
 
+        validateTestRemovals(form, updateData, result, request);
+        validateEqa(sampleOrder, result);
         updateData.validateSample(result, requireSampleItems, sampleOrder, workflowType);
+
+        if (!Boolean.TRUE.equals(form.getWarning()) && updateData.getSampleItemsTests() != null) {
+            java.util.List<org.openelisglobal.microbiology.form.MicroCaseSpecimenForm> bottles = new java.util.ArrayList<>();
+            for (org.openelisglobal.common.services.SampleAddService.SampleTestCollection stc : updateData
+                    .getSampleItemsTests()) {
+                org.openelisglobal.sampleitem.valueholder.SampleItem item = stc.item;
+                if (item != null && item.getCultureSetNumber() != null) {
+                    boolean inSets = false;
+                    if (stc.tests != null) {
+                        for (org.openelisglobal.test.valueholder.Test t : stc.tests) {
+                            if (t.isCollectedInSets()) {
+                                inSets = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (inSets) {
+                        var bottle = new org.openelisglobal.microbiology.form.MicroCaseSpecimenForm();
+                        bottle.collectedInSets = true;
+                        bottle.cultureSetNumber = item.getCultureSetNumber();
+                        bottle.containerType = item.getContainer();
+                        bottle.containerPopulation = containers.population(item.getContainer());
+                        bottle.bodySite = item.getBodySite();
+                        bottle.collectionLocationId = item.getCollectionLocationId();
+                        bottle.collectionDate = item.getCollectionDate();
+                        if (item.getTypeOfSample() != null) {
+                            bottle.specimenType = item.getTypeOfSample().getLocalizedName();
+                        }
+                        bottles.add(bottle);
+                    }
+                }
+            }
+            if (!bottles.isEmpty()) {
+                java.util.List<org.openelisglobal.microbiology.form.MicroCultureSetWarningForm> setWarnings = setWarningService
+                        .evaluate(bottles);
+                if (!setWarnings.isEmpty()) {
+                    result.rejectValue("warning", "warnings.unacknowledged",
+                            "There are unacknowledged culture set warnings");
+                }
+            }
+        }
 
         // OGC-356: For environmental/vector workflow, ignore patient-related validation
         // errors
@@ -415,7 +479,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (hasNonPatientErrors) {
             saveErrors(result);
             logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
-            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed", workflowType));
+            return ResponseEntity.badRequest()
+                    .body(buildErrorBody(result, "Validation failed", workflowType, ordersWithoutPatient));
         }
 
         // OGC-584: track persistence failure so we can return a proper HTTP
@@ -430,6 +495,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // back...". Spring may wrap the original exception, so we walk the
         // cause chain.
         String persistErrorMessage = null;
+        IllegalArgumentException persistRefusal = null;
 
         try {
             // Note: persistData now publishes SamplePatientUpdateDataCreatedEvent
@@ -488,6 +554,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         } catch (IllegalArgumentException e) {
             logger.warn("Order save rejected (validation) for labNo={}: {}", sampleOrder.getLabNo(), e.getMessage());
             persistErrorMessage = e.getMessage();
+            persistRefusal = e;
             persistRejected = true;
             persistFailed = true;
         } catch (Exception e) {
@@ -541,9 +608,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             HttpStatus status = persistRejected ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR;
             if (StringUtils.isNotBlank(persistErrorMessage)
                     && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
-                return ResponseEntity.status(status).body(Map.of("error", persistErrorMessage));
+                return ResponseEntity.status(status).body(persistErrorBody(persistErrorMessage, persistRefusal));
             }
-            return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order", workflowType));
+            return ResponseEntity.status(status)
+                    .body(buildErrorBody(result, "Failed to save order", workflowType, ordersWithoutPatient));
         }
 
         // OGC-1201 AL/AB: record the decision alongside the order it belongs
@@ -582,6 +650,132 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      * after the save. A failure here is logged and never fails a save that already
      * succeeded.
      */
+    /** An EQA order names its enrollment and, optionally, a cycle of it. */
+    private void validateEqa(SampleOrderItem sampleOrder, Errors errors) {
+        if (sampleOrder == null || !sampleOrder.getIsEQASample()) {
+            return;
+        }
+        eqaOrderEntryValidator.check(sampleOrder.getLabNo(), sampleOrder.getEqaProgramId(), sampleOrder.getEqaCycleId())
+                .ifPresent(refusal -> errors.rejectValue(refusal.field(), refusal.code(), refusal.code()));
+    }
+
+    private static java.util.function.Function<String, List<String>> panelTestIds() {
+        org.openelisglobal.panelitem.service.PanelItemService panelItems = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.panelitem.service.PanelItemService.class);
+        return panelId -> panelItems.getPanelItemsForPanel(panelId).stream().filter(item -> item.getTest() != null)
+                .map(item -> item.getTest().getId()).toList();
+    }
+
+    private void validateTestRemovals(SamplePatientEntryForm form, SamplePatientUpdateData updateData,
+            BindingResult result, HttpServletRequest request) {
+        if (form.getSampleOrderItems() == null
+                || GenericValidator.isBlankOrNull(form.getSampleOrderItems().getSampleId())) {
+            return;
+        }
+
+        Sample existing = sampleService.get(form.getSampleOrderItems().getSampleId());
+        if (existing == null) {
+            return;
+        }
+
+        List<Analysis> existingAnalyses = sampleService.getAnalysis(existing);
+        if (existingAnalyses == null || existingAnalyses.isEmpty()) {
+            return;
+        }
+
+        java.util.function.Function<String, List<String>> panelTests = panelTestIds();
+        java.util.Map<String, java.util.Set<String>> requestedBySampleItem = OrderTestEdits.requestedTestsBySampleItem(
+                updateData.getSampleItemsTests(), form.getRequestedSampleTypes(), panelTests);
+        boolean hasRemainingMicro = false;
+        if (updateData.getSampleItemsTests() != null) {
+            for (org.openelisglobal.common.services.SampleAddService.SampleTestCollection stc : updateData
+                    .getSampleItemsTests()) {
+                if (stc.tests != null) {
+                    for (org.openelisglobal.test.valueholder.Test t : stc.tests) {
+                        if (t.isOpensMicrobiologyCase()) {
+                            hasRemainingMicro = true;
+                        }
+                    }
+                }
+            }
+        }
+        if (form.getRequestedSampleTypes() != null) {
+            org.openelisglobal.test.service.TestService testService = org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.test.service.TestService.class);
+            for (org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO requested : form
+                    .getRequestedSampleTypes()) {
+                if (requested == null || hasRemainingMicro) {
+                    continue;
+                }
+                for (String testId : OrderTestEdits.requestedTests(requested.getRequestedTests(),
+                        requested.getRequestedPanels(), panelTests)) {
+                    org.openelisglobal.test.valueholder.Test test = testService.get(testId);
+                    if (test != null && test.isOpensMicrobiologyCase()) {
+                        hasRemainingMicro = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        boolean removedLastMicro = false;
+        boolean removedTestWithResults = false;
+        boolean hadMicro = false;
+
+        String cancelledId = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.common.services.IStatusService.class)
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
+        org.openelisglobal.result.service.ResultService resultService = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.result.service.ResultService.class);
+        String notStartedId = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.common.services.IStatusService.class)
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.NotStarted);
+        List<String> startedTestsTakenOff = new ArrayList<>();
+
+        for (Analysis analysis : existingAnalyses) {
+            if (cancelledId != null && cancelledId.equals(analysis.getStatusId())) {
+                continue;
+            }
+            if (analysis.getTest().isOpensMicrobiologyCase()) {
+                hadMicro = true;
+            }
+            if (!OrderTestEdits.isTakenOff(analysis, requestedBySampleItem, cancelledId)) {
+                continue;
+            }
+            if (!resultService.getResultsByAnalysis(analysis).isEmpty()) {
+                removedTestWithResults = true;
+            }
+            if (!notStartedId.equals(analysis.getStatusId())) {
+                startedTestsTakenOff.add(
+                        org.openelisglobal.test.service.TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
+            }
+        }
+
+        if (OrderTestEdits.leavesACollectedSampleWithoutTests(updateData.getSampleItemsTests(),
+                form.getRequestedSampleTypes(), existingAnalyses, cancelledId)) {
+            result.reject("order.sample.needsTest",
+                    "A collected sample keeps at least one test. To stop every test on it, reject the sample or cancel the order.");
+            return;
+        }
+
+        if (!startedTestsTakenOff.isEmpty()
+                && !testCancelPermission.mayCancelStartedTests(request, getSysUserId(request))) {
+            result.reject("order.cancel.notAllowed", new Object[] { String.join(", ", startedTestsTakenOff) },
+                    "Only an administrator or a validator can remove a test that has started: "
+                            + String.join(", ", startedTestsTakenOff) + ".");
+            return;
+        }
+
+        if (hadMicro && !hasRemainingMicro) {
+            removedLastMicro = true;
+        }
+
+        if ((removedTestWithResults || removedLastMicro) && GenericValidator.isBlankOrNull(form.getCancelReason())) {
+            result.rejectValue("cancelReason", "order.cancel.reasonRequired",
+                    "A reason is required to cancel this test.");
+        }
+    }
+
     private List<String> rangeNotAppliedTests(Sample sample) {
         try {
             return samplePatientService.getTestNamesWithRangeNotApplied(sample);
@@ -852,13 +1046,54 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         return "patientProperties".equals(fe.getField()) || fe.getField().startsWith("patientProperties.");
     }
 
+    /**
+     * The body of a failed save. A refusal that carries a translation key passes it
+     * on, so the client can show the refusal in the user's language.
+     */
+    static Map<String, Object> persistErrorBody(String message, IllegalArgumentException refusal) {
+        if (refusal instanceof LabelQuantityRefusedException quantityRefusal) {
+            return Map.of("error", message, "messageKey", quantityRefusal.getMessageKey(), "messageArgs",
+                    quantityRefusal.getMessageArgs());
+        }
+        return Map.of("error", message);
+    }
+
     private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage) {
         return buildErrorBody(result, fallbackMessage, null);
     }
 
     private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage,
             String workflowType) {
-        boolean dropPatientErrors = "environmental".equals(workflowType) || "vector".equals(workflowType);
+        return buildErrorBody(result, fallbackMessage, workflowType, false);
+    }
+
+    /**
+     * An order without a patient (environmental, vector, EQA or a declared
+     * no-patient order) reports only the errors that refused it, not the empty
+     * patient form it never had (OGC-1483).
+     */
+    /**
+     * A field error's message in the user's language, from its message key and
+     * arguments, so a refusal such as an unknown requester reads in French on a
+     * French session; its English default when the key has no message.
+     */
+    private static String localized(org.springframework.validation.ObjectError error) {
+        String fallback = error.getDefaultMessage() != null ? error.getDefaultMessage() : "invalid value";
+        if (error.getCode() == null) {
+            return fallback;
+        }
+        try {
+            return MessageUtil.getMessage(error.getCode(), error.getArguments(), fallback,
+                    LocaleContextHolder.getLocale());
+        } catch (RuntimeException noMessageSource) {
+            return fallback;
+        }
+    }
+
+    static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage, String workflowType,
+            boolean withoutPatient) {
+        boolean dropPatientErrors = withoutPatient || "environmental".equals(workflowType)
+                || "vector".equals(workflowType);
         // The field errors actually surfaced to the client. For environmental/vector
         // drop patient-form errors so the reported message reflects the real cause
         // (e.g. missing requester) rather than a spurious "patientProperties.*" that
@@ -869,10 +1104,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         org.springframework.validation.FieldError firstFe = fieldErrors.isEmpty() ? null : fieldErrors.get(0);
         String message;
         if (firstFe != null) {
-            message = firstFe.getField() + ": "
-                    + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
+            message = firstFe.getField() + ": " + localized(firstFe);
         } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
-            message = result.getGlobalErrors().get(0).getDefaultMessage();
+            message = localized(result.getGlobalErrors().get(0));
         } else {
             message = fallbackMessage;
         }
@@ -881,16 +1115,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         body.put("fieldErrors", fieldErrors.stream().map(fe -> {
             Map<String, String> entry = new java.util.HashMap<>();
             entry.put("field", fe.getField());
-            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? localized(fe) : "");
             return entry;
         }).collect(Collectors.toList()));
         // OGC-743: include globalErrors so reject(...) calls aren't silently
         // dropped from the response. Existing consumers reading fieldErrors[]
         // are unaffected.
-        body.put("globalErrors",
-                result.getGlobalErrors().stream()
-                        .map(oe -> oe.getDefaultMessage() != null ? oe.getDefaultMessage() : oe.getCode())
-                        .collect(Collectors.toList()));
+        body.put("globalErrors", result.getGlobalErrors().stream()
+                .map(oe -> oe.getDefaultMessage() != null ? localized(oe) : oe.getCode()).collect(Collectors.toList()));
         return body;
     }
 }

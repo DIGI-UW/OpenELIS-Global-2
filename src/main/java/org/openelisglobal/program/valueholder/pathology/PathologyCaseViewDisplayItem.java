@@ -1,12 +1,29 @@
 package org.openelisglobal.program.valueholder.pathology;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 
 public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
+
+    /**
+     * The day the specimen reached the laboratory, which is not the day the
+     * examination was requested (FR-1). Held without a zone, so rendering it cannot
+     * move it onto a neighbouring day.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate receivedDate;
+
+    /**
+     * One localized type name per sample item on the case, so two items of one type
+     * read as that type twice (FR-1). Empty when the sample carries none.
+     */
+    private List<String> specimenTypes;
 
     private String age;
 
@@ -42,7 +59,31 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     private String microscopyExam;
 
+    private boolean decalcificationRequired;
+
+    /**
+     * The name of every tissue type the case's cassettes hold, by dictionary id, so
+     * an entry retired after a cassette recorded it still reads as a name.
+     */
+    private Map<String, String> tissueTypeNames;
+
     private List<PathologyReport> reports;
+
+    public LocalDate getReceivedDate() {
+        return receivedDate;
+    }
+
+    public void setReceivedDate(LocalDate receivedDate) {
+        this.receivedDate = receivedDate;
+    }
+
+    public List<String> getSpecimenTypes() {
+        return specimenTypes;
+    }
+
+    public void setSpecimenTypes(List<String> specimenTypes) {
+        this.specimenTypes = specimenTypes;
+    }
 
     public String getAge() {
         return age;
@@ -130,6 +171,22 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
 
     public void setMicroscopyExam(String microscopyExam) {
         this.microscopyExam = microscopyExam;
+    }
+
+    public boolean isDecalcificationRequired() {
+        return decalcificationRequired;
+    }
+
+    public void setDecalcificationRequired(boolean decalcificationRequired) {
+        this.decalcificationRequired = decalcificationRequired;
+    }
+
+    public Map<String, String> getTissueTypeNames() {
+        return tissueTypeNames;
+    }
+
+    public void setTissueTypeNames(Map<String, String> tissueTypeNames) {
+        this.tissueTypeNames = tissueTypeNames;
     }
 
     public String getConclusionText() {

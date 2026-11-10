@@ -185,3 +185,19 @@ a.cds--header__name.cds--header__name > span {
     opacity: 0.5;
   }
 }
+
+/*
+ * A page title is the page's h1. These keep the size the title had when it
+ * was rendered as an h2 (heading-05) or an h3 (heading-04).
+ */
+.page-heading-05 {
+  font-size: var(--cds-heading-05-font-size, 2rem);
+  font-weight: var(--cds-heading-05-font-weight, 400);
+  line-height: var(--cds-heading-05-line-height, 1.25);
+}
+
+.page-heading-04 {
+  font-size: var(--cds-heading-04-font-size, 1.75rem);
+  font-weight: var(--cds-heading-04-font-weight, 400);
+  line-height: var(--cds-heading-04-line-height, 1.28572);
+}

@@ -50,6 +50,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import AddDeviceModal from "./shared/AddDeviceModal";
 import { toDate } from "./shared/timeUtils";
 import { hasRole, Roles } from "../utils/Utils";
+import { labNow, labTimeToInstant } from "../utils/labClock";
 
 const getColumns = (intl) => [
   {
@@ -341,11 +342,15 @@ export default function CorrectiveActions() {
   }, [userSessionDetails]);
 
   const getDateRange = useCallback((filter) => {
-    const end = new Date();
-    let start = new Date();
+    let end = new Date();
+    let start;
 
     if (filter.id === "current_month") {
-      start = new Date(end.getFullYear(), end.getMonth(), 1);
+      const today = labNow();
+      end = labTimeToInstant(today);
+      start = labTimeToInstant(
+        new Date(today.getFullYear(), today.getMonth(), 1),
+      );
     } else if (filter.hours) {
       start = new Date(end.getTime() - filter.hours * 60 * 60 * 1000);
     } else {

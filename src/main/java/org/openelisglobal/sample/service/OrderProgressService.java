@@ -1,5 +1,6 @@
 package org.openelisglobal.sample.service;
 
+import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 
@@ -36,6 +37,34 @@ public interface OrderProgressService {
      * check off, or Ready for testing with it on.
      */
     boolean isComplete(OrderProgressStatus status, String workflowType);
+
+    /**
+     * Whether every test on the order has an open referral to a reference
+     * laboratory. Such an order has nothing left for the in-house Sample check.
+     */
+    boolean isFullyReferred(String sampleId);
+
+    /**
+     * Whether a referral still stands: it exists, was not cancelled, and the
+     * reference laboratory has not rejected it. The dashboard's referral counts,
+     * its Has referred tests filter and {@link #isFullyReferred(String)} all use
+     * this one rule so they never disagree.
+     */
+    boolean isOpenReferral(Referral referral);
+
+    /**
+     * {@link #isComplete(OrderProgressStatus, String)}, or Samples prepared on an
+     * order already known to be fully referred; lets a caller that has computed
+     * {@link #isFullyReferred(String)} once reuse the answer.
+     */
+    boolean isComplete(OrderProgressStatus status, String workflowType, boolean fullyReferred);
+
+    /**
+     * {@link #isComplete(OrderProgressStatus, String)}, or Samples prepared on an
+     * order whose every test is referred out: in-house Sample check does not apply
+     * to it.
+     */
+    boolean isComplete(Sample sample, OrderProgressStatus status, String workflowType);
 
     /**
      * Releases the order for testing from the Sample check step. Under Mandatory

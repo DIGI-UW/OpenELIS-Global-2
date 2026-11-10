@@ -25,6 +25,7 @@ const { api, notify } = vi.hoisted(() => ({
     moveWard: vi.fn(),
     getHistory: vi.fn(),
     getLists: vi.fn(),
+    listIdentifierCollisions: vi.fn(() => Promise.resolve([])),
     getAreaLevels: vi.fn(),
     listAreas: vi.fn(),
     searchAreas: vi.fn(),
@@ -121,6 +122,7 @@ describe("RecordForm (OGC-1363)", () => {
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset && fn.mockReset());
     notify.mockReset();
+    api.listIdentifierCollisions.mockResolvedValue([]);
     api.searchAreas.mockResolvedValue([]);
   });
 
@@ -258,17 +260,26 @@ describe("RecordForm (OGC-1363)", () => {
     expect(
       await screen.findByText("Code HSI002 is already used by Other Clinic"),
     ).toBeInTheDocument();
-    expect(notify).toHaveBeenCalledWith("The record was not saved.", "error");
+    expect(notify).toHaveBeenCalledWith(
+      "The record was not saved: Code HSI002 is already used by Other Clinic",
+      "error",
+      null,
+      "record-4",
+    );
   });
 
-  it("shows the other admin's values on a stale save instead of overwriting them", async () => {
+  it("keeps what this user typed on a stale save and fills in the other admin's changes (FR-C5, OGC-1420 5d)", async () => {
     api.getOrganization.mockResolvedValue(detail());
-    api.updateOrganization.mockRejectedValue(
+    api.updateOrganization.mockRejectedValueOnce(
       Object.assign(new Error("Another admin saved this record first"), {
         status: 409,
-        current: detail({ contactName: "Someone else", lastupdated: 2000 }),
+        current: detail({ phone: "+675 999", lastupdated: 2000 }),
       }),
     );
+    api.updateOrganization.mockResolvedValueOnce({
+      detail: detail(),
+      warnings: [],
+    });
     wrap(
       <RecordForm
         id="4"
@@ -286,8 +297,20 @@ describe("RecordForm (OGC-1363)", () => {
     expect(
       await screen.findByText(/Another admin saved this record first/),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Someone else")).toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Mine")).not.toBeInTheDocument();
+    expect(screen.getByText(/Your changes are kept/)).toHaveTextContent(
+      "Phone",
+    );
+    expect(screen.getByLabelText("Contact name")).toHaveValue("Mine");
+    expect(screen.getByLabelText("Phone")).toHaveValue("+675 999");
+
+    fireEvent.click(screen.getByTestId("locations-save"));
+    await waitFor(() =>
+      expect(api.updateOrganization).toHaveBeenCalledTimes(2),
+    );
+    const retry = api.updateOrganization.mock.calls[1][1];
+    expect(retry.lastupdated).toBe(2000);
+    expect(retry.contactName).toBe("Mine");
+    expect(retry.phone).toBe("+675 999");
   });
 
   it("asks for an approval status once a referral-lab type is chosen", async () => {
@@ -317,5 +340,116 @@ describe("RecordForm (OGC-1363)", () => {
       await screen.findByText("Choose an approval status"),
     ).toBeInTheDocument();
     expect(api.updateOrganization).not.toHaveBeenCalled();
+  });
+  it("says why a save is blocked and takes the user to the field (OGC-1420 5a)", async () => {
+    api.getOrganization.mockResolvedValue(
+      detail({
+        row: {
+          ...detail().row,
+          types: [{ id: "6", name: "referralLab", hierarchyLevel: null }],
+        },
+      }),
+    );
+    wrap(
+      <RecordForm
+        id="4"
+        kind="facility"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    await screen.findByDisplayValue("Health Services Inc");
+    fireEvent.click(screen.getByTestId("locations-save"));
+
+    expect(notify).toHaveBeenCalledWith(
+      "Not saved yet. Check: Approval status.",
+      "error",
+      null,
+      "record-4",
+    );
+    expect(document.getElementById("ref-status-4")).toHaveFocus();
+    expect(api.updateOrganization).not.toHaveBeenCalled();
+  });
+
+  it("saves a new record without a code when the pre-filled Code row is left blank (OGC-1420 5b)", async () => {
+    api.createOrganization.mockResolvedValue({
+      detail: detail(),
+      warnings: [],
+    });
+    wrap(
+      <RecordForm
+        isNew
+        kind="site"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/^Name/), {
+      target: { value: "No code trap" },
+    });
+    fireEvent.click(screen.getByTestId("locations-save"));
+    await waitFor(() => expect(api.createOrganization).toHaveBeenCalled());
+    expect(api.createOrganization.mock.calls[0][0].identifiers).toEqual([]);
+  });
+
+  it("does not drop wards typed but not saved when the record is saved (OGC-1420 5e)", async () => {
+    api.getOrganization.mockResolvedValue(detail());
+    wrap(
+      <RecordForm
+        id="4"
+        kind="facility"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    await screen.findByDisplayValue("Health Services Inc");
+    fireEvent.click(screen.getByTestId("locations-add-ward"));
+    fireEvent.change(document.getElementById("new-ward-name-0"), {
+      target: { value: "Maternity" },
+    });
+    fireEvent.click(screen.getByTestId("locations-save"));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        "1 ward / dept is typed but not saved yet. Save them with Save wards, or remove them, then save the record.",
+        "warning",
+        null,
+        "record-4",
+      ),
+    );
+    expect(api.updateOrganization).not.toHaveBeenCalled();
+    expect(document.getElementById("new-ward-service-0")).toHaveFocus();
+  });
+
+  it("caps the free-text fields at their column length and names the chosen types (OGC-1420 6a, 7d)", async () => {
+    api.getOrganization.mockResolvedValue(detail());
+    wrap(
+      <RecordForm
+        id="4"
+        kind="facility"
+        lists={LISTS}
+        onCancel={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    );
+    await screen.findByDisplayValue("Health Services Inc");
+    expect(screen.getByLabelText("Contact name")).toHaveAttribute(
+      "maxlength",
+      "100",
+    );
+    expect(document.getElementById("description-4")).toHaveAttribute(
+      "maxlength",
+      "1000",
+    );
+    expect(document.getElementById("state-4")).toHaveAttribute(
+      "maxlength",
+      "100",
+    );
+    expect(screen.getByTestId("locations-types-chosen-4")).toHaveTextContent(
+      "referring clinic",
+    );
   });
 });

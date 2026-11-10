@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- Removes the analyzer storage that predates Bridge connections: the
+         per-analyzer connection, file-import and plugin settings, analyzer
+         types, test mappings, serial ports, file uploads and the superseded
+         runtime tables (activation candidates, error queue, QC rules, runs,
+         experiments, field and unit mappings). The Bridge owns all of it now.
+
+         Before anything is dropped, everything that is about to be dropped is
+         written as one JSON document into a configuration_import_run row
+         (source ANALYZER_LEGACY, status EXPORTED): under "analyzers", every
+         analyzer whose legacy columns hold a value other than the column
+         default, with those values keyed by column name; and under each
+         removed table's name, all of its rows keyed by column name. Export and
+         drops are one transaction.
+
+         Databases differ in which of these objects they still have (fresh
+         databases never create some of them; databases that ran since-removed
+         cleanup changesets have none), so the body only reads and drops what
+         exists. Where nothing is left it writes nothing. -->
+    <changeSet id="116-remove-pre-bridge-analyzer-storage" author="pmanko">
+        <sql splitStatements="false"><![CDATA[
+            DO $$
+            DECLARE
+                legacy_tables text[] := ARRAY[
+                    'analyzer_type', 'analyzer_test_map', 'analyzer_plugin_config',
+                    'serial_port_configuration', 'file_import_configuration',
+                    'analyzer_error', 'analyzer_qc_rule', 'analyzer_activation_candidate',
+                    'analyzer_run', 'analyzer_file_upload', 'analyzer_experiment',
+                    'analyzer_pending_code', 'qualitative_result_mapping', 'unit_mapping',
+                    'analyzer_field_mapping', 'analyzer_field',
+                    'validation_rule_configuration', 'custom_field_type'];
+                legacy_columns text[] := ARRAY[
+                    'analyzer_type_id', 'analyzer_type', 'scrip_id', 'machine_id',
+                    'description', 'location', 'has_setup_page', 'identifier_pattern',
+                    'ip_address', 'port', 'protocol_version', 'communication_mode',
+                    'import_directory', 'file_pattern', 'file_format', 'column_mappings_json',
+                    'delimiter', 'has_header', 'skip_rows', 'discovered_source_id',
+                    'active_candidate_id', 'connection_role', 'transport_mode',
+                    'profile_binding_id'];
+                doc jsonb := '{}'::jsonb;
+                part jsonb;
+                values_sql text;
+                has_value_sql text;
+                t text;
+                c text;
+            BEGIN
+                -- Analyzers holding a legacy value other than the column default.
+                SELECT string_agg(format('%L, a.%I', column_name, column_name), ', ' ORDER BY ordinal_position),
+                       string_agg(format('(a.%I IS NOT NULL AND a.%I IS DISTINCT FROM %s)',
+                                         column_name, column_name, coalesce(column_default, 'NULL')),
+                                  ' OR ' ORDER BY ordinal_position)
+                  INTO values_sql, has_value_sql
+                  FROM information_schema.columns
+                 WHERE table_schema = ANY (current_schemas(false))
+                   AND table_name = 'analyzer'
+                   AND column_name = ANY (legacy_columns);
+                IF values_sql IS NOT NULL THEN
+                    EXECUTE format(
+                        'SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object(%L, a.id, %L, a.name, %L, a.bridge_connection_id, %s)) ORDER BY a.id)'
+                        || ' FROM analyzer a WHERE %s',
+                        'id', 'name', 'bridge_connection_id', values_sql, has_value_sql)
+                       INTO part;
+                    IF part IS NOT NULL THEN
+                        doc := doc || jsonb_build_object('analyzers', part);
+                    END IF;
+                END IF;
+
+                -- Every row of every legacy table that still exists.
+                FOREACH t IN ARRAY legacy_tables LOOP
+                    IF to_regclass(t) IS NOT NULL THEN
+                        EXECUTE format('SELECT jsonb_agg(to_jsonb(r)) FROM %I r', t) INTO part;
+                        IF part IS NOT NULL THEN
+                            doc := doc || jsonb_build_object(t, part);
+                        END IF;
+                    END IF;
+                END LOOP;
+
+                IF doc <> '{}'::jsonb THEN
+                    INSERT INTO configuration_import_run (id, source, status, started_at, finished_at, summary)
+                    VALUES (gen_random_uuid()::text, 'ANALYZER_LEGACY', 'EXPORTED', now(), now(),
+                            jsonb_pretty(doc));
+                END IF;
+
+                FOREACH t IN ARRAY legacy_tables LOOP
+                    EXECUTE format('DROP TABLE IF EXISTS %I CASCADE', t);
+                END LOOP;
+                DROP SEQUENCE IF EXISTS analyzer_type_seq, analyzer_experiment_seq,
+                    analyzer_activation_candidate_seq CASCADE;
+                FOREACH c IN ARRAY legacy_columns LOOP
+                    EXECUTE format('ALTER TABLE analyzer DROP COLUMN IF EXISTS %I CASCADE', c);
+                END LOOP;
+                DELETE FROM reference_tables WHERE LOWER(name) = 'analyzer_activation_candidate';
+                DELETE FROM menu WHERE element_id = 'menu_analyzers_errors';
+            END
+            $$;
+        ]]></sql>
+
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    RAISE EXCEPTION 'Removing the pre-Bridge analyzer storage is not reversible in place. Its contents are in configuration_import_run (source ANALYZER_LEGACY); restore the pre-upgrade backup to get the tables back.';
+                END
+                $$;
+            ]]></sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

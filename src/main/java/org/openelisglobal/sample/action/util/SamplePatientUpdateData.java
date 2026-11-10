@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
@@ -404,6 +405,12 @@ public class SamplePatientUpdateData {
         // assure that all samples have tests (skip for order-entry-only mode)
         if (requireSampleItems && !allSamplesHaveTests()) {
             errors.rejectValue("sampleOrderItems", "errors.samples.with.no.tests", "errors.samples.with.no.tests");
+        }
+
+        if (sampleItemsTests != null && sampleItemsTests.stream()
+                .anyMatch(collection -> collection.item != null && StringUtils.isBlank(collection.existingSampleItemId)
+                        && collection.item.isRejected() && StringUtils.isBlank(collection.item.getRejectReasonId()))) {
+            errors.rejectValue("sampleOrderItems", "sample.reject.reasonRequired", "sample.reject.reasonRequired");
         }
 
         if (sampleOrder != null && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
@@ -1544,5 +1551,15 @@ public class SamplePatientUpdateData {
             sample.setConsentRecordedAt(null);
             sample.setConsentRecordedBy(null);
         }
+    }
+
+    private String cancelReason;
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 }

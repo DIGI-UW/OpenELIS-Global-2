@@ -49,6 +49,13 @@ public final class LocationsApi {
     public record Usage(int open, int total) {
     }
 
+    /** One identifier value that more than one record of a kind carries. */
+    public record IdentifierCollision(String label, String value, List<CollisionRecord> records) {
+    }
+
+    public record CollisionRecord(String id, String name, String kind) {
+    }
+
     public record Identifier(Integer id, String label, String value, boolean reporting) {
     }
 

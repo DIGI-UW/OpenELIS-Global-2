@@ -8,8 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -31,6 +29,7 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -278,16 +277,7 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
 
     private String providerReportText(long organizationId) throws IOException {
         byte[] pdf = reportService.generateParticipantPerformanceReport(cycle.getId(), organizationId);
-        PdfReader reader = new PdfReader(pdf);
-        try {
-            StringBuilder text = new StringBuilder();
-            for (int page = 1; page <= reader.getNumberOfPages(); page++) {
-                text.append(PdfTextExtractor.getTextFromPage(reader, page)).append('\n');
-            }
-            return text.toString();
-        } finally {
-            reader.close();
-        }
+        return PdfText.of(pdf);
     }
 
     /**

@@ -51,6 +51,13 @@ public class AnalysisItem implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
 
+    /**
+     * The result exactly as entered or received; {@link #result} is that value as
+     * reported, rounded to the test's places (OGC-1544). Modify starts from it.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
+    private String displayResult;
+
     // OGC-1417: the validator correcting the value has acknowledged it as
     // critical, or confirmed it although it lies outside the valid range
     private boolean criticalAcknowledged = false;
@@ -216,7 +223,7 @@ public class AnalysisItem implements Serializable {
 
     private boolean hasQualifiedResult = false;
 
-    private int significantDigits = 0;
+    private int reportingDecimalPlaces = -1;
 
     private String rejectReasonId;
 
@@ -252,6 +259,15 @@ public class AnalysisItem implements Serializable {
     private String rangeNotAppliedReason;
 
     private String enteredBy;
+    private boolean selfValidationBlocked;
+
+    public boolean isSelfValidationBlocked() {
+        return selfValidationBlocked;
+    }
+
+    public void setSelfValidationBlocked(boolean blocked) {
+        selfValidationBlocked = blocked;
+    }
 
     private String enteredDate;
 
@@ -363,6 +379,14 @@ public class AnalysisItem implements Serializable {
 
     public String getResult() {
         return result;
+    }
+
+    public String getDisplayResult() {
+        return displayResult;
+    }
+
+    public void setDisplayResult(String displayResult) {
+        this.displayResult = displayResult;
     }
 
     public String getNormalRange() {
@@ -893,12 +917,12 @@ public class AnalysisItem implements Serializable {
         this.qualifiedResultId = qualifiedResultId;
     }
 
-    public int getSignificantDigits() {
-        return significantDigits;
+    public int getReportingDecimalPlaces() {
+        return reportingDecimalPlaces;
     }
 
-    public void setSignificantDigits(int significantDigits) {
-        this.significantDigits = significantDigits;
+    public void setReportingDecimalPlaces(int reportingDecimalPlaces) {
+        this.reportingDecimalPlaces = reportingDecimalPlaces;
     }
 
     public boolean isValid() {

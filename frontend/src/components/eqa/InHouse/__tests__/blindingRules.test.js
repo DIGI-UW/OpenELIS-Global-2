@@ -200,3 +200,14 @@ describe("the analysts a sealed deal was dealt to", () => {
     ]);
   });
 });
+
+it("includes the seventh lab calendar day and excludes the eighth across daylight saving", () => {
+  const panels = [
+    { status: "SEALED", unblindDate: "2031-03-06" },
+    { status: "DISTRIBUTED", unblindDate: "2031-03-13" },
+    { status: "SEALED", unblindDate: "2031-03-14" },
+    { status: "SEALED", unblindDate: null },
+    { status: "CLOSED", unblindDate: "2031-03-13" },
+  ];
+  expect(panelKpis(panels, new Date(2031, 2, 6, 0, 0)).unblindingSoon).toBe(2);
+});

@@ -6,8 +6,13 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const PatientInfo = (props) => {
-  const { orderFormValues, setOrderFormValues, error, setPhoneValidation } =
-    props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    error,
+    setPhoneValidation,
+    renderNotifications,
+  } = props;
   const componentMounted = useRef(false);
   const intl = useIntl();
   const [searchPatientTab, setSearchPatientTab] = useState({
@@ -157,6 +162,7 @@ const PatientInfo = (props) => {
                   {searchPatientTab.active && (
                     <SearchPatientForm
                       getSelectedPatient={getSelectedPatient}
+                      renderNotifications={renderNotifications}
                     />
                   )}
                 </Column>
@@ -181,6 +187,7 @@ const PatientInfo = (props) => {
                     error={error}
                     setPhoneValidation={setPhoneValidation}
                     disabled={isEQASample}
+                    renderNotifications={renderNotifications}
                   />
                 </div>
               )}

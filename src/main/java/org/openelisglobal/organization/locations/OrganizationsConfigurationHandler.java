@@ -58,4 +58,11 @@ public class OrganizationsConfigurationHandler extends AbstractCatalogCsvHandler
     public Plan getLastPlan() {
         return lastPlan;
     }
+
+    /**
+     * Forgets the last plan, so a reload that loads nothing is not read as done.
+     */
+    public void clearLastPlan() {
+        lastPlan = null;
+    }
 }

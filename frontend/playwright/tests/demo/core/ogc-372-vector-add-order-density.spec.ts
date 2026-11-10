@@ -4,6 +4,7 @@ import {
   seedVectorSite,
   addRequestingOrganization,
 } from "../../../helpers/seed-vector-data";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * Add-order → collection density end-to-end (vector surveillance).
@@ -92,7 +93,7 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       // Domain-V sample types come from /rest/vector-sample-types, populated by
       // configuration/sample-types/vector-sample-types.csv at startup.
       await expect(page.locator("#sampleType-0")).toBeVisible();
-      await page.locator("#sampleType-0").selectOption({ label: "Mosquito" });
+      await chooseCarbonOption(page.locator("#sampleType-0"), "Mosquito");
     });
 
     await test.step("Enter Quantity in Pool + Traps + Nights (trap-effort)", async () => {
@@ -118,9 +119,7 @@ test.describe("OGC-372: Vector add-order → collection density", () => {
       await page.getByRole("button", { name: "Save", exact: true }).click();
       // Carbon renders the toast text in more than one node; assert at least one.
       await expect(
-        page
-          .getByText("Sample Order Entry has been saved successfully")
-          .first(),
+        page.getByText(/Order \S+ has been saved\./).first(),
       ).toBeVisible({ timeout: 20_000 });
       await demo.evidence("372-3-saved");
     });

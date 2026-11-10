@@ -3,7 +3,6 @@ import {
   Column,
   DatePicker,
   DatePickerInput,
-  Dropdown,
   Grid,
   InlineNotification,
   Link as CarbonLink,
@@ -38,9 +37,10 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import SearchableSelect from "../common/SearchableSelect";
 import { NotificationContext } from "../layout/Layout";
 import ShipmentNavigation from "../shipment/ShipmentNavigation";
 import {
@@ -261,7 +261,9 @@ const ReferenceLabResults = () => {
   const filteredRows = useMemo(() => {
     let rows = referrals;
     if (filterRefLab) {
-      rows = rows.filter((r) => r.referenceLabId === filterRefLab);
+      rows = rows.filter(
+        (r) => String(r.referenceLabId) === String(filterRefLab),
+      );
     }
     if (filterPriority.length > 0) {
       rows = rows.filter((r) => filterPriority.includes(r.priority));
@@ -435,33 +437,20 @@ const ReferenceLabResults = () => {
       <div className="reference-lab-results__filters">
         <Grid narrow>
           <Column lg={4} md={4} sm={4}>
-            <Dropdown
+            <SearchableSelect
               id="ref-lab-filter"
-              titleText={intl.formatMessage({
+              labelText={intl.formatMessage({
                 id: "referral.filter.referenceLab",
               })}
-              label={intl.formatMessage({ id: "referral.filter.allRefLabs" })}
-              items={[
-                {
-                  id: null,
-                  name: intl.formatMessage({
-                    id: "referral.filter.allRefLabs",
-                  }),
-                },
-                ...referenceLabs,
-              ]}
-              itemToString={(item) => (item ? item.name : "")}
-              selectedItem={
-                referenceLabs.find((r) => r.id === filterRefLab) || {
-                  id: null,
-                  name: intl.formatMessage({
-                    id: "referral.filter.allRefLabs",
-                  }),
-                }
-              }
-              onChange={({ selectedItem }) =>
-                setFilterRefLab(selectedItem?.id || null)
-              }
+              placeholder={intl.formatMessage({
+                id: "referral.filter.allRefLabs",
+              })}
+              options={referenceLabs.map((lab) => ({
+                id: lab.id,
+                value: lab.name,
+              }))}
+              value={filterRefLab ?? ""}
+              onChange={(id) => setFilterRefLab(id || null)}
             />
           </Column>
           <Column lg={4} md={4} sm={4}>
@@ -850,7 +839,8 @@ const OutstandingTable = ({
                 <Button
                   kind="tertiary"
                   size="sm"
-                  href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                  as={RouterLink}
+                  to={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
                   className="reference-lab-results__enter-result"
                 >
                   <FormattedMessage id="referral.action.enterResult" />
@@ -1155,7 +1145,8 @@ const ExpandPanel = ({
               <Button
                 kind="primary"
                 size="sm"
-                href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                as={RouterLink}
+                to={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
               >
                 <FormattedMessage id="referral.action.enterResult" />
               </Button>
@@ -1217,7 +1208,7 @@ const ExpandPanel = ({
             </div>
             {row.labNumber && (
               <CarbonLink
-                href={`/result?accessionNumber=${row.labNumber}`}
+                href={`/Results?accessionNumber=${encodeURIComponent(row.labNumber)}`}
                 className="reference-lab-results__result-entry-link"
               >
                 <FormattedMessage id="referral.action.openResultEntry" />

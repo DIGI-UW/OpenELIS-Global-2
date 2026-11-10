@@ -105,6 +105,27 @@ describe("TestCatalogList", () => {
     expect(requestedUrl).toContain("sampleType=2");
   });
 
+  it("filters by lab unit and keeps it in the URL", async () => {
+    const requested = [];
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/lab-units"))
+        return cb([{ id: "7", name: "Hematology" }]);
+      if (url.includes("/tests")) requested.push(url);
+      cb(pageOf([]));
+    });
+    renderList();
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Lab Unit" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Hematology" }));
+
+    await waitFor(() =>
+      expect(requested[requested.length - 1]).toContain("labUnit=7"),
+    );
+    expect(mockHistory.replace).toHaveBeenLastCalledWith({
+      search: expect.stringContaining("labUnit=7"),
+    });
+  });
+
   it("aborts the previous request when filters change (stale-result guard)", () => {
     vi.useFakeTimers();
     try {

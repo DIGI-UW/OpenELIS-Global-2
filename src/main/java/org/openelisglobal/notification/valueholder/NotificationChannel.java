@@ -9,7 +9,8 @@ import org.openelisglobal.externalconnections.valueholder.ExternalConnection.Pro
  * per-test results path and the trigger-config path can evolve independently.
  */
 public enum NotificationChannel {
-    EMAIL(ProgrammedConnection.SMTP_SERVER), WHATSAPP(ProgrammedConnection.WHATSAPP_SERVER);
+    EMAIL(ProgrammedConnection.SMTP_SERVER), SMS(ProgrammedConnection.SMPP_SERVER),
+    WHATSAPP(ProgrammedConnection.WHATSAPP_SERVER);
 
     private final ProgrammedConnection connectionType;
 

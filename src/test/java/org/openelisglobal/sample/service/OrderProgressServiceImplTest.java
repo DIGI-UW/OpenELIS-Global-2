@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -25,6 +26,9 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceBlockedException;
@@ -57,6 +61,8 @@ public class OrderProgressServiceImplTest {
     private SampleItemService sampleItemService;
     @Mock
     private ObservationHistoryService observationHistoryService;
+    @Mock
+    private ReferralService referralService;
 
     @InjectMocks
     private OrderProgressServiceImpl service;
@@ -318,5 +324,101 @@ public class OrderProgressServiceImplTest {
         Mockito.lenient().when(observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE, id))
                 .thenReturn(null);
         return sample;
+    }
+    // ── OGC-1423: an order whose every test is referred out has nothing left for
+    // the in-house Sample check ──────────────────────────────────────────────
+
+    private Analysis analysis(String id) {
+        Analysis analysis = new Analysis();
+        analysis.setId(id);
+        analysis.setStatusId("4");
+        return analysis;
+    }
+
+    private Referral openReferral(String id) {
+        Referral referral = new Referral();
+        referral.setId(id);
+        referral.setStatus(ReferralStatus.DRAFT);
+        return referral;
+    }
+
+    @Test
+    public void anOrderWithEveryTestReferredIsFullyReferredAndCompleteWithoutSampleCheck() {
+        Sample sample = order("41", "SAMPLES_PREPARED");
+        when(analysisService.getAnalysesBySampleId("41")).thenReturn(List.of(analysis("a1"), analysis("a2")));
+        when(referralService.getReferralByAnalysisId("a1")).thenReturn(openReferral("r1"));
+        when(referralService.getReferralByAnalysisId("a2")).thenReturn(openReferral("r2"));
+        when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
+
+        assertTrue(service.isFullyReferred("41"));
+        assertFalse("the status alone still needs the Sample check",
+                service.isComplete(OrderProgressStatus.SAMPLES_PREPARED, "clinical"));
+        assertTrue(service.isComplete(sample, OrderProgressStatus.SAMPLES_PREPARED, "clinical"));
+        assertFalse("an order still being entered is not complete even when referred",
+                service.isComplete(sample, OrderProgressStatus.ENTERED, "clinical"));
+    }
+
+    @Test
+    public void anOrderWithOneInHouseTestIsNotFullyReferred() {
+        Sample sample = order("41", "SAMPLES_PREPARED");
+        when(analysisService.getAnalysesBySampleId("41")).thenReturn(List.of(analysis("a1"), analysis("a2")));
+        when(referralService.getReferralByAnalysisId("a1")).thenReturn(openReferral("r1"));
+        when(referralService.getReferralByAnalysisId("a2")).thenReturn(null);
+        when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
+
+        assertFalse(service.isFullyReferred("41"));
+        assertFalse(service.isComplete(sample, OrderProgressStatus.SAMPLES_PREPARED, "clinical"));
+    }
+
+    @Test
+    public void aCancelledReferralOrACancelledTestDoesNotCount() {
+        Referral cancelled = openReferral("r1");
+        cancelled.setStatus(ReferralStatus.CANCELLED);
+        when(analysisService.getAnalysesBySampleId("41")).thenReturn(List.of(analysis("a1"), analysis("gone")));
+        when(statusService.matches("4", AnalysisStatus.Canceled)).thenReturn(false);
+        when(referralService.getReferralByAnalysisId("a1")).thenReturn(cancelled);
+        assertFalse("a cancelled referral leaves the test in-house", service.isFullyReferred("41"));
+
+        Analysis gone = analysis("gone");
+        gone.setStatusId("9");
+        when(analysisService.getAnalysesBySampleId("42")).thenReturn(List.of(analysis("a1"), gone));
+        when(statusService.matches("9", AnalysisStatus.Canceled)).thenReturn(true);
+        when(referralService.getReferralByAnalysisId("a1")).thenReturn(openReferral("r1"));
+        assertTrue("a cancelled test is ignored", service.isFullyReferred("42"));
+
+        when(analysisService.getAnalysesBySampleId("43")).thenReturn(List.of());
+        assertFalse("no tests, nothing referred", service.isFullyReferred("43"));
+    }
+
+    @Test
+    public void oneOpenReferralRuleServesTheDashboardCountsAndTheFullyReferredCheck() {
+        assertTrue(service.isOpenReferral(openReferral("r1")));
+        Referral requested = openReferral("r2");
+        requested.setStatus(ReferralStatus.REQUESTED);
+        assertTrue(service.isOpenReferral(requested));
+
+        Referral rejected = openReferral("r3");
+        rejected.setStatus(ReferralStatus.REJECTED);
+        assertFalse("a referral the reference lab rejected is back in-house", service.isOpenReferral(rejected));
+        Referral cancelled = openReferral("r4");
+        cancelled.setStatus(ReferralStatus.CANCELLED);
+        assertFalse(service.isOpenReferral(cancelled));
+        assertFalse(service.isOpenReferral(null));
+        assertFalse("an unsaved referral does not count", service.isOpenReferral(new Referral()));
+
+        when(analysisService.getAnalysesBySampleId("44")).thenReturn(List.of(analysis("a1"), analysis("a2")));
+        when(referralService.getReferralByAnalysisId("a1")).thenReturn(openReferral("r1"));
+        when(referralService.getReferralByAnalysisId("a2")).thenReturn(rejected);
+        assertFalse("a rejected referral leaves the order partially referred", service.isFullyReferred("44"));
+    }
+
+    @Test
+    public void aPrecomputedFullyReferredAnswerCompletesOnlyAPreparedOrder() {
+        when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
+        assertTrue(service.isComplete(OrderProgressStatus.SAMPLES_PREPARED, "clinical", true));
+        assertFalse(service.isComplete(OrderProgressStatus.ENTERED, "clinical", true));
+        assertFalse(service.isComplete(OrderProgressStatus.SAMPLES_PREPARED, "clinical", false));
+        assertTrue("a released order is complete whatever the referrals say",
+                service.isComplete(OrderProgressStatus.READY_FOR_TESTING, "clinical", false));
     }
 }

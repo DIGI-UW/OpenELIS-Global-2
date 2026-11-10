@@ -1,3 +1,4 @@
+import { releaseScope } from "./validationSearch";
 /**
  * OGC-1027 (Validation v4 slice V1) — pure triage rules for the validation
  * queue: which "Check before release" chips a row carries, which lane it sits
@@ -193,28 +194,29 @@ export function filterTriaged(triaged, filter) {
 /** OGC-1029 (FR-B2) — the rows "Release all clear" may touch: the Clear lane only. */
 export function clearRows(triaged) {
   return (triaged || [])
-    .filter((item) => item.lane === LANE_CLEAR)
+    .filter(
+      (item) => item.lane === LANE_CLEAR && !item.row.selfValidationBlocked,
+    )
     .map((item) => item.row);
 }
 
 /**
- * OGC-1029 — the bulk request: the page's own search key (so the server reloads
- * the same queue and re-derives the lane itself) plus the candidate rows with
- * the validator's note. `params` is the page's query string, e.g.
- * "?type=order&accessionNumber=…"; only an accession ("order") search is unranged.
+ * OGC-1029 / OGC-1418 — the bulk request: the page's whole search (so the
+ * server reloads the same queue and re-derives the lane itself) plus the
+ * candidate rows with the validator's note. `params` is the page's query
+ * string; an old ?type= address is read as the search it stands for.
  */
 export function bulkReleaseRequest(results, params, rows) {
-  const search = new URLSearchParams((params || "").replace(/^\?/, ""));
-  const type = search.get("type") || "";
+  const scope = releaseScope(params);
+  const single =
+    Boolean(scope.labNumberFrom) && scope.labNumberFrom === scope.labNumberTo;
   return {
-    accessionNumber:
-      (results && results.accessionNumber) ||
-      search.get("accessionNumber") ||
-      "",
-    testSectionId:
-      (results && results.testSectionId) || search.get("testSectionId") || "",
-    testDate: (results && results.testDate) || search.get("date") || "",
-    doRange: type !== "order",
+    ...scope,
+    accessionNumber: single
+      ? (results && results.accessionNumber) || scope.labNumberFrom
+      : "",
+    testDate: "",
+    doRange: !single,
     rows: (rows || []).map((row) => ({
       analysisId: row.analysisId,
       accessionNumber: row.accessionNumber,
@@ -223,6 +225,36 @@ export function bulkReleaseRequest(results, params, rows) {
       noteContext: row.noteContext || "VALIDATION",
     })),
   };
+}
+
+/**
+ * OGC-1608 — the messages a successful bulk release shows: what was released
+ * (and skipped), and the tests that were only validated in part because another
+ * of their components is still to be resulted or validated.
+ */
+export function bulkSuccessMessages(response) {
+  const released = response?.released?.length || 0;
+  const skipped = response?.skipped?.length || 0;
+  const accepted = response?.accepted?.length || 0;
+  const messages = [];
+  if (skipped > 0) {
+    messages.push({
+      id: "label.validation.bulk.partial",
+      values: { released, skipped },
+    });
+  } else if (released > 0) {
+    messages.push({
+      id: "label.validation.bulk.success",
+      values: { count: released },
+    });
+  }
+  if (accepted > 0) {
+    messages.push({
+      id: "label.validation.bulk.accepted",
+      values: { count: accepted },
+    });
+  }
+  return messages;
 }
 
 /** i18n key describing why a bulk release did nothing (or failed). */

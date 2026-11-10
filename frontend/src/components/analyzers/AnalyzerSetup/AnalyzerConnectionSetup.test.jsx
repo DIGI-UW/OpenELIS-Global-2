@@ -9,16 +9,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   activateAnalyzer,
+  getAnalyzerDeliveryIssues,
+  startAnalyzerSetupReception,
+  retryAnalyzerDelivery,
   getAnalyzerActivationReadiness,
+  resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import messages from "../../../languages/en.json";
-import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
+import AnalyzerConnectionSetup, {
+  receivedSenders,
+} from "./AnalyzerConnectionSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
+  startAnalyzerSetupReception: vi.fn(),
+  retryAnalyzerDelivery: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
+  getAnalyzerDeliveryIssues: vi.fn(),
+  resetAnalyzerProfile: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -172,9 +182,13 @@ const candidate = {
 };
 
 const renderConnection = ({
+  shown = candidate,
   onCandidateChange = vi.fn(),
   onClose = vi.fn(),
   onVerifyMappings,
+  onProfileReset,
+  onContinue,
+  protocol,
 } = {}) => {
   const history = createMemoryHistory({
     initialEntries: [
@@ -185,10 +199,13 @@ const renderConnection = ({
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <AnalyzerConnectionSetup
-          candidate={candidate}
+          candidate={shown}
+          protocol={protocol}
           onCandidateChange={onCandidateChange}
           onClose={onClose}
           onVerifyMappings={onVerifyMappings}
+          onProfileReset={onProfileReset}
+          onContinue={onContinue}
         />
       </IntlProvider>
     </Router>,
@@ -211,6 +228,178 @@ describe("AnalyzerConnectionSetup", () => {
     updateAnalyzer.mockImplementation((_id, _payload, callback) =>
       callback(candidate),
     );
+  });
+
+  it("keeps unavailable-type recovery visible in the connect-first wizard", async () => {
+    const onProfileReset = vi.fn();
+    resetAnalyzerProfile.mockImplementation((_id, callback) =>
+      callback({ ok: true }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+              },
+            ],
+          },
+        },
+      },
+      onContinue: vi.fn(),
+      onProfileReset,
+    });
+    expect(
+      await screen.findByText(/which the Analyzer Bridge no longer has/),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Reset analyzer type" }),
+    );
+    expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+      "42",
+      expect.any(Function),
+    );
+    expect(onProfileReset).toHaveBeenCalledOnce();
+  });
+
+  it("says why the Bridge set this connection aside", async () => {
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          fields: [],
+          actualRuntimeState: "ERROR",
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+                fieldKeys: [],
+                detail: "raw Bridge text",
+              },
+              {
+                key: "runtime-restore-failed",
+                messageKey: "analyzer.connection.readiness.restoreFailed",
+                fieldKeys: [],
+                detail: "raw Bridge text",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        `This connection is pinned to ${profileRef.profileId} revision ${profileRef.revision}, which the Analyzer Bridge no longer has. Reset the analyzer type, then choose an available one to reconnect it. The analyzer keeps its name, lab units, connection and history.`,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "The Analyzer Bridge could not restart this connection. Activate it again; if it still fails, check the Bridge log.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("raw Bridge text")).not.toBeInTheDocument();
+  });
+
+  describe("when the Bridge no longer has the analyzer's type", () => {
+    const stranded = {
+      ...candidate,
+      connection: {
+        ...connection,
+        fields: [],
+        actualRuntimeState: "ERROR",
+        readiness: {
+          ready: false,
+          blockers: [
+            {
+              key: "profile-unavailable",
+              messageKey: "analyzer.connection.readiness.profileUnavailable",
+              fieldKeys: [],
+            },
+          ],
+        },
+      },
+    };
+
+    it("resets the analyzer type and hands the analyzer back for setup again", async () => {
+      const onProfileReset = vi.fn();
+      resetAnalyzerProfile.mockImplementation((_id, callback) =>
+        callback({ ok: true }),
+      );
+      renderConnection({ shown: stranded, onProfileReset });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset analyzer type" }),
+      );
+
+      expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+        "42",
+        expect.any(Function),
+      );
+      expect(onProfileReset).toHaveBeenCalledTimes(1);
+    });
+
+    it("says so when the reset is refused, and keeps the analyzer as it is", async () => {
+      const onProfileReset = vi.fn();
+      resetAnalyzerProfile.mockImplementation((_id, callback) =>
+        callback({
+          ok: false,
+          messageKey: "analyzer.reset.error.profileAvailable",
+        }),
+      );
+      renderConnection({ shown: stranded, onProfileReset });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset analyzer type" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "This analyzer's type is still available. Adopt a newer revision to move it.",
+        ),
+      ).toBeVisible();
+      expect(onProfileReset).not.toHaveBeenCalled();
+    });
+
+    it("says it once when the activation check reports the same thing", async () => {
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          status: "INACTIVE",
+          ready: false,
+          activated: false,
+          blockers: [
+            { code: "analyzer.connection.readiness.profileUnavailable" },
+          ],
+        }),
+      );
+      renderConnection({ shown: stranded, onProfileReset: vi.fn() });
+
+      await screen.findByRole("button", { name: "Reset analyzer type" });
+      await waitFor(() =>
+        expect(getAnalyzerActivationReadiness).toHaveBeenCalled(),
+      );
+      expect(
+        screen.getAllByText(/which the Analyzer Bridge no longer has/),
+      ).toHaveLength(1);
+    });
+
+    it("offers no reset while the type is available", async () => {
+      renderConnection({ onProfileReset: vi.fn() });
+
+      await screen.findByLabelText("Transport");
+      expect(
+        screen.queryByRole("button", { name: "Reset analyzer type" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("renders and saves generic Bridge fields without analyzer-specific branching", async () => {
@@ -741,6 +930,44 @@ describe("AnalyzerConnectionSetup", () => {
     expect(payload.connectionValues).not.toHaveProperty("apiToken");
   });
 
+  it("offers activation again to an active analyzer whose connection the Bridge could not restart", async () => {
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: true,
+        blockers: [],
+      }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        status: "ACTIVE",
+        connection: {
+          ...connection,
+          actualRuntimeState: "ERROR",
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "runtime-restore-failed",
+                messageKey: "analyzer.connection.readiness.restoreFailed",
+                fieldKeys: [],
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+
+    await waitFor(() => expect(activateAnalyzer).toHaveBeenCalledTimes(1));
+  });
+
   it("saves an active analyzer without offering or repeating activation", async () => {
     const onClose = vi.fn();
     getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
@@ -770,4 +997,117 @@ describe("AnalyzerConnectionSetup", () => {
     expect(activateAnalyzer).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+});
+
+describe("receivedSenders", () => {
+  it("offers each sender the Bridge holds unowned or for this connection, once", () => {
+    const rows = [
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "CPHL^GeneXpert^6.2", connectionId: null },
+      { sender: "MBT^Bruker^4.1", connectionId: "bridge-9" },
+      { sender: "EPICENTER^EpiCenter", connectionId: "bridge-other" },
+      { sender: null, connectionId: null },
+    ];
+
+    expect(receivedSenders(rows, "bridge-9")).toEqual([
+      "CPHL^GeneXpert^6.2",
+      "MBT^Bruker^4.1",
+    ]);
+  });
+});
+
+describe("adopting an observed sender", () => {
+  it.each([true, false])(
+    "starts setup before retrying the original receipt (acknowledged: %s)",
+    async (receiving) => {
+      vi.resetAllMocks();
+      const source = {
+        id: "recv-v1:123",
+        state: "DMQ",
+        connectionId: null,
+        sender: "GeneXpert PC^GeneXpert^1.0",
+        sourceId: "10.1.2.3",
+        listenerPort: 12001,
+        protocol: "ASTM",
+        transport: "TCP",
+        failureReason: "UNREGISTERED_SOURCE",
+      };
+      const shown = {
+        ...candidate,
+        connection: {
+          ...connection,
+          fields: [
+            {
+              key: "connectionRole",
+              inputKind: "TEXT",
+              currentValue: "SERVER",
+            },
+            { key: "host", inputKind: "TEXT" },
+            { key: "senderId", inputKind: "TEXT" },
+            { key: "port", inputKind: "NUMBER", currentValue: 12001 },
+          ],
+        },
+      };
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          ready: false,
+          activated: false,
+          blockers: [],
+        }),
+      );
+      getAnalyzerDeliveryIssues.mockImplementation((callback) =>
+        callback({ status: "success", data: { rows: [source] } }),
+      );
+      updateAnalyzer.mockImplementation((_id, _body, callback) =>
+        callback(shown),
+      );
+      startAnalyzerSetupReception.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          receiving,
+          status: receiving ? "VALIDATION" : "SETUP",
+          blockers: [],
+        }),
+      );
+      retryAnalyzerDelivery.mockImplementation((id, callback) =>
+        callback({ id, status: "accepted", state: "QUEUED" }),
+      );
+      renderConnection({ shown, protocol: "ASTM", onContinue: vi.fn() });
+      await userEvent.click(
+        screen.getByRole("button", { name: "This is my analyzer" }),
+      );
+      expect(updateAnalyzer).toHaveBeenCalledWith(
+        "42",
+        expect.objectContaining({
+          connectionValues: {
+            connectionRole: "SERVER",
+            host: source.sourceId,
+            senderId: source.sender,
+            port: 12001,
+          },
+        }),
+        expect.any(Function),
+      );
+      expect(startAnalyzerSetupReception).toHaveBeenCalledWith(
+        "42",
+        expect.any(Function),
+      );
+      if (receiving) {
+        expect(retryAnalyzerDelivery).toHaveBeenCalledWith(
+          source.id,
+          expect.any(Function),
+        );
+        expect(
+          startAnalyzerSetupReception.mock.invocationCallOrder[0],
+        ).toBeLessThan(retryAnalyzerDelivery.mock.invocationCallOrder[0]);
+        expect(screen.getByText(/Setup sample queued/)).toBeVisible();
+      } else {
+        expect(retryAnalyzerDelivery).not.toHaveBeenCalled();
+        expect(
+          screen.queryByText(/Setup sample queued/),
+        ).not.toBeInTheDocument();
+      }
+    },
+  );
 });
