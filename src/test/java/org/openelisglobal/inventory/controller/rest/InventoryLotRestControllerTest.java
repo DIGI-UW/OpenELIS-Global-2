@@ -65,6 +65,8 @@ public class InventoryLotRestControllerTest {
 
         List<InventoryLot> body = controller.getAll(null).getBody();
 
+        verify(inventoryLotService, times(1)).getAll();
+        verify(inventoryLotService, never()).getByStatus(any());
         verify(sampleStorageService, times(1)).getLocationsForInventoryLots(Arrays.asList(1L, 2L));
         verify(sampleStorageService, never()).getInventoryLotLocation(anyString());
         assertNull("Lot without an assignment keeps a null location", body.get(0).getLocation());
@@ -85,6 +87,18 @@ public class InventoryLotRestControllerTest {
         assertEquals("Room > Freezer", response.getBody().get(0).getLocation().get("hierarchicalPath"));
         verify(inventoryLotService, never()).getAll();
         verify(sampleStorageService, times(1)).getLocationsForInventoryLots(Collections.singletonList(2L));
+    }
+
+    @Test
+    public void getAll_withStatusAndNoMatchingLots_returnsEmptyList() {
+        when(inventoryLotService.getByStatus(LotStatus.QUARANTINED)).thenReturn(Collections.emptyList());
+
+        ResponseEntity<List<InventoryLot>> response = controller.getAll(LotStatus.QUARANTINED);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(Collections.emptyList(), response.getBody());
+        verify(inventoryLotService, never()).getAll();
+        verify(sampleStorageService, never()).getLocationsForInventoryLots(any());
     }
 
     @Test
