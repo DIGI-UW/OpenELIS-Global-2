@@ -276,6 +276,23 @@ it("shows a failed save inside the rule editor", async () => {
   ).toBeInTheDocument();
 });
 
+it("says why a group rule that disagrees with another group rule was refused", async () => {
+  saveReportingRule.mockRejectedValue(
+    new Error("REPORTING_RULE_GROUP_CONFLICT"),
+  );
+  show();
+  fireEvent.click(await screen.findByRole("button", { name: "Add rule" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+  expect(
+    await within(dialog).findByText(
+      messages[
+        "microbiology.admin.astRules.error.REPORTING_RULE_GROUP_CONFLICT"
+      ],
+    ),
+  ).toBeInTheDocument();
+});
+
 it("saves a rule note with when it applies", async () => {
   saveReportingRule.mockResolvedValue({});
   show();

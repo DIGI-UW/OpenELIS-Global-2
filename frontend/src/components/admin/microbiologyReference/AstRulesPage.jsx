@@ -197,8 +197,8 @@ export default function AstRulesPage() {
       });
       setRules((await getReportingRules()) || []);
       setDraft(null);
-    } catch {
-      setError(true);
+    } catch (requestError) {
+      setError(requestError.message || true);
     } finally {
       setBusy(false);
     }
@@ -576,7 +576,11 @@ export default function AstRulesPage() {
               {error && (
                 <InlineNotification
                   kind="error"
-                  title={t("error")}
+                  title={
+                    intl.messages[`microbiology.admin.astRules.error.${error}`]
+                      ? t(`error.${error}`)
+                      : t("error")
+                  }
                   hideCloseButton
                 />
               )}
