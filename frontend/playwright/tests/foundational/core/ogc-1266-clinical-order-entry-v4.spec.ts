@@ -155,7 +155,7 @@ test.describe("OGC-1266 clinical order entry", () => {
     await expect(steps).toHaveText(
       mode === "OFF"
         ? ["Enter Order", "Prepare Samples"]
-        : ["Enter Order", "Prepare Samples", "Sample check"],
+        : ["Enter Order", "Prepare Samples", "Sample Check"],
     );
 
     // OGC-1419: the collector is optional, so a sample with its collection
@@ -211,7 +211,7 @@ test.describe("OGC-1266 clinical order entry", () => {
         .last(),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
-      page.getByRole("heading", { level: 1, name: "Sample check" }),
+      page.getByRole("heading", { level: 1, name: "Sample Check" }),
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(
       page.getByRole("button", { name: "Return to Prepare Samples" }),
