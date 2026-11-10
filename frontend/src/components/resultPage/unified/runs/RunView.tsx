@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Button,
+  Checkbox,
   Column,
   Grid,
   Heading,
@@ -20,10 +21,26 @@ import {
   Tile,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
+import { FlagChip } from "../flags";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import RunsChip from "./RunsChip";
 import { formatRunTime, runSourceKey, runStateKey } from "./runFormat";
+import {
+  EMPTY_SELECTION,
+  RUN_CHIPS,
+  RunChip,
+  RunChipCounts,
+  RunSelection,
+  chipCount,
+  isEmptySelection,
+  isSelected,
+  selectAllInFilter,
+  toggleRow,
+} from "./runSelection";
 
 export interface RunHeader {
   id: number;
@@ -41,6 +58,7 @@ export interface RunHeader {
   dispositioned: number;
   total: number;
   rawAvailable: boolean;
+  chipCounts?: RunChipCounts;
 }
 
 interface RunRow {
@@ -54,6 +72,8 @@ interface RunRow {
   duplicate: boolean;
   importIssueReason?: string | null;
   instrumentFlags?: string | null;
+  flag?: string | null;
+  category?: string | null;
 }
 
 interface RunRowsPage {
@@ -62,6 +82,24 @@ interface RunRowsPage {
   pageSize: number;
   totalRows: number;
 }
+
+interface SelectionSummary {
+  selected: number;
+  critical: number;
+  abnormal: number;
+  normal: number;
+  skipped: {
+    id: string;
+    accessionNumber?: string | null;
+    testName?: string | null;
+    reason: string;
+  }[];
+}
+
+const isSelectionSummary = (response: unknown): response is SelectionSummary =>
+  Boolean(response) &&
+  typeof (response as SelectionSummary).selected === "number" &&
+  Array.isArray((response as SelectionSummary).skipped);
 
 interface RunViewProps {
   runId: number;
@@ -92,8 +130,11 @@ const breadcrumbs = [
 /**
  * OGC-1200 FR-E1, E3, E5, E8: a run opened on the Results worklist. Its header
  * names where the run came from and how far its review has gone, and its
- * values page server-side. Accepting them arrives with the next slice; until
- * then they are accepted on the analyzer import page, linked from the header.
+ * values page server-side. FR-E1a, E11, E11a, E12: the worklist chips filter
+ * the run with counts over the whole run, and a selection follows the run
+ * across pages and chips. Accepting the values arrives with the next slice;
+ * until then they are accepted on the analyzer import page, linked from the
+ * header.
  */
 const RunView: React.FC<RunViewProps> = ({
   runId,
@@ -115,6 +156,11 @@ const RunView: React.FC<RunViewProps> = ({
     "hidden" | "loading" | "shown" | "failed"
   >("hidden");
   const [showFiltersNotice, setShowFiltersNotice] = useState(filtersReplaced);
+  const [chip, setChip] = useState<RunChip>("ALL");
+  const [selection, setSelection] = useState<RunSelection>(EMPTY_SELECTION);
+  const [summaryFailed, setSummaryFailed] = useState(false);
+  const [summaryAttempt, setSummaryAttempt] = useState(0);
+  const [summary, setSummary] = useState<SelectionSummary | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -122,6 +168,8 @@ const RunView: React.FC<RunViewProps> = ({
     setRaw(null);
     setRawState("hidden");
     setPage(1);
+    setChip("ALL");
+    setSelection(EMPTY_SELECTION);
     getFromOpenElisServer(
       `/rest/result-runs/${runId}`,
       (response?: RunHeader) => {
@@ -137,7 +185,7 @@ const RunView: React.FC<RunViewProps> = ({
     const controller = new AbortController();
     setRowsLoading(true);
     getFromOpenElisServer(
-      `/rest/result-runs/${runId}/rows?page=${page}&pageSize=${pageSize}`,
+      `/rest/result-runs/${runId}/rows?chip=${chip}&page=${page}&pageSize=${pageSize}`,
       (response?: RunRowsPage) => {
         setRows(response ?? null);
         setRowsLoading(false);
@@ -145,7 +193,49 @@ const RunView: React.FC<RunViewProps> = ({
       controller.signal,
     );
     return () => controller.abort();
-  }, [runId, page, pageSize]);
+  }, [runId, chip, page, pageSize]);
+
+  useEffect(() => {
+    setSummaryFailed(false);
+    if (isEmptySelection(selection)) {
+      setSummary(null);
+      return;
+    }
+    setSummary(null);
+    let current = true;
+    postToOpenElisServerJsonResponse(
+      `/rest/result-runs/${runId}/selection`,
+      JSON.stringify(selection),
+      (response?: SelectionSummary) => {
+        if (!current) {
+          return;
+        }
+        if (isSelectionSummary(response)) {
+          setSummary(response);
+        } else {
+          setSummaryFailed(true);
+        }
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [runId, selection, summaryAttempt]);
+
+  const chooseChip = (next: RunChip) => {
+    setChip(next);
+    setPage(1);
+  };
+
+  const pageRows = rows?.rows ?? [];
+  const pageAllSelected =
+    pageRows.length > 0 && pageRows.every((row) => isSelected(selection, row));
+  const togglePage = () =>
+    setSelection((current) =>
+      pageRows
+        .filter((row) => isSelected(current, row) === pageAllSelected)
+        .reduce(toggleRow, current),
+    );
 
   const toggleRaw = useCallback(() => {
     if (rawState === "shown" || rawState === "failed") {
@@ -337,6 +427,104 @@ const RunView: React.FC<RunViewProps> = ({
         )}
         {header && (
           <Column lg={16} md={8} sm={4}>
+            <div className="runChips" data-testid="run-chips">
+              {RUN_CHIPS.map((key) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  kind={chip === key ? "primary" : "tertiary"}
+                  aria-pressed={chip === key}
+                  data-testid={`run-chip-${key}`}
+                  onClick={() => chooseChip(key)}
+                >
+                  {intl.formatMessage({ id: `run.chip.${key}` })} (
+                  {chipCount(header.chipCounts, key)})
+                </Button>
+              ))}
+            </div>
+            {!isEmptySelection(selection) && (
+              <Tile className="runSelectionBar" data-testid="run-selection">
+                <div className="runSelectionSummary">
+                  {summaryFailed ? (
+                    <div className="runSelectionFailed">
+                      <InlineNotification
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        data-testid="run-selection-failed"
+                        title={intl.formatMessage({
+                          id: "run.bulk.summaryFailed",
+                        })}
+                      />
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={() => setSummaryAttempt((n) => n + 1)}
+                      >
+                        <FormattedMessage id="run.bulk.summaryRetry" />
+                      </Button>
+                    </div>
+                  ) : summary ? (
+                    <FormattedMessage
+                      id="run.bulk.summary"
+                      values={{
+                        selected: summary.selected,
+                        critical: summary.critical,
+                        abnormal: summary.abnormal,
+                        normal: summary.normal,
+                      }}
+                    />
+                  ) : (
+                    <InlineLoading />
+                  )}
+                </div>
+                {summary && summary.skipped.length > 0 && (
+                  <div data-testid="run-selection-skipped">
+                    <p className="cds--label">
+                      <FormattedMessage
+                        id="run.bulk.skipped"
+                        values={{ count: summary.skipped.length }}
+                      />
+                    </p>
+                    <ul>
+                      {summary.skipped.map((skippedRow) => (
+                        <li key={skippedRow.id}>
+                          {skippedRow.accessionNumber || "—"},{" "}
+                          {skippedRow.testName || "—"}:{" "}
+                          {intl.formatMessage({
+                            id: `run.bulk.skip.${skippedRow.reason}`,
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <p className="runsChipNote">
+                  <FormattedMessage id="run.bulk.acceptNext" />
+                </p>
+                <div className="runSelectionActions">
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    data-testid="run-select-all"
+                    onClick={() => setSelection(selectAllInFilter(chip))}
+                  >
+                    <FormattedMessage
+                      id="run.bulk.selectAllInFilter"
+                      values={{ count: chipCount(header.chipCounts, chip) }}
+                    />
+                  </Button>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    data-testid="run-clear-selection"
+                    onClick={() => setSelection(EMPTY_SELECTION)}
+                  >
+                    <FormattedMessage id="run.bulk.clearSelection" />
+                  </Button>
+                </div>
+              </Tile>
+            )}
             <TableContainer
               title={intl.formatMessage(
                 { id: "run.rowCount" },
@@ -346,6 +534,17 @@ const RunView: React.FC<RunViewProps> = ({
               <Table size="lg" aria-label={header.label} data-testid="run-rows">
                 <TableHead>
                   <TableRow>
+                    <TableHeader>
+                      <Checkbox
+                        id={`run-select-page-${runId}`}
+                        labelText={intl.formatMessage({
+                          id: "run.bulk.selectPage",
+                        })}
+                        hideLabel
+                        checked={pageAllSelected}
+                        onChange={togglePage}
+                      />
+                    </TableHeader>
                     <TableHeader>
                       <FormattedMessage id="run.row.labNumber" />
                     </TableHeader>
@@ -369,6 +568,20 @@ const RunView: React.FC<RunViewProps> = ({
                 <TableBody>
                   {rows?.rows.map((row) => (
                     <TableRow key={row.id} data-testid={`run-row-${row.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          id={`run-select-${row.id}`}
+                          labelText={intl.formatMessage(
+                            { id: "run.bulk.selectRow" },
+                            { labNumber: row.accessionNumber || row.id },
+                          )}
+                          hideLabel
+                          checked={isSelected(selection, row)}
+                          onChange={() =>
+                            setSelection((current) => toggleRow(current, row))
+                          }
+                        />
+                      </TableCell>
                       <TableCell>{row.accessionNumber || "—"}</TableCell>
                       <TableCell>
                         {row.testName || "—"}
@@ -376,7 +589,11 @@ const RunView: React.FC<RunViewProps> = ({
                       </TableCell>
                       <TableCell>{row.value || "—"}</TableCell>
                       <TableCell>{row.units || "—"}</TableCell>
-                      <TableCell>{row.instrumentFlags || "—"}</TableCell>
+                      <TableCell>
+                        <FlagChip flag={row.flag} />
+                        {row.instrumentFlags ? ` ${row.instrumentFlags}` : ""}
+                        {!row.flag && !row.instrumentFlags ? "—" : ""}
+                      </TableCell>
                       <TableCell>{statusTag(row)}</TableCell>
                     </TableRow>
                   ))}
