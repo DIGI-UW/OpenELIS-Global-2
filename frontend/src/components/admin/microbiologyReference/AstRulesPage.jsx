@@ -18,6 +18,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import config from "../../../config.json";
 import {
   getInterpretationRules,
   getReferenceOptions,
@@ -329,6 +330,15 @@ export default function AstRulesPage() {
         <InlineNotification kind="error" title={t("error")} hideCloseButton />
       )}
       <Button onClick={() => setDraft({ ...emptyRule })}>{t("addRule")}</Button>
+      <Button
+        kind="tertiary"
+        href={
+          config.serverBaseUrl +
+          "/rest/microbiology/admin/reporting-rules/export"
+        }
+      >
+        {t("export")}
+      </Button>
       <Table aria-label={t("rulesTable")}>
         <TableHead>
           <TableRow>
