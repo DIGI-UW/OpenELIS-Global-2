@@ -704,4 +704,7 @@
   <include relativeToChangelogFile="true" file="146-explicit-log-display.xml"/>
   <include relativeToChangelogFile="true" file="147-log-display-source-and-seed.xml"/>
   <include relativeToChangelogFile="true" file="148-facility-organization-id.xml"/>
+
+  <!-- Seeds default 'retroci.dbs.sampleType' configuration in site_information for RetroCI mode. -->
+  <include relativeToChangelogFile="true" file="150-retroci-dbs-sample-type-config.xml"/>
 </databaseChangeLog>

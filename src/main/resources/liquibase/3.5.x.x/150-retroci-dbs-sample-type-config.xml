@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+  <changeSet id="150-retroci-dbs-sample-type-config" author="Satyam087">
+    <comment>
+      Seeds default 'retroci.dbs.sampleType' configuration in site_information for RetroCI mode.
+      Allows configuring which sample type (by abbreviation or name) represents DBS instead of
+      hard-coding 'DBS'.
+    </comment>
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'retroci.dbs.sampleType'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.site_information_domain WHERE name = 'siteIdentity'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq"/>
+      <column name="name" value="retroci.dbs.sampleType"/>
+      <column name="value" value="DBS"/>
+      <column name="description" value="Default clinical sample type identifier or local abbreviation for RetroCI DBS accessions"/>
+      <column name="value_type" value="text"/>
+      <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'siteIdentity')"/>
+      <column name="encrypted" value="false"/>
+      <column name="lastupdated" valueComputed="CURRENT_TIMESTAMP"/>
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="site_information">
+        <where>name = 'retroci.dbs.sampleType'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
