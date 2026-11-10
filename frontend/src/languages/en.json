@@ -14308,6 +14308,7 @@
   "microbiology.m6.blocker.CULTURE_OUTCOME_REQUIRED": "Inoculate each required sample and record an outcome for every culture.",
   "microbiology.m6.blocker.SELECTED_RESULT_VALIDATION_REQUIRED": "Validate every selected reportable result.",
   "microbiology.m6.blocker.REFERRAL_COMPLETION_REQUIRED": "Return or cancel pending culture and susceptibility referrals.",
+  "microbiology.m6.blocker.PRELIMINARY_REPORT_UNCHANGED": "Nothing has changed since the last partial report.",
   "microbiology.m6.blocker.fieldRequired": "{field} is required before final release.",
   "microbiology.m6.blocker.CLINICAL_FIELD_REQUIRED": "Complete required clinical information.",
   "microbiology.m6.blocker.PROGRAM_REQUIRED": "Select a Program for this order.",

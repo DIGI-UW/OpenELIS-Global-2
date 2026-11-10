@@ -49,6 +49,13 @@ export default function CaseReleaseActions({
     const detailLabel = readiness?.blockerLabels?.[blocker];
     return detailLabel ? `${label}: ${detailLabel}` : label;
   };
+  const blockerList = (error?.response?.blockers || []).length > 0 && (
+    <ul>
+      {error.response.blockers.map((blocker) => (
+        <li key={blocker}>{blockerLabel(blocker)}</li>
+      ))}
+    </ul>
+  );
 
   const openDialog = () => {
     setOpen(true);
@@ -112,11 +119,14 @@ export default function CaseReleaseActions({
         )}
       </div>
       {error && !open && (
-        <InlineNotification
-          kind="error"
-          title={intl.formatMessage({ id: "microbiology.release.failed" })}
-          hideCloseButton
-        />
+        <>
+          <InlineNotification
+            kind="error"
+            title={intl.formatMessage({ id: "microbiology.release.failed" })}
+            hideCloseButton
+          />
+          {blockerList}
+        </>
       )}
       {open &&
         ReactDOM.createPortal(
@@ -178,13 +188,7 @@ export default function CaseReleaseActions({
                 hideCloseButton
               />
             )}
-            {(error?.response?.blockers || []).length > 0 && (
-              <ul>
-                {error.response.blockers.map((blocker) => (
-                  <li key={blocker}>{blockerLabel(blocker)}</li>
-                ))}
-              </ul>
-            )}
+            {blockerList}
           </Modal>,
           document.body,
         )}

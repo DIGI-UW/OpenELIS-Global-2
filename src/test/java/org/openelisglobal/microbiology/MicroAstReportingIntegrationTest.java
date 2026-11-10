@@ -504,6 +504,18 @@ public class MicroAstReportingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void aPartialReleaseWithNothingNewSinceTheLastOneIsRefused() {
+        var run = start(isolate);
+        enter(run, "4");
+        ast.reviewRun(run.getId(), validator);
+        versions.recordPreliminary(c.getId(), projection.releasePreliminary(c.getId(), writer), writer);
+        var refused = assertThrows(MicroReleaseBlockedException.class,
+                () -> versions.recordPreliminary(c.getId(), projection.releasePreliminary(c.getId(), writer), writer));
+        assertEquals(List.of("PRELIMINARY_REPORT_UNCHANGED"), refused.getBlockers());
+        assertEquals(1, versions.getVersions(c.getId()).size());
+    }
+
+    @Test
     public void twoPartialVersionsRemainImmutableAfterNewSelectionAndCatalogRename() {
         var first = start(isolate);
         enter(first, "4");

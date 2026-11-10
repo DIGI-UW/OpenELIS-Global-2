@@ -68,6 +68,9 @@ public class MicroReportVersionServiceImpl implements MicroReportVersionService 
         var existing = reportVersionDAO.getLatestByCaseId(caseId);
         if (existing != null && !MicroReportVersionType.PRELIMINARY.name().equals(existing.getReleaseType()))
             throw new MicroCaseLockedException("FINAL_CASE_LOCKED");
+        if (existing != null && existing.getContent().equals(projection.getContent()))
+            throw new MicroReleaseBlockedException("Preliminary release is blocked",
+                    List.of("PRELIMINARY_REPORT_UNCHANGED"));
         return append(caseId, null, existing == null ? 1 : existing.getVersionNumber() + 1,
                 MicroReportVersionType.PRELIMINARY, projection, MicroCaseServiceImpl.now(), performedBy, null);
     }

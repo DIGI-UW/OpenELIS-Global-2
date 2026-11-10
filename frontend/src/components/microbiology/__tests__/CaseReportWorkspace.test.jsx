@@ -111,6 +111,20 @@ it("allows partial release by a results technician without final-release rights"
     screen.queryByRole("button", { name: t("finalRelease") }),
   ).not.toBeInTheDocument();
 });
+it("says a partial release was refused because nothing changed since the last one", async () => {
+  const service = show({ canWrite: true, canValidate: false });
+  service.releaseReport.mockRejectedValue(
+    Object.assign(new Error("request failed"), {
+      response: { blockers: ["PRELIMINARY_REPORT_UNCHANGED"] },
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: t("partialRelease") }),
+  );
+  expect(
+    await screen.findByText(t("blocker.PRELIMINARY_REPORT_UNCHANGED")),
+  ).toBeInTheDocument();
+});
 it("offers no release or selection controls for direct-link readers", async () => {
   show({ canWrite: false, canValidate: false });
   await screen.findByText("Microbiology unit");
